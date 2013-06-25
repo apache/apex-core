@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class GenericRequestTuple extends RequestTuple
 {

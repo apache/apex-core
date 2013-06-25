@@ -15,7 +15,7 @@ import com.datatorrent.bufferserver.packet.Tuple;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class NoMessageTupleTest extends TestCase
 {

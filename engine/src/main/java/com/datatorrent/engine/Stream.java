@@ -13,7 +13,7 @@ import com.datatorrent.api.Sink;
  * Base interface for all streams in the streaming platform<p>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 /*
  * Provides basic interface for a stream object. Stram, StramChild work via this interface

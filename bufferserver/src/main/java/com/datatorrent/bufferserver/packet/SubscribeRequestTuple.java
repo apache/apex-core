@@ -11,7 +11,7 @@ import java.util.Collection;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class SubscribeRequestTuple extends RequestTuple
 {

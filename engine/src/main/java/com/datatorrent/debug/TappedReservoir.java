@@ -10,7 +10,7 @@ import com.datatorrent.api.Sink;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class TappedReservoir extends MuxSink implements SweepableReservoir
 {

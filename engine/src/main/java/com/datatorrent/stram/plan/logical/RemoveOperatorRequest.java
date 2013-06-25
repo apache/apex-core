@@ -8,7 +8,7 @@ import com.datatorrent.stram.plan.physical.PlanModifier;
 
 /**
  *
- * @author David Yan <davidyan@malhar-inc.com>
+ * @author David Yan <david@datatorrent.com>
  */
 public class RemoveOperatorRequest extends LogicalPlanRequest
 {

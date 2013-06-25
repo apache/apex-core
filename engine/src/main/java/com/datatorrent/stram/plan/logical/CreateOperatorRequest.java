@@ -10,7 +10,7 @@ import com.datatorrent.api.Operator;
 
 /**
  *
- * @author David Yan <davidyan@malhar-inc.com>
+ * @author David Yan <david@datatorrent.com>
  */
 public class CreateOperatorRequest extends LogicalPlanRequest
 {

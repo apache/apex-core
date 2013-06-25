@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  *
  * @param <T>
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class PartitionAwareSink<T> implements Sink<T>
 {

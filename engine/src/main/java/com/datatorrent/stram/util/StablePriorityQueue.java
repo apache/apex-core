@@ -11,7 +11,7 @@ import java.util.*;
  * 
  * Implements a priority queue by implementing {@link java.util.queue} interface<p>
  * <br>
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class StablePriorityQueue<E> implements Queue<E>
 {

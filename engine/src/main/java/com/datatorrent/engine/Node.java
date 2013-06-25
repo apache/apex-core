@@ -42,7 +42,7 @@ import java.io.*;
 /**
  *
  * @param <OPERATOR>
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public abstract class Node<OPERATOR extends Operator> implements Component<OperatorContext>, Runnable
 {

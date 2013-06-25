@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author Pramod Immaneni <pramod@malhar-inc.com>
+ * @author Pramod Immaneni <pramod@datatorrent.com>
  */
 public class StramUserLogin
 {

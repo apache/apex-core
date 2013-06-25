@@ -6,7 +6,7 @@ package com.datatorrent.engine;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface Reservoir
 {

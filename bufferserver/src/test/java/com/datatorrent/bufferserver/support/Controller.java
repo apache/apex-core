@@ -6,7 +6,7 @@ package com.datatorrent.bufferserver.support;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class Controller extends com.datatorrent.bufferserver.client.Controller
 {

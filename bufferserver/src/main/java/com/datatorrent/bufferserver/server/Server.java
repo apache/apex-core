@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * The buffer server application<p>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class Server implements ServerListener
 {
@@ -520,7 +520,7 @@ public class Server implements ServerListener
    * When the publisher connects to the server and starts publishing the data,
    * this is the end on the server side which handles all the communication.
    *
-   * @author Chetan Narsude <chetan@malhar-inc.com>
+   * @author Chetan Narsude <chetan@datatorrent.com>
    */
   class Publisher extends AbstractClient
   {

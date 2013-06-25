@@ -3,7 +3,7 @@
  *  All Rights Reserved.
  *
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 
 /**

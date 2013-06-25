@@ -31,7 +31,7 @@ import com.datatorrent.common.util.Slice;
 
 /**
  *
- * @author David Yan <davidyan@malhar-inc.com>
+ * @author David Yan <david@datatorrent.com>
  */
 public class TupleRecorder
 {

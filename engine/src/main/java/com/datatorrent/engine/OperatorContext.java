@@ -21,7 +21,7 @@ import com.datatorrent.netlet.util.CircularBuffer;
  * The for context for all of the operators<p>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class OperatorContext extends BaseContext implements Context.OperatorContext
 {

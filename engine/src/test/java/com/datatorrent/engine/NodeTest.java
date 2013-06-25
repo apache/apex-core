@@ -16,7 +16,7 @@ import org.junit.Test;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class NodeTest
 {

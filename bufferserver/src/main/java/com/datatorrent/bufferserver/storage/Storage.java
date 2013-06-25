@@ -16,7 +16,7 @@ import java.io.IOException;
  *
  * The implementation of the storage needs to be threadsafe.
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface Storage
 {

@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author David Yan <davidyan@malhar-inc.com>
+ * @author David Yan <david@datatorrent.com>
  */
 public class HdfsPartFileCollection
 {

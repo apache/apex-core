@@ -24,7 +24,7 @@ import com.datatorrent.netlet.EventLoop;
  * Defines the destination for tuples processed<p>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class StreamContext extends DefaultAttributeMap implements Context
 {
