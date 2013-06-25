@@ -185,13 +185,13 @@
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
         <distMgmtStagingUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtStagingUrl>
-        <distMgmtSnapshotUrl>dav:http://192.168.1.118:8081/nexus/content/repositories/snapshots/</distMgmtSnapshotUrl>
+        <distMgmtSnapshotUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories/snapshots/</distMgmtSnapshotUrl>
       </properties>
       <distributionManagement>
         <repository>
           <id>nexus</id>
           <name>DataTorrent Repository</name>
-          <url>dav:http://localhost:8081/nexus/content/repositories/releases/</url>
+          <url>dav:http://www.datatorrent.com:8081/nexus/content/repositories/releases/</url>
         </repository>
         <snapshotRepository>
           <id>snapshot</id>
