@@ -46,7 +46,7 @@
     <module>netlet</module>
     <module>bufferserver</module>
     <module>stram</module>
-    <module>stram-all</module>
+    <module>engine</module>
     <module>library</module>
     <module>demos</module>
     <module>poc</module>
