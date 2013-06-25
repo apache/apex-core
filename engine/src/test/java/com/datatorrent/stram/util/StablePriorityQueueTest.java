@@ -14,7 +14,7 @@ import com.datatorrent.stram.util.StablePriorityQueue;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 @Ignore
 public class StablePriorityQueueTest

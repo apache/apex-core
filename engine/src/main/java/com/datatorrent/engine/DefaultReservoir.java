@@ -10,7 +10,7 @@ import com.datatorrent.netlet.util.CircularBuffer;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class DefaultReservoir extends CircularBuffer<Object> implements SweepableReservoir
 {

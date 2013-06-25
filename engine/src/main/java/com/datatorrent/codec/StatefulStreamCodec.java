@@ -10,7 +10,7 @@ import com.datatorrent.common.util.Slice;
 /**
  *
  * @param <T>
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface StatefulStreamCodec<T> extends StreamCodec<T>
 {

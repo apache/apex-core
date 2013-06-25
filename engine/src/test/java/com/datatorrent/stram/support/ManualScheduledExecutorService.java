@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class ManualScheduledExecutorService extends ScheduledThreadPoolExecutor implements ScheduledExecutorService
 {

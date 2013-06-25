@@ -10,7 +10,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  *
- * @author David Yan <davidyan@malhar-inc.com>
+ * @author David Yan <david@datatorrent.com>
  */
 @XmlRootElement(name = "port")
 @XmlAccessorType(XmlAccessType.FIELD)

@@ -17,7 +17,7 @@ import org.apache.hadoop.security.token.TokenSelector;
 
 /**
  *
- * @author Pramod Immaneni <pramod@malhar-inc.com>
+ * @author Pramod Immaneni <pramod@datatorrent.com>
  */
 public class StreamingContainerSecurityInfo extends SecurityInfo
 {

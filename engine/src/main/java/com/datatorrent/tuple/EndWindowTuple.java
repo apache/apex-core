@@ -13,7 +13,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
  * This defines the end of a window. A new begin window has to come after the end window of the previous window<br>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class EndWindowTuple extends Tuple
 {

@@ -8,7 +8,7 @@ import com.datatorrent.common.util.Slice;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class PayloadTuple extends Tuple
 {

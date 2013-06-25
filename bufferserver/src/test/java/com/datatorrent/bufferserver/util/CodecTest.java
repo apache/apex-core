@@ -14,7 +14,7 @@ import com.datatorrent.bufferserver.util.SerializedData;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class CodecTest
 {

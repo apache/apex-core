@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * PhysicalNode represents one physical subscriber.
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class PhysicalNode
 {

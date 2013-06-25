@@ -34,7 +34,7 @@ import com.datatorrent.api.Operator.InputPort;
  * Interacts with Stram with a heartbeat protocol<br>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class GenericNode extends Node<Operator>
 {

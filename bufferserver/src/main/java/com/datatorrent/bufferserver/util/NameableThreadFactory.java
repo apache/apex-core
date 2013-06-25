@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 /**
  * Class copy-pasted from java.util.concurrent.Executors and modified to meet our needs.

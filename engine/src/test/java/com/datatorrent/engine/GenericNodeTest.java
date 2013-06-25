@@ -26,7 +26,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class GenericNodeTest
 {

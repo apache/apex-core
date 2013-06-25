@@ -14,7 +14,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
  * be done dynamically by shutting down all the input streams (all inputadapters).<br>
  * <br>
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class EndStreamTuple extends Tuple
 {

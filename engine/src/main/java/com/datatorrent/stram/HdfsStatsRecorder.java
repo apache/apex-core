@@ -18,7 +18,7 @@ import java.util.*;
 
 /**
  *
- * @author David Yan <davidyan@malhar-inc.com>
+ * @author David Yan <david@datatorrent.com>
  */
 public class HdfsStatsRecorder
 {

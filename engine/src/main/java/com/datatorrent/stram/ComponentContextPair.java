@@ -11,7 +11,7 @@ import com.datatorrent.api.Context;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class ComponentContextPair<COMPONENT extends Component<?>, CONTEXT extends Context> extends ComponentComplementPair<COMPONENT, CONTEXT>
 {

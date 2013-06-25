@@ -13,7 +13,7 @@ import org.apache.hadoop.conf.Configuration;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class ComponentConfigurationPair<COMPONENT extends Component<Context>, CONFIG extends Configuration> extends ComponentComplementPair<COMPONENT, CONFIG>
 {
