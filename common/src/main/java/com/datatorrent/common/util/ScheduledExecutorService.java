@@ -6,7 +6,7 @@ package com.datatorrent.stram.util;
 
 /**
  *
- * @author Chetan Narsude <chetan@malhar-inc.com>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface ScheduledExecutorService extends java.util.concurrent.ScheduledExecutorService
 {
