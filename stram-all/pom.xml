@@ -10,8 +10,8 @@
     <version>0.3.2</version>
   </parent>
 
-  <artifactId>malhar-stram-all</artifactId>
-  <name>Implementation Aggregate Jar</name>
+  <artifactId>malhar-engine</artifactId>
+  <name>Implementation Engine</name>
   <packaging>jar</packaging>
 
 
@@ -65,7 +65,7 @@
                 <configuration>
                   <target unless="${obfuscation.skip}">
                     <echo message="running allatori"/>
-                    <property name="obf.jar" value="target/malhar-stram-all-${project.version}.jar"/>
+                    <property name="obf.jar" value="target/malhar-engine-${project.version}.jar"/>
                     <property name="env.OBFUSCATION_EXPIRY_DATE" value="2013/12/01"/>
                     <property name="runtime_classpath" refid="maven.runtime.classpath"/>
                     <taskdef name="allatori" classname="com.allatori.ant.ObfuscatorTask" classpath="${env.ALLATORI_LIB}/allatori.jar:${runtime_classpath}"/>
