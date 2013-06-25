@@ -9,7 +9,7 @@
   </parent>
 
   <artifactId>malhar-common</artifactId>
-  <name>Common Library</name>
+  <name>Base Library</name>
   <packaging>jar</packaging>
 
 </project>
