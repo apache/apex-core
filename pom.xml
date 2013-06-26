@@ -190,12 +190,12 @@
       </properties>
       <distributionManagement>
         <repository>
-          <id>nexus</id>
+          <id>releases</id>
           <name>DataTorrent Repository</name>
           <url>${distMgmtReleaseUrl}</url>
         </repository>
         <snapshotRepository>
-          <id>snapshot</id>
+          <id>snapshots</id>
           <name>DataTorrent Snapshots</name>
           <url>${distMgmtSnapshotUrl}</url>
         </snapshotRepository>
