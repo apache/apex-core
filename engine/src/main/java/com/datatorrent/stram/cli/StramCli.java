@@ -392,7 +392,15 @@ public class StramCli
           }
         }
         if (cs == null) {
-          System.err.println("Invalid command '" + args[0] + "'. Type \"help\" for list of commands");
+          if (connectedCommands.get(args[0]) != null) {
+            System.err.println("\"" + args[0] + "\" is only valid when connected to an application. Type \"connect <appid>\" to connect to an application.");
+          }
+          else if (logicalPlanChangeCommands.get(args[0]) != null) {
+            System.err.println("\"" + args[0] + "\" is only valid when changing a logical plan.  Type \"begin-logical-plan-change\" to change a logical plan");
+          }
+          else {
+            System.err.println("Invalid command '" + args[0] + "'. Type \"help\" for list of commands");
+          }
         }
         else {
           int minArgs = 0;
