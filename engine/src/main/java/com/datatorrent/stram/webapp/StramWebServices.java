@@ -182,7 +182,7 @@ public class StramWebServices
         return pi;
       }
     }
-    for (PortInfo pi : oi.inputPorts) {
+    for (PortInfo pi : oi.outputPorts) {
       if (pi.name.equals(portName)) {
         return pi;
       }
