@@ -17,7 +17,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class PortInfo
 {
   public String name;
+  public String type;
   public long totalTuples;
   public long tuplesPSMA10;
-  public long bufferServerBytesPSMA10;  // TBD
+  public long bufferServerBytesPSMA10;  
 }

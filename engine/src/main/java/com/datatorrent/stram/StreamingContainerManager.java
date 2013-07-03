@@ -1053,6 +1053,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       for (PortStatus ps: os.inputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
         pinfo.name = ps.portName;
+        pinfo.type = "input";
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
         pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
@@ -1061,6 +1062,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       for (PortStatus ps: os.outputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
         pinfo.name = ps.portName;
+        pinfo.type = "output";
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
         pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
