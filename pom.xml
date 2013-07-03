@@ -47,7 +47,11 @@
     <module>bufferserver</module>
     <module>stram</module>
     <module>engine</module>
+    <module>library</module>
+    <module>demos</module>
     <module>poc</module>
+    <module>contrib</module>
+    <module>samples</module>
     <module>daemon</module>
     <module>api</module>
   </modules>
