@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.codehaus.jettison.json.JSONException;
 
 /**
  *
@@ -170,12 +171,22 @@ public class StramCli
     return fileName;
   }
 
-  protected ApplicationReport getApplication(int appSeq)
+  protected ApplicationReport getApplication(String appId)
   {
     List<ApplicationReport> appList = getApplicationList();
-    for (ApplicationReport ar : appList) {
-      if (ar.getApplicationId().getId() == appSeq) {
-        return ar;
+    if (StringUtils.isNumeric(appId)) {
+      int appSeq = Integer.parseInt(appId);
+      for (ApplicationReport ar : appList) {
+        if (ar.getApplicationId().getId() == appSeq) {
+          return ar;
+        }
+      }
+    }
+    else {
+      for (ApplicationReport ar : appList) {
+        if (ar.getApplicationId().toString().equals(appId)) {
+          return ar;
+        }
       }
     }
     return null;
@@ -521,6 +532,31 @@ public class StramCli
     }
   }
 
+  private String getContainerLongId(String containerId)
+  {
+    ClientResponse rsp = getResource(StramWebServices.PATH_CONTAINERS, currentApp);
+    JSONObject json = rsp.getEntity(JSONObject.class);
+    int shortId = 0;
+    if (StringUtils.isNumeric(containerId)) {
+      shortId = Integer.parseInt(containerId);
+    }
+    try {
+      JSONArray containers = json.getJSONArray("containers");
+      if (containers != null) {
+        for (int o = containers.length(); o-- > 0;) {
+          JSONObject container = containers.getJSONObject(o);
+          String id = container.getString("id");
+          if (id.equals(containerId) || (shortId != 0 && (id.endsWith("_" + shortId) || id.endsWith("0" + shortId)))) {
+            return id;
+          }
+        }
+      }
+    }
+    catch (JSONException ex) {
+    }
+    return null;
+  }
+
   private ApplicationReport assertRunningApp(ApplicationReport app)
   {
     ApplicationReport r;
@@ -645,7 +681,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
 
-      currentApp = getApplication(Integer.parseInt(args[1]));
+      currentApp = getApplication(args[1]);
       if (currentApp == null) {
         throw new CliException("Invalid application id: " + args[1]);
       }
@@ -883,7 +919,7 @@ public class StramCli
       int i = 0;
       try {
         while (++i < args.length) {
-          app = getApplication(Integer.parseInt(args[i]));
+          app = getApplication(args[i]);
           rmClient.killApplication(app.getApplicationId());
           if (app == currentApp) {
             currentApp = null;
@@ -964,7 +1000,7 @@ public class StramCli
               for (int argc = args.length; argc-- > 1;) {
                 String s1 = "0" + args[argc];
                 String s2 = "_" + args[argc];
-                if (id.endsWith(s1) || id.endsWith(s2)) {
+                if (id.equals(args[argc]) || id.endsWith(s1) || id.endsWith(s2)) {
                   System.out.println(container.toString(2));
                 }
               }
@@ -1013,8 +1049,12 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      String containerLongId = getContainerLongId(args[1]);
+      if (containerLongId == null) {
+        throw new CliException("Container " + args[1] + " not found");
+      }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_CONTAINERS).path(args[1]).path("kill");
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_CONTAINERS).path(containerLongId).path("kill");
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -1675,7 +1715,7 @@ public class StramCli
     {
       ApplicationReport appReport = currentApp;
       if (args.length > 1) {
-        appReport = getApplication(Integer.parseInt(args[1]));
+        appReport = getApplication(args[1]);
       }
       else {
         if (currentApp == null) {
