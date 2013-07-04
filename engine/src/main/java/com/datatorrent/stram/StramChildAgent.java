@@ -134,8 +134,10 @@ public class StramChildAgent {
     long totalTuplesProcessed;
     long totalTuplesEmitted;
     long currentWindowId;
-    MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
-    MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
+    //MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
+    //MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
+    long tuplesProcessedPSMA10;
+    long tuplesEmittedPSMA10;
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     MovingAverageLong latencyMA = new MovingAverageLong(10);
     List<String> recordingNames; // null if recording is not in progress

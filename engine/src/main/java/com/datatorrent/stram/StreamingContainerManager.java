@@ -108,6 +108,9 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
 
+  // (operator id, port name) to timestamp
+  private final Map<Pair<Integer, String>, Long> lastEndWindowTimestamps = new HashMap<Pair<Integer, String>, Long>();
+
   private static class EndWindowStats
   {
     long emitTimestamp = -1;
@@ -573,7 +576,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         long totalCpuTimeUsed = 0;
         long maxDequeueTimestamp = -1;
         List<OperatorStats> statsList = shb.getWindowStats();
-        HashMap<String, MutableLong> portToTuples = new HashMap<String, MutableLong>();
 
         for (OperatorStats stats: statsList) {
           /* report checkpointedWindowId status of the operator */
@@ -595,15 +597,16 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
                 status.inputPortStatusList.put(s.portname, ps);
               }
               ps.totalTuples += s.processedCount;
-              if (portToTuples.containsKey(s.portname)) {
-                portToTuples.get(s.portname).add(s.processedCount);
-              }
-              else {
-                portToTuples.put(s.portname, new MutableLong(s.processedCount));
-              }
 
               tuplesProcessed += s.processedCount;
               endWindowStats.dequeueTimestamps.put(s.portname, s.endWindowTimestamp);
+
+              Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
+              if (lastEndWindowTimestamps.containsKey(operatorPortName)) {
+                ps.tuplesPSMA10.add(s.processedCount * 1000 / (s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName)));
+              }
+              lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
+
               if (s.endWindowTimestamp > maxDequeueTimestamp) {
                 maxDequeueTimestamp = s.endWindowTimestamp;
               }
@@ -621,14 +624,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
                 status.outputPortStatusList.put(s.portname, ps);
               }
               ps.totalTuples += s.processedCount;
-              if (portToTuples.containsKey(s.portname)) {
-                portToTuples.get(s.portname).add(s.processedCount);
-              }
-              else {
-                portToTuples.put(s.portname, new MutableLong(s.processedCount));
-              }
 
               tuplesEmitted += s.processedCount;
+              Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
+              if (lastEndWindowTimestamps.containsKey(operatorPortName)) {
+                ps.tuplesPSMA10.add(s.processedCount * 1000 / (s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName)));
+              }
+              lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
             }
             if (ports.size() > 0) {
               endWindowStats.emitTimestamp = ports.iterator().next().endWindowTimestamp;
@@ -655,29 +657,27 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
         if (elapsedMillis > 0) {
-          status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / elapsedMillis);
-          status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / elapsedMillis);
+          //status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / elapsedMillis);
+          //status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / elapsedMillis);
+          status.tuplesProcessedPSMA10 = 0;
+          status.tuplesEmittedPSMA10 = 0;
           status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
           for (PortStatus ps: status.inputPortStatusList.values()) {
-            if (portToTuples.containsKey(ps.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / elapsedMillis);
-            }
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
               ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
             }
+            status.tuplesProcessedPSMA10 += ps.tuplesPSMA10.getAvg();
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
-            if (portToTuples.containsKey(ps.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / elapsedMillis);
-            }
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
               ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
             }
+            status.tuplesEmittedPSMA10 += ps.tuplesPSMA10.getAvg();
           }
           if (status.operator.statsMonitors != null) {
-            long tps = status.operator.inputs.isEmpty() ? status.tuplesEmittedPSMA10.getAvg() : status.tuplesProcessedPSMA10.getAvg();
+            long tps = status.operator.inputs.isEmpty() ? status.tuplesEmittedPSMA10 : status.tuplesProcessedPSMA10;
             for (StatsHandler sm: status.operator.statsMonitors) {
               sm.onThroughputUpdate(status.operator, tps);
               sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
@@ -1039,8 +1039,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     if (os != null) {
       ni.totalTuplesProcessed = os.totalTuplesProcessed;
       ni.totalTuplesEmitted = os.totalTuplesEmitted;
-      ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
-      ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
+      ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10;
+      ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10;
       ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = os.operator.failureCount;
