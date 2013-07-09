@@ -334,7 +334,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
       catch (Exception e) {
         // TODO: handle error
-        LOG.error("Failed to execute {} {}", command, e);
+        LOG.error("Failed to execute " + command, e);
       }
     }
     return count;
