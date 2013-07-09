@@ -7,6 +7,7 @@ package com.datatorrent.stram.util;
 import com.sun.jersey.api.client.AsyncWebResource;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.async.ITypeListener;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
 import java.io.IOException;
 import java.security.Principal;
@@ -79,9 +80,9 @@ public class WebServicesClient
     WebResource wr = client.resource(url);
     return process(wr, clazz, handler);
   }
-  public <T> Future<T> process(String url, Class<T> clazz, WebServicesAsyncHandler<T> handler) throws IOException {
+  public <T> Future<T> process(String url, final ITypeListener<T> listener, WebServicesAsyncHandler<T> handler) throws IOException {
     AsyncWebResource wr = client.asyncResource(url);
-    return process(wr, clazz, handler);
+    return process(wr, listener, handler);
   }
 
   public <T> T process(final WebResource wr, final Class<T> clazz, final WebServicesHandler<T> handler) throws IOException {
@@ -94,12 +95,12 @@ public class WebServicesClient
     });
   }
 
-  public <T> Future<T> process(final AsyncWebResource wr, final Class<T> clazz, final WebServicesAsyncHandler<T> handler) throws IOException {
+  public <T> Future<T> process(final AsyncWebResource wr, final ITypeListener<T> listener, final WebServicesAsyncHandler<T> handler) throws IOException {
     return SecureExecutor.execute(new SecureExecutor.WorkLoad<Future<T>>(){
       @Override
       public Future<T> run()
       {
-        return handler.process(wr, clazz);
+        return handler.process(wr, listener);
       }
     });
   }
@@ -123,7 +124,7 @@ public class WebServicesClient
    * @param <T>
    */
   public static abstract class WebServicesAsyncHandler<T> {
-    public abstract Future<T> process(AsyncWebResource webResource, Class<T> clazz);
+    public abstract Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener);
 
     @Override
     public String toString()
@@ -144,9 +145,9 @@ public class WebServicesClient
   public static class GetWebServicesAsyncHandler<T> extends WebServicesAsyncHandler<T> {
 
     @Override
-    public Future<T> process(AsyncWebResource webResource, Class<T> clazz)
+    public Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener)
     {
-      return webResource.get(clazz);
+      return webResource.get(listener);
     }
 
   }
