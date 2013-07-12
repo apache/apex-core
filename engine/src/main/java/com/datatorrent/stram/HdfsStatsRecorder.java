@@ -176,4 +176,10 @@ public class HdfsStatsRecorder
     return fieldMap;
   }
 
+  public void requestSync() {
+    containersStorage.requestSync();
+    for (Map.Entry<String, HdfsPartFileCollection> entry : logicalOperatorStorageMap.entrySet()) {
+      entry.getValue().requestSync();
+    }
+  }
 }

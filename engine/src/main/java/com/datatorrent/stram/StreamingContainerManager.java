@@ -1180,6 +1180,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     sca.addOperatorRequest(request);
   }
 
+  public void syncStats()
+  {
+    statsRecorder.requestSync();
+  }
+
   public void stopContainer(String containerId)
   {
     this.containerStopRequests.put(containerId, containerId);
