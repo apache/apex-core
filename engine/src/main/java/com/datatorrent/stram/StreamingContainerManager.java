@@ -602,7 +602,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
               endWindowStats.dequeueTimestamps.put(s.portname, s.endWindowTimestamp);
 
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
-              if (lastEndWindowTimestamps.containsKey(operatorPortName)) {
+              if (lastEndWindowTimestamps.containsKey(operatorPortName) && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
                 ps.tuplesPSMA10.add(s.processedCount * 1000 / (s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName)));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
