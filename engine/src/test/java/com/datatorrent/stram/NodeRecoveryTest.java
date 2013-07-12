@@ -21,6 +21,7 @@ import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.engine.RecoverableInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import java.util.ArrayList;
 
 /**
  *
@@ -29,7 +30,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 public class NodeRecoveryTest
 {
   private static final Logger logger = LoggerFactory.getLogger(NodeRecoveryTest.class);
-  static HashSet<Long> collection = new HashSet<Long>(20);
 
   @Before
   public void setup() throws IOException
@@ -46,6 +46,8 @@ public class NodeRecoveryTest
 
   public static class CollectorOperator extends BaseOperator implements CheckpointListener
   {
+    public static HashSet<Long> collection = new HashSet<Long>(20);
+    public static ArrayList<Long> duplicates = new ArrayList<Long>();
     private boolean simulateFailure;
     private long checkPointWindowId;
     public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
@@ -54,7 +56,12 @@ public class NodeRecoveryTest
       public void process(Long tuple)
       {
         logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
-        collection.add(tuple);
+        if (collection.contains(tuple)) {
+          duplicates.add(tuple);
+        }
+        else {
+          collection.add(tuple);
+        }
       }
 
     };
@@ -96,7 +103,7 @@ public class NodeRecoveryTest
   @Test
   public void testInputOperatorRecovery() throws Exception
   {
-    collection.clear();
+    CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
@@ -111,13 +118,13 @@ public class NodeRecoveryTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+    Assert.assertEquals("Generated Outputs", maxTuples, CollectorOperator.collection.size());
   }
 
   @Test
   public void testOperatorRecovery() throws Exception
   {
-    collection.clear();
+    CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
@@ -136,13 +143,13 @@ public class NodeRecoveryTest
 //    for (Long l: collection) {
 //      logger.debug(Codec.getStringWindowId(l));
 //    }
-    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+    Assert.assertEquals("Generated Outputs", maxTuples, CollectorOperator.collection.size());
   }
 
   @Test
   public void testInlineOperatorsRecovery() throws Exception
   {
-    collection.clear();
+    CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     //dag.getAttributes().attr(DAG.HEARTBEAT_INTERVAL_MILLIS).set(400);
@@ -162,7 +169,7 @@ public class NodeRecoveryTest
 //    for (Long l: collection) {
 //      logger.debug(Codec.getStringWindowId(l));
 //    }
-    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+    Assert.assertEquals("Generated Outputs", maxTuples, CollectorOperator.collection.size());
   }
 
 }

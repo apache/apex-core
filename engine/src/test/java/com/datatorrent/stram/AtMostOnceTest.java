@@ -5,7 +5,6 @@
 package com.datatorrent.stram;
 
 import java.io.IOException;
-import java.util.HashSet;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -26,8 +25,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
  */
 public class AtMostOnceTest
 {
-  static HashSet<Long> collection = new HashSet<Long>(20);
-
   @Before
   public void setup() throws IOException
   {
@@ -43,7 +40,9 @@ public class AtMostOnceTest
   @Test
   public void testInputOperatorRecovery() throws Exception
   {
-    collection.clear();
+    CollectorOperator.collection.clear();
+    CollectorOperator.duplicates.clear();
+
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
@@ -59,13 +58,16 @@ public class AtMostOnceTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-    Assert.assertTrue("Generated Outputs", maxTuples >= collection.size());
+    Assert.assertTrue("Generated Outputs", maxTuples <= CollectorOperator.collection.size());
+    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
   @Test
   public void testOperatorRecovery() throws Exception
   {
-    collection.clear();
+    CollectorOperator.collection.clear();
+    CollectorOperator.duplicates.clear();
+
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
@@ -83,16 +85,16 @@ public class AtMostOnceTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-//    for (Long l: collection) {
-//      logger.debug(Codec.getStringWindowId(l));
-//    }
-    Assert.assertTrue("Generated Outputs", maxTuples >= collection.size());
+    Assert.assertTrue("Generated Outputs", maxTuples >= CollectorOperator.collection.size());
+    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
   @Test
   public void testInlineOperatorsRecovery() throws Exception
   {
-    collection.clear();
+    CollectorOperator.collection.clear();
+    CollectorOperator.duplicates.clear();
+
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
     //dag.getAttributes().attr(DAG.HEARTBEAT_INTERVAL_MILLIS).set(400);
@@ -111,7 +113,8 @@ public class AtMostOnceTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-    Assert.assertTrue("Generated Outputs", maxTuples >= collection.size());
+    Assert.assertTrue("Generated Outputs", maxTuples >= CollectorOperator.collection.size());
+    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(AtMostOnceTest.class);
