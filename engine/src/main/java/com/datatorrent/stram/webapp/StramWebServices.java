@@ -65,6 +65,7 @@ public class StramWebServices
   public static final String PATH_STARTRECORDING = "startRecording";
   public static final String PATH_STOPRECORDING = "stopRecording";
   public static final String PATH_SYNCRECORDING = "syncRecording";
+  public static final String PATH_SYNCSTATS = "syncStats";
   public static final String PATH_CONTAINERS = "containers";
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
@@ -278,6 +279,17 @@ public class StramWebServices
     catch (JSONException ex) {
       ex.printStackTrace();
     }
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_SYNCRECORDING)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject syncStats(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    dagManager.syncStats();
     return response;
   }
 
