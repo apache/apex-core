@@ -207,15 +207,15 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     processEvents();
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
-    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= System.currentTimeMillis())) {
-      recordStats();
+    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= currentTms)) {
+      recordStats(currentTms);
     }
   }
 
-  private void recordStats()
+  private void recordStats(long currentTms)
   {
-    statsRecorder.recordContainers(containers);
-    statsRecorder.recordOperators(getOperatorInfoList());
+    statsRecorder.recordContainers(containers, currentTms);
+    statsRecorder.recordOperators(getOperatorInfoList(), currentTms);
     lastRecordStatsTime = System.currentTimeMillis();
   }
 

@@ -51,7 +51,7 @@ public class HdfsStatsRecorder
     }
   }
 
-  public void recordContainers(Map<String, StramChildAgent> containerMap)
+  public void recordContainers(Map<String, StramChildAgent> containerMap, long timestamp)
   {
     try {
       for (Map.Entry<String, StramChildAgent> entry: containerMap.entrySet()) {
@@ -79,6 +79,7 @@ public class HdfsStatsRecorder
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         Slice f = streamCodec.toByteArray(fieldMap);
         bos.write((String.valueOf(containerIndex) + ":").getBytes());
+        bos.write((String.valueOf(timestamp) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
         containersStorage.writeDataItem(bos.toByteArray(), true);
@@ -90,7 +91,7 @@ public class HdfsStatsRecorder
     }
   }
 
-  public void recordOperators(List<OperatorInfo> operatorList)
+  public void recordOperators(List<OperatorInfo> operatorList, long timestamp)
   {
     try {
       for (OperatorInfo operatorInfo: operatorList) {
@@ -99,6 +100,7 @@ public class HdfsStatsRecorder
           operatorStorage = new HdfsPartFileCollection();
           operatorStorage.setBasePath(basePath + "/operators/" + operatorInfo.name);
           operatorStorage.setup();
+          operatorStorage.writeMetaData((VERSION + "\n").getBytes());
           logicalOperatorStorageMap.put(operatorInfo.name, operatorStorage);
         }
         else {
@@ -109,7 +111,6 @@ public class HdfsStatsRecorder
           Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "meta");
           ByteArrayOutputStream bos = new ByteArrayOutputStream();
           Slice f = streamCodec.toByteArray(fieldMap);
-          bos.write((operatorInfo.id + ":").getBytes());
           bos.write(f.buffer, f.offset, f.length);
           bos.write("\n".getBytes());
           operatorStorage.writeMetaData(bos.toByteArray());
@@ -118,6 +119,7 @@ public class HdfsStatsRecorder
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         Slice f = streamCodec.toByteArray(fieldMap);
         bos.write((operatorInfo.id + ":").getBytes());
+        bos.write((String.valueOf(timestamp) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
         operatorStorage.writeDataItem(bos.toByteArray(), true);
