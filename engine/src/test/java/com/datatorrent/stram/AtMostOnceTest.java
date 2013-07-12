@@ -59,10 +59,10 @@ public class AtMostOnceTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+    Assert.assertTrue("Generated Outputs", maxTuples >= collection.size());
   }
 
-  //@Test
+  @Test
   public void testOperatorRecovery() throws Exception
   {
     collection.clear();
@@ -86,10 +86,10 @@ public class AtMostOnceTest
 //    for (Long l: collection) {
 //      logger.debug(Codec.getStringWindowId(l));
 //    }
-    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+    Assert.assertTrue("Generated Outputs", maxTuples >= collection.size());
   }
 
-  //@Test
+  @Test
   public void testInlineOperatorsRecovery() throws Exception
   {
     collection.clear();
@@ -111,7 +111,7 @@ public class AtMostOnceTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+    Assert.assertTrue("Generated Outputs", maxTuples >= collection.size());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(AtMostOnceTest.class);

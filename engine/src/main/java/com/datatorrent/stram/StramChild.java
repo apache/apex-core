@@ -25,10 +25,21 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.CheckpointListener;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.bufferserver.storage.DiskStorage;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.debug.StdOutErrLog;
 import com.datatorrent.engine.*;
 import com.datatorrent.engine.OperatorContext.NodeRequest;
+import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -39,18 +50,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stream.*;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StorageAgent;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.bufferserver.server.Server;
-import com.datatorrent.bufferserver.storage.DiskStorage;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.netlet.DefaultEventLoop;
 
 /**
  *
@@ -1368,7 +1367,12 @@ public class StramChild
             && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
             && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
       /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
-      finishedWindowId = System.currentTimeMillis() / 1000 << 32;
+      long currentMillis = System.currentTimeMillis();
+      long diff = currentMillis - firstWindowMillis;
+      long remainder = diff % (windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1));
+      long baseSeconds = (currentMillis - remainder) / 1000;
+      long windowId = remainder / windowWidthMillis;
+      finishedWindowId = baseSeconds << 32 | windowId;
       logger.debug("using at most once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
     }
     else {
