@@ -46,6 +46,7 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -934,8 +935,7 @@ public class StramChild
     return spair.context.getId();
   }
 
-  private void deployInputStreams(List<OperatorDeployInfo> operatorList, HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams)
-          throws UnknownHostException
+  private void deployInputStreams(List<OperatorDeployInfo> operatorList, HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws UnknownHostException
   {
     /*
      * collect any input operators along with their smallest window id,
@@ -975,7 +975,18 @@ public class StramChild
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
           int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
-          long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
+
+          long finishedWindowId;
+          if (ndi.contextAttributes != null
+                  && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
+                  && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
+            /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
+            logger.debug("triggering at most once on {} / {}", ndi.id, ndi.declaredId);
+            finishedWindowId = System.currentTimeMillis() / 1000 << 32;
+          }
+          else {
+            finishedWindowId = ndi.checkpointWindowId;
+          }
 
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
