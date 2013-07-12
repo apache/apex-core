@@ -34,7 +34,7 @@ public class OperatorInfo
   @RecordField(type="meta") public String id;
   @RecordField(type="meta") public String name;
   @RecordField(type="meta") public String className;
-  @RecordField(type="stats") public String container;
+  @RecordField(type="stats") public String container; // type=stats because container can change
   @RecordField(type="stats") public String host;
   @RecordField(type="stats") public long totalTuplesProcessed;
   @RecordField(type="stats") public long totalTuplesEmitted;

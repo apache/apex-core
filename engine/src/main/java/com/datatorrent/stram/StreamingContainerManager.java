@@ -334,7 +334,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
       catch (Exception e) {
         // TODO: handle error
-        LOG.error("Failed to execute {} {}", command, e);
+        LOG.error("Failed to execute " + command, e);
       }
     }
     return count;
@@ -627,7 +627,12 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
               tuplesEmitted += s.processedCount;
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
-              if (lastEndWindowTimestamps.containsKey(operatorPortName)) {
+
+              // the second condition is needed when
+              // 1) the operator is redeployed and is playing back the tuples, or
+              // 2) the operator is catching up very fast and the endWindowTimestamp of subsequent windows is less than one millisecond
+              if (lastEndWindowTimestamps.containsKey(operatorPortName) &&
+                      (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
                 ps.tuplesPSMA10.add(s.processedCount * 1000 / (s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName)));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
