@@ -20,12 +20,28 @@ import com.datatorrent.api.Context.PortContext;
 
 public interface Operator extends Component<OperatorContext>
 {
-  // define string counterparts to it for usage in properties file
   public enum ProcessingMode
   {
-    AT_LEAST_ONCE,
-    AT_MOST_ONCE,
-    EXACTLY_ONCE
+    AT_LEAST_ONCE("AT_LEAST_ONCE"),
+    AT_MOST_ONCE("AT_MOST_ONCE"),
+    EXACTLY_ONCE("EXACTLY_ONCE");
+    private final String mode;
+
+    private ProcessingMode(String mode)
+    {
+      this.mode = mode;
+    }
+
+    public boolean equalsName(String othermode)
+    {
+      return othermode == null ? false : mode.equals(othermode);
+    }
+
+    @Override
+    public String toString()
+    {
+      return mode;
+    }
   }
 
   /**
