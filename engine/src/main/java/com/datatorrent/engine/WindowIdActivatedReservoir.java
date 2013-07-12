@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @param <T>
  * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public class WindowIdActivatedReservoir implements SweepableReservoir

@@ -963,6 +963,7 @@ public class StramChild
         /*
          * When we activate the window Generator, we plan to activate it only from required windowId.
          */
+        ndi.checkpointWindowId = getFinishedWindowId(ndi);
         if (ndi.checkpointWindowId < smallestCheckpointedWindowId) {
           smallestCheckpointedWindowId = ndi.checkpointWindowId;
         }
@@ -976,18 +977,7 @@ public class StramChild
 
           int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
 
-          long finishedWindowId;
-          if (ndi.contextAttributes != null
-                  && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
-                  && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
-            /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
-            logger.debug("triggering at most once on {} / {}", ndi.id, ndi.declaredId);
-            finishedWindowId = System.currentTimeMillis() / 1000 << 32;
-          }
-          else {
-            finishedWindowId = ndi.checkpointWindowId;
-          }
-
+          long finishedWindowId = getFinishedWindowId(ndi);
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             pair = newStreams.get(sourceIdentifier);
@@ -1370,4 +1360,21 @@ public class StramChild
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
+
+  protected long getFinishedWindowId(OperatorDeployInfo ndi)
+  {
+    long finishedWindowId;
+    if (ndi.contextAttributes != null
+            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
+            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
+      /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
+      finishedWindowId = System.currentTimeMillis() / 1000 << 32;
+      logger.debug("using at most once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+    }
+    else {
+      finishedWindowId = ndi.checkpointWindowId;
+      logger.debug("using at least once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+    }
+    return finishedWindowId;
+  }
 }

@@ -4,23 +4,23 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.engine.RecoverableInputOperator;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-
 import java.io.IOException;
 import java.util.HashSet;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.CheckpointListener;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.engine.RecoverableInputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  *
@@ -48,13 +48,12 @@ public class NodeRecoveryTest
   {
     private boolean simulateFailure;
     private long checkPointWindowId;
-
     public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
     {
       @Override
       public void process(Long tuple)
       {
-//        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
+        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
         collection.add(tuple);
       }
 
@@ -86,15 +85,15 @@ public class NodeRecoveryTest
     @Override
     public void committed(long windowId)
     {
-      logger.debug("committed window {} and checkPointWindowId {}", windowId, checkPointWindowId);
+      logger.debug("committed window {} and checkPointWindowId {}", Codec.getStringWindowId(windowId), Codec.getStringWindowId(checkPointWindowId));
       if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
-        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + checkPointWindowId);
+        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + Codec.getStringWindowId(checkPointWindowId));
       }
     }
 
   }
 
-@Test
+  @Test
   public void testInputOperatorRecovery() throws Exception
   {
     collection.clear();
@@ -140,7 +139,7 @@ public class NodeRecoveryTest
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 
-@Test
+  @Test
   public void testInlineOperatorsRecovery() throws Exception
   {
     collection.clear();

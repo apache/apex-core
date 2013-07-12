@@ -4,24 +4,21 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.engine.RecoverableInputOperator;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.Operator.ProcessingMode;
-
 import java.io.IOException;
 import java.util.HashSet;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.engine.RecoverableInputOperator;
+import com.datatorrent.stram.NodeRecoveryTest.CollectorOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  *
@@ -41,55 +38,6 @@ public class AtMostOnceTest
   public void teardown()
   {
     StramChild.eventloop.stop();
-  }
-
-  public static class CollectorOperator extends BaseOperator implements CheckpointListener
-  {
-    private boolean simulateFailure;
-    private long checkPointWindowId;
-    public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
-    {
-      @Override
-      public void process(Long tuple)
-      {
-//        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
-        collection.add(tuple);
-      }
-
-    };
-
-    /**
-     * @param simulateFailure the simulateFailure to set
-     */
-    public void setSimulateFailure(boolean simulateFailure)
-    {
-      this.simulateFailure = simulateFailure;
-    }
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-      simulateFailure &= (checkPointWindowId == 0);
-      logger.debug("simulateFailure = {}", simulateFailure);
-    }
-
-    @Override
-    public void checkpointed(long windowId)
-    {
-      if (this.checkPointWindowId == 0) {
-        this.checkPointWindowId = windowId;
-      }
-    }
-
-    @Override
-    public void committed(long windowId)
-    {
-      logger.debug("committed window {} and checkPointWindowId {}", windowId, checkPointWindowId);
-      if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
-        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + checkPointWindowId);
-      }
-    }
-
   }
 
   @Test
@@ -114,7 +62,7 @@ public class AtMostOnceTest
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 
-  @Test
+  //@Test
   public void testOperatorRecovery() throws Exception
   {
     collection.clear();
@@ -141,7 +89,7 @@ public class AtMostOnceTest
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 
-  @Test
+  //@Test
   public void testInlineOperatorsRecovery() throws Exception
   {
     collection.clear();
