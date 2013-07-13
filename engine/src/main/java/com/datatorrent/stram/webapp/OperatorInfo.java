@@ -48,8 +48,8 @@ public class OperatorInfo
   public long recoveryWindowId;
   public long currentWindowId;
   public List<String> recordingNames; // null if recording is not happening
-  protected ArrayList<PortInfo> inputPorts = new ArrayList<PortInfo>();
-  protected ArrayList<PortInfo> outputPorts = new ArrayList<PortInfo>();
+  @RecordField(type="stats") public ArrayList<PortInfo> inputPorts = new ArrayList<PortInfo>();
+  @RecordField(type="stats") public ArrayList<PortInfo> outputPorts = new ArrayList<PortInfo>();
 
   /**
    *
