@@ -1,49 +1,75 @@
 # DataTorrent Streaming Platform Release Notes
 
-## Version .3.3
+## Version .3.2
 
 ### Bug
-* [SPOI-418] - Duplicate - Demos need better documentation
-* [SPOI-438] - Remove outdated zookeeper dependency from contrib test scope
-* [SPOI-455] - Demos cannot be launched after install
-* [SPOI-456] - CLI: kill-container should accept container number
-* [SPOI-464] - Update README to clarify development environment sydtem requirements
-* [SPOI-472] - dashboard fails with empty app list
-* [SPOI-478] - Recreate a page view on URL change
-* [SPOI-509] - Fix UI build on Linux
-* [SPOI-517] - Ensure inputPorts and outputPorts are not undefined before merging them
-* [SPOI-519] - Investigate Intermittent cease of publishing from Daemon
-* [SPOI-527] - divison by zero exception in StreamingContainerManager for calculating throughput
-* [SPOI-554] - Fix MergeSort operator and test 
+* [SPOI-29] - Pig: A inner join node
+* [SPOI-55] - A library module/adapter or node for creating keys from general text
+* [SPOI-325] - need better error reporting, not sure what host it is trying to connect to
+* [SPOI-412] - UI update rate should be 1 sec (default) and allow customization
+* [SPOI-441] - Investigate javadoc errors in build
+* [SPOI-452] - recompile embedded zmq with 1.6
+* [SPOI-482] - Fix the NPM issue when installing UI in the build process
+* [SPOI-490] - Clear chart when switching between operators
+* [SPOI-497] - Application dashboard starts flickering if I change the column widths too often
+* [SPOI-498] - Update rate on UI - Default and Customize
 
 
 ### Improvement
-* [SPOI-434] - Ability to subscribe to buffer server stream at next begin window
-* [SPOI-454] - CLI: Feedback when not connected to app
-* [SPOI-465] - Increase unit test coverage to at least 50%
-* [SPOI-467] - Backbone.js MVC: View -> Model -> Datasource
-* [SPOI-469] - Normalize naming convention for all modules
-* [SPOI-470] - Provide allocated/planned container count
-* [SPOI-500] - Move require calls to widget classes to the top of each page file
-* [SPOI-510] - Change API for Datasource module
-* [SPOI-512] - Remove dataSource from model attributes
-* [SPOI-528] - PortInfoWidget Unit Test
-* [SPOI-547] - Convert Notifier module to an Object
-* [SPOI-563] - Move WebSocket creation out of DataSource constructor
-* [SPOI-582] - Document Front-End Architecture (UML Diagrams)
+* [SPOI-326] - Byte code obfuscation for future releases: Allow Malhar platform with premium features to be shared with early customers
+* [SPOI-447] - Ability to filter app list in the CLI
+* [SPOI-451] - Convert daemon stop/start into single service script
+* [SPOI-484] - Add server timestamp to containers info
 
 ### New Feature
-* [SPOI-91] - Design and implement a socket adapter operator
-* [SPOI-135] - Webservice: Provide statistics per streaming operator
-* [SPOI-397] - Download Parent Jira
-* [SPOI-402] - Document demo examples
-* [SPOI-466] - Design and Implement Port View
-* [SPOI-468] - Design and Implement Container View
-* [SPOI-476] - DT phone home
-* [SPOI-503] - Create a pipeline for handling UI feedback
-* [SPOI-518] - Implement at most once
-* [SPOI-551] - Create Video for Recording Tuples
-
+* [SPOI-69] - Persistence Node: A node to persist/spool every window into storage
+* [SPOI-89] - Define and implement a RSS input adapter node
+* [SPOI-112] - Versioning: Protocol between StramChild to app master
+* [SPOI-121] - Parent jira for supporting Pig programming language
+* [SPOI-153] - Heartbeat message
+* [SPOI-201] - Parent jira for Checkpointing support in streaming platform
+* [SPOI-254] - Design a general purpose read from stream and write to hbase node
+* [SPOI-259] - Create db adapters - Need one jira for each db
+* [SPOI-330] - Add a sql operator
+* [SPOI-332] - Do y! finance demo: calculate last price, volume, time, charts, and moving averages
+* [SPOI-333] - Do a pi demo
+* [SPOI-334] - Write an RSS read operator
+* [SPOI-335] - Add persistance/recording for operator, tuples should be stored in-order
+* [SPOI-336] - Add persistance/recording for an port of an operator, tuples should be stored in-order
+* [SPOI-343] - Design Malhar Deamon for the UI
+* [SPOI-344] - Design for Live as well as Historical data access via daemon/stram
+* [SPOI-345] - New optimal buffer server to get around memory issues with netty
+* [SPOI-347] - Develop cli commands as a foundational part of an operating system
+* [SPOI-348] - Allow commands to run as a script through CLI
+* [SPOI-356] - Input adapter for DRUID
+* [SPOI-357] - Output Adapter for DRUID
+* [SPOI-362] - Create Alert operator that does moving average and alerts if that drops by more than X%
+* [SPOI-365] - Output Adapter for Redis
+* [SPOI-374] - Size limits on log files (STRAM mainly)
+* [SPOI-380] - Add security to STRAM
+* [SPOI-383] - Implement do-As
+* [SPOI-386] - Design latency computations
+* [SPOI-387] - Design CPU, Memory, and Network IO usage
+* [SPOI-388] - Added resource usage to stats and access via webservice
+* [SPOI-391] - Design and implement at least once
+* [SPOI-394] - Add input adapter for Redis
+* [SPOI-395] - Create an output adapter for Redis
+* [SPOI-398] - Test download on Amazon
+* [SPOI-405] - Design, document, and test download to work with Apache Hadoop
+* [SPOI-416] - Local only Download licensing
+* [SPOI-426] - Create an attribute that forces the checkpoint to align with application window boundary
+* [SPOI-479] - Design and implement ad data charting
+* [SPOI-481] - UI design for application platform charting (live and historical dimensional data)
+* [SPOI-485] - Placeholder for list of possible UI work for Summit
+* [SPOI-486] - Enable security in the UI (need to check that the user has permission)
+* [SPOI-487] - Design and implement new SVG charts
+* [SPOI-489] - Alerts
+* [SPOI-491] - Create login error pages for UI on secure cluster
+* [SPOI-492] - Design UI for resources and latency data
+* [SPOI-493] - Design and implement per operator view
+* [SPOI-494] - Design and develop the "Operations" dashboard
+* [SPOI-495] - The recording tab should show list of recordings by operator or by operator:port
+* [SPOI-496] - Securitiy UI (sign-in, get token from deamon, etc.)
 
 
 ## Version .2
