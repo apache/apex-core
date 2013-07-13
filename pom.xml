@@ -43,6 +43,7 @@
 
   <modules>
     <module>common</module>
+    <module>api</module>
     <module>netlet</module>
     <module>bufferserver</module>
     <module>stram</module>
@@ -50,7 +51,6 @@
     <module>malhar</module>
     <module>poc</module>
     <module>daemon</module>
-    <module>api</module>
   </modules>
 
   <build>
