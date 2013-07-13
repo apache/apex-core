@@ -14,7 +14,6 @@
 * [SPOI-497] - Application dashboard starts flickering if I change the column widths too often
 * [SPOI-498] - Update rate on UI - Default and Customize
 
-
 ### Improvement
 * [SPOI-326] - Byte code obfuscation for future releases: Allow Malhar platform with premium features to be shared with early customers
 * [SPOI-447] - Ability to filter app list in the CLI
