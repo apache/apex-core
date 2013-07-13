@@ -283,7 +283,7 @@ public class StramWebServices
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_SYNCRECORDING)
+  @Path(PATH_SYNCSTATS)
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject syncStats(JSONObject request)
