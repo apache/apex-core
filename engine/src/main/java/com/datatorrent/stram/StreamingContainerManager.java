@@ -214,9 +214,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   private void recordStats(long currentTms)
   {
-    statsRecorder.recordContainers(containers, currentTms);
-    statsRecorder.recordOperators(getOperatorInfoList(), currentTms);
-    lastRecordStatsTime = System.currentTimeMillis();
+    try {
+      statsRecorder.recordContainers(containers, currentTms);
+      statsRecorder.recordOperators(getOperatorInfoList(), currentTms);
+      lastRecordStatsTime = System.currentTimeMillis();
+    } catch (Exception ex) {
+      LOG.warn("Exception caught when recording stats", ex);
+    }
   }
 
   private void calculateEndWindowStats()

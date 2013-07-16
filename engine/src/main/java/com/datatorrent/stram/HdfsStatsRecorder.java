@@ -51,85 +51,75 @@ public class HdfsStatsRecorder
     }
   }
 
-  public void recordContainers(Map<String, StramChildAgent> containerMap, long timestamp)
+  public void recordContainers(Map<String, StramChildAgent> containerMap, long timestamp) throws IOException
   {
-    try {
-      for (Map.Entry<String, StramChildAgent> entry: containerMap.entrySet()) {
-        StramChildAgent sca = entry.getValue();
-        ContainerInfo containerInfo = sca.getContainerInfo();
-        if (!containerInfo.state.equals("ACTIVE")) {
-          continue;
-        }
-        int containerIndex;
-        if (!knownContainers.containsKey(entry.getKey())) {
-          containerIndex = knownContainers.size();
-          knownContainers.put(entry.getKey(), containerIndex);
-          Map<String, Object> fieldMap = extractRecordFields(containerInfo, "meta");
-          ByteArrayOutputStream bos = new ByteArrayOutputStream();
-          Slice f = streamCodec.toByteArray(fieldMap);
-          bos.write((String.valueOf(containerIndex) + ":").getBytes());
-          bos.write(f.buffer, f.offset, f.length);
-          bos.write("\n".getBytes());
-          containersStorage.writeMetaData(bos.toByteArray());
-        }
-        else {
-          containerIndex = knownContainers.get(entry.getKey());
-        }
-        Map<String, Object> fieldMap = extractRecordFields(containerInfo, "stats");
+    for (Map.Entry<String, StramChildAgent> entry : containerMap.entrySet()) {
+      StramChildAgent sca = entry.getValue();
+      ContainerInfo containerInfo = sca.getContainerInfo();
+      if (!containerInfo.state.equals("ACTIVE")) {
+        continue;
+      }
+      int containerIndex;
+      if (!knownContainers.containsKey(entry.getKey())) {
+        containerIndex = knownContainers.size();
+        knownContainers.put(entry.getKey(), containerIndex);
+        Map<String, Object> fieldMap = extractRecordFields(containerInfo, "meta");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         Slice f = streamCodec.toByteArray(fieldMap);
         bos.write((String.valueOf(containerIndex) + ":").getBytes());
-        bos.write((String.valueOf(timestamp) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
-        containersStorage.writeDataItem(bos.toByteArray(), true);
-        containersStorage.checkTurnover();
+        containersStorage.writeMetaData(bos.toByteArray());
       }
-    }
-    catch (IOException ex) {
-      throw new RuntimeException(ex);
+      else {
+        containerIndex = knownContainers.get(entry.getKey());
+      }
+      Map<String, Object> fieldMap = extractRecordFields(containerInfo, "stats");
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      Slice f = streamCodec.toByteArray(fieldMap);
+      bos.write((String.valueOf(containerIndex) + ":").getBytes());
+      bos.write((String.valueOf(timestamp) + ":").getBytes());
+      bos.write(f.buffer, f.offset, f.length);
+      bos.write("\n".getBytes());
+      containersStorage.writeDataItem(bos.toByteArray(), true);
+      containersStorage.checkTurnover();
     }
   }
 
-  public void recordOperators(List<OperatorInfo> operatorList, long timestamp)
+  public void recordOperators(List<OperatorInfo> operatorList, long timestamp) throws IOException
   {
-    try {
-      for (OperatorInfo operatorInfo: operatorList) {
-        HdfsPartFileCollection operatorStorage;
-        if (!logicalOperatorStorageMap.containsKey(operatorInfo.name)) {
-          operatorStorage = new HdfsPartFileCollection();
-          operatorStorage.setBasePath(basePath + "/operators/" + operatorInfo.name);
-          operatorStorage.setup();
-          operatorStorage.writeMetaData((VERSION + "\n").getBytes());
-          logicalOperatorStorageMap.put(operatorInfo.name, operatorStorage);
-        }
-        else {
-          operatorStorage = logicalOperatorStorageMap.get(operatorInfo.name);
-        }
-        if (!knownOperators.contains(operatorInfo.id)) {
-          knownOperators.add(operatorInfo.id);
-          Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "meta");
-          ByteArrayOutputStream bos = new ByteArrayOutputStream();
-          Slice f = streamCodec.toByteArray(fieldMap);
-          bos.write(f.buffer, f.offset, f.length);
-          bos.write("\n".getBytes());
-          operatorStorage.writeMetaData(bos.toByteArray());
-        }
-        Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "stats");
+    for (OperatorInfo operatorInfo : operatorList) {
+      HdfsPartFileCollection operatorStorage;
+      if (!logicalOperatorStorageMap.containsKey(operatorInfo.name)) {
+        operatorStorage = new HdfsPartFileCollection();
+        operatorStorage.setBasePath(basePath + "/operators/" + operatorInfo.name);
+        operatorStorage.setup();
+        operatorStorage.writeMetaData((VERSION + "\n").getBytes());
+        logicalOperatorStorageMap.put(operatorInfo.name, operatorStorage);
+      }
+      else {
+        operatorStorage = logicalOperatorStorageMap.get(operatorInfo.name);
+      }
+      if (!knownOperators.contains(operatorInfo.id)) {
+        knownOperators.add(operatorInfo.id);
+        Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "meta");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         Slice f = streamCodec.toByteArray(fieldMap);
-        bos.write((operatorInfo.id + ":").getBytes());
-        bos.write((String.valueOf(timestamp) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
-        operatorStorage.writeDataItem(bos.toByteArray(), true);
+        operatorStorage.writeMetaData(bos.toByteArray());
       }
-      for (HdfsPartFileCollection operatorStorage: logicalOperatorStorageMap.values()) {
-        operatorStorage.checkTurnover();
-      }
+      Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "stats");
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      Slice f = streamCodec.toByteArray(fieldMap);
+      bos.write((operatorInfo.id + ":").getBytes());
+      bos.write((String.valueOf(timestamp) + ":").getBytes());
+      bos.write(f.buffer, f.offset, f.length);
+      bos.write("\n".getBytes());
+      operatorStorage.writeDataItem(bos.toByteArray(), true);
     }
-    catch (IOException ex) {
-      throw new RuntimeException(ex);
+    for (HdfsPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
+      operatorStorage.checkTurnover();
     }
   }
 
@@ -166,7 +156,7 @@ public class HdfsStatsRecorder
         fieldList = cacheFields.get(o.getClass());
       }
 
-      for (Field field: fieldList) {
+      for (Field field : fieldList) {
         fieldMap.put(field.getName(), field.get(o));
       }
     }
@@ -176,10 +166,12 @@ public class HdfsStatsRecorder
     return fieldMap;
   }
 
-  public void requestSync() {
+  public void requestSync()
+  {
     containersStorage.requestSync();
     for (Map.Entry<String, HdfsPartFileCollection> entry : logicalOperatorStorageMap.entrySet()) {
       entry.getValue().requestSync();
     }
   }
+
 }
