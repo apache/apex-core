@@ -6,9 +6,6 @@ package com.datatorrent.stram;
 
 import com.datatorrent.engine.GenericTestOperator;
 import com.datatorrent.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.TupleRecorder;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.TupleRecorder.PortInfo;
 import com.datatorrent.stram.TupleRecorder.RecordInfo;

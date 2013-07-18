@@ -11,15 +11,14 @@ import org.apache.commons.lang.UnhandledException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.IdleTimeHandler;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Sink;
 import com.datatorrent.debug.TappedReservoir;
 import com.datatorrent.engine.OperatorStats.PortStats;
 import com.datatorrent.tuple.ResetWindowTuple;
 import com.datatorrent.tuple.Tuple;
-import com.datatorrent.api.IdleTimeHandler;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.Operator.InputPort;
 
 // inflight changes to the port connections should be captured.
 /**
@@ -111,6 +110,34 @@ public class GenericNode extends Node<Operator>
     }
   }
 
+  protected void processEndWindow(ArrayList<SweepableReservoir> activeQueues, Tuple endWindowTuple)
+  {
+    if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
+      operator.endWindow();
+      insideWindow = false;
+      applicationWindowCount = 0;
+    }
+
+    if (endWindowTuple == null) {
+      emitEndWindow();
+    }
+    else {
+      for (final Sink<Object> output : outputs.values()) {
+        output.put(endWindowTuple);
+      }
+    }
+
+    if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+      if (checkpoint && checkpoint(currentWindowId)) {
+        lastCheckpointedWindowId = currentWindowId;
+        checkpoint = false;
+      }
+      checkpointWindowCount = 0;
+    }
+    handleRequests(currentWindowId);
+    activeQueues.addAll(inputs.values());
+  }
+
   class ResetTupleTracker
   {
     final ResetWindowTuple tuple;
@@ -124,6 +151,10 @@ public class GenericNode extends Node<Operator>
 
   }
 
+  boolean insideWindow;
+  boolean checkpoint;
+  long lastCheckpointedWindowId;
+
   /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
@@ -135,11 +166,12 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings({"SleepWhileInLoop"})
   public final void run()
   {
-    long lastCheckpointedWindowId = 0;
+    lastCheckpointedWindowId = 0;
+    insideWindow = false;
+    checkpoint = false;
+
     long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
-    boolean insideWindow = false;
-    boolean checkpoint = false;
     int totalQueues = inputs.size();
 
     ArrayList<SweepableReservoir> activeQueues = new ArrayList<SweepableReservoir>();
@@ -182,43 +214,16 @@ public class GenericNode extends Node<Operator>
                 break;
 
               case END_WINDOW:
+                buffers.remove();
                 if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
                   endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
-
                   if (++receivedEndWindow == totalQueues) {
-                    if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-                      operator.endWindow();
-                      insideWindow = false;
-                      applicationWindowCount = 0;
-                    }
-
-                    for (final Sink<Object> output : outputs.values()) {
-                      output.put(t);
-                    }
-
-                    buffers.remove();
                     assert (activeQueues.isEmpty());
-
-                    if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-                      if (checkpoint && checkpoint(currentWindowId)) {
-                        lastCheckpointedWindowId = currentWindowId;
-                        checkpoint = false;
-                      }
-                      checkpointWindowCount = 0;
-                    }
-                    handleRequests(currentWindowId);
-
-                    activeQueues.addAll(inputs.values());
+                    processEndWindow(activeQueues, t);
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
-                  else {
-                    buffers.remove();
-                  }
-                }
-                else {
-                  buffers.remove();
                 }
                 break;
 
@@ -338,28 +343,8 @@ public class GenericNode extends Node<Operator>
                 }
                 else if (activeQueues.isEmpty()) {
                   assert (!inputs.isEmpty());
-                  /*
-                   * Do the same sequence as the end window since the current window is not ended.
-                   */
-                  if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-                    operator.endWindow();
-                    insideWindow = false;
-                    applicationWindowCount = 0;
-                  }
-
-                  emitEndWindow();
-
-                  activeQueues.addAll(inputs.values());
+                  processEndWindow(activeQueues, null);
                   expectingBeginWindow = activeQueues.size();
-
-                  if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-                    if (checkpoint && checkpoint(currentWindowId)) {
-                      lastCheckpointedWindowId = currentWindowId;
-                      checkpoint = false;
-                    }
-                    checkpointWindowCount = 0;
-                  }
-                  handleRequests(currentWindowId);
                   break_activequeue = true;
                 }
 
@@ -424,8 +409,45 @@ public class GenericNode extends Node<Operator>
         }
 
         if (activeQueues.isEmpty() && alive) {
-          logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
-          System.exit(2);
+//          /*
+//           * The control may come here in at most once mode where 2 upstream operators are trying to play different
+//           * windows. So we need to identify the one which is lagging behind and bring it to the speed and behave as
+//           * if everything is normal.
+//           */
+//          if (context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_MOST_ONCE) == ProcessingMode.AT_MOST_ONCE) {
+//            for (Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
+//              Tuple t = entry.getValue().sweep();
+//              if (t != null) {
+//                if (t.getType() == MessageType.BEGIN_WINDOW) {
+//                  if (t.getWindowId() < currentWindowId) {
+//                    expectingBeginWindow--;
+//                    inputs.put(entry.getKey(), new WindowIdActivatedReservoir(String.valueOf(id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(entry.getKey()), entry.getValue(), currentWindowId));
+//                    activeQueues.addAll(inputs.values());
+//                    break;
+//                  }
+//                  else if (t.getWindowId() > currentWindowId) {
+//                    expectingBeginWindow--;
+//                    if (++receivedEndWindow == totalQueues) {
+//                      processEndWindow(activeQueues, null);
+//                      expectingBeginWindow = activeQueues.size();
+//                      break;
+//                    }
+//                  }
+//                  else {
+//                    activeQueues.addAll(inputs.values());
+//                  }
+//                }
+//                else {
+//                  logger.error("Catastrophic Error: Invalid State - the operator blocked forever even in at-most-once!");
+//                  System.exit(2);
+//                }
+//              }
+//            }
+//          }
+//          else {
+            logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
+            System.exit(2);
+//          }
         }
         else {
           boolean need2sleep = true;
