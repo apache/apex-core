@@ -89,7 +89,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private int maxWindowsBehindForStats = 100;
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
-  private HdfsStatsRecorder statsRecorder;
+  private StatsRecorder statsRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
@@ -157,7 +157,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).setIfAbsent(0);
     this.recordStatsInterval = attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
-      statsRecorder = new HdfsStatsRecorder();
+      statsRecorder = new StatsRecorder();
       statsRecorder.setBasePath(this.statsFsPath);
       statsRecorder.setup();
     }

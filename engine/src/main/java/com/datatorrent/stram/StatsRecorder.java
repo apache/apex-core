@@ -20,7 +20,7 @@ import java.util.*;
  *
  * @author David Yan <david@datatorrent.com>
  */
-public class HdfsStatsRecorder
+public class StatsRecorder
 {
   public static final String VERSION = "1.0";
   private String basePath = ".";
