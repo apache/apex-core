@@ -97,7 +97,7 @@ public class EventRecorder
     new EventRecorderThread().start();
   }
 
-  public void recordEvent(Event event)
+  public void recordEventAsync(Event event)
   {
     queue.add(event);
   }
