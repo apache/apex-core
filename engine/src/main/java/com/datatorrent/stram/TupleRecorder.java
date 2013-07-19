@@ -353,7 +353,7 @@ public class TupleRecorder
       try {
         storage.writeDataItem(("E:" + currentWindowId + "\n").getBytes(), false);
         logger.debug("Got last end window tuple.  Flushing...");
-        storage.checkTurnover();
+        storage.flushData();
         if (pubSubUrl != null) {
           // check web socket connection
           if (!wsClient.isConnectionOpen()) {

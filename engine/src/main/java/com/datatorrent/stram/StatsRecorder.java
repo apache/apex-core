@@ -82,7 +82,7 @@ public class StatsRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
       containersStorage.writeDataItem(bos.toByteArray(), true);
-      containersStorage.checkTurnover();
+      containersStorage.flushData();
     }
   }
 
@@ -119,7 +119,7 @@ public class StatsRecorder
       operatorStorage.writeDataItem(bos.toByteArray(), true);
     }
     for (HdfsPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
-      operatorStorage.checkTurnover();
+      operatorStorage.flushData();
     }
   }
 

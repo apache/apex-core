@@ -152,11 +152,6 @@ public class HdfsPartFileCollection
     }
   }
 
-  public void flushPartFile() throws IOException
-  {
-    partOutStr.hflush();
-  }
-
   public void requestSync()
   {
     syncRequested = true;
@@ -172,7 +167,7 @@ public class HdfsPartFileCollection
     }
   }
 
-  public void checkTurnover() throws IOException
+  public void flushData() throws IOException
   {
     partOutStr.hflush();
     if (isReadyTurnoverPartFile()) {

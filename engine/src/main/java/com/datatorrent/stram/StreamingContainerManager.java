@@ -994,6 +994,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
     }
 
+    long currentTime = System.currentTimeMillis();
+    for (PTContainer c: releaseContainers) {
+      eventRecorder.();
+    }
+
   }
 
   @Override
