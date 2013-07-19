@@ -68,6 +68,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.EventRecorder.Event;
 
 /**
  *
@@ -90,10 +91,12 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
   private StatsRecorder statsRecorder;
+  private EventRecorder eventRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
   private final String statsFsPath;
+  private final String eventsFsPath;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
@@ -161,6 +164,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       statsRecorder.setBasePath(this.statsFsPath);
       statsRecorder.setup();
     }
+
+    this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
+    eventRecorder = new EventRecorder();
+    eventRecorder.setBasePath(this.eventsFsPath);
+    eventRecorder.setup();
   }
 
   protected PhysicalPlan getPhysicalPlan()
@@ -995,10 +1003,34 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
 
     long currentTime = System.currentTimeMillis();
-    for (PTContainer c: releaseContainers) {
-      eventRecorder.();
+    for (PTContainer c : releaseContainers) {
+      EventRecorder.Event ev = new EventRecorder.Event("release-container");
+      ev.addData("containerId", c.containerId);
+      ev.addData("host", c.host);
+      ev.setTimestamp(currentTime);
+      eventRecorder.recordEventAsync(ev);
     }
-
+    for (PTOperator op : undeploy) {
+      EventRecorder.Event ev = new EventRecorder.Event("undeploy-operator");
+      ev.addData("operatorId", op.getId());
+      ev.addData("operatorName", op.getOperatorMeta().getName());
+      ev.addData("containerId", op.container.containerId);
+      eventRecorder.recordEventAsync(ev);
+    }
+    for (PTContainer c : startContainers) {
+      EventRecorder.Event ev = new EventRecorder.Event("start-container");
+      ev.addData("containerId", c.containerId);
+      ev.addData("host", c.host);
+      ev.setTimestamp(currentTime);
+      eventRecorder.recordEventAsync(ev);
+    }
+    for (PTOperator op : deploy) {
+      EventRecorder.Event ev = new EventRecorder.Event("deploy-operator");
+      ev.addData("operatorId", op.getId());
+      ev.addData("operatorName", op.getOperatorMeta().getName());
+      ev.addData("containerId", op.container.containerId);
+      eventRecorder.recordEventAsync(ev);
+    }
   }
 
   @Override

@@ -4,7 +4,12 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.util.HdfsPartFileCollection;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,20 +28,23 @@ public class EventRecorder
   private final BlockingQueue<Event> queue = new LinkedBlockingQueue<Event>();
   private static final Logger LOG = LoggerFactory.getLogger(EventRecorder.class);
   private HdfsPartFileCollection storage = new HdfsPartFileCollection();
+  private String basePath = ".";
+  private transient StreamCodec<Object> streamCodec;
 
   public static class Event
   {
     private String type;
     private long timestamp = System.currentTimeMillis();
-    private String reason;
-    private String error;
     private Map<String, Object> data = new HashMap<String, Object>();
 
-    public Event(String type, String reason, String error)
+    public Event(String type)
     {
       this.type = type;
-      this.reason = reason;
-      this.error = error;
+    }
+
+    public void setTimestamp(long timestamp)
+    {
+      this.timestamp = timestamp;
     }
 
     public String getType()
@@ -59,16 +67,6 @@ public class EventRecorder
       return timestamp;
     }
 
-    public String getReason()
-    {
-      return reason;
-    }
-
-    public String getError()
-    {
-      return error;
-    }
-
   }
 
   private class EventRecorderThread extends Thread
@@ -80,17 +78,38 @@ public class EventRecorder
         try {
           Event event = queue.take();
           writeEvent(event);
+          if (queue.isEmpty()) {
+            storage.flushData();
+          }
         }
         catch (InterruptedException ex) {
           return;
+        }
+        catch (IOException ex) {
+          LOG.error("Caught IOException", ex);
         }
       }
     }
 
   }
 
+  public void setBasePath(String basePath)
+  {
+    this.basePath = basePath;
+  }
+
   public void setup()
   {
+    try {
+      streamCodec = new JsonStreamCodec<Object>();
+      storage = new HdfsPartFileCollection();
+      storage.setBasePath(basePath + "/containers");
+      storage.setup();
+      storage.writeMetaData((VERSION + "\n").getBytes());
+    }
+    catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public void start()
@@ -103,9 +122,13 @@ public class EventRecorder
     queue.add(event);
   }
 
-  public void writeEvent(Event event)
+  public void writeEvent(Event event) throws IOException
   {
-    //storage.writeDataItem(bytes, true);
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    Slice f = streamCodec.toByteArray(event);
+    bos.write(f.buffer, f.offset, f.length);
+    bos.write("\n".getBytes());
+    storage.writeDataItem(bos.toByteArray(), true);
   }
 
 }

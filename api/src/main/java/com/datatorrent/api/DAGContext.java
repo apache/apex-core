@@ -39,6 +39,7 @@ public interface DAGContext extends Context
   public static final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
   public static final String SUBDIR_CHECKPOINTS = "checkpoints";
   public static final String SUBDIR_STATS = "stats";
+  public static final String SUBDIR_EVENTS = "events";
   public static final int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
 
   /**
