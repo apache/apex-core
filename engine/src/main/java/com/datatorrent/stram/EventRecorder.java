@@ -103,27 +103,25 @@ public class EventRecorder
     try {
       streamCodec = new JsonStreamCodec<Object>();
       storage = new HdfsPartFileCollection();
-      storage.setBasePath(basePath + "/containers");
+      storage.setBasePath(basePath);
       storage.setup();
       storage.writeMetaData((VERSION + "\n").getBytes());
+      new EventRecorderThread().start();
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
   }
 
-  public void start()
-  {
-    new EventRecorderThread().start();
-  }
-
   public void recordEventAsync(Event event)
   {
+    LOG.debug("Adding event to the queue");
     queue.add(event);
   }
 
   public void writeEvent(Event event) throws IOException
   {
+        LOG.debug("Writing event {} to the queue", event.type);
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     Slice f = streamCodec.toByteArray(event);
     bos.write(f.buffer, f.offset, f.length);

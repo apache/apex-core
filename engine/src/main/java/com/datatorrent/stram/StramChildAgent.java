@@ -175,11 +175,12 @@ public class StramChildAgent {
     MovingAverageLong bufferServerBytesPSMA10 = new MovingAverageLong(10);  // TBD
   }
 
-  public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
+  public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
     this.container = container;
     this.initCtx = initCtx;
     this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
     this.memoryMBFree = this.container.getAllocatedMemoryMB();
+    this.dnmgr = dnmgr;
   }
 
   boolean shutdownRequested = false;
@@ -193,6 +194,7 @@ public class StramChildAgent {
   Runnable onAck = null;
   String jvmName;
   int memoryMBFree;
+  final StreamingContainerManager dnmgr;
 
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
@@ -228,6 +230,14 @@ public class StramChildAgent {
         if (!container.pendingUndeploy.contains(status.operator) && container.pendingDeploy.remove(status.operator)) {
           LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.containerId, status.operator, shb.getState()});
           status.operator.setState(PTOperator.State.ACTIVE);
+
+          // record started
+          EventRecorder.Event ev = new EventRecorder.Event("operator-start");
+          ev.addData("operatorId", status.operator.getId());
+          ev.addData("operatorName", status.operator.getName());
+          ev.addData("containerId", container.containerId);
+          dnmgr.recordEventAsync(ev);
+
         }
       }
       LOG.debug("{} pendingDeploy {}", container.containerId, container.pendingDeploy);
@@ -263,6 +273,21 @@ public class StramChildAgent {
             operator.setState(PTOperator.State.INACTIVE);
           }
           LOG.debug("{} undeploy complete: {} deploy: {}", new Object[] {container.containerId, toUndeploy, container.pendingDeploy});
+          long timestamp = System.currentTimeMillis();
+          for (PTOperator operator : toUndeploy) {
+            EventRecorder.Event ev = new EventRecorder.Event("operator-undeploy");
+            ev.addData("operatorId", operator.getId());
+            ev.addData("containerId", operator.container.containerId);
+            ev.setTimestamp(timestamp);
+            StramChildAgent.this.dnmgr.recordEventAsync(ev);
+          }
+          for (PTOperator operator : container.pendingDeploy) {
+            EventRecorder.Event ev = new EventRecorder.Event("operator-deploy");
+            ev.addData("operatorId", operator.getId());
+            ev.addData("containerId", operator.container.containerId);
+            ev.setTimestamp(timestamp);
+            StramChildAgent.this.dnmgr.recordEventAsync(ev);
+          }
         }
       };
       return rsp;

@@ -605,6 +605,7 @@ public class StramAppMaster //extends License for licensing using native
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
       //LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
       numRequestedContainers -= newAllocatedContainers.size();
+      long timestamp = System.currentTimeMillis();
       for (Container allocatedContainer : newAllocatedContainers) {
         LOG.info("Got new container."
                 + ", containerId=" + allocatedContainer.getId()
@@ -618,6 +619,16 @@ public class StramAppMaster //extends License for licensing using native
         // allocate resource to container
         ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), allocatedContainer.getResource().getMemory());
         StramChildAgent sca = dnmgr.assignContainer(resource, null);
+
+        {
+          // record container start event
+          EventRecorder.Event ev = new EventRecorder.Event("container-start");
+          ev.addData("containerId", allocatedContainer.getId().toString());
+          ev.addData("containerNode", allocatedContainer.getNodeId().toString());
+          ev.setTimestamp(timestamp);
+          dnmgr.recordEventAsync(ev);
+        }
+
         if (sca == null) {
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
@@ -687,6 +698,11 @@ public class StramAppMaster //extends License for licensing using native
                   + ", containerId=" + containerStatus.getContainerId());
         }
 
+        // record container stop event
+        EventRecorder.Event ev = new EventRecorder.Event("container-stop");
+        ev.addData("containerId", containerStatus.getContainerId().toString());
+        ev.addData("exitStatus", containerStatus.getExitStatus());
+        dnmgr.recordEventAsync(ev);
       }
 
       if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0) {

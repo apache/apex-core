@@ -140,7 +140,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   public StreamingContainerManager(LogicalPlan dag)
   {
     super(dag.getAttributes(), null);
-    this.plan = new PhysicalPlan(dag, this);
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
@@ -169,6 +168,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     eventRecorder = new EventRecorder();
     eventRecorder.setBasePath(this.eventsFsPath);
     eventRecorder.setup();
+        this.plan = new PhysicalPlan(dag, this);
   }
 
   protected PhysicalPlan getPhysicalPlan()
@@ -476,7 +476,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     container.bufferServerAddress = bufferServerAddr;
     container.setAllocatedMemoryMB(resource.memoryMB);
 
-    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext());
+    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(), this);
     containers.put(resource.containerId, sca);
     return sca;
   }
@@ -1001,36 +1001,10 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         sca.shutdownRequested = true;
       }
     }
+  }
 
-    long currentTime = System.currentTimeMillis();
-    for (PTContainer c : releaseContainers) {
-      EventRecorder.Event ev = new EventRecorder.Event("release-container");
-      ev.addData("containerId", c.containerId);
-      ev.addData("host", c.host);
-      ev.setTimestamp(currentTime);
-      eventRecorder.recordEventAsync(ev);
-    }
-    for (PTOperator op : undeploy) {
-      EventRecorder.Event ev = new EventRecorder.Event("undeploy-operator");
-      ev.addData("operatorId", op.getId());
-      ev.addData("operatorName", op.getOperatorMeta().getName());
-      ev.addData("containerId", op.container.containerId);
-      eventRecorder.recordEventAsync(ev);
-    }
-    for (PTContainer c : startContainers) {
-      EventRecorder.Event ev = new EventRecorder.Event("start-container");
-      ev.addData("containerId", c.containerId);
-      ev.addData("host", c.host);
-      ev.setTimestamp(currentTime);
-      eventRecorder.recordEventAsync(ev);
-    }
-    for (PTOperator op : deploy) {
-      EventRecorder.Event ev = new EventRecorder.Event("deploy-operator");
-      ev.addData("operatorId", op.getId());
-      ev.addData("operatorName", op.getOperatorMeta().getName());
-      ev.addData("containerId", op.container.containerId);
-      eventRecorder.recordEventAsync(ev);
-    }
+  public void recordEventAsync(Event ev) {
+    eventRecorder.recordEventAsync(ev);
   }
 
   @Override
