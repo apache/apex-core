@@ -269,25 +269,19 @@ public class StramChildAgent {
         public void run() {
           // remove operators from undeploy list to not request it again
           container.pendingUndeploy.removeAll(toUndeploy);
-          for (PTOperator operator : toUndeploy) {
-            operator.setState(PTOperator.State.INACTIVE);
-          }
-          LOG.debug("{} undeploy complete: {} deploy: {}", new Object[] {container.containerId, toUndeploy, container.pendingDeploy});
           long timestamp = System.currentTimeMillis();
           for (PTOperator operator : toUndeploy) {
-            EventRecorder.Event ev = new EventRecorder.Event("operator-undeploy");
+            operator.setState(PTOperator.State.INACTIVE);
+
+            // record operator stop event
+            EventRecorder.Event ev = new EventRecorder.Event("operator-stop");
             ev.addData("operatorId", operator.getId());
             ev.addData("containerId", operator.container.containerId);
+            ev.addData("reason", "undeploy");
             ev.setTimestamp(timestamp);
             StramChildAgent.this.dnmgr.recordEventAsync(ev);
           }
-          for (PTOperator operator : container.pendingDeploy) {
-            EventRecorder.Event ev = new EventRecorder.Event("operator-deploy");
-            ev.addData("operatorId", operator.getId());
-            ev.addData("containerId", operator.container.containerId);
-            ev.setTimestamp(timestamp);
-            StramChildAgent.this.dnmgr.recordEventAsync(ev);
-          }
+          LOG.debug("{} undeploy complete: {} deploy: {}", new Object[] {container.containerId, toUndeploy, container.pendingDeploy});
         }
       };
       return rsp;

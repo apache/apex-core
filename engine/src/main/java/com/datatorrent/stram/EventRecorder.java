@@ -7,14 +7,17 @@ package com.datatorrent.stram;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.util.HdfsPartFileCollection;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +68,21 @@ public class EventRecorder
     public long getTimestamp()
     {
       return timestamp;
+    }
+
+    public void populateData(Object obj)
+    {
+      try {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> properties = BeanUtils.describe(obj);
+
+        for (Map.Entry<String, Object> property : properties.entrySet()) {
+          data.put(property.getKey(), property.getValue());
+        }
+      }
+      catch (Exception ex) {
+        LOG.error("Caught exception while populating event object.");
+      }
     }
 
   }
@@ -121,7 +139,7 @@ public class EventRecorder
 
   public void writeEvent(Event event) throws IOException
   {
-        LOG.debug("Writing event {} to the queue", event.type);
+    LOG.debug("Writing event {} to the queue", event.type);
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     Slice f = streamCodec.toByteArray(event);
     bos.write(f.buffer, f.offset, f.length);

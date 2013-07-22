@@ -1205,11 +1205,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     this.containerStopRequests.put(containerId, containerId);
   }
 
-  public void setOperatorProperty(String operatorId, String propertyName, String propertyValue)
+  public void setOperatorProperty(String operatorName, String propertyName, String propertyValue)
   {
-    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
-      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+      throw new IllegalArgumentException("Invalid operatorId " + operatorName);
     }
 
     Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
@@ -1228,7 +1228,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       // restart on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
-
+    // should probably not record it here because it's better to get confirmation from the nodes first.
+    // but right now, the nodes do not give confirmation for the requests.  so record it here for now.
+    EventRecorder.Event ev = new EventRecorder.Event("operator-property-set");
+    ev.addData("operatorName", operatorName);
+    ev.addData("propertyName", propertyName);
+    ev.addData("propertyValue", propertyValue);
+    recordEventAsync(ev);
   }
 
   public Map<String, Object> getApplicationAttributes()
@@ -1319,6 +1325,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       pm = new PlanModifier(plan);
       for (LogicalPlanRequest request : requests) {
         request.execute(pm);
+
+        // record an event for the request.  however, we should probably record these when we get a confirmation.
+        EventRecorder.Event ev = new EventRecorder.Event("logical-plan-change");
+        ev.populateData(request);
+        recordEventAsync(ev);
       }
       pm.applyChanges(StreamingContainerManager.this);
       LOG.info("Plan changes applied: {}", requests);

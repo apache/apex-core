@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.debug.StdOutErrLog;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -697,7 +698,16 @@ public class StramAppMaster //extends License for licensing using native
           LOG.info("Container completed successfully."
                   + ", containerId=" + containerStatus.getContainerId());
         }
-
+        // record operator stop for this container
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          EventRecorder.Event ev = new EventRecorder.Event("operator-stop");
+          ev.addData("operatorId", entry.getKey());
+          ev.addData("operatorName", entry.getValue().operator.getName());
+          ev.addData("containerId", containerStatus.getContainerId().toString());
+          ev.addData("reason", "container exited");
+          dnmgr.recordEventAsync(ev);
+        }
         // record container stop event
         EventRecorder.Event ev = new EventRecorder.Event("container-stop");
         ev.addData("containerId", containerStatus.getContainerId().toString());
