@@ -207,16 +207,20 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     processEvents();
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
-    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= System.currentTimeMillis())) {
-      recordStats();
+    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= currentTms)) {
+      recordStats(currentTms);
     }
   }
 
-  private void recordStats()
+  private void recordStats(long currentTms)
   {
-    statsRecorder.recordContainers(containers);
-    statsRecorder.recordOperators(getOperatorInfoList());
-    lastRecordStatsTime = System.currentTimeMillis();
+    try {
+      statsRecorder.recordContainers(containers, currentTms);
+      statsRecorder.recordOperators(getOperatorInfoList(), currentTms);
+      lastRecordStatsTime = System.currentTimeMillis();
+    } catch (Exception ex) {
+      LOG.warn("Exception caught when recording stats", ex);
+    }
   }
 
   private void calculateEndWindowStats()
@@ -1178,6 +1182,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
     request.setRequestType(RequestType.SYNC_RECORDING);
     sca.addOperatorRequest(request);
+  }
+
+  public void syncStats()
+  {
+    statsRecorder.requestSync();
   }
 
   public void stopContainer(String containerId)

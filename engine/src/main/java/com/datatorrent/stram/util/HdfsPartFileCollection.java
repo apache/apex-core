@@ -190,10 +190,10 @@ public class HdfsPartFileCollection
 
   private void writeIndex()
   {
-    String extraInfo = getAndResetIndexExtraInfo();
     if (partFileBytes <= 0) {
       return;
     }
+    String extraInfo = getAndResetIndexExtraInfo();
     try {
       String line = "F:" + hdfsFile + ":" + currentPartFileTimeStamp + "-" + System.currentTimeMillis() + ":" + partFileItemCount;
       if (extraInfo != null) {

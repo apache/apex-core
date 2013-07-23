@@ -8,7 +8,6 @@ import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.EndWindowTuple;
 import com.datatorrent.bufferserver.packet.PayloadTuple;
 import com.datatorrent.bufferserver.packet.ResetWindowTuple;
-import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.support.Controller;
 import com.datatorrent.bufferserver.support.Publisher;
 import com.datatorrent.bufferserver.support.Subscriber;

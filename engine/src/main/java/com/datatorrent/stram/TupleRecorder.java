@@ -43,6 +43,7 @@ public class TupleRecorder
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   //private transient long partBeginWindowId = -1;
   private String recordingName = "Untitled";
+  private String containerId;
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
@@ -148,6 +149,7 @@ public class TupleRecorder
   {
     public long startTime;
     public String recordingName;
+    public String containerId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
 
@@ -182,6 +184,16 @@ public class TupleRecorder
   public void setRecordingName(String recordingName)
   {
     this.recordingName = recordingName;
+  }
+
+  public String getContainerId()
+  {
+    return containerId;
+  }
+
+  public void setContainerId(String containerId)
+  {
+    this.containerId = containerId;
   }
 
   public long getStartTime()
@@ -235,6 +247,7 @@ public class TupleRecorder
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
+      recordInfo.containerId = containerId;
 
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
@@ -361,6 +374,9 @@ public class TupleRecorder
 
   public void writeTuple(Object obj, String port)
   {
+    if (windowIdRanges.isEmpty()) {
+      throw new RuntimeException("Data tuples received from tuple recorder before any BEGIN_WINDOW");
+    }
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       Slice f = streamCodec.toByteArray(obj);

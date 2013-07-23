@@ -44,7 +44,6 @@ public class TupleRecorderTest
     StramChild.eventloop.stop();
   }
 
-
   public TupleRecorderTest()
   {
   }
@@ -192,24 +191,36 @@ public class TupleRecorderTest
     final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getMeta(op2));
     StramTestSupport.waitForActivation(localCluster, ptOp2);
 
-    localCluster.dnmgr.startRecording(ptOp2.getId(), null);
+    testRecordingOnOperator(localCluster, ptOp2, 2);
+
+    final PTOperator ptOp1 = localCluster.findByLogicalNode(dag.getMeta(op1));
+    StramTestSupport.waitForActivation(localCluster, ptOp1);
+
+    testRecordingOnOperator(localCluster, ptOp1, 1);
+
+    localCluster.shutdown();
+  }
+
+  private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op, int numPorts) throws Exception
+  {
+    localCluster.dnmgr.startRecording(op.getId(), null);
 
     WaitCondition c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
+        TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
         return tupleRecorder != null;
       }
 
     };
     Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
-    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
+    TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
     String line;
-    File dir = new File(testWorkDir, "recordings/" + ptOp2.getId() + "/" + startTime);
+    File dir = new File(testWorkDir, "recordings/" + op.getId() + "/" + startTime);
     File file;
 
     file = new File(dir, "meta.txt");
@@ -219,17 +230,17 @@ public class TupleRecorderTest
     Assert.assertEquals("version should be 1.1", line, "1.1");
     line = br.readLine();
     Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
-    line = br.readLine();
-    Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
-    line = br.readLine();
-    Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+    for (int i = 0; i < numPorts; i++) {
+      line = br.readLine();
+      Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+    }
 
     c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
+        TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
         return (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
@@ -237,13 +248,13 @@ public class TupleRecorderTest
 
     Assert.assertTrue("Should record more than " + testTupleCount + " tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
 
-    localCluster.dnmgr.stopRecording(ptOp2.getId(), null);
+    localCluster.dnmgr.stopRecording(op.getId(), null);
     c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
+        TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
         return (tupleRecorder == null);
       }
 
@@ -271,12 +282,11 @@ public class TupleRecorderTest
       }
     }
 
-    int tupleCount0 = 0;
-    int tupleCount1 = 0;
+    int tupleCount[] = new int[numPorts];
     boolean beginWindowExists = false;
     boolean endWindowExists = false;
 
-    for (String partFile: partFiles) {
+    for (String partFile : partFiles) {
       file = new File(dir, partFile);
       if (!partFile.equals(partFiles.get(partFiles.size() - 1))) {
         Assert.assertTrue(partFile + " should be greater than 1KB", file.length() >= 1024);
@@ -290,20 +300,19 @@ public class TupleRecorderTest
         else if (line.startsWith("E:")) {
           endWindowExists = true;
         }
-        else if (line.startsWith("T:0:")) {
-          tupleCount0++;
-        }
-        else if (line.startsWith("T:1")) {
-          tupleCount1++;
+        else if (line.startsWith("T:"))  {
+          tupleCount[Integer.valueOf(line.substring(2, line.indexOf(':', 2)))]++;
         }
       }
     }
     Assert.assertTrue("begin window should exist", beginWindowExists);
     Assert.assertTrue("end window should exist", endWindowExists);
-    Assert.assertTrue("tuple exists for port 0", tupleCount0 > 0);
-    Assert.assertTrue("tuple exists for port 1", tupleCount1 > 0);
-    Assert.assertTrue("total tuple count >= " + testTupleCount, tupleCount0 + tupleCount1 >= testTupleCount);
-    localCluster.shutdown();
+    int sum = 0;
+    for (int i = 0; i < numPorts; i++) {
+      Assert.assertTrue("tuple exists for port " + i, tupleCount[i] > 0);
+      sum += tupleCount[i];
+    }
+    Assert.assertTrue("total tuple count >= " + testTupleCount, sum >= testTupleCount);
   }
 
 }
