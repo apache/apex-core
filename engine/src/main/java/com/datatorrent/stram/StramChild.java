@@ -25,10 +25,20 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
+import com.datatorrent.api.CheckpointListener;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.bufferserver.storage.DiskStorage;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.debug.StdOutErrLog;
 import com.datatorrent.engine.*;
 import com.datatorrent.engine.OperatorContext.NodeRequest;
+import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -39,17 +49,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.stream.*;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StorageAgent;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.bufferserver.server.Server;
-import com.datatorrent.bufferserver.storage.DiskStorage;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.netlet.DefaultEventLoop;
 
 /**
  *

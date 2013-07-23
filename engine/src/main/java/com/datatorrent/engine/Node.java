@@ -143,6 +143,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   @SuppressWarnings({"unchecked"})
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
+    boolean changes = false;
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
       OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
@@ -154,6 +155,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       if (ics == null) {
         port.setSink(e.getValue());
         outputs.put(e.getKey(), e.getValue());
+        changes = true;
       }
       else if (ics instanceof MuxSink) {
         ((MuxSink)ics).add(e.getValue());
@@ -162,13 +164,19 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         MuxSink muxSink = new MuxSink(ics, e.getValue());
         port.setSink(muxSink);
         outputs.put(e.getKey(), muxSink);
+        changes = true;
       }
+    }
+
+    if (changes) {
+      activateSinks();
     }
   }
 
   @SuppressWarnings({"unchecked"})
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
+    boolean changes = false;
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
       OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
@@ -180,6 +188,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       if (ics == e.getValue()) {
         port.setSink(null);
         outputs.remove(e.getKey());
+        changes = true;
       }
       else if (ics instanceof MuxSink) {
         MuxSink ms = (MuxSink)ics;
@@ -188,12 +197,18 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         if (sinks1.length == 0) {
           port.setSink(null);
           outputs.remove(e.getKey());
+          changes = true;
         }
         else if (sinks1.length == 1) {
           port.setSink(sinks1[0]);
           outputs.put(e.getKey(), sinks1[0]);
+          changes = true;
         }
       }
+    }
+
+    if (changes) {
+      activateSinks();
     }
   }
 
