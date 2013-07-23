@@ -143,12 +143,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   @SuppressWarnings({"unchecked"})
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
+    boolean changes = false;
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
       OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
       if (port == null) {
         continue;
       }
+      changes = true;
 
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == null) {
@@ -163,6 +165,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         port.setSink(muxSink);
         outputs.put(e.getKey(), muxSink);
       }
+    }
+
+    if (changes) {
+      activateSinks();
     }
   }
 

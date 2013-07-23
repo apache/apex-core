@@ -374,6 +374,9 @@ public class TupleRecorder
 
   public void writeTuple(Object obj, String port)
   {
+    if (windowIdRanges.isEmpty()) {
+      throw new RuntimeException("Data tuples received from tuple recorder before any BEGIN_WINDOW");
+    }
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       Slice f = streamCodec.toByteArray(obj);
