@@ -174,7 +174,9 @@ public class EventRecorder
   {
     LOG.debug("Writing event {} to the queue", event.type);
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    Slice f = streamCodec.toByteArray(event);
+    bos.write((event.timestamp + ":").getBytes());
+    bos.write((event.type + ":").getBytes());
+    Slice f = streamCodec.toByteArray(event.data);
     bos.write(f.buffer, f.offset, f.length);
     bos.write("\n".getBytes());
     storage.writeDataItem(bos.toByteArray(), true);
