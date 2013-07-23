@@ -165,10 +165,10 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
 
     this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
-    eventRecorder = new EventRecorder();
+    eventRecorder = new EventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
     eventRecorder.setBasePath(this.eventsFsPath);
     eventRecorder.setup();
-        this.plan = new PhysicalPlan(dag, this);
+    this.plan = new PhysicalPlan(dag, this);
   }
 
   protected PhysicalPlan getPhysicalPlan()
