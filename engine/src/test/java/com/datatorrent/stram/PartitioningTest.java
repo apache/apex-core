@@ -1,11 +1,28 @@
 package com.datatorrent.stram;
 
-import com.datatorrent.api.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import static java.lang.Thread.sleep;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import junit.framework.Assert;
+
+import org.apache.hadoop.conf.Configuration;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.engine.Node;
-import com.datatorrent.stram.HdfsStorageAgent;
-import com.datatorrent.stram.PhysicalPlan;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.PhysicalPlan.PMapping;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
@@ -13,28 +30,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.google.common.collect.Sets;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.PartitionableOperator;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import static java.lang.Thread.sleep;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import junit.framework.Assert;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PartitioningTest
 {

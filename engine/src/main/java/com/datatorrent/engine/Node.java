@@ -150,6 +150,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       if (port == null) {
         continue;
       }
+      changes = true;
 
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == null) {
