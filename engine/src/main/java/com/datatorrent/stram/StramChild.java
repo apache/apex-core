@@ -1272,6 +1272,7 @@ public class StramChild
       String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
       String defaultName = StramChild.this.containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
       tupleRecorder.setRecordingName(defaultName);
+      tupleRecorder.setContainerId(containerId);
       tupleRecorder.getStorage().setBasePath(basePath);
       tupleRecorder.getStorage().setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
       tupleRecorder.getStorage().setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);

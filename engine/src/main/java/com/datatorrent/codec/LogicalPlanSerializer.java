@@ -36,6 +36,11 @@ import org.codehaus.jettison.json.JSONObject;
 @Produces("application/json")
 public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 {
+  /**
+   *
+   * @param dag
+   * @return
+   */
   public static Map<String, Object> convertToMap(LogicalPlan dag)
   {
     HashMap<String, Object> result = new HashMap<String, Object>();
