@@ -33,8 +33,13 @@ import org.apache.hadoop.conf.Configuration;
  * settings through the configuration.
  */
 public interface StreamingApplication {
+    /** Constant <code>LAUNCHMODE_YARN="yarn"</code> */
     public static final String LAUNCHMODE_YARN = "yarn";
+    /** Constant <code>LAUNCHMODE_LOCAL="local"</code> */
     public static final String LAUNCHMODE_LOCAL = "local";
 
+    /**
+     * <p>populateDAG.</p>
+     */
     void populateDAG(DAG dag, Configuration conf);
 }

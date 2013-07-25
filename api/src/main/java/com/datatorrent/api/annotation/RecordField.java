@@ -18,12 +18,17 @@ package com.datatorrent.api.annotation;
 import java.lang.annotation.*;
 
 /**
+ * <p>RecordField class.</p>
  *
+ * @author David Yan <david@datatorrent.com>
  */
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RecordField
 {
+   /**
+    * <p>type.</p>
+    */
    public String type();
 }

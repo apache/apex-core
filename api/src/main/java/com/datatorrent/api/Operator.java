@@ -18,6 +18,11 @@ package com.datatorrent.api;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 
+/**
+ * <p>Operator interface.</p>
+ *
+ * @author Chetan Narsude <chetan@datatorrent.com>
+ */
 public interface Operator extends Component<OperatorContext>
 {
   public enum ProcessingMode
@@ -53,7 +58,6 @@ public interface Operator extends Component<OperatorContext>
 
   /**
    * This method gets called at the end of each window.
-   *
    */
   public void endWindow();
 

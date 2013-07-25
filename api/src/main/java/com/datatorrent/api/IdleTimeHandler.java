@@ -18,9 +18,13 @@ package com.datatorrent.api;
 /**
  * Interface operator must implement if it's interested in being notified when it's idling.
  *
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface IdleTimeHandler
 {
+  /**
+   * <p>handleIdleTime.</p>
+   */
   public void handleIdleTime();
 
 }
