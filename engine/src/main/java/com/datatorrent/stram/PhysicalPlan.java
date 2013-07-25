@@ -552,7 +552,7 @@ public class PhysicalPlan {
      * Record an event in the event log
      *
      * @param ev The event
-     * 
+     *
      */
     public void recordEventAsync(EventRecorder.Event ev);
 
@@ -976,6 +976,8 @@ public class PhysicalPlan {
 
     EventRecorder.Event ev = new HdfsEventRecorder.Event("partition");
     ev.addData("operatorName", currentMapping.logicalOperator.getName());
+    ev.addData("currentNumPartitions", currentPartitions.size());
+    ev.addData("newNumPartitions", newPartitions.size());
     this.ctx.recordEventAsync(ev);
   }
 
