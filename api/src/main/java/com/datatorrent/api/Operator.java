@@ -20,6 +20,23 @@ import com.datatorrent.api.Context.PortContext;
 
 public interface Operator extends Component<OperatorContext>
 {
+  /**
+   * One can set attribute on an Operator to indicate the mode in which it processes Tuples.
+   * In AT_LEAST_ONCE mode it's guaranteed that the tuples will be processed at least once. In this mode even though
+   * some tuples are processed again, the processing itself is idempotent and the output does not reflect double
+   * processed data. This is the default mode.
+   * <br />
+   * In AT_MOST_ONCE mode in case of failure, the operator will start with the tuples which are being sent at the time
+   * the failed operator is recovered. Unlike AT_LEAST_MOST once operator, it will not try to recover the tuples which
+   * may have arrived while operator was down. Typically you would want to mark operators AT_MOST_ONCE if it does not
+   * materially impact your computation if a few tuples are omitted from the computation and the expected throughput is
+   * most likely to consume all the resources available for the operator or the DAG.
+   * <br />
+   * EXACTLY_ONCE is not implemented yet. In this mode, it will be guaranteed that once a streaming window is processed
+   * completely, none of the tuples in that window will be processed again.
+   *
+   * @author Chetan Narsude <chetan@datatorrent.com>
+   */
   public enum ProcessingMode
   {
     AT_LEAST_ONCE("AT_LEAST_ONCE"),
@@ -77,6 +94,7 @@ public interface Operator extends Component<OperatorContext>
    * A operator provides ports as a means to consume and produce data tuples.
    * Concrete ports implement derived interfaces.
    */
+  @SuppressWarnings("MarkerInterface")
   public interface Port extends Component<PortContext>
   {
   }
