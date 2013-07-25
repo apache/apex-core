@@ -68,7 +68,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.EventRecorder.Event;
 
 /**
  *
@@ -90,8 +89,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private int maxWindowsBehindForStats = 100;
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
-  private StatsRecorder statsRecorder;
-  private EventRecorder eventRecorder;
+  private HdfsStatsRecorder statsRecorder;
+  private HdfsEventRecorder eventRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
@@ -159,13 +158,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).setIfAbsent(0);
     this.recordStatsInterval = attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
-      statsRecorder = new StatsRecorder();
+      statsRecorder = new HdfsStatsRecorder();
       statsRecorder.setBasePath(this.statsFsPath);
       statsRecorder.setup();
     }
 
     this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
-    eventRecorder = new EventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
+    eventRecorder = new HdfsEventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
     eventRecorder.setBasePath(this.eventsFsPath);
     eventRecorder.setup();
     this.plan = new PhysicalPlan(dag, this);
@@ -1003,7 +1002,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
   }
 
-  public void recordEventAsync(Event ev) {
+  public void recordEventAsync(EventRecorder.Event ev) {
     eventRecorder.recordEventAsync(ev);
   }
 
@@ -1230,7 +1229,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
     // should probably not record it here because it's better to get confirmation from the nodes first.
     // but right now, the nodes do not give confirmation for the requests.  so record it here for now.
-    EventRecorder.Event ev = new EventRecorder.Event("operator-property-set");
+    HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-property-set");
     ev.addData("operatorName", operatorName);
     ev.addData("propertyName", propertyName);
     ev.addData("propertyValue", propertyValue);
@@ -1327,7 +1326,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         request.execute(pm);
 
         // record an event for the request.  however, we should probably record these when we get a confirmation.
-        EventRecorder.Event ev = new EventRecorder.Event("logical-plan-change");
+        HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("logical-plan-change");
         ev.populateData(request);
         recordEventAsync(ev);
       }

@@ -549,6 +549,14 @@ public class PhysicalPlan {
     public StorageAgent getStorageAgent();
 
     /**
+     * Record an event in the event log
+     *
+     * @param ev The event
+     * 
+     */
+    public void recordEventAsync(EventRecorder.Event ev);
+
+    /**
      * Request deployment change as sequence of undeploy, container start and deploy groups with dependency.
      * Called on initial plan and on dynamic changes during execution.
      */
@@ -966,6 +974,9 @@ public class PhysicalPlan {
     deployOperators = this.getDependents(deployOperators);
     ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
 
+    EventRecorder.Event ev = new HdfsEventRecorder.Event("partition");
+    ev.addData("operatorName", currentMapping.logicalOperator.getName());
+    this.ctx.recordEventAsync(ev);
   }
 
   public void assignContainers(Set<PTOperator> newOperators, Set<PTContainer> newContainers) {

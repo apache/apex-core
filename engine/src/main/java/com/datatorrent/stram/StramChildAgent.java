@@ -232,7 +232,7 @@ public class StramChildAgent {
           status.operator.setState(PTOperator.State.ACTIVE);
 
           // record started
-          EventRecorder.Event ev = new EventRecorder.Event("operator-start");
+          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-start");
           ev.addData("operatorId", status.operator.getId());
           ev.addData("operatorName", status.operator.getName());
           ev.addData("containerId", container.containerId);
@@ -274,7 +274,7 @@ public class StramChildAgent {
             operator.setState(PTOperator.State.INACTIVE);
 
             // record operator stop event
-            EventRecorder.Event ev = new EventRecorder.Event("operator-stop");
+            HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-stop");
             ev.addData("operatorId", operator.getId());
             ev.addData("containerId", operator.container.containerId);
             ev.addData("reason", "undeploy");

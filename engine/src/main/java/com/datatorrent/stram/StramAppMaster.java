@@ -623,7 +623,7 @@ public class StramAppMaster //extends License for licensing using native
 
         {
           // record container start event
-          EventRecorder.Event ev = new EventRecorder.Event("container-start");
+          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("container-start");
           ev.addData("containerId", allocatedContainer.getId().toString());
           ev.addData("containerNode", allocatedContainer.getNodeId().toString());
           ev.setTimestamp(timestamp);
@@ -701,7 +701,7 @@ public class StramAppMaster //extends License for licensing using native
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          EventRecorder.Event ev = new EventRecorder.Event("operator-stop");
+          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-stop");
           ev.addData("operatorId", entry.getKey());
           ev.addData("operatorName", entry.getValue().operator.getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
@@ -709,7 +709,7 @@ public class StramAppMaster //extends License for licensing using native
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
-        EventRecorder.Event ev = new EventRecorder.Event("container-stop");
+        HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("container-stop");
         ev.addData("containerId", containerStatus.getContainerId().toString());
         ev.addData("exitStatus", containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
