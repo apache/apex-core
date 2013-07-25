@@ -22,11 +22,14 @@ import java.lang.reflect.Array;
  * Implemented by concrete data ports for their processing behavior or by streams.
  *
  * @param <T>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface Sink<T>
 {
+  /** Constant <code>NO_SINKS</code> */
   @SuppressWarnings("unchecked")
   public static final Sink<Object>[] NO_SINKS = (Sink<Object>[])Array.newInstance(Sink.class, 0);
+  /** Constant <code>BLACKHOLE</code> */
   public static final Sink<Object> BLACKHOLE = new Sink<Object>()
   {
     @Override
