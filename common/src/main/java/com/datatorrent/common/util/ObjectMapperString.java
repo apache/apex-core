@@ -20,6 +20,7 @@ package com.datatorrent.api.util;
  * For JSON raw serialization, assumes the passed string to be a valid javascript value representation
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2 
  */
 public class ObjectMapperString
 {

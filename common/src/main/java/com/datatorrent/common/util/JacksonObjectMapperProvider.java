@@ -28,6 +28,7 @@ import org.codehaus.jackson.map.ser.impl.RawSerializer;
 /**
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2 
  */
 @Provider
 @Produces(MediaType.APPLICATION_JSON)
