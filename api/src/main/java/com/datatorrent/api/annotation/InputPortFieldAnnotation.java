@@ -32,7 +32,13 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface InputPortFieldAnnotation {
 
+  /**
+   * <p>name.</p>
+   */
   public String name();
+  /**
+   * <p>optional.</p>
+   */
   public boolean optional() default false;
 
 }

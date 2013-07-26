@@ -25,35 +25,46 @@ public class BaseOperator implements Operator
 {
   private String name;
 
+  /**
+   * <p>Getter for the field <code>name</code>.</p>
+   */
   public String getName() {
     return name;
   }
 
+  /**
+   * <p>Setter for the field <code>name</code>.</p>
+   */
   public void setName(String name)
   {
     this.name = name;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void setup(OperatorContext context)
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public void beginWindow(long windowId)
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public void endWindow()
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public void teardown()
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public String toString()
   {
