@@ -21,6 +21,7 @@ import java.util.Set;
 
 /**
  *
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface PartitionableOperator extends Operator
 {

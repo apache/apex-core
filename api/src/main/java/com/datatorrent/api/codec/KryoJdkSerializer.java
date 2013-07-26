@@ -49,10 +49,12 @@ import com.esotericsoftware.kryo.io.Output;
  * serializable, when using JDK serialization.
  *
  * @param <T> type of serialized object
+ * @author Pramod Immaneni <pramod@datatorrent.com>
  */
 @ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class})
 public class KryoJdkSerializer<T> extends Serializer<T>
 {
+  /** {@inheritDoc} */
   @Override
   public void write(Kryo kryo, Output output, T t)
   {
@@ -66,6 +68,7 @@ public class KryoJdkSerializer<T> extends Serializer<T>
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   @SuppressWarnings("unchecked")
   public T read(Kryo kryo, Input input, Class<T> type)

@@ -23,6 +23,7 @@ package com.datatorrent.api;
  *
  * @param <COMPONENT>
  * @param <COMPLEMENT>
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
 {
@@ -33,6 +34,7 @@ public abstract class ComponentComplementPair<COMPONENT extends Component<?>, CO
     this.component = component;
   }
 
+  /** {@inheritDoc} */
   @Override
   public int hashCode()
   {
@@ -42,6 +44,7 @@ public abstract class ComponentComplementPair<COMPONENT extends Component<?>, CO
     return hash;
   }
 
+  /** {@inheritDoc} */
   @Override
   public boolean equals(Object obj)
   {

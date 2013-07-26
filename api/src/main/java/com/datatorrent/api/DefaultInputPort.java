@@ -22,6 +22,7 @@ import com.datatorrent.api.Operator.InputPort;
  * Default abstract implementation for input ports.
  * An operator would typically define a derived inner class with the process method.
  * This class is designed for use with a transient field, i.e. not to be serialized with the operator state.
+ *
  * @param <T>
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
@@ -33,24 +34,28 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public Sink<T> getSink()
   {
     return this;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void setConnected(boolean connected)
   {
     this.connected = connected;
   }
 
+  /** {@inheritDoc} */
   @Override
   public Class<? extends StreamCodec<T>> getStreamCodec()
   {
     return null;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void put(T tuple)
   {
@@ -58,6 +63,7 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
     process(tuple);
   }
 
+  /** {@inheritDoc} */
   @Override
   public int getCount(boolean reset)
   {
@@ -71,11 +77,13 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   public void setup(PortContext context)
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public void teardown()
   {

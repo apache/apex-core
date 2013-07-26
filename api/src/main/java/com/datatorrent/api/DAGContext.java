@@ -80,6 +80,7 @@ public interface DAGContext extends Context
    * The amount of memory to be requested for streaming containers. Not used in local mode.
    */
   public static final AttributeKey<Integer> CONTAINER_MEMORY_MB = new AttributeKey<Integer>("stram.containerMemoryMB", Integer.class);
+  /** Constant <code>CONTAINER_JVM_OPTIONS</code> */
   public static final AttributeKey<String> CONTAINER_JVM_OPTIONS = new AttributeKey<String>("stram.containerJvmOpts", String.class);
 
   /**
