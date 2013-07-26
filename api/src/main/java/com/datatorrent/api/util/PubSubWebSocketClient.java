@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>Abstract PubSubWebSocketClient class.</p>
  *
+ * @author David Yan <david@datatorrent.com>
  */
 public abstract class PubSubWebSocketClient
 {
@@ -71,6 +73,9 @@ public abstract class PubSubWebSocketClient
 
   }
 
+  /**
+   * <p>Constructor for PubSubWebSocketClient.</p>
+   */
   public PubSubWebSocketClient()
   {
     try {
@@ -81,21 +86,33 @@ public abstract class PubSubWebSocketClient
     }
   }
 
+  /**
+   * <p>Setter for the field <code>uri</code>.</p>
+   */
   public void setUri(URI uri)
   {
     this.uri = uri;
   }
 
+  /**
+   * <p>openConnection.</p>
+   */
   public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
   {
     connection = client.open(uri, new PubSubWebSocket()).get(timeoutMillis, TimeUnit.MILLISECONDS);
   }
 
+  /**
+   * <p>isConnectionOpen.</p>
+   */
   public boolean isConnectionOpen()
   {
     return connection != null && connection.isOpen();
   }
 
+  /**
+   * <p>constructPublishMessage.</p>
+   */
   public static String constructPublishMessage(String topic, Object data, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
@@ -106,11 +123,17 @@ public abstract class PubSubWebSocketClient
     return mapper.writeValueAsString(map);
   }
 
+  /**
+   * <p>publish.</p>
+   */
   public void publish(String topic, Object data) throws IOException
   {
     connection.sendMessage(constructPublishMessage(topic, data, mapper));
   }
 
+  /**
+   * <p>constructSubscribeMessage.</p>
+   */
   public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
@@ -120,11 +143,17 @@ public abstract class PubSubWebSocketClient
     return mapper.writeValueAsString(map);
   }
 
+  /**
+   * <p>subscribe.</p>
+   */
   public void subscribe(String topic) throws IOException
   {
     connection.sendMessage(constructSubscribeMessage(topic, mapper));
   }
 
+  /**
+   * <p>constructUnsubscribeMessage.</p>
+   */
   public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
@@ -134,11 +163,17 @@ public abstract class PubSubWebSocketClient
     return mapper.writeValueAsString(map);
   }
 
+  /**
+   * <p>unsubscribe.</p>
+   */
   public void unsubscribe(String topic) throws IOException
   {
     connection.sendMessage(constructUnsubscribeMessage(topic, mapper));
   }
 
+  /**
+   * <p>constructSubscribeNumSubscribersMessage.</p>
+   */
   public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
@@ -148,11 +183,17 @@ public abstract class PubSubWebSocketClient
     return mapper.writeValueAsString(map);
   }
 
+  /**
+   * <p>subscribeNumSubscribers.</p>
+   */
   public void subscribeNumSubscribers(String topic) throws IOException
   {
     connection.sendMessage(constructSubscribeNumSubscribersMessage(topic, mapper));
   }
 
+  /**
+   * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   */
   public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
@@ -162,15 +203,27 @@ public abstract class PubSubWebSocketClient
     return mapper.writeValueAsString(map);
   }
 
+  /**
+   * <p>unsubscribeNumSubscribers.</p>
+   */
   public void unsubscribeNumSubscribers(String topic) throws IOException
   {
     connection.sendMessage(constructUnsubscribeNumSubscribersMessage(topic, mapper));
   }
 
+  /**
+   * <p>onOpen.</p>
+   */
   public abstract void onOpen(WebSocket.Connection connection);
 
+  /**
+   * <p>onMessage.</p>
+   */
   public abstract void onMessage(String type, String topic, Object data);
 
+  /**
+   * <p>onClose.</p>
+   */
   public abstract void onClose(int code, String message);
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);

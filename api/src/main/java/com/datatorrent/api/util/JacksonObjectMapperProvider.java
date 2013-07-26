@@ -26,7 +26,9 @@ import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.impl.RawSerializer;
 
 /**
+ * <p>JacksonObjectMapperProvider class.</p>
  *
+ * @author David Yan <david@datatorrent.com>
  */
 @Provider
 @Produces(MediaType.APPLICATION_JSON)
@@ -34,6 +36,9 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
 {
   private ObjectMapper objectMapper = new ObjectMapper();
 
+  /**
+   * <p>Constructor for JacksonObjectMapperProvider.</p>
+   */
   public JacksonObjectMapperProvider()
   {
     objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
@@ -42,6 +47,7 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     objectMapper.registerModule(module);
   }
 
+  /** {@inheritDoc} */
   @Override
   public ObjectMapper getContext(Class<?> type)
   {

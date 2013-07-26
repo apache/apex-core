@@ -21,11 +21,18 @@ package com.datatorrent.api;
  * entities in the system.
  *
  * @param <T1> Context used for the current run of the component.
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface Component<T1 extends Context>
 {
+  /**
+   * <p>setup.</p>
+   */
   public void setup(T1 context);
 
+  /**
+   * <p>teardown.</p>
+   */
   public void teardown();
 
 }

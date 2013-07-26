@@ -23,16 +23,25 @@ import java.lang.annotation.Target;
 
 
 /**
-*
-* Annotation for output ports on streaming operators.<p>
-*
-*/
+ *
+ * Annotation for output ports on streaming operators.<p>
+ *
+ */
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface OutputPortFieldAnnotation {
 
+  /**
+   * <p>name.</p>
+   */
   public String name();
+  /**
+   * <p>optional.</p>
+   */
   public boolean optional() default true;
+  /**
+   * <p>error.</p>
+   */
   public boolean error() default false;
 }

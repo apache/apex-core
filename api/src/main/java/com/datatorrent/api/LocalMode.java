@@ -25,8 +25,17 @@ import org.apache.hadoop.conf.Configuration;
  */
 public abstract class LocalMode {
 
+  /**
+   * <p>getDAG.</p>
+   */
   abstract public DAG getDAG();
+  /**
+   * <p>cloneDAG.</p>
+   */
   abstract public DAG cloneDAG() throws Exception;
+  /**
+   * <p>getController.</p>
+   */
   abstract public Controller getController();
 
   public interface Controller {
@@ -37,6 +46,9 @@ public abstract class LocalMode {
     public void setHeartbeatMonitoringEnabled(boolean enabled);
   }
 
+  /**
+   * <p>newInstance.</p>
+   */
   public static LocalMode newInstance() {
     ServiceLoader<LocalMode> loader = ServiceLoader.load(LocalMode.class);
     Iterator<LocalMode> impl = loader.iterator();
@@ -48,6 +60,7 @@ public abstract class LocalMode {
 
   /**
    * Shortcut to run an application. Used for testing.
+   *
    * @param app
    * @param runMillis
    */

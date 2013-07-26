@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
+ * <p>DAGContext interface.</p>
  *
  */
 public interface DAGContext extends Context
@@ -36,9 +37,13 @@ public interface DAGContext extends Context
    */
   public static final String LAUNCH_MODE = "stram.launchmode";
 
+  /** Constant <code>DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT=30</code> */
   public static final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
+  /** Constant <code>SUBDIR_CHECKPOINTS="checkpoints"</code> */
   public static final String SUBDIR_CHECKPOINTS = "checkpoints";
+  /** Constant <code>SUBDIR_STATS="stats"</code> */
   public static final String SUBDIR_STATS = "stats";
+  /** Constant <code>DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS=60000</code> */
   public static final int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
 
   /**
@@ -80,6 +85,7 @@ public interface DAGContext extends Context
    * The amount of memory to be requested for streaming containers. Not used in local mode.
    */
   public static final AttributeKey<Integer> CONTAINER_MEMORY_MB = new AttributeKey<Integer>("stram.containerMemoryMB", Integer.class);
+  /** Constant <code>CONTAINER_JVM_OPTIONS</code> */
   public static final AttributeKey<String> CONTAINER_JVM_OPTIONS = new AttributeKey<String>("stram.containerJvmOpts", String.class);
 
   /**
@@ -87,12 +93,19 @@ public interface DAGContext extends Context
    */
   public static final AttributeKey<Integer> MASTER_MEMORY_MB = new AttributeKey<Integer>("stram.masterMemoryMB", Integer.class);
 
+  /** Constant <code>STREAMING_WINDOW_SIZE_MILLIS</code> */
   public static final AttributeKey<Integer> STREAMING_WINDOW_SIZE_MILLIS = new AttributeKey<Integer>("stram.windowSizeMillis", Integer.class);
+  /** Constant <code>CHECKPOINT_WINDOW_COUNT</code> */
   public static final AttributeKey<Integer> CHECKPOINT_WINDOW_COUNT = new AttributeKey<Integer>("stram.checkpointWindowCount", Integer.class);
+  /** Constant <code>APPLICATION_PATH</code> */
   public static final AttributeKey<String> APPLICATION_PATH = new AttributeKey<String>("stram.appPath", String.class);
+  /** Constant <code>TUPLE_RECORDING_PART_FILE_SIZE</code> */
   public static final AttributeKey<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new AttributeKey<Integer>("stram.tupleRecordingPartFileSize", Integer.class);
+  /** Constant <code>TUPLE_RECORDING_PART_FILE_TIME_MILLIS</code> */
   public static final AttributeKey<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new AttributeKey<Integer>("stram.tupleRecordingPartFileTimeMillis", Integer.class);
+  /** Constant <code>DAEMON_ADDRESS</code> */
   public static final AttributeKey<String> DAEMON_ADDRESS = new AttributeKey<String>("stram.daemon.address", String.class);
+  /** Constant <code>FAST_PUBLISHER_SUBSCRIBER</code> */
   public static final AttributeKey<Boolean> FAST_PUBLISHER_SUBSCRIBER = new AttributeKey<Boolean>("stram.bufferserver.fast", Boolean.class);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
@@ -110,10 +123,13 @@ public interface DAGContext extends Context
    */
   public static final AttributeKey<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new AttributeKey<Integer>("stram.allocateResourceTimeoutMillis", Integer.class);
 
+  /** Constant <code>STATS_MAX_ALLOWABLE_WINDOWS_LAG</code> */
   public static final AttributeKey<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new AttributeKey<Integer>("stram.maxWindowsBehindForStats", Integer.class);
 
+  /** Constant <code>STATS_RECORD_INTERVAL_MILLIS</code> */
   public static final AttributeKey<Integer> STATS_RECORD_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.recordStatsIntervalMillis", Integer.class);
 
+  /** Constant <code>ATTRIBUTE_KEYS</code> */
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
 
   public class AttributeKey<T> extends AttributeMap.AttributeKey<T> {
