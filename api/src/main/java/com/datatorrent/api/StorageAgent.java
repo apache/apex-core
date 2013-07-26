@@ -22,6 +22,7 @@ import java.io.OutputStream;
 /**
  * Interface to define writing/reading checkpoint state
  *
+ * @author Chetan Narsude <chetan@datatorrent.com>
  */
 public interface StorageAgent
 {
@@ -48,6 +49,9 @@ public interface StorageAgent
    */
   public InputStream getLoadStream(int operatorId, long windowId) throws IOException;
 
+  /**
+   * <p>delete.</p>
+   */
   public void delete(int operatorId, long windowId) throws IOException;
 
 }

@@ -28,13 +28,18 @@ import com.datatorrent.api.util.ObjectMapperString;
 import com.datatorrent.common.util.Slice;
 
 /**
+ * <p>JsonStreamCodec class.</p>
  *
  * @param <T> tuple type
+ * @author David Yan <david@datatorrent.com>
  */
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {
   private ObjectMapper mapper;
 
+  /**
+   * <p>Constructor for JsonStreamCodec.</p>
+   */
   public JsonStreamCodec()
   {
     mapper = new ObjectMapper();
@@ -44,6 +49,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     mapper.registerModule(module);
   }
 
+  /** {@inheritDoc} */
   @Override
   public Object fromByteArray(Slice data)
   {
@@ -56,6 +62,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   public Slice toByteArray(T o)
   {
@@ -71,6 +78,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   public int getPartition(T o)
   {
