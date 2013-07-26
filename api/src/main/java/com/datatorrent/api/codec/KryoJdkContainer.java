@@ -31,6 +31,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
  * <br>
  *
  * @param <T> - Type of the object which you would like to serialize using KryoJdkSerializer.
+ * @author Pramod Immaneni <pramod@datatorrent.com>
  */
 @DefaultSerializer(KryoJdkSerializer.class)
 public class KryoJdkContainer<T> implements Serializable
@@ -57,6 +58,7 @@ public class KryoJdkContainer<T> implements Serializable
     return t;
   }
 
+  /** {@inheritDoc} */
   @Override
   public boolean equals(Object o)
   {
@@ -68,6 +70,7 @@ public class KryoJdkContainer<T> implements Serializable
     return equal;
   }
 
+  /** {@inheritDoc} */
   @Override
   public int hashCode()
   {

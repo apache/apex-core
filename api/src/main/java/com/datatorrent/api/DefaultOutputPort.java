@@ -45,9 +45,9 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   }
 
   /**
-   * Called by execution engine to inject sink at deployment time.
+   * {@inheritDoc}
    *
-   * @param s
+   * Called by execution engine to inject sink at deployment time.
    */
   @Override
   final public void setSink(Sink<Object> s)
@@ -67,9 +67,9 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   }
 
   /**
-   * Module developer can override for getUnifier functionality
+   * {@inheritDoc}
    *
-   * @return Unifier<T>
+   * Module developer can override for getUnifier functionality
    */
   @Override
   public Unifier<T> getUnifier()
@@ -77,11 +77,13 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
     return null;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void setup(PortContext context)
   {
   }
 
+  /** {@inheritDoc} */
   @Override
   public void teardown()
   {
