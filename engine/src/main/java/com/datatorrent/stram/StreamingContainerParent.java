@@ -30,8 +30,8 @@ import org.apache.hadoop.security.authorize.Service;
  * Stram side implementation of communication protocol with hadoop container<p>
  * <br>
  *
+ * @since 0.3.2
  */
-
 public class StreamingContainerParent extends CompositeService implements StreamingContainerUmbilicalProtocol {
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerParent.class);

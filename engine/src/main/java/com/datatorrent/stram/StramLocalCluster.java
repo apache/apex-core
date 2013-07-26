@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Launcher for topologies in local mode within a single process.
  * Child containers are mapped to threads.
+ *
+ * @since 0.3.2
  */
 public class StramLocalCluster implements Runnable, Controller
 {

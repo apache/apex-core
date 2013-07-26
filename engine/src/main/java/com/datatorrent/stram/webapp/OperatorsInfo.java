@@ -17,6 +17,8 @@ import javax.xml.bind.annotation.XmlSeeAlso;
  * <br>
  * This call provides restful access to individual operator instance data<br>
  * <br>
+ *
+ * @since 0.3.2
  */
 
 @XmlRootElement(name = "operators")

@@ -9,8 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>ScheduledThreadPoolExecutor class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class ScheduledThreadPoolExecutor extends java.util.concurrent.ScheduledThreadPoolExecutor implements ScheduledExecutorService
 {

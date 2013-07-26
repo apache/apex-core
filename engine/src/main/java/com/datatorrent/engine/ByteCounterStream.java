@@ -5,8 +5,10 @@
 package com.datatorrent.engine;
 
 /**
+ * <p>ByteCounterStream interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public interface ByteCounterStream extends Stream
 {

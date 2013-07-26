@@ -9,8 +9,10 @@ import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager;
 
 /**
+ * <p>StramDelegationTokenManager class.</p>
  *
  * @author Pramod Immaneni <pramod@datatorrent.com>
+ * @since 0.3.2
  */
 public class StramDelegationTokenManager extends AbstractDelegationTokenSecretManager<StramDelegationTokenIdentifier>
 {

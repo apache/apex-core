@@ -16,8 +16,10 @@ import javax.security.auth.login.LoginException;
 import org.apache.hadoop.security.UserGroupInformation;
 
 /**
+ * <p>KerberosAuth class.</p>
  *
  * @author Pramod Immaneni <pramod@datatorrent.com>
+ * @since 0.3.2
  */
 public class KerberosAuth
 {

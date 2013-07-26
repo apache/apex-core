@@ -19,7 +19,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
+ * <p>DAGContext interface.</p>
  *
+ * @since 0.3.2
  */
 public interface DAGContext extends Context
 {

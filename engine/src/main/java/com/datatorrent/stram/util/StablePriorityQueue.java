@@ -8,10 +8,12 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 /**
- * 
+ *
  * Implements a priority queue by implementing {@link java.util.queue} interface<p>
  * <br>
+ *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class StablePriorityQueue<E> implements Queue<E>
 {

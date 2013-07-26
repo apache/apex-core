@@ -9,8 +9,10 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
+ * <p>PortInfo class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2
  */
 @XmlRootElement(name = "port")
 @XmlAccessorType(XmlAccessType.FIELD)

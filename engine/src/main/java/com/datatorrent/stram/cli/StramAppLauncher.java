@@ -50,8 +50,9 @@ import com.datatorrent.api.DAG;
  * annotations processed. Caching is performed for dependency classpath
  * resolution.<br>
  * <br>
+ *
+ * @since 0.3.2
  */
-
 public class StramAppLauncher {
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);

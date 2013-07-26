@@ -15,8 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>DataListIterator class.</p>
  *
  * @author chetan
+ * @since 0.3.2
  */
 public class DataListIterator implements Iterator<SerializedData>
 {

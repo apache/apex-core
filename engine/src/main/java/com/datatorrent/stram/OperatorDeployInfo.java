@@ -17,6 +17,8 @@ import com.datatorrent.api.Context.PortContext;
 /**
  * Operator deployment info passed from master to container as part of initialization
  * or incremental undeploy/deploy during recovery, balancing or other modification.
+ *
+ * @since 0.3.2
  */
 public class OperatorDeployInfo implements Serializable
 {

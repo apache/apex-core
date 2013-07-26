@@ -9,8 +9,10 @@ import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.api.Operator;
 
 /**
+ * <p>CreateOperatorRequest class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2
  */
 public class CreateOperatorRequest extends LogicalPlanRequest
 {

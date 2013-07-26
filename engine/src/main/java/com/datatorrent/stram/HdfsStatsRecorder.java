@@ -17,8 +17,10 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 /**
+ * <p>HdfsStatsRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2
  */
 public class HdfsStatsRecorder
 {

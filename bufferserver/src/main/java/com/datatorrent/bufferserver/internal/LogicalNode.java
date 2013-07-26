@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  * @author chetan
+ * @since 0.3.2
  */
 public class LogicalNode implements DataListener
 {

@@ -28,9 +28,11 @@ import com.datatorrent.api.util.ObjectMapperString;
 import com.datatorrent.common.util.Slice;
 
 /**
+ * <p>JsonStreamCodec class.</p>
  *
  * @param <T> tuple type
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2 
  */
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {

@@ -31,6 +31,7 @@ import com.datatorrent.common.util.Slice;
  * Requires kryo and its dependencies in deployment
  *
  * @param <T>
+ * @since 0.3.2
  */
 @ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class,
                                org.objenesis.instantiator.ObjectInstantiator.class,

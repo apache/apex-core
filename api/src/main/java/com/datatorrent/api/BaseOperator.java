@@ -20,6 +20,8 @@ import com.datatorrent.api.Context.OperatorContext;
 /**
  * Base class for operator implementations that provides empty implementations
  * for all interface methods.
+ *
+ * @since 0.3.2
  */
 public class BaseOperator implements Operator
 {

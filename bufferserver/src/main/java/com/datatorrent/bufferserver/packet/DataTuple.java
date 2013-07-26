@@ -7,8 +7,10 @@ package com.datatorrent.bufferserver.packet;
 import com.datatorrent.common.util.Slice;
 
 /**
+ * <p>DataTuple class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class DataTuple extends Tuple
 {

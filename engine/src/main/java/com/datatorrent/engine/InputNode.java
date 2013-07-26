@@ -14,8 +14,10 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Sink;
 
 /**
+ * <p>InputNode class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class InputNode extends Node<InputOperator>
 {

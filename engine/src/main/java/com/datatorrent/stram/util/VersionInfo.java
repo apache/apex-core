@@ -14,6 +14,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * This class finds the build version info from the jar file.
+ *
+ * @since 0.3.2
  */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable

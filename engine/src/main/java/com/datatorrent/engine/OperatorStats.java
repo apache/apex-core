@@ -6,6 +6,8 @@ import java.util.ArrayList;
 /**
  * Operator stats, which forms the root of a tree like structure.
  * Can be serialized as object or marshaled as JSON for easy consumption by client.
+ *
+ * @since 0.3.2
  */
 public class OperatorStats implements Serializable
 {

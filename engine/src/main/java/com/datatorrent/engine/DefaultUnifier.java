@@ -12,6 +12,8 @@ import com.datatorrent.api.Operator.Unifier;
 /**
  * Default unifier passes through all tuples received. Used when an operator has
  * multiple partitions and no unifier was provided through
+ *
+ * @since 0.3.2
  */
 public class DefaultUnifier extends BaseOperator implements Unifier<Object>
 {

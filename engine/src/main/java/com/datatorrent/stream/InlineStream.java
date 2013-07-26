@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
  * is to load balance and that means across different hadoop containers. In future we may take a look at it.<br>
  * <br>
  *
+ * @since 0.3.2
  */
 public class InlineStream extends DefaultReservoir implements Stream, SweepableReservoir
 {

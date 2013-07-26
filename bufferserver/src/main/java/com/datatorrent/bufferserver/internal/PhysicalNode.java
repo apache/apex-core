@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
  * PhysicalNode represents one physical subscriber.
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class PhysicalNode
 {

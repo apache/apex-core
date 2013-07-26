@@ -10,8 +10,10 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 /**
+ * <p>ConfigUtils class.</p>
  *
  * @author Pramod Immaneni <pramod@datatorrent.com>
+ * @since 0.3.2
  */
 public class ConfigUtils
 {

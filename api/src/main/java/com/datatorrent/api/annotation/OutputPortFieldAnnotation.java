@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
  *
  * Annotation for output ports on streaming operators.<p>
  *
+ * @since 0.3.2
  */
 @Documented
 @Target(ElementType.FIELD)

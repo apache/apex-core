@@ -48,6 +48,8 @@ import com.datatorrent.bufferserver.util.Codec;
  *
  * Representation of a child container in the master<p>
  * <br>
+ *
+ * @since 0.3.2
  */
 public class StramChildAgent {
   private static final Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);

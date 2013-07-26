@@ -7,18 +7,16 @@ package com.datatorrent.stram.util;
 import java.util.Comparator;
 
 /**
- *
- * @author Chetan Narsude <chetan@datatorrent.com>
- */
-
-/**
- *
  * Used to wrap around long int values safely<p>
  * <br>
  * Needed to ensure that windowId wrap around safely<br>
  * {@see StablePriorityQueue}<br>
- * <br>
+ * <br> 
+ *
+ * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2 
  */
+
 
 class StableWrapper<E>
 {

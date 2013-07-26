@@ -20,8 +20,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * <p>PartitionableOperator interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2 
  */
 public interface PartitionableOperator extends Operator
 {

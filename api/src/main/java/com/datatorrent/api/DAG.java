@@ -28,6 +28,7 @@ import java.io.Serializable;
  * The DAG will be serialized and deployed to the cluster, where it is translated
  * into the physical plan.
  *
+ * @since 0.3.2 
  */
 public interface DAG extends DAGContext, Serializable
 {

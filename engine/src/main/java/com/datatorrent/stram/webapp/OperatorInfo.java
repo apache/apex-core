@@ -26,6 +26,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * <b>Last Heartbeat Time</b><br>
  * <br>
  *
+ * @since 0.3.2
  */
 @XmlRootElement(name = "node")
 @XmlAccessorType(XmlAccessType.FIELD)

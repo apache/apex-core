@@ -8,9 +8,11 @@ import com.datatorrent.api.StreamCodec;
 import com.datatorrent.common.util.Slice;
 
 /**
+ * <p>StatefulStreamCodec interface.</p>
  *
  * @param <T>
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public interface StatefulStreamCodec<T> extends StreamCodec<T>
 {

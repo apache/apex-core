@@ -50,6 +50,7 @@ import com.esotericsoftware.kryo.io.Output;
  *
  * @param <T> type of serialized object
  * @author Pramod Immaneni <pramod@datatorrent.com>
+ * @since 0.3.2 
  */
 @ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class})
 public class KryoJdkSerializer<T> extends Serializer<T>

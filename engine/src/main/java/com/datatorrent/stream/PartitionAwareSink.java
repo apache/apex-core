@@ -10,9 +10,11 @@ import com.datatorrent.api.StreamCodec;
 import java.util.Set;
 
 /**
+ * <p>PartitionAwareSink class.</p>
  *
  * @param <T>
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class PartitionAwareSink<T> implements Sink<T>
 {

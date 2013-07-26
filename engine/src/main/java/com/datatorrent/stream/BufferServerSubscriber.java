@@ -30,6 +30,8 @@ import com.datatorrent.netlet.util.CircularBuffer;
  * <br>
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
+ *
+ * @since 0.3.2
  */
 public class BufferServerSubscriber extends Subscriber implements ByteCounterStream
 {
