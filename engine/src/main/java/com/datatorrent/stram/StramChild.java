@@ -30,6 +30,7 @@ import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.server.Server;
@@ -933,8 +934,7 @@ public class StramChild
     return spair.context.getId();
   }
 
-  private void deployInputStreams(List<OperatorDeployInfo> operatorList, HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams)
-          throws UnknownHostException
+  private void deployInputStreams(List<OperatorDeployInfo> operatorList, HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws UnknownHostException
   {
     /*
      * collect any input operators along with their smallest window id,
@@ -962,6 +962,7 @@ public class StramChild
         /*
          * When we activate the window Generator, we plan to activate it only from required windowId.
          */
+        ndi.checkpointWindowId = getFinishedWindowId(ndi);
         if (ndi.checkpointWindowId < smallestCheckpointedWindowId) {
           smallestCheckpointedWindowId = ndi.checkpointWindowId;
         }
@@ -974,8 +975,8 @@ public class StramChild
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
           int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
-          long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
+          long finishedWindowId = getFinishedWindowId(ndi);
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             pair = newStreams.get(sourceIdentifier);
@@ -1359,4 +1360,26 @@ public class StramChild
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
+
+  protected long getFinishedWindowId(OperatorDeployInfo ndi)
+  {
+    long finishedWindowId;
+    if (ndi.contextAttributes != null
+            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
+            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
+      /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
+      long currentMillis = System.currentTimeMillis();
+      long diff = currentMillis - firstWindowMillis;
+      long remainder = diff % (windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1));
+      long baseSeconds = (currentMillis - remainder) / 1000;
+      long windowId = remainder / windowWidthMillis;
+      finishedWindowId = baseSeconds << 32 | windowId;
+      logger.debug("using at most once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+    }
+    else {
+      finishedWindowId = ndi.checkpointWindowId;
+      logger.debug("using at least once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+    }
+    return finishedWindowId;
+  }
 }

@@ -139,6 +139,10 @@ public interface Context
      * The agent which can be used to checkpoint the windows.
      */
     public static final AttributeKey<StorageAgent> STORAGE_AGENT = new AttributeKey<StorageAgent>("backupAgent");
+    /**
+     * The payload processing mode for this operator - at most once, exactly once, or default at least once.
+     */
+    public static final AttributeKey<Operator.ProcessingMode> PROCESSING_MODE = new AttributeKey<Operator.ProcessingMode>("processMode");
 
     /**
      * Return the operator runtime id.

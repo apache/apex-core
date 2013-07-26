@@ -8,6 +8,7 @@ import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.bufferserver.util.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   public void emitTuples()
   {
     if (first) {
+      logger.debug("emitting {}", Codec.getStringWindowId(windowId));
       output.emit(windowId);
       first = false;
       if (--maximumTuples == 0) {

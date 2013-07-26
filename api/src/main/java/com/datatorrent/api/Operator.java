@@ -18,9 +18,32 @@ package com.datatorrent.api;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 
-
 public interface Operator extends Component<OperatorContext>
 {
+  public enum ProcessingMode
+  {
+    AT_LEAST_ONCE("AT_LEAST_ONCE"),
+    AT_MOST_ONCE("AT_MOST_ONCE"),
+    EXACTLY_ONCE("EXACTLY_ONCE");
+    private final String mode;
+
+    private ProcessingMode(String mode)
+    {
+      this.mode = mode;
+    }
+
+    public boolean equalsName(String othermode)
+    {
+      return othermode == null ? false : mode.equals(othermode);
+    }
+
+    @Override
+    public String toString()
+    {
+      return mode;
+    }
+  }
+
   /**
    * This method gets called at the beginning of each window.
    *
@@ -47,11 +70,12 @@ public interface Operator extends Component<OperatorContext>
   public interface Unifier<T> extends Operator
   {
     public void process(T tuple);
+
   }
 
   /**
    * A operator provides ports as a means to consume and produce data tuples.
-   * Concrete ports implement derived interfaces. 
+   * Concrete ports implement derived interfaces.
    */
   public interface Port extends Component<PortContext>
   {
