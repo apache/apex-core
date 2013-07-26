@@ -27,6 +27,7 @@ import org.codehaus.jackson.map.ser.impl.RawSerializer;
 
 /**
  *
+ * @author David Yan <david@datatorrent.com>
  */
 @Provider
 @Produces(MediaType.APPLICATION_JSON)
@@ -42,6 +43,7 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     objectMapper.registerModule(module);
   }
 
+  /** {@inheritDoc} */
   @Override
   public ObjectMapper getContext(Class<?> type)
   {

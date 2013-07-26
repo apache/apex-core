@@ -18,16 +18,22 @@ package com.datatorrent.api.util;
 /**
  *
  * For JSON raw serialization, assumes the passed string to be a valid javascript value representation
+ *
+ * @author David Yan <david@datatorrent.com>
  */
 public class ObjectMapperString
 {
   public String string;
 
+  /**
+   * <p>Constructor for ObjectMapperString.</p>
+   */
   public ObjectMapperString(String string)
   {
     this.string = string;
   }
 
+  /** {@inheritDoc} */
   @Override
   public String toString()
   {
