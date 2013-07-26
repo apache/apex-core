@@ -110,10 +110,10 @@ public class LaunchContainerRunnable implements Runnable
     }
   }
 
-  @Override
   /**
    * Connects to CM, sets up container launch context for shell command and eventually dispatches the container start request to the CM.
    */
+  @Override
   public void run()
   {
     // Connect to ContainerManager

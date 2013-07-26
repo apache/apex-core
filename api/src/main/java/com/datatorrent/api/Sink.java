@@ -23,7 +23,7 @@ import java.lang.reflect.Array;
  *
  * @param <T>
  * @author Chetan Narsude <chetan@datatorrent.com>
- * @since 0.3.2 
+ * @since 0.3.2
  */
 public interface Sink<T>
 {

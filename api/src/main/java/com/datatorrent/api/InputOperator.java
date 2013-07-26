@@ -24,7 +24,7 @@ package com.datatorrent.api;
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
-*/
+ */
 public interface InputOperator extends Operator
 {
   /**

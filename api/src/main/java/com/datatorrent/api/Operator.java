@@ -22,7 +22,7 @@ import com.datatorrent.api.Context.PortContext;
  * <p>Operator interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
- * @since 0.3.2 
+ * @since 0.3.2
  */
 public interface Operator extends Component<OperatorContext>
 {
