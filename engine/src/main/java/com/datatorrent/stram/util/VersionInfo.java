@@ -68,7 +68,7 @@ public class VersionInfo {
   /**
    * Get the version.
    *
-   * @return the version string, e.g. "0.3.3-SNAPSHOT"
+   * @return the version string, e.g. "0.3.3"
    */
   public static String getVersion() {
     return version;
