@@ -24,8 +24,14 @@ package com.datatorrent.api;
  */
 public interface CheckpointListener
 {
+  /**
+   * <p>checkpointed.</p>
+   */
   public void checkpointed(long windowId);
 
+  /**
+   * <p>committed.</p>
+   */
   public void committed(long windowId);
 
 }

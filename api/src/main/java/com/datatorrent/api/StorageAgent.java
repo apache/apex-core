@@ -50,6 +50,9 @@ public interface StorageAgent
    */
   public InputStream getLoadStream(int operatorId, long windowId) throws IOException;
 
+  /**
+   * <p>delete.</p>
+   */
   public void delete(int operatorId, long windowId) throws IOException;
 
 }

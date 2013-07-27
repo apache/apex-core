@@ -26,8 +26,14 @@ package com.datatorrent.api;
  */
 public interface Component<T1 extends Context>
 {
+  /**
+   * <p>setup.</p>
+   */
   public void setup(T1 context);
 
+  /**
+   * <p>teardown.</p>
+   */
   public void teardown();
 
 }

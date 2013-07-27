@@ -30,6 +30,9 @@ public abstract class ComponentComplementPair<COMPONENT extends Component<?>, CO
 {
   public final COMPONENT component;
 
+  /**
+   * <p>Constructor for ComponentComplementPair.</p>
+   */
   public ComponentComplementPair(COMPONENT component)
   {
     this.component = component;
@@ -66,6 +69,9 @@ public abstract class ComponentComplementPair<COMPONENT extends Component<?>, CO
     return true;
   }
 
+  /**
+   * <p>getComplement.</p>
+   */
   public abstract COMPLEMENT getComplement();
 
 }

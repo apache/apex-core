@@ -38,6 +38,9 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
 {
   private ObjectMapper mapper;
 
+  /**
+   * <p>Constructor for JsonStreamCodec.</p>
+   */
   public JsonStreamCodec()
   {
     mapper = new ObjectMapper();

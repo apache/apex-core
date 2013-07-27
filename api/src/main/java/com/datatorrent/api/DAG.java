@@ -91,8 +91,14 @@ public interface DAG extends DAGContext, Serializable
    */
   public abstract <T extends Operator> T addOperator(String name, Class<T> clazz);
 
+  /**
+   * <p>addOperator.</p>
+   */
   public abstract <T extends Operator> T addOperator(String name, T operator);
 
+  /**
+   * <p>addStream.</p>
+   */
   public abstract StreamMeta addStream(String id);
 
   /**
@@ -126,18 +132,39 @@ public interface DAG extends DAGContext, Serializable
    */
   public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1);
 
+  /**
+   * <p>addStream.</p>
+   */
   public abstract <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2);
 
+  /**
+   * <p>setAttribute.</p>
+   */
   public abstract <T> void setAttribute(DAGContext.AttributeKey<T> key, T value);
 
+  /**
+   * <p>setAttribute.</p>
+   */
   public abstract <T> void setAttribute(Operator operator, OperatorContext.AttributeKey<T> key, T value);
 
+  /**
+   * <p>setOutputPortAttribute.</p>
+   */
   public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value);
 
+  /**
+   * <p>setInputPortAttribute.</p>
+   */
   public abstract <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value);
 
+  /**
+   * <p>getOperatorMeta.</p>
+   */
   public abstract OperatorMeta getOperatorMeta(String operatorId);
 
+  /**
+   * <p>getMeta.</p>
+   */
   public abstract OperatorMeta getMeta(Operator operator);
 
 }

@@ -28,5 +28,8 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RecordField
 {
+   /**
+    * <p>type.</p>
+    */
    public String type();
 }

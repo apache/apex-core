@@ -23,6 +23,9 @@ package com.datatorrent.api;
  */
 public interface IdleTimeHandler
 {
+  /**
+   * <p>handleIdleTime.</p>
+   */
   public void handleIdleTime();
 
 }

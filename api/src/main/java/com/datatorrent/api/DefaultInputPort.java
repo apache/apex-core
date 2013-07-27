@@ -31,6 +31,9 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   private int count;
   protected boolean connected = false;
 
+  /**
+   * <p>Constructor for DefaultInputPort.</p>
+   */
   public DefaultInputPort()
   {
   }
@@ -90,6 +93,9 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   {
   }
 
+  /**
+   * <p>process.</p>
+   */
   public abstract void process(T tuple);
 
 }

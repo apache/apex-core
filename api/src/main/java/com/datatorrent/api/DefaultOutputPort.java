@@ -30,6 +30,9 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 {
   private transient Sink<Object> sink;
 
+  /**
+   * <p>Constructor for DefaultOutputPort.</p>
+   */
   public DefaultOutputPort()
   {
     this.sink = Sink.BLACKHOLE;

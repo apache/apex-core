@@ -40,20 +40,32 @@ public class KryoJdkContainer<T> implements Serializable
   private static final long serialVersionUID = 201306031549L;
   private T t;
 
+  /**
+   * <p>Constructor for KryoJdkContainer.</p>
+   */
   public KryoJdkContainer()
   {
   }
 
+  /**
+   * <p>Constructor for KryoJdkContainer.</p>
+   */
   public KryoJdkContainer(T t)
   {
     this.t = t;
   }
 
+  /**
+   * <p>setComponent.</p>
+   */
   public void setComponent(T t)
   {
     this.t = t;
   }
 
+  /**
+   * <p>getComponent.</p>
+   */
   public T getComponent()
   {
     return t;

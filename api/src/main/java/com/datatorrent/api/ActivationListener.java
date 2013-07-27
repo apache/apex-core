@@ -25,8 +25,14 @@ package com.datatorrent.api;
  */
 public interface ActivationListener<CONTEXT extends Context>
 {
+  /**
+   * <p>activate.</p>
+   */
   public void activate(CONTEXT ctx);
 
+  /**
+   * <p>deactivate.</p>
+   */
   public void deactivate();
 
 }

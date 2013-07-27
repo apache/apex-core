@@ -27,10 +27,16 @@ public class BaseOperator implements Operator
 {
   private String name;
 
+  /**
+   * <p>Getter for the field <code>name</code>.</p>
+   */
   public String getName() {
     return name;
   }
 
+  /**
+   * <p>Setter for the field <code>name</code>.</p>
+   */
   public void setName(String name)
   {
     this.name = name;
