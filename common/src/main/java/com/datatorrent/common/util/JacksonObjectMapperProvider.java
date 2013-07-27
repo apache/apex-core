@@ -37,6 +37,9 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
 {
   private ObjectMapper objectMapper = new ObjectMapper();
 
+  /**
+   * <p>Constructor for JacksonObjectMapperProvider.</p>
+   */
   public JacksonObjectMapperProvider()
   {
     objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
