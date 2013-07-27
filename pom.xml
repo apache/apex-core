@@ -4,7 +4,7 @@
 
   <groupId>com.datatorrent</groupId>
   <artifactId>malhar-framework</artifactId>
-  <version>0.3.3</version>
+  <version>0.3.3.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>

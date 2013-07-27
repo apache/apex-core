@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>malhar-framework</artifactId>
-    <version>0.3.3</version>
+    <version>0.3.3.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>malhar-stram</artifactId>
