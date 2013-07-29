@@ -30,8 +30,10 @@ import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.common.util.Slice;
 
 /**
+ * <p>TupleRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2
  */
 public class TupleRecorder
 {

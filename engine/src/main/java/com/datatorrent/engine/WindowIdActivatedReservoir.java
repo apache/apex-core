@@ -15,8 +15,10 @@ import com.datatorrent.tuple.EndStreamTuple;
 import com.datatorrent.tuple.Tuple;
 
 /**
+ * <p>WindowIdActivatedReservoir class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class WindowIdActivatedReservoir implements SweepableReservoir
 {

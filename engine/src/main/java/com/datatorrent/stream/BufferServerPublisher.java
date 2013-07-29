@@ -28,6 +28,8 @@ import com.datatorrent.netlet.EventLoop;
  * This buffer server is a write instance of a stream and hence would take care of persistence and retaining tuples till they are consumed<br>
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
+ *
+ * @since 0.3.2
  */
 public class BufferServerPublisher extends Publisher implements ByteCounterStream
 {

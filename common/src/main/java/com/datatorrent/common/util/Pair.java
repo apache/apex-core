@@ -17,6 +17,11 @@ package com.datatorrent.common.util;
 
 import java.io.Serializable;
 
+/**
+ * <p>Pair class.</p>
+ *
+ * @since 0.3.2
+ */
 public class Pair<F, S> implements Serializable
 {
   private static final long serialVersionUID = 731157267102567944L;

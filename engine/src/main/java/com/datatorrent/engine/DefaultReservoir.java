@@ -9,8 +9,10 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.netlet.util.CircularBuffer;
 
 /**
+ * <p>DefaultReservoir class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class DefaultReservoir extends CircularBuffer<Object> implements SweepableReservoir
 {

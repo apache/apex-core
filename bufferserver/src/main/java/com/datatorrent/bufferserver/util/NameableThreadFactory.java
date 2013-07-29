@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 /**
  * Class copy-pasted from java.util.concurrent.Executors and modified to meet our needs.
+ *
+ * @since 0.3.2
  */
 public class NameableThreadFactory implements ThreadFactory
 {

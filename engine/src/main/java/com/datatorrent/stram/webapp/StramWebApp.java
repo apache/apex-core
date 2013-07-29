@@ -30,6 +30,7 @@ import com.sun.jersey.api.json.JSONJAXBContext;
  * This class does all the wiring and controls the context. The implementation is in StramWebServices class<br>
  * <br>
  *
+ * @since 0.3.2
  */
 public class StramWebApp extends WebApp {
 

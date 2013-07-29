@@ -18,6 +18,7 @@ import com.datatorrent.bufferserver.util.Codec;
  * <br>
  *
  * @author chetan
+ * @since 0.3.2
  */
 public class Tuple
 {

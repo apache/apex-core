@@ -22,6 +22,8 @@ import org.apache.hadoop.conf.Configuration;
 
 /**
  * Local mode execution for single application
+ *
+ * @since 0.3.2
  */
 public abstract class LocalMode {
 

@@ -8,8 +8,10 @@ import com.datatorrent.tuple.Tuple;
 import com.datatorrent.api.Sink;
 
 /**
+ * <p>SweepableReservoir interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public interface SweepableReservoir extends Reservoir
 {

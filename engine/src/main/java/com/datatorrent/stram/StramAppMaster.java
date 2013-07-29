@@ -84,6 +84,7 @@ import com.datatorrent.stram.webapp.StramWebApp;
  * Currently stram high availability (integration with zookeeper) is not available<br>
  * <br>
  *
+ * @since 0.3.2
  */
 public class StramAppMaster //extends License for licensing using native
 {

@@ -24,6 +24,7 @@ import com.datatorrent.api.Operator.Unifier;
  * also define how output from replicated operators is merged.
  *
  * @param <T> - Type of the object emitted by this port.
+ * @since 0.3.2
  */
 public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 {

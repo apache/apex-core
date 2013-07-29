@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
  * Resource Mgr Client Helper<br>
  * <br>
  *
+ * @since 0.3.2
  */
 public class StramClientUtils
 {

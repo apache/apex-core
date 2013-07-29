@@ -25,6 +25,7 @@ import com.datatorrent.netlet.EventLoop;
  * <br>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class StreamContext extends DefaultAttributeMap implements Context
 {

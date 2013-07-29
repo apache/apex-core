@@ -31,6 +31,8 @@ import org.apache.hadoop.conf.Configuration;
  * override property values in the DAG. It is therefore possible to have
  * defaults in the DAG code and supply environment/launch context specific
  * settings through the configuration.
+ *
+ * @since 0.3.2
  */
 public interface StreamingApplication {
     /** Constant <code>LAUNCHMODE_YARN="yarn"</code> */

@@ -7,6 +7,11 @@ import java.io.ObjectOutput;
 
 import org.apache.hadoop.conf.Configuration;
 
+/**
+ * <p>ExternalizableConf class.</p>
+ *
+ * @since 0.3.2
+ */
 public class ExternalizableConf implements Externalizable
 {
   private final Configuration conf;

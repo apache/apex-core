@@ -24,6 +24,8 @@ import com.datatorrent.api.Operator.OutputPort;
  * Modification of the query plan on running application. Will first apply
  * logical plan changes on a copy of the logical plan and then apply changes to
  * the original and physical plan after validation passes.
+ *
+ * @since 0.3.2
  */
 public class PlanModifier {
 

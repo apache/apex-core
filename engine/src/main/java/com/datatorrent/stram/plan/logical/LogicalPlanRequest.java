@@ -7,8 +7,10 @@ package com.datatorrent.stram.plan.logical;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 
 /**
+ * <p>Abstract LogicalPlanRequest class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.2
  */
 public abstract class LogicalPlanRequest
 {

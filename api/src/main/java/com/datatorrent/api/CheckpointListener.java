@@ -20,6 +20,7 @@ package com.datatorrent.api;
  * soon as the operator state is checkpointed or committed.
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public interface CheckpointListener
 {

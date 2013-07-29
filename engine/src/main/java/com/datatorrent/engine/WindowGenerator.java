@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
  * of WindowGenerator per hadoop container. All input adapters within a container share it. If a container has
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
+ *
+ * @since 0.3.2
  */
 public class WindowGenerator extends MuxReservoir implements Stream, Runnable
 {

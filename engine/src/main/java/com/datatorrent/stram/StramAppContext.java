@@ -17,6 +17,7 @@ import com.datatorrent.stram.webapp.AppInfo;
  * Context interface for sharing information across components in YARN App<p>
  * <br>
  *
+ * @since 0.3.2
  */
 @InterfaceAudience.Private
 public interface StramAppContext {

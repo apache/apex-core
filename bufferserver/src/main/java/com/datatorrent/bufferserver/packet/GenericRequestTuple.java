@@ -12,8 +12,10 @@ import com.datatorrent.bufferserver.util.Codec;
 import java.util.Arrays;
 
 /**
+ * <p>GenericRequestTuple class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class GenericRequestTuple extends RequestTuple
 {

@@ -10,7 +10,9 @@ import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  * Need to tie this in with some type of annotation for processing a secure workload
+ *
  * @author Pramod Immaneni <pramod@datatorrent.com>
+ * @since 0.3.2
  */
 public class SecureExecutor
 {

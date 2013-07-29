@@ -79,6 +79,7 @@ import com.datatorrent.common.util.Pair;
  * Operator recovery and restart<br>
  * <br>
  *
+ * @since 0.3.2
  */
 public class StreamingContainerManager extends BaseContext implements PlanContext
 {

@@ -59,6 +59,8 @@ import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
  * <p>
  * The DAG will be serialized and deployed to the cluster, where it is translated
  * into the physical plan.
+ *
+ * @since 0.3.2
  */
 public class LogicalPlan implements Serializable, DAG
 {

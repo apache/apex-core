@@ -49,6 +49,8 @@ import org.codehaus.jettison.json.JSONException;
 /**
  *
  * Provides command line interface for a streaming application on hadoop (yarn)<p>
+ *
+ * @since 0.3.2
  */
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class StramCli

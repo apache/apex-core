@@ -9,8 +9,10 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 
 /**
+ * <p>PortContext class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class PortContext extends BaseContext implements Context.PortContext
 {

@@ -40,8 +40,8 @@ import org.apache.commons.beanutils.BeanMap;
  * Supports reading as name-value pairs from Hadoop {@link Configuration} or properties file.
  * <br>
  *
+ * @since 0.3.2
  */
-
 public class DAGPropertiesBuilder implements StreamingApplication {
 
   private static final Logger LOG = LoggerFactory.getLogger(DAGPropertiesBuilder.class);

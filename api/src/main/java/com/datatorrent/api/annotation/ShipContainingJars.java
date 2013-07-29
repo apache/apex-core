@@ -26,6 +26,7 @@ import java.lang.annotation.RetentionPolicy;
  * configured in the DAG.<br>
  * <br>
  *
+ * @since 0.3.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ShipContainingJars {

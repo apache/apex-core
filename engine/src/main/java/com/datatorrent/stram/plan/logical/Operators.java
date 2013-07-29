@@ -15,6 +15,8 @@ import com.datatorrent.api.Operator.OutputPort;
 
 /**
  * Utilities for dealing with {@link Operator} instances.
+ *
+ * @since 0.3.2
  */
 public abstract class Operators
 {

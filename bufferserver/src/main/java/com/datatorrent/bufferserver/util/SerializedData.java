@@ -9,6 +9,8 @@ package com.datatorrent.bufferserver.util;
  *
  *
  * <b>Note:</b> Multibyte accessors all use big-endian order.
+ *
+ * @since 0.3.2
  */
 public final class SerializedData
 {

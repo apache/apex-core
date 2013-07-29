@@ -8,8 +8,10 @@ import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.bufferserver.util.SerializedData;
 
 /**
+ * <p>FastDataListIterator class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class FastDataListIterator extends DataListIterator
 {

@@ -56,6 +56,7 @@ import com.datatorrent.stream.*;
  * The main() for streaming container processes launched by {@link com.datatorrent.stram.StramAppMaster}.<p>
  * <br>
  *
+ * @since 0.3.2
  */
 public class StramChild
 {

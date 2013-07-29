@@ -21,6 +21,11 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * <p>OperatorPartitions class.</p>
+ *
+ * @since 0.3.2
+ */
 public class OperatorPartitions {
 
   final LogicalPlan.OperatorMeta operatorWrapper;

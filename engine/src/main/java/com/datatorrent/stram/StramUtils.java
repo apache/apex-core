@@ -11,6 +11,8 @@ import com.datatorrent.api.StreamCodec;
  *
  * Utilities for shared use in Stram components<p>
  * <br>
+ *
+ * @since 0.3.2
  */
 public abstract class StramUtils
 {

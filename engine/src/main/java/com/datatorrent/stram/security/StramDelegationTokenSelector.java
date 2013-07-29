@@ -13,8 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>StramDelegationTokenSelector class.</p>
  *
  * @author Pramod Immaneni <pramod@datatorrent.com>
+ * @since 0.3.2
  */
 public class StramDelegationTokenSelector implements TokenSelector<StramDelegationTokenIdentifier>
 {

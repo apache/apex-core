@@ -35,6 +35,7 @@ import com.datatorrent.api.Operator.InputPort;
  * <br>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class GenericNode extends Node<Operator>
 {

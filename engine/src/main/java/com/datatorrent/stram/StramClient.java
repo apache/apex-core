@@ -51,6 +51,8 @@ import org.slf4j.LoggerFactory;
  *
  * Submits application to YARN<p>
  * <br>
+ *
+ * @since 0.3.2
  */
 @InterfaceAudience.Public
 @InterfaceStability.Unstable

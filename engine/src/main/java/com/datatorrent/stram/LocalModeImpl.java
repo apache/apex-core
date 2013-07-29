@@ -11,6 +11,11 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode;
 
+/**
+ * <p>LocalModeImpl class.</p>
+ *
+ * @since 0.3.2
+ */
 public class LocalModeImpl extends LocalMode {
   private static final Logger LOG = LoggerFactory.getLogger(LocalModeImpl.class);
 

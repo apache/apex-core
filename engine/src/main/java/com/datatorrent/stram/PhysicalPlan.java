@@ -67,6 +67,8 @@ import java.io.OutputStream;
  * and execution will block until all containers were allocated by the resource
  * manager. Future enhancements will allow to define resource constraints at the
  * operator level and elasticity in resource allocation.<br>
+ *
+ * @since 0.3.2
  */
 public class PhysicalPlan {
 

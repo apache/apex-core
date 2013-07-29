@@ -5,8 +5,10 @@
 package com.datatorrent.bufferserver.packet;
 
 /**
+ * <p>EndStreamTuple class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class EndStreamTuple extends WindowIdTuple
 {

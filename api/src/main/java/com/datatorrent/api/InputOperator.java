@@ -23,6 +23,7 @@ package com.datatorrent.api;
  * of ports contradicts with the purpose of the interface.
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public interface InputOperator extends Operator
 {

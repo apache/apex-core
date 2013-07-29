@@ -10,8 +10,10 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
+ * <p>SubscribeRequestTuple class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class SubscribeRequestTuple extends RequestTuple
 {

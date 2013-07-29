@@ -7,8 +7,10 @@ package com.datatorrent.tuple;
 import com.datatorrent.bufferserver.packet.MessageType;
 
 /**
+ * <p>CodecStateTuple class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class CodecStateTuple extends Tuple
 {

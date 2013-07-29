@@ -41,6 +41,8 @@ import org.slf4j.LoggerFactory;
  *
  * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming operators<p>
  * <br>
+ *
+ * @since 0.3.2
  */
 public class LaunchContainerRunnable implements Runnable
 {
@@ -108,10 +110,10 @@ public class LaunchContainerRunnable implements Runnable
     }
   }
 
-  @Override
   /**
    * Connects to CM, sets up container launch context for shell command and eventually dispatches the container start request to the CM.
    */
+  @Override
   public void run()
   {
     // Connect to ContainerManager

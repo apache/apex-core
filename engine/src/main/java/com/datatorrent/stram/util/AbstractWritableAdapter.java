@@ -13,6 +13,8 @@ import org.apache.hadoop.io.Writable;
 
 /**
  * Adapter for Hadoop RPC to implement Writable using Java serialization.
+ *
+ * @since 0.3.2
  */
 public abstract class AbstractWritableAdapter implements Writable, Serializable
 {

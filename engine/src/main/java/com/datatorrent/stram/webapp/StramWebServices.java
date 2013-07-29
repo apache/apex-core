@@ -53,6 +53,7 @@ import com.datatorrent.api.Operator;
  * in the stram<br>
  * <br>
  *
+ * @since 0.3.2
  */
 @Path(StramWebServices.PATH)
 public class StramWebServices

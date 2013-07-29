@@ -40,9 +40,11 @@ import com.datatorrent.api.Operator.Unifier;
 import java.io.*;
 
 /**
+ * <p>Abstract Node class.</p>
  *
  * @param <OPERATOR>
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public abstract class Node<OPERATOR extends Operator> implements Component<OperatorContext>, Runnable
 {

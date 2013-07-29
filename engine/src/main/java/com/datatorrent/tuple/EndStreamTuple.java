@@ -15,6 +15,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
  * <br>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.2
  */
 public class EndStreamTuple extends Tuple
 {

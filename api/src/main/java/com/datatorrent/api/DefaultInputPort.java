@@ -24,6 +24,7 @@ import com.datatorrent.api.Operator.InputPort;
  * This class is designed for use with a transient field, i.e. not to be serialized with the operator state.
  *
  * @param <T>
+ * @since 0.3.2
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {

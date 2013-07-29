@@ -14,6 +14,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * This class finds the build version info from the jar file.
+ *
+ * @since 0.3.2
  */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
@@ -66,7 +68,7 @@ public class VersionInfo {
   /**
    * Get the version.
    *
-   * @return the version string, e.g. "0.3.3-SNAPSHOT"
+   * @return the version string, e.g. "0.3.4-SNAPSHOT"
    */
   public static String getVersion() {
     return version;
