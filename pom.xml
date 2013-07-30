@@ -6,12 +6,12 @@
     <artifactId>malhar-framework</artifactId>
     <!--relativePath></relativePath-->
     <!--version>0.3.2</version-->
-    <version>0.3.3-SNAPSHOT</version>
+    <version>0.3.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>malhar-all</artifactId>
   <packaging>pom</packaging>
-  <version>0.3.3-SNAPSHOT</version>
+  <version>0.3.4-SNAPSHOT</version>
   <name>Malhar Open Source</name>
 
   <modules>
