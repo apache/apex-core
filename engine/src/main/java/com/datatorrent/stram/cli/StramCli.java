@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.JSONException;
 
 /**
@@ -164,13 +165,31 @@ public class StramCli
 
   }
 
-  private static String expandFileName(String fileName)
+  private static String expandFileName(String fileName, boolean expandWildCard)
   {
     // TODO: need to work with other users
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
-    return fileName;
+
+    if (expandWildCard) {
+      DirectoryScanner scanner = new DirectoryScanner();
+      scanner.setIncludes(new String[] {fileName});
+      scanner.setBasedir(".");
+      scanner.scan();
+      String[] files = scanner.getIncludedFiles();
+
+      if (files.length == 0) {
+        throw new CliException(fileName + " does not match any file");
+      }
+      else if (files.length > 1) {
+        throw new CliException(fileName + " matches more than one file");
+      }
+      return files[0];
+    }
+    else {
+      return fileName;
+    }
   }
 
   protected ApplicationReport getApplication(String appId)
@@ -194,7 +213,7 @@ public class StramCli
     return null;
   }
 
-  private class CliException extends RuntimeException
+  private static class CliException extends RuntimeException
   {
     private static final long serialVersionUID = 1L;
 
@@ -250,7 +269,7 @@ public class StramCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
-    fileName = expandFileName(fileName);
+    fileName = expandFileName(fileName, true);
     BufferedReader br = new BufferedReader(new FileReader(fileName));
     String line;
     while ((line = br.readLine()) != null) {
@@ -721,7 +740,7 @@ public class StramCli
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
-      String fileName = expandFileName(args[1]);
+      String fileName = expandFileName(args[1], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf);
       submitApp.loadDependencies();
@@ -1400,7 +1419,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       if (args.length > 2) {
-        String jarfile = expandFileName(args[1]);
+        String jarfile = expandFileName(args[1], true);
         String appName = args[2];
         File jf = new File(jarfile);
         StramAppLauncher submitApp = new StramAppLauncher(jf);
@@ -1446,7 +1465,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String outfilename = expandFileName(args[1]);
+      String outfilename = expandFileName(args[1], false);
 
       if (args.length > 3) {
         String jarfile = args[2];
