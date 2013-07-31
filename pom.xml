@@ -9,7 +9,7 @@
 
   <artifactId>malhar-all</artifactId>
   <packaging>pom</packaging>
-  <version>0.3.4-SNAPSHOT</version>
+  <version>0.3.3</version>
   <name>Malhar Open Source</name>
 
   <modules>
