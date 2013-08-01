@@ -12,6 +12,15 @@
   <version>0.3.3</version>
   <name>Malhar Open Source</name>
 
+  <!-- repository to provide the DataTorrent artifacts -->
+  <repositories>
+    <repository>
+      <id>datatorrent</id>
+      <name>DataTorrent Release Repository</name>
+      <url>https://www.datatorrent.com/maven/content/repositories/releases/</url>
+    </repository>
+  </repositories>
+
   <properties>
 	<malhar.framework.version>0.3.3</malhar.framework.version>
   </properties>
