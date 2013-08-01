@@ -12,6 +12,10 @@
   <version>0.3.3</version>
   <name>Malhar Open Source</name>
 
+  <properties>
+	<malhar.framework.version>0.3.3</malhar.framework.version>
+  </properties>
+
   <modules>
     <module>library</module>
     <module>contrib</module>
