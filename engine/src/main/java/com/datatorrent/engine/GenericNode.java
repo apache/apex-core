@@ -14,7 +14,9 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.debug.TappedReservoir;
 import com.datatorrent.engine.OperatorStats.PortStats;
 import com.datatorrent.tuple.ResetWindowTuple;
@@ -210,6 +212,48 @@ public class GenericNode extends Node<Operator>
                 }
                 else {
                   buffers.remove();
+
+                  /* find the name of the port which got out of sequence tuple */
+                  String port = null;
+                  for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
+                    if (e.getValue() == activePort) {
+                      port = e.getKey();
+                    }
+                  }
+
+                  assert (port != null); /* we should always find the port */
+
+                  if (context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_MOST_ONCE) == ProcessingMode.AT_MOST_ONCE) {
+                    if (t.getWindowId() < currentWindowId) {
+                      /*
+                       * we need to fast forward this stream till we find the current
+                       * window or the window which is bigger than the current window.
+                       */
+
+                      /* lets move the current reservoir in the background */
+                      Sink<Object> sink = activePort.setSink(Sink.BLACKHOLE);
+                      deferredInputConnections.add(0, new DeferredInputConnection(port, activePort));
+
+                      /* replace it with the reservoir which blocks the tuples in the past */
+                      WindowIdActivatedReservoir wiar = new WindowIdActivatedReservoir(port, activePort, currentWindowId);
+                      wiar.setSink(sink);
+                      inputs.put(port, wiar);
+                      activeQueues.add(wiar);
+                      break activequeue;
+                    }
+                    else {
+                      expectingBeginWindow--;
+                      if (++receivedEndWindow == totalQueues) {
+                        processEndWindow(activeQueues, null);
+                        expectingBeginWindow = activeQueues.size();
+                        break activequeue;
+                      }
+                    }
+                  }
+                  else {
+                    logger.error("Catastrophic Error: Out of sequence tuple {} on port {} while expecting {}", new Object[] {Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId)});
+                    System.exit(2);
+                  }
                 }
                 break;
 
@@ -445,8 +489,8 @@ public class GenericNode extends Node<Operator>
 //            }
 //          }
 //          else {
-            logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
-            System.exit(2);
+          logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
+          System.exit(2);
 //          }
         }
         else {
