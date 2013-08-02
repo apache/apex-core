@@ -562,8 +562,16 @@ public class StramCli
       shortId = Integer.parseInt(containerId);
     }
     try {
-      JSONArray containers = json.getJSONArray("containers");
-      if (containers != null) {
+      Object containersObj = json.get("containers");
+      JSONArray containers;
+      if (containersObj instanceof JSONArray) {
+        containers = (JSONArray)containersObj;
+      }
+      else {
+        containers = new JSONArray();
+        containers.put(containersObj);
+      }
+      if (containersObj != null) {
         for (int o = containers.length(); o-- > 0;) {
           JSONObject container = containers.getJSONObject(o);
           String id = container.getString("id");
@@ -1009,8 +1017,16 @@ public class StramCli
         System.out.println(json.toString(2));
       }
       else {
-        JSONArray containers = json.getJSONArray("containers");
-        if (containers == null) {
+        Object containersObj = json.get("containers");
+        JSONArray containers;
+        if (containersObj instanceof JSONArray) {
+          containers = (JSONArray)containersObj;
+        }
+        else {
+          containers = new JSONArray();
+          containers.put(containersObj);
+        }
+        if (containersObj == null) {
           System.out.println("No containers found!");
         }
         else {
@@ -1045,7 +1061,15 @@ public class StramCli
         String singleKey = "" + json.keys().next();
         JSONArray matches = new JSONArray();
         // filter operators
-        JSONArray arr = json.getJSONArray(singleKey);
+        JSONArray arr;
+        Object obj = json.get(singleKey);
+        if (obj instanceof JSONArray) {
+          arr = (JSONArray)obj;
+        }
+        else {
+          arr = new JSONArray();
+          arr.put(obj);
+        }
         for (int i = 0; i < arr.length(); i++) {
           JSONObject oper = arr.getJSONObject(i);
           @SuppressWarnings("unchecked")
