@@ -60,7 +60,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
-  private int id;
+  protected int id;
   protected final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile Sink<Object>[] sinks = Sink.NO_SINKS;
