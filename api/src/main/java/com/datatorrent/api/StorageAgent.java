@@ -22,7 +22,6 @@ import java.io.OutputStream;
 /**
  * Interface to define writing/reading checkpoint state
  *
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface StorageAgent

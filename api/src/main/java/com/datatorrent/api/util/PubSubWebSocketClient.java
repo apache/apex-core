@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
  *
- * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
 public abstract class PubSubWebSocketClient

@@ -22,7 +22,6 @@ import java.lang.reflect.Array;
  * Implemented by concrete data ports for their processing behavior or by streams.
  *
  * @param <T>
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface Sink<T>

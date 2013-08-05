@@ -20,7 +20,6 @@ package com.datatorrent.api;
  * they are activated or before they are deactivated.
  *
  * @param <CONTEXT> Context for the current run during which the operator is getting de/activated.
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface ActivationListener<CONTEXT extends Context>

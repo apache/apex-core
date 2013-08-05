@@ -35,7 +35,6 @@ import com.datatorrent.common.util.Slice;
  * operator.
  *
  * @param <T> data type of the tuples on the stream
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface StreamCodec<T>

@@ -21,7 +21,6 @@ import com.datatorrent.api.Context.PortContext;
 /**
  * <p>Operator interface.</p>
  *
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface Operator extends Component<OperatorContext>
@@ -41,7 +40,6 @@ public interface Operator extends Component<OperatorContext>
    * EXACTLY_ONCE is not implemented yet. In this mode, it will be guaranteed that once a streaming window is processed
    * completely, none of the tuples in that window will be processed again.
    *
-   * @author Chetan Narsude <chetan@datatorrent.com>
    */
   public enum ProcessingMode
   {

@@ -20,7 +20,6 @@ import java.lang.annotation.*;
 /**
  * <p>RecordField class.</p>
  *
- * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
 @Documented

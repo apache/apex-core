@@ -23,7 +23,6 @@ package com.datatorrent.api;
  *
  * @param <COMPONENT>
  * @param <COMPLEMENT>
- * @author Chetan Narsude <chetan@datatorrent.com>
 <<<<<<< HEAD
 =======
  * @since 0.3.2

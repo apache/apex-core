@@ -21,7 +21,6 @@ package com.datatorrent.api;
  * entities in the system.
  *
  * @param <T1> Context used for the current run of the component.
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface Component<T1 extends Context>

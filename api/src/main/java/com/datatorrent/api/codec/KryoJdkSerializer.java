@@ -49,7 +49,6 @@ import com.esotericsoftware.kryo.io.Output;
  * serializable, when using JDK serialization.
  *
  * @param <T> type of serialized object
- * @author Pramod Immaneni <pramod@datatorrent.com>
  * @since 0.3.2
  */
 @ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class})

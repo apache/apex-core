@@ -31,7 +31,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
  * <br>
  *
  * @param <T> - Type of the object which you would like to serialize using KryoJdkSerializer.
- * @author Pramod Immaneni <pramod@datatorrent.com>
  * @since 0.3.2
  */
 @DefaultSerializer(KryoJdkSerializer.class)

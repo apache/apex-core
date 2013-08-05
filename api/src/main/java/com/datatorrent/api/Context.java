@@ -20,7 +20,6 @@ package com.datatorrent.api;
  * The base interface for context for all of the streaming platform objects<p>
  * <br>
  *
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface Context

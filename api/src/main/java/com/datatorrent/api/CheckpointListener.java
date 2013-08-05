@@ -19,7 +19,6 @@ package com.datatorrent.api;
  * Operators must implement this interface if they are interested in being notified as
  * soon as the operator state is checkpointed or committed.
  *
- * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public interface CheckpointListener
