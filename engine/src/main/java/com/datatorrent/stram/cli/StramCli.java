@@ -171,11 +171,10 @@ public class StramCli
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
-
+    fileName = new File(fileName).getAbsolutePath();
     if (expandWildCard) {
       DirectoryScanner scanner = new DirectoryScanner();
       scanner.setIncludes(new String[] {fileName});
-      scanner.setBasedir(".");
       scanner.scan();
       String[] files = scanner.getIncludedFiles();
 
