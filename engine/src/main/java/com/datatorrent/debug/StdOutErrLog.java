@@ -34,7 +34,7 @@ public class StdOutErrLog
         rfa.activateOptions();
       }
     }
-    else {
+    else if (appender != null) {
       logger.warn("found appender {} instead of RollingFileAppender", appender);
     }
 
