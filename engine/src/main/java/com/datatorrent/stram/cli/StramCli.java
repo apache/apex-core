@@ -832,23 +832,44 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      ApplicationReport[] apps;
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_SHUTDOWN);
-      try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
-          }
-
-        });
-        System.out.println("shutdown requested: " + response);
-        currentApp = null;
+      if (args.length == 1) {
+        if (currentApp == null) {
+          throw new CliException("No application selected");
+        }
+        else {
+          apps = new ApplicationReport[] {currentApp};
+        }
       }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+      else {
+        apps = new ApplicationReport[args.length - 1];
+        for (int i = 1; i < args.length; i++) {
+          apps[i - 1] = getApplication(args[i]);
+          if (apps[i - 1] == null) {
+            throw new CliException("App " + args[i] + " not found!");
+          }
+        }
+      }
+
+      for (ApplicationReport app : apps) {
+        WebResource r = getPostResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
+        try {
+          JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+          {
+            @Override
+            public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+            {
+              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
+            }
+
+          });
+          System.out.println("shutdown requested: " + response);
+          currentApp = null;
+        }
+        catch (Exception e) {
+          throw new CliException("Failed to request " + r.getURI(), e);
+        }
       }
     }
 
