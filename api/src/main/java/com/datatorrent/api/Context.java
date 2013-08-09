@@ -57,7 +57,7 @@ public interface Context
     /**
      * Number of tuples the poll buffer can cache without blocking the input stream to the port.
      */
-    public static final AttributeKey<Integer> QUEUE_CAPACITY = new AttributeKey<Integer>("queueCapaciy");
+    public static final AttributeKey<Integer> QUEUE_CAPACITY = new AttributeKey<Integer>("queueCapacity");
     /**
      * Poll period in milliseconds when the port buffer reaches its limits.
      */
