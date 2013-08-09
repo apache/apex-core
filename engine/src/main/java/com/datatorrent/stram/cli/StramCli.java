@@ -902,6 +902,7 @@ public class StramCli
               Object value = jsonObj.get(iterator.next());
               if (value.toString().matches("(?i).*" + args[1] + ".*")) {
                 jsonArray.put(jsonObj);
+                break;
               }
             }
           }
