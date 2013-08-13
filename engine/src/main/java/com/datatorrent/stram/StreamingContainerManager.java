@@ -91,7 +91,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
   private HdfsStatsRecorder statsRecorder;
-  private HdfsEventRecorder eventRecorder;
+  private final HdfsEventRecorder eventRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
@@ -201,7 +201,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
       else if (c.containerId != null) {
         StramChildAgent cs = containers.get(c.containerId);
-        if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
+        if (cs != null && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
           // TODO: handle containers hung in deploy requests
           if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork() && !isApplicationIdle()) {
             // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
@@ -389,14 +389,9 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     deploy(Collections.<PTContainer>emptySet(), checkpoints, Sets.newHashSet(cs.container), checkpoints);
   }
 
-  public void markComplete(String containerId)
+  public void removeContainerAgent(String containerId)
   {
-    StramChildAgent cs = containers.get(containerId);
-    if (cs == null) {
-      LOG.warn("Completion status for unknown container {}", containerId);
-      return;
-    }
-    cs.isComplete = true;
+    containers.remove(containerId);
   }
 
   public static class ContainerResource
@@ -998,11 +993,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       if (sca != null) {
         LOG.debug("Container marked for shutdown: {}", c);
         // TODO: set deactivated state and monitor soft shutdown
+        //sca.container.setState(PTContainer.State.KILLED);
         sca.shutdownRequested = true;
       }
     }
   }
 
+  @Override
   public void recordEventAsync(EventRecorder.Event ev) {
     eventRecorder.recordEventAsync(ev);
   }
