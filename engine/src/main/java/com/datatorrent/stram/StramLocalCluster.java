@@ -249,6 +249,7 @@ public class StramLocalCluster implements Runnable, Controller
       }
       finally {
         childContainers.remove(containerId);
+        dnmgr.removeContainerAgent(containerId);
         logger.info("Container {} terminating.", containerId);
       }
     }
@@ -387,6 +388,7 @@ public class StramLocalCluster implements Runnable, Controller
     run(0);
   }
 
+  @Override
   @SuppressWarnings({"SleepWhileInLoop", "ResultOfObjectAllocationIgnored"})
   public void run(long runMillis)
   {
