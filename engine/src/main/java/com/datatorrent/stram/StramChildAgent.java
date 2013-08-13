@@ -18,7 +18,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
 import com.datatorrent.engine.Node;
 import com.datatorrent.engine.OperatorContext;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
@@ -186,7 +185,6 @@ public class StramChildAgent {
   }
 
   boolean shutdownRequested = false;
-  boolean isComplete = false;
   long lastHeartbeatMillis = 0;
   //long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();

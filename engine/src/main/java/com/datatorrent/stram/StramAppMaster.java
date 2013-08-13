@@ -141,7 +141,7 @@ public class StramAppMaster //extends License for licensing using native
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
   //private AbstractDelegationTokenSecretManager<? extends TokenIdentifier> delegationTokenManager;
-  private StramDelegationTokenManager delegationTokenManager;
+  private final StramDelegationTokenManager delegationTokenManager;
 
   /**
    * Overrides getters to pull live info.
@@ -695,7 +695,6 @@ public class StramAppMaster //extends License for licensing using native
         else {
           // container completed successfully
           numCompletedContainers.incrementAndGet();
-          dnmgr.markComplete(containerStatus.getContainerId().toString());
           LOG.info("Container completed successfully."
                   + ", containerId=" + containerStatus.getContainerId());
         }
@@ -714,6 +713,9 @@ public class StramAppMaster //extends License for licensing using native
         ev.addData("containerId", containerStatus.getContainerId().toString());
         ev.addData("exitStatus", containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
+
+        dnmgr.removeContainerAgent(containerAgent.container.containerId);
+
       }
 
       if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0) {
