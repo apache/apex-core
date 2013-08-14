@@ -177,6 +177,16 @@ public class StramAppMaster //extends License for licensing using native
       return num;
     }
 
+    @Override
+    public AppInfo.CriticalPathInfo getCriticalPathInfo()
+    {
+      AppInfo.CriticalPathInfo cpi = new AppInfo.CriticalPathInfo();
+      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      cpi.latency = criticalPathInfo.latency;
+      cpi.path = criticalPathInfo.path;
+      return cpi;
+    }
+
   }
 
   private class ClusterAppContextImpl implements StramAppContext

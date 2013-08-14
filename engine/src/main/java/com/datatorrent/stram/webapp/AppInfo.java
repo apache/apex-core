@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.util.VersionInfo;
+import java.util.List;
 
 /**
  *
@@ -79,6 +80,19 @@ public class AppInfo {
     public int getNumOperators() {
       return 0;
     }
+
+    @javax.xml.bind.annotation.XmlElement
+    public CriticalPathInfo getCriticalPathInfo() {
+      return null;
+    }
+
+  }
+
+  @XmlRootElement
+  @XmlAccessorType(XmlAccessType.FIELD)
+  public static class CriticalPathInfo {
+    public long latency;
+    public List<Integer> path;
   }
 
   /**

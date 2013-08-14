@@ -565,7 +565,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     OperatorMeta decl = new OperatorMeta(name, operator);
-    rootOperators.add(decl);
+    rootOperators.add(decl); // will be removed when a sink is added to an input port for this operator
     operators.put(name, decl);
     return operator;
   }
@@ -651,28 +651,28 @@ public class LogicalPlan implements Serializable, DAG
     this.getMeta(operator).attributes.attr(key).set(value);
   }
 
-  private OutputPortMeta assertGetPortMeta(Operator.OutputPort<?> port) 
+  private OutputPortMeta assertGetPortMeta(Operator.OutputPort<?> port)
   {
     for (OperatorMeta o: getAllOperators()) {
       OutputPortMeta opm = o.getPortMapping().outPortMap.get(port);
       if (opm != null) {
-        return opm; 
+        return opm;
       }
     }
     throw new IllegalArgumentException("Port is not associated to any operator in the DAG: " + port);
   }
-  
-  private InputPortMeta assertGetPortMeta(Operator.InputPort<?> port) 
+
+  private InputPortMeta assertGetPortMeta(Operator.InputPort<?> port)
   {
     for (OperatorMeta o: getAllOperators()) {
       InputPortMeta opm = o.getPortMapping().inPortMap.get(port);
       if (opm != null) {
-        return opm; 
+        return opm;
       }
     }
     throw new IllegalArgumentException("Port is not associated to any operator in the DAG: " + port);
   }
-  
+
   @Override
   public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
