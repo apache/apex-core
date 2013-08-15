@@ -566,7 +566,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     OperatorMeta decl = new OperatorMeta(name, operator);
-    rootOperators.add(decl);
+    rootOperators.add(decl); // will be removed when a sink is added to an input port for this operator
     operators.put(name, decl);
     return operator;
   }
