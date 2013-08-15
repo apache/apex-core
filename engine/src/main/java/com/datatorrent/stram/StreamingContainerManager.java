@@ -278,11 +278,10 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
                 calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited, leafOperators);
               }
             }
-            synchronized (this) {
-              LOG.debug("calculating critical path...");
-              criticalPathInfo = new CriticalPathInfo();
-              criticalPathInfo.latency = findCriticalPath(endWindowStatsMap, leafOperators, criticalPathInfo.path);
-            }
+            CriticalPathInfo cpi = new CriticalPathInfo();
+            LOG.debug("Finding critical path...");
+            cpi.latency = findCriticalPath(endWindowStatsMap, leafOperators, cpi.path);
+            criticalPathInfo = cpi;
             endWindowStatsOperatorMap.remove(windowId);
           }
         }
@@ -1394,8 +1393,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   public CriticalPathInfo getCriticalPathInfo()
   {
-    synchronized (this) {
-      return criticalPathInfo;
-    }
+    return criticalPathInfo;
   }
 }
