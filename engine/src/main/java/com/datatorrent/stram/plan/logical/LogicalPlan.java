@@ -48,6 +48,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.google.common.collect.Sets;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -651,28 +652,28 @@ public class LogicalPlan implements Serializable, DAG
     this.getMeta(operator).attributes.attr(key).set(value);
   }
 
-  private OutputPortMeta assertGetPortMeta(Operator.OutputPort<?> port) 
+  private OutputPortMeta assertGetPortMeta(Operator.OutputPort<?> port)
   {
     for (OperatorMeta o: getAllOperators()) {
       OutputPortMeta opm = o.getPortMapping().outPortMap.get(port);
       if (opm != null) {
-        return opm; 
+        return opm;
       }
     }
     throw new IllegalArgumentException("Port is not associated to any operator in the DAG: " + port);
   }
-  
-  private InputPortMeta assertGetPortMeta(Operator.InputPort<?> port) 
+
+  private InputPortMeta assertGetPortMeta(Operator.InputPort<?> port)
   {
     for (OperatorMeta o: getAllOperators()) {
       InputPortMeta opm = o.getPortMapping().inPortMap.get(port);
       if (opm != null) {
-        return opm; 
+        return opm;
       }
     }
     throw new IllegalArgumentException("Port is not associated to any operator in the DAG: " + port);
   }
-  
+
   @Override
   public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
@@ -761,7 +762,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   /**
-   * Validate the topology. Includes checks that required ports are connected,
+   * Validate the plan. Includes checks that required ports are connected,
    * required configuration parameters specified, graph free of cycles etc.
    *
    * @throws ConstraintViolationException
@@ -829,60 +830,97 @@ public class LogicalPlan implements Serializable, DAG
         throw new ValidationException(String.format("stream not connected: %s", s.getId()));
       }
     }
+
+    // processing mode
+    Set<OperatorMeta> visited = Sets.newHashSet();
+    for (OperatorMeta om : this.rootOperators) {
+      validateProcessingMode(om, visited);
+    }
+
   }
 
   /**
    * Check for cycles in the graph reachable from start node n. This is done by
-   * attempting to find a strongly connected components.
+   * attempting to find strongly connected components.
    *
    * @see http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm
    *
-   * @param n
+   * @param om
    * @param cycles
    */
-  public void findStronglyConnected(OperatorMeta n, List<List<String>> cycles)
+  public void findStronglyConnected(OperatorMeta om, List<List<String>> cycles)
   {
-    n.nindex = nodeIndex;
-    n.lowlink = nodeIndex;
+    om.nindex = nodeIndex;
+    om.lowlink = nodeIndex;
     nodeIndex++;
-    stack.push(n);
+    stack.push(om);
 
     // depth first successors traversal
-    for (StreamMeta downStream: n.outputStreams.values()) {
+    for (StreamMeta downStream: om.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
         OperatorMeta successor = sink.getOperatorWrapper();
         if (successor == null) {
           continue;
         }
         // check for self referencing node
-        if (n == successor) {
-          cycles.add(Collections.singletonList(n.name));
+        if (om == successor) {
+          cycles.add(Collections.singletonList(om.name));
         }
         if (successor.nindex == null) {
           // not visited yet
           findStronglyConnected(successor, cycles);
-          n.lowlink = Math.min(n.lowlink, successor.lowlink);
+          om.lowlink = Math.min(om.lowlink, successor.lowlink);
         }
         else if (stack.contains(successor)) {
-          n.lowlink = Math.min(n.lowlink, successor.nindex);
+          om.lowlink = Math.min(om.lowlink, successor.nindex);
         }
       }
     }
 
     // pop stack for all root operators
-    if (n.lowlink.equals(n.nindex)) {
+    if (om.lowlink.equals(om.nindex)) {
       List<String> connectedIds = new ArrayList<String>();
       while (!stack.isEmpty()) {
         OperatorMeta n2 = stack.pop();
         connectedIds.add(n2.name);
-        if (n2 == n) {
+        if (n2 == om) {
           break; // collected all connected operators
         }
       }
       // strongly connected (cycle) if more than one node in stack
       if (connectedIds.size() > 1) {
-        LOG.debug("detected cycle from node {}: {}", n.name, connectedIds);
+        LOG.debug("detected cycle from node {}: {}", om.name, connectedIds);
         cycles.add(connectedIds);
+      }
+    }
+  }
+
+  private void validateProcessingMode(OperatorMeta om, Set<OperatorMeta> visited)
+  {
+    for (StreamMeta is : om.getInputStreams().values()) {
+      if (!visited.contains(is.getSource().getOperatorWrapper())) {
+        // process all inputs first
+        return;
+      }
+    }
+    visited.add(om);
+    Operator.ProcessingMode pm = om.attrValue(OperatorContext.PROCESSING_MODE, null);
+    for (StreamMeta os : om.outputStreams.values()) {
+      for (InputPortMeta sink: os.sinks) {
+        OperatorMeta sinkOm = sink.getOperatorWrapper();
+        if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
+          Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
+          if (sinkPm != pm) {
+            if (sinkPm == null) {
+              LOG.warn("Setting processing mode for operator {} to {}", sinkOm.getName(), pm);
+              sinkOm.getAttributes().attr(OperatorContext.PROCESSING_MODE).set(pm);
+            } else {
+              String msg = String.format("Processing mode %s/%s not valid for source %s/%s", sinkOm.getName(), sinkPm, om.getName(), pm);
+              throw new ValidationException(msg);
+            }
+          }
+        }
+        validateProcessingMode(sinkOm, visited);
       }
     }
   }

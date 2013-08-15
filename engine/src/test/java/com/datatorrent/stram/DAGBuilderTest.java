@@ -494,6 +494,37 @@ public class DAGBuilderTest {
 
   }
 
+  @Test
+  public void testProcessingModeValidation() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
+
+    GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
+    dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
+
+    dag.addStream("input1.outport", input1.outport, amoOper.inport1);
+    dag.addStream("input2.outport", input2.outport, amoOper.inport2);
+
+    GenericTestOperator outputOper = dag.addOperator("outputOper", GenericTestOperator.class);
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
+    dag.addStream("aloOper.outport1", amoOper.outport1, outputOper.inport1);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + outputOper);
+    } catch (ValidationException ve) {
+      Assert.assertEquals("", ve.getMessage(), "Processing mode outputOper/AT_LEAST_ONCE not valid for source amoOper/AT_MOST_ONCE");
+    }
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, null);
+    dag.validate();
+
+    OperatorMeta outputOperOm = dag.getMeta(outputOper);
+    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
+
+  }
+
   private class TestAnnotationsOperator extends BaseOperator {
     @OutputPortFieldAnnotation(name="oport1")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
