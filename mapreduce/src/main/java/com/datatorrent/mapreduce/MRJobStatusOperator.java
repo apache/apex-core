@@ -1,6 +1,5 @@
 package com.datatorrent.mapreduce;
 
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -8,16 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import net.sf.json.JSONSerializer;
-
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultInputPort;
@@ -28,10 +17,7 @@ import com.datatorrent.api.Operator;
 public class MRJobStatusOperator implements Operator,
 		IdleTimeHandler {
 
-	private static final Logger logger = LoggerFactory
-			.getLogger(MRJobStatusOperator.class);
-
-	/*
+		/*
 	 * each input string is of following format <uri>,<rm port>,<history server
 	 * port>,<api version>,<hadoop version>,<application id>,<job id>
 	 */
@@ -72,7 +58,7 @@ public class MRJobStatusOperator implements Operator,
 				+ statusObj.getRmPort() + "/proxy/application_"
 				+ statusObj.getAppId() + "/ws/v1/mapreduce/jobs/job_"
 				+ statusObj.getJobId();
-		String responseBody = getJsonForURL(url);
+		String responseBody = Util.getJsonForURL(url);
 
 		JSONObject jsonObj = getJsonObject(responseBody);
 		
@@ -81,7 +67,7 @@ public class MRJobStatusOperator implements Operator,
 					+ statusObj.getHistoryServerPort()
 					+ "/ws/v1/history/mapreduce/jobs/job_"
 					+ statusObj.getJobId();
-			responseBody = getJsonForURL(url);
+			responseBody = Util.getJsonForURL(url);
 			jsonObj = getJsonObject(responseBody);
 		}
 
@@ -107,7 +93,7 @@ public class MRJobStatusOperator implements Operator,
 				+ statusObj.getRmPort() + "/proxy/application_"
 				+ statusObj.getAppId() + "/ws/v1/mapreduce/jobs/job_"
 				+ statusObj.getJobId() + "/tasks/";
-		String responseBody = getJsonForURL(url);
+		String responseBody = Util.getJsonForURL(url);
 
 		JSONObject jsonObj = getJsonObject(responseBody);
 		if (jsonObj == null) {
@@ -115,7 +101,7 @@ public class MRJobStatusOperator implements Operator,
 					+ statusObj.getHistoryServerPort()
 					+ "/ws/v1/history/mapreduce/jobs/job_"
 					+ statusObj.getJobId() + "/tasks/";
-			responseBody = getJsonForURL(url);
+			responseBody = Util.getJsonForURL(url);
 			jsonObj = getJsonObject(responseBody);
 		}
 
@@ -153,44 +139,10 @@ public class MRJobStatusOperator implements Operator,
 	}
 
 	private JSONObject getJsonObject(String json) {
-		try {
-			JSONObject jsonObj = (JSONObject) JSONSerializer.toJSON(json);
-			return jsonObj;
-		} catch (Exception e) {
-			logger.debug("{}", e.getMessage());
-			return null;
-		}
+		return Util.getJsonObject(json);
 	}
 
-	private String getJsonForURL(String url) {
-		HttpClient httpclient = new DefaultHttpClient();
-		logger.debug(url);
-		try {
-
-			// http://dataanalyser-virtualbox:8088/proxy/application_1376454776329_0001/ws/v1/mapreduce/jobs
-			HttpGet httpget = new HttpGet(url);
-
-			// Create a response handler
-			ResponseHandler<String> responseHandler = new BasicResponseHandler();
-			String responseBody;
-			try {
-				responseBody = httpclient.execute(httpget, responseHandler);
-			} catch (ClientProtocolException e) {
-				logger.debug(e.getMessage());
-				return null;
-
-			} catch (IOException e) {
-				logger.debug(e.getMessage());
-				return null;
-			}catch(Exception e){
-				logger.debug(e.getMessage());
-				return null;
-			}
-			return responseBody;
-		} finally {
-			httpclient.getConnectionManager().shutdown();
-		}
-	}
+	
 
 	Iterator<MRStatusObject> iterator;
 	@Override

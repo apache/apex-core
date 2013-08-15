@@ -9,4 +9,6 @@ public interface Constants {
 	public final String TASK_TYPE="type";
 	public final String TASK_ID="id";
 	
+	public final String LEAGACY_TASK_ID="taskId";
+	
 }

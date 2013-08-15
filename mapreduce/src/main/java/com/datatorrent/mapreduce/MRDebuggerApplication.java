@@ -10,7 +10,7 @@ import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.lib.io.ConsoleOutputOperator;
 
 
-public class MapReduceDebuggerApplication implements StreamingApplication {
+public class MRDebuggerApplication implements StreamingApplication {
 
 	@Override
 	public void populateDAG(DAG dag, Configuration arg1) {
