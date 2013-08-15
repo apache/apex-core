@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
@@ -153,6 +152,11 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 	@Override
 	public void endWindow() {
 
+	}
+	
+	public void removeJob(String jobId){
+		if(jobMap != null)
+			jobMap.remove(jobId);
 	}
 
 }

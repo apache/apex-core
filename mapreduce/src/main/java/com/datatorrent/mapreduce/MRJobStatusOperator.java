@@ -172,5 +172,10 @@ public class MRJobStatusOperator implements Operator,
 	@Override
 	public void endWindow() {
 	}
+	
+	public void removeJob(String jobId){
+		if(jobMap != null)
+			jobMap.remove(jobId);
+	}
 
 }
