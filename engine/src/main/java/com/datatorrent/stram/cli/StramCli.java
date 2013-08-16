@@ -143,6 +143,9 @@ public class StramCli
               else if (Character.isWhitespace(c)) {
                 appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 potentialEmptyArg = false;
+                if (z > i + 1 && commandLine.charAt(i + 1) == '#') {
+                  break;
+                }
               }
               else {
                 buf.append(c);
@@ -470,15 +473,22 @@ public class StramCli
     return expandedLines;
   }
 
+  private static String ltrim(String s) {
+    int i = 0;
+    while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
+        i++;
+    }
+    return s.substring(i);
+  }
+
   private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
-      line = line.trim();
+      LOG.debug("line: \"{}\"", line);
+      line = ltrim(line);
       if (line.startsWith("#")) {
         return;
       }
-      line = line.replaceFirst("\\s+#.*", "");
-
       List<String[]> commands = Tokenizer.tokenize(line);
 
       for (String[] args : commands) {
@@ -629,7 +639,7 @@ public class StramCli
     if (line == null) {
       return null;
     }
-    return line.trim();
+    return ltrim(line);
   }
 
   private List<ApplicationReport> getApplicationList()
