@@ -96,19 +96,24 @@ public class StramCli
       List<String> commandBuffer = startNewCommand(resultBuffer);
 
       if (commandLine != null) {
-        int z = commandLine.length();
+        commandLine = ltrim(commandLine);
+        if (commandLine.startsWith("#")) {
+          return null;
+        }
+
+        int len = commandLine.length();
         boolean insideQuotes = false;
         boolean potentialEmptyArg = false;
         StringBuffer buf = new StringBuffer();
 
-        for (int i = 0; i < z; ++i) {
+        for (int i = 0; i < len; ++i) {
           char c = commandLine.charAt(i);
           if (c == '"') {
             potentialEmptyArg = true;
             insideQuotes = !insideQuotes;
           }
           else if (c == '\\') {
-            if (z > i + 1) {
+            if (len > i + 1) {
               switch (commandLine.charAt(i + 1)) {
                 case 'n':
                   buf.append("\n");
@@ -143,7 +148,7 @@ public class StramCli
               else if (Character.isWhitespace(c)) {
                 appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 potentialEmptyArg = false;
-                if (z > i + 1 && commandLine.charAt(i + 1) == '#') {
+                if (len > i + 1 && commandLine.charAt(i + 1) == '#') {
                   break;
                 }
               }
@@ -473,10 +478,11 @@ public class StramCli
     return expandedLines;
   }
 
-  private static String ltrim(String s) {
+  private static String ltrim(String s)
+  {
     int i = 0;
     while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
-        i++;
+      i++;
     }
     return s.substring(i);
   }
@@ -485,12 +491,10 @@ public class StramCli
   {
     try {
       LOG.debug("line: \"{}\"", line);
-      line = ltrim(line);
-      if (line.startsWith("#")) {
+      List<String[]> commands = Tokenizer.tokenize(line);
+      if (commands == null) {
         return;
       }
-      List<String[]> commands = Tokenizer.tokenize(line);
-
       for (String[] args : commands) {
         if (args.length == 0 || StringUtils.isBlank(args[0])) {
           continue;
