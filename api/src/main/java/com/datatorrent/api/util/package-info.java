@@ -15,6 +15,8 @@
  */
 
 /**
- * Shared utilities
+ *  Shared utilities.
  */
-package com.datatorrent.common.util;
+
+package com.datatorrent.api.util;
+
