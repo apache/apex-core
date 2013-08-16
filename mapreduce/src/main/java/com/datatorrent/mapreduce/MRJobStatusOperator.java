@@ -31,7 +31,7 @@ public class MRJobStatusOperator implements Operator,
 
 			StringTokenizer tokenizer = new StringTokenizer(s, ",");
 			if (tokenizer.countTokens() == 7
-					&& jobMap.size() < Constants.MAX_MAP_SIZE) {
+					&& jobMap.size() < maxMapSize) {
 				MRStatusObject mrStatusObj = new MRStatusObject();
 				mrStatusObj.setUri(tokenizer.nextToken());
 				mrStatusObj.setRmPort(Integer.parseInt(tokenizer.nextToken()));
@@ -47,6 +47,7 @@ public class MRJobStatusOperator implements Operator,
 		}
 	};
 	private Map<String, MRStatusObject> jobMap = new ConcurrentHashMap<String, MRStatusObject>();
+	private int maxMapSize = Constants.MAX_MAP_SIZE;
 
 	public final transient DefaultOutputPort<String> output = new DefaultOutputPort<String>();
 	public final transient DefaultOutputPort<String> mapOutput = new DefaultOutputPort<String>();
@@ -176,6 +177,14 @@ public class MRJobStatusOperator implements Operator,
 	public void removeJob(String jobId){
 		if(jobMap != null)
 			jobMap.remove(jobId);
+	}
+
+	public int getMaxMapSize() {
+		return maxMapSize;
+	}
+
+	public void setMaxMapSize(int maxMapSize) {
+		this.maxMapSize = maxMapSize;
 	}
 
 }

@@ -22,6 +22,7 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 	public final transient DefaultOutputPort<String> output = new DefaultOutputPort<String>();
 	public final transient DefaultOutputPort<String> mapOutput = new DefaultOutputPort<String>();
 	public final transient DefaultOutputPort<String> reduceOutput = new DefaultOutputPort<String>();
+	private int maxMapSize = Constants.MAX_MAP_SIZE;
 
 	/*
 	 * each input string is of following format <uri>,<job tracker port>,
@@ -37,7 +38,7 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 
 			StringTokenizer tokenizer = new StringTokenizer(s, ",");
 			if (tokenizer.countTokens() == 4
-					&& jobMap.size() < Constants.MAX_MAP_SIZE) {
+					&& jobMap.size() < maxMapSize) {
 				MRStatusObject mrStatusObj = new MRStatusObject();
 				mrStatusObj.setUri(tokenizer.nextToken());
 				mrStatusObj.setRmPort(Integer.parseInt(tokenizer.nextToken()));
@@ -166,6 +167,14 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 	public void removeJob(String jobId) {
 		if (jobMap != null)
 			jobMap.remove(jobId);
+	}
+
+	public int getMaxMapSize() {
+		return maxMapSize;
+	}
+
+	public void setMaxMapSize(int maxMapSize) {
+		this.maxMapSize = maxMapSize;
 	}
 
 }
