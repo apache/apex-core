@@ -88,14 +88,14 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 			taskMap = statusObj.getReduceJsonObject();
 
 		int totalPagenums = (totalTasks / Constants.MAX_TASKS) + 1;
-		String url = "http://" + statusObj.getUri() + ":"
+		String baseUrl = "http://" + statusObj.getUri() + ":"
 				+ statusObj.getRmPort() + "/jobtasks.jsp?type=" + type
 				+ "&format=json&jobid=job_" + statusObj.getJobId()
 				+ "&pagenum=";
 
 		for (int pagenum = 1; pagenum <= totalPagenums; pagenum++) {
 
-			url=url+pagenum;
+			String url=baseUrl+pagenum;
 			String responseBody = Util.getJsonForURL(url);
 
 			JSONObject jsonObj = Util.getJsonObject(responseBody);
