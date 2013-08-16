@@ -75,10 +75,12 @@ public class StramCli
 
   public static class Tokenizer
   {
-    private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf)
+    private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
     {
-      commandBuffer.add(buf.toString());
-      buf.setLength(0);
+      if (potentialEmptyArg || buf.length() > 0) {
+        commandBuffer.add(buf.toString());
+        buf.setLength(0);
+      }
     }
 
     private static List<String> startNewCommand(List<List<String>> resultBuffer)
@@ -135,12 +137,11 @@ public class StramCli
             }
             else {
               if (c == ';') {
+                appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 commandBuffer = startNewCommand(resultBuffer);
               }
               else if (Character.isWhitespace(c)) {
-                if (potentialEmptyArg || buf.length() > 0) {
-                  appendToCommandBuffer(commandBuffer, buf);
-                }
+                appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 potentialEmptyArg = false;
               }
               else {
@@ -149,9 +150,7 @@ public class StramCli
             }
           }
         }
-        if (potentialEmptyArg || buf.length() > 0) {
-          appendToCommandBuffer(commandBuffer, buf);
-        }
+        appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
       }
 
       List<String[]> result = new ArrayList<String[]>();
