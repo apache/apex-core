@@ -15,7 +15,8 @@
  */
 
 /**
- *  Shared codec implementations 
+ *  Shared codec implementations. 
  */
+
 package com.datatorrent.api.codec;
 
