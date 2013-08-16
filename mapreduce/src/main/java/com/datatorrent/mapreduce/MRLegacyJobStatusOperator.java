@@ -16,7 +16,6 @@ import com.datatorrent.api.Operator;
 
 public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 
-	
 	private Map<String, MRStatusObject> jobMap = new ConcurrentHashMap<String, MRStatusObject>();
 	private Iterator<MRStatusObject> iterator;
 
@@ -79,47 +78,57 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 	}
 
 	private void getJsonsForTasks(MRStatusObject statusObj, String type) {
-		String url = "http://" + statusObj.getUri() + ":"
-				+ statusObj.getRmPort() + "/jobtasks.jsp?type=" + type
-				+ "&pagenum=1&format=json&jobid=job_" + statusObj.getJobId();
-
-		String responseBody = Util.getJsonForURL(url);
-
-		JSONObject jsonObj = Util.getJsonObject(responseBody);
-		if (jsonObj == null)
-			return;
-
+		JSONObject jobJson = statusObj.getJsonObject();
+		int totalTasks = ((JSONObject) ((JSONObject) jobJson.get(type
+				+ "TaskSummary")).get("taskStats")).getInt("numTotalTasks");
 		Map<String, JSONObject> taskMap;
-		if(type.equalsIgnoreCase("map"))
+		if (type.equalsIgnoreCase("map"))
 			taskMap = statusObj.getMapJsonObject();
 		else
 			taskMap = statusObj.getReduceJsonObject();
-		
-		JSONArray taskJsonArray = jsonObj.getJSONArray(
-				"tasksInfo");
 
-		for (int i = 0; i < taskJsonArray.size(); i++) {
-			JSONObject taskObj = taskJsonArray.getJSONObject(i);
-			 {
-				if (taskMap.get(taskObj.getString(Constants.LEAGACY_TASK_ID)) != null) {
-					JSONObject tempReduceObj = taskMap.get(taskObj.getString(Constants.LEAGACY_TASK_ID));
-					if (tempReduceObj.equals(taskObj))
-						continue;
+		int totalPagenums = (totalTasks / Constants.MAX_TASKS) + 1;
+		String url = "http://" + statusObj.getUri() + ":"
+				+ statusObj.getRmPort() + "/jobtasks.jsp?type=" + type
+				+ "&format=json&jobid=job_" + statusObj.getJobId()
+				+ "&pagenum=";
+
+		for (int pagenum = 1; pagenum <= totalPagenums; pagenum++) {
+
+			url=url+pagenum;
+			String responseBody = Util.getJsonForURL(url);
+
+			JSONObject jsonObj = Util.getJsonObject(responseBody);
+			if (jsonObj == null)
+				return;
+
+			JSONArray taskJsonArray = jsonObj.getJSONArray("tasksInfo");
+
+			for (int i = 0; i < taskJsonArray.size(); i++) {
+				JSONObject taskObj = taskJsonArray.getJSONObject(i);
+				{
+					if (taskMap.get(taskObj
+							.getString(Constants.LEAGACY_TASK_ID)) != null) {
+						JSONObject tempReduceObj = taskMap.get(taskObj
+								.getString(Constants.LEAGACY_TASK_ID));
+						if (tempReduceObj.equals(taskObj))
+							continue;
+					}
+					if (type.equalsIgnoreCase("map"))
+						mapOutput.emit(taskObj.toString());
+					else
+						reduceOutput.emit(taskObj.toString());
+
+					taskMap.put(taskObj.getString(Constants.LEAGACY_TASK_ID),
+							taskObj);
 				}
-				if(type.equalsIgnoreCase("map"))
-					mapOutput.emit(taskObj.toString());
-				else
-					reduceOutput.emit(taskObj.toString());
-				
-				taskMap.put(taskObj.getString(Constants.LEAGACY_TASK_ID),taskObj);
-			} 
+			}
 		}
-		if(type.equalsIgnoreCase("map"))
+
+		if (type.equalsIgnoreCase("map"))
 			statusObj.setMapJsonObject(taskMap);
 		else
 			statusObj.setReduceJsonObject(taskMap);
-		
-		
 
 	}
 
@@ -153,9 +162,9 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 	public void endWindow() {
 
 	}
-	
-	public void removeJob(String jobId){
-		if(jobMap != null)
+
+	public void removeJob(String jobId) {
+		if (jobMap != null)
 			jobMap.remove(jobId);
 	}
 
