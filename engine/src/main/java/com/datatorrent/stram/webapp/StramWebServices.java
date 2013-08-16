@@ -200,6 +200,14 @@ public class StramWebServices
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
+
+    if (parent.equals("chart")) {
+      parent = "com.datatorrent.lib.chart.ChartOperator";
+    }
+    else if (parent.equals("filter")) {
+      parent = "com.datatorrent.lib.util.SimpleFilterOperator";
+    }
+
     try {
       List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
