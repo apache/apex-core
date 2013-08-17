@@ -22,7 +22,9 @@ public class MRDebuggerDevApplication implements StreamingApplication {
 		List<String> tupleList = new ArrayList<String>();
 		
 		
+		/* Changing the way theinput is 
 		tupleList.add("dataanalyser-virtualbox,8088,19888,v1,2,1376454776329_0001,1376454776329_0001");
+		 
 		inputOperator.testTuples = new ArrayList<List<String>>();
 		inputOperator.testTuples.add(tupleList);
 //		
@@ -38,7 +40,7 @@ public class MRDebuggerDevApplication implements StreamingApplication {
 		ConsoleOutputOperator reduceConsoleOperator = dag.addOperator("consoleReduceOutputOperator", new ConsoleOutputOperator());
 		dag.addStream("mrReduceStatusOperator", mrJobOperator.reduceOutput, reduceConsoleOperator.input).setInline(allInline);
 		
-		
+		*/
 		// TODO Auto-generated method stub
 
 	}

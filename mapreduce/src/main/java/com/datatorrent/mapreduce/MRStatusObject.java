@@ -4,8 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.sf.json.JSON;
-import net.sf.json.JSONObject;
+import org.codehaus.jettison.json.JSONObject;
 
 public class MRStatusObject {
 	private String uri;

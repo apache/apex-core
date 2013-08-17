@@ -2,8 +2,7 @@ package com.datatorrent.mapreduce;
 
 import java.io.IOException;
 
-import net.sf.json.JSONObject;
-import net.sf.json.JSONSerializer;
+import org.codehaus.jettison.json.JSONObject;
 
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -51,7 +50,7 @@ public class Util {
 	
 	public static JSONObject getJsonObject(String json) {
 		try {
-			JSONObject jsonObj = (JSONObject) JSONSerializer.toJSON(json);
+			JSONObject jsonObj = new JSONObject(json);
 			return jsonObj;
 		} catch (Exception e) {
 			logger.debug("{}", e.getMessage());

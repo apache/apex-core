@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultInputPort;
@@ -79,6 +79,7 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 	}
 
 	private void getJsonsForTasks(MRStatusObject statusObj, String type) {
+		try{
 		JSONObject jobJson = statusObj.getJsonObject();
 		int totalTasks = ((JSONObject) ((JSONObject) jobJson.get(type
 				+ "TaskSummary")).get("taskStats")).getInt("numTotalTasks");
@@ -105,7 +106,7 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 
 			JSONArray taskJsonArray = jsonObj.getJSONArray("tasksInfo");
 
-			for (int i = 0; i < taskJsonArray.size(); i++) {
+			for (int i = 0; i < taskJsonArray.length(); i++) {
 				JSONObject taskObj = taskJsonArray.getJSONObject(i);
 				{
 					if (taskMap.get(taskObj
@@ -130,6 +131,8 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 			statusObj.setMapJsonObject(taskMap);
 		else
 			statusObj.setReduceJsonObject(taskMap);
+		}catch(Exception e){
+		}
 
 	}
 
