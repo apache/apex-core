@@ -186,6 +186,9 @@ public class StramAppMaster //extends License for licensing using native
       }
       AppInfo.CriticalPathInfo cpi = new AppInfo.CriticalPathInfo();
       StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      if (criticalPathInfo == null) {
+        return null;
+      }
       cpi.latency = criticalPathInfo.latency;
       cpi.path = criticalPathInfo.path;
       return cpi;
