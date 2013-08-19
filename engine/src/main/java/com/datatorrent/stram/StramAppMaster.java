@@ -181,6 +181,9 @@ public class StramAppMaster //extends License for licensing using native
     @Override
     public AppInfo.CriticalPathInfo getCriticalPathInfo()
     {
+      if (dnmgr == null) {
+        return null;
+      }
       AppInfo.CriticalPathInfo cpi = new AppInfo.CriticalPathInfo();
       StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
       cpi.latency = criticalPathInfo.latency;
