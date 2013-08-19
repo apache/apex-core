@@ -20,8 +20,6 @@ public class MRDebuggerApplication implements StreamingApplication {
 	@Override
 	public void populateDAG(DAG dag, Configuration arg1) {
 		String daemonAddress = dag.attrValue(DAG.DAEMON_ADDRESS, null);
-		LOG.info(" gaurav reached here"+daemonAddress);
-		LOG.debug(" gaurav reached here"+daemonAddress);
 		if (daemonAddress== null || StringUtils.isEmpty(daemonAddress)) {
 			daemonAddress = "10.0.2.15:9790";
 		}
@@ -31,6 +29,12 @@ public class MRDebuggerApplication implements StreamingApplication {
 		
 		URI uri = URI.create("ws://" + daemonAddress + "/pubsub");
 		LOG.info("WebSocket with daemon at: {}", daemonAddress);
+		
+		PubSubWebSocketInputOperator wsIn = dag.addOperator("mrDebuggerQueryWS", new PubSubWebSocketInputOperator());
+		wsIn.setUri(uri);
+		wsIn.addTopic("contrib.summit.mrDebugger.mrDebuggerQuery");
+		
+		dag.addStream("query", wsIn.outputPort, mrJobOperator.input);
 
 		PubSubWebSocketOutputOperator<Object> wsOut = dag.addOperator("mrDebuggerJobResultWS",new PubSubWebSocketOutputOperator<Object>());
 		wsOut.setUri(uri);
@@ -46,11 +50,9 @@ public class MRDebuggerApplication implements StreamingApplication {
 		
 		
 
-		PubSubWebSocketInputOperator wsIn = dag.addOperator("mrDebuggerQueryWS", new PubSubWebSocketInputOperator());
-		wsIn.setUri(uri);
-		wsIn.addTopic("contrib.summit.mrDebugger.mrDebuggerQuery");
+		
 
-		dag.addStream("query", wsIn.outputPort, mrJobOperator.input);
+		
 		
 		dag.addStream("jobConsoledata", mrJobOperator.output,wsOut.input);
 		dag.addStream("mapConsoledata", mrJobOperator.mapOutput,wsMapOut.input);

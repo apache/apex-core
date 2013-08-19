@@ -3,7 +3,6 @@ package com.datatorrent.mapreduce;
 import java.io.IOException;
 
 import org.codehaus.jettison.json.JSONObject;
-
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
@@ -14,10 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Util {
-	
-	private static final Logger logger = LoggerFactory
-			.getLogger(Util.class);
-	
+
+	private static final Logger logger = LoggerFactory.getLogger(Util.class);
+
 	public static String getJsonForURL(String url) {
 		HttpClient httpclient = new DefaultHttpClient();
 		logger.debug(url);
@@ -30,7 +28,7 @@ public class Util {
 			String responseBody;
 			try {
 				responseBody = httpclient.execute(httpget, responseHandler);
-				
+
 			} catch (ClientProtocolException e) {
 				logger.debug(e.getMessage());
 				return null;
@@ -38,7 +36,7 @@ public class Util {
 			} catch (IOException e) {
 				logger.debug(e.getMessage());
 				return null;
-			}catch(Exception e){
+			} catch (Exception e) {
 				logger.debug(e.getMessage());
 				return null;
 			}
@@ -47,7 +45,7 @@ public class Util {
 			httpclient.getConnectionManager().shutdown();
 		}
 	}
-	
+
 	public static JSONObject getJsonObject(String json) {
 		try {
 			JSONObject jsonObj = new JSONObject(json);

@@ -10,7 +10,7 @@ public class MRStatusObject {
 	private String uri;
 	private String jobId;
 	private String apiVersion;
-	private String hadoopVersion;
+	private int hadoopVersion;
 	private String appId;
 	private int rmPort;
 	private int historyServerPort;
@@ -54,10 +54,10 @@ public class MRStatusObject {
 	public void setApiVersion(String apiVersion) {
 		this.apiVersion = apiVersion;
 	}
-	public String getHadoopVersion() {
+	public int getHadoopVersion() {
 		return hadoopVersion;
 	}
-	public void setHadoopVersion(String hadoopVersion) {
+	public void setHadoopVersion(int hadoopVersion) {
 		this.hadoopVersion = hadoopVersion;
 	}
 	public String getAppId() {

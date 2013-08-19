@@ -42,15 +42,15 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 				MRStatusObject mrStatusObj = new MRStatusObject();
 				mrStatusObj.setUri(tokenizer.nextToken());
 				mrStatusObj.setRmPort(Integer.parseInt(tokenizer.nextToken()));
-				mrStatusObj.setHadoopVersion(tokenizer.nextToken());
+				mrStatusObj.setHadoopVersion(Integer.parseInt(tokenizer.nextToken()));
 				mrStatusObj.setJobId(tokenizer.nextToken());
-				getJsonForJob(mrStatusObj);
+				getJsonForLegacyJob(mrStatusObj);
 			}
 
 		}
 	};
 
-	private void getJsonForJob(MRStatusObject statusObj) {
+	private void getJsonForLegacyJob(MRStatusObject statusObj) {
 
 		String url = "http://" + statusObj.getUri() + ":"
 				+ statusObj.getRmPort()
@@ -71,14 +71,14 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 
 		output.emit(jsonObj.toString());
 		statusObj.setJsonObject(jsonObj);
-		getJsonsForTasks(statusObj, "map");
-		getJsonsForTasks(statusObj, "reduce");
+		getJsonsForLegacyTasks(statusObj, "map");
+		getJsonsForLegacyTasks(statusObj, "reduce");
 		jobMap.put(statusObj.getJobId(), statusObj);
 		iterator = jobMap.values().iterator();
 
 	}
 
-	private void getJsonsForTasks(MRStatusObject statusObj, String type) {
+	private void getJsonsForLegacyTasks(MRStatusObject statusObj, String type) {
 		try{
 		JSONObject jobJson = statusObj.getJsonObject();
 		int totalTasks = ((JSONObject) ((JSONObject) jobJson.get(type
@@ -153,7 +153,7 @@ public class MRLegacyJobStatusOperator implements Operator, IdleTimeHandler {
 		}
 
 		if (iterator.hasNext()) {
-			getJsonForJob(iterator.next());
+			getJsonForLegacyJob(iterator.next());
 		}
 	}
 
