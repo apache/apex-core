@@ -22,8 +22,10 @@ public class MRJobStatusOperator implements Operator, IdleTimeHandler {
 			.getLogger(MRJobStatusOperator.class);
 
 	/*
-	 * each input string is of following format <uri>,<rm port>,<history server
-	 * port>,<api version>,<hadoop version>,<application id>,<job id>
+	 * each input string is a map of the following format
+	 * {"app_id":<>,"hadoop_version":<>,"api_version":<>,"command":<>,
+	 * "hostname":<>,"hs_port":<>,"rm_port":<>,"job_id":<>} 
+	 * 
 	 */
 	public final transient DefaultInputPort<Map<String, String>> input = new DefaultInputPort<Map<String, String>>() {
 		@Override
