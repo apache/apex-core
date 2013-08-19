@@ -20,13 +20,12 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -117,7 +116,7 @@ public class StramWebServices
   void checkAccess(HttpServletRequest request)
   {
     if (!hasAccess(request)) {
-      throw new WebApplicationException(Status.UNAUTHORIZED);
+      throw new SecurityException();
     }
   }
 
@@ -156,7 +155,7 @@ public class StramWebServices
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     return oi;
   }
@@ -170,7 +169,7 @@ public class StramWebServices
     Map<String, Object> map = new HashMap<String, Object>();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     ObjectMapper mapper = new ObjectMapper();
     map.put("inputPorts", oi.inputPorts);
@@ -186,7 +185,7 @@ public class StramWebServices
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     for (PortInfo pi : oi.inputPorts) {
       if (pi.name.equals(portName)) {
@@ -198,7 +197,7 @@ public class StramWebServices
         return pi;
       }
     }
-    throw new WebApplicationException(404);
+    throw new NotFoundException();
   }
 
   @GET
@@ -229,7 +228,7 @@ public class StramWebServices
       result.put("classes", classNames);
     }
     catch (Exception ex) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     return result;
   }
@@ -240,7 +239,7 @@ public class StramWebServices
   public JSONObject describeOperator(@QueryParam("class") String className)
   {
     if (className == null) {
-      throw new WebApplicationException(400);
+      throw new UnsupportedOperationException();
     }
     try {
       Class<?> clazz = Class.forName(className);
@@ -301,11 +300,12 @@ public class StramWebServices
         return response;
       }
       else {
-        throw new WebApplicationException(400);
+        throw new UnsupportedOperationException();
       }
     }
     catch (ClassNotFoundException ex) {
-      throw new WebApplicationException(404);
+      LOG.warn("throwing 404");
+      throw new NotFoundException();
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
@@ -413,7 +413,7 @@ public class StramWebServices
     init();
     StramChildAgent sca = dagManager.getContainerAgent(containerId);
     if (sca == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     return sca.getContainerInfo();
   }
