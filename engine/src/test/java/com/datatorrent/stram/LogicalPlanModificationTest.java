@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.FutureTask;
 
+import javax.validation.ValidationException;
+
 import junit.framework.Assert;
 
 import org.junit.Test;
@@ -92,18 +94,39 @@ public class LogicalPlanModificationTest {
   public void testRemoveOperator()
   {
     LogicalPlan dag = new LogicalPlan();
+
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     OperatorMeta o1Meta = dag.getMeta(o1);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     OperatorMeta o2Meta = dag.getMeta(o2);
     dag.addStream("s1", o1.outport1, o2.inport1);
 
-    PlanModifier pm = new PlanModifier(dag);
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    ctx.deploy.clear();
+    ctx.undeploy.clear();
+
+    PlanModifier pm = new PlanModifier(plan);
+
+    try {
+      pm.removeOperator(o2Meta.getName());
+      Assert.fail("validation error expected");
+    } catch (ValidationException ve) {
+    }
+
+    // remove stream required before removing operator
+    pm.removeStream("s1");
+
     pm.removeOperator(o2Meta.getName());
+    pm.applyChanges(ctx);
 
     Assert.assertEquals("streams " + dag.getAllStreams(), 0, dag.getAllStreams().size());
     Assert.assertEquals("operators " + dag.getAllOperators(), 1, dag.getAllOperators().size());
     Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().contains(o1Meta));
+
+    Assert.assertEquals("containers " + plan.getContainers(), 1, plan.getContainers().size());
+    Assert.assertEquals("removed containers " + ctx.releaseContainers, 1, ctx.releaseContainers.size());
+
   }
 
   @Test

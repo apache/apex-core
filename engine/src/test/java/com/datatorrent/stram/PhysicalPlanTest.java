@@ -181,6 +181,7 @@ public class PhysicalPlanTest {
     List<Runnable> events = new ArrayList<Runnable>();
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
+    Set<PTContainer> releaseContainers;
     int backupRequests;
 
     @Override
@@ -192,6 +193,7 @@ public class PhysicalPlanTest {
     public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
       this.undeploy = undeploy;
       this.deploy = deploy;
+      this.releaseContainers = releaseContainers;
     }
 
     @Override
