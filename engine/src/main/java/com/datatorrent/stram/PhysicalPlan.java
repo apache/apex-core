@@ -519,7 +519,7 @@ public class PhysicalPlan {
 
   private final AtomicInteger idSequence = new AtomicInteger();
   private final AtomicInteger containerSeq = new AtomicInteger();
-  private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
+  private LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new CopyOnWriteArrayList<PTContainer>();
   private final LogicalPlan dag;
   private final PlanContext ctx;
@@ -1321,8 +1321,9 @@ public class PhysicalPlan {
       LOG.warn("Failed to remove state for " + node, e);
     }
 
-    node.container.operators.remove(node); // TODO: thread safety
-
+    List<PTOperator> cowList = Lists.newArrayList(node.container.operators);
+    cowList.remove(node);
+    node.container.operators = cowList;
   }
 
   public LogicalPlan getDAG() {
@@ -1539,8 +1540,9 @@ public class PhysicalPlan {
       removePTOperator(mergeOperator);
     }
 
-    // track empty containers and undeploy operators
-
+    LinkedHashMap<OperatorMeta, PMapping> copyMap = Maps.newLinkedHashMap(this.logicalToPTOperator);
+    copyMap.remove(om);
+    this.logicalToPTOperator = copyMap;
   }
 
 }

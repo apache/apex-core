@@ -11,17 +11,16 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.datatorrent.api.DAG.StreamMeta;
 import com.datatorrent.engine.GenericTestOperator;
-import com.datatorrent.stram.PhysicalPlan;
-import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTInput;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.PhysicalPlanTest.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.google.common.collect.Sets;
 
@@ -99,34 +98,46 @@ public class LogicalPlanModificationTest {
     OperatorMeta o1Meta = dag.getMeta(o1);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     OperatorMeta o2Meta = dag.getMeta(o2);
-    dag.addStream("s1", o1.outport1, o2.inport1);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    OperatorMeta o3Meta = dag.getMeta(o3);
+
+    StreamMeta s1 = dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    StreamMeta s2 = dag.addStream("o2.outport1", o2.outport1, o3.inport1);
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
+    Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
+    Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
 
     PlanModifier pm = new PlanModifier(plan);
 
     try {
       pm.removeOperator(o2Meta.getName());
-      Assert.fail("validation error expected");
+      Assert.fail("validation error (connected streams) expected");
     } catch (ValidationException ve) {
     }
 
     // remove stream required before removing operator
-    pm.removeStream("s1");
+    pm.removeStream(s1.getId());
+    pm.removeStream(s2.getId());
 
     pm.removeOperator(o2Meta.getName());
     pm.applyChanges(ctx);
 
     Assert.assertEquals("streams " + dag.getAllStreams(), 0, dag.getAllStreams().size());
-    Assert.assertEquals("operators " + dag.getAllOperators(), 1, dag.getAllOperators().size());
-    Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().contains(o1Meta));
+    Assert.assertEquals("operators " + dag.getAllOperators(), 2, dag.getAllOperators().size());
+    Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().containsAll(Sets.newHashSet(o1Meta, o3Meta)));
 
-    Assert.assertEquals("containers " + plan.getContainers(), 1, plan.getContainers().size());
+    try {
+      plan.getOperators(o2Meta);
+      Assert.fail("removed from physical plan: " + o2Meta);
+    } catch (Exception e) {
+    }
+    Assert.assertEquals("containers " + plan.getContainers(), 2, plan.getContainers().size());
+    Assert.assertEquals("physical operators " + plan.getAllOperators(), 2, plan.getAllOperators().size());
     Assert.assertEquals("removed containers " + ctx.releaseContainers, 1, ctx.releaseContainers.size());
-
   }
 
   @Test
