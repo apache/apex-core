@@ -304,7 +304,6 @@ public class StramWebServices
       }
     }
     catch (ClassNotFoundException ex) {
-      LOG.warn("throwing 404");
       throw new NotFoundException();
     }
     catch (Exception ex) {
