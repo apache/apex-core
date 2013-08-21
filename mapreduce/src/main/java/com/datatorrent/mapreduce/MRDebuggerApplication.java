@@ -49,11 +49,6 @@ public class MRDebuggerApplication implements StreamingApplication {
 		wsReduceOut.setTopic("contrib.summit.mrDebugger.reduceResult");
 		
 		
-
-		
-
-		
-		
 		dag.addStream("jobConsoledata", mrJobOperator.output,wsOut.input);
 		dag.addStream("mapConsoledata", mrJobOperator.mapOutput,wsMapOut.input);
 		dag.addStream("reduceConsoledata", mrJobOperator.reduceOutput,wsReduceOut.input);
