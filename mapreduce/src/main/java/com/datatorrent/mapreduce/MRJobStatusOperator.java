@@ -35,7 +35,6 @@ public class MRJobStatusOperator implements Operator, IdleTimeHandler {
 			if (jobMap == null) {
 				jobMap = new HashMap<String, MRStatusObject>();
 			}
-			String s = null;
 			String command = null;
 
 			if (jobMap.size() >= maxMapSize)
@@ -65,7 +64,7 @@ public class MRJobStatusOperator implements Operator, IdleTimeHandler {
 
 			}
 			if ("delete".equalsIgnoreCase(command)) {
-				removeJob(s);
+				removeJob(mrStatusObj.getJobId());
 				return;
 			}
 
