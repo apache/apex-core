@@ -50,7 +50,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   public static final String STREAM_SOURCE = "source";
   public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";
-  public static final String STREAM_INLINE = "inline";
+  public static final String STREAM_LOCALITY = "locality";
 
   public static final String OPERATOR_PREFIX = "stram.operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
@@ -102,8 +102,9 @@ public class DAGPropertiesBuilder implements StreamingApplication {
      * Hint to manager that adjacent operators should be deployed in same container.
      * @return boolean
      */
-    public boolean isInline() {
-      return Boolean.TRUE.toString().equals(properties.getProperty(STREAM_INLINE, Boolean.FALSE.toString()));
+    public DAG.Locality getLocality() {
+      String v = properties.getProperty(STREAM_LOCALITY, null);
+      return (v != null) ? DAG.Locality.valueOf(v) : null;
     }
 
     /**
@@ -398,7 +399,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     for (Map.Entry<String, StreamConf> streamConfEntry : this.streams.entrySet()) {
       StreamConf streamConf = streamConfEntry.getValue();
       DAG.StreamMeta sd = dag.addStream(streamConfEntry.getKey());
-      sd.setInline(streamConf.isInline());
+      sd.setLocality(streamConf.getLocality());
 
       if (streamConf.sourceNode != null) {
         String portName = null;

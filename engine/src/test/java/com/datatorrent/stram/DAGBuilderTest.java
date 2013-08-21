@@ -115,7 +115,7 @@ public class DAGBuilderTest {
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
 
     assertEquals("stream name", "n1n2", n1n2.getId());
-    Assert.assertFalse("n1n2 not inline (default)", n1n2.isInline());
+    Assert.assertEquals("n1n2 not inline (default)", null, n1n2.getLocality());
 
     // operator 2 streams to operator 3 and operator 4
     assertEquals("operator 2 number of outputs", 1, operator2.getOutputStreams().size());
@@ -176,7 +176,7 @@ public class DAGBuilderTest {
 
       StreamMeta s1 = dag.getStream("n1n2");
       assertNotNull(s1);
-      assertTrue("n1n2 inline", s1.isInline());
+      assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
 
       OperatorMeta operator3 = dag.getOperatorMeta("operator3");
       assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());

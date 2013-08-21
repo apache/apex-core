@@ -255,7 +255,7 @@ public class LogicalPlan implements Serializable, DAG
   public final class StreamMeta implements DAG.StreamMeta, Serializable
   {
     private static final long serialVersionUID = 1L;
-    private boolean inline;
+    private Locality locality;
     private boolean nodeLocal;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
@@ -273,34 +273,45 @@ public class LogicalPlan implements Serializable, DAG
       return id;
     }
 
-    /**
-     * Hint to manager that adjacent operators should be deployed in same container.
-     *
-     * @return boolean
-     */
+    @Deprecated
     @Override
     public boolean isInline()
     {
-      return inline;
+      return Locality.CONTAINER_LOCAL.equals(this.locality);
     }
 
+    @Deprecated
     @Override
     public StreamMeta setInline(boolean inline)
     {
-      this.inline = inline;
-      return this;
+      return setLocality(inline ? Locality.CONTAINER_LOCAL : null);
     }
 
+    @Deprecated
     @Override
     public boolean isNodeLocal()
     {
       return this.nodeLocal;
     }
 
+    @Deprecated
     @Override
     public StreamMeta setNodeLocal(boolean local)
     {
-      this.nodeLocal = local;
+      return setLocality(Locality.NODE_LOCAL);
+    }
+
+    @Override
+    public Locality getLocality() {
+      return this.locality;
+    }
+
+    @Override
+    public StreamMeta setLocality(Locality locality) {
+      if (!(locality == null || Locality.CONTAINER_LOCAL == locality)) {
+        LOG.warn("Locality not yet supported: " + locality);
+      }
+      this.locality = locality;
       return this;
     }
 

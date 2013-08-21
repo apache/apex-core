@@ -4,9 +4,9 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.StorageAgent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,28 +30,29 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.engine.DefaultUnifier;
-import com.datatorrent.engine.Node;
-import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-import java.io.OutputStream;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.engine.DefaultUnifier;
+import com.datatorrent.engine.Node;
+import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -326,13 +327,7 @@ public class PhysicalPlan {
     int loadIndicator = 0;
     List<? extends StatsHandler> statsMonitors;
 
-    private enum LocalityType {
-      CONTAINER_LOCAL,
-      NODE_LOCAL,
-      RACK_LOCAL
-    }
-
-    private final Map<LocalityType, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
+    private final Map<Locality, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
 
     List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
@@ -402,7 +397,7 @@ public class PhysicalPlan {
       return partition;
     }
 
-    private Set<PTOperator> getGrouping(LocalityType type) {
+    private Set<PTOperator> getGrouping(Locality type) {
       Set<PTOperator> s = this.groupings.get(type);
       if (s == null) {
         s = Sets.newHashSet();
@@ -412,7 +407,7 @@ public class PhysicalPlan {
     }
 
     public Set<PTOperator> getNodeLocalOperators() {
-      return getGrouping(LocalityType.NODE_LOCAL);
+      return getGrouping(Locality.NODE_LOCAL);
     }
 
     /**
@@ -729,7 +724,7 @@ public class PhysicalPlan {
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineSet = oper.getGrouping(PTOperator.LocalityType.CONTAINER_LOCAL);
+          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL);
           if (!inlineSet.isEmpty()) {
             // process inline operators
             for (PTOperator inlineOper : inlineSet) {
@@ -979,7 +974,7 @@ public class PhysicalPlan {
     for (PTOperator oper : newOperators) {
       PTContainer newContainer = null;
       // check for existing inline set
-      for (PTOperator inlineOper : oper.getGrouping(PTOperator.LocalityType.CONTAINER_LOCAL)) {
+      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL)) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
@@ -1126,8 +1121,8 @@ public class PhysicalPlan {
     //
     // update locality
     //
-    setLocalityGrouping(nodeDecl, pOperator, inlinePrefs, PTOperator.LocalityType.CONTAINER_LOCAL);
-    setLocalityGrouping(nodeDecl, pOperator, localityPrefs, PTOperator.LocalityType.NODE_LOCAL);
+    setLocalityGrouping(nodeDecl, pOperator, inlinePrefs, Locality.CONTAINER_LOCAL);
+    setLocalityGrouping(nodeDecl, pOperator, localityPrefs, Locality.NODE_LOCAL);
 
     return pOperator;
   }
@@ -1251,7 +1246,7 @@ public class PhysicalPlan {
     return pOperator;
   }
 
-  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, PTOperator.LocalityType ltype) {
+  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype) {
 
     Set<PTOperator> s = newOperator.getGrouping(ltype);
     s.add(newOperator);
@@ -1420,9 +1415,9 @@ public class PhysicalPlan {
         upstreamPartitioned = m;
       }
 
-      if (e.getValue().isInline()) {
+      if (Locality.CONTAINER_LOCAL == e.getValue().getLocality()) {
         inlinePrefs.setLocal(m, pnodes);
-      } else if (e.getValue().isNodeLocal()) {
+      } else if (Locality.NODE_LOCAL == e.getValue().getLocality()) {
         localityPrefs.setLocal(m, pnodes);
       }
     }
