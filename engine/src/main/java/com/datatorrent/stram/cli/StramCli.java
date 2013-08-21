@@ -73,6 +73,104 @@ public class StramCli
   private FileHistory changingLogicalPlanHistory;
   private boolean licensedVersion = true;
 
+  public static class Tokenizer
+  {
+    private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
+    {
+      if (potentialEmptyArg || buf.length() > 0) {
+        commandBuffer.add(buf.toString());
+        buf.setLength(0);
+      }
+    }
+
+    private static List<String> startNewCommand(List<List<String>> resultBuffer)
+    {
+      List<String> newCommand = new ArrayList<String>();
+      resultBuffer.add(newCommand);
+      return newCommand;
+    }
+
+    public static List<String[]> tokenize(String commandLine)
+    {
+      List<List<String>> resultBuffer = new ArrayList<List<String>>();
+      List<String> commandBuffer = startNewCommand(resultBuffer);
+
+      if (commandLine != null) {
+        commandLine = ltrim(commandLine);
+        if (commandLine.startsWith("#")) {
+          return null;
+        }
+
+        int len = commandLine.length();
+        boolean insideQuotes = false;
+        boolean potentialEmptyArg = false;
+        StringBuffer buf = new StringBuffer();
+
+        for (int i = 0; i < len; ++i) {
+          char c = commandLine.charAt(i);
+          if (c == '"') {
+            potentialEmptyArg = true;
+            insideQuotes = !insideQuotes;
+          }
+          else if (c == '\\') {
+            if (len > i + 1) {
+              switch (commandLine.charAt(i + 1)) {
+                case 'n':
+                  buf.append("\n");
+                  break;
+                case 't':
+                  buf.append("\t");
+                  break;
+                case 'r':
+                  buf.append("\r");
+                  break;
+                case 'b':
+                  buf.append("\b");
+                  break;
+                case 'f':
+                  buf.append("\f");
+                  break;
+                default:
+                  buf.append(commandLine.charAt(i + 1));
+              }
+              ++i;
+            }
+          }
+          else {
+            if (insideQuotes) {
+              buf.append(c);
+            }
+            else {
+              if (c == ';') {
+                appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
+                commandBuffer = startNewCommand(resultBuffer);
+              }
+              else if (Character.isWhitespace(c)) {
+                appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
+                potentialEmptyArg = false;
+                if (len > i + 1 && commandLine.charAt(i + 1) == '#') {
+                  break;
+                }
+              }
+              else {
+                buf.append(c);
+              }
+            }
+          }
+        }
+        appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
+      }
+
+      List<String[]> result = new ArrayList<String[]>();
+      for (List<String> command : resultBuffer) {
+        String[] commandArray = new String[command.size()];
+        result.add(command.toArray(commandArray));
+      }
+      return result;
+    }
+
+  }
+
   private interface Command
   {
     void execute(String[] args, ConsoleReader reader) throws Exception;
@@ -380,22 +478,29 @@ public class StramCli
     return expandedLines;
   }
 
+  private static String ltrim(String s)
+  {
+    int i = 0;
+    while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
+      i++;
+    }
+    return s.substring(i);
+  }
+
   private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
-      line = line.trim();
-      if (line.startsWith("#")) {
+      LOG.debug("line: \"{}\"", line);
+      List<String[]> commands = Tokenizer.tokenize(line);
+      if (commands == null) {
         return;
       }
-      line = line.replaceFirst("\\s+#.*", "");
-
-      String[] commands = line.split("\\s*;\\s*");
-
-      for (String command : commands) {
-        String[] args = command.split("\\s+");
-        if (StringUtils.isBlank(args[0])) {
+      for (String[] args : commands) {
+        if (args.length == 0 || StringUtils.isBlank(args[0])) {
           continue;
         }
+        ObjectMapper mapper = new ObjectMapper();
+        LOG.debug("Got: {}", mapper.writeValueAsString(args));
         if (expandMacroAlias) {
           if (macros.containsKey(args[0])) {
             List<String> macroItems = expandMacro(macros.get(args[0]), args);
@@ -538,7 +643,7 @@ public class StramCli
     if (line == null) {
       return null;
     }
-    return line.trim();
+    return ltrim(line);
   }
 
   private List<ApplicationReport> getApplicationList()

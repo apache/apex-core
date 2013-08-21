@@ -41,6 +41,43 @@ public interface DAG extends DAGContext, Serializable
   }
 
   /**
+   * Locality setting affects how operators are scheduled for deployment by
+   * the platform. The setting serves as hint to the planner and can yield
+   * significant performance gains. Optimizations are subject to resource
+   * availability.
+   */
+  public enum Locality {
+    /**
+     * Adjacent operators should be deployed into the same executing thread,
+     * effectively serializing the computation. This setting is beneficial
+     * where the cost of intermediate queuing exceeds the benefit of parallel
+     * processing. An example could be chaining of multiple operators with low
+     * compute requirements in a parallel partition setup.
+     * Not implemented yet.
+     */
+    THREAD_LOCAL,
+    /**
+     * Adjacent operators should be deployed into the same process, executing
+     * in different threads. Useful when interprocess communication is a
+     * limiting factor and sufficient resources can be provisioned in a single
+     * container. Eliminates data serialization and networking stack overhead.
+     */
+    CONTAINER_LOCAL,
+    /**
+     * Adjacent operators should be deployed into processes on the same machine.
+     * Eliminates network as bottleneck, as the loop back interface can be used
+     * instead. Not implemented yet.
+     */
+    NODE_LOCAL,
+    /**
+     * Adjacent operators should be deployed into processes on nodes in the same
+     * rack. Best effort to not have allocation on same node.
+     * Not implemented yet.
+     */
+    RACK_LOCAL
+  }
+
+  /**
    * Representation of streams in the logical layer. Instances are created through {@link DAG#addStream}.
    */
   public interface StreamMeta extends Serializable
@@ -48,17 +85,42 @@ public interface DAG extends DAGContext, Serializable
     public String getId();
 
     /**
-     * Hint to manager that adjacent operators should be deployed in same container.
-     *
-     * @return boolean
+     * @deprecated use {@link #getLocality()} instead.
      */
+    @Deprecated
     public boolean isInline();
 
+    /**
+     * @deprecated use {@link #setLocality(Locality)} instead.
+     */
+    @Deprecated
     public StreamMeta setInline(boolean inline);
 
+    /**
+     * @deprecated use {@link #getLocality()} instead.
+     */
+    @Deprecated
     public boolean isNodeLocal();
 
+    /**
+     * @deprecated use {@link #setLocality(Locality)} instead.
+     */
+    @Deprecated
     public StreamMeta setNodeLocal(boolean local);
+
+    /**
+     * Returns the locality for this stream.
+     * @return locality for this stream, default is null.
+     */
+    public Locality getLocality();
+
+    /**
+     * Set locality for the stream. The setting is best-effort, engine can
+     * override due to other settings or constraints.
+     *
+     * @param locality
+     */
+    public StreamMeta setLocality(Locality locality);
 
     public StreamMeta setSource(Operator.OutputPort<?> port);
 

@@ -20,13 +20,12 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -44,6 +43,14 @@ import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.inject.Inject;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
 
 /**
  *
@@ -72,9 +79,10 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
+  public static final String PATH_DESCRIBE_OPERATOR = "describeOperator";
   private final StramAppContext appCtx;
   @Context
-  private HttpServletResponse response;
+  private HttpServletResponse httpResponse;
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
@@ -102,13 +110,13 @@ public class StramWebServices
   private void init()
   {
     //clear content type
-    response.setContentType(null);
+    httpResponse.setContentType(null);
   }
 
   void checkAccess(HttpServletRequest request)
   {
     if (!hasAccess(request)) {
-      throw new WebApplicationException(Status.UNAUTHORIZED);
+      throw new SecurityException();
     }
   }
 
@@ -147,7 +155,7 @@ public class StramWebServices
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     return oi;
   }
@@ -161,7 +169,7 @@ public class StramWebServices
     Map<String, Object> map = new HashMap<String, Object>();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     ObjectMapper mapper = new ObjectMapper();
     map.put("inputPorts", oi.inputPorts);
@@ -177,7 +185,7 @@ public class StramWebServices
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     for (PortInfo pi : oi.inputPorts) {
       if (pi.name.equals(portName)) {
@@ -189,7 +197,7 @@ public class StramWebServices
         return pi;
       }
     }
-    throw new WebApplicationException(404);
+    throw new NotFoundException();
   }
 
   @GET
@@ -200,6 +208,16 @@ public class StramWebServices
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
+
+    if (parent != null) {
+      if (parent.equals("chart")) {
+        parent = "com.datatorrent.lib.chart.ChartOperator";
+      }
+      else if (parent.equals("filter")) {
+        parent = "com.datatorrent.lib.util.SimpleFilterOperator";
+      }
+    }
+
     try {
       List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
@@ -210,9 +228,87 @@ public class StramWebServices
       result.put("classes", classNames);
     }
     catch (Exception ex) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     return result;
+  }
+
+  @GET
+  @Path(PATH_DESCRIBE_OPERATOR)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject describeOperator(@QueryParam("class") String className)
+  {
+    if (className == null) {
+      throw new UnsupportedOperationException();
+    }
+    try {
+      Class<?> clazz = Class.forName(className);
+      if (OperatorDiscoverer.isInstantiableOperatorClass(clazz)) {
+        JSONObject response = new JSONObject();
+        JSONArray properties = new JSONArray();
+        JSONArray inputPorts = new JSONArray();
+        JSONArray outputPorts = new JSONArray();
+        BeanInfo beanInfo = Introspector.getBeanInfo(clazz);
+        PropertyDescriptor[] pds = beanInfo.getPropertyDescriptors();
+        for (PropertyDescriptor pd : pds) {
+          if (pd.getWriteMethod() != null
+                  && !pd.getWriteMethod().getName().equals("setup")
+                  && !pd.getName().equals("name")) {
+            JSONObject property = new JSONObject();
+            property.put("name", pd.getName());
+            property.put("class", pd.getPropertyType().getName());
+            property.put("description", pd.getShortDescription());
+            properties.put(property);
+          }
+        }
+        Field[] fields = clazz.getFields();
+        for (Field field : fields) {
+          InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
+          if (inputAnnotation != null) {
+            JSONObject inputPort = new JSONObject();
+            inputPort.put("name", inputAnnotation.name());
+            inputPort.put("optional", inputAnnotation.optional());
+            inputPorts.put(inputPort);
+            continue;
+          }
+          else if (InputPort.class.isAssignableFrom(field.getType())) {
+            JSONObject inputPort = new JSONObject();
+            inputPort.put("name", field.getName());
+            inputPort.put("optional", false); // input port that is not annotated is default to be non-optional
+            inputPorts.put(inputPort);
+            continue;
+          }
+          OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
+          if (outputAnnotation != null) {
+            JSONObject outputPort = new JSONObject();
+            outputPort.put("name", outputAnnotation.name());
+            outputPort.put("optional", outputAnnotation.optional());
+            outputPorts.put(outputPort);
+            continue;
+          }
+          else if (OutputPort.class.isAssignableFrom(field.getType())) {
+            JSONObject outputPort = new JSONObject();
+            outputPort.put("name", field.getName());
+            outputPort.put("optional", true); // output port that is not annotated is default to be optional
+            outputPorts.put(outputPort);
+            continue;
+          }
+        }
+        response.put("properties", properties);
+        response.put("inputPorts", inputPorts);
+        response.put("outputPorts", outputPorts);
+        return response;
+      }
+      else {
+        throw new UnsupportedOperationException();
+      }
+    }
+    catch (ClassNotFoundException ex) {
+      throw new NotFoundException();
+    }
+    catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -260,7 +356,7 @@ public class StramWebServices
       dagManager.stopRecording(operId, portName);
     }
     catch (JSONException ex) {
-      ex.printStackTrace();
+      LOG.warn("Got JSON Exception: ", ex);
     }
     return response;
   }
@@ -278,7 +374,7 @@ public class StramWebServices
       dagManager.syncRecording(operId, portName);
     }
     catch (JSONException ex) {
-      ex.printStackTrace();
+      LOG.warn("Got JSON Exception: ", ex);
     }
     return response;
   }
@@ -302,7 +398,7 @@ public class StramWebServices
     init();
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     ContainersInfo ci = new ContainersInfo();
-    for (StramChildAgent sca: containerAgents) {
+    for (StramChildAgent sca : containerAgents) {
       ci.add(sca.getContainerInfo());
     }
     return ci;
@@ -316,7 +412,7 @@ public class StramWebServices
     init();
     StramChildAgent sca = dagManager.getContainerAgent(containerId);
     if (sca == null) {
-      throw new WebApplicationException(404);
+      throw new NotFoundException();
     }
     return sca.getContainerInfo();
   }
@@ -345,7 +441,7 @@ public class StramWebServices
       dagManager.setOperatorProperty(operatorId, propertyName, propertyValue);
     }
     catch (JSONException ex) {
-      ex.printStackTrace();
+      LOG.warn("Got JSON Exception: ", ex);
     }
     return response;
   }
@@ -358,12 +454,14 @@ public class StramWebServices
     Map<String, Object> m = dagManager.getOperatorAttributes(operatorId);
     if (attributeName == null) {
       return new JSONObject(m);
-    } else {
+    }
+    else {
       JSONObject json = new JSONObject();
       try {
         json.put(attributeName, m.get(attributeName));
-      } catch (JSONException ex) {
-        ex.printStackTrace();
+      }
+      catch (JSONException ex) {
+        LOG.warn("Got JSON Exception: ", ex);
       }
       return json;
     }
@@ -377,12 +475,14 @@ public class StramWebServices
     Map<String, Object> m = dagManager.getApplicationAttributes();
     if (attributeName == null) {
       return new JSONObject(m);
-    } else {
+    }
+    else {
       JSONObject json = new JSONObject();
       try {
         json.put(attributeName, m.get(attributeName));
-      } catch (JSONException ex) {
-        ex.printStackTrace();
+      }
+      catch (JSONException ex) {
+        LOG.warn("Got JSON Exception: ", ex);
       }
       return json;
     }
@@ -396,12 +496,14 @@ public class StramWebServices
     Map<String, Object> m = dagManager.getPortAttributes(operatorId, portName);
     if (attributeName == null) {
       return new JSONObject(m);
-    } else {
+    }
+    else {
       JSONObject json = new JSONObject();
       try {
         json.put(attributeName, m.get(attributeName));
-      } catch (JSONException ex) {
-        ex.printStackTrace();
+      }
+      catch (JSONException ex) {
+        LOG.warn("Got JSON Exception: ", ex);
       }
       return json;
     }
@@ -420,12 +522,14 @@ public class StramWebServices
 
     if (propertyName == null) {
       return new JSONObject(m);
-    } else {
+    }
+    else {
       JSONObject json = new JSONObject();
       try {
         json.put(propertyName, m.get(propertyName));
-      } catch (JSONException ex) {
-        ex.printStackTrace();
+      }
+      catch (JSONException ex) {
+        LOG.warn("Got JSON Exception: ", ex);
       }
       return json;
     }
@@ -476,10 +580,12 @@ public class StramWebServices
       try {
         if (ex instanceof ExecutionException) {
           response.put("error", ex.getCause().toString());
-        } else {
+        }
+        else {
           response.put("error", ex.toString());
         }
-      } catch (Exception e) {
+      }
+      catch (Exception e) {
         // ignore
       }
     }

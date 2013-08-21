@@ -22,6 +22,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.codehaus.jettison.json.JSONArray;
@@ -154,7 +155,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         sinkPortList.add(sinkPortDetailMap);
       }
       streamDetailMap.put("sinks", sinkPortList);
-      streamDetailMap.put("isInline", streamMeta.isInline());
+      streamDetailMap.put("isInline", DAG.Locality.CONTAINER_LOCAL == streamMeta.getLocality());
     }
     return result;
   }
@@ -190,7 +191,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         sinksValue += sink.getOperatorWrapper().getName() + "." + sink.getPortName();
       }
       props.setProperty(streamKey + ".sinks", sinksValue);
-      if (streamMeta.isInline()) {
+      if (DAG.Locality.CONTAINER_LOCAL == streamMeta.getLocality()) {
         props.setProperty(streamKey + ".inline", "true");
       }
     }

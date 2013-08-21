@@ -68,6 +68,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
+import java.util.*;
 
 /**
  *
@@ -107,6 +108,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
 
+  CriticalPathInfo criticalPathInfo;
+
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
@@ -118,6 +121,12 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   {
     long emitTimestamp = -1;
     HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>(); // input port name to end window dequeue time
+  }
+
+  public static class CriticalPathInfo
+  {
+    long latency;
+    LinkedList<Integer> path = new LinkedList<Integer>();
   }
 
   @Override
@@ -259,13 +268,18 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
             // collected data from all operators for this window id.  start latency calculation
             List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
             Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
+            Set<PTOperator> leafOperators = new HashSet<PTOperator>();
             for (OperatorMeta root: rootOperatorMetas) {
               List<PTOperator> rootOperators = plan.getOperators(root);
               for (PTOperator rootOperator: rootOperators) {
                 // DFS for visiting the nodes for latency calculation
-                calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited);
+                calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited, leafOperators);
               }
             }
+            CriticalPathInfo cpi = new CriticalPathInfo();
+            LOG.debug("Finding critical path...");
+            cpi.latency = findCriticalPath(endWindowStatsMap, leafOperators, cpi.path);
+            criticalPathInfo = cpi;
             endWindowStatsOperatorMap.remove(windowId);
           }
         }
@@ -279,18 +293,18 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
   }
 
-  private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited)
+  private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited, Set<PTOperator> leafOperators)
   {
     endWindowStatsVisited.add(oper);
     OperatorStatus operatorStatus = getOperatorStatus(oper);
     if (operatorStatus == null) {
-      LOG.info("Operator status for operator " + oper.getId() + " does not exist yet.");
+      LOG.info("Operator status for operator {} does not exist yet.", oper);
       return;
     }
 
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning");
+      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning", oper);
       return;
     }
 
@@ -301,7 +315,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          LOG.info("End window stats is null for operator {}");
+          LOG.info("End window stats is null for operator {}", oper);
           return;
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
@@ -314,17 +328,58 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
     }
 
-    for (PTOutput output: oper.outputs) {
-      for (PTInput input: output.sinks) {
-        if (input.target instanceof PTOperator) {
-          PTOperator downStreamOp = (PTOperator)input.target;
-          if (!endWindowStatsVisited.contains(downStreamOp)) {
-            calculateLatency(downStreamOp, endWindowStatsMap, endWindowStatsVisited);
+    if (oper.outputs.isEmpty()) {
+      // it is a leaf operator
+      leafOperators.add(oper);
+    }
+    else {
+      for (PTOutput output : oper.outputs) {
+        for (PTInput input : output.sinks) {
+          if (input.target instanceof PTOperator) {
+            PTOperator downStreamOp = (PTOperator)input.target;
+            if (!endWindowStatsVisited.contains(downStreamOp)) {
+              calculateLatency(downStreamOp, endWindowStatsMap, endWindowStatsVisited, leafOperators);
+            }
           }
         }
       }
     }
   }
+
+  /*
+   * returns cumulative latency
+   */
+  private long findCriticalPath(Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> operators, LinkedList<Integer> criticalPath)
+  {
+    long maxEndWindowTimestamp = 0;
+    PTOperator maxOperator = null;
+    for (PTOperator operator : operators) {
+      EndWindowStats endWindowStats = endWindowStatsMap.get(operator.getId());
+      if (maxEndWindowTimestamp < endWindowStats.emitTimestamp) {
+        maxEndWindowTimestamp = endWindowStats.emitTimestamp;
+        maxOperator = operator;
+      }
+    }
+    if (maxOperator == null) {
+      return 0;
+    }
+    criticalPath.addFirst(maxOperator.getId());
+    OperatorStatus operatorStatus = getOperatorStatus(maxOperator);
+    if (operatorStatus == null) {
+      return 0;
+    }
+    operators.clear();
+    if (maxOperator.inputs == null || maxOperator.inputs.isEmpty()) {
+      return operatorStatus.latencyMA.getAvg();
+    }
+    for (PTInput input : maxOperator.inputs) {
+      if (input.source.source instanceof PTOperator) {
+        operators.add((PTOperator)input.source.source);
+      }
+    }
+    return operatorStatus.latencyMA.getAvg() + findCriticalPath(endWindowStatsMap, operators, criticalPath);
+  }
+
 
   private OperatorStatus getOperatorStatus(PTOperator operator)
   {
@@ -1334,4 +1389,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
   }
 
+  public CriticalPathInfo getCriticalPathInfo()
+  {
+    return criticalPathInfo;
+  }
 }

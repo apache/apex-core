@@ -50,8 +50,7 @@ public class OperatorDiscoverer
               final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
               try {
                 Class<?> clazz = Class.forName(className);
-                int modifiers = clazz.getModifiers();
-                if (!Modifier.isAbstract(modifiers) && !Modifier.isInterface(modifiers) && Operator.class.isAssignableFrom(clazz)) {
+                if (isInstantiableOperatorClass(clazz)) {
                   LOG.info("Adding class {} as an operator", clazz.getName());
                   operatorClasses.add((Class<? extends Operator>)clazz);
                 }
@@ -70,6 +69,12 @@ public class OperatorDiscoverer
       catch (IOException ex) {
       }
     }
+  }
+
+  public static boolean isInstantiableOperatorClass(Class<?> clazz)
+  {
+    int modifiers = clazz.getModifiers();
+    return !Modifier.isAbstract(modifiers) && !Modifier.isInterface(modifiers) && Operator.class.isAssignableFrom(clazz);
   }
 
   public List<Class<? extends Operator>> getOperatorClasses(String parent) throws ClassNotFoundException

@@ -4,9 +4,9 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.StorageAgent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,28 +30,29 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.engine.DefaultUnifier;
-import com.datatorrent.engine.Node;
-import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-import java.io.OutputStream;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.engine.DefaultUnifier;
+import com.datatorrent.engine.Node;
+import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -326,13 +327,7 @@ public class PhysicalPlan {
     int loadIndicator = 0;
     List<? extends StatsHandler> statsMonitors;
 
-    private enum LocalityType {
-      CONTAINER_LOCAL,
-      NODE_LOCAL,
-      RACK_LOCAL
-    }
-
-    private final Map<LocalityType, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
+    private final Map<Locality, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
 
     List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
@@ -402,7 +397,7 @@ public class PhysicalPlan {
       return partition;
     }
 
-    private Set<PTOperator> getGrouping(LocalityType type) {
+    private Set<PTOperator> getGrouping(Locality type) {
       Set<PTOperator> s = this.groupings.get(type);
       if (s == null) {
         s = Sets.newHashSet();
@@ -412,7 +407,7 @@ public class PhysicalPlan {
     }
 
     public Set<PTOperator> getNodeLocalOperators() {
-      return getGrouping(LocalityType.NODE_LOCAL);
+      return getGrouping(Locality.NODE_LOCAL);
     }
 
     /**
@@ -519,7 +514,7 @@ public class PhysicalPlan {
 
   private final AtomicInteger idSequence = new AtomicInteger();
   private final AtomicInteger containerSeq = new AtomicInteger();
-  private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
+  private LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new CopyOnWriteArrayList<PTContainer>();
   private final LogicalPlan dag;
   private final PlanContext ctx;
@@ -729,7 +724,7 @@ public class PhysicalPlan {
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineSet = oper.getGrouping(PTOperator.LocalityType.CONTAINER_LOCAL);
+          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL);
           if (!inlineSet.isEmpty()) {
             // process inline operators
             for (PTOperator inlineOper : inlineSet) {
@@ -918,7 +913,7 @@ public class PhysicalPlan {
       removePartition(p, currentMapping.parallelPartitions);
     }
 
-    // keep mapping reference as that is where stats monitors point to
+    // keep mapping reference as that's where stats monitors point to
     currentMapping.mergeOperators = newMapping.mergeOperators;
     currentMapping.partitions = newMapping.partitions;
 
@@ -961,17 +956,8 @@ public class PhysicalPlan {
       }
     }
 
-    assignContainers(newOperators, newContainers);
-
     Set<PTContainer> releaseContainers = Sets.newHashSet();
-    // release containers that are no longer used
-    for (PTContainer c : this.containers) {
-      if (c.operators.isEmpty()) {
-        LOG.debug("Container {} to be released", c);
-        releaseContainers.add(c);
-        containers.remove(c);
-      }
-    }
+    assignContainers(newOperators, newContainers, releaseContainers);
 
     deployOperators = this.getDependents(deployOperators);
     ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
@@ -983,12 +969,12 @@ public class PhysicalPlan {
     this.ctx.recordEventAsync(ev);
   }
 
-  public void assignContainers(Set<PTOperator> newOperators, Set<PTContainer> newContainers) {
+  public void assignContainers(Set<PTOperator> newOperators, Set<PTContainer> newContainers, Set<PTContainer> releaseContainers) {
     // assign containers to new operators
     for (PTOperator oper : newOperators) {
       PTContainer newContainer = null;
       // check for existing inline set
-      for (PTOperator inlineOper : oper.getGrouping(PTOperator.LocalityType.CONTAINER_LOCAL)) {
+      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL)) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
@@ -1013,6 +999,15 @@ public class PhysicalPlan {
         }
       }
       setContainer(oper, c);
+    }
+
+    // release containers that are no longer used
+    for (PTContainer c : this.containers) {
+      if (c.operators.isEmpty()) {
+        LOG.debug("Container {} to be released", c);
+        releaseContainers.add(c);
+        containers.remove(c);
+      }
     }
   }
 
@@ -1079,13 +1074,10 @@ public class PhysicalPlan {
     // remove the operator
     removePTOperator(oper);
 
-    oper.container.operators.remove(oper); // TODO: thread safety
-
     // per partition merge operators
     if (!oper.upstreamMerge.isEmpty()) {
       for (Map.Entry<InputPortMeta, PTOperator> mEntry : oper.upstreamMerge.entrySet()) {
         removePTOperator(mEntry.getValue());
-        mEntry.getValue().container.operators.remove(mEntry.getValue());
       }
     }
   }
@@ -1129,8 +1121,8 @@ public class PhysicalPlan {
     //
     // update locality
     //
-    setLocalityGrouping(nodeDecl, pOperator, inlinePrefs, PTOperator.LocalityType.CONTAINER_LOCAL);
-    setLocalityGrouping(nodeDecl, pOperator, localityPrefs, PTOperator.LocalityType.NODE_LOCAL);
+    setLocalityGrouping(nodeDecl, pOperator, inlinePrefs, Locality.CONTAINER_LOCAL);
+    setLocalityGrouping(nodeDecl, pOperator, localityPrefs, Locality.NODE_LOCAL);
 
     return pOperator;
   }
@@ -1254,7 +1246,7 @@ public class PhysicalPlan {
     return pOperator;
   }
 
-  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, PTOperator.LocalityType ltype) {
+  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype) {
 
     Set<PTOperator> s = newOperator.getGrouping(ltype);
     s.add(newOperator);
@@ -1278,29 +1270,29 @@ public class PhysicalPlan {
     }
   }
 
-  private void removePTOperator(PTOperator node) {
-    LOG.debug("Removing operator " + node);
-    OperatorMeta nodeDecl = node.logicalNode;
-    PMapping mapping = logicalToPTOperator.get(node.logicalNode);
-    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+  private void removePTOperator(PTOperator oper) {
+    LOG.debug("Removing operator " + oper);
+    OperatorMeta operMeta = oper.logicalNode;
+    PMapping mapping = logicalToPTOperator.get(oper.logicalNode);
+    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : operMeta.getOutputStreams().entrySet()) {
       PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
       if (merge != null) {
         List<PTInput> newInputs = new ArrayList<PTInput>(merge.inputs.size());
         for (PTInput sinkIn : merge.inputs) {
-          if (sinkIn.source.source != node) {
+          if (sinkIn.source.source != oper) {
             newInputs.add(sinkIn);
           }
         }
         merge.inputs = newInputs;
       } else {
-        StreamMeta streamDecl = outputEntry.getValue();
-        for (LogicalPlan.InputPortMeta inp : streamDecl.getSinks()) {
+        StreamMeta streamMeta = outputEntry.getValue();
+        for (LogicalPlan.InputPortMeta inp : streamMeta.getSinks()) {
           List<PTOperator> sinkNodes = logicalToPTOperator.get(inp.getOperatorWrapper()).partitions;
           for (PTOperator sinkNode : sinkNodes) {
             // unlink from downstream operators
             List<PTInput> newInputs = new ArrayList<PTInput>(sinkNode.inputs.size());
             for (PTInput sinkIn : sinkNode.inputs) {
-              if (sinkIn.source.source != node) {
+              if (sinkIn.source.source != oper) {
                 newInputs.add(sinkIn);
               } else {
                 sinkIn.source.sinks.remove(sinkIn);
@@ -1312,17 +1304,23 @@ public class PhysicalPlan {
       }
     }
     // remove from upstream operators
-    for (PTInput in : node.inputs) {
+    for (PTInput in : oper.inputs) {
       in.source.sinks.remove(in);
     }
     // remove checkpoint states
     try {
-      for (long checkpointWindowId : node.checkpointWindows) {
-        ctx.getStorageAgent().delete(node.id, checkpointWindowId);
+      synchronized (oper.checkpointWindows) {
+        for (long checkpointWindowId : oper.checkpointWindows) {
+          ctx.getStorageAgent().delete(oper.id, checkpointWindowId);
+        }
       }
     } catch (IOException e) {
-      LOG.warn("Failed to remove state for " + node, e);
+      LOG.warn("Failed to remove state for " + oper, e);
     }
+
+    List<PTOperator> cowList = Lists.newArrayList(oper.container.operators);
+    cowList.remove(oper);
+    oper.container.operators = cowList;
   }
 
   public LogicalPlan getDAG() {
@@ -1419,9 +1417,9 @@ public class PhysicalPlan {
         upstreamPartitioned = m;
       }
 
-      if (e.getValue().isInline()) {
+      if (Locality.CONTAINER_LOCAL == e.getValue().getLocality()) {
         inlinePrefs.setLocal(m, pnodes);
-      } else if (e.getValue().isNodeLocal()) {
+      } else if (Locality.NODE_LOCAL == e.getValue().getLocality()) {
         localityPrefs.setLocal(m, pnodes);
       }
     }
@@ -1445,6 +1443,14 @@ public class PhysicalPlan {
     this.logicalToPTOperator.put(om, pnodes);
   }
 
+  /**
+   * Remove physical representation of given stream. Operators that are affected
+   * in the execution layer will be added to the set. This method does not
+   * automatically remove operators from the plan.
+   *
+   * @param sm
+   * @param affectedOperators
+   */
   public void removeLogicalStream(StreamMeta sm, Set<PTOperator> affectedOperators)
   {
     // remove incoming connections for logical stream
@@ -1490,32 +1496,6 @@ public class PhysicalPlan {
    * @param sm
    * @param affectedOperators
    */
-/*
-  public void addLogicalStream(StreamMeta sm, Set<PTOperator> affectedOperators)
-  {
-    // initialize outputs for existing operators
-    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : sm.getSource().getOperatorWrapper().getOutputStreams().entrySet()) {
-      PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorWrapper());
-      for (PTOperator oper : sourceOpers.partitions) {
-        setupOutput(sourceOpers, oper, outputEntry);
-        affectedOperators.add(oper);
-      }
-    }
-
-    // downstream inputs
-    for (InputPortMeta sink : sm.getSinks()) {
-      for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : sink.getOperatorWrapper().getInputStreams().entrySet()) {
-        if (inputEntry.getKey() == sink) {
-          PMapping m = this.logicalToPTOperator.get(sink.getOperatorWrapper());
-          for (PTOperator oper : m.partitions) {
-            connectInput(m, oper, inputEntry);
-            affectedOperators.add(oper);
-          }
-        }
-      }
-    }
-  }
-*/
   public void connectInput(InputPortMeta ipm, Set<PTOperator> affectedOperators)
   {
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : ipm.getOperatorWrapper().getInputStreams().entrySet()) {
@@ -1535,6 +1515,31 @@ public class PhysicalPlan {
         }
       }
     }
+  }
+
+  /**
+   * Remove all physical operators for the given logical operator.
+   * All connected streams must have been previously removed.
+   * @param om
+   */
+  public void removeLogicalOperator(OperatorMeta om, Set<PTOperator> removeOpers)
+  {
+    PMapping opers = this.logicalToPTOperator.get(om);
+    if (opers == null) {
+      throw new AssertionError("Operator not in physical plan: " + om.getName());
+    }
+
+    for (PTOperator oper : opers.partitions) {
+      removePartition(oper, opers.parallelPartitions);
+    }
+
+    for (PTOperator mergeOperator : opers.mergeOperators.values()) {
+      removePTOperator(mergeOperator);
+    }
+
+    LinkedHashMap<OperatorMeta, PMapping> copyMap = Maps.newLinkedHashMap(this.logicalToPTOperator);
+    copyMap.remove(om);
+    this.logicalToPTOperator = copyMap;
   }
 
 }

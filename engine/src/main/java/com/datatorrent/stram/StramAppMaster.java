@@ -69,6 +69,7 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  *
@@ -141,7 +142,7 @@ public class StramAppMaster //extends License for licensing using native
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
   //private AbstractDelegationTokenSecretManager<? extends TokenIdentifier> delegationTokenManager;
-  private final StramDelegationTokenManager delegationTokenManager;
+  private StramDelegationTokenManager delegationTokenManager = null;
 
   /**
    * Overrides getters to pull live info.
@@ -175,6 +176,19 @@ public class StramAppMaster //extends License for licensing using native
         num += c.operators.size();
       }
       return num;
+    }
+
+    @Override
+    public AppInfo.CriticalPathInfo getCriticalPathInfo()
+    {
+      AppInfo.CriticalPathInfo cpi = new AppInfo.CriticalPathInfo();
+      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      if (criticalPathInfo == null) {
+        return null;
+      }
+      cpi.latency = criticalPathInfo.latency;
+      cpi.path = criticalPathInfo.path;
+      return cpi;
     }
 
   }
@@ -362,11 +376,13 @@ public class StramAppMaster //extends License for licensing using native
     // Set up the configuration and RPC
     this.conf = new YarnConfiguration();
     this.yarnClient = new YarnClientHelper(this.conf);
-    //TODO :- Need to perform token renewal
-    delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
-                                                             DELEGATION_TOKEN_MAX_LIFETIME,
-                                                             DELEGATION_TOKEN_RENEW_INTERVAL,
-                                                             DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+    if (UserGroupInformation.isSecurityEnabled()) {
+      //TODO :- Need to perform token renewal
+      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
+                                                              DELEGATION_TOKEN_MAX_LIFETIME,
+                                                              DELEGATION_TOKEN_RENEW_INTERVAL,
+                                                              DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+    }
   }
 
   /**
@@ -425,8 +441,10 @@ public class StramAppMaster //extends License for licensing using native
 
     this.dnmgr = new StreamingContainerManager(dag);
 
-    // start the secret manager
-    delegationTokenManager.startThreads();
+    if (UserGroupInformation.isSecurityEnabled()) {
+      // start the secret manager
+      delegationTokenManager.startThreads();
+    }
 
     // start RPC server
     rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager);
@@ -455,7 +473,7 @@ public class StramAppMaster //extends License for licensing using native
 
   public void destroy()
   {
-    if (delegationTokenManager != null) {
+    if (UserGroupInformation.isSecurityEnabled()) {
       delegationTokenManager.stopThreads();
     }
   }

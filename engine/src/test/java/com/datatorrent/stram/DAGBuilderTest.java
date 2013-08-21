@@ -115,7 +115,7 @@ public class DAGBuilderTest {
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
 
     assertEquals("stream name", "n1n2", n1n2.getId());
-    Assert.assertFalse("n1n2 not inline (default)", n1n2.isInline());
+    Assert.assertEquals("n1n2 not inline (default)", null, n1n2.getLocality());
 
     // operator 2 streams to operator 3 and operator 4
     assertEquals("operator 2 number of outputs", 1, operator2.getOutputStreams().size());
@@ -176,7 +176,7 @@ public class DAGBuilderTest {
 
       StreamMeta s1 = dag.getStream("n1n2");
       assertNotNull(s1);
-      assertTrue("n1n2 inline", s1.isInline());
+      assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
 
       OperatorMeta operator3 = dag.getOperatorMeta("operator3");
       assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
@@ -491,6 +491,37 @@ public class DAGBuilderTest {
     } catch (ValidationException e) {
       Assert.assertEquals("", "Input port connection required: counter.countInputPort", e.getMessage());
     }
+
+  }
+
+  @Test
+  public void testProcessingModeValidation() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
+
+    GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
+    dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
+
+    dag.addStream("input1.outport", input1.outport, amoOper.inport1);
+    dag.addStream("input2.outport", input2.outport, amoOper.inport2);
+
+    GenericTestOperator outputOper = dag.addOperator("outputOper", GenericTestOperator.class);
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
+    dag.addStream("aloOper.outport1", amoOper.outport1, outputOper.inport1);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + outputOper);
+    } catch (ValidationException ve) {
+      Assert.assertEquals("", ve.getMessage(), "Processing mode outputOper/AT_LEAST_ONCE not valid for source amoOper/AT_MOST_ONCE");
+    }
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, null);
+    dag.validate();
+
+    OperatorMeta outputOperOm = dag.getMeta(outputOper);
+    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
 
   }
 
