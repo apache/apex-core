@@ -20,7 +20,6 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.api.*;
 import com.datatorrent.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.engine.GenericTestOperator;
 import com.datatorrent.engine.TestGeneratorInputOperator;
@@ -38,6 +37,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.datatorrent.api.AttributeMap.AttributeKey;
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.StorageAgent;
@@ -319,7 +319,7 @@ public class PhysicalPlanTest {
 
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
 
-    dag.addStream("node2_outport1", node2.outport1, o3parallel.inport1).setInline(true);
+    dag.addStream("node2_outport1", node2.outport1, o3parallel.inport1).setLocality(Locality.CONTAINER_LOCAL);
     dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.addStream("o3parallel_outport1", o3parallel.outport1, mergeNode.inport1);
 
@@ -519,11 +519,11 @@ public class PhysicalPlanTest {
     dag.getMeta(partNode).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
 
     dag.addStream("o1_outport1", o1.outport1, o2.inport1, o3.inport1, partNode.inport1)
-            .setInline(false);
+            .setLocality(null);
 
     // same container for o2 and o3
     dag.addStream("o2_outport1", o2.outport1, o3.inport2)
-            .setInline(true);
+            .setLocality(Locality.CONTAINER_LOCAL);
 
     dag.addStream("o3_outport1", o3.outport1, partNode.inport2);
 
@@ -561,10 +561,10 @@ public class PhysicalPlanTest {
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
 
     dag.addStream("n1Output1", node1.outport1, node3.inport1)
-            .setInline(true);
+            .setLocality(Locality.CONTAINER_LOCAL);
 
     dag.addStream("n2Output1", node2.outport1, node3.inport2)
-            .setInline(true);
+            .setLocality(Locality.CONTAINER_LOCAL);
 
     int maxContainers = 5;
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(maxContainers);
@@ -593,9 +593,9 @@ public class PhysicalPlanTest {
 
     GenericTestOperator partitionedParallel = dag.addOperator("partitionedParallel", GenericTestOperator.class);
 
-    dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setInline(false);
+    dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(null);
 
-    dag.addStream("partitioned_outport1", partitioned.outport1, partitionedParallel.inport2).setNodeLocal(true);
+    dag.addStream("partitioned_outport1", partitioned.outport1, partitionedParallel.inport2).setLocality(Locality.NODE_LOCAL);
     dag.setInputPortAttribute(partitionedParallel.inport2, PortContext.PARTITION_PARALLEL, true);
 
     GenericTestOperator single = dag.addOperator("single", GenericTestOperator.class);
@@ -647,9 +647,9 @@ public class PhysicalPlanTest {
 
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 
-    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(false);
+    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setLocality(null);
 
-    dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(true);
+    dag.addStream("o2Output1", o2.outport1, o3.inport2).setLocality(Locality.CONTAINER_LOCAL);
     dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_PARALLEL, true);
 
     // parallel partition two downstream operators
@@ -661,7 +661,7 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o3_2Meta = dag.getMeta(o3_2);
 
-    dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(true);
+    dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setLocality(Locality.CONTAINER_LOCAL);
 
     // join within parallel partition
     GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
@@ -669,8 +669,8 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o4Meta = dag.getMeta(o4);
 
-    dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setInline(true);
-    dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setInline(true);
+    dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setLocality(Locality.CONTAINER_LOCAL);
 
     // non inline
     GenericTestOperator o5single = dag.addOperator("o5single", GenericTestOperator.class);
