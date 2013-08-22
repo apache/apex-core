@@ -36,6 +36,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -303,12 +306,48 @@ public class StramAppLauncher {
   public static LogicalPlan prepareDAG(AppConfig appConfig, String launchMode) {
     Configuration conf = getConfig(launchMode);
     LogicalPlan dag = appConfig.createApp(conf);
+    // process configuration parameters
+    processDAGConfig(dag, conf, appConfig);
     dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(appConfig.getName());
     // inject external operator configuration
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromConfiguration(conf);
     pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
     return dag;
+  }
+
+  public static void processDAGConfig(DAG dag, Configuration conf, AppConfig appConfig) {
+    // -TODO- Process the Application attributes and properties, Operators attributes and properies and
+    // Ports attributes and properties here
+
+    // Set the application name if specified in the config file
+    String appName = null;
+    StringBuilder sb = new StringBuilder(DAG.STRAM_APPLICATION_PROP.replace(".", "\\."));
+    sb.append("\\.(.*)\\.").append(DAG.STRAM_APPLICATION_CLASS_PROP.replace(".", "\\."));
+    String appClassRegex = sb.toString();
+    String name = appConfig.getName();
+    String className = name.replace("/", ".").substring(0, name.length()-6);
+    Map<String, String> props = conf.getValByRegex(appClassRegex);
+    if (props != null) {
+      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
+      for (Map.Entry<String, String> propEntry : propEntries) {
+        if (propEntry.getValue().equals(className)) {
+          Pattern p = Pattern.compile(appClassRegex);
+          Matcher m = p.matcher(propEntry.getKey());
+          if (m.find()) {
+            appName = m.group(1);
+            break;
+          }
+        }
+      }
+    }
+    if (appName != null) {
+      dag.getAttributes().attr(DAG.APPLICATION_NAME).set(appName);
+    } else {
+      appName = dag.getAttributes().attr(DAG.APPLICATION_NAME).get();
+    }
+    
+    // Use appName to process other configs
   }
 
   /**
