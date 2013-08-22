@@ -4,8 +4,8 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -116,7 +116,7 @@ public class OperatorDiscoverer
     for (Class<? extends Operator> clazz : operatorClasses) {
       Field[] fields = clazz.getFields();
       for (Field field : fields) {
-        if (InputOperator.class.isAssignableFrom(field.getType())) {
+        if (InputPort.class.isAssignableFrom(field.getType())) {
           result.add(clazz);
           break;
         }
