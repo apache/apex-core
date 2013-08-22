@@ -4,8 +4,10 @@
  */
 package com.datatorrent.stram.webapp;
 
+import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -99,6 +101,25 @@ public class OperatorDiscoverer
     for (Class<? extends Operator> clazz : operatorClasses) {
       if (parentClass.isAssignableFrom(clazz)) {
         result.add(clazz);
+      }
+    }
+    return result;
+  }
+
+  List<Class<? extends Operator>> getActionOperatorClasses()
+  {
+    if (operatorClasses.isEmpty()) {
+      init();
+    }
+
+    List<Class<? extends Operator>> result = new ArrayList<Class<? extends Operator>>();
+    for (Class<? extends Operator> clazz : operatorClasses) {
+      Field[] fields = clazz.getFields();
+      for (Field field : fields) {
+        if (InputOperator.class.isAssignableFrom(field.getType())) {
+          result.add(clazz);
+          break;
+        }
       }
     }
     return result;

@@ -88,6 +88,7 @@ public class StramWebServices
   public static final String PATH_CREATE_ALERT = "createAlert";
   public static final String PATH_DELETE_ALERT = "deleteAlert";
   public static final String PATH_LIST_ALERTS = "listAlerts";
+  public static final String PATH_LIST_ACTION_OPERATOR_CLASSES = "listActionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse httpResponse;
@@ -832,6 +833,22 @@ public class StramWebServices
       alertsArray.put(alert);
     }
     response.put("alerts", alertsArray);
+    return response;
+  }
+
+  @GET
+  @Path(PATH_LIST_ACTION_OPERATOR_CLASSES)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
+  {
+    JSONObject response = new JSONObject();
+    JSONArray jsonArray = new JSONArray();
+    List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
+
+    for (Class clazz : operatorClasses) {
+      jsonArray.put(clazz.getName());
+    }
+    response.put("classes", jsonArray);
     return response;
   }
 
