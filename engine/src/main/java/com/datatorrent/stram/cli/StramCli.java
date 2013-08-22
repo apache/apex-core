@@ -1924,8 +1924,9 @@ public class StramCli
       if (!f.canRead()) {
         throw new CliException("Cannot read " + fileName);
       }
-      byte[] buffer = new byte[16 * 1024];
+
       DataInputStream dis = new DataInputStream(new FileInputStream(f));
+      byte[] buffer = new byte[dis.available()];
       dis.readFully(buffer);
       final JSONObject json = new JSONObject(new String(buffer));
 
