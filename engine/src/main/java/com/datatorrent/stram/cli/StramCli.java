@@ -246,6 +246,9 @@ public class StramCli
     connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file"}, new String[] {"jar-file", "class-name"}, "Dump the properties file of an app class"));
     connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), null, new String[] {"app-id"}, "Get the information of an app"));
+    connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(), new String[] {"file"}, null, "Create an alert with the given file that contains the spec"));
+    connectedCommands.put("delete-alert", new CommandSpec(new DeleteAlertCommand(), new String[] {"name"}, null, "Delete an alert with the given name"));
+    connectedCommands.put("list-alerts", new CommandSpec(new ListAlertsCommand(), null, null, "List all alerts"));
 
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
@@ -1907,6 +1910,82 @@ public class StramCli
 
       });
       System.out.println(response.toString(2));
+    }
+
+  }
+
+  private class CreateAlertCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String fileName = expandFileName(args[1], true);
+      File f = new File(fileName);
+      if (!f.canRead()) {
+        throw new CliException("Cannot read " + fileName);
+      }
+      byte[] buffer = new byte[16 * 1024];
+      DataInputStream dis = new DataInputStream(new FileInputStream(f));
+      dis.readFully(buffer);
+      final JSONObject json = new JSONObject(new String(buffer));
+
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_CREATE_ALERT);
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, json);
+          }
+
+        });
+        System.out.println(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+
+  }
+
+  private class DeleteAlertCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      final JSONObject postJson = new JSONObject();
+      postJson.put("name", args[1]);
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_DELETE_ALERT);
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, postJson);
+          }
+
+        });
+        System.out.println(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+
+  }
+
+  private class ListAlertsCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      ClientResponse rsp = getResource(StramWebServices.PATH_OPERATORS, currentApp);
+      JSONObject json = rsp.getEntity(JSONObject.class);
+      System.out.println(json);
     }
 
   }
