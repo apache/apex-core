@@ -68,9 +68,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
-import java.io.IOException;
 import java.util.*;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  *
@@ -300,13 +298,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     endWindowStatsVisited.add(oper);
     OperatorStatus operatorStatus = getOperatorStatus(oper);
     if (operatorStatus == null) {
-      LOG.info("Operator status for operator " + oper.getId() + " does not exist yet.");
+      LOG.info("Operator status for operator {} does not exist yet.", oper);
       return;
     }
 
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning");
+      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning", oper);
       return;
     }
 
@@ -317,7 +315,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          LOG.info("End window stats is null for operator {}");
+          LOG.info("End window stats is null for operator {}", oper);
           return;
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {

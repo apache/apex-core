@@ -1270,29 +1270,29 @@ public class PhysicalPlan {
     }
   }
 
-  private void removePTOperator(PTOperator node) {
-    LOG.debug("Removing operator " + node);
-    OperatorMeta nodeDecl = node.logicalNode;
-    PMapping mapping = logicalToPTOperator.get(node.logicalNode);
-    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+  private void removePTOperator(PTOperator oper) {
+    LOG.debug("Removing operator " + oper);
+    OperatorMeta operMeta = oper.logicalNode;
+    PMapping mapping = logicalToPTOperator.get(oper.logicalNode);
+    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : operMeta.getOutputStreams().entrySet()) {
       PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
       if (merge != null) {
         List<PTInput> newInputs = new ArrayList<PTInput>(merge.inputs.size());
         for (PTInput sinkIn : merge.inputs) {
-          if (sinkIn.source.source != node) {
+          if (sinkIn.source.source != oper) {
             newInputs.add(sinkIn);
           }
         }
         merge.inputs = newInputs;
       } else {
-        StreamMeta streamDecl = outputEntry.getValue();
-        for (LogicalPlan.InputPortMeta inp : streamDecl.getSinks()) {
+        StreamMeta streamMeta = outputEntry.getValue();
+        for (LogicalPlan.InputPortMeta inp : streamMeta.getSinks()) {
           List<PTOperator> sinkNodes = logicalToPTOperator.get(inp.getOperatorWrapper()).partitions;
           for (PTOperator sinkNode : sinkNodes) {
             // unlink from downstream operators
             List<PTInput> newInputs = new ArrayList<PTInput>(sinkNode.inputs.size());
             for (PTInput sinkIn : sinkNode.inputs) {
-              if (sinkIn.source.source != node) {
+              if (sinkIn.source.source != oper) {
                 newInputs.add(sinkIn);
               } else {
                 sinkIn.source.sinks.remove(sinkIn);
@@ -1304,21 +1304,23 @@ public class PhysicalPlan {
       }
     }
     // remove from upstream operators
-    for (PTInput in : node.inputs) {
+    for (PTInput in : oper.inputs) {
       in.source.sinks.remove(in);
     }
     // remove checkpoint states
     try {
-      for (long checkpointWindowId : node.checkpointWindows) {
-        ctx.getStorageAgent().delete(node.id, checkpointWindowId);
+      synchronized (oper.checkpointWindows) {
+        for (long checkpointWindowId : oper.checkpointWindows) {
+          ctx.getStorageAgent().delete(oper.id, checkpointWindowId);
+        }
       }
     } catch (IOException e) {
-      LOG.warn("Failed to remove state for " + node, e);
+      LOG.warn("Failed to remove state for " + oper, e);
     }
 
-    List<PTOperator> cowList = Lists.newArrayList(node.container.operators);
-    cowList.remove(node);
-    node.container.operators = cowList;
+    List<PTOperator> cowList = Lists.newArrayList(oper.container.operators);
+    cowList.remove(oper);
+    oper.container.operators = cowList;
   }
 
   public LogicalPlan getDAG() {
