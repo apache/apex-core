@@ -12,7 +12,6 @@ import java.lang.Thread.State;
 import java.net.*;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -232,7 +231,7 @@ public class StramChild
     ArrayList<Thread> activeThreads = new ArrayList<Thread>();
     ArrayList<Integer> activeOperators = new ArrayList<Integer>();
 
-    for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
+    for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
       OperatorContext oc = activeNodes.get(e.getKey());
       if (oc == null) {
         disconnectNode(e.getKey());
@@ -588,7 +587,7 @@ public class StramChild
     NodeRequest nr = null;
     if (rsp.committedWindowId != lastCommittedWindowId) {
       lastCommittedWindowId = rsp.committedWindowId;
-      for (Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
+      for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
         if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new NodeRequest()
@@ -1238,6 +1237,16 @@ public class StramChild
     return String.valueOf(operatorId) + (portName != null ? ("$" + portName) : "");
   }
 
+  private String getOperatorFromRecorderKey(String recorderKey)
+  {
+    if (recorderKey.contains("$")) {
+      return recorderKey.substring(0, recorderKey.indexOf('$'));
+    }
+    else {
+      return recorderKey;
+    }
+  }
+
   private void startRecording(Node<?> node, int operatorId, String portName, boolean recordEvenIfNotConnected)
   {
     PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
@@ -1338,6 +1347,22 @@ public class StramChild
         tupleRecorders.remove(operatorPortName);
       }
     }
+    // this should be looked at again when we redesign how we handle recordings with ports in a cleaner way
+    else if (portName == null) {
+      Iterator<Map.Entry<String, TupleRecorder>> iterator = tupleRecorders.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<String, TupleRecorder> entry = iterator.next();
+        if (String.valueOf(operatorId).equals(getOperatorFromRecorderKey(entry.getKey()))) {
+          TupleRecorder tupleRecorder = entry.getValue();
+          if (tupleRecorder != null) {
+            node.removeSinks(tupleRecorder.getSinkMap());
+            tupleRecorder.teardown();
+            logger.debug("Stopped recording for operator/port {}", operatorPortName);
+            iterator.remove();
+          }
+        }
+      }
+    }
     else {
       logger.error("Operator/port {} is not being recorded.", operatorPortName);
     }
@@ -1353,6 +1378,20 @@ public class StramChild
       if (tupleRecorder != null) {
         tupleRecorder.getStorage().requestSync();
         logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
+      }
+    }
+    // this should be looked at again when we redesign how we handle recordings with ports in a cleaner way
+    else if (portName == null) {
+      Iterator<Map.Entry<String, TupleRecorder>> iterator = tupleRecorders.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<String, TupleRecorder> entry = iterator.next();
+        if (String.valueOf(operatorId).equals(getOperatorFromRecorderKey(entry.getKey()))) {
+          TupleRecorder tupleRecorder = entry.getValue();
+          if (tupleRecorder != null) {
+            tupleRecorder.getStorage().requestSync();
+            logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
+          }
+        }
       }
     }
     else {
@@ -1383,4 +1422,5 @@ public class StramChild
     }
     return finishedWindowId;
   }
+
 }
