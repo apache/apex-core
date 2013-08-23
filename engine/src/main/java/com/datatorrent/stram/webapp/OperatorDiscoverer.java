@@ -28,7 +28,7 @@ public class OperatorDiscoverer
     @Override
     public int compare(Class<?> a, Class<?> b)
     {
-      return String.CASE_INSENSITIVE_ORDER.compare(a.getName(), b.getName());
+      return a.getName().compareTo(b.getName());
     }
 
   }
