@@ -219,7 +219,7 @@ public class StramWebServices
     }
 
     try {
-      List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
+      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
       for (Class clazz : operatorClasses) {
         classNames.put(clazz.getName());
