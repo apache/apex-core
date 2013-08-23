@@ -33,7 +33,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StramChildAgent;

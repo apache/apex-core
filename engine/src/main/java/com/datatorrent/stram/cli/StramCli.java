@@ -3,7 +3,7 @@
  */
 package com.datatorrent.stram.cli;
 
-import com.datatorrent.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.cli.StramAppLauncher.AppConfig;
 import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;

@@ -59,7 +59,7 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.debug.StdOutErrLog;
+import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;

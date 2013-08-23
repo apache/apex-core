@@ -53,8 +53,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.engine.GenericTestOperator;
-import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.StramAppMaster;
 import com.datatorrent.stram.StramChild;

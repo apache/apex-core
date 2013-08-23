@@ -4,18 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.engine.*;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
-import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.support.ManualScheduledExecutorService;
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stream.BufferServerSubscriber;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -25,9 +13,25 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.engine.*;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.engine.SweepableReservoir;
+import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.stream.BufferServerSubscriber;
+import com.datatorrent.stram.support.ManualScheduledExecutorService;
+import com.datatorrent.stram.support.StramTestSupport;
 
 public class StramLocalClusterTest
 {

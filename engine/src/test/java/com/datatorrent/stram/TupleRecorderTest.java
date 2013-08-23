@@ -4,8 +4,8 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.engine.GenericTestOperator;
-import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.TupleRecorder.PortInfo;
 import com.datatorrent.stram.TupleRecorder.RecordInfo;

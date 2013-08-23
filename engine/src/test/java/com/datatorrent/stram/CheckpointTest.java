@@ -23,11 +23,11 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.engine.GenericTestOperator;
-import com.datatorrent.engine.OperatorContext;
-import com.datatorrent.engine.OperatorStats;
-import com.datatorrent.engine.TestGeneratorInputOperator;
-import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.OperatorStats;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.PhysicalPlan;
 import com.datatorrent.stram.StramChild;

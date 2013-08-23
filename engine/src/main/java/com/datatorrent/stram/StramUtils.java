@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.api.StreamCodec;
 
 /**

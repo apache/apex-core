@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.util.HdfsPartFileCollection;
-import com.datatorrent.tuple.Tuple;
+import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.util.PubSubWebSocketClient;
 import com.datatorrent.api.Sink;
