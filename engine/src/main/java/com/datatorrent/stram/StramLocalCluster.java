@@ -4,9 +4,9 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.engine.Node;
-import com.datatorrent.engine.OperatorContext;
-import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;

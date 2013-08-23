@@ -4,13 +4,13 @@
  */
 package com.datatorrent.stram.support;
 
-import com.datatorrent.engine.OperatorContext;
-import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
-import com.datatorrent.tuple.EndWindowTuple;
-import com.datatorrent.tuple.Tuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.bufferserver.packet.MessageType;
 import static java.lang.Thread.sleep;
 import junit.framework.AssertionFailedError;

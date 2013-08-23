@@ -39,9 +39,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.engine.GenericTestOperator;
-import com.datatorrent.engine.TestGeneratorInputOperator;
-import com.datatorrent.engine.TestOutputOperator;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.TestOutputOperator;
 import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.cli.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;

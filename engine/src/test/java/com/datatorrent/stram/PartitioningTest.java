@@ -22,7 +22,7 @@ import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.engine.Node;
+import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.PhysicalPlan.PMapping;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;

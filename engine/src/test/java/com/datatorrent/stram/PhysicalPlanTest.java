@@ -20,9 +20,9 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.engine.GenericTestOperator;
-import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.OperatorPartitions;
 import com.datatorrent.stram.PhysicalPlan;
 import com.datatorrent.stram.OperatorPartitions.PartitionImpl;

@@ -19,7 +19,7 @@ import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.engine.RecoverableInputOperator;
+import com.datatorrent.stram.engine.RecoverableInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.util.ArrayList;
 
