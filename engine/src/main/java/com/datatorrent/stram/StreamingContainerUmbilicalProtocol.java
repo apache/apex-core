@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.engine.OperatorStats;
+import com.datatorrent.stram.engine.OperatorStats;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 import com.datatorrent.api.AttributeMap;

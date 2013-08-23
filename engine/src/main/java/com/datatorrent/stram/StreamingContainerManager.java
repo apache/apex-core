@@ -34,8 +34,8 @@ import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.engine.OperatorStats;
-import com.datatorrent.engine.OperatorStats.PortStats;
+import com.datatorrent.stram.engine.OperatorStats;
+import com.datatorrent.stram.engine.OperatorStats.PortStats;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTInput;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;

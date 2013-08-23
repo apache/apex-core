@@ -9,9 +9,7 @@ import com.datatorrent.api.Operator.InputPort;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.slf4j.Logger;
@@ -25,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class OperatorDiscoverer
 {
-  private List<Class<? extends Operator>> operatorClasses = new ArrayList<Class<? extends Operator>>();
+  private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>();
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
 
   private void init()
@@ -79,7 +77,7 @@ public class OperatorDiscoverer
     return !Modifier.isAbstract(modifiers) && !Modifier.isInterface(modifiers) && Operator.class.isAssignableFrom(clazz);
   }
 
-  public List<Class<? extends Operator>> getOperatorClasses(String parent) throws ClassNotFoundException
+  public Set<Class<? extends Operator>> getOperatorClasses(String parent) throws ClassNotFoundException
   {
     if (operatorClasses.isEmpty()) {
       init();
@@ -95,9 +93,9 @@ public class OperatorDiscoverer
       }
     }
     if (parentClass == Operator.class) {
-      return Collections.unmodifiableList(operatorClasses);
+      return Collections.unmodifiableSet(operatorClasses);
     }
-    List<Class<? extends Operator>> result = new ArrayList<Class<? extends Operator>>();
+    Set<Class<? extends Operator>> result = new HashSet<Class<? extends Operator>>();
     for (Class<? extends Operator> clazz : operatorClasses) {
       if (parentClass.isAssignableFrom(clazz)) {
         result.add(clazz);

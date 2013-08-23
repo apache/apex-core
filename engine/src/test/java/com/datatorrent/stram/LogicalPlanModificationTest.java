@@ -12,7 +12,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.DAG.StreamMeta;
-import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTInput;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;

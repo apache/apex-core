@@ -24,13 +24,13 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.engine.DefaultReservoir;
-import com.datatorrent.engine.GenericNode;
-import com.datatorrent.engine.RecoverableInputOperator;
+import com.datatorrent.stram.engine.DefaultReservoir;
+import com.datatorrent.stram.engine.GenericNode;
+import com.datatorrent.stram.engine.RecoverableInputOperator;
 import com.datatorrent.stram.NodeRecoveryTest.CollectorOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.tuple.EndWindowTuple;
-import com.datatorrent.tuple.Tuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  *
@@ -216,7 +216,7 @@ public class AtMostOnceTest
         map.attr(OperatorContext.CHECKPOINT_WINDOW_COUNT).set(0);
         map.attr(OperatorContext.PROCESSING_MODE).set(ProcessingMode.AT_MOST_ONCE);
         active.set(true);
-        node.activate(new com.datatorrent.engine.OperatorContext(1, this, map, null));
+        node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
       }
 
     };
