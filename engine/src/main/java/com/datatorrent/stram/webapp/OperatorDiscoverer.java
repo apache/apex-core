@@ -23,7 +23,16 @@ import org.slf4j.LoggerFactory;
  */
 public class OperatorDiscoverer
 {
-  private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>();
+  private static class ClassComparator implements Comparator<Class<?>> {
+
+    @Override
+    public int compare(Class<?> a, Class<?> b)
+    {
+      return String.CASE_INSENSITIVE_ORDER.compare(a.getName(), b.getName());
+    }
+
+  }
+  private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>(new ClassComparator());
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
 
   private void init()

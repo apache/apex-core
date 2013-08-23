@@ -245,8 +245,10 @@ public class StramWebServices
 
       result.put("classes", classNames);
     }
-    catch (Exception ex) {
+    catch (ClassNotFoundException ex) {
       throw new NotFoundException();
+    }
+    catch (JSONException ex) {
     }
     return result;
   }
