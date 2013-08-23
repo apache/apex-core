@@ -650,18 +650,20 @@ public class StramWebServices
         }
 
         // set filter operator properties
-        JSONObject properties = filter.getJSONObject("properties");
-        Iterator<String> keys = properties.keys();
-        while (keys.hasNext()) {
-          String key = keys.next();
-          Object val = properties.get(key);
-          SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-          request.setOperatorName(filterOperatorName);
-          request.setPropertyName(key);
-          request.setPropertyValue(val.toString());
-          requests.add(request);
+        Iterator<String> keys;
+        JSONObject properties = filter.optJSONObject("properties");
+        if (properties != null) {
+          keys = properties.keys();
+          while (keys.hasNext()) {
+            String key = keys.next();
+            Object val = properties.get(key);
+            SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
+            request.setOperatorName(filterOperatorName);
+            request.setPropertyName(key);
+            request.setPropertyValue(val.toString());
+            requests.add(request);
+          }
         }
-
         // create escalation operator
         String escalationOperatorName = "_alert_escalation_" + name;
         alertInfo.operators.add(escalationOperatorName);
@@ -674,18 +676,19 @@ public class StramWebServices
         }
 
         // set escalation operator properties
-        properties = escalation.getJSONObject("properties");
-        keys = properties.keys();
-        while (keys.hasNext()) {
-          String key = keys.next();
-          Object val = properties.get(key);
-          SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-          request.setOperatorName(escalationOperatorName);
-          request.setOperatorName(key);
-          request.setPropertyValue(val.toString());
-          requests.add(request);
+        properties = escalation.optJSONObject("properties");
+        if (properties != null) {
+          keys = properties.keys();
+          while (keys.hasNext()) {
+            String key = keys.next();
+            Object val = properties.get(key);
+            SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
+            request.setOperatorName(escalationOperatorName);
+            request.setOperatorName(key);
+            request.setPropertyValue(val.toString());
+            requests.add(request);
+          }
         }
-
         // create action operators and set properties
         for (int i = 0; i < actions.length(); i++) {
           String actionOperatorName = "_alert_action_" + name + "_" + i;
@@ -698,18 +701,19 @@ public class StramWebServices
             request.setOperatorFQCN(action.getString("class"));
             requests.add(request);
           }
-          properties = action.getJSONObject("properties");
-          keys = properties.keys();
-          while (keys.hasNext()) {
-            String key = keys.next();
-            Object val = properties.get(key);
-            SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-            request.setOperatorName(actionOperatorName);
-            request.setPropertyName(key);
-            request.setPropertyValue(val.toString());
-            requests.add(request);
+          properties = action.optJSONObject("properties");
+          if (properties != null) {
+            keys = properties.keys();
+            while (keys.hasNext()) {
+              String key = keys.next();
+              Object val = properties.get(key);
+              SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
+              request.setOperatorName(actionOperatorName);
+              request.setPropertyName(key);
+              request.setPropertyValue(val.toString());
+              requests.add(request);
+            }
           }
-
           // create stream from escalation to actions
           CreateStreamRequest request = new CreateStreamRequest();
           alertInfo.streams.add("_alert_stream_action_" + name);
