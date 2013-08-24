@@ -253,6 +253,7 @@ public class StramCli
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
     logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(), new String[] {"stream-name", "from-operator-name", "from-port-name", "to-operator-name", "to-port-name"}, null, "Create a stream"));
+    logicalPlanChangeCommands.put("add-stream-sink", new CommandSpec(new AddStreamSinkCommand(), new String[] {"stream-name", "to-operator-name", "to-port-name"}, null, "Add a sink to an existing stream"));
     logicalPlanChangeCommands.put("remove-operator", new CommandSpec(new RemoveOperatorCommand(), new String[] {"operator-name"}, null, "Remove an operator"));
     logicalPlanChangeCommands.put("remove-stream", new CommandSpec(new RemoveStreamCommand(), new String[] {"stream-name"}, null, "Remove a stream"));
     logicalPlanChangeCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
@@ -1713,6 +1714,23 @@ public class StramCli
       request.setSourceOperatorName(sourceOperatorName);
       request.setSinkOperatorName(sinkOperatorName);
       request.setSourceOperatorPortName(sourcePortName);
+      request.setSinkOperatorPortName(sinkPortName);
+      logicalPlanRequestQueue.add(request);
+    }
+
+  }
+
+  private class AddStreamSinkCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String streamName = args[1];
+      String sinkOperatorName = args[2];
+      String sinkPortName = args[3];
+      AddStreamSinkRequest request = new AddStreamSinkRequest();
+      request.setStreamName(streamName);
+      request.setSinkOperatorName(sinkOperatorName);
       request.setSinkOperatorPortName(sinkPortName);
       logicalPlanRequestQueue.add(request);
     }

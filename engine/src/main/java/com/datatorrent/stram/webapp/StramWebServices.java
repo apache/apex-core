@@ -47,8 +47,11 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.RemoveOperatorRequest;
 import com.datatorrent.stram.plan.logical.RemoveStreamRequest;
 import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
@@ -100,10 +103,13 @@ public class StramWebServices
 
   private static class AlertInfo
   {
-    String operatorName;
-    String portName;
-    List<String> operators = new ArrayList<String>();
-    List<String> streams = new ArrayList<String>();
+    String streamName;
+    String filterOperatorName;
+    String escalationOperatorName;
+    List<String> actionOperatorNames = new ArrayList<String>();
+    String filterStreamName;
+    String escalationStreamName;
+    List<String> actionStreamNames = new ArrayList<String>();
   }
 
   @Inject
@@ -624,15 +630,13 @@ public class StramWebServices
     try {
       JSONObject json = new JSONObject(content);
       String name = json.getString("name");
-      String operatorName = json.getString("operatorName");
-      String portName = json.getString("portName");
+      String streamName = json.getString("streamName");
       JSONObject filter = json.getJSONObject("filter");
       JSONObject escalation = json.getJSONObject("escalation");
       JSONArray actions = json.getJSONArray("actions");
       List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
       AlertInfo alertInfo = new AlertInfo();
-      alertInfo.operatorName = operatorName;
-      alertInfo.portName = portName;
+      alertInfo.streamName = streamName;
 
       synchronized (alerts) {
         if (alerts.containsKey(name)) {
@@ -641,7 +645,7 @@ public class StramWebServices
 
         // create filter operator
         String filterOperatorName = "_alert_filter_" + name;
-        alertInfo.operators.add(filterOperatorName);
+        alertInfo.filterOperatorName = filterOperatorName;
         {
           CreateOperatorRequest request = new CreateOperatorRequest();
           request.setOperatorName(filterOperatorName);
@@ -666,7 +670,7 @@ public class StramWebServices
         }
         // create escalation operator
         String escalationOperatorName = "_alert_escalation_" + name;
-        alertInfo.operators.add(escalationOperatorName);
+        alertInfo.escalationOperatorName = escalationOperatorName;
 
         {
           CreateOperatorRequest request = new CreateOperatorRequest();
@@ -692,7 +696,7 @@ public class StramWebServices
         // create action operators and set properties
         for (int i = 0; i < actions.length(); i++) {
           String actionOperatorName = "_alert_action_" + name + "_" + i;
-          alertInfo.operators.add(actionOperatorName);
+          alertInfo.actionOperatorNames.add(actionOperatorName);
 
           JSONObject action = actions.getJSONObject(i);
           {
@@ -716,7 +720,7 @@ public class StramWebServices
           }
           // create stream from escalation to actions
           CreateStreamRequest request = new CreateStreamRequest();
-          alertInfo.streams.add("_alert_stream_action_" + name);
+          alertInfo.actionStreamNames.add("_alert_stream_action_" + name);
           request.setStreamName("_alert_stream_action_" + name);
           request.setSourceOperatorName(escalationOperatorName);
           request.setSourceOperatorPortName(action.getString("outputPort"));
@@ -727,21 +731,40 @@ public class StramWebServices
 
         // create stream from existing operator to filter
         {
-          CreateStreamRequest request = new CreateStreamRequest();
-          alertInfo.streams.add("_alert_stream_filter_" + name);
-          request.setStreamName("_alert_stream_filter_" + name);
-          request.setSourceOperatorName(operatorName);
-          request.setSourceOperatorPortName(portName);
-          request.setSinkOperatorName(filterOperatorName);
-          request.setSinkOperatorPortName("in");
+          StreamMeta stream = dagManager.getLogicalPlan().getStream(streamName);
+          if (stream == null) {
+            int index = streamName.indexOf('.');
+            if (index > 0 && index < streamName.length() - 1) {
+              String operatorName = streamName.substring(0, index);
+              String portName = streamName.substring(index + 1);
+              CreateStreamRequest request = new CreateStreamRequest();
+              alertInfo.filterStreamName = streamName;
+              request.setStreamName(streamName);
+              request.setSourceOperatorName(operatorName);
+              request.setSourceOperatorPortName(portName);
+              request.setSinkOperatorName(filterOperatorName);
+              request.setSinkOperatorPortName("in");
+              requests.add(request);
+            }
+            else {
+              throw new Exception("stream " + streamName + " does not exist.");
+            }
 
-          requests.add(request);
+          }
+          else {
+            AddStreamSinkRequest request = new AddStreamSinkRequest();
+            alertInfo.filterStreamName = streamName;
+            request.setStreamName(streamName);
+            request.setSinkOperatorName(filterOperatorName);
+            request.setSinkOperatorPortName("in");
+            requests.add(request);
+          }
         }
 
         // create stream from filter to escalation
         {
           CreateStreamRequest request = new CreateStreamRequest();
-          alertInfo.streams.add("_alert_stream_escalation_" + name);
+          alertInfo.escalationStreamName = "_alert_stream_escalation_";
           request.setStreamName("_alert_stream_escalation_" + name);
           request.setSourceOperatorName(filterOperatorName);
           request.setSourceOperatorPortName("out");
@@ -790,12 +813,39 @@ public class StramWebServices
           throw new NotFoundException();
         }
         AlertInfo alertInfo = alerts.get(name);
-        for (String streamName : alertInfo.streams) {
+        {
+          StreamMeta stream = dagManager.getLogicalPlan().getStream(alertInfo.filterStreamName);
+          if (stream == null) {
+            LOG.warn("Stream to the filter operator does not exist! Ignoring...");
+          } else {
+            List<InputPortMeta> sinks = stream.getSinks();
+            if (sinks.size() == 1 && sinks.get(0).getOperatorWrapper().getName().equals(alertInfo.filterOperatorName)) {
+              // The only sink is the filter operator, so it's safe to remove
+              RemoveStreamRequest request = new RemoveStreamRequest();
+              request.setStreamName(alertInfo.filterStreamName);
+              requests.add(request);
+            }
+          }
+        }
+        {
+          RemoveStreamRequest request = new RemoveStreamRequest();
+          request.setStreamName(alertInfo.escalationStreamName);
+          requests.add(request);
+        }
+        for (String streamName : alertInfo.actionStreamNames) {
           RemoveStreamRequest request = new RemoveStreamRequest();
           request.setStreamName(streamName);
           requests.add(request);
         }
-        for (String operatorName : alertInfo.operators) {
+        {
+          RemoveOperatorRequest request = new RemoveOperatorRequest();
+          request.setOperatorName(alertInfo.filterOperatorName);
+          requests.add(request);
+          request = new RemoveOperatorRequest();
+          request.setOperatorName(alertInfo.escalationOperatorName);
+          requests.add(request);
+        }
+        for (String operatorName : alertInfo.actionOperatorNames) {
           RemoveOperatorRequest request = new RemoveOperatorRequest();
           request.setOperatorName(operatorName);
           requests.add(request);
@@ -834,8 +884,7 @@ public class StramWebServices
     for (Map.Entry<String, AlertInfo> entry : alerts.entrySet()) {
       JSONObject alert = new JSONObject();
       alert.put("name", entry.getKey());
-      alert.put("operatorName", entry.getValue().operatorName);
-      alert.put("portName", entry.getValue().portName);
+      alert.put("streamName", entry.getValue().streamName);
       alertsArray.put(alert);
     }
     response.put("alerts", alertsArray);
