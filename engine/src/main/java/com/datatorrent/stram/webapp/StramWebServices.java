@@ -688,7 +688,7 @@ public class StramWebServices
             Object val = properties.get(key);
             SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
             request.setOperatorName(escalationOperatorName);
-            request.setOperatorName(key);
+            request.setPropertyName(key);
             request.setPropertyValue(val.toString());
             requests.add(request);
           }
