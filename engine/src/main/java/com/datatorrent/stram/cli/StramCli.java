@@ -2002,7 +2002,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ClientResponse rsp = getResource(StramWebServices.PATH_OPERATORS, currentApp);
+      ClientResponse rsp = getResource(StramWebServices.PATH_LIST_ALERTS, currentApp);
       JSONObject json = rsp.getEntity(JSONObject.class);
       System.out.println(json);
     }
