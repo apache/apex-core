@@ -619,6 +619,11 @@ public class PhysicalPlan {
     Set<PMapping> operators = Sets.newHashSet();
   }
 
+  /**
+   * Group logical operators by locality constraint. Used to derive locality
+   * groupings for physical operators, which are used when assigning containers
+   * and requesting resources from the scheduler.
+   */
   private class LocalityPrefs {
     private final Map<PMapping, LocalityPref> prefs = Maps.newHashMap();
     private final AtomicInteger groupSeq = new AtomicInteger();

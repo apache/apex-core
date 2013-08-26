@@ -68,7 +68,7 @@ public class StramCli
   private final Map<String, String> aliases = new HashMap<String, String>();
   private final Map<String, List<String>> macros = new HashMap<String, List<String>>();
   private boolean changingLogicalPlan = false;
-  private List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
+  private final List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
   private FileHistory topLevelHistory;
   private FileHistory changingLogicalPlanHistory;
   private boolean licensedVersion = true;
@@ -490,7 +490,7 @@ public class StramCli
   private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
-      LOG.debug("line: \"{}\"", line);
+      //LOG.debug("line: \"{}\"", line);
       List<String[]> commands = Tokenizer.tokenize(line);
       if (commands == null) {
         return;
@@ -499,8 +499,8 @@ public class StramCli
         if (args.length == 0 || StringUtils.isBlank(args[0])) {
           continue;
         }
-        ObjectMapper mapper = new ObjectMapper();
-        LOG.debug("Got: {}", mapper.writeValueAsString(args));
+        //ObjectMapper mapper = new ObjectMapper();
+        //LOG.debug("Got: {}", mapper.writeValueAsString(args));
         if (expandMacroAlias) {
           if (macros.containsKey(args[0])) {
             List<String> macroItems = expandMacro(macros.get(args[0]), args);
@@ -888,7 +888,6 @@ public class StramCli
             History previousHistory = reader.getHistory();
             History dummyHistory = new MemoryHistory();
             reader.setHistory(dummyHistory);
-            @SuppressWarnings("unchecked")
             List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
             for (Completer c : completers) {
               reader.removeCompleter(c);
