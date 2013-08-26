@@ -596,6 +596,8 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     this.operators.remove(om.getName());
+    LOG.debug("Removing from root operator for {}", om.getName());
+    rootOperators.remove(om);
   }
 
   @Override

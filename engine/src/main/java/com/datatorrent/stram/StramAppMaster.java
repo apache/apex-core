@@ -496,6 +496,8 @@ public class StramAppMaster //extends License for licensing using native
       execute();
     }
     catch (RuntimeException re) {
+      status = false;
+      LOG.error("Caught RuntimeException in execute()", re);
       if (re.getCause() instanceof YarnRemoteException) {
         throw (YarnRemoteException)re.getCause();
       }

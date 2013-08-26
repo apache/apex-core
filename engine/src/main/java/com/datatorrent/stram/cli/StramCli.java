@@ -387,7 +387,7 @@ public class StramCli
     completers.add(new StringsCompleter(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
 
     List<Completer> launchCompleters = new LinkedList<Completer>();
-    launchCompleters.add(new StringsCompleter(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source"}));
+    launchCompleters.add(new StringsCompleter(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source", "create-alert"}));
     launchCompleters.add(new FileNameCompleter()); // jarFile
     launchCompleters.add(new FileNameCompleter()); // topology
     completers.add(new ArgumentCompleter(launchCompleters));

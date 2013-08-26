@@ -99,18 +99,7 @@ public class StramWebServices
   @Nullable
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
-  private final Map<String, AlertInfo> alerts = new HashMap<String, AlertInfo>();
 
-  private static class AlertInfo
-  {
-    String streamName;
-    String filterOperatorName;
-    String escalationOperatorName;
-    List<String> actionOperatorNames = new ArrayList<String>();
-    String filterStreamName;
-    String escalationStreamName;
-    List<String> actionStreamNames = new ArrayList<String>();
-  }
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -622,273 +611,25 @@ public class StramWebServices
   @POST
   @Path(PATH_CREATE_ALERT)
   @Produces(MediaType.APPLICATION_JSON)
-  public Object createAlert(
-          String content,
-          @PathParam("appId") String appId) throws JSONException, IOException
+  public Object createAlert(String content) throws JSONException, IOException
   {
-    JSONObject response = new JSONObject();
-    try {
-      JSONObject json = new JSONObject(content);
-      String name = json.getString("name");
-      String streamName = json.getString("streamName");
-      JSONObject filter = json.getJSONObject("filter");
-      JSONObject escalation = json.getJSONObject("escalation");
-      JSONArray actions = json.getJSONArray("actions");
-      List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
-      AlertInfo alertInfo = new AlertInfo();
-      alertInfo.streamName = streamName;
-
-      synchronized (alerts) {
-        if (alerts.containsKey(name)) {
-          throw new Exception("alert " + name + " already exists");
-        }
-
-        // create filter operator
-        String filterOperatorName = "_alert_filter_" + name;
-        alertInfo.filterOperatorName = filterOperatorName;
-        {
-          CreateOperatorRequest request = new CreateOperatorRequest();
-          request.setOperatorName(filterOperatorName);
-          request.setOperatorFQCN(filter.getString("class"));
-          requests.add(request);
-        }
-
-        // set filter operator properties
-        Iterator<String> keys;
-        JSONObject properties = filter.optJSONObject("properties");
-        if (properties != null) {
-          keys = properties.keys();
-          while (keys.hasNext()) {
-            String key = keys.next();
-            Object val = properties.get(key);
-            SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-            request.setOperatorName(filterOperatorName);
-            request.setPropertyName(key);
-            request.setPropertyValue(val.toString());
-            requests.add(request);
-          }
-        }
-        // create escalation operator
-        String escalationOperatorName = "_alert_escalation_" + name;
-        alertInfo.escalationOperatorName = escalationOperatorName;
-
-        {
-          CreateOperatorRequest request = new CreateOperatorRequest();
-          request.setOperatorName(escalationOperatorName);
-          request.setOperatorFQCN(escalation.getString("class"));
-          requests.add(request);
-        }
-
-        // set escalation operator properties
-        properties = escalation.optJSONObject("properties");
-        if (properties != null) {
-          keys = properties.keys();
-          while (keys.hasNext()) {
-            String key = keys.next();
-            Object val = properties.get(key);
-            SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-            request.setOperatorName(escalationOperatorName);
-            request.setPropertyName(key);
-            request.setPropertyValue(val.toString());
-            requests.add(request);
-          }
-        }
-        // create action operators and set properties
-        for (int i = 0; i < actions.length(); i++) {
-          String actionOperatorName = "_alert_action_" + name + "_" + i;
-          alertInfo.actionOperatorNames.add(actionOperatorName);
-
-          JSONObject action = actions.getJSONObject(i);
-          {
-            CreateOperatorRequest request = new CreateOperatorRequest();
-            request.setOperatorName(actionOperatorName);
-            request.setOperatorFQCN(action.getString("class"));
-            requests.add(request);
-          }
-          properties = action.optJSONObject("properties");
-          if (properties != null) {
-            keys = properties.keys();
-            while (keys.hasNext()) {
-              String key = keys.next();
-              Object val = properties.get(key);
-              SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-              request.setOperatorName(actionOperatorName);
-              request.setPropertyName(key);
-              request.setPropertyValue(val.toString());
-              requests.add(request);
-            }
-          }
-          // create stream from escalation to actions
-          CreateStreamRequest request = new CreateStreamRequest();
-          alertInfo.actionStreamNames.add("_alert_stream_action_" + name);
-          request.setStreamName("_alert_stream_action_" + name);
-          request.setSourceOperatorName(escalationOperatorName);
-          request.setSourceOperatorPortName(action.getString("outputPort"));
-          request.setSinkOperatorName(actionOperatorName);
-          request.setSinkOperatorPortName(action.getString("inputPort"));
-          requests.add(request);
-        }
-
-        // create stream from existing operator to filter
-        {
-          StreamMeta stream = dagManager.getLogicalPlan().getStream(streamName);
-          if (stream == null) {
-            int index = streamName.indexOf('.');
-            if (index > 0 && index < streamName.length() - 1) {
-              String operatorName = streamName.substring(0, index);
-              String portName = streamName.substring(index + 1);
-              CreateStreamRequest request = new CreateStreamRequest();
-              alertInfo.filterStreamName = streamName;
-              request.setStreamName(streamName);
-              request.setSourceOperatorName(operatorName);
-              request.setSourceOperatorPortName(portName);
-              request.setSinkOperatorName(filterOperatorName);
-              request.setSinkOperatorPortName("in");
-              requests.add(request);
-            }
-            else {
-              throw new Exception("stream " + streamName + " does not exist.");
-            }
-
-          }
-          else {
-            AddStreamSinkRequest request = new AddStreamSinkRequest();
-            alertInfo.filterStreamName = streamName;
-            request.setStreamName(streamName);
-            request.setSinkOperatorName(filterOperatorName);
-            request.setSinkOperatorPortName("in");
-            requests.add(request);
-          }
-        }
-
-        // create stream from filter to escalation
-        {
-          CreateStreamRequest request = new CreateStreamRequest();
-          alertInfo.escalationStreamName = "_alert_stream_escalation_";
-          request.setStreamName("_alert_stream_escalation_" + name);
-          request.setSourceOperatorName(filterOperatorName);
-          request.setSourceOperatorPortName("out");
-          request.setSinkOperatorName(escalationOperatorName);
-          request.setSinkOperatorName("in");
-          requests.add(request);
-        }
-        Future<?> fr = dagManager.logicalPlanModification(requests);
-        fr.get(3000, TimeUnit.MILLISECONDS);
-        alerts.put(name, alertInfo);
-      }
-    }
-    catch (Exception ex) {
-      LOG.error("Error adding alert", ex);
-      try {
-        if (ex instanceof ExecutionException) {
-          response.put("error", ex.getCause().toString());
-        }
-        else {
-          response.put("error", ex.toString());
-        }
-      }
-      catch (Exception e) {
-        // ignore
-      }
-    }
-
-    return response;
+    return dagManager.getAlertsManager().createAlert(content);
   }
 
   @POST
   @Path(PATH_DELETE_ALERT)
   @Produces(MediaType.APPLICATION_JSON)
-  public Object deleteAlert(
-          String content,
-          @PathParam("appId") String appId) throws JSONException, IOException
+  public Object deleteAlert(String content) throws JSONException, IOException
   {
-    JSONObject json = new JSONObject(content);
-    JSONObject response = new JSONObject();
-    String name = json.getString("name");
-    List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
-
-    try {
-      synchronized (alerts) {
-        if (!alerts.containsKey(name)) {
-          throw new NotFoundException();
-        }
-        AlertInfo alertInfo = alerts.get(name);
-        {
-          StreamMeta stream = dagManager.getLogicalPlan().getStream(alertInfo.filterStreamName);
-          if (stream == null) {
-            LOG.warn("Stream to the filter operator does not exist! Ignoring...");
-          } else {
-            List<InputPortMeta> sinks = stream.getSinks();
-            if (sinks.size() == 1 && sinks.get(0).getOperatorWrapper().getName().equals(alertInfo.filterOperatorName)) {
-              // The only sink is the filter operator, so it's safe to remove
-              RemoveStreamRequest request = new RemoveStreamRequest();
-              request.setStreamName(alertInfo.filterStreamName);
-              requests.add(request);
-            }
-          }
-        }
-        {
-          RemoveStreamRequest request = new RemoveStreamRequest();
-          request.setStreamName(alertInfo.escalationStreamName);
-          requests.add(request);
-        }
-        for (String streamName : alertInfo.actionStreamNames) {
-          RemoveStreamRequest request = new RemoveStreamRequest();
-          request.setStreamName(streamName);
-          requests.add(request);
-        }
-        {
-          RemoveOperatorRequest request = new RemoveOperatorRequest();
-          request.setOperatorName(alertInfo.filterOperatorName);
-          requests.add(request);
-          request = new RemoveOperatorRequest();
-          request.setOperatorName(alertInfo.escalationOperatorName);
-          requests.add(request);
-        }
-        for (String operatorName : alertInfo.actionOperatorNames) {
-          RemoveOperatorRequest request = new RemoveOperatorRequest();
-          request.setOperatorName(operatorName);
-          requests.add(request);
-        }
-        Future<?> fr = dagManager.logicalPlanModification(requests);
-        fr.get(3000, TimeUnit.MILLISECONDS);
-        alerts.remove(name);
-      }
-    }
-    catch (Exception ex) {
-      LOG.error("Error adding alert", ex);
-      try {
-        if (ex instanceof ExecutionException) {
-          response.put("error", ex.getCause().toString());
-        }
-        else {
-          response.put("error", ex.toString());
-        }
-      }
-      catch (Exception e) {
-        // ignore
-      }
-    }
-
-    return response;
+    return dagManager.getAlertsManager().deleteAlert(content);
   }
 
   @GET
   @Path(PATH_LIST_ALERTS)
   @Produces(MediaType.APPLICATION_JSON)
-  public Object listAlerts(
-          @PathParam("appId") String appId) throws JSONException, IOException
+  public Object listAlerts() throws JSONException, IOException
   {
-    JSONObject response = new JSONObject();
-    JSONArray alertsArray = new JSONArray();
-    for (Map.Entry<String, AlertInfo> entry : alerts.entrySet()) {
-      JSONObject alert = new JSONObject();
-      alert.put("name", entry.getKey());
-      alert.put("streamName", entry.getValue().streamName);
-      alertsArray.put(alert);
-    }
-    response.put("alerts", alertsArray);
-    return response;
+    return dagManager.getAlertsManager().listAlerts();
   }
 
   @GET
