@@ -263,13 +263,14 @@ public class StramCli
 
   }
 
-  private static String expandFileName(String fileName, boolean expandWildCard)
+  private static String expandFileName(String fileName, boolean expandWildCard) throws IOException
   {
     // TODO: need to work with other users
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
-    fileName = new File(fileName).getAbsolutePath();
+    fileName = new File(fileName).getCanonicalPath();
+    LOG.debug("Canonical path: {}", fileName);
     if (expandWildCard) {
       DirectoryScanner scanner = new DirectoryScanner();
       scanner.setIncludes(new String[] {fileName});
