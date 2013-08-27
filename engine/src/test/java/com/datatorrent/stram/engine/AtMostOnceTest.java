@@ -15,9 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
@@ -63,51 +60,6 @@ public class AtMostOnceTest extends ProcessingModeTests
     Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
-  public static class MultiInputOperator implements Operator
-  {
-    public final transient MyInputPort input1 = new MyInputPort(100);
-    public final transient MyInputPort input2 = new MyInputPort(200);
-    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
-
-    public class MyInputPort extends DefaultInputPort<Integer>
-    {
-      private final int id;
-
-      public MyInputPort(int id)
-      {
-        this.id = id;
-      }
-
-      @Override
-      public void process(Integer t)
-      {
-        output.emit(id + t);
-      }
-
-    }
-
-    @Override
-    public void beginWindow(long l)
-    {
-    }
-
-    @Override
-    public void endWindow()
-    {
-    }
-
-    @Override
-    public void setup(OperatorContext t1)
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
-    }
-
-  }
-
   @Test
   @SuppressWarnings("SleepWhileInLoop")
   @Override
@@ -148,7 +100,7 @@ public class AtMostOnceTest extends ProcessingModeTests
       {
         AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap(OperatorContext.class);
         map.attr(OperatorContext.CHECKPOINT_WINDOW_COUNT).set(0);
-        map.attr(OperatorContext.PROCESSING_MODE).set(ProcessingMode.AT_MOST_ONCE);
+        map.attr(OperatorContext.PROCESSING_MODE).set(processingMode);
         active.set(true);
         node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
       }
@@ -213,7 +165,7 @@ public class AtMostOnceTest extends ProcessingModeTests
         Tuple t = (Tuple)o;
         long windowId = t.getWindowId();
         Assert.assertTrue("Valid Window Id", windowId == 1 || windowId == 2 || windowId == 4 || windowId == 5);
-        Assert.assertTrue("Valid Tuple Type", t.getType() == MessageType.BEGIN_WINDOW || t.getType() == MessageType.END_WINDOW);
+        Assert.assertTrue("Valid Tuple Type", t.getType() == MessageType.BEGIN_WINDOW || t.getType() == MessageType.END_WINDOW || t.getType() == MessageType.END_STREAM);
       }
       else {
         switch (((Integer)o).intValue()) {
