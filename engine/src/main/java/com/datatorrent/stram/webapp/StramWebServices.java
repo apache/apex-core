@@ -447,7 +447,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/getAttributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/attributes")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getOperatorAttributes(@PathParam("operatorId") String operatorId, @QueryParam("attributeName") String attributeName)
   {
@@ -468,7 +468,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN + "/getAttributes")
+  @Path(PATH_LOGICAL_PLAN + "/attributes")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
   {
@@ -489,7 +489,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/{portName}/getAttributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/{portName}/attributes")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getPortAttributes(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
@@ -510,7 +510,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/getProperties")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
   {
