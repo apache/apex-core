@@ -36,6 +36,7 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import java.io.*;
 
@@ -216,7 +217,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   }
 
   protected OperatorContext context;
-
+  protected ProcessingMode PROCESSING_MODE;
   @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
   {
@@ -227,6 +228,12 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     this.context = context;
     APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
     CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
+    PROCESSING_MODE = context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_LEAST_ONCE);
+
+    if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
+      logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
+      CHECKPOINT_WINDOW_COUNT = 1;
+    }
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);

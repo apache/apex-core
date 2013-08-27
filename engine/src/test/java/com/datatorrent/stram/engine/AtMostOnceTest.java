@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.engine;
 
 import java.io.IOException;
 import static java.lang.Thread.sleep;
@@ -24,10 +24,9 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.stram.engine.DefaultReservoir;
-import com.datatorrent.stram.engine.GenericNode;
-import com.datatorrent.stram.engine.RecoverableInputOperator;
 import com.datatorrent.stram.NodeRecoveryTest.CollectorOperator;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;

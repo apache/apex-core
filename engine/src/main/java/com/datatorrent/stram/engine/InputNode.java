@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 
 /**
@@ -105,13 +106,16 @@ public class InputNode extends Node<InputOperator>
                 if (checkpoint && checkpoint(currentWindowId)) {
                   checkpoint = false;
                 }
+                else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+                  checkpoint(currentWindowId);
+                }
                 checkpointWindowCount = 0;
               }
               handleRequests(currentWindowId);
               break;
 
             case CHECKPOINT:
-              if (checkpointWindowCount == 0) {
+              if (checkpointWindowCount == 0 && PROCESSING_MODE != ProcessingMode.EXACTLY_ONCE) {
                 checkpoint(currentWindowId);
               }
               else {
@@ -161,7 +165,7 @@ public class InputNode extends Node<InputOperator>
         applicationWindowCount = 0;
       }
       if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-        if (checkpoint) {
+        if (checkpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
         }
         checkpointWindowCount = 0;
