@@ -4,15 +4,26 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>malhar-framework</artifactId>
-    <!--relativePath></relativePath-->
-    <!--version>0.3.2</version-->
-    <version>0.3.3-SNAPSHOT</version>
+    <version>0.3.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>malhar-all</artifactId>
   <packaging>pom</packaging>
-  <version>0.3.3-SNAPSHOT</version>
+  <version>0.3.4-SNAPSHOT</version>
   <name>Malhar Open Source</name>
+
+  <!-- repository to provide the DataTorrent artifacts -->
+  <repositories>
+    <repository>
+      <id>datatorrent</id>
+      <name>DataTorrent Release Repository</name>
+      <url>https://www.datatorrent.com/maven/content/repositories/releases/</url>
+    </repository>
+  </repositories>
+
+  <properties>
+	<malhar.framework.version>0.3.4-SNAPSHOT</malhar.framework.version>
+  </properties>
 
   <modules>
     <module>library</module>
