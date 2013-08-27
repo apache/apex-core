@@ -92,7 +92,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
   private HdfsStatsRecorder statsRecorder;
-  private final HdfsEventRecorder eventRecorder;
+  private HdfsEventRecorder eventRecorder = null;
   private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
@@ -107,8 +107,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
-
-  CriticalPathInfo criticalPathInfo;
+  private CriticalPathInfo criticalPathInfo;
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -148,6 +147,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   public StreamingContainerManager(LogicalPlan dag)
   {
+    this(dag, false);
+  }
+
+  public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
+  {
     super(dag.getAttributes(), null);
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
@@ -172,11 +176,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       statsRecorder.setBasePath(this.statsFsPath);
       statsRecorder.setup();
     }
-
     this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
-    eventRecorder = new HdfsEventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
-    eventRecorder.setBasePath(this.eventsFsPath);
-    eventRecorder.setup();
+    
+    if (enableEventRecording) {
+      eventRecorder = new HdfsEventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
+      eventRecorder.setBasePath(this.eventsFsPath);
+      eventRecorder.setup();
+    }
     this.plan = new PhysicalPlan(dag, this);
   }
 
@@ -1056,7 +1062,9 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   @Override
   public void recordEventAsync(EventRecorder.Event ev) {
-    eventRecorder.recordEventAsync(ev);
+    if (eventRecorder != null) {
+      eventRecorder.recordEventAsync(ev);
+    }
   }
 
   @Override

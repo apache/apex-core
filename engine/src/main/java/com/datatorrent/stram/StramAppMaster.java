@@ -439,7 +439,7 @@ public class StramAppMaster //extends License for licensing using native
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new StreamingContainerManager(dag);
+    this.dnmgr = new StreamingContainerManager(dag, true);
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // start the secret manager
