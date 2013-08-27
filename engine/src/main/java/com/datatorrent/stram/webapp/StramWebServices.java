@@ -100,7 +100,6 @@ public class StramWebServices
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
-
   @Inject
   public StramWebServices(final StramAppContext context)
   {
@@ -535,18 +534,19 @@ public class StramWebServices
     }
     Map<String, Object> m = DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
 
-    if (propertyName == null) {
-      return new JSONObject(m);
+    try {
+      if (propertyName == null) {
+        return new JSONObject(new ObjectMapper().writeValueAsString(m));
+      }
+      else {
+        Map<String, Object> m1 = new HashMap<String, Object>();
+        m1.put(propertyName, m.get(propertyName));
+        return new JSONObject(new ObjectMapper().writeValueAsString(m1));
+      }
     }
-    else {
-      JSONObject json = new JSONObject();
-      try {
-        json.put(propertyName, m.get(propertyName));
-      }
-      catch (JSONException ex) {
-        LOG.warn("Got JSON Exception: ", ex);
-      }
-      return json;
+    catch (Exception ex) {
+      LOG.warn("Caught exception", ex);
+      throw new RuntimeException(ex);
     }
   }
 
