@@ -10,7 +10,7 @@
 
   <property>
     <name>stram.operator.operator1.classname</name>
-    <value>com.datatorrent.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>The root operator</description>
   </property>
 
@@ -25,7 +25,7 @@
 
   <property>
     <name>stram.operator.operator2.classname</name>
-    <value>com.datatorrent.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
 
@@ -53,7 +53,7 @@
 
   <property>
     <name>stram.operator.operator3.classname</name>
-    <value>com.datatorrent.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
 
@@ -61,7 +61,7 @@
 
   <property>
     <name>stram.operator.operator4.classname</name>
-    <value>com.datatorrent.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
 
@@ -81,7 +81,7 @@
 
   <property>
     <name>stram.operator.operator5.classname</name>
-    <value>com.datatorrent.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
   </property>
 
   <property>
@@ -101,7 +101,7 @@
 
   <property>
     <name>stram.operator.operator6.classname</name>
-    <value>com.datatorrent.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
 

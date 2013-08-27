@@ -4,13 +4,14 @@
  */
 package com.datatorrent.stram;
 
+import static java.lang.Thread.sleep;
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import static java.lang.Thread.sleep;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,14 +28,17 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.Clock;
 import org.apache.hadoop.yarn.SystemClock;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.StopContainerRequest;
@@ -46,9 +50,6 @@ import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.NodeReport;
-import org.apache.hadoop.yarn.api.records.Priority;
-import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
@@ -59,17 +60,16 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
-import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  *
@@ -439,7 +439,7 @@ public class StramAppMaster //extends License for licensing using native
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new StreamingContainerManager(dag);
+    this.dnmgr = new StreamingContainerManager(dag, true);
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // start the secret manager
@@ -576,6 +576,18 @@ public class StramAppMaster //extends License for licensing using native
     // keep track of already requested containers to not request them again while waiting for allocation
     int numRequestedContainers = 0;
     int nextRequestPriority = 0;
+    ResourceRequestHandler resourceRequestor = new ResourceRequestHandler();
+
+    try {
+      // YARN-435
+      // we need getClusterNodes to populate the initial node list,
+      // subsequent updates come through the heartbeat response
+      GetClusterNodesRequest request = Records.newRecord(GetClusterNodesRequest.class);
+      ClientRMProtocol clientRMService = yarnClient.connectToASM();
+      resourceRequestor.updateNodeReports(clientRMService.getClusterNodes(request).getNodeReports());
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
+    }
 
     while (!appDone) {
       loopCounter++;
@@ -607,8 +619,7 @@ public class StramAppMaster //extends License for licensing using native
         StramChildAgent.ContainerStartRequest csr;
         while ((csr = dnmgr.containerStartRequests.poll()) != null) {
           csr.container.setResourceRequestPriority(nextRequestPriority++);
-          ResourceRequest containerAsk = setupContainerAskForRM(csr.container.getResourceRequestPriority(), 1, containerMemory);
-          resourceReq.add(containerAsk);
+          resourceRequestor.addResourceRequests(csr, containerMemory, resourceReq);
           numTotalContainers++;
           numRequestedContainers++;
         }
@@ -666,15 +677,9 @@ public class StramAppMaster //extends License for licensing using native
         }
       }
 
-      // TODO: we need to obtain the initial list...
-      // keep track of updated operators - we use this info to make decisions about where to request new containers
-      List<NodeReport> nodeReports = amResp.getUpdatedNodes();
-      //LOG.debug("Got {} updated node reports.", nodeReports.size());
-      for (NodeReport nr : nodeReports) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("rackName=").append(nr.getRackName()).append("nodeid=").append(nr.getNodeId()).append("numContainers=").append(nr.getNumContainers()).append("capability=").append(nr.getCapability()).append("used=").append(nr.getUsed()).append("state=").append(nr.getNodeState());
-        LOG.info("Node report: " + sb);
-      }
+      // track node updates for future locality constraint allocations
+      // TODO: it seems 2.0.4-alpha doesn't give us any updates
+      resourceRequestor.updateNodeReports(amResp.getUpdatedNodes());
 
       // Check what the current available resources in the cluster are
       //Resource availableResources = amResp.getAvailableResources();
@@ -818,41 +823,6 @@ public class StramAppMaster //extends License for licensing using native
   }
 
   /**
-   * Setup the request that will be sent to the RM for the container ask.
-   *
-   * @param numContainers Containers to ask for from RM
-   * @return the setup ResourceRequest to be sent to RM
-   */
-  private ResourceRequest setupContainerAskForRM(int requestPriority, int numContainers, int containerMemory)
-  {
-    ResourceRequest request = Records.newRecord(ResourceRequest.class);
-
-    // setup requirements for hosts
-    // whether a particular rack/host is needed
-    // Refer to apis under org.apache.hadoop.net for more
-    // details on how to get figure out rack/host mapping.
-    // using * as any host will do for the distributed shell app
-    request.setHostName("*");
-
-    // set no. of containers needed
-    request.setNumContainers(numContainers);
-
-    // set the priority for the request
-    Priority pri = Records.newRecord(Priority.class);
-    // TODO - what is the range for priority? how to decide?
-    pri.setPriority(requestPriority);
-    request.setPriority(pri);
-
-    // Set up resource type requirements
-    // For now, only memory is supported so we set memory requirements
-    Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(containerMemory);
-    request.setCapability(capability);
-
-    return request;
-  }
-
-  /**
    * Ask RM to allocate given no. of containers to this Application Master
    *
    * @param requestedContainers Containers to ask for from RM
@@ -869,7 +839,7 @@ public class StramAppMaster //extends License for licensing using native
     req.addAllAsks(requestedContainers);
     // Send the request to RM
     if (requestedContainers.size() > 0) {
-      LOG.info("Asking RM for containers" + ", askCount=" + requestedContainers.size());
+      LOG.info("Asking RM for containers: " + requestedContainers);
     }
 
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
@@ -893,11 +863,11 @@ public class StramAppMaster //extends License for licensing using native
     //         + ", releasedSet=" + releasedContainers.size()
     //         + ", progress=" + req.getProgress());
     for (ResourceRequest rsrcReq : requestedContainers) {
-      LOG.info("Requested container ask: " + rsrcReq.toString());
+      LOG.info("Requested container: {}", rsrcReq.toString());
     }
 
     for (ContainerId id : releasedContainers) {
-      LOG.info("Released container, id=" + id.getId());
+      LOG.info("Released container, id={}", id.getId());
     }
 
     AllocateResponse resp = resourceManager.allocate(req);
