@@ -18,13 +18,14 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.stram.NodeRecoveryTest.CollectorOperator;
+import com.datatorrent.stram.engine.AtLeastOnceTest.CollectorOperator;
 import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -109,7 +110,6 @@ public class AtMostOnceTest
 
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
-    //dag.getAttributes().attr(DAG.HEARTBEAT_INTERVAL_MILLIS).set(400);
     dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
     dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
@@ -120,7 +120,7 @@ public class AtMostOnceTest
     cm.setSimulateFailure(true);
     dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(ProcessingMode.AT_MOST_ONCE);
 
-    dag.addStream("connection", rip.output, cm.input).setInline(true);
+    dag.addStream("connection", rip.output, cm.input).setLocality(Locality.CONTAINER_LOCAL);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
@@ -270,6 +270,7 @@ public class AtMostOnceTest
     }
 
     thread.interrupt();
+    thread.join();
 
     /* lets make sure that we have all the tuples and nothing more */
     for (Object o : collection) {
