@@ -38,7 +38,9 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.bufferserver.util.Codec;
 import java.io.*;
+import java.util.logging.Level;
 
 /**
  * <p>Abstract Node class.</p>
@@ -218,6 +220,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
+
   @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
   {
@@ -417,6 +420,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         return true;
       }
       catch (IOException ie) {
+        try {
+          logger.warn("Rolling back checkpoint {} for Operator {} due to the exception {}",
+                      new Object[] {Codec.getStringWindowId(windowId), operator, ie});
+          ba.delete(id, windowId);
+        }
+        catch (IOException ex) {
+          logger.warn("Error while rolling back checkpoint", ex);
+        }
         throw new RuntimeException(ie);
       }
     }

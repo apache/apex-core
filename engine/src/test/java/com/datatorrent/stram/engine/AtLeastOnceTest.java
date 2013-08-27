@@ -5,8 +5,6 @@
 package com.datatorrent.stram.engine;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -15,14 +13,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
@@ -43,62 +37,6 @@ public class AtLeastOnceTest
   public void teardown()
   {
     StramChild.eventloop.stop();
-
-  }
-
-  public static class CollectorOperator extends BaseOperator implements CheckpointListener
-  {
-    public static HashSet<Long> collection = new HashSet<Long>(20);
-    public static ArrayList<Long> duplicates = new ArrayList<Long>();
-    private boolean simulateFailure;
-    private long checkPointWindowId;
-    public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
-    {
-      @Override
-      public void process(Long tuple)
-      {
-        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
-        if (collection.contains(tuple)) {
-          duplicates.add(tuple);
-        }
-        else {
-          collection.add(tuple);
-        }
-      }
-
-    };
-
-    /**
-     * @param simulateFailure the simulateFailure to set
-     */
-    public void setSimulateFailure(boolean simulateFailure)
-    {
-      this.simulateFailure = simulateFailure;
-    }
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-      simulateFailure &= (checkPointWindowId == 0);
-      logger.debug("simulateFailure = {}", simulateFailure);
-    }
-
-    @Override
-    public void checkpointed(long windowId)
-    {
-      if (this.checkPointWindowId == 0) {
-        this.checkPointWindowId = windowId;
-      }
-    }
-
-    @Override
-    public void committed(long windowId)
-    {
-      logger.debug("committed window {} and checkPointWindowId {}", Codec.getStringWindowId(windowId), Codec.getStringWindowId(checkPointWindowId));
-      if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
-        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + Codec.getStringWindowId(checkPointWindowId));
-      }
-    }
 
   }
 

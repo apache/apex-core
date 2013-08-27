@@ -4,24 +4,27 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.IOException;
 import static java.lang.Thread.sleep;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.Test;
+import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.Operator;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -29,38 +32,148 @@ import com.datatorrent.stram.tuple.Tuple;
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  */
-public class AtMostOnceTest extends ProcessingModeTests
+public class ProcessingModeTests
 {
-  public AtMostOnceTest()
+  ProcessingMode processingMode;
+  int maxTuples = 30;
+
+  public ProcessingModeTests(ProcessingMode pm)
   {
-    super(ProcessingMode.AT_MOST_ONCE);
+    processingMode = pm;
   }
 
-  @Test
-  @Override
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop.start();
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+  }
+
   public void testLinearInputOperatorRecovery() throws Exception
   {
-    super.testLinearInputOperatorRecovery();
-    Assert.assertTrue("Generated Outputs", maxTuples <= CollectorOperator.collection.size());
-    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
+    CollectorOperator.collection.clear();
+    CollectorOperator.duplicates.clear();
+
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
+    RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+    rip.setMaximumTuples(maxTuples);
+    dag.getMeta(rip).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+
+    CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
+    dag.addStream("connection", rip.output, cm.input);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.run();
   }
 
-  @Test
-  @Override
   public void testLinearOperatorRecovery() throws Exception
   {
-    super.testLinearOperatorRecovery();
-    Assert.assertTrue("Generated Outputs", maxTuples >= CollectorOperator.collection.size());
-    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
+    CollectorOperator.collection.clear();
+    CollectorOperator.duplicates.clear();
+
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
+    RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+    rip.setMaximumTuples(maxTuples);
+
+    CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
+    cm.setSimulateFailure(true);
+    dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+
+    dag.addStream("connection", rip.output, cm.input);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.run();
   }
 
-  @Test
-  @Override
   public void testLinearInlineOperatorsRecovery() throws Exception
   {
-    super.testLinearInlineOperatorsRecovery();
-    Assert.assertTrue("Generated Outputs", maxTuples >= CollectorOperator.collection.size());
-    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
+    CollectorOperator.collection.clear();
+    CollectorOperator.duplicates.clear();
+
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
+    RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+    rip.setMaximumTuples(maxTuples);
+
+    CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
+    cm.setSimulateFailure(true);
+    dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+
+    dag.addStream("connection", rip.output, cm.input).setLocality(Locality.CONTAINER_LOCAL);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.run();
+  }
+
+  public static class CollectorOperator extends BaseOperator implements CheckpointListener
+  {
+    public static HashSet<Long> collection = new HashSet<Long>(20);
+    public static ArrayList<Long> duplicates = new ArrayList<Long>();
+    private boolean simulateFailure;
+    private long checkPointWindowId;
+    public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
+    {
+      @Override
+      public void process(Long tuple)
+      {
+        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
+        if (collection.contains(tuple)) {
+          duplicates.add(tuple);
+        }
+        else {
+          collection.add(tuple);
+        }
+      }
+
+    };
+
+    /**
+     * @param simulateFailure the simulateFailure to set
+     */
+    public void setSimulateFailure(boolean simulateFailure)
+    {
+      this.simulateFailure = simulateFailure;
+    }
+
+    @Override
+    public void setup(OperatorContext context)
+    {
+      simulateFailure &= (checkPointWindowId == 0);
+      logger.debug("simulateFailure = {}", simulateFailure);
+    }
+
+    @Override
+    public void checkpointed(long windowId)
+    {
+      if (this.checkPointWindowId == 0) {
+        this.checkPointWindowId = windowId;
+      }
+
+      logger.debug("{} checkpointed at {}", this, Codec.getStringWindowId(windowId));
+    }
+
+    @Override
+    public void committed(long windowId)
+    {
+      logger.debug("{} committed at {}", this, Codec.getStringWindowId(windowId));
+      if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
+        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + Codec.getStringWindowId(checkPointWindowId));
+      }
+    }
+
   }
 
   public static class MultiInputOperator implements Operator
@@ -108,9 +221,7 @@ public class AtMostOnceTest extends ProcessingModeTests
 
   }
 
-  @Test
   @SuppressWarnings("SleepWhileInLoop")
-  @Override
   public void testNonLinearOperatorRecovery() throws InterruptedException
   {
     final HashSet<Object> collection = new HashSet<Object>();
@@ -148,7 +259,7 @@ public class AtMostOnceTest extends ProcessingModeTests
       {
         AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap(OperatorContext.class);
         map.attr(OperatorContext.CHECKPOINT_WINDOW_COUNT).set(0);
-        map.attr(OperatorContext.PROCESSING_MODE).set(ProcessingMode.AT_MOST_ONCE);
+        map.attr(OperatorContext.PROCESSING_MODE).set(processingMode);
         active.set(true);
         node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
       }
@@ -232,5 +343,5 @@ public class AtMostOnceTest extends ProcessingModeTests
     }
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(AtMostOnceTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(ProcessingModeTests.class);
 }
