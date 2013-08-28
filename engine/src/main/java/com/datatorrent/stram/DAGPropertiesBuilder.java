@@ -62,6 +62,9 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
   public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
+  public static final String APPLICATION_PREFIX = "stram.application";
+  public static final String APPLICATION_CLASS = "class";
+
   /**
    * Named set of properties that can be used to instantiate streams or operators
    * with common settings.

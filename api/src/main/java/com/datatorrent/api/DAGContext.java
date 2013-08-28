@@ -49,9 +49,6 @@ public interface DAGContext extends Context
   /** Constant <code>DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS=60000</code> */
   public static final int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
 
-  public static final String STRAM_APPLICATION_PROP = "stram.application";
-
-  public static final String STRAM_APPLICATION_CLASS_PROP = "class";
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.

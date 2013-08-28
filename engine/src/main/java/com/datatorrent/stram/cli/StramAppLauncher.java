@@ -36,7 +36,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -322,8 +323,8 @@ public class StramAppLauncher {
 
     // Set the application name if specified in the config file
     String appName = null;
-    StringBuilder sb = new StringBuilder(DAG.STRAM_APPLICATION_PROP.replace(".", "\\."));
-    sb.append("\\.(.*)\\.").append(DAG.STRAM_APPLICATION_CLASS_PROP.replace(".", "\\."));
+    StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
+    sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
     String appClassRegex = sb.toString();
     String name = appConfig.getName();
     String className = name.replace("/", ".").substring(0, name.length()-6);
@@ -346,7 +347,7 @@ public class StramAppLauncher {
     } else {
       appName = dag.getAttributes().attr(DAG.APPLICATION_NAME).get();
     }
-    
+
     // Use appName to process other configs
   }
 
