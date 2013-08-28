@@ -25,13 +25,6 @@ import java.util.Set;
  */
 public interface DAGContext extends Context
 {
-
-  /**
-   * Internal use only, set by application launcher.
-   * The name under which the application master expects its configuration.
-   */
-  public static final String SER_FILE_NAME = "stram-conf.ser";
-
   /**
    * Launch mode for the application.
    * Used in the client to set configuration depending on how the DAG is executed.
