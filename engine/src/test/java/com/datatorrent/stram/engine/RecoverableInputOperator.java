@@ -72,11 +72,15 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
     if (checkpointedWindowId == 0) {
       checkpointedWindowId = windowId;
     }
+
+    logger.debug("{} checkpointed at {}", this, Codec.getStringWindowId(windowId));
   }
 
   @Override
   public void committed(long windowId)
   {
+    logger.debug("{} committed at {}", this, Codec.getStringWindowId(windowId));
+
     if (firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
       throw new RuntimeException("Failure Simulation from " + this);
     }
