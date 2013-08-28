@@ -24,6 +24,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.stram.plan.logical.Operators;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -93,11 +96,12 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }
       }
 
-      Map<InputPortMeta, StreamMeta> inputStreams = operatorMeta.getInputStreams();
-      for (Map.Entry<InputPortMeta, StreamMeta> entry : inputStreams.entrySet()) {
+      Operators.PortMappingDescriptor pmd = new Operators.PortMappingDescriptor();
+      Operators.describe(operatorMeta.getOperator(), pmd);
+      for (Map.Entry<String, InputPort<?>> entry : pmd.inputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
-        InputPortMeta portMeta = entry.getKey();
+        InputPortMeta portMeta = operatorMeta.getMeta(entry.getValue());
         String portName = portMeta.getPortName();
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
@@ -113,11 +117,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }
         portMap.put(portName, portDetailMap);
       }
-      Map<OutputPortMeta, StreamMeta> outputStreams = operatorMeta.getOutputStreams();
-      for (Map.Entry<OutputPortMeta, StreamMeta> entry : outputStreams.entrySet()) {
+      for (Map.Entry<String, OutputPort<?>> entry : pmd.outputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
-        OutputPortMeta portMeta = entry.getKey();
+        OutputPortMeta portMeta = operatorMeta.getMeta(entry.getValue());
         String portName = portMeta.getPortName();
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);
@@ -231,7 +234,8 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
                 value += list.get(i).toString();
               }
               props.setProperty(operatorKey + "." + propertyName, value);
-            } else {
+            }
+            else {
               props.setProperty(operatorKey + "." + propertyName, properties.get(propertyName));
             }
           }
