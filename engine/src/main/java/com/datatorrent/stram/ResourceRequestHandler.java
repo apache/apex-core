@@ -43,8 +43,10 @@ public class ResourceRequestHandler {
     String host = getHost(csr, memory);
     if(host != null) {
       requests.add(newResourceRequest(priority, host, memory));
+      // in order to request a host, we also have to request the rack
+      requests.add(newResourceRequest(priority, this.nodeToRack.get(host), memory));
     }
-    // fall back to any node
+    // off-switch always required
     requests.add(newResourceRequest(priority, "*", memory));
   }
 
@@ -66,6 +68,7 @@ public class ResourceRequestHandler {
 
   private final Map<String, NodeReport> nodeReportMap = Maps.newHashMap();
   private final Map<Set<PTOperator>, String> nodeLocalMapping = Maps.newHashMap();
+  private final Map<String, String> nodeToRack = Maps.newHashMap();
 
   /**
    * Tracks update to available resources. Resource availability is used to make
@@ -80,6 +83,7 @@ public class ResourceRequestHandler {
       sb.append("rackName=").append(nr.getRackName()).append(",nodeid=").append(nr.getNodeId()).append(",numContainers=").append(nr.getNumContainers()).append(",capability=").append(nr.getCapability()).append("used=").append(nr.getUsed()).append("state=").append(nr.getNodeState());
       LOG.info("Node report: " + sb);
       nodeReportMap.put(nr.getNodeId().getHost(), nr);
+      nodeToRack.put(nr.getNodeId().getHost(), nr.getRackName());
     }
   }
 

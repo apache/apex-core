@@ -66,6 +66,7 @@ import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.annotation.ShipContainingJars;
+import com.google.common.collect.Lists;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -467,8 +468,15 @@ public class StramMiniClusterTest
         AllocateRequest req = Records.newRecord(AllocateRequest.class);
         req.setResponseId(responseId++);
         req.setApplicationAttemptId(attemptId);
-        req.addAllAsks(Collections.singletonList(setupContainerAskForRM(1, 1500, 10)));
 
+        List<ResourceRequest> lr = Lists.newArrayList();
+        lr.add(setupContainerAskForRM("hdev-vm", 1, 128, 10));
+        lr.add(setupContainerAskForRM("/default-rack", 1, 128, 10));
+        lr.add(setupContainerAskForRM("*", 1, 128, 10));
+
+        req.addAllAsks(lr);
+
+        LOG.info("Requesting: " + req.getAskList());
         resourceManager.allocate(req);
 
         for (int i=0; i<100; i++) {
@@ -490,7 +498,7 @@ public class StramMiniClusterTest
 
       }
 
-      private ResourceRequest setupContainerAskForRM(int numContainers, int containerMemory, int priority)
+      private ResourceRequest setupContainerAskForRM(String resourceName, int numContainers, int containerMemory, int priority)
       {
         ResourceRequest request = Records.newRecord(ResourceRequest.class);
 
@@ -499,14 +507,13 @@ public class StramMiniClusterTest
         // Refer to apis under org.apache.hadoop.net for more
         // details on how to get figure out rack/host mapping.
         // using * as any host will do for the distributed shell app
-        request.setHostName("hdev-vm");
+        request.setHostName(resourceName);
 
         // set no. of containers needed
         request.setNumContainers(numContainers);
 
         // set the priority for the request
         Priority pri = Records.newRecord(Priority.class);
-        // TODO - what is the range for priority? how to decide?
         pri.setPriority(priority);
         request.setPriority(pri);
 
@@ -518,7 +525,6 @@ public class StramMiniClusterTest
 
         return request;
       }
-
 
     }.run();
 
