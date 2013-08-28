@@ -689,8 +689,8 @@ public class PhysicalPlan {
 
     this.dag = dag;
     this.ctx = ctx;
-    this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
-    LOG.debug("Initializing for {} containers.", this.maxContainers);
+    this.maxContainers = Math.max(dag.getMaxContainerCount(), 1);
+    LOG.debug("Max containers: {}", this.maxContainers);
 
     Stack<OperatorMeta> pendingNodes = new Stack<OperatorMeta>();
 
