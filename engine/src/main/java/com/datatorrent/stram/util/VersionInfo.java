@@ -29,7 +29,7 @@ public class VersionInfo {
   static {
     try {
       URL res = VersionInfo.class.getResource(VersionInfo.class.getSimpleName() + ".class");
-      URLConnection conn = (URLConnection) res.openConnection();
+      URLConnection conn = res.openConnection();
       if (conn instanceof JarURLConnection) {
         Manifest mf = ((JarURLConnection) conn).getManifest();
         Attributes mainAttribs = mf.getMainAttributes();
@@ -38,7 +38,7 @@ public class VersionInfo {
           VersionInfo.user = builtBy;
         }
       }
-      
+
       Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/malhar-stram/pom.properties");
       while (resources.hasMoreElements()) {
         Properties pomInfo = new Properties();
@@ -46,7 +46,7 @@ public class VersionInfo {
         String v = pomInfo.getProperty("version", "unknown");
         VersionInfo.version = v;
       }
-      
+
       resources = VersionInfo.class.getClassLoader().getResources("malhar-stram-git.properties");
       while (resources.hasMoreElements()) {
         Properties gitInfo = new Properties();
@@ -68,7 +68,7 @@ public class VersionInfo {
   /**
    * Get the version.
    *
-   * @return the version string, e.g. "0.3.4-SNAPSHOT"
+   * @return the version string, e.g. "0.1.1-SNAPSHOT"
    */
   public static String getVersion() {
     return version;

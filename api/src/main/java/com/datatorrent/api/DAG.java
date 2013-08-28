@@ -66,7 +66,7 @@ public interface DAG extends DAGContext, Serializable
     /**
      * Adjacent operators should be deployed into processes on the same machine.
      * Eliminates network as bottleneck, as the loop back interface can be used
-     * instead. Not implemented yet.
+     * instead.
      */
     NODE_LOCAL,
     /**
