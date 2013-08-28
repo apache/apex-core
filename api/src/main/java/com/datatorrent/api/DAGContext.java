@@ -25,13 +25,6 @@ import java.util.Set;
  */
 public interface DAGContext extends Context
 {
-
-  /**
-   * Internal use only, set by application launcher.
-   * The name under which the application master expects its configuration.
-   */
-  public static final String SER_FILE_NAME = "stram-conf.ser";
-
   /**
    * Launch mode for the application.
    * Used in the client to set configuration depending on how the DAG is executed.
@@ -49,9 +42,6 @@ public interface DAGContext extends Context
   /** Constant <code>DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS=60000</code> */
   public static final int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
 
-  public static final String STRAM_APPLICATION_PROP = "stram.application";
-
-  public static final String STRAM_APPLICATION_CLASS_PROP = "class";
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
