@@ -139,25 +139,26 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATORS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public OperatorsInfo getOperatorsInfo() throws Exception
+  public JSONObject getOperatorsInfo() throws Exception
   {
     init();
     OperatorsInfo nodeList = new OperatorsInfo();
     nodeList.operators = dagManager.getOperatorInfoList();
-    return nodeList;
+    // To get around the nasty JAXB problem for lists
+    return new JSONObject(new ObjectMapper().writeValueAsString(nodeList));
   }
 
   @GET
   @Path(PATH_OPERATORS + "/{operatorId}")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public OperatorInfo getOperatorInfo(@PathParam("operatorId") String operatorId) throws Exception
+  public JSONObject getOperatorInfo(@PathParam("operatorId") String operatorId) throws Exception
   {
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
     if (oi == null) {
       throw new NotFoundException();
     }
-    return oi;
+    return new JSONObject(new ObjectMapper().writeValueAsString(oi));
   }
 
   @GET
@@ -180,7 +181,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATORS + "/{operatorId}/ports/{portName}")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public PortInfo getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
+  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
   {
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
@@ -189,12 +190,12 @@ public class StramWebServices
     }
     for (PortInfo pi : oi.inputPorts) {
       if (pi.name.equals(portName)) {
-        return pi;
+        return new JSONObject(new ObjectMapper().writeValueAsString(pi));
       }
     }
     for (PortInfo pi : oi.outputPorts) {
       if (pi.name.equals(portName)) {
-        return pi;
+        return new JSONObject(new ObjectMapper().writeValueAsString(pi));
       }
     }
     throw new NotFoundException();
@@ -393,7 +394,7 @@ public class StramWebServices
   @GET
   @Path(PATH_CONTAINERS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public ContainersInfo listContainers() throws Exception
+  public JSONObject listContainers() throws Exception
   {
     init();
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
@@ -401,20 +402,21 @@ public class StramWebServices
     for (StramChildAgent sca : containerAgents) {
       ci.add(sca.getContainerInfo());
     }
-    return ci;
+    // To get around the nasty JAXB problem for lists
+    return new JSONObject(new ObjectMapper().writeValueAsString(ci));
   }
 
   @GET
   @Path(PATH_CONTAINERS + "/{containerId}")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public ContainerInfo getContainer(@PathParam("containerId") String containerId) throws Exception
+  public JSONObject getContainer(@PathParam("containerId") String containerId) throws Exception
   {
     init();
     StramChildAgent sca = dagManager.getContainerAgent(containerId);
     if (sca == null) {
       throw new NotFoundException();
     }
-    return sca.getContainerInfo();
+    return new JSONObject(new ObjectMapper().writeValueAsString(sca.getContainerInfo()));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
