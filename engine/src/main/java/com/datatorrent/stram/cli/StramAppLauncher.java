@@ -39,6 +39,8 @@ import com.datatorrent.api.DAG;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 
 /**
@@ -127,6 +129,15 @@ public class StramAppLauncher {
 
   public StramAppLauncher(File appJarFile) throws Exception {
     this.jarFile = appJarFile;
+    init();
+  }
+
+  public StramAppLauncher(FileSystem fs, Path path) throws Exception {
+    File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
+    jarsDir.mkdirs();
+    File localJarFile = new File(jarsDir, path.getName());
+    fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
+    this.jarFile = localJarFile;
     init();
   }
 
@@ -346,7 +357,7 @@ public class StramAppLauncher {
     } else {
       appName = dag.getAttributes().attr(DAG.APPLICATION_NAME).get();
     }
-    
+
     // Use appName to process other configs
   }
 
