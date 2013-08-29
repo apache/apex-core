@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2012 Malhar, Inc.
+ *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
 package com.datatorrent.stram;
@@ -672,7 +672,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
               if (lastEndWindowTimestamps.containsKey(operatorPortName) && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA10.add(s.processedCount * 1000 / (s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName)));
+                ps.tuplesPSMA10.add(s.processedCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
@@ -702,7 +702,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
               // 2) the operator is catching up very fast and the endWindowTimestamp of subsequent windows is less than one millisecond
               if (lastEndWindowTimestamps.containsKey(operatorPortName) &&
                       (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA10.add(s.processedCount * 1000 / (s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName)));
+                ps.tuplesPSMA10.add(s.processedCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
             }
@@ -739,14 +739,14 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
           for (PortStatus ps: status.inputPortStatusList.values()) {
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
+              ps.bufferServerBytesPSMA10.add(numBytes, elapsedMillis);
             }
             status.tuplesProcessedPSMA10 += ps.tuplesPSMA10.getAvg();
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
+              ps.bufferServerBytesPSMA10.add(numBytes, elapsedMillis);
             }
             status.tuplesEmittedPSMA10 += ps.tuplesPSMA10.getAvg();
           }
@@ -1137,8 +1137,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         pinfo.name = ps.portName;
         pinfo.type = "input";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-        pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
+        pinfo.tuplesPSMA10 = (long)ps.tuplesPSMA10.getAvg();
+        pinfo.bufferServerBytesPSMA10 = (long)ps.bufferServerBytesPSMA10.getAvg();
         ni.addInputPort(pinfo);
       }
       for (PortStatus ps: os.outputPortStatusList.values()) {
@@ -1146,8 +1146,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         pinfo.name = ps.portName;
         pinfo.type = "output";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-        pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
+        pinfo.tuplesPSMA10 = (long)ps.tuplesPSMA10.getAvg();
+        pinfo.bufferServerBytesPSMA10 = (long)ps.bufferServerBytesPSMA10.getAvg();
         ni.addOutputPort(pinfo);
       }
     }

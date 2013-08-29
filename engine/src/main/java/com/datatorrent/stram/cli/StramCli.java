@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
+ * Copyright (c) 2012-2013 DataTorrent, Inc. All rights reserved.
  */
 package com.datatorrent.stram.cli;
 
@@ -443,12 +443,12 @@ public class StramCli
 
   private void setupHistory(ConsoleReader reader)
   {
-    File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
+    File historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history");
     historyFile.getParentFile().mkdirs();
     try {
       topLevelHistory = new FileHistory(historyFile);
       reader.setHistory(topLevelHistory);
-      historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history-clp");
+      historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history_clp");
       changingLogicalPlanHistory = new FileHistory(historyFile);
     }
     catch (IOException ex) {

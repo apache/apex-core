@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp;
@@ -59,6 +59,7 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
+import org.codehaus.jackson.JsonGenerator;
 
 /**
  *
@@ -99,11 +100,13 @@ public class StramWebServices
   @Nullable
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+  private ObjectMapper objectMapper = new ObjectMapper();
 
   @Inject
   public StramWebServices(final StramAppContext context)
   {
     this.appCtx = context;
+    objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
   }
 
   Boolean hasAccess(HttpServletRequest request)
@@ -157,7 +160,7 @@ public class StramWebServices
     OperatorsInfo nodeList = new OperatorsInfo();
     nodeList.operators = dagManager.getOperatorInfoList();
     // To get around the nasty JAXB problem for lists
-    return new JSONObject(new ObjectMapper().writeValueAsString(nodeList));
+    return new JSONObject(objectMapper.writeValueAsString(nodeList));
   }
 
   @GET
@@ -170,7 +173,7 @@ public class StramWebServices
     if (oi == null) {
       throw new NotFoundException();
     }
-    return new JSONObject(new ObjectMapper().writeValueAsString(oi));
+    return new JSONObject(objectMapper.writeValueAsString(oi));
   }
 
   @GET
@@ -184,10 +187,9 @@ public class StramWebServices
     if (oi == null) {
       throw new NotFoundException();
     }
-    ObjectMapper mapper = new ObjectMapper();
     map.put("inputPorts", oi.inputPorts);
     map.put("outputPorts", oi.outputPorts);
-    return new JSONObject(mapper.writeValueAsString(map));
+    return new JSONObject(objectMapper.writeValueAsString(map));
   }
 
   @GET
@@ -202,12 +204,12 @@ public class StramWebServices
     }
     for (PortInfo pi : oi.inputPorts) {
       if (pi.name.equals(portName)) {
-        return new JSONObject(new ObjectMapper().writeValueAsString(pi));
+        return new JSONObject(objectMapper.writeValueAsString(pi));
       }
     }
     for (PortInfo pi : oi.outputPorts) {
       if (pi.name.equals(portName)) {
-        return new JSONObject(new ObjectMapper().writeValueAsString(pi));
+        return new JSONObject(objectMapper.writeValueAsString(pi));
       }
     }
     throw new NotFoundException();
@@ -417,7 +419,7 @@ public class StramWebServices
       ci.add(sca.getContainerInfo());
     }
     // To get around the nasty JAXB problem for lists
-    return new JSONObject(new ObjectMapper().writeValueAsString(ci));
+    return new JSONObject(objectMapper.writeValueAsString(ci));
   }
 
   @GET
@@ -430,7 +432,7 @@ public class StramWebServices
     if (sca == null) {
       throw new NotFoundException();
     }
-    return new JSONObject(new ObjectMapper().writeValueAsString(sca.getContainerInfo()));
+    return new JSONObject(objectMapper.writeValueAsString(sca.getContainerInfo()));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -557,9 +559,8 @@ public class StramWebServices
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getLogicalPlan() throws JSONException, IOException
   {
-    ObjectMapper mapper = new ObjectMapper();
     LogicalPlan lp = dagManager.getLogicalPlan();
-    return new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(lp)));
+    return new JSONObject(objectMapper.writeValueAsString(LogicalPlanSerializer.convertToMap(lp)));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
