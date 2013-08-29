@@ -73,6 +73,30 @@ public class StramCli
   private FileHistory changingLogicalPlanHistory;
   private boolean licensedVersion = true;
 
+  private static class FileLineReader extends ConsoleReader
+  {
+    private BufferedReader br;
+
+    FileLineReader(String fileName) throws IOException
+    {
+      super();
+      fileName = expandFileName(fileName, true);
+      br = new BufferedReader(new FileReader(fileName));
+    }
+
+    @Override
+    public String readLine(String prompt) throws IOException
+    {
+      return br.readLine();
+    }
+
+    public void close() throws IOException
+    {
+      br.close();
+    }
+
+  }
+
   public static class Tokenizer
   {
     private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
@@ -371,13 +395,19 @@ public class StramCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
-    fileName = expandFileName(fileName, true);
-    BufferedReader br = new BufferedReader(new FileReader(fileName));
-    String line;
-    while ((line = br.readLine()) != null) {
-      processLine(line, reader, true);
+    boolean consolePresentSaved = consolePresent;
+    consolePresent = false;
+    try {
+      FileLineReader fr = new FileLineReader(fileName);
+      String line;
+      while ((line = fr.readLine("")) != null) {
+        processLine(line, fr, true);
+      }
+      fr.close();
     }
-    br.close();
+    finally {
+      consolePresent = consolePresentSaved;
+    }
   }
 
   private void setupCompleter(ConsoleReader reader)
@@ -517,7 +547,8 @@ public class StramCli
           }
 
           if (aliases.containsKey(args[0])) {
-            args[0] = aliases.get(args[0]);
+            processLine(aliases.get(args[0]), reader, false);
+            continue;
           }
         }
         CommandSpec cs = null;
