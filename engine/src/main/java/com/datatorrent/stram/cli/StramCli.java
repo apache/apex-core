@@ -73,6 +73,30 @@ public class StramCli
   private FileHistory changingLogicalPlanHistory;
   private boolean licensedVersion = true;
 
+  private static class FileLineReader extends ConsoleReader
+  {
+    private BufferedReader br;
+
+    FileLineReader(String fileName) throws IOException
+    {
+      super();
+      fileName = expandFileName(fileName, true);
+      br = new BufferedReader(new FileReader(fileName));
+    }
+
+    @Override
+    public String readLine(String prompt) throws IOException
+    {
+      return br.readLine();
+    }
+
+    public void close() throws IOException
+    {
+      br.close();
+    }
+
+  }
+
   public static class Tokenizer
   {
     private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
@@ -370,13 +394,12 @@ public class StramCli
     boolean consolePresentSaved = consolePresent;
     consolePresent = false;
     try {
-      fileName = expandFileName(fileName, true);
-      BufferedReader br = new BufferedReader(new FileReader(fileName));
+      FileLineReader fr = new FileLineReader(fileName);
       String line;
-      while ((line = br.readLine()) != null) {
-        processLine(line, reader, true);
+      while ((line = fr.readLine("")) != null) {
+        processLine(line, fr, true);
       }
-      br.close();
+      fr.close();
     }
     finally {
       consolePresent = consolePresentSaved;
