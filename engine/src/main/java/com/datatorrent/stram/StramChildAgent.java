@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram;
@@ -128,6 +128,56 @@ public class StramChildAgent {
     }
   }
 
+  static class TimedMovingAverageLong {
+    private final int periods;
+    private final long[] values;
+    private final long[] timeIntervals;
+    private int index = 0;
+    private long baseTime;
+
+    TimedMovingAverageLong(int periods, long baseTime) {
+      this.periods = periods;
+      this.values = new long[periods];
+      this.timeIntervals = new long[periods];
+      this.baseTime = baseTime;
+    }
+
+    void add(long val, long time) {
+      values[index] = val;
+      timeIntervals[index] = time;
+      index++;
+      index %= periods;
+    }
+
+    double getAvg() {
+      long sumValues = 0;
+      long sumTimeIntervals = 0;
+      int i = index;
+      while (true) {
+        i--;
+        if (i < 0) {
+          i = periods - 1;
+        }
+        if (i == index) {
+          break;
+        }
+        sumValues += values[i];
+        sumTimeIntervals += timeIntervals[i];
+        if (sumTimeIntervals >= baseTime) {
+          break;
+        }
+      }
+
+      if (sumTimeIntervals == 0) {
+        return 0;
+      }
+      else {
+        return ((double)sumValues * 1000) / sumTimeIntervals;
+      }
+    }
+  }
+
+
   protected class OperatorStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
@@ -172,8 +222,8 @@ public class StramChildAgent {
   {
     String portName;
     long totalTuples = 0;
-    MovingAverageLong tuplesPSMA10 = new MovingAverageLong(10);
-    MovingAverageLong bufferServerBytesPSMA10 = new MovingAverageLong(10);  // TBD
+    TimedMovingAverageLong tuplesPSMA10 = new TimedMovingAverageLong(1000, 10000);
+    TimedMovingAverageLong bufferServerBytesPSMA10 = new TimedMovingAverageLong(1000, 10000);  // TBD
   }
 
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
