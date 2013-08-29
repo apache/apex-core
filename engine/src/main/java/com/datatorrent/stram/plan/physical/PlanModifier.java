@@ -179,8 +179,13 @@ public class PlanModifier {
     }
 
     if (!om.getInputStreams().isEmpty()) {
-      String msg = String.format("Operator %s connected to input streams %s", om.getName(), om.getInputStreams());
-      throw new ValidationException(msg);
+      for (Map.Entry<InputPortMeta, StreamMeta> input : om.getInputStreams().entrySet()) {
+        if (input.getValue().getSinks().size() == 1) {
+          // would result in dangling stream
+          String msg = String.format("Operator %s connected to input streams %s", om.getName(), om.getInputStreams());
+          throw new ValidationException(msg);
+        }
+      }
     }
     if (!om.getOutputStreams().isEmpty()) {
       String msg = String.format("Operator %s connected to output streams %s", om.getName(), om.getOutputStreams());
@@ -254,6 +259,7 @@ public class PlanModifier {
     undeployOperators.removeAll(newOperators);
 
     deployOperators.addAll(redeployOperators);
+    deployOperators.removeAll(removedOperators);
 
     physicalPlanContext.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
   }
