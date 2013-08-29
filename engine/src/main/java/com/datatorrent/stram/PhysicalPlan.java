@@ -1527,7 +1527,7 @@ public class PhysicalPlan {
    * All connected streams must have been previously removed.
    * @param om
    */
-  public void removeLogicalOperator(OperatorMeta om, Set<PTOperator> removeOpers)
+  public void removeLogicalOperator(OperatorMeta om, Set<PTOperator> removedOpers)
   {
     PMapping opers = this.logicalToPTOperator.get(om);
     if (opers == null) {
@@ -1536,10 +1536,12 @@ public class PhysicalPlan {
 
     for (PTOperator oper : opers.partitions) {
       removePartition(oper, opers.parallelPartitions);
+      removedOpers.add(oper);
     }
 
     for (PTOperator mergeOperator : opers.mergeOperators.values()) {
       removePTOperator(mergeOperator);
+      removedOpers.add(mergeOperator);
     }
 
     LinkedHashMap<OperatorMeta, PMapping> copyMap = Maps.newLinkedHashMap(this.logicalToPTOperator);

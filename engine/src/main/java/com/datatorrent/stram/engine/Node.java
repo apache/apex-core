@@ -4,17 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.debug.MuxSink;
-import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.datatorrent.stram.tuple.CheckpointTuple;
-import com.datatorrent.stram.tuple.EndStreamTuple;
-import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-import java.io.IOException;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
@@ -32,15 +22,23 @@ import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
-import java.io.*;
-import java.util.logging.Level;
+import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.debug.MuxSink;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.datatorrent.stram.tuple.CheckpointTuple;
+import com.datatorrent.stram.tuple.EndStreamTuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 
 /**
  * <p>Abstract Node class.</p>
@@ -221,7 +219,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings( {"unchecked"})
   public void activate(OperatorContext context)
   {
     boolean activationListener = operator instanceof ActivationListener;
