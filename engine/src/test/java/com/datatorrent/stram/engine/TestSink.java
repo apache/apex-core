@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.engine;
