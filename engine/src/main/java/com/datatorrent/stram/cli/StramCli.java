@@ -367,13 +367,20 @@ public class StramCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
-    fileName = expandFileName(fileName, true);
-    BufferedReader br = new BufferedReader(new FileReader(fileName));
-    String line;
-    while ((line = br.readLine()) != null) {
-      processLine(line, reader, true);
+    boolean consolePresentSaved = consolePresent;
+    consolePresent = false;
+    try {
+      fileName = expandFileName(fileName, true);
+      BufferedReader br = new BufferedReader(new FileReader(fileName));
+      String line;
+      while ((line = br.readLine()) != null) {
+        processLine(line, reader, true);
+      }
+      br.close();
     }
-    br.close();
+    finally {
+      consolePresent = consolePresentSaved;
+    }
   }
 
   private void setupCompleter(ConsoleReader reader)
