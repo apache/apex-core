@@ -73,6 +73,30 @@ public class StramCli
   private FileHistory changingLogicalPlanHistory;
   private boolean licensedVersion = true;
 
+  private static class FileLineReader extends ConsoleReader
+  {
+    private BufferedReader br;
+
+    FileLineReader(String fileName) throws IOException
+    {
+      super();
+      fileName = expandFileName(fileName, true);
+      br = new BufferedReader(new FileReader(fileName));
+    }
+
+    @Override
+    public String readLine(String prompt) throws IOException
+    {
+      return br.readLine();
+    }
+
+    public void close() throws IOException
+    {
+      br.close();
+    }
+
+  }
+
   public static class Tokenizer
   {
     private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
@@ -367,31 +391,52 @@ public class StramCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
-    fileName = expandFileName(fileName, true);
-    BufferedReader br = new BufferedReader(new FileReader(fileName));
-    String line;
-    while ((line = br.readLine()) != null) {
-      processLine(line, reader, true);
+    boolean consolePresentSaved = consolePresent;
+    consolePresent = false;
+    try {
+      FileLineReader fr = new FileLineReader(fileName);
+      String line;
+      while ((line = fr.readLine("")) != null) {
+        processLine(line, fr, true);
+      }
+      fr.close();
     }
-    br.close();
+    finally {
+      consolePresent = consolePresentSaved;
+    }
   }
-
-  private void setupCompleter(ConsoleReader reader)
+  
+  private List<Completer> defaultCompleters() 
   {
     List<Completer> completers = new LinkedList<Completer>();
     completers.add(new StringsCompleter(connectedCommands.keySet().toArray(new String[] {})));
     completers.add(new StringsCompleter(globalCommands.keySet().toArray(new String[] {})));
     completers.add(new StringsCompleter(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
+    completers.add(new StringsCompleter(aliases.keySet().toArray(new String[] {})));
+    completers.add(new StringsCompleter(macros.keySet().toArray(new String[] {})));
 
     List<Completer> launchCompleters = new LinkedList<Completer>();
-    launchCompleters.add(new StringsCompleter(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source"}));
+    launchCompleters.add(new StringsCompleter(new String[] { "launch", "launch-local", "show-logical-plan", "dump-properties-file", "source" }));
     launchCompleters.add(new FileNameCompleter()); // jarFile
     launchCompleters.add(new FileNameCompleter()); // topology
     completers.add(new ArgumentCompleter(launchCompleters));
-
-    reader.addCompleter(new AggregateCompleter(completers));
+    return completers;
   }
 
+  private void setupCompleter(ConsoleReader reader)
+  {
+    reader.addCompleter(new AggregateCompleter(defaultCompleters()));
+  }
+  
+  private void updateCompleter(ConsoleReader reader)
+  {
+    List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+    for (Completer c : completers) {
+      reader.removeCompleter(c);
+    }
+    setupCompleter(reader);
+  }
+  
   private void setupHistory(ConsoleReader reader)
   {
     File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
@@ -456,14 +501,22 @@ public class StramCli
       int previousIndex = 0;
       String expandedLine = "";
       while (true) {
+        // Search for $0..$9 within the each line and replace by corresponding args
         int currentIndex = line.indexOf('$', previousIndex);
         if (currentIndex > 0 && line.length() > currentIndex + 1) {
           int argIndex = line.charAt(currentIndex + 1) - '0';
           if (args.length > argIndex && argIndex >= 0) {
+            // Replace $0 with macro name or $1..$9 with input arguments
             expandedLine += line.substring(previousIndex, currentIndex);
             expandedLine += args[argIndex];
           }
+          else if ( argIndex >= 0 && argIndex <= 9 )
+          {
+            // Arguments for $1..$9 were not supplied - replace with empty strings
+            expandedLine += line.substring(previousIndex, currentIndex);
+          }
           else {
+            // Outside valid arguments range - ignore and do not replace
             expandedLine += line.substring(previousIndex, currentIndex + 2);
           }
           currentIndex += 2;
@@ -513,7 +566,8 @@ public class StramCli
           }
 
           if (aliases.containsKey(args[0])) {
-            args[0] = aliases.get(args[0]);
+            processLine(aliases.get(args[0]), reader, false);
+            continue;
           }
         }
         CommandSpec cs = null;
@@ -617,7 +671,6 @@ public class StramCli
         }
       }
       System.out.println("\n\t" + cs.description);
-      //System.out.println();
     }
   }
 
@@ -876,13 +929,17 @@ public class StramCli
           appConfig = matchingAppConfigs.get(0);
         }
         else if (matchingAppConfigs.size() > 1) {
-          if (matchString != null) {
+
+          // Display matching applications
+          for (int i = 0; i < matchingAppConfigs.size(); i++) {
+            System.out.printf("%3d. %s\n", i + 1, matchingAppConfigs.get(i).getName());
+          }
+          
+          // Exit if not in interactive mode
+          if (! consolePresent ) {
             throw new CliException("More than one application in jar file match '" + matchString + "'");
           }
           else {
-            for (int i = 0; i < matchingAppConfigs.size(); i++) {
-              System.out.printf("%3d. %s\n", i + 1, matchingAppConfigs.get(i).getName());
-            }
 
             boolean useHistory = reader.isHistoryEnabled();
             reader.setHistoryEnabled(false);
@@ -1104,6 +1161,7 @@ public class StramCli
         throw new CliException("Alias to itself!");
       }
       aliases.put(args[1], args[2]);
+      updateCompleter(reader);
     }
 
   }
@@ -1860,7 +1918,8 @@ public class StramCli
           String line = reader.readLine("macro def (" + name + ") > ");
           if (line.equals("end")) {
             macros.put(name, commands);
-            System.out.println("Macro '" + name + "' created.");
+            updateCompleter(reader);
+            if (consolePresent) System.out.println("Macro '" + name + "' created.");
             return;
           }
           else if (line.equals("abort")) {
