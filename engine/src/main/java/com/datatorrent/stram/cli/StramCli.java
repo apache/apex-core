@@ -513,7 +513,8 @@ public class StramCli
           }
 
           if (aliases.containsKey(args[0])) {
-            args[0] = aliases.get(args[0]);
+            processLine(aliases.get(args[0]), reader, false);
+            continue;
           }
         }
         CommandSpec cs = null;
