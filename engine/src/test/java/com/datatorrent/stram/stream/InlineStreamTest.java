@@ -3,11 +3,6 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.DefaultReservoir;
-import com.datatorrent.stram.engine.GenericNode;
-import com.datatorrent.stram.engine.Node;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,16 +12,19 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.stream.InlineStream;
-import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.engine.DefaultReservoir;
+import com.datatorrent.stram.engine.GenericNode;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * Test for message flow through DAG
