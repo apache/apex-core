@@ -2,10 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.engine;
 
 import java.io.IOException;
-import java.util.HashSet;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -14,22 +13,19 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.engine.RecoverableInputOperator;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import java.util.ArrayList;
 
 /**
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  */
-public class NodeRecoveryTest
+public class AtLeastOnceTest
 {
-  private static final Logger logger = LoggerFactory.getLogger(NodeRecoveryTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(AtLeastOnceTest.class);
 
   @Before
   public void setup() throws IOException
@@ -41,62 +37,6 @@ public class NodeRecoveryTest
   public void teardown()
   {
     StramChild.eventloop.stop();
-
-  }
-
-  public static class CollectorOperator extends BaseOperator implements CheckpointListener
-  {
-    public static HashSet<Long> collection = new HashSet<Long>(20);
-    public static ArrayList<Long> duplicates = new ArrayList<Long>();
-    private boolean simulateFailure;
-    private long checkPointWindowId;
-    public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
-    {
-      @Override
-      public void process(Long tuple)
-      {
-        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
-        if (collection.contains(tuple)) {
-          duplicates.add(tuple);
-        }
-        else {
-          collection.add(tuple);
-        }
-      }
-
-    };
-
-    /**
-     * @param simulateFailure the simulateFailure to set
-     */
-    public void setSimulateFailure(boolean simulateFailure)
-    {
-      this.simulateFailure = simulateFailure;
-    }
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-      simulateFailure &= (checkPointWindowId == 0);
-      logger.debug("simulateFailure = {}", simulateFailure);
-    }
-
-    @Override
-    public void checkpointed(long windowId)
-    {
-      if (this.checkPointWindowId == 0) {
-        this.checkPointWindowId = windowId;
-      }
-    }
-
-    @Override
-    public void committed(long windowId)
-    {
-      logger.debug("committed window {} and checkPointWindowId {}", Codec.getStringWindowId(windowId), Codec.getStringWindowId(checkPointWindowId));
-      if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
-        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + Codec.getStringWindowId(checkPointWindowId));
-      }
-    }
 
   }
 
@@ -161,7 +101,7 @@ public class NodeRecoveryTest
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
-    dag.addStream("connection", rip.output, cm.input).setInline(true);
+    dag.addStream("connection", rip.output, cm.input).setLocality(Locality.CONTAINER_LOCAL);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();

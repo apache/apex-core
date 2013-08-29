@@ -22,7 +22,6 @@ import com.datatorrent.stram.engine.OperatorStats.PortStats;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
-// inflight changes to the port connections should be captured.
 /**
  *
  * The base class for node implementation<p>
@@ -135,6 +134,9 @@ public class GenericNode extends Node<Operator>
         lastCheckpointedWindowId = currentWindowId;
         checkpoint = false;
       }
+      else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && checkpoint(currentWindowId)) {
+        lastCheckpointedWindowId = currentWindowId;
+      }
       checkpointWindowCount = 0;
     }
     handleRequests(currentWindowId);
@@ -161,9 +163,7 @@ public class GenericNode extends Node<Operator>
   /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
-   * Although it seems that it's called from another thread which implements Runnable, so we take this
-   * opportunity to pass the OperatorContextImpl through the run method. Note that activate does not return as
-   * long as there is useful workload for the node.
+   * Note that activate does not return as long as there is useful workload for the node.
    */
   @Override
   @SuppressWarnings({"SleepWhileInLoop"})
@@ -224,7 +224,7 @@ public class GenericNode extends Node<Operator>
 
                   assert (port != null); /* we should always find the port */
 
-                  if (context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_MOST_ONCE) == ProcessingMode.AT_MOST_ONCE) {
+                  if (PROCESSING_MODE == ProcessingMode.AT_MOST_ONCE) {
                     if (t.getWindowId() < currentWindowId) {
                       /*
                        * we need to fast forward this stream till we find the current
@@ -454,45 +454,8 @@ public class GenericNode extends Node<Operator>
         }
 
         if (activeQueues.isEmpty() && alive) {
-//          /*
-//           * The control may come here in at most once mode where 2 upstream operators are trying to play different
-//           * windows. So we need to identify the one which is lagging behind and bring it to the speed and behave as
-//           * if everything is normal.
-//           */
-//          if (context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_MOST_ONCE) == ProcessingMode.AT_MOST_ONCE) {
-//            for (Entry<String, SweepableReservoir> entry : inputs.entrySet()) {
-//              Tuple t = entry.getValue().sweep();
-//              if (t != null) {
-//                if (t.getType() == MessageType.BEGIN_WINDOW) {
-//                  if (t.getWindowId() < currentWindowId) {
-//                    expectingBeginWindow--;
-//                    inputs.put(entry.getKey(), new WindowIdActivatedReservoir(String.valueOf(id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(entry.getKey()), entry.getValue(), currentWindowId));
-//                    activeQueues.addAll(inputs.values());
-//                    break;
-//                  }
-//                  else if (t.getWindowId() > currentWindowId) {
-//                    expectingBeginWindow--;
-//                    if (++receivedEndWindow == totalQueues) {
-//                      processEndWindow(activeQueues, null);
-//                      expectingBeginWindow = activeQueues.size();
-//                      break;
-//                    }
-//                  }
-//                  else {
-//                    activeQueues.addAll(inputs.values());
-//                  }
-//                }
-//                else {
-//                  logger.error("Catastrophic Error: Invalid State - the operator blocked forever even in at-most-once!");
-//                  System.exit(2);
-//                }
-//              }
-//            }
-//          }
-//          else {
           logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
           System.exit(2);
-//          }
         }
         else {
           boolean need2sleep = true;
@@ -544,7 +507,7 @@ public class GenericNode extends Node<Operator>
       }
 
       if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-        if (checkpoint) {
+        if (checkpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
         }
         checkpointWindowCount = 0;
