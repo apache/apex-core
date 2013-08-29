@@ -439,12 +439,12 @@ public class StramCli
   
   private void setupHistory(ConsoleReader reader)
   {
-    File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
+    File historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history");
     historyFile.getParentFile().mkdirs();
     try {
       topLevelHistory = new FileHistory(historyFile);
       reader.setHistory(topLevelHistory);
-      historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history-clp");
+      historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history_clp");
       changingLogicalPlanHistory = new FileHistory(historyFile);
     }
     catch (IOException ex) {
