@@ -47,6 +47,14 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
+import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.CreateStreamRequest;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.RemoveOperatorRequest;
+import com.datatorrent.stram.plan.logical.RemoveStreamRequest;
+import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -81,6 +89,10 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_DESCRIBE_OPERATOR = "describeOperator";
+  public static final String PATH_CREATE_ALERT = "createAlert";
+  public static final String PATH_DELETE_ALERT = "deleteAlert";
+  public static final String PATH_LIST_ALERTS = "listAlerts";
+  public static final String PATH_LIST_ACTION_OPERATOR_CLASSES = "listActionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse httpResponse;
@@ -230,8 +242,10 @@ public class StramWebServices
 
       result.put("classes", classNames);
     }
-    catch (Exception ex) {
+    catch (ClassNotFoundException ex) {
       throw new NotFoundException();
+    }
+    catch (JSONException ex) {
     }
     return result;
   }
@@ -524,18 +538,19 @@ public class StramWebServices
     }
     Map<String, Object> m = DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
 
-    if (propertyName == null) {
-      return new JSONObject(m);
+    try {
+      if (propertyName == null) {
+        return new JSONObject(new ObjectMapper().writeValueAsString(m));
+      }
+      else {
+        Map<String, Object> m1 = new HashMap<String, Object>();
+        m1.put(propertyName, m.get(propertyName));
+        return new JSONObject(new ObjectMapper().writeValueAsString(m1));
+      }
     }
-    else {
-      JSONObject json = new JSONObject();
-      try {
-        json.put(propertyName, m.get(propertyName));
-      }
-      catch (JSONException ex) {
-        LOG.warn("Got JSON Exception: ", ex);
-      }
-      return json;
+    catch (Exception ex) {
+      LOG.warn("Caught exception", ex);
+      throw new RuntimeException(ex);
     }
   }
 
@@ -593,6 +608,46 @@ public class StramWebServices
       }
     }
 
+    return response;
+  }
+
+  @POST
+  @Path(PATH_CREATE_ALERT)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object createAlert(String content) throws JSONException, IOException
+  {
+    return dagManager.getAlertsManager().createAlert(content);
+  }
+
+  @POST
+  @Path(PATH_DELETE_ALERT)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object deleteAlert(String content) throws JSONException, IOException
+  {
+    return dagManager.getAlertsManager().deleteAlert(content);
+  }
+
+  @GET
+  @Path(PATH_LIST_ALERTS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object listAlerts() throws JSONException, IOException
+  {
+    return dagManager.getAlertsManager().listAlerts();
+  }
+
+  @GET
+  @Path(PATH_LIST_ACTION_OPERATOR_CLASSES)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
+  {
+    JSONObject response = new JSONObject();
+    JSONArray jsonArray = new JSONArray();
+    List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
+
+    for (Class clazz : operatorClasses) {
+      jsonArray.put(clazz.getName());
+    }
+    response.put("classes", jsonArray);
     return response;
   }
 
