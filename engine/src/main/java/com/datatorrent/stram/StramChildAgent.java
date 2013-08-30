@@ -172,7 +172,7 @@ public class StramChildAgent {
         return 0;
       }
       else {
-        return ((double)sumValues) / sumTimeIntervals;
+        return ((double)sumValues * 1000) / sumTimeIntervals;
       }
     }
   }
