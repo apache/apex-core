@@ -45,8 +45,10 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.google.common.collect.Sets;
 
@@ -409,11 +411,13 @@ public class LogicalPlan implements Serializable, DAG
     private final AttributeMap attributes = new DefaultAttributeMap(OperatorContext.class);
     private final OperatorProxy operatorProxy;
     private final String name;
+    private OperatorAnnotation operatorAnnotation;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
     private OperatorMeta(String name, Operator operator)
     {
+      this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
       this.operatorProxy = new OperatorProxy();
       this.operatorProxy.set(operator);
       this.name = name;
@@ -803,8 +807,34 @@ public class LogicalPlan implements Serializable, DAG
         throw new ConstraintViolationException("Operator " + n.getName() + " violates constraints", copySet);
       }
 
-      // check that non-optional ports are connected
       OperatorMeta.PortMapping portMapping = n.getPortMapping();
+
+      // Check operator annotation
+      if (n.operatorAnnotation != null) {
+        // Check if partition property of the operator is being honored
+        if (!n.operatorAnnotation.partitionable()) {
+          // Check if INITIAL_PARTITION_COUNT is set
+          System.out.println("Partition count " + n.attributes.attr(OperatorContext.INITIAL_PARTITION_COUNT));
+          int partitionCount = n.attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+          if (partitionCount > 0) {
+            throw new ValidationException("Operator " + n.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set" );
+          } else {
+            // Check if any of the input ports have partition attributes set
+            for (InputPortMeta pm : portMapping.inPortMap.values()) {
+              Boolean paralellPartition = pm.attrValue(PortContext.PARTITION_PARALLEL, Boolean.FALSE);
+              if (paralellPartition) {
+                throw new ValidationException("Operator " + n.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set" );
+              }
+            }
+          }
+          // Check if partition implements PartitionableOperator
+          if (PartitionableOperator.class.isAssignableFrom(n.getOperator().getClass())) {
+            throw new ValidationException("Operator " + n.getName() + " is not partitionable but implements PartitionableOperator" );
+          }
+        }
+      }
+
+      // check that non-optional ports are connected
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
         if (!n.inputStreams.containsKey(pm)) {
           if (pm.portAnnotation == null || !pm.portAnnotation.optional()) {
