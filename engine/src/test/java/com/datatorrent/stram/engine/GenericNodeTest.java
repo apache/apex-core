@@ -10,19 +10,18 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.stram.engine.DefaultReservoir;
-import com.datatorrent.stram.engine.GenericNode;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.tuple.EndStreamTuple;
-import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Sink;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.stram.tuple.EndStreamTuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  *
@@ -30,12 +29,11 @@ import com.datatorrent.bufferserver.packet.MessageType;
  */
 public class GenericNodeTest
 {
-  long beginWindowId;
-  long endWindowId;
-
-  class GenericOperator implements Operator
+  public static class GenericOperator implements Operator
   {
-    DefaultInputPort<Object> ip1 = new DefaultInputPort<Object>()
+    long beginWindowId;
+    long endWindowId;
+    public final transient DefaultInputPort<Object> ip1 = new DefaultInputPort<Object>()
     {
       @Override
       public void process(Object tuple)
@@ -44,7 +42,9 @@ public class GenericNodeTest
       }
 
     };
-    DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
+    
+    @InputPortFieldAnnotation(name = "ip2", optional = true)
+    public final transient DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
     {
       @Override
       public void process(Object tuple)
@@ -53,6 +53,8 @@ public class GenericNodeTest
       }
 
     };
+
+    @OutputPortFieldAnnotation(name="op", optional=true)
     DefaultOutputPort<Object> op = new DefaultOutputPort<Object>();
 
     @Override
