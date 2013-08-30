@@ -25,6 +25,8 @@ import com.google.common.collect.Sets;
 /**
  * Handle mapping from physical plan locality groupings to resource allocation requests.
  * Monitors available resources through node reports.
+ *
+ * @since 0.3.4
  */
 public class ResourceRequestHandler {
 
