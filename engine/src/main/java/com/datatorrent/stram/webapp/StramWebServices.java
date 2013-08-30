@@ -13,19 +13,14 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -47,19 +42,10 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
-import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
-import com.datatorrent.stram.plan.logical.CreateStreamRequest;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.logical.RemoveOperatorRequest;
-import com.datatorrent.stram.plan.logical.RemoveStreamRequest;
-import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
-import org.codehaus.jackson.JsonGenerator;
 
 /**
  *
@@ -89,10 +75,8 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_DESCRIBE_OPERATOR = "describeOperator";
-  public static final String PATH_CREATE_ALERT = "createAlert";
-  public static final String PATH_DELETE_ALERT = "deleteAlert";
-  public static final String PATH_LIST_ALERTS = "listAlerts";
-  public static final String PATH_LIST_ACTION_OPERATOR_CLASSES = "listActionOperatorClasses";
+  public static final String PATH_ALERTS = "alerts";
+  public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse httpResponse;
@@ -611,24 +595,24 @@ public class StramWebServices
     return response;
   }
 
-  @POST
-  @Path(PATH_CREATE_ALERT)
+  @PUT
+  @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
-  public Object createAlert(String content) throws JSONException, IOException
+  public Object createAlert(String content, @PathParam("name") String name) throws JSONException, IOException
   {
-    return dagManager.getAlertsManager().createAlert(content);
+    return dagManager.getAlertsManager().createAlert(name, content);
   }
 
-  @POST
-  @Path(PATH_DELETE_ALERT)
+  @DELETE
+  @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
-  public Object deleteAlert(String content) throws JSONException, IOException
+  public Object deleteAlert(@PathParam("name") String name) throws JSONException, IOException
   {
-    return dagManager.getAlertsManager().deleteAlert(content);
+    return dagManager.getAlertsManager().deleteAlert(name);
   }
 
   @GET
-  @Path(PATH_LIST_ALERTS)
+  @Path(PATH_ALERTS)
   @Produces(MediaType.APPLICATION_JSON)
   public Object listAlerts() throws JSONException, IOException
   {
@@ -636,7 +620,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LIST_ACTION_OPERATOR_CLASSES)
+  @Path(PATH_ACTION_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
   public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
   {
