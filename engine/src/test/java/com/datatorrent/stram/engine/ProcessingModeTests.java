@@ -65,6 +65,7 @@ public class ProcessingModeTests
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
+    rip.setSimulateFailure(true);
     dag.getMeta(rip).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
@@ -85,6 +86,7 @@ public class ProcessingModeTests
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
+    rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
@@ -107,6 +109,7 @@ public class ProcessingModeTests
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
+    rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
