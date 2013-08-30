@@ -23,10 +23,7 @@ package com.datatorrent.api;
  *
  * @param <COMPONENT>
  * @param <COMPLEMENT>
-<<<<<<< HEAD
-=======
  * @since 0.3.2
->>>>>>> master
  */
 public abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
 {
