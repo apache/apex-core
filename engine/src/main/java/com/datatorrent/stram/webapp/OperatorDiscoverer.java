@@ -5,7 +5,9 @@
 package com.datatorrent.stram.webapp;
 
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.jar.JarEntry;
@@ -21,7 +23,16 @@ import org.slf4j.LoggerFactory;
  */
 public class OperatorDiscoverer
 {
-  private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>();
+  private static class ClassComparator implements Comparator<Class<?>> {
+
+    @Override
+    public int compare(Class<?> a, Class<?> b)
+    {
+      return a.getName().compareTo(b.getName());
+    }
+
+  }
+  private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>(new ClassComparator());
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
 
   private void init()
@@ -97,6 +108,25 @@ public class OperatorDiscoverer
     for (Class<? extends Operator> clazz : operatorClasses) {
       if (parentClass.isAssignableFrom(clazz)) {
         result.add(clazz);
+      }
+    }
+    return result;
+  }
+
+  List<Class<? extends Operator>> getActionOperatorClasses()
+  {
+    if (operatorClasses.isEmpty()) {
+      init();
+    }
+
+    List<Class<? extends Operator>> result = new ArrayList<Class<? extends Operator>>();
+    for (Class<? extends Operator> clazz : operatorClasses) {
+      Field[] fields = clazz.getFields();
+      for (Field field : fields) {
+        if (InputPort.class.isAssignableFrom(field.getType())) {
+          result.add(clazz);
+          break;
+        }
       }
     }
     return result;

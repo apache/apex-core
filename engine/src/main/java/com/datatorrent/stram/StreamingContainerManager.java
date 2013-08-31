@@ -107,6 +107,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+  private AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
 
   // window id to node id to end window stats
@@ -330,8 +331,13 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
     }
 
-    if (upstreamMaxEmitTimestamp > 0) {
+    if (upstreamMaxEmitTimestamp > endWindowStats.emitTimestamp) {
+      LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
+    }
+    else {
+      LOG.warn("Cannot add to latency MA because emitTimestamp is greater than upstreamMaxEmitTimestamp ({} > {})", endWindowStats.emitTimestamp, upstreamMaxEmitTimestamp);
+      LOG.warn("for operator {}. Please verify that the system clocks are in sync in your cluster.", oper);
     }
 
     if (oper.outputs.isEmpty()) {
@@ -904,6 +910,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
     Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
     for (OperatorMeta logicalOperator: plan.getRootOperators()) {
+      LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator: operators) {
@@ -1400,5 +1407,10 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   public CriticalPathInfo getCriticalPathInfo()
   {
     return criticalPathInfo;
+  }
+
+  public AlertsManager getAlertsManager()
+  {
+    return alertsManager;
   }
 }
