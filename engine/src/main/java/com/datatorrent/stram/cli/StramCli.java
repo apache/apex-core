@@ -270,7 +270,7 @@ public class StramCli
     connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file"}, new String[] {"jar-file", "class-name"}, "Dump the properties file of an app class"));
     connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), null, new String[] {"app-id"}, "Get the information of an app"));
-    connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(), new String[] {"file"}, null, "Create an alert with the given file that contains the spec"));
+    connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(), new String[] {"name", "file"}, null, "Create an alert with the name and the given file that contains the spec"));
     connectedCommands.put("delete-alert", new CommandSpec(new DeleteAlertCommand(), new String[] {"name"}, null, "Delete an alert with the given name"));
     connectedCommands.put("list-alerts", new CommandSpec(new ListAlertsCommand(), null, null, "List all alerts"));
 
@@ -1996,7 +1996,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String fileName = expandFileName(args[1], true);
+      String fileName = expandFileName(args[2], true);
       File f = new File(fileName);
       if (!f.canRead()) {
         throw new CliException("Cannot read " + fileName);
@@ -2008,14 +2008,14 @@ public class StramCli
       final JSONObject json = new JSONObject(new String(buffer));
 
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_CREATE_ALERT);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
           @Override
           public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
           {
-            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, json);
+            return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
           }
 
         });
@@ -2033,17 +2033,15 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      final JSONObject postJson = new JSONObject();
-      postJson.put("name", args[1]);
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_DELETE_ALERT);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
           @Override
           public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
           {
-            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, postJson);
+            return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
           }
 
         });
@@ -2061,7 +2059,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ClientResponse rsp = getResource(StramWebServices.PATH_LIST_ALERTS, currentApp);
+      ClientResponse rsp = getResource(StramWebServices.PATH_ALERTS, currentApp);
       JSONObject json = rsp.getEntity(JSONObject.class);
       System.out.println(json);
     }

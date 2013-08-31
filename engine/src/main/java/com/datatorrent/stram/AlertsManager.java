@@ -44,13 +44,12 @@ public class AlertsManager
     this.dagManager = dagManager;
   }
 
-  public JSONObject createAlert(String content)
+  public JSONObject createAlert(String name, String content)
   {
 
     JSONObject response = new JSONObject();
     try {
       JSONObject json = new JSONObject(content);
-      String name = json.getString("name");
       String streamName = json.getString("streamName");
       JSONObject filter = json.getJSONObject("filter");
       JSONObject escalation = json.getJSONObject("escalation");
@@ -218,11 +217,9 @@ public class AlertsManager
     return response;
   }
 
-  public JSONObject deleteAlert(String content) throws JSONException
+  public JSONObject deleteAlert(String name) throws JSONException
   {
-    JSONObject json = new JSONObject(content);
     JSONObject response = new JSONObject();
-    String name = json.getString("name");
     List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
 
     try {
