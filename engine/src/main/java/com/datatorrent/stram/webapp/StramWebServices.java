@@ -263,6 +263,12 @@ public class StramWebServices
           }
         }
         Field[] fields = clazz.getFields();
+        Arrays.sort(fields, new Comparator<Field>() {
+          @Override
+          public int compare(Field a, Field b) {
+            return a.getName().compareTo(b.getName());
+          }
+        });
         for (Field field : fields) {
           InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
           if (inputAnnotation != null) {
