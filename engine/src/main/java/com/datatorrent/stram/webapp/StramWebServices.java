@@ -69,6 +69,7 @@ public class StramWebServices
   public static final String PATH_STOPRECORDING = "stopRecording";
   public static final String PATH_SYNCRECORDING = "syncRecording";
   public static final String PATH_SYNCSTATS = "syncStats";
+  public static final String PATH_SYNCEVENTS = "syncEvents";
   public static final String PATH_CONTAINERS = "containers";
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
@@ -263,11 +264,14 @@ public class StramWebServices
           }
         }
         Field[] fields = clazz.getFields();
-        Arrays.sort(fields, new Comparator<Field>() {
+        Arrays.sort(fields, new Comparator<Field>()
+        {
           @Override
-          public int compare(Field a, Field b) {
+          public int compare(Field a, Field b)
+          {
             return a.getName().compareTo(b.getName());
           }
+
         });
         for (Field field : fields) {
           InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
@@ -394,6 +398,17 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     dagManager.syncStats();
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_SYNCEVENTS)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject syncEvents(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    dagManager.syncEvents();
     return response;
   }
 

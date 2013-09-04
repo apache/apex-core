@@ -164,4 +164,8 @@ public class HdfsEventRecorder implements EventRecorder
     wsClient.subscribeNumSubscribers(pubSubTopic);
   }
 
+  public void requestSync()
+  {
+    this.storage.requestSync();
+  }
 }

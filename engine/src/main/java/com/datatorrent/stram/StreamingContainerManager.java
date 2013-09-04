@@ -1267,6 +1267,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     statsRecorder.requestSync();
   }
 
+  public void syncEvents()
+  {
+    eventRecorder.requestSync();
+  }
+
   public void stopContainer(String containerId)
   {
     this.containerStopRequests.put(containerId, containerId);
