@@ -93,8 +93,8 @@ public class InputNode extends Node<InputOperator>
 
             case END_WINDOW:
               if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-                operator.endWindow();
                 insideWindow = false;
+                operator.endWindow();
                 applicationWindowCount = 0;
               }
 

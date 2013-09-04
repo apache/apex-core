@@ -115,8 +115,8 @@ public class GenericNode extends Node<Operator>
   protected void processEndWindow(ArrayList<SweepableReservoir> activeQueues, Tuple endWindowTuple)
   {
     if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-      operator.endWindow();
       insideWindow = false;
+      operator.endWindow();
       applicationWindowCount = 0;
     }
 
