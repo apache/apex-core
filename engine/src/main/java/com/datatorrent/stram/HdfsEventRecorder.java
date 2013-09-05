@@ -91,7 +91,6 @@ public class HdfsEventRecorder implements EventRecorder
   {
     try {
       streamCodec = new JsonStreamCodec<Object>();
-      storage = new HdfsPartFileCollection();
       storage.setBasePath(basePath);
       storage.setup();
       storage.writeMetaData((VERSION + "\n").getBytes());
@@ -113,6 +112,7 @@ public class HdfsEventRecorder implements EventRecorder
     }
   }
 
+  @Override
   public void recordEventAsync(Event event)
   {
     LOG.debug("Adding event to the queue");
