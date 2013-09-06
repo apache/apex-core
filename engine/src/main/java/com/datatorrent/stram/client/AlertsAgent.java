@@ -6,14 +6,12 @@ package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import org.apache.hadoop.fs.*;
 import org.codehaus.jettison.json.JSONException;
@@ -62,6 +60,7 @@ public class AlertsAgent extends StramAgent
   private JSONObject replaceTemplate(JSONObject tmplJson, Map<String, String> parameters) throws JSONException
   {
     JSONObject result = new JSONObject();
+    @SuppressWarnings("unchecked")
     Iterator<String> keys = tmplJson.keys();
     while (keys.hasNext()) {
       String key = keys.next();
@@ -83,7 +82,7 @@ public class AlertsAgent extends StramAgent
       while (cur > 0 && cur < strval.length()) {
         int begin = strval.indexOf("${", cur);
         if (begin != -1) {
-          int end = strval.indexOf("}", cur);
+          int end = strval.indexOf('}', cur);
           if (end != -1) {
             String varName = strval.substring(begin + 2, end);
             if (parameters.containsKey(varName)) {

@@ -7,18 +7,14 @@ package com.datatorrent.stram.client;
 import com.datatorrent.stram.util.HdfsPartFileCollection;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.MediaType;
 import org.apache.hadoop.fs.*;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
