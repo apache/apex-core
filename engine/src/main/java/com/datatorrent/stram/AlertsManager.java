@@ -301,10 +301,7 @@ public class AlertsManager
     LOG.info("There are {} alerts", alerts.size());
     synchronized (alerts) {
       for (Map.Entry<String, AlertInfo> entry : alerts.entrySet()) {
-        JSONObject alert = new JSONObject();
-        alert.put("name", entry.getKey());
-        alert.put("streamName", entry.getValue().streamName);
-        alertsArray.put(alert);
+        alertsArray.put(entry.getKey());
       }
     }
     response.put("alerts", alertsArray);
@@ -314,7 +311,10 @@ public class AlertsManager
   public JSONObject getAlert(String name) throws JSONException
   {
     JSONObject response = new JSONObject();
-    AlertInfo alertInfo = alerts.get(name);
+    AlertInfo alertInfo;
+    synchronized (alerts) {
+      alertInfo = alerts.get(name);
+    }
     if (alertInfo == null) {
       return null;
     }
