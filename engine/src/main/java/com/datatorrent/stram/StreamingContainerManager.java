@@ -331,11 +331,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
     }
 
-    if (upstreamMaxEmitTimestamp > endWindowStats.emitTimestamp) {
+    if (upstreamMaxEmitTimestamp < endWindowStats.emitTimestamp) {
       LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
     }
-    else {
+    else if (upstreamMaxEmitTimestamp != endWindowStats.emitTimestamp) {
       LOG.warn("Cannot add to latency MA because emitTimestamp is greater than upstreamMaxEmitTimestamp ({} > {})", endWindowStats.emitTimestamp, upstreamMaxEmitTimestamp);
       LOG.warn("for operator {}. Please verify that the system clocks are in sync in your cluster.", oper);
     }
