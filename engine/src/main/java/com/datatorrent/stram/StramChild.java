@@ -4,22 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.stream.BufferServerSubscriber;
-import com.datatorrent.stram.stream.FastPublisher;
-import com.datatorrent.stram.stream.MuxStream;
-import com.datatorrent.stram.stream.InlineStream;
-import com.datatorrent.stram.stream.BufferServerPublisher;
-import com.datatorrent.stram.stream.FastSubscriber;
-import com.datatorrent.stram.stream.PartitionAwareSink;
-import com.datatorrent.stram.engine.Stream;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.PortContext;
-import com.datatorrent.stram.engine.ByteCounterStream;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.engine.WindowIdActivatedReservoir;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,8 +35,6 @@ import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.engine.OperatorContext.NodeRequest;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -60,8 +42,26 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequ
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.engine.ByteCounterStream;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.OperatorContext.NodeRequest;
+import com.datatorrent.stram.engine.PortContext;
+import com.datatorrent.stram.engine.Stream;
+import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.engine.SweepableReservoir;
+import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.stram.engine.WindowIdActivatedReservoir;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.datatorrent.stram.stream.BufferServerPublisher;
+import com.datatorrent.stram.stream.BufferServerSubscriber;
+import com.datatorrent.stram.stream.FastPublisher;
+import com.datatorrent.stram.stream.FastSubscriber;
+import com.datatorrent.stram.stream.InlineStream;
+import com.datatorrent.stram.stream.MuxStream;
+import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 
 /**
@@ -901,14 +901,6 @@ public class StramChild
           }
 
           if (!nodi.isInline()) {
-//            StreamContext context = new StreamContext(nodi.declaredStreamId);
-//            context.setSourceId(sourceIdentifier);
-//            context.setFinishedWindowId(startingWindowId);
-//
-//            Stream inlineStream = new InlineStream(queueCapacity);
-//            pair.component.setSink(, inlineStream);
-//          }
-//          else {
             SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
                     deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
             newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());

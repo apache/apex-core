@@ -5,7 +5,6 @@
 package com.datatorrent.stram.stream;
 
 
-
 import javax.validation.ConstraintViolationException;
 import javax.validation.ValidationException;
 
@@ -14,7 +13,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.GenericNodeTest.GenericOperator;
 import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.engine.RecoverableInputOperator;
@@ -119,5 +124,105 @@ public class OiOStreamTest
       Assert.assertTrue("OiO validation passed", true);
     }
   }
+
+  public static class ThreadIdValidatingInputOperator implements InputOperator
+  {
+    public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
+    public static long threadId;
+
+    @Override
+    public void emitTuples()
+    {
+      assert (threadId == Thread.currentThread().getId());
+    }
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      assert (threadId == Thread.currentThread().getId());
+    }
+
+    @Override
+    public void endWindow()
+    {
+      assert (threadId == Thread.currentThread().getId());
+      throw new RuntimeException(new InterruptedException());
+    }
+
+    @Override
+    public void setup(OperatorContext context)
+    {
+      threadId = Thread.currentThread().getId();
+    }
+
+    @Override
+    public void teardown()
+    {
+      assert (threadId == Thread.currentThread().getId());
+    }
+
+  }
+
+  public static class ThreadIdValidatingGenericOperator implements Operator
+  {
+    public static long threadId;
+    public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>()
+    {
+      @Override
+      public void process(Number tuple)
+      {
+        assert (threadId == Thread.currentThread().getId());
+      }
+
+    };
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+      assert (threadId == Thread.currentThread().getId());
+    }
+
+    @Override
+    public void endWindow()
+    {
+      assert (threadId == Thread.currentThread().getId());
+    }
+
+    @Override
+    public void setup(OperatorContext context)
+    {
+      threadId = Thread.currentThread().getId();
+    }
+
+    @Override
+    public void teardown()
+    {
+      assert (threadId == Thread.currentThread().getId());
+    }
+
+  }
+
+  @Test
+  public void validateOiOImplementation() throws Exception
+  {
+    LogicalPlan lp = new LogicalPlan();
+    ThreadIdValidatingInputOperator io = lp.addOperator("Input Operator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericOperator go = lp.addOperator("Output Operator", new ThreadIdValidatingGenericOperator());
+    StreamMeta stream = lp.addStream("Stream", io.output, go.input);
+
+    /* The first test makes sure that when they are not ThreadLocal they use different threads */
+    lp.validate();
+    StramLocalCluster slc = new StramLocalCluster(lp);
+    slc.run();
+    Assert.assertNotSame("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
+
+    /* This test makes sure that since they are ThreadLocal, they indeed share a thread */
+    stream.setLocality(Locality.THREAD_LOCAL);
+    lp.validate();
+    slc = new StramLocalCluster(lp);
+    slc.run();
+    Assert.assertSame("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(OiOStreamTest.class);
 }
