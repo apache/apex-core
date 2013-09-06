@@ -29,8 +29,8 @@ public interface StorageAgent
   /**
    * Store the state of the object against the unique key formed using operatorId and windowId.
    *
-   * Typically the object passed is an operator or some other aggregate object which contains
-   * reference to operator object. One can use JavaSerializer
+   * Typically the stream is used to write an operator or some other aggregate object which contains
+   * reference to operator object.
    *
    * @param operatorId
    * @param windowId
@@ -42,7 +42,7 @@ public interface StorageAgent
   /**
    * Get the input stream from which can be used to retrieve the stored objects back.
    *
-   * @param operatorId Operator of the id for which the object was previously saved
+   * @param operatorId Id for which the object was previously saved
    * @param windowId WindowId for which the object was previously saved
    * @return Input stream which can be used to retrieve the serialized object
    * @throws IOException
@@ -53,5 +53,14 @@ public interface StorageAgent
    * <p>delete.</p>
    */
   public void delete(int operatorId, long windowId) throws IOException;
+
+  /**
+   * Return the most recent windowId for which state identified by operatorId was saved.
+   * @param operatorId
+   * @return windowId, null when no state was saved for given id.
+   * @throws IOException
+   * @since 0.3.5
+   */
+  public Long getMostRecentWindowId(int operatorId) throws IOException;
 
 }

@@ -40,6 +40,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
 
@@ -133,7 +134,7 @@ public class StramChildAgent {
     private final long[] values;
     private final long[] timeIntervals;
     private int index = 0;
-    private long baseTime;
+    private final long baseTime;
 
     TimedMovingAverageLong(int periods, long baseTime) {
       this.periods = periods;
@@ -382,7 +383,7 @@ public class StramChildAgent {
   private List<OperatorDeployInfo> getDeployInfoList(Set<PTOperator> operators) {
 
     if (container.bufferServerAddress == null) {
-      throw new IllegalStateException("No buffer server address assigned");
+      throw new AssertionError("No buffer server address assigned");
     }
 
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
@@ -395,11 +396,7 @@ public class StramChildAgent {
       }
       node.setState(State.PENDING_DEPLOY);
       OperatorDeployInfo ndi = createOperatorDeployInfo(node);
-      long checkpointWindowId = node.getRecoveryCheckpoint();
-      if (checkpointWindowId > 0) {
-        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
-        ndi.checkpointWindowId = checkpointWindowId;
-      }
+
       nodes.put(ndi, node);
       ndi.inputs = new ArrayList<InputDeployInfo>(node.inputs.size());
       ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
@@ -504,11 +501,6 @@ public class StramChildAgent {
     for (PTOperator node : operators) {
       node.setState(State.PENDING_UNDEPLOY);
       OperatorDeployInfo ndi = createOperatorDeployInfo(node);
-      long checkpointWindowId = node.getRecoveryCheckpoint();
-      if (checkpointWindowId > 0) {
-        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
-        ndi.checkpointWindowId = checkpointWindowId;
-      }
       undeployList.add(ndi);
     }
     return undeployList;
@@ -523,34 +515,53 @@ public class StramChildAgent {
    * @return {@link com.datatorrent.stram.OperatorDeployInfo}
    *
    */
-  private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)
+  private OperatorDeployInfo createOperatorDeployInfo(PTOperator oper)
   {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
-    Operator operator = node.getOperatorMeta().getOperator();
+    Operator operator = oper.getOperatorMeta().getOperator();
     ndi.type = (operator instanceof InputOperator) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
-    if (node.merge != null) {
-      operator = node.merge;
+    if (oper.merge != null) {
+      operator = oper.merge;
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
-    } else if (node.partition != null) {
-      operator = node.partition.getOperator();
-    }
-    StorageAgent agent = node.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
-    if (agent == null) {
-      String appPath = getInitContext().attrValue(LogicalPlan.APPLICATION_PATH, "app-dfs-path-not-configured");
-      agent = new HdfsStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+    } else if (oper.partition != null) {
+      operator = oper.partition.getOperator();
     }
 
-    try {
-      OutputStream stream = agent.getSaveStream(node.getId(), -1);
-      Node.storeOperator(stream, operator);
-      stream.close();
+    long checkpointWindowId = oper.getRecoveryCheckpoint();
+    ProcessingMode pm = oper.getOperatorMeta().attrValue(OperatorContext.PROCESSING_MODE, null);
+
+    if (checkpointWindowId == 0 || pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
+      StorageAgent agent = oper.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
+      if (agent == null) {
+        String appPath = getInitContext().attrValue(LogicalPlan.APPLICATION_PATH, "app-dfs-path-not-configured");
+        agent = new HdfsStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+      }
+      // pick the checkpoint most recently written to HDFS
+      try {
+        Long mrCheckpoint = agent.getMostRecentWindowId(oper.getId());
+        if (mrCheckpoint == null || 0 == mrCheckpoint) {
+          // StramChild expects initial state to be written as -1
+          OutputStream stream = agent.getSaveStream(oper.getId(), -1);
+          Node.storeOperator(stream, operator);
+          stream.close();
+        } else {
+          checkpointWindowId = mrCheckpoint > 0 ? mrCheckpoint : 0;
+        }
+      }
+      catch (Exception e) {
+        throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
+      }
     }
-    catch (Exception e) {
-      throw new RuntimeException("Failed to serialize and store " + operator + "(" + operator.getClass() + ")", e);
+
+    LOG.debug("Operator {} recovery checkpoint {}", oper, checkpointWindowId);
+    if (checkpointWindowId > 0) {
+      LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
+      ndi.checkpointWindowId = checkpointWindowId;
     }
-    ndi.declaredId = node.getOperatorMeta().getName();
-    ndi.id = node.getId();
-    ndi.contextAttributes = node.getOperatorMeta().getAttributes();
+
+    ndi.declaredId = oper.getOperatorMeta().getName();
+    ndi.id = oper.getId();
+    ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
     return ndi;
   }
 

@@ -232,6 +232,11 @@ public class PhysicalPlanTest {
     }
 
     @Override
+    public Long getMostRecentWindowId(int operatorId) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public AttributeMap getAttributes()
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
