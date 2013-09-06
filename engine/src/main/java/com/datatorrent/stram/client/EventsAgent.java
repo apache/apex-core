@@ -133,23 +133,15 @@ public class EventsAgent extends StramAgent
     return result;
   }
 
-  public String syncEvents(String appId)
+  public void syncEvents(String appId) throws AppNotFoundException, IOException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = getStramWebResource(webServicesClient, appId);
     if (wr == null) {
-      throw new WebApplicationException(404);
+      throw new AppNotFoundException(appId);
     }
-    try {
-      return webServicesClient.process(wr.path(StramWebServices.PATH_SYNCEVENTS), String.class,
-                                       new WebServicesClient.GetWebServicesHandler<String>());
-    }
-    catch (UniformInterfaceException ex) {
-      throw new WebApplicationException(ex.getResponse().getStatus());
-    }
-    catch (IOException ex) {
-      throw new WebApplicationException(ex);
-    }
+    webServicesClient.process(wr.path(StramWebServices.PATH_SYNCEVENTS), String.class,
+                              new WebServicesClient.GetWebServicesHandler<String>());
 
   }
 

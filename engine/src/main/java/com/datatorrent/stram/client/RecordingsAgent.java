@@ -614,12 +614,12 @@ public class RecordingsAgent extends StramAgent
     }
   }
 
-  public String syncRecording(String appId, String opId, String portName)
+  public void syncRecording(String appId, String opId, String portName) throws IOException, AppNotFoundException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = getStramWebResource(webServicesClient, appId);
     if (wr == null) {
-      throw new WebApplicationException(404);
+      throw new AppNotFoundException(appId);
     }
     try {
       final JSONObject request = new JSONObject();
@@ -627,7 +627,7 @@ public class RecordingsAgent extends StramAgent
       if (!StringUtils.isBlank(portName)) {
         request.put("portName", portName);
       }
-      return webServicesClient.process(wr.path(StramWebServices.PATH_SYNCRECORDING), String.class,
+      webServicesClient.process(wr.path(StramWebServices.PATH_SYNCRECORDING), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
@@ -638,8 +638,8 @@ public class RecordingsAgent extends StramAgent
 
       });
     }
-    catch (Exception ex) {
-      return null;
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
     }
   }
 

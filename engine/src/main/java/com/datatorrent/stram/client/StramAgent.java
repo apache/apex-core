@@ -26,6 +26,18 @@ public class StramAgent extends HdfsAgent
   protected static String resourceManagerWebappAddress;
   private static Map<String, String> appMasterTrackingUrls = new LRUCache<String, String>(100);
 
+  public class AppNotFoundException extends Exception {
+    private static final long serialVersionUID = 1L;
+    private String appId;
+    public AppNotFoundException(String appId) {
+      this.appId = appId;
+    }
+    @Override
+    public String toString() {
+      return "App id " + appId + " is not found";
+    }
+  }
+
   public static void setResourceManagerWebappAddress(String addr)
   {
     resourceManagerWebappAddress = addr;

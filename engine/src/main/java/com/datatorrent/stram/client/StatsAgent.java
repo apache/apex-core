@@ -10,6 +10,7 @@ import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.WebResource;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import javax.ws.rs.WebApplicationException;
@@ -360,29 +361,24 @@ public class StatsAgent extends StramAgent
     return result;
   }
 
-  public String syncStats(String appId)
+  public void syncStats(String appId) throws IOException, AppNotFoundException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = getStramWebResource(webServicesClient, appId);
     if (wr == null) {
-      throw new WebApplicationException(404);
+      throw new AppNotFoundException(appId);
     }
-    try {
-      final JSONObject request = new JSONObject();
-      return webServicesClient.process(wr.path(StramWebServices.PATH_SYNCSTATS), String.class,
-                                       new WebServicesClient.WebServicesHandler<String>()
+    final JSONObject request = new JSONObject();
+    webServicesClient.process(wr.path(StramWebServices.PATH_SYNCSTATS), String.class,
+                              new WebServicesClient.WebServicesHandler<String>()
+    {
+      @Override
+      public String process(WebResource webResource, Class<String> clazz)
       {
-        @Override
-        public String process(WebResource webResource, Class<String> clazz)
-        {
-          return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
-        }
+        return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
+      }
 
-      });
-    }
-    catch (Exception ex) {
-      return null;
-    }
+    });
   }
 
 }
