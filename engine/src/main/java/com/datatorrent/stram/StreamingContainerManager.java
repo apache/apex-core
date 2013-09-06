@@ -331,7 +331,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
     }
 
-    if (upstreamMaxEmitTimestamp > endWindowStats.emitTimestamp) {
+    if (upstreamMaxEmitTimestamp < endWindowStats.emitTimestamp) {
       LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
     }
