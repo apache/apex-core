@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import org.apache.hadoop.fs.*;
+import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -43,8 +44,10 @@ public class AlertsAgent extends StramAgent
     }
     JSONObject tmplJson = new JSONObject(getAlertTemplate(stramRoot, templateName));
     tmplJson.remove("parameters");
-    tmplJson = replaceTemplate(tmplJson, parameters);
+    tmplJson = (JSONObject)replaceObject(tmplJson, parameters);
+    tmplJson.put("streamName", streamName);
     final JSONObject json = tmplJson;
+    LOG.debug("Sending create alert to {}: {}", wr.path(StramWebServices.PATH_ALERTS).path(name).toString(), json.toString());
     webServicesClient.process(wr.path(StramWebServices.PATH_ALERTS).path(name), String.class,
                               new WebServicesClient.WebServicesHandler<String>()
     {
@@ -57,31 +60,33 @@ public class AlertsAgent extends StramAgent
     });
   }
 
-  private JSONObject replaceTemplate(JSONObject tmplJson, Map<String, String> parameters) throws JSONException
-  {
-    JSONObject result = new JSONObject();
-    @SuppressWarnings("unchecked")
-    Iterator<String> keys = tmplJson.keys();
-    while (keys.hasNext()) {
-      String key = keys.next();
-      Object val = tmplJson.get(key);
-      result.put(key, replaceObject(val, parameters));
-    }
-    return result;
-  }
-
   private Object replaceObject(Object val, Map<String, String> parameters) throws JSONException
   {
     if (val instanceof JSONObject) {
-      return replaceTemplate((JSONObject)val, parameters);
+      JSONObject obj = (JSONObject)val;
+      @SuppressWarnings("unchecked")
+      Iterator<String> keys = obj.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        obj.put(key, replaceObject(obj.get(key), parameters));
+      }
+      return obj;
+    }
+    else if (val instanceof JSONArray) {
+      JSONArray arr = (JSONArray)val;
+      for (int i = 0; i < arr.length(); i++) {
+        arr.put(i, replaceObject(arr.get(i), parameters));
+      }
+      return arr;
     }
     else if (val instanceof String) {
       String strval = (String)val;
       int cur = 0;
       StringBuilder sb = new StringBuilder();
-      while (cur > 0 && cur < strval.length()) {
+      while (cur >= 0 && cur < strval.length()) {
         int begin = strval.indexOf("${", cur);
         if (begin != -1) {
+          sb.append(strval.substring(cur, begin));
           int end = strval.indexOf('}', cur);
           if (end != -1) {
             String varName = strval.substring(begin + 2, end);
@@ -128,12 +133,12 @@ public class AlertsAgent extends StramAgent
   {
     String dir = getAlertTemplatesDirectory(stramRoot);
     Path path = new Path(dir);
-
+    fs.mkdirs(path);
     FileStatus fileStatus = fs.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
     }
-    createFile(path, content.getBytes());
+    createFile(new Path(path, name), content.getBytes());
   }
 
   public void deleteAlertTemplate(String stramRoot, String name) throws IOException

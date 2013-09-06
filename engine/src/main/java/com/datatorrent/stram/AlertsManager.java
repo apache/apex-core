@@ -46,7 +46,7 @@ public class AlertsManager
 
   public JSONObject createAlert(String name, String content)
   {
-
+    LOG.debug("Creating Alert: {}", content);
     JSONObject response = new JSONObject();
     try {
       JSONObject json = new JSONObject(content);
