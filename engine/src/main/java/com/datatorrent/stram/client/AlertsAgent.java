@@ -43,12 +43,12 @@ public class AlertsAgent extends StramAgent
       throw new AppNotFoundException(appId);
     }
     JSONObject tmplJson = new JSONObject(getAlertTemplate(stramRoot, templateName));
-    Object p = tmplJson.remove("parameters");
+    tmplJson.remove("parameters");
     tmplJson = (JSONObject)replaceObject(tmplJson, parameters);
     tmplJson.put("streamName", streamName);
     JSONObject createFrom = new JSONObject();
     createFrom.put("templateName", templateName);
-    createFrom.put("parameters", p);
+    createFrom.put("parameters", new JSONObject(parameters));
     tmplJson.put("createFrom", createFrom);
     final JSONObject json = tmplJson;
     LOG.debug("Sending create alert to {}: {}", wr.path(StramWebServices.PATH_ALERTS).path(name).toString(), json.toString());
