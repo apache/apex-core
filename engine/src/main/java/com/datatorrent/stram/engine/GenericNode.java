@@ -467,21 +467,11 @@ public class GenericNode extends Node<Operator>
           }
 
           if (need2sleep) {
-            Thread.sleep(spinMillis);
             if (handleIdleTime) {
-              for (SweepableReservoir cb : activeQueues) {
-                if (cb.size() > 0) {
-                  need2sleep = false;
-                  break;
-                }
-              }
-
-              /*
-               * there is still no work scheduled for the operator, so lets give a chance to the operator to handle timeout.
-               */
-              if (need2sleep) {
-                ((IdleTimeHandler)operator).handleIdleTime();
-              }
+              ((IdleTimeHandler)operator).handleIdleTime();
+            }
+            else {
+              Thread.sleep(spinMillis);
             }
           }
         }
@@ -513,6 +503,7 @@ public class GenericNode extends Node<Operator>
         checkpointWindowCount = 0;
       }
     }
+
   }
 
   @Override
@@ -526,6 +517,10 @@ public class GenericNode extends Node<Operator>
 
     stats.inputPorts = ipstats;
     super.reportStats(stats);
+
+
+
+
   }
 
   protected class DeferredInputConnection
