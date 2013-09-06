@@ -633,6 +633,18 @@ public class StramWebServices
   }
 
   @GET
+  @Path(PATH_ALERTS + "/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object getAlert(@PathParam("name") String name) throws JSONException, IOException
+  {
+    JSONObject alert = dagManager.getAlertsManager().getAlert(name);
+    if (alert == null) {
+      throw new NotFoundException();
+    }
+    return alert;
+  }
+
+  @GET
   @Path(PATH_ALERTS)
   @Produces(MediaType.APPLICATION_JSON)
   public Object listAlerts() throws JSONException, IOException

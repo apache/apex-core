@@ -37,6 +37,7 @@ public class AlertsManager
     String filterStreamName;
     String escalationStreamName;
     List<String> actionStreamNames = new ArrayList<String>();
+    JSONObject createFrom;
   }
 
   public AlertsManager(StreamingContainerManager dagManager)
@@ -54,6 +55,7 @@ public class AlertsManager
       JSONObject filter = json.getJSONObject("filter");
       JSONObject escalation = json.getJSONObject("escalation");
       JSONArray actions = json.getJSONArray("actions");
+      JSONObject createFrom = json.optJSONObject("createFrom");
       List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
       AlertInfo alertInfo = new AlertInfo();
       alertInfo.streamName = streamName;
@@ -62,6 +64,8 @@ public class AlertsManager
         if (alerts.containsKey(name)) {
           throw new Exception("alert " + name + " already exists");
         }
+
+        alertInfo.createFrom = createFrom;
 
         // create filter operator
         String filterOperatorName = "_alert_filter_" + name;
@@ -304,6 +308,19 @@ public class AlertsManager
       }
     }
     response.put("alerts", alertsArray);
+    return response;
+  }
+
+  public JSONObject getAlert(String name) throws JSONException
+  {
+    JSONObject response = new JSONObject();
+    AlertInfo alertInfo = alerts.get(name);
+    if (alertInfo == null) {
+      return null;
+    }
+    response.put("name", name);
+    response.put("streamName", alertInfo.streamName);
+    response.put("createFrom", alertInfo.createFrom);
     return response;
   }
 }
