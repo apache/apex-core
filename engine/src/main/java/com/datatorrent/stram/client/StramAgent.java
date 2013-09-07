@@ -72,7 +72,12 @@ public class StramAgent extends HdfsAgent
     return trackingUrl == null ? null : wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
   }
 
-  public static String getStramRootForLiveApp(String appId)
+  public static String getDefaultStramRoot()
+  {
+    return "/user/" + System.getProperty("user.name") + "/Stram";
+  }
+
+  public static String getAppPath(String appId)
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
@@ -88,8 +93,7 @@ public class StramAgent extends HdfsAgent
       return appPath.substring(0, i);
     }
     catch (Exception ex) {
-      LOG.warn("Cannot get the live Stram root for {}", appId);
-      return null;
+      return getDefaultStramRoot() + "/" + appId;
     }
   }
 

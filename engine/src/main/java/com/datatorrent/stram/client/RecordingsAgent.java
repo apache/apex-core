@@ -115,25 +115,23 @@ public class RecordingsAgent extends StramAgent
     }
   }
 
-  public String getRecordingsDirectory(String stramRoot, String appId, String opId)
+  public String getRecordingsDirectory(String appId, String opId)
   {
-    return getRecordingsDirectory(stramRoot, appId) + Path.SEPARATOR + opId;
+    return getRecordingsDirectory(appId) + Path.SEPARATOR + opId;
   }
 
-  public String getRecordingsDirectory(String stramRoot, String appId)
+  public String getRecordingsDirectory(String appId)
   {
+    String stramRoot = getAppPath(appId);
     if (stramRoot == null) {
-      stramRoot = getStramRootForLiveApp(appId);
-      if (stramRoot == null) {
-        return null;
-      }
+      return null;
     }
     return stramRoot + Path.SEPARATOR + appId + Path.SEPARATOR + "recordings";
   }
 
-  public String getRecordingDirectory(String stramRoot, String appId, String opId, long startTime)
+  public String getRecordingDirectory(String appId, String opId, long startTime)
   {
-    String dir = getRecordingsDirectory(stramRoot, appId, opId);
+    String dir = getRecordingsDirectory(appId, opId);
     return (dir == null) ? null : dir + Path.SEPARATOR + String.valueOf(startTime);
   }
 
@@ -221,16 +219,16 @@ public class RecordingsAgent extends StramAgent
     return result;
   }
 
-  public List<RecordingInfo> getRecordingInfo(String stramRoot, String appId)
+  public List<RecordingInfo> getRecordingInfo(String appId)
   {
     Set<String> containers = getRunningContainerIds(appId);
-    return getRecordingInfoHelper(stramRoot, appId, containers);
+    return getRecordingInfoHelper(appId, containers);
   }
 
-  private List<RecordingInfo> getRecordingInfoHelper(String stramRoot, String appId, Set<String> containers)
+  private List<RecordingInfo> getRecordingInfoHelper(String appId, Set<String> containers)
   {
     List<RecordingInfo> result = new ArrayList<RecordingInfo>();
-    String dir = getRecordingsDirectory(stramRoot, appId);
+    String dir = getRecordingsDirectory(appId);
     if (dir == null) {
       return result;
     }
@@ -247,7 +245,7 @@ public class RecordingsAgent extends StramAgent
         if (lfs.isDirectory()) {
           try {
             String opId = lfs.getPath().getName();
-            result.addAll(getRecordingInfo(stramRoot, appId, opId));
+            result.addAll(getRecordingInfo(appId, opId));
           }
           catch (NumberFormatException ex) {
             continue;
@@ -263,16 +261,16 @@ public class RecordingsAgent extends StramAgent
     return result;
   }
 
-  public List<RecordingInfo> getRecordingInfo(String stramRoot, String appId, String opId)
+  public List<RecordingInfo> getRecordingInfo(String appId, String opId)
   {
     Set<String> containers = getRunningContainerIds(appId);
-    return getRecordingInfoHelper(stramRoot, appId, opId, containers);
+    return getRecordingInfoHelper(appId, opId, containers);
   }
 
-  private List<RecordingInfo> getRecordingInfoHelper(String stramRoot, String appId, String opId, Set<String> containers)
+  private List<RecordingInfo> getRecordingInfoHelper(String appId, String opId, Set<String> containers)
   {
     ArrayList<RecordingInfo> result = new ArrayList<RecordingInfo>();
-    String dir = getRecordingsDirectory(stramRoot, appId, opId);
+    String dir = getRecordingsDirectory(appId, opId);
     if (dir == null) {
       return result;
     }
@@ -289,7 +287,7 @@ public class RecordingsAgent extends StramAgent
         if (lfs.isDirectory()) {
           try {
             Long startTime = Long.valueOf(lfs.getPath().getName());
-            result.add(getRecordingInfoHelper(stramRoot, appId, opId, startTime, containers));
+            result.add(getRecordingInfoHelper(appId, opId, startTime, containers));
           }
           catch (NumberFormatException ex) {
             continue;
@@ -305,18 +303,18 @@ public class RecordingsAgent extends StramAgent
     return result;
   }
 
-  public RecordingInfo getRecordingInfo(String stramRoot, String appId, String opId, long startTime)
+  public RecordingInfo getRecordingInfo(String appId, String opId, long startTime)
   {
     Set<String> containers = getRunningContainerIds(appId);
-    return getRecordingInfoHelper(stramRoot, appId, opId, startTime, containers);
+    return getRecordingInfoHelper(appId, opId, startTime, containers);
   }
 
-  private RecordingInfo getRecordingInfoHelper(String stramRoot, String appId, String opId, long startTime, Set<String> containers)
+  private RecordingInfo getRecordingInfoHelper(String appId, String opId, long startTime, Set<String> containers)
   {
     RecordingInfo info = new RecordingInfo();
     info.appId = appId;
     info.operatorId = opId;
-    String dir = getRecordingDirectory(stramRoot, appId, opId, startTime);
+    String dir = getRecordingDirectory(appId, opId, startTime);
     if (dir == null) {
       return null;
     }
@@ -423,11 +421,11 @@ public class RecordingsAgent extends StramAgent
     return info;
   }
 
-  public TuplesInfo getTuplesInfo(String stramRoot, String appId, String opId, long startTime, long offset, long limit, String[] ports, boolean treatOffsetAsWindow)
+  public TuplesInfo getTuplesInfo(String appId, String opId, long startTime, long offset, long limit, String[] ports, boolean treatOffsetAsWindow)
   {
     TuplesInfo info = new TuplesInfo();
     info.startOffset = -1;
-    String dir = getRecordingDirectory(stramRoot, appId, opId, startTime);
+    String dir = getRecordingDirectory(appId, opId, startTime);
     if (dir == null) {
       return null;
     }
@@ -628,7 +626,7 @@ public class RecordingsAgent extends StramAgent
         request.put("portName", portName);
       }
       webServicesClient.process(wr.path(StramWebServices.PATH_SYNCRECORDING), String.class,
-                                       new WebServicesClient.WebServicesHandler<String>()
+                                new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
         public String process(WebResource webResource, Class<String> clazz)

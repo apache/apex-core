@@ -28,13 +28,12 @@ public class AlertsAgent extends StramAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(AlertsAgent.class);
 
-  public static String getAlertTemplatesDirectory(String stramRoot)
+  private static String getAlertTemplatesDirectory()
   {
-    return stramRoot + Path.SEPARATOR + "alertTemplates";
+    return getDefaultStramRoot() + Path.SEPARATOR + "alertTemplates";
   }
 
-  public void createAlert(String appId, String name, String streamName,
-          String stramRoot, String templateName, Map<String, String> parameters) throws AppNotFoundException, IOException, JSONException
+  public void createAlert(String appId, String name, String streamName, String templateName, Map<String, String> parameters) throws AppNotFoundException, IOException, JSONException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = StramAgent.getStramWebResource(webServicesClient, appId);
@@ -42,7 +41,7 @@ public class AlertsAgent extends StramAgent
       LOG.warn("Web resource not found for appId {}", appId);
       throw new AppNotFoundException(appId);
     }
-    JSONObject tmplJson = new JSONObject(getAlertTemplate(stramRoot, templateName));
+    JSONObject tmplJson = new JSONObject(getAlertTemplate(templateName));
     tmplJson.remove("parameters");
     tmplJson = (JSONObject)replaceObject(tmplJson, parameters);
     tmplJson.put("streamName", streamName);
@@ -133,9 +132,9 @@ public class AlertsAgent extends StramAgent
     });
   }
 
-  public void createAlertTemplate(String stramRoot, String name, String content) throws IOException
+  public void createAlertTemplate(String name, String content) throws IOException
   {
-    String dir = getAlertTemplatesDirectory(stramRoot);
+    String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
     fs.mkdirs(path);
     FileStatus fileStatus = fs.getFileStatus(path);
@@ -145,9 +144,9 @@ public class AlertsAgent extends StramAgent
     createFile(new Path(path, name), content.getBytes());
   }
 
-  public void deleteAlertTemplate(String stramRoot, String name) throws IOException
+  public void deleteAlertTemplate(String name) throws IOException
   {
-    String dir = getAlertTemplatesDirectory(stramRoot);
+    String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
 
     FileStatus fileStatus = fs.getFileStatus(path);
@@ -158,9 +157,9 @@ public class AlertsAgent extends StramAgent
     deleteFile(path);
   }
 
-  public Map<String, String> listAlertTemplates(String stramRoot) throws IOException
+  public Map<String, String> listAlertTemplates() throws IOException
   {
-    String dir = getAlertTemplatesDirectory(stramRoot);
+    String dir = getAlertTemplatesDirectory();
     Map<String, String> map = new HashMap<String, String>();
     Path path = new Path(dir);
 
@@ -180,9 +179,9 @@ public class AlertsAgent extends StramAgent
     return map;
   }
 
-  public String getAlertTemplate(String stramRoot, String name) throws IOException
+  public String getAlertTemplate(String name) throws IOException
   {
-    String dir = getAlertTemplatesDirectory(stramRoot);
+    String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
 
     FileStatus fileStatus = fs.getFileStatus(path);
