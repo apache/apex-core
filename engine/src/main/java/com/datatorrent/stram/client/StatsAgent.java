@@ -81,23 +81,21 @@ public class StatsAgent extends StramAgent
     public ObjectMapperString stats;
   }
 
-  public String getOperatorStatsDirectory(String stramRoot, String appId, String opName)
+  public String getOperatorStatsDirectory(String appId, String opName)
   {
-    return getStatsDirectory(stramRoot, appId) + Path.SEPARATOR + "operators" + Path.SEPARATOR + opName;
+    return getStatsDirectory(appId) + Path.SEPARATOR + "operators" + Path.SEPARATOR + opName;
   }
 
-  public String getContainerStatsDirectory(String stramRoot, String appId)
+  public String getContainerStatsDirectory(String appId)
   {
-    return getStatsDirectory(stramRoot, appId) + Path.SEPARATOR + "containers";
+    return getStatsDirectory(appId) + Path.SEPARATOR + "containers";
   }
 
-  public String getStatsDirectory(String stramRoot, String appId)
+  public String getStatsDirectory(String appId)
   {
+    String stramRoot = getAppPath(appId);
     if (stramRoot == null) {
-      stramRoot = getStramRootForLiveApp(appId);
-      if (stramRoot == null) {
-        return null;
-      }
+      return null;
     }
     return stramRoot + Path.SEPARATOR + appId + Path.SEPARATOR + "stats";
   }
@@ -120,12 +118,12 @@ public class StatsAgent extends StramAgent
     return info;
   }
 
-  public ContainersInfo getContainersInfo(String stramRoot, String appId)
+  public ContainersInfo getContainersInfo(String appId)
   {
     ContainersInfo info = new ContainersInfo();
     info.appId = appId;
     info.containers = new HashMap<Integer, ContainerInfo>();
-    String dir = getContainerStatsDirectory(stramRoot, appId);
+    String dir = getContainerStatsDirectory(appId);
     if (dir == null) {
       return null;
     }
@@ -185,13 +183,13 @@ public class StatsAgent extends StramAgent
     return info;
   }
 
-  public OperatorsInfo getOperatorsInfo(String stramRoot, String appId, String opName)
+  public OperatorsInfo getOperatorsInfo(String appId, String opName)
   {
     OperatorsInfo info = new OperatorsInfo();
     info.appId = appId;
     info.operatorName = opName;
     info.operatorIds = new ArrayList<Integer>();
-    String dir = getOperatorStatsDirectory(stramRoot, appId, opName);
+    String dir = getOperatorStatsDirectory(appId, opName);
     if (dir == null) {
       return null;
     }
@@ -246,10 +244,10 @@ public class StatsAgent extends StramAgent
     return info;
   }
 
-  public List<OperatorStats> getOperatorsStats(String stramRoot, String appId, String opName, Long startTime, Long endTime)
+  public List<OperatorStats> getOperatorsStats(String appId, String opName, Long startTime, Long endTime)
   {
     List<OperatorStats> result = new ArrayList<OperatorStats>();
-    String dir = getOperatorStatsDirectory(stramRoot, appId, opName);
+    String dir = getOperatorStatsDirectory(appId, opName);
     if (dir == null) {
       return null;
     }
@@ -303,10 +301,10 @@ public class StatsAgent extends StramAgent
     return result;
   }
 
-  public List<ContainerStats> getContainersStats(String stramRoot, String appId, Long startTime, Long endTime)
+  public List<ContainerStats> getContainersStats(String appId, Long startTime, Long endTime)
   {
     List<ContainerStats> result = new ArrayList<ContainerStats>();
-    String dir = getContainerStatsDirectory(stramRoot, appId);
+    String dir = getContainerStatsDirectory(appId);
     if (dir == null) {
       return null;
     }

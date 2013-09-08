@@ -43,13 +43,11 @@ public class EventsAgent extends StramAgent
     public Map<String, Object> data;
   }
 
-  public String getEventsDirectory(String stramRoot, String appId)
+  private String getEventsDirectory(String appId)
   {
+    String stramRoot = getAppPath(appId);
     if (stramRoot == null) {
-      stramRoot = getStramRootForLiveApp(appId);
-      if (stramRoot == null) {
-        return null;
-      }
+      return null;
     }
     return stramRoot + Path.SEPARATOR + appId + Path.SEPARATOR + "events";
   }
@@ -73,10 +71,10 @@ public class EventsAgent extends StramAgent
   }
 
   @SuppressWarnings("unchecked")
-  public List<Event> getEvents(String stramRoot, String appId, Long startTime, Long endTime)
+  public List<Event> getEvents(String appId, Long startTime, Long endTime)
   {
     List<Event> result = new ArrayList<Event>();
-    String dir = getEventsDirectory(stramRoot, appId);
+    String dir = getEventsDirectory(appId);
     if (dir == null) {
       return null;
     }
