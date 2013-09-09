@@ -13,7 +13,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.api.DAG.Locality;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -40,9 +40,7 @@ public class OperatorDeployInfo implements Serializable
   {
     private static final long serialVersionUID = 201208271957L;
 
-    public boolean isInline() {
-      return bufferServerHost == null;
-    }
+    public Locality locality;
 
     /**
      * Port name matching the operator's port declaration
@@ -67,7 +65,7 @@ public class OperatorDeployInfo implements Serializable
     public String sourcePortName;
 
     /**
-     * Buffer server subscriber info, set only when stream is not inline.
+     * Buffer server subscriber info, set only when upstream operator not in same container.
      */
     public String bufferServerHost;
 
@@ -98,7 +96,7 @@ public class OperatorDeployInfo implements Serializable
                 .append("streamId", this.declaredStreamId)
                 .append("sourceNodeId", this.sourceNodeId)
                 .append("sourcePortName", this.sourcePortName)
-                .append("inline", this.isInline())
+                .append("locality", this.locality)
                 .append("partitionMask", this.partitionMask)
                 .append("partitionKeys", this.partitionKeys)
                 .toString();
@@ -134,10 +132,6 @@ public class OperatorDeployInfo implements Serializable
   {
     private static final long serialVersionUID = 201208271958L;
 
-    public boolean isInline() {
-      return bufferServerHost == null;
-    }
-
     /**
      * Port name matching the node's port declaration
      */
@@ -171,7 +165,7 @@ public class OperatorDeployInfo implements Serializable
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
                 .append("portName", this.portName)
                 .append("streamId", this.declaredStreamId)
-                .append("inline", this.isInline())
+                .append("bufferServer", this.bufferServerHost)
                 .toString();
     }
 

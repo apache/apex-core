@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.CheckpointListener;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -867,7 +868,7 @@ public class StramChild
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
         if (collection == null) {
-          assert (nodi.isInline() == false): "resulting stream cannot be inline: " + nodi;
+          assert (nodi.bufferServerHost != null): "resulting stream cannot be inline: " + nodi;
           /*
            * Let's create a stream to carry the data to the Buffer Server.
            * Nobody in this container is interested in the output placed on this stream, but
@@ -900,7 +901,15 @@ public class StramChild
             node.connectOutputPort(nodi.portName, stream);
           }
 
-          if (!nodi.isInline()) {
+          if (nodi.bufferServerHost != null) {
+//            StreamContext context = new StreamContext(nodi.declaredStreamId);
+//            context.setSourceId(sourceIdentifier);
+//            context.setFinishedWindowId(startingWindowId);
+//
+//            Stream inlineStream = new InlineStream(queueCapacity);
+//            pair.component.setSink(, inlineStream);
+//          }
+//          else {
             SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
                     deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
             newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
@@ -995,7 +1004,7 @@ public class StramChild
              * Yet, there is no stream which can source this port so it has to come from the buffer
              * server, so let's make a connection to it.
              */
-            assert (nidi.isInline() == false);
+            assert (nidi.locality != Locality.CONTAINER_LOCAL && nidi.locality != Locality.THREAD_LOCAL);
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
@@ -1022,7 +1031,7 @@ public class StramChild
             logger.debug("put input stream {} against key {}", subscriber, sinkIdentifier);
           }
           else {
-            assert (nidi.isInline());
+            assert (nidi.locality == Locality.CONTAINER_LOCAL || nidi.locality == Locality.THREAD_LOCAL);
             /* we are still dealing with the MuxStream originating at the output of the source port */
             StreamContext inlineContext = new StreamContext(nidi.declaredStreamId);
             inlineContext.setSourceId(sourceIdentifier);
