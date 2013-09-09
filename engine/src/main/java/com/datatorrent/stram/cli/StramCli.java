@@ -270,10 +270,14 @@ public class StramCli
     connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file"}, new String[] {"jar-file", "class-name"}, "Dump the properties file of an app class"));
     connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), null, new String[] {"app-id"}, "Get the information of an app"));
+    connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(), new String[] {"name", "file"}, null, "Create an alert with the name and the given file that contains the spec"));
+    connectedCommands.put("delete-alert", new CommandSpec(new DeleteAlertCommand(), new String[] {"name"}, null, "Delete an alert with the given name"));
+    connectedCommands.put("list-alerts", new CommandSpec(new ListAlertsCommand(), null, null, "List all alerts"));
 
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
     logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(), new String[] {"stream-name", "from-operator-name", "from-port-name", "to-operator-name", "to-port-name"}, null, "Create a stream"));
+    logicalPlanChangeCommands.put("add-stream-sink", new CommandSpec(new AddStreamSinkCommand(), new String[] {"stream-name", "to-operator-name", "to-port-name"}, null, "Add a sink to an existing stream"));
     logicalPlanChangeCommands.put("remove-operator", new CommandSpec(new RemoveOperatorCommand(), new String[] {"operator-name"}, null, "Remove an operator"));
     logicalPlanChangeCommands.put("remove-stream", new CommandSpec(new RemoveStreamCommand(), new String[] {"stream-name"}, null, "Remove a stream"));
     logicalPlanChangeCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
@@ -405,8 +409,8 @@ public class StramCli
       consolePresent = consolePresentSaved;
     }
   }
-  
-  private List<Completer> defaultCompleters() 
+
+  private List<Completer> defaultCompleters()
   {
     List<Completer> completers = new LinkedList<Completer>();
     completers.add(new StringsCompleter(connectedCommands.keySet().toArray(new String[] {})));
@@ -416,7 +420,7 @@ public class StramCli
     completers.add(new StringsCompleter(macros.keySet().toArray(new String[] {})));
 
     List<Completer> launchCompleters = new LinkedList<Completer>();
-    launchCompleters.add(new StringsCompleter(new String[] { "launch", "launch-local", "show-logical-plan", "dump-properties-file", "source" }));
+    launchCompleters.add(new StringsCompleter(new String[] { "launch", "launch-local", "show-logical-plan", "dump-properties-file", "source", "create-alert" }));
     launchCompleters.add(new FileNameCompleter()); // jarFile
     launchCompleters.add(new FileNameCompleter()); // topology
     completers.add(new ArgumentCompleter(launchCompleters));
@@ -427,7 +431,7 @@ public class StramCli
   {
     reader.addCompleter(new AggregateCompleter(defaultCompleters()));
   }
-  
+
   private void updateCompleter(ConsoleReader reader)
   {
     List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
@@ -436,7 +440,7 @@ public class StramCli
     }
     setupCompleter(reader);
   }
-  
+
   private void setupHistory(ConsoleReader reader)
   {
     File historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history");
@@ -934,7 +938,7 @@ public class StramCli
           for (int i = 0; i < matchingAppConfigs.size(); i++) {
             System.out.printf("%3d. %s\n", i + 1, matchingAppConfigs.get(i).getName());
           }
-          
+
           // Exit if not in interactive mode
           if (! consolePresent ) {
             throw new CliException("More than one application in jar file match '" + matchString + "'");
@@ -1774,6 +1778,23 @@ public class StramCli
 
   }
 
+  private class AddStreamSinkCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String streamName = args[1];
+      String sinkOperatorName = args[2];
+      String sinkPortName = args[3];
+      AddStreamSinkRequest request = new AddStreamSinkRequest();
+      request.setStreamName(streamName);
+      request.setSinkOperatorName(sinkOperatorName);
+      request.setSinkOperatorPortName(sinkPortName);
+      logicalPlanRequestQueue.add(request);
+    }
+
+  }
+
   private class RemoveStreamCommand implements Command
   {
     @Override
@@ -1966,6 +1987,81 @@ public class StramCli
 
       });
       System.out.println(response.toString(2));
+    }
+
+  }
+
+  private class CreateAlertCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String fileName = expandFileName(args[2], true);
+      File f = new File(fileName);
+      if (!f.canRead()) {
+        throw new CliException("Cannot read " + fileName);
+      }
+
+      DataInputStream dis = new DataInputStream(new FileInputStream(f));
+      byte[] buffer = new byte[dis.available()];
+      dis.readFully(buffer);
+      final JSONObject json = new JSONObject(new String(buffer));
+
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
+          }
+
+        });
+        System.out.println(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+
+  }
+
+  private class DeleteAlertCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
+          }
+
+        });
+        System.out.println(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+
+  }
+
+  private class ListAlertsCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      ClientResponse rsp = getResource(StramWebServices.PATH_ALERTS, currentApp);
+      JSONObject json = rsp.getEntity(JSONObject.class);
+      System.out.println(json);
     }
 
   }

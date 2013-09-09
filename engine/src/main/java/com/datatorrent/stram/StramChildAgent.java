@@ -38,6 +38,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.webapp.ContainerInfo;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StorageAgent;
@@ -133,7 +134,7 @@ public class StramChildAgent {
     private final long[] values;
     private final long[] timeIntervals;
     private int index = 0;
-    private long baseTime;
+    private final long baseTime;
 
     TimedMovingAverageLong(int periods, long baseTime) {
       this.periods = periods;
@@ -388,23 +389,23 @@ public class StramChildAgent {
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
     Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
-    for (PTOperator node : operators) {
-      if (node.getState() != State.NEW && node.getState() != State.INACTIVE) {
-        LOG.debug("Skipping deploy for operator {} state {}", node, node.getState());
+    for (PTOperator oper : operators) {
+      if (oper.getState() != State.NEW && oper.getState() != State.INACTIVE) {
+        LOG.debug("Skipping deploy for operator {} state {}", oper, oper.getState());
         continue;
       }
-      node.setState(State.PENDING_DEPLOY);
-      OperatorDeployInfo ndi = createOperatorDeployInfo(node);
-      long checkpointWindowId = node.getRecoveryCheckpoint();
+      oper.setState(State.PENDING_DEPLOY);
+      OperatorDeployInfo ndi = createOperatorDeployInfo(oper);
+      long checkpointWindowId = oper.getRecoveryCheckpoint();
       if (checkpointWindowId > 0) {
-        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
+        LOG.debug("Operator {} recovery checkpoint {}", oper.getId(), Codec.getStringWindowId(checkpointWindowId));
         ndi.checkpointWindowId = checkpointWindowId;
       }
-      nodes.put(ndi, node);
-      ndi.inputs = new ArrayList<InputDeployInfo>(node.inputs.size());
-      ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
+      nodes.put(ndi, oper);
+      ndi.inputs = new ArrayList<InputDeployInfo>(oper.inputs.size());
+      ndi.outputs = new ArrayList<OutputDeployInfo>(oper.outputs.size());
 
-      for (PTOutput out : node.outputs) {
+      for (PTOutput out : oper.outputs) {
         final StreamMeta streamMeta = out.logicalStream;
         // buffer server or inline publisher
         OutputDeployInfo portInfo = new OutputDeployInfo();
@@ -421,24 +422,24 @@ public class StramChildAgent {
         }
 
         if (!out.isDownStreamInline()) {
-          portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
-          portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
+          portInfo.bufferServerHost = oper.container.bufferServerAddress.getHostName();
+          portInfo.bufferServerPort = oper.container.bufferServerAddress.getPort();
           if (streamMeta.getCodecClass() != null) {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
         }
 
         ndi.outputs.add(portInfo);
-        publishers.put(node.getId() + "/" + streamMeta.getId(), portInfo);
+        publishers.put(oper.getId() + "/" + streamMeta.getId(), portInfo);
       }
     }
 
     // after we know all publishers within container, determine subscribers
 
-    for (Map.Entry<OperatorDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
-      OperatorDeployInfo ndi = nodeEntry.getKey();
-      PTOperator node = nodeEntry.getValue();
-      for (PTInput in : node.inputs) {
+    for (Map.Entry<OperatorDeployInfo, PTOperator> operEntry : nodes.entrySet()) {
+      OperatorDeployInfo ndi = operEntry.getKey();
+      PTOperator oper = operEntry.getValue();
+      for (PTInput in : oper.inputs) {
         final StreamMeta streamMeta = in.logicalStream;
         if (streamMeta.getSource() == null) {
           throw new AssertionError("source is null: " + in);
@@ -448,7 +449,7 @@ public class StramChildAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getId();
         inputInfo.portName = in.portName;
-        for (Map.Entry<InputPortMeta, StreamMeta> e : node.getOperatorMeta().getInputStreams().entrySet()) {
+        for (Map.Entry<InputPortMeta, StreamMeta> e : oper.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
             inputInfo.contextAttributes = e.getKey().getAttributes();
           }
@@ -465,12 +466,18 @@ public class StramChildAgent {
           inputInfo.partitionKeys = in.partitions.partitions;
         }
 
-        if (sourceOutput.source.container == node.container) {
-          // inline input (both operators in same container)
+        if (sourceOutput.source.container == oper.container) {
+          // both operators in same container
           OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
           if (outputInfo == null) {
-            throw new AssertionError("Missing publisher for inline stream " + sourceOutput);
+            throw new AssertionError("No publisher for inline stream " + sourceOutput);
           }
+          if (streamMeta.getLocality() == Locality.THREAD_LOCAL && oper.inputs.size() == 1) {
+            inputInfo.locality = Locality.THREAD_LOCAL;
+          } else {
+            inputInfo.locality = Locality.CONTAINER_LOCAL;
+          }
+
         } else {
           // buffer server input
           InetSocketAddress addr = sourceOutput.source.container.bufferServerAddress;

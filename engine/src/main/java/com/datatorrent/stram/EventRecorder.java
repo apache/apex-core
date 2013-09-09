@@ -11,8 +11,10 @@ import java.util.Map;
 import org.apache.commons.beanutils.BeanUtils;
 
 /**
+ * <p>EventRecorder interface.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.4
  */
 public interface EventRecorder
 {

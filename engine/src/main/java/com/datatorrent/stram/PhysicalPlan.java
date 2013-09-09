@@ -1422,7 +1422,7 @@ public class PhysicalPlan {
         upstreamPartitioned = m;
       }
 
-      if (Locality.CONTAINER_LOCAL == e.getValue().getLocality()) {
+      if (Locality.CONTAINER_LOCAL == e.getValue().getLocality() || Locality.THREAD_LOCAL == e.getValue().getLocality()) {
         inlinePrefs.setLocal(m, pnodes);
       } else if (Locality.NODE_LOCAL == e.getValue().getLocality()) {
         localityPrefs.setLocal(m, pnodes);

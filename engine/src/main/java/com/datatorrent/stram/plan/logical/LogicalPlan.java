@@ -598,6 +598,7 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     this.operators.remove(om.getName());
+    rootOperators.remove(om);
   }
 
   @Override
