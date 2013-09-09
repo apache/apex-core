@@ -807,9 +807,19 @@ public class LogicalPlan implements Serializable, DAG
       // check that non-optional ports are connected
       OperatorMeta.PortMapping portMapping = n.getPortMapping();
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
-        if (!n.inputStreams.containsKey(pm)) {
+        StreamMeta sm = n.inputStreams.get(pm);
+        if (sm == null) {
           if (pm.portAnnotation == null || !pm.portAnnotation.optional()) {
             throw new ValidationException("Input port connection required: " + n.name + "." + pm.getPortName());
+          }
+        } else {
+          // check locality constraints
+          DAG.Locality locality = sm.getLocality();
+          if (locality == DAG.Locality.THREAD_LOCAL) {
+            if (n.inputStreams.size() > 1) {
+              String msg = String.format("Locality %s invalid for operator %s with multiple input streams", locality, n);
+              throw new ValidationException(msg);
+            }
           }
         }
       }

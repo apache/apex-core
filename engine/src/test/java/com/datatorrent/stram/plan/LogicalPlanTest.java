@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.plan;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -47,12 +47,14 @@ import com.datatorrent.stram.cli.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.google.common.collect.Sets;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
@@ -62,7 +64,7 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.codec.KryoJdkSerializer;
 
-public class DAGBuilderTest {
+public class LogicalPlanTest {
 
   public static OperatorMeta assertNode(LogicalPlan dag, String id) {
       OperatorMeta n = dag.getOperatorMeta(id);
@@ -273,7 +275,7 @@ public class DAGBuilderTest {
   }
 
   @Test
-  public void testLogicalPlan() throws Exception {
+  public void testLogicalPlanSerialization() throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
 
@@ -523,6 +525,29 @@ public class DAGBuilderTest {
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
     Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
 
+  }
+
+  @Test
+  public void testLocalityValidation() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    StreamMeta s1 = dag.addStream("input1.outport", input1.outport, o1.inport1).setLocality(Locality.THREAD_LOCAL);
+    dag.validate();
+
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
+    dag.addStream("input2.outport", input2.outport, o1.inport2);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + o1);
+    } catch (ValidationException ve) {
+      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams"));
+    }
+
+    s1.setLocality(null);
+    dag.validate();
   }
 
   private class TestAnnotationsOperator extends BaseOperator {
