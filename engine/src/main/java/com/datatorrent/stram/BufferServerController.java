@@ -4,10 +4,12 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.bufferserver.client.Controller;
 import java.net.InetSocketAddress;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.client.Controller;
 
 /**
  * Encapsulates buffer server control interface, used by the master for purging data.

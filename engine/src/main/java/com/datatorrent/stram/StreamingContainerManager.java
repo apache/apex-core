@@ -7,6 +7,7 @@ package com.datatorrent.stram;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -25,50 +26,52 @@ import java.util.concurrent.FutureTask;
 
 import javax.annotation.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Sets;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.engine.OperatorStats;
-import com.datatorrent.stram.engine.OperatorStats.PortStats;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTInput;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.PhysicalPlan.PTOperator.State;
 import com.datatorrent.stram.PhysicalPlan.PTOutput;
 import com.datatorrent.stram.PhysicalPlan.PlanContext;
 import com.datatorrent.stram.PhysicalPlan.StatsHandler;
-import com.datatorrent.stram.PhysicalPlan.PTOperator.State;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StramChildAgent.PortStatus;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.engine.OperatorStats;
+import com.datatorrent.stram.engine.OperatorStats.PortStats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Sets;
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.StorageAgent;
-import com.datatorrent.common.util.Pair;
-import java.util.*;
 
 /**
  *

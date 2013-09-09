@@ -4,18 +4,19 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.OperatorStats;
-import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.util.AbstractWritableAdapter;
-import com.datatorrent.api.AttributeMap;
-
 import java.io.*;
 import java.util.*;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.ipc.VersionedProtocol;
+
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.engine.OperatorStats;
+import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
  * Protocol that streaming node child process uses to contact its parent

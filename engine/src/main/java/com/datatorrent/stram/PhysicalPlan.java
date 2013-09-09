@@ -8,27 +8,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
@@ -41,18 +35,16 @@ import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
 import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner

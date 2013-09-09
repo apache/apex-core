@@ -4,28 +4,24 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.codec.JsonStreamCodec;
-import com.datatorrent.api.util.PubSubWebSocketClient;
-import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
-import org.apache.commons.beanutils.BeanUtils;
+
 import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.api.util.PubSubWebSocketClient;
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
 
 /**
  *

@@ -14,6 +14,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.stram.engine.WindowGenerator;
 
 /**
  * Operator deployment info passed from master to container as part of initialization

@@ -7,9 +7,9 @@ import java.io.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  * <p>LocalModeImpl class.</p>

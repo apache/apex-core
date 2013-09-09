@@ -14,35 +14,38 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTInput;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.PhysicalPlan.PTOutput;
 import com.datatorrent.stram.PhysicalPlan.PTOperator.State;
+import com.datatorrent.stram.PhysicalPlan.PTOutput;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.webapp.ContainerInfo;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.StorageAgent;
-import com.datatorrent.bufferserver.util.Codec;
 
 /**
  *

@@ -8,19 +8,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Handle mapping from physical plan locality groupings to resource allocation requests.

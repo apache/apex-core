@@ -14,6 +14,9 @@ import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -21,8 +24,6 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.DAG.Locality;
@@ -33,6 +34,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -902,14 +904,6 @@ public class StramChild
           }
 
           if (nodi.bufferServerHost != null) {
-//            StreamContext context = new StreamContext(nodi.declaredStreamId);
-//            context.setSourceId(sourceIdentifier);
-//            context.setFinishedWindowId(startingWindowId);
-//
-//            Stream inlineStream = new InlineStream(queueCapacity);
-//            pair.component.setSink(, inlineStream);
-//          }
-//          else {
             SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
                     deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
             newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());

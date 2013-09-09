@@ -4,25 +4,25 @@
  */
 package com.datatorrent.stram.codec;
 
-import com.datatorrent.api.codec.KryoJdkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.stram.codec.StatefulStreamCodec;
-import com.datatorrent.stram.codec.DefaultStatefulStreamCodec.ClassIdPair;
-import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+
+import com.datatorrent.api.codec.KryoJdkSerializer;
+
 import com.datatorrent.common.util.Slice;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec.ClassIdPair;
+import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 
 /**
  *

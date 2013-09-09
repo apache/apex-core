@@ -1,14 +1,12 @@
 package com.datatorrent.stram;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.Sets;
+
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -16,10 +14,9 @@ import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
 
-import java.util.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  * <p>OperatorPartitions class.</p>

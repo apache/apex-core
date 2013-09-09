@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import static java.lang.Thread.sleep;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,8 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -57,8 +59,6 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;

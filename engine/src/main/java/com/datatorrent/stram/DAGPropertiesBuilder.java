@@ -17,21 +17,24 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
+
+import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.google.common.collect.Maps;
-import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
-import org.apache.commons.beanutils.BeanMap;
+import com.datatorrent.api.StreamingApplication;
+
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.Operators;
 
 /**
  *
