@@ -4,8 +4,10 @@
  */
 package com.datatorrent.stram.client;
 
+import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -52,6 +54,14 @@ public class HdfsAgent
   public void deleteFile(Path path) throws IOException
   {
     fs.delete(path, false);
+  }
+
+  public byte[] readFullFileContent(Path path) throws IOException
+  {
+    DataInputStream is = new DataInputStream(fs.open(path));
+    byte[] bytes = new byte[is.available()];
+    is.readFully(bytes);
+    return bytes;
   }
 
   public List<String> listFiles(String dir) throws IOException
