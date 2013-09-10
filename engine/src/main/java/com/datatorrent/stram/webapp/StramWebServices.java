@@ -661,7 +661,7 @@ public class StramWebServices
     JSONArray jsonArray = new JSONArray();
     List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
 
-    for (Class clazz : operatorClasses) {
+    for (Class<? extends Operator> clazz : operatorClasses) {
       jsonArray.put(clazz.getName());
     }
     response.put("classes", jsonArray);
