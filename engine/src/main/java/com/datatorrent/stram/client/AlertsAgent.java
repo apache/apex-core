@@ -165,7 +165,7 @@ public class AlertsAgent extends StramAgent
 
     FileStatus fileStatus = fs.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
-      throw new FileNotFoundException("Cannot read directory " + dir);
+      return map;
     }
     RemoteIterator<LocatedFileStatus> it = fs.listFiles(path, false);
     while (it.hasNext()) {
