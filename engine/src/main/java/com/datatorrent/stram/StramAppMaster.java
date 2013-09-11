@@ -60,12 +60,12 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
@@ -173,7 +173,7 @@ public class StramAppMaster //extends License for licensing using native
     {
       int num = 0;
       for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        num += c.operators.size();
+        num += c.getOperators().size();
       }
       return num;
     }
@@ -739,7 +739,7 @@ public class StramAppMaster //extends License for licensing using native
         ev.addData("exitStatus", containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
 
-        dnmgr.removeContainerAgent(containerAgent.container.containerId);
+        dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
 
       }
 

@@ -23,10 +23,11 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.PhysicalPlan.PMapping;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlan.PMapping;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.google.common.collect.Sets;
@@ -266,13 +267,13 @@ public class PartitioningTest
     ArrayList<Integer> inputTuples = new ArrayList<Integer>();
     for (PTOperator p: partitions) {
       // default partitioning has one port mapping with a single partition key
-      inputTuples.add(p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next());
+      inputTuples.add(p.getPartition().getPartitionKeys().values().iterator().next().partitions.iterator().next());
     }
     inputDeployed.testTuples = Collections.synchronizedList(new ArrayList<List<Integer>>());
     inputDeployed.testTuples.add(inputTuples);
 
     for (PTOperator p: partitions) {
-      Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
+      Integer expectedTuple = p.getPartition().getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
       int i = 0;
       while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null || receivedTuples.isEmpty()) {
@@ -358,7 +359,7 @@ public class PartitioningTest
         partProperties.add(inputDeployed.partitionProperty);
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
-        p.recoveryCheckpoint = 10L;
+        p.setRecoveryCheckpoint(10L);
         OutputStream stream = new HdfsStorageAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
         Node.storeOperator(stream, inputDeployed);
         stream.close();
