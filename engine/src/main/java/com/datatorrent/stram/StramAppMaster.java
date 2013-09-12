@@ -730,7 +730,7 @@ public class StramAppMaster //extends License for licensing using native
           ev.addData("operatorId", entry.getKey());
           ev.addData("operatorName", entry.getValue().operator.getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
-          ev.addData("reason", "container exited");
+          ev.addData("reason", "container exited with status " + exitStatus);
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
