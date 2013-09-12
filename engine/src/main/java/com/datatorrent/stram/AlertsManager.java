@@ -167,7 +167,7 @@ public class AlertsManager
               request.setSourceOperatorName(operatorName);
               request.setSourceOperatorPortName(portName);
               request.setSinkOperatorName(filterOperatorName);
-              request.setSinkOperatorPortName("in");
+              request.setSinkOperatorPortName(filter.optString("inputPort", "in"));
               requests.add(request);
             }
             else {
@@ -180,7 +180,7 @@ public class AlertsManager
             alertInfo.filterStreamName = streamName;
             request.setStreamName(streamName);
             request.setSinkOperatorName(filterOperatorName);
-            request.setSinkOperatorPortName("in");
+            request.setSinkOperatorPortName(filter.optString("inputPort", "in"));
             requests.add(request);
           }
         }
@@ -191,9 +191,9 @@ public class AlertsManager
           alertInfo.escalationStreamName = "_alert_stream_escalation_" + name;
           request.setStreamName("_alert_stream_escalation_" + name);
           request.setSourceOperatorName(filterOperatorName);
-          request.setSourceOperatorPortName("out");
+          request.setSourceOperatorPortName(filter.optString("outputPort", "out"));
           request.setSinkOperatorName(escalationOperatorName);
-          request.setSinkOperatorPortName("in");
+          request.setSinkOperatorPortName(filter.optString("inputPort", "in"));
           requests.add(request);
         }
         LOG.info("Alert {} submitted.", name);
