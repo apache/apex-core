@@ -1,15 +1,15 @@
 /*
- *  Copyright (c) 2012-2013 Malhar, Inc.
+ *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
 package com.datatorrent.stram;
 
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.TupleRecorder.PortInfo;
 import com.datatorrent.stram.TupleRecorder.RecordInfo;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.util.HdfsPartFileCollection;

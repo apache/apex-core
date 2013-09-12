@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2012-2013 Malhar, Inc.
+ *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
 package com.datatorrent.stram.util;
@@ -97,7 +97,7 @@ public class HdfsPartFileCollection
 
   public void teardown()
   {
-    logger.info("Closing down tuple recorder.");
+    logger.info("Closing hdfs part collection.");
     try {
       if (metaOs != null) {
         metaOs.close();

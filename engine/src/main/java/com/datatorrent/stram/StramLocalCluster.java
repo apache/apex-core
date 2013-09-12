@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram;
@@ -7,13 +7,13 @@ package com.datatorrent.stram;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.LocalMode.Controller;
@@ -344,8 +344,9 @@ public class StramLocalCluster implements Runnable, Controller
   public LocalStramChild getContainer(PTOperator planOperator)
   {
     LocalStramChild container;
-    if (planOperator.container.containerId != null) {
-      if ((container = getContainer(planOperator.container.containerId)) != null) {
+    String cid = planOperator.getContainer().getExternalId();
+    if (cid != null) {
+      if ((container = getContainer(cid)) != null) {
         if (container.getNodeContext(planOperator.getId()) != null) {
           return container;
         }

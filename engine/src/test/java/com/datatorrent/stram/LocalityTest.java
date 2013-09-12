@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram;
@@ -18,11 +18,11 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -85,15 +85,15 @@ public class LocalityTest {
     Assert.assertEquals("" + requestedHosts, nodeReports.keySet(), Sets.newHashSet(requestedHosts.values()));
 
     for (Map.Entry<PTContainer, String> e : requestedHosts.entrySet()) {
-      for (PTOperator oper : e.getKey().operators) {
+      for (PTOperator oper : e.getKey().getOperators()) {
         if (oper.getNodeLocalOperators().size() > 1) {
           String expHost = null;
           for (PTOperator nodeLocalOper : oper.getNodeLocalOperators()) {
-            Assert.assertNotNull("host null "+nodeLocalOper.container, nodeLocalOper.container.host);
+            Assert.assertNotNull("host null "+nodeLocalOper.getContainer(), nodeLocalOper.getContainer().host);
             if (expHost == null) {
-              expHost = nodeLocalOper.container.host;
+              expHost = nodeLocalOper.getContainer().host;
             } else {
-              Assert.assertEquals("expected same host " + nodeLocalOper, expHost, nodeLocalOper.container.host);
+              Assert.assertEquals("expected same host " + nodeLocalOper, expHost, nodeLocalOper.getContainer().host);
             }
           }
         }

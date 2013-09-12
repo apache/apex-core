@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp;
@@ -13,19 +13,14 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -74,12 +69,15 @@ public class StramWebServices
   public static final String PATH_STOPRECORDING = "stopRecording";
   public static final String PATH_SYNCRECORDING = "syncRecording";
   public static final String PATH_SYNCSTATS = "syncStats";
+  public static final String PATH_SYNCEVENTS = "syncEvents";
   public static final String PATH_CONTAINERS = "containers";
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_DESCRIBE_OPERATOR = "describeOperator";
+  public static final String PATH_ALERTS = "alerts";
+  public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse httpResponse;
@@ -87,11 +85,13 @@ public class StramWebServices
   @Nullable
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+  private ObjectMapper objectMapper = new ObjectMapper();
 
   @Inject
   public StramWebServices(final StramAppContext context)
   {
     this.appCtx = context;
+    objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
   }
 
   Boolean hasAccess(HttpServletRequest request)
@@ -145,7 +145,7 @@ public class StramWebServices
     OperatorsInfo nodeList = new OperatorsInfo();
     nodeList.operators = dagManager.getOperatorInfoList();
     // To get around the nasty JAXB problem for lists
-    return new JSONObject(new ObjectMapper().writeValueAsString(nodeList));
+    return new JSONObject(objectMapper.writeValueAsString(nodeList));
   }
 
   @GET
@@ -158,7 +158,7 @@ public class StramWebServices
     if (oi == null) {
       throw new NotFoundException();
     }
-    return new JSONObject(new ObjectMapper().writeValueAsString(oi));
+    return new JSONObject(objectMapper.writeValueAsString(oi));
   }
 
   @GET
@@ -172,10 +172,9 @@ public class StramWebServices
     if (oi == null) {
       throw new NotFoundException();
     }
-    ObjectMapper mapper = new ObjectMapper();
     map.put("inputPorts", oi.inputPorts);
     map.put("outputPorts", oi.outputPorts);
-    return new JSONObject(mapper.writeValueAsString(map));
+    return new JSONObject(objectMapper.writeValueAsString(map));
   }
 
   @GET
@@ -190,12 +189,12 @@ public class StramWebServices
     }
     for (PortInfo pi : oi.inputPorts) {
       if (pi.name.equals(portName)) {
-        return new JSONObject(new ObjectMapper().writeValueAsString(pi));
+        return new JSONObject(objectMapper.writeValueAsString(pi));
       }
     }
     for (PortInfo pi : oi.outputPorts) {
       if (pi.name.equals(portName)) {
-        return new JSONObject(new ObjectMapper().writeValueAsString(pi));
+        return new JSONObject(objectMapper.writeValueAsString(pi));
       }
     }
     throw new NotFoundException();
@@ -228,8 +227,10 @@ public class StramWebServices
 
       result.put("classes", classNames);
     }
-    catch (Exception ex) {
+    catch (ClassNotFoundException ex) {
       throw new NotFoundException();
+    }
+    catch (JSONException ex) {
     }
     return result;
   }
@@ -263,6 +264,15 @@ public class StramWebServices
           }
         }
         Field[] fields = clazz.getFields();
+        Arrays.sort(fields, new Comparator<Field>()
+        {
+          @Override
+          public int compare(Field a, Field b)
+          {
+            return a.getName().compareTo(b.getName());
+          }
+
+        });
         for (Field field : fields) {
           InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
           if (inputAnnotation != null) {
@@ -391,6 +401,17 @@ public class StramWebServices
     return response;
   }
 
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_SYNCEVENTS)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject syncEvents(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    dagManager.syncEvents();
+    return response;
+  }
+
   @GET
   @Path(PATH_CONTAINERS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
@@ -403,7 +424,7 @@ public class StramWebServices
       ci.add(sca.getContainerInfo());
     }
     // To get around the nasty JAXB problem for lists
-    return new JSONObject(new ObjectMapper().writeValueAsString(ci));
+    return new JSONObject(objectMapper.writeValueAsString(ci));
   }
 
   @GET
@@ -416,7 +437,7 @@ public class StramWebServices
     if (sca == null) {
       throw new NotFoundException();
     }
-    return new JSONObject(new ObjectMapper().writeValueAsString(sca.getContainerInfo()));
+    return new JSONObject(objectMapper.writeValueAsString(sca.getContainerInfo()));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -522,18 +543,19 @@ public class StramWebServices
     }
     Map<String, Object> m = DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
 
-    if (propertyName == null) {
-      return new JSONObject(m);
+    try {
+      if (propertyName == null) {
+        return new JSONObject(new ObjectMapper().writeValueAsString(m));
+      }
+      else {
+        Map<String, Object> m1 = new HashMap<String, Object>();
+        m1.put(propertyName, m.get(propertyName));
+        return new JSONObject(new ObjectMapper().writeValueAsString(m1));
+      }
     }
-    else {
-      JSONObject json = new JSONObject();
-      try {
-        json.put(propertyName, m.get(propertyName));
-      }
-      catch (JSONException ex) {
-        LOG.warn("Got JSON Exception: ", ex);
-      }
-      return json;
+    catch (Exception ex) {
+      LOG.warn("Caught exception", ex);
+      throw new RuntimeException(ex);
     }
   }
 
@@ -542,9 +564,8 @@ public class StramWebServices
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getLogicalPlan() throws JSONException, IOException
   {
-    ObjectMapper mapper = new ObjectMapper();
     LogicalPlan lp = dagManager.getLogicalPlan();
-    return new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(lp)));
+    return new JSONObject(objectMapper.writeValueAsString(LogicalPlanSerializer.convertToMap(lp)));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -592,6 +613,58 @@ public class StramWebServices
       }
     }
 
+    return response;
+  }
+
+  @PUT
+  @Path(PATH_ALERTS + "/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object createAlert(String content, @PathParam("name") String name) throws JSONException, IOException
+  {
+    return dagManager.getAlertsManager().createAlert(name, content);
+  }
+
+  @DELETE
+  @Path(PATH_ALERTS + "/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object deleteAlert(@PathParam("name") String name) throws JSONException, IOException
+  {
+    return dagManager.getAlertsManager().deleteAlert(name);
+  }
+
+  @GET
+  @Path(PATH_ALERTS + "/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object getAlert(@PathParam("name") String name) throws JSONException, IOException
+  {
+    JSONObject alert = dagManager.getAlertsManager().getAlert(name);
+    if (alert == null) {
+      throw new NotFoundException();
+    }
+    return alert;
+  }
+
+  @GET
+  @Path(PATH_ALERTS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object listAlerts() throws JSONException, IOException
+  {
+    return dagManager.getAlertsManager().listAlerts();
+  }
+
+  @GET
+  @Path(PATH_ACTION_OPERATOR_CLASSES)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
+  {
+    JSONObject response = new JSONObject();
+    JSONArray jsonArray = new JSONArray();
+    List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
+
+    for (Class<? extends Operator> clazz : operatorClasses) {
+      jsonArray.put(clazz.getName());
+    }
+    response.put("classes", jsonArray);
     return response;
   }
 

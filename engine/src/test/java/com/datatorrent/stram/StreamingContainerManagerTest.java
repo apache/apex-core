@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram;
@@ -25,20 +25,21 @@ import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.HdfsStorageAgent;
 import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.PhysicalPlan;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.plan.PhysicalPlanTest;
+import com.datatorrent.stram.plan.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.tuple.Tuple;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -46,6 +47,7 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 
@@ -102,24 +104,27 @@ public class StreamingContainerManagerTest {
   }
 
   @Test
-  public void testAssignContainer() {
+  public void testGenerateDeployInfo() {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().attr(DAGContext.APPLICATION_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
-    TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
-    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
-    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
 
-    dag.addStream("n1n2", node1.outport, node2.inport1);
-    dag.setOutputPortAttribute(node1.outport, PortContext.SPIN_MILLIS, 99);
+    dag.addStream("o1.outport", o1.outport, o2.inport1);
+    dag.setOutputPortAttribute(o1.outport, PortContext.SPIN_MILLIS, 99);
 
-    dag.addStream("n2n3", node2.outport1, node3.inport1)
-      .setInline(true);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1)
+      .setLocality(Locality.CONTAINER_LOCAL);
+    dag.addStream("o3.outport1", o3.outport1, o4.inport1)
+      .setLocality(Locality.THREAD_LOCAL);
 
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
 
-    Assert.assertEquals("number operators", 3, dag.getAllOperators().size());
+    Assert.assertEquals("number operators", 4, dag.getAllOperators().size());
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
@@ -128,57 +133,72 @@ public class StreamingContainerManagerTest {
     String container1Id = "container1";
     String container2Id = "container2";
 
-    // node1 needs to be deployed first, regardless in which order they were given
+    // o1 needs to be deployed first, regardless in which order they were given
     StramChildAgent sca1 = dnm.assignContainer(new ContainerResource(0, container1Id, "host1", 1024), InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("", dnm.getPhysicalPlan().getContainers().get(0), sca1.container);
     Assert.assertEquals("", PTContainer.State.ALLOCATED, sca1.container.getState());
     List<OperatorDeployInfo> c1 = sca1.getDeployInfo();
 
     Assert.assertEquals("number operators assigned to c1", 1, c1.size());
-    OperatorDeployInfo node1DI = getNodeDeployInfo(c1, dag.getMeta(node1));
-    Assert.assertNotNull(node1.getName() + " assigned to " + container1Id, node1DI);
-    Assert.assertEquals("type " + node1DI, OperatorDeployInfo.OperatorType.INPUT, node1DI.type);
-    Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
-    Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
-    Assert.assertNotNull("contextAttributes " + node1DI.declaredId, node1DI.contextAttributes);
+    OperatorDeployInfo o1DI = getNodeDeployInfo(c1, dag.getMeta(o1));
+    Assert.assertNotNull(o1.getName() + " assigned to " + container1Id, o1DI);
+    Assert.assertEquals("type " + o1DI, OperatorDeployInfo.OperatorType.INPUT, o1DI.type);
+    Assert.assertEquals("inputs " + o1DI.declaredId, 0, o1DI.inputs.size());
+    Assert.assertEquals("outputs " + o1DI.declaredId, 1, o1DI.outputs.size());
+    Assert.assertNotNull("contextAttributes " + o1DI.declaredId, o1DI.contextAttributes);
 
-    OutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
-    Assert.assertNotNull("stream connection for container1", c1n1n2);
-    Assert.assertEquals("stream connection for container1", "n1n2", c1n1n2.declaredStreamId);
-    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1n1n2.bufferServerHost);
-    Assert.assertEquals("stream connects to upstream port", 9001, c1n1n2.bufferServerPort);
-    Assert.assertFalse("stream inline", c1n1n2.isInline());
-    Assert.assertNotNull("contextAttributes " + c1n1n2, c1n1n2.contextAttributes);
-    Assert.assertEquals("contextAttributes " + c1n1n2,  Integer.valueOf(99), c1n1n2.contextAttributes.attr(PortContext.SPIN_MILLIS).get());
+    OutputDeployInfo c1o1outport = o1DI.outputs.get(0);
+    Assert.assertNotNull("stream connection for container1", c1o1outport);
+    Assert.assertEquals("stream connection for container1", "o1.outport", c1o1outport.declaredStreamId);
+    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1o1outport.bufferServerHost);
+    Assert.assertEquals("stream connects to upstream port", 9001, c1o1outport.bufferServerPort);
+    Assert.assertNotNull("contextAttributes " + c1o1outport, c1o1outport.contextAttributes);
+    Assert.assertEquals("contextAttributes " + c1o1outport,  Integer.valueOf(99), c1o1outport.contextAttributes.attr(PortContext.SPIN_MILLIS).get());
 
     List<OperatorDeployInfo> c2 = dnm.assignContainer(new ContainerResource(0, container2Id, "host2", 1024), InetSocketAddress.createUnresolved(container2Id+"Host", 9002)).getDeployInfo();
-    Assert.assertEquals("number operators assigned to container", 2, c2.size());
-    OperatorDeployInfo node2DI = getNodeDeployInfo(c2, dag.getMeta(node2));
-    OperatorDeployInfo node3DI = getNodeDeployInfo(c2, dag.getMeta(node3));
-    Assert.assertNotNull(node2.getName() + " assigned to " + container2Id, node2DI);
-    Assert.assertNotNull(node3.getName() + " assigned to " + container2Id, node3DI);
+    Assert.assertEquals("number operators assigned to container", 3, c2.size());
+    OperatorDeployInfo o2DI = getNodeDeployInfo(c2, dag.getMeta(o2));
+    OperatorDeployInfo o3DI = getNodeDeployInfo(c2, dag.getMeta(o3));
+    Assert.assertNotNull(o2.getName() + " assigned to " + container2Id, o2DI);
+    Assert.assertNotNull(o3.getName() + " assigned to " + container2Id, o3DI);
 
-    // buffer server input node2 from node1
-    InputDeployInfo c2n1n2 = getInputDeployInfo(node2DI, "n1n2");
-    Assert.assertNotNull("stream connection for container2", c2n1n2);
-    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c2n1n2.bufferServerHost);
-    Assert.assertEquals("stream connects to upstream port", 9001, c2n1n2.bufferServerPort);
-    Assert.assertEquals("portName " + c2n1n2, dag.getMeta(node2).getMeta(node2.inport1).getPortName(), c2n1n2.portName);
-    Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
-    Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n1n2, TestGeneratorInputOperator.OUTPUT_PORT, c2n1n2.sourcePortName);
-    Assert.assertNotNull("contextAttributes " + c2n1n2, c2n1n2.contextAttributes);
+    // buffer server input o2 from o1
+    InputDeployInfo c2o2i1 = getInputDeployInfo(o2DI, "o1.outport");
+    Assert.assertNotNull("stream connection for container2", c2o2i1);
+    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c2o2i1.bufferServerHost);
+    Assert.assertEquals("stream connects to upstream port", 9001, c2o2i1.bufferServerPort);
+    Assert.assertEquals("portName " + c2o2i1, dag.getMeta(o2).getMeta(o2.inport1).getPortName(), c2o2i1.portName);
+    Assert.assertNull("partitionKeys " + c2o2i1, c2o2i1.partitionKeys);
+    Assert.assertEquals("sourceNodeId " + c2o2i1, o1DI.id, c2o2i1.sourceNodeId);
+    Assert.assertEquals("sourcePortName " + c2o2i1, TestGeneratorInputOperator.OUTPUT_PORT, c2o2i1.sourcePortName);
+    Assert.assertNotNull("contextAttributes " + c2o2i1, c2o2i1.contextAttributes);
 
-    // inline input node3 from node2
-    InputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
-    Assert.assertNotNull("input " + c2n3In, node2DI);
-    Assert.assertEquals("portName " + c2n3In, GenericTestOperator.IPORT1, c2n3In.portName);
-    Assert.assertNotNull("stream connection for container2", c2n3In);
-    Assert.assertNull("bufferServerHost " + c2n3In, c2n3In.bufferServerHost);
-    Assert.assertEquals("bufferServerPort " + c2n3In, 0, c2n3In.bufferServerPort);
-    Assert.assertNull("partitionKeys " + c2n3In, c2n3In.partitionKeys);
-    Assert.assertEquals("sourceNodeId " + c2n3In, node2DI.id, c2n3In.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n3In, GenericTestOperator.OPORT1, c2n3In.sourcePortName);
+    // inline input o3 from o2
+    InputDeployInfo c2o3i1 = getInputDeployInfo(o3DI, "o2.outport1");
+    Assert.assertNotNull("input from o2.outport1", c2o3i1);
+    Assert.assertEquals("portName " + c2o3i1, GenericTestOperator.IPORT1, c2o3i1.portName);
+    Assert.assertNotNull("stream connection for container2", c2o3i1);
+    Assert.assertNull("bufferServerHost " + c2o3i1, c2o3i1.bufferServerHost);
+    Assert.assertEquals("bufferServerPort " + c2o3i1, 0, c2o3i1.bufferServerPort);
+    Assert.assertNull("partitionKeys " + c2o3i1, c2o3i1.partitionKeys);
+    Assert.assertEquals("sourceNodeId " + c2o3i1, o2DI.id, c2o3i1.sourceNodeId);
+    Assert.assertEquals("sourcePortName " + c2o3i1, GenericTestOperator.OPORT1, c2o3i1.sourcePortName);
+    Assert.assertEquals("locality " + c2o3i1, Locality.CONTAINER_LOCAL, c2o3i1.locality);
+
+    // THREAD_LOCAL o4.inport1
+    OperatorDeployInfo o4DI = getNodeDeployInfo(c2, dag.getMeta(o4));
+    Assert.assertNotNull(o4.getName() + " assigned to " + container2Id, o4DI);
+    InputDeployInfo c2o4i1 = getInputDeployInfo(o4DI, "o3.outport1");
+    Assert.assertNotNull("input from o3.outport1", c2o4i1);
+    Assert.assertEquals("portName " + c2o4i1, GenericTestOperator.IPORT1, c2o4i1.portName);
+    Assert.assertNotNull("stream connection for container2", c2o4i1);
+    Assert.assertNull("bufferServerHost " + c2o4i1, c2o4i1.bufferServerHost);
+    Assert.assertEquals("bufferServerPort " + c2o4i1, 0, c2o4i1.bufferServerPort);
+    Assert.assertNull("partitionKeys " + c2o4i1, c2o4i1.partitionKeys);
+    Assert.assertEquals("sourceNodeId " + c2o4i1, o3DI.id, c2o4i1.sourceNodeId);
+    Assert.assertEquals("sourcePortName " + c2o4i1, GenericTestOperator.OPORT1, c2o4i1.sourcePortName);
+    Assert.assertEquals("locality " + c2o4i1, Locality.THREAD_LOCAL, c2o4i1.locality);
+
   }
 
   @Test
@@ -325,33 +345,33 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals(""+containers, 2, plan.getContainers().size());
 
     PTContainer c1 = containers.get(0);
-    Assert.assertEquals("c1.operators "+c1.operators, 2, c1.operators.size());
+    Assert.assertEquals("c1.operators "+c1.getOperators(), 2, c1.getOperators().size());
 
     PTContainer c2 = containers.get(1);
-    Assert.assertEquals("c2.operators "+c2.operators, 1, c2.operators.size());
+    Assert.assertEquals("c2.operators "+c2.getOperators(), 1, c2.getOperators().size());
 
     String c1Id = "container1";
     String c2Id = "container2";
 
     assignContainer(scm, c1Id, "localhost");
-    Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
-    StramChildAgent sca1 = scm.getContainerAgent(c1.containerId);
+    Assert.assertEquals(""+c1.getOperators(), c1Id, c1.getExternalId());
+    StramChildAgent sca1 = scm.getContainerAgent(c1.getExternalId());
 
     assignContainer(scm, c2Id, "localhost");
-    Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
-    StramChildAgent sca2 = scm.getContainerAgent(c2.containerId);
-    Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
-    Assert.assertEquals("", 2, sca1.container.pendingDeploy.size());
+    Assert.assertEquals(""+c1.getOperators(), c1Id, c1.getExternalId());
+    StramChildAgent sca2 = scm.getContainerAgent(c2.getExternalId());
+    Assert.assertEquals("", 0, sca1.container.getPendingUndeploy().size());
+    Assert.assertEquals("", 2, sca1.container.getPendingDeploy().size());
 
-    scm.scheduleContainerRestart(c1.containerId);
-    Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
-    Assert.assertEquals("", 2, sca1.container.pendingDeploy.size());
+    scm.scheduleContainerRestart(c1.getExternalId());
+    Assert.assertEquals("", 0, sca1.container.getPendingUndeploy().size());
+    Assert.assertEquals("", 2, sca1.container.getPendingDeploy().size());
     Assert.assertEquals(""+scm.containerStartRequests, 1, scm.containerStartRequests.size());
     ContainerStartRequest dr = scm.containerStartRequests.peek();
     Assert.assertNotNull(dr);
 
-    Assert.assertEquals(""+sca2.container.pendingUndeploy, 1, sca2.container.pendingUndeploy.size());
-    Assert.assertEquals(""+sca2.container.pendingDeploy, 1, sca2.container.pendingDeploy.size());
+    Assert.assertEquals(""+sca2.container.getPendingUndeploy(), 1, sca2.container.getPendingUndeploy().size());
+    Assert.assertEquals(""+sca2.container.getPendingDeploy(), 1, sca2.container.getPendingDeploy().size());
 
   }
 

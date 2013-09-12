@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2012-2013 Malhar, Inc.
+ *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
 package com.datatorrent.stram;
@@ -28,8 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>HdfsEventRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.4
  */
 public class HdfsEventRecorder implements EventRecorder
 {
@@ -89,7 +91,6 @@ public class HdfsEventRecorder implements EventRecorder
   {
     try {
       streamCodec = new JsonStreamCodec<Object>();
-      storage = new HdfsPartFileCollection();
       storage.setBasePath(basePath);
       storage.setup();
       storage.writeMetaData((VERSION + "\n").getBytes());
@@ -111,6 +112,7 @@ public class HdfsEventRecorder implements EventRecorder
     }
   }
 
+  @Override
   public void recordEventAsync(Event event)
   {
     LOG.debug("Adding event to the queue");
@@ -162,4 +164,8 @@ public class HdfsEventRecorder implements EventRecorder
     wsClient.subscribeNumSubscribers(pubSubTopic);
   }
 
+  public void requestSync()
+  {
+    this.storage.requestSync();
+  }
 }

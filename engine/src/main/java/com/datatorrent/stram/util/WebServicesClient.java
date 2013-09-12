@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2012-2013 Malhar, Inc.
+ *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
 package com.datatorrent.stram.util;
@@ -150,6 +150,26 @@ public class WebServicesClient
     public Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener)
     {
       return webResource.get(listener);
+    }
+
+  }
+
+  public static class DeleteWebServicesHandler<T> extends WebServicesHandler<T>
+  {
+    @Override
+    public T process(WebResource webResource, Class<T> clazz)
+    {
+      return webResource.delete(clazz);
+    }
+
+  }
+
+  public static class DeleteWebServicesAsyncHandler<T> extends WebServicesAsyncHandler<T>
+  {
+    @Override
+    public Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener)
+    {
+      return webResource.delete(listener);
     }
 
   }

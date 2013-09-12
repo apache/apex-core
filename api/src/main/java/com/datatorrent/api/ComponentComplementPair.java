@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Malhar Inc. ALL Rights Reserved.
+ * Copyright (c) 2013 DataTorrent, Inc. ALL Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,7 @@ package com.datatorrent.api;
  *
  * @param <COMPONENT>
  * @param <COMPLEMENT>
-<<<<<<< HEAD
-=======
  * @since 0.3.2
->>>>>>> master
  */
 public abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
 {

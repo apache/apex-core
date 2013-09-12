@@ -11,16 +11,16 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.api.DAG.StreamMeta;
+import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTInput;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.PhysicalPlanTest.TestPlanContext;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.google.common.collect.Sets;
 
@@ -96,38 +96,45 @@ public class LogicalPlanModificationTest {
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     OperatorMeta o1Meta = dag.getMeta(o1);
+    GenericTestOperator o12 = dag.addOperator("o12", GenericTestOperator.class);
+    OperatorMeta o12Meta = dag.getMeta(o12);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     OperatorMeta o2Meta = dag.getMeta(o2);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
     OperatorMeta o3Meta = dag.getMeta(o3);
 
-    StreamMeta s1 = dag.addStream("o1.outport1", o1.outport1, o2.inport1);
-    StreamMeta s2 = dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+    LogicalPlan.StreamMeta s1 = dag.addStream("o1.outport1", o1.outport1, o2.inport1, o12.inport1);
+    LogicalPlan.StreamMeta s2 = dag.addStream("o2.outport1", o2.outport1, o3.inport1);
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
     Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
-    Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
+    Assert.assertEquals("physical operators " + plan.getAllOperators(), 4, plan.getAllOperators().size());
+    Assert.assertEquals("sinks s1 " + s1.getSinks(), 2, s1.getSinks().size());
 
+    List<PTOperator> o2PhysicalOpers = plan.getOperators(o2Meta);
+    Assert.assertEquals("instances " + o2Meta, 1, o2PhysicalOpers.size());
     PlanModifier pm = new PlanModifier(plan);
 
     try {
       pm.removeOperator(o2Meta.getName());
-      Assert.fail("validation error (connected streams) expected");
+      Assert.fail("validation error (connected output stream) expected");
     } catch (ValidationException ve) {
     }
 
-    // remove stream required before removing operator
-    pm.removeStream(s1.getId());
+    // remove output stream required before removing operator
     pm.removeStream(s2.getId());
 
     pm.removeOperator(o2Meta.getName());
     pm.applyChanges(ctx);
 
-    Assert.assertEquals("streams " + dag.getAllStreams(), 0, dag.getAllStreams().size());
-    Assert.assertEquals("operators " + dag.getAllOperators(), 2, dag.getAllOperators().size());
+    Assert.assertEquals("sinks s1 " + s1.getSinks(), 1, s1.getSinks().size());
+    Assert.assertTrue("undeploy " + ctx.undeploy, ctx.undeploy.containsAll(o2PhysicalOpers));
+    Assert.assertTrue("deploy " + ctx.deploy, !ctx.deploy.containsAll(o2PhysicalOpers));
+    Assert.assertEquals("streams " + dag.getAllStreams(), 1, dag.getAllStreams().size());
+    Assert.assertEquals("operators " + dag.getAllOperators(), 3, dag.getAllOperators().size());
     Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().containsAll(Sets.newHashSet(o1Meta, o3Meta)));
 
     try {
@@ -136,8 +143,19 @@ public class LogicalPlanModificationTest {
     } catch (Exception e) {
     }
     Assert.assertEquals("containers " + plan.getContainers(), 2, plan.getContainers().size());
-    Assert.assertEquals("physical operators " + plan.getAllOperators(), 2, plan.getAllOperators().size());
+    Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
     Assert.assertEquals("removed containers " + ctx.releaseContainers, 1, ctx.releaseContainers.size());
+
+    try {
+      pm.removeOperator(o12Meta.getName());
+      Assert.fail("cannot remove operator prior to removing input stream");
+    } catch (ValidationException ve) {
+      Assert.assertTrue("" + ve.getMessage(), ve.getMessage().matches(".*Operator o12 connected to input streams.*"));
+    }
+
+    pm.removeStream(s1.getId());
+    pm.removeOperator(o12Meta.getName());
+
   }
 
   @Test
@@ -181,8 +199,8 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("o2Instances " + o2Instances, 1, o2Instances.size());
     PTOperator o2p1 = o2Instances.get(0);
 
-    Assert.assertEquals("outputs " + o1p1, 0, o1p1.outputs.size());
-    Assert.assertEquals("inputs " + o2p1, 0, o2p1.inputs.size());
+    Assert.assertEquals("outputs " + o1p1, 0, o1p1.getOutputs().size());
+    Assert.assertEquals("inputs " + o2p1, 0, o2p1.getInputs().size());
 
     PlanModifier pm = new PlanModifier(plan);
     pm.addStream("o1.outport1", o1.outport1, o2.inport1);
@@ -192,14 +210,14 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("undeploy " + ctx.undeploy, 2, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
 
-    Assert.assertEquals("outputs " + o1p1, 1, o1p1.outputs.size());
-    Assert.assertEquals("inputs " + o2p1, 2, o2p1.inputs.size());
+    Assert.assertEquals("outputs " + o1p1, 1, o1p1.getOutputs().size());
+    Assert.assertEquals("inputs " + o2p1, 2, o2p1.getInputs().size());
     Set<String> portNames = Sets.newHashSet();
-    for (PTInput in : o2p1.inputs) {
+    for (PTOperator.PTInput in : o2p1.getInputs()) {
       portNames.add(in.portName);
     }
     Set<String> expPortNames = Sets.newHashSet(GenericTestOperator.IPORT1, GenericTestOperator.IPORT2);
-    Assert.assertEquals("input port names " + o2p1.inputs, expPortNames, portNames);
+    Assert.assertEquals("input port names " + o2p1.getInputs(), expPortNames, portNames);
 
   }
 
@@ -224,11 +242,11 @@ public class LogicalPlanModificationTest {
 
     Assert.assertEquals(""+dnm.containerStartRequests, 1, dnm.containerStartRequests.size());
     PTContainer c = dnm.containerStartRequests.poll().container;
-    Assert.assertEquals("operators "+c, 1, c.operators.size());
+    Assert.assertEquals("operators "+c, 1, c.getOperators().size());
 
-    Assert.assertEquals("deploy requests " + c, 1, c.pendingDeploy.size());
+    Assert.assertEquals("deploy requests " + c, 1, c.getPendingDeploy().size());
 
-    PTOperator oper = c.operators.get(0);
+    PTOperator oper = c.getOperators().get(0);
     Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getName());
     Assert.assertEquals("operator class", GenericTestOperator.class, oper.getOperatorMeta().getOperator().getClass());
 
