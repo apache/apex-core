@@ -26,10 +26,23 @@ import java.lang.reflect.Array;
  */
 public interface Sink<T>
 {
-  /** Constant <code>NO_SINKS</code> */
+  /**
+   * Constant
+   * <code>NO_SINKS</code>
+   *
+   * Use this constant if you need array of size 0 of sinks. Typically it's needed to confirm with
+   * the code logic that expects a non null array of sinks to be passed in where you would ideally
+   * pass null otherwise.
+   */
   @SuppressWarnings("unchecked")
   public static final Sink<Object>[] NO_SINKS = (Sink<Object>[])Array.newInstance(Sink.class, 0);
-  /** Constant <code>BLACKHOLE</code> */
+  /**
+   * Constant
+   * <code>BLACKHOLE</code>
+   *
+   * This sink discards anything that's put into it silently. Use this sink if you need a sink that
+   * discards everything with super low cost.
+   */
   public static final Sink<Object> BLACKHOLE = new Sink<Object>()
   {
     @Override
