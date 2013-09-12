@@ -58,11 +58,11 @@ import com.datatorrent.stram.StramChildAgent.PortStatus;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.OperatorStats;
 import com.datatorrent.stram.engine.OperatorStats.PortStats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -155,10 +155,10 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
   {
-    super(dag.getAttributes(), null);
+    super(dag.getAttributes(), dag);
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
-    // try to align to it pleases eyes.
+    // try to align to it please eyes.
     windowStartMillis -= (windowStartMillis % 1000);
 
     attributes.attr(LogicalPlan.APPLICATION_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
@@ -1157,7 +1157,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   private static class RecordingRequestFilter implements Predicate<StramToNodeRequest>
   {
-    final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING, RequestType.SYNC_RECORDING);
+    final static Set<RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING, RequestType.SYNC_RECORDING);
 
     @Override
     public boolean apply(@Nullable StramToNodeRequest input)
