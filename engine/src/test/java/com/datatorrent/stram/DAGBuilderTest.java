@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -49,18 +50,13 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.google.common.collect.Sets;
-import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.codec.KryoJdkSerializer;
+import java.util.*;
 
 public class DAGBuilderTest {
 
@@ -465,6 +461,68 @@ public class DAGBuilderTest {
     // all valid
     dag.validate();
 
+  }
+
+  @OperatorAnnotation(partitionable = false)
+  public static class TestOperatorAnnotationOperator extends BaseOperator {
+
+    @InputPortFieldAnnotation(name = "input1", optional = true)
+    final public transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>() {
+      @Override
+      public void process(Object tuple) {
+      }
+    };
+  }
+
+  @OperatorAnnotation(partitionable = false)
+  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements PartitionableOperator {
+
+    @Override
+    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
+    {
+      return null;
+    }
+
+  }
+
+  @Test
+  public void testOperatorAnnotation() {
+    LogicalPlan dag = new LogicalPlan();
+    TestOperatorAnnotationOperator operator = dag.addOperator("operator1", TestOperatorAnnotationOperator.class);
+
+    dag.setAttribute(operator, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+
+    try {
+      dag.validate();
+      Assert.fail("should raise operator is not partitionable for operator1");
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Operator " + operator.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set", e.getMessage());
+    }
+
+    dag.setAttribute(operator, OperatorContext.INITIAL_PARTITION_COUNT, 0);
+    dag.validate();
+
+    dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, true);
+
+    try {
+      dag.validate();
+      Assert.fail("should raise operator is not partitionable for operator1");
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Operator " + operator.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set", e.getMessage());
+    }
+
+    dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, false);
+    dag.validate();
+
+    dag.removeOperator(operator);
+    TestOperatorAnnotationOperator2 operator2 = dag.addOperator("operator2", TestOperatorAnnotationOperator2.class);
+
+    try {
+      dag.validate();
+      Assert.fail("should raise operator is not partitionable for operator2");
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Operator " + operator2.getName() + " is not partitionable but implements PartitionableOperator", e.getMessage());
+    }
   }
 
   @Test
