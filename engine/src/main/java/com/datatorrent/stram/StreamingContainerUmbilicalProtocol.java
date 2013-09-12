@@ -14,7 +14,10 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
 import com.datatorrent.api.AttributeMap;
+
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.ContainerContext;
+import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.engine.OperatorStats;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
@@ -45,7 +48,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StreamingContainerContext extends BaseContext {
+  public static class StreamingContainerContext extends BaseContext implements ContainerContext {
     private static final long serialVersionUID = 201209071402L;
     /**
      * Operators should start processing the initial window at this time.
@@ -259,12 +262,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class StramToNodeRequest extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
 
-    enum RequestType {
-      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
-    }
-
     public int operatorId;
-    public RequestType requestType;
+    public NodeRequest.RequestType requestType;
     public long recoveryCheckpoint;
     public String portName;
 
@@ -279,11 +278,11 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.operatorId = id;
     }
 
-    public RequestType getRequestType() {
+    public NodeRequest.RequestType getRequestType() {
       return requestType;
     }
 
-    public void setRequestType(RequestType requestType) {
+    public void setRequestType(NodeRequest.RequestType requestType) {
       this.requestType = requestType;
     }
 
