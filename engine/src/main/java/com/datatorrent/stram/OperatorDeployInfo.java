@@ -31,7 +31,7 @@ public class OperatorDeployInfo implements Serializable
   public static final long STATELESS_CHECKPOINT_WINDOW_ID = WindowGenerator.MIN_WINDOW_ID - 1;
 
   public enum OperatorType {
-    INPUT, UNIFIER, GENERIC
+    INPUT, UNIFIER, GENERIC, OIO
   }
 
   /**
