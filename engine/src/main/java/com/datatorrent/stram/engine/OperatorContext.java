@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.stram.api.NodeRequest;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
@@ -11,11 +12,12 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Operator;
+
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.api.BaseContext;
 
 /**
  * The for context for all of the operators<p>
@@ -122,20 +124,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   {
     //logger.debug("Received request {} for (node={})", request, id);
     requests.add(request);
-  }
-
-  public interface NodeRequest
-  {
-    /**
-     * Command to be executed at subsequent end of window.
-     *
-     * @param operator
-     * @param id
-     * @param windowId
-     * @throws IOException
-     */
-    public void execute(Operator operator, int id, long windowId) throws IOException;
-
   }
 
   private static final Logger logger = LoggerFactory.getLogger(OperatorContext.class);
