@@ -119,28 +119,6 @@ public class LogicalPlan implements Serializable, DAG
   {
   }
 
-  @SuppressWarnings("unchecked")
-  public LogicalPlan(Configuration conf)
-  {
-    for (@SuppressWarnings("rawtypes") DAGContext.AttributeKey key : DAGContext.ATTRIBUTE_KEYS) {
-      String stringValue = conf.get(key.name());
-      if (stringValue != null) {
-        if (key.attributeType == Integer.class) {
-          this.attributes.attr((DAGContext.AttributeKey<Integer>)key).set(conf.getInt(key.name(), 0));
-        } else if (key.attributeType == Long.class) {
-          this.attributes.attr((DAGContext.AttributeKey<Long>)key).set(conf.getLong(key.name(), 0));
-        } else if (key.attributeType == String.class) {
-          this.attributes.attr((DAGContext.AttributeKey<String>)key).set(stringValue);
-        } else if (key.attributeType == Boolean.class) {
-          this.attributes.attr((DAGContext.AttributeKey<Boolean>)key).set(conf.getBoolean(key.name(), false));
-        } else {
-          String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
-          throw new UnsupportedOperationException(msg);
-        }
-      }
-    }
-  }
-
   public final class InputPortMeta implements DAG.InputPortMeta, Serializable
   {
     private static final long serialVersionUID = 1L;

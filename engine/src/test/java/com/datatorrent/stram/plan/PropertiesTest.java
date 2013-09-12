@@ -172,4 +172,27 @@ public class PropertiesTest {
 
   }
 
+  @Test
+  public void testAppLevelAttributes() {
+    String appName = "app1";
+
+    Properties props = new Properties();
+    props.put("stram." + DAG.CONTAINER_MEMORY_MB.name(), "123");
+    props.put("stram." + DAG.APPLICATION_PATH.name(), "/defaultdir");
+    props.put("stram.application." + appName + ".attr." + DAG.APPLICATION_PATH.name(), "/otherdir");
+    props.put("stram.application." + appName + ".attr." + DAG.STREAMING_WINDOW_SIZE_MILLIS.name(), "1000");
+
+    DAGPropertiesBuilder dagBuilder = new DAGPropertiesBuilder();
+    dagBuilder.addFromProperties(props);
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.populateDAG(dag, new Configuration(false));
+
+    dagBuilder.setApplicationLevelAttributes(dag, appName);
+    Assert.assertEquals("", "/otherdir", dag.attrValue(DAG.APPLICATION_PATH, null));
+    Assert.assertEquals("", Integer.valueOf(123), dag.attrValue(DAG.CONTAINER_MEMORY_MB, null));
+    Assert.assertEquals("", Integer.valueOf(1000), dag.attrValue(DAG.STREAMING_WINDOW_SIZE_MILLIS, null));
+
+  }
+
 }
