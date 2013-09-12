@@ -1055,6 +1055,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
     // stop containers that are no longer used
     for (PTContainer c: releaseContainers) {
+      if (c.getExternalId() == null)
+        continue;
       StramChildAgent sca = containers.get(c.getExternalId());
       if (sca != null) {
         LOG.debug("Container marked for shutdown: {}", c);
