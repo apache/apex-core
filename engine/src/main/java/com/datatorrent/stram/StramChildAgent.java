@@ -29,6 +29,7 @@ import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
+import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.PhysicalPlan.PTInput;
@@ -477,6 +478,7 @@ public class StramChildAgent {
           }
           if (streamMeta.getLocality() == Locality.THREAD_LOCAL && oper.inputs.size() == 1) {
             inputInfo.locality = Locality.THREAD_LOCAL;
+            ndi.type = OperatorType.OIO;
           } else {
             inputInfo.locality = Locality.CONTAINER_LOCAL;
           }
