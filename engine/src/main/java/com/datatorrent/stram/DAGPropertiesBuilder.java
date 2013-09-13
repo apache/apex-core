@@ -467,13 +467,11 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   }
 
-  public static LogicalPlan create(Configuration conf, String tplgPropsFile) throws IOException {
+  public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
     DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     tb.addFromProperties(topologyProperties);
-    LogicalPlan lp = new LogicalPlan();
-    tb.populateDAG(lp, conf);
-    return lp;
+    return tb;
   }
 
   public static Properties readProperties(String filePath) throws IOException

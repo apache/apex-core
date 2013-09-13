@@ -6,6 +6,11 @@
 
   <!-- sample for defining DAG in Hadoop configuration format -->
 
+  <property>
+    <name>stram.daemon.address</name>
+    <value>hostname:9090</value>
+  </property>
+
   <!--  Operator 1 -->
 
   <property>

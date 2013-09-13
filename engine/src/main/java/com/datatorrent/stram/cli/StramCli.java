@@ -75,7 +75,7 @@ public class StramCli
 
   private static class FileLineReader extends ConsoleReader
   {
-    private BufferedReader br;
+    private final BufferedReader br;
 
     FileLineReader(String fileName) throws IOException
     {
@@ -1645,7 +1645,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(StreamingApplication.LAUNCHMODE_YARN));
           ObjectMapper mapper = new ObjectMapper();
           System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
         }
@@ -1694,7 +1694,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(StreamingApplication.LAUNCHMODE_YARN));
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();

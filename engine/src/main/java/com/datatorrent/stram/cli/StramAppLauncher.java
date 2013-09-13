@@ -100,7 +100,7 @@ public class StramAppLauncher {
 
 
   public static interface AppConfig {
-      LogicalPlan createApp(Configuration conf);
+      StreamingApplication createApp(Configuration conf);
       String getName();
   }
 
@@ -112,7 +112,7 @@ public class StramAppLauncher {
     }
 
     @Override
-    public LogicalPlan createApp(Configuration conf) {
+    public StreamingApplication createApp(Configuration conf) {
       try {
         return DAGPropertiesBuilder.create(conf, propertyFile.getAbsolutePath());
       } catch (IOException e) {
@@ -278,13 +278,10 @@ public class StramAppLauncher {
             }
 
             @Override
-            public LogicalPlan createApp(Configuration conf) {
+            public StreamingApplication createApp(Configuration conf) {
               // load class from current context class loader
               Class<? extends StreamingApplication> c = StramUtils.classForName(className, StreamingApplication.class);
-              StreamingApplication f = StramUtils.newInstance(c);
-              LogicalPlan lp = new LogicalPlan();
-              f.populateDAG(lp, conf);
-              return lp;
+              return StramUtils.newInstance(c);
             }
           };
           configurationList.add(appConfig);
@@ -295,7 +292,7 @@ public class StramAppLauncher {
     }
   }
 
-  private static Configuration getConfig(String launchMode) {
+  public static Configuration getConfig(String launchMode) {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
     /*
@@ -316,14 +313,19 @@ public class StramAppLauncher {
     return conf;
   }
 
-  public static LogicalPlan prepareDAG(AppConfig appConfig, String launchMode) {
-    Configuration conf = getConfig(launchMode);
+  public static LogicalPlan prepareDAG(AppConfig appConfig, Configuration conf) {
     String appAlias = getAppAlias(appConfig, conf);
 
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromConfiguration(conf);
 
-    LogicalPlan dag = appConfig.createApp(conf);
+    LogicalPlan dag = new LogicalPlan();
+    // set application level attributes first to make them available to populateDAG
+    pb.setApplicationLevelAttributes(dag, appAlias);
+
+    StreamingApplication app = appConfig.createApp(conf);
+    app.populateDAG(dag, conf);
+
     if (appAlias != null) {
       dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
     } else {
@@ -377,7 +379,8 @@ public class StramAppLauncher {
   public void runLocal(AppConfig appConfig) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_LOCAL));
+    Configuration conf = getConfig(StreamingApplication.LAUNCHMODE_LOCAL);
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, conf));
     lc.run();
   }
 
@@ -410,8 +413,7 @@ public class StramAppLauncher {
 
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
-
-    LogicalPlan dag = prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
+    LogicalPlan dag = prepareDAG(appConfig, getConfig(StreamingApplication.LAUNCHMODE_YARN));
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
