@@ -17,6 +17,10 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+
 import com.datatorrent.api.ActivationListener;
 import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Component;
@@ -28,17 +32,16 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.tuple.CheckpointTuple;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 
 /**
  * <p>Abstract Node class.</p>
@@ -68,7 +71,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
-  protected long currentWindowId;
+  public long currentWindowId;
   protected long endWindowEmitTime = 0;
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
@@ -219,7 +222,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
 
-  @SuppressWarnings( {"unchecked"})
+  @SuppressWarnings({"unchecked"})
   public void activate(OperatorContext context)
   {
     boolean activationListener = operator instanceof ActivationListener;
@@ -239,6 +242,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (activationListener) {
       ((ActivationListener)operator).activate(context);
     }
+
+    /*
+     * If there were any requests which needed to be executed before the operator started
+     * its normal execution, execute those requests now - e.g. Restarting the operator
+     * recording for the operators which failed while recording and being replaced.
+     */
+    handleRequests(currentWindowId);
 
     run();
 
@@ -295,17 +305,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void handleRequests(long windowId)
   {
-    endWindowEmitTime = System.currentTimeMillis();
-    OperatorStats stats = new OperatorStats();
-    reportStats(stats);
-    stats.checkpointedWindowId = checkpointedWindowId;
-    context.report(stats, windowId);
-
     /*
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      BlockingQueue<OperatorContext.NodeRequest> requests = context.getRequests();
+      BlockingQueue<NodeRequest> requests = context.getRequests();
       int size;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {
@@ -319,8 +323,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected void reportStats(OperatorStats stats)
+  protected void reportStats(OperatorStats stats, long windowId)
   {
+    stats.checkpointedWindowId = checkpointedWindowId;
+    context.report(stats, windowId);
+
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       //logger.info("end window emit time is {}", endWindowEmitTime);
@@ -449,6 +456,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
     else if (ow.operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
       node = new UnifierNode((Unifier<Object>)ow.operator);
+    }
+    else if (type == OperatorDeployInfo.OperatorType.OIO) {
+      node = new OiONode(ow.operator);
     }
     else {
       node = new GenericNode(ow.operator);
