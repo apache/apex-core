@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.api.NodeRequest;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 
@@ -14,10 +12,10 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
-import com.datatorrent.api.Operator;
 
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.NodeRequest;
 
 /**
  * The for context for all of the operators<p>
@@ -43,7 +41,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private final int id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
-  private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
+  private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(1024);
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */

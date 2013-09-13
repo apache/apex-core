@@ -7,15 +7,17 @@ package com.datatorrent.stram.engine;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.UnhandledException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang.UnhandledException;
 
 import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.engine.OperatorStats.PortStats;
@@ -112,8 +114,14 @@ public class GenericNode extends Node<Operator>
     }
   }
 
-  protected void processEndWindow(ArrayList<SweepableReservoir> activeQueues, Tuple endWindowTuple)
+  /**
+   *
+   * @param endWindowTuple the value of endWindowTuple
+   */
+  protected void processEndWindow(Tuple endWindowTuple)
   {
+    endWindowEmitTime = System.currentTimeMillis();
+
     if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
       insideWindow = false;
       operator.endWindow();
@@ -140,7 +148,8 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
     }
     handleRequests(currentWindowId);
-    activeQueues.addAll(inputs.values());
+    OperatorStats stats = new OperatorStats();
+    reportStats(stats, currentWindowId);
   }
 
   class ResetTupleTracker
@@ -245,7 +254,8 @@ public class GenericNode extends Node<Operator>
                     else {
                       expectingBeginWindow--;
                       if (++receivedEndWindow == totalQueues) {
-                        processEndWindow(activeQueues, null);
+                        processEndWindow(null);
+                        activeQueues.addAll(inputs.values());
                         expectingBeginWindow = activeQueues.size();
                         break activequeue;
                       }
@@ -265,7 +275,8 @@ public class GenericNode extends Node<Operator>
                   endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
                   if (++receivedEndWindow == totalQueues) {
                     assert (activeQueues.isEmpty());
-                    processEndWindow(activeQueues, t);
+                    processEndWindow(t);
+                    activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -283,8 +294,8 @@ public class GenericNode extends Node<Operator>
                   else {
                     checkpoint = true;
                   }
-                  for (final Sink<Object> output : outputs.values()) {
-                    output.put(t);
+                  for (int s = sinks.length; s-- > 0;) {
+                    sinks[s].put(t);
                   }
                 }
                 break;
@@ -388,7 +399,8 @@ public class GenericNode extends Node<Operator>
                 }
                 else if (activeQueues.isEmpty()) {
                   assert (!inputs.isEmpty());
-                  processEndWindow(activeQueues, null);
+                  processEndWindow(null);
+                  activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
                   break_activequeue = true;
                 }
@@ -507,7 +519,7 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  protected void reportStats(OperatorStats stats)
+  protected void reportStats(OperatorStats stats, long windowId)
   {
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
@@ -516,11 +528,7 @@ public class GenericNode extends Node<Operator>
     }
 
     stats.inputPorts = ipstats;
-    super.reportStats(stats);
-
-
-
-
+    super.reportStats(stats, windowId);
   }
 
   protected class DeferredInputConnection
