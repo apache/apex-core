@@ -417,7 +417,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
         Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
         Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
         Operators.describe(sourceDecl, sourcePortMap);
-        sd.setSource(sourcePortMap.outputPorts.get(portName));
+        sd.setSource(sourcePortMap.outputPorts.get(portName).component);
       }
 
       for (NodeConf targetNode : streamConf.targetNodes) {
@@ -430,7 +430,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
         Operator targetDecl = nodeMap.get(targetNode);
         Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
         Operators.describe(targetDecl, targetPortMap);
-        sd.addSink(targetPortMap.inputPorts.get(portName));
+        sd.addSink(targetPortMap.inputPorts.get(portName).component);
       }
     }
 

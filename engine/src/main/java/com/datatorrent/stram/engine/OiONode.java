@@ -15,6 +15,7 @@ import org.apache.commons.lang.UnhandledException;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -93,9 +94,9 @@ public class OiONode extends GenericNode implements Sink<Tuple>
 
           for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
             Entry<String, SweepableReservoir> e = it.next();
-            InputPort<?> port = descriptor.inputPorts.get(e.getKey());
-            if (port != null) {
-              port.setConnected(false);
+            PortContextPair<InputPort<?>> pcpair = descriptor.inputPorts.get(e.getKey());
+            if (pcpair != null) {
+              pcpair.component.setConnected(false);
             }
           }
           inputs.clear();

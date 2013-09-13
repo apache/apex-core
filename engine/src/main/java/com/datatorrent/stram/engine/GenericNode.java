@@ -361,7 +361,7 @@ public class GenericNode extends Node<Operator>
                   Entry<String, SweepableReservoir> e = it.next();
                   if (e.getValue() == activePort) {
                     if (!descriptor.inputPorts.isEmpty()) {
-                      descriptor.inputPorts.get(e.getKey()).setConnected(false);
+                      descriptor.inputPorts.get(e.getKey()).component.setConnected(false);
                     }
                     it.remove();
 

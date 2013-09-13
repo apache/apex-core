@@ -1324,11 +1324,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(logicalOperator.getOperator(), portMap);
-    InputPort<?> inputPort = portMap.inputPorts.get(portName);
+    InputPort<?> inputPort = portMap.inputPorts.get(portName).component;
     if (inputPort != null) {
       return logicalOperator.getMeta(inputPort).getAttributes().valueMap();
     } else {
-      OutputPort<?> outputPort = portMap.outputPorts.get(portName);
+      OutputPort<?> outputPort = portMap.outputPorts.get(portName).component;
       if (outputPort == null) {
         throw new IllegalArgumentException("Invalid port name " + portName);
       }

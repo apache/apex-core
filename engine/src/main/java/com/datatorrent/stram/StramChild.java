@@ -32,7 +32,6 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.bufferserver.server.Server;
@@ -45,11 +44,12 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequ
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.NodeActivationListener;
+import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.OperatorContext.NodeRequest;
 import com.datatorrent.stram.engine.PortContext;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
@@ -57,6 +57,7 @@ import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.engine.WindowIdActivatedReservoir;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.stream.BufferServerPublisher;
 import com.datatorrent.stram.stream.BufferServerSubscriber;
@@ -64,6 +65,7 @@ import com.datatorrent.stram.stream.FastPublisher;
 import com.datatorrent.stram.stream.FastSubscriber;
 import com.datatorrent.stram.stream.InlineStream;
 import com.datatorrent.stram.stream.MuxStream;
+import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 
@@ -86,6 +88,10 @@ public class StramChild
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
+  /**
+   * It's a simple map which maps the oio node to it's the node which owns the thread.
+   */
+  protected final Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
   protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
@@ -93,8 +99,11 @@ public class StramChild
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
-  private String appPath;
   public static DefaultEventLoop eventloop;
+  /**
+   * List of listeners interested in listening into the status change of the nodes.
+   */
+  private HashSet<NodeActivationListener> nodeListener;
 
   static {
     try {
@@ -109,16 +118,14 @@ public class StramChild
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
   private com.datatorrent.bufferserver.server.Server bufferServer;
-  protected HashMap<String, TupleRecorder> tupleRecorders = new HashMap<String, TupleRecorder>();
-  private int tupleRecordingPartFileSize;
-  private String daemonAddress;
-  private long tupleRecordingPartFileTimeMillis;
   private int checkpointWindowCount;
   private boolean fastPublisherSubscriber;
-  private StreamingContainerContext parentContext;
+  private StreamingContainerContext containerContex;
+  private List<StramToNodeRequest> nodeRequests;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
+    this.nodeListener = new HashSet<NodeActivationListener>();
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
     this.containerId = containerId;
@@ -127,18 +134,14 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
-    parentContext = ctx;
+    containerContex = ctx;
 
     heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.attrValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, 500);
     checkpointWindowCount = ctx.attrValue(DAGContext.CHECKPOINT_WINDOW_COUNT, 60);
 
-    appPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured");
-    checkpointFsPath = this.appPath + "/" + DAGContext.SUBDIR_CHECKPOINTS;
-    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    daemonAddress = ctx.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
+    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + DAGContext.SUBDIR_CHECKPOINTS;
     fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
@@ -163,11 +166,6 @@ public class StramChild
     return this.containerId;
   }
 
-  public TupleRecorder getTupleRecorder(int operId, String portName)
-  {
-    return tupleRecorders.get(getRecorderKey(operId, portName));
-  }
-
   /**
    * Initialize container. Establishes heartbeat connection to the master
    * distribute through the callback address provided on the command line. Deploys
@@ -189,12 +187,9 @@ public class StramChild
 
     String host = args[0];
     int port = Integer.parseInt(args[1]);
-    final InetSocketAddress address =
-            NetUtils.createSocketAddrForHost(host, port);
-
+    final InetSocketAddress address = NetUtils.createSocketAddrForHost(host, port);
     final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                                                                        StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
-
     int exitStatus = 1;
 
     final String childId = System.getProperty("stram.cid");
@@ -426,11 +421,6 @@ public class StramChild
 
     nodes.clear();
 
-    for (TupleRecorder entry : tupleRecorders.values()) {
-      entry.teardown();
-    }
-    tupleRecorders.clear();
-
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
     generators.clear();
@@ -499,6 +489,7 @@ public class StramChild
           hb.setState(failedNodes.contains(e.getKey()) ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
+        // this tuplercording code should be seggrated from here... it's sprinkled everywhere!
         TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
         if (tupleRecorder != null) {
           hb.addRecordingName(tupleRecorder.getRecordingName());
@@ -509,6 +500,8 @@ public class StramChild
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
           }
+
+          // the following code should belong to stats collections method.
           if (bufferServerAddress != null) {
             String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
@@ -522,6 +515,8 @@ public class StramChild
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
           }
+
+          // the following code should belong to stats collections method.
           if (bufferServerAddress != null) {
             String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
@@ -569,16 +564,70 @@ public class StramChild
 
   private long lastCommittedWindowId = -1;
 
+  private void processNodeRequests(boolean flagInvalid)
+  {
+    for (Iterator<StramToNodeRequest> it = nodeRequests.iterator(); it.hasNext();) {
+      StramToNodeRequest req = it.next();
+      OperatorContext oc = activeNodes.get(req.getOperatorId());
+      if (oc == null) {
+        if (flagInvalid) {
+          logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
+          it.remove();
+        }
+      }
+      else {
+        logger.debug("request received: {}", req);
+        NodeRequest requestExecutor = RequestFactory.getInstance().getRequestExecutor(nodes.get(req.operatorId), req);
+        if (requestExecutor != null) {
+          oc.request(requestExecutor);
+        }
+        else {
+          logger.warn("No executor identified for the request {}", req);
+        }
+
+        it.remove();
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
+    if (rsp.nodeRequests != null) {
+      nodeRequests = rsp.nodeRequests;
+    }
+
+    if (rsp.committedWindowId != lastCommittedWindowId) {
+      lastCommittedWindowId = rsp.committedWindowId;
+      NodeRequest nr = null;
+      for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
+        if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
+          if (nr == null) {
+            nr = new NodeRequest()
+            {
+              @Override
+              public void execute(Operator operator, int id, long windowId) throws IOException
+              {
+                ((CheckpointListener)operator).committed(lastCommittedWindowId);
+              }
+
+            };
+          }
+          e.getValue().request(nr);
+        }
+      }
+    }
+
     if (rsp.shutdown) {
       logger.info("Received shutdown request");
+      processNodeRequests(false);
       this.exitHeartbeatLoop = true;
       return;
     }
 
     if (rsp.undeployRequest != null) {
       logger.info("Undeploy request: {}", rsp.undeployRequest);
+      processNodeRequests(false);
       undeploy(rsp.undeployRequest);
     }
 
@@ -601,40 +650,7 @@ public class StramChild
       }
     }
 
-    NodeRequest nr = null;
-    if (rsp.committedWindowId != lastCommittedWindowId) {
-      lastCommittedWindowId = rsp.committedWindowId;
-      for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
-        if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
-          if (nr == null) {
-            nr = new NodeRequest()
-            {
-              @Override
-              public void execute(Operator operator, int id, long windowId) throws IOException
-              {
-                ((CheckpointListener)operator).committed(lastCommittedWindowId);
-              }
-
-            };
-          }
-          e.getValue().request(nr);
-        }
-      }
-    }
-
-    if (rsp.nodeRequests != null) {
-      // processing of per operator requests
-      for (StramToNodeRequest req : rsp.nodeRequests) {
-        OperatorContext oc = activeNodes.get(req.getOperatorId());
-        if (oc == null) {
-          logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
-        }
-        else {
-          logger.debug("Stram request: {}", req);
-          processStramRequest(oc, req);
-        }
-      }
-    }
+    processNodeRequests(true);
   }
 
   private int getOutputQueueCapacity(List<OperatorDeployInfo> operatorList, int sourceOperatorId, String sourcePortName)
@@ -650,107 +666,6 @@ public class StramChild
     }
 
     return PORT_QUEUE_CAPACITY;
-  }
-
-  /**
-   * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
-   *
-   * @param n
-   * @param snr
-   */
-  private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
-  {
-    int operatorId = snr.getOperatorId();
-    final Node<?> node = nodes.get(operatorId);
-    switch (snr.getRequestType()) {
-      case START_RECORDING: {
-        final String portName = snr.getPortName();
-        logger.debug("Received start recording request for {}", getRecorderKey(operatorId, portName));
-        context.request(new OperatorContext.NodeRequest()
-        {
-          @Override
-          public void execute(Operator operator, int operatorId, long windowId) throws IOException
-          {
-            startRecording(node, operatorId, portName, false);
-          }
-
-          @Override
-          public String toString()
-          {
-            return "Start Recording";
-          }
-
-        });
-      }
-      break;
-
-      case STOP_RECORDING: {
-        final String portName = snr.getPortName();
-        logger.debug("Received stop recording request for {}", getRecorderKey(operatorId, portName));
-
-        context.request(new OperatorContext.NodeRequest()
-        {
-          @Override
-          public void execute(Operator operator, int operatorId, long windowId) throws IOException
-          {
-            stopRecording(node, operatorId, portName);
-          }
-
-          @Override
-          public String toString()
-          {
-            return "Stop Recording";
-          }
-
-        });
-      }
-      break;
-
-      case SYNC_RECORDING: {
-        final String portName = snr.getPortName();
-        logger.debug("Received sync recording request for {}", getRecorderKey(operatorId, portName));
-
-        context.request(new OperatorContext.NodeRequest()
-        {
-          @Override
-          public void execute(Operator operator, int operatorId, long windowId) throws IOException
-          {
-            syncRecording(node, operatorId, portName);
-          }
-
-          @Override
-          public String toString()
-          {
-            return "Recording Request";
-          }
-
-        });
-      }
-      break;
-
-      case SET_PROPERTY:
-        context.request(new OperatorContext.NodeRequest()
-        {
-          @Override
-          public void execute(Operator operator, int id, long windowId) throws IOException
-          {
-            final Map<String, String> properties = Collections.singletonMap(snr.setPropertyKey, snr.setPropertyValue);
-            logger.info("Setting property {} on operator {}", properties, operator);
-            DAGPropertiesBuilder.setOperatorProperties(operator, properties);
-          }
-
-          @Override
-          public String toString()
-          {
-            return "Set Property";
-          }
-
-        });
-        break;
-
-      default:
-        logger.error("Unknown request {}", snr);
-    }
   }
 
   private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
@@ -808,6 +723,7 @@ public class StramChild
         InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.checkpointWindowId);
         Node<?> node = Node.retrieveNode(stream, ndi.type);
         stream.close();
+        node.currentWindowId = ndi.checkpointWindowId;
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           massageUnifierDeployInfo(ndi);
         }
@@ -826,10 +742,6 @@ public class StramChild
           String sourceIdentifier, long startingWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
           throws UnknownHostException
   {
-    /*
-     * Although there is a node in this container interested in output placed on this stream, there
-     * seems to at least one more party interested but placed in a container other than this one.
-     */
     String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
     StreamContext bssc = new StreamContext(nodi.declaredStreamId);
@@ -904,6 +816,10 @@ public class StramChild
           }
 
           if (nodi.bufferServerHost != null) {
+            /*
+             * Although there is a node in this container interested in output placed on this stream, there
+             * seems to at least one more party interested but placed in a container other than this one.
+             */
             SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
                     deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
             newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
@@ -921,7 +837,6 @@ public class StramChild
       }
     }
 
-    //streams.putAll(newStreams);
     return newStreams;
   }
 
@@ -1031,16 +946,31 @@ public class StramChild
             inlineContext.setSourceId(sourceIdentifier);
             inlineContext.setSinkId(sinkIdentifier);
 
-            int outputQueueCapacity = getOutputQueueCapacity(operatorList, nidi.sourceNodeId, nidi.sourcePortName);
-            if (outputQueueCapacity > queueCapacity) {
-              queueCapacity = outputQueueCapacity;
+            Stream stream;
+            switch (nidi.locality) {
+              case CONTAINER_LOCAL:
+                int outputQueueCapacity = getOutputQueueCapacity(operatorList, nidi.sourceNodeId, nidi.sourcePortName);
+                if (outputQueueCapacity > queueCapacity) {
+                  queueCapacity = outputQueueCapacity;
+                }
+
+                stream = new InlineStream(queueCapacity);
+                if (finishedWindowId > 0) {
+                  node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, (SweepableReservoir)stream, finishedWindowId));
+                }
+                break;
+
+              case THREAD_LOCAL:
+                stream = new OiOStream();
+                oioNodes.put(ndi.id, nidi.sourceNodeId);
+                break;
+
+              default:
+                throw new IllegalStateException("Locality can be either ContainerLocal or ThreadLocal");
             }
-            InlineStream stream = new InlineStream(queueCapacity);
+
+            node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
             newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
-            if (finishedWindowId > 0) {
-              node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, stream, finishedWindowId));
-            }
-            node.connectInputPort(nidi.portName, stream);
 
             if (!pair.component.isMultiSinkCapable()) {
               String originalSinkId = pair.context.getSinkId();
@@ -1147,32 +1077,40 @@ public class StramChild
         {
           try {
             failedNodes.remove(ndi.id);
-            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, parentContext);
-            node.setup(context);
+            OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, containerContex);
+            node.setup(operatorContext);
 
-            LinkedHashMap<String, InputPort<?>> inputPorts = node.getPortMappingDescriptor().inputPorts;
+            /* setup context for all the input ports */
+            LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
+            LinkedHashMap<String, PortContextPair<InputPort<?>>> newInputPorts = new LinkedHashMap<String, PortContextPair<InputPort<?>>>(inputPorts.size());
             for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
-              PortContext portContext = new PortContext(idi.contextAttributes, context);
-              inputPorts.get(idi.portName).setup(portContext);
-              if (portContext.attrValue(PortContext.AUTO_RECORD, false)) {
-                startRecording(node, ndi.id, idi.portName, true);
-              }
+              InputPort<?> port = inputPorts.get(idi.portName).component;
+              PortContext context = new PortContext(idi.contextAttributes, operatorContext);
+              newInputPorts.put(idi.portName, new PortContextPair<InputPort<?>>(port, context));
+              port.setup(context);
             }
+            inputPorts.putAll(newInputPorts);
 
-            LinkedHashMap<String, OutputPort<?>> outputPorts = node.getPortMappingDescriptor().outputPorts;
+            /* setup context for all the output ports */
+            LinkedHashMap<String, PortContextPair<OutputPort<?>>> outputPorts = node.getPortMappingDescriptor().outputPorts;
+            LinkedHashMap<String, PortContextPair<OutputPort<?>>> newOutputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>(outputPorts.size());
             for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
-              PortContext portContext = new PortContext(odi.contextAttributes, context);
-              outputPorts.get(odi.portName).setup(portContext);
-              if (portContext.attrValue(PortContext.AUTO_RECORD, false)) {
-                startRecording(node, ndi.id, odi.portName, true);
-              }
+              OutputPort<?> port = outputPorts.get(odi.portName).component;
+              PortContext context = new PortContext(odi.contextAttributes, operatorContext);
+              newOutputPorts.put(odi.portName, new PortContextPair<OutputPort<?>>(port, context));
+              port.setup(context);
             }
+            outputPorts.putAll(newOutputPorts);
 
-            activeNodes.put(ndi.id, context);
-
+            activeNodes.put(ndi.id, operatorContext);
             activatedOrFailed.put(ndi, ndi);
+
             logger.info("activating {} in container {}", node, containerId);
-            node.activate(context);
+            processNodeRequests(false);
+            for (NodeActivationListener l : nodeListener) {
+              l.activated(node);
+            }
+            node.activate(operatorContext);
           }
           catch (Throwable ex) {
             logger.error("Node stopped abnormally because of exception", ex);
@@ -1181,6 +1119,9 @@ public class StramChild
           finally {
             activatedOrFailed.put(ndi, ndi);
             activeNodes.remove(ndi.id);
+            for (NodeActivationListener l : nodeListener) {
+              l.deactivated(node);
+            }
             node.teardown();
             logger.info("deactivated {}", node.getId());
           }
@@ -1241,175 +1182,6 @@ public class StramChild
     }
   }
 
-  private String getRecorderKey(int operatorId, String portName)
-  {
-    return String.valueOf(operatorId) + (portName != null ? ("$" + portName) : "");
-  }
-
-  private String getOperatorFromRecorderKey(String recorderKey)
-  {
-    if (recorderKey.contains("$")) {
-      return recorderKey.substring(0, recorderKey.indexOf('$'));
-    }
-    else {
-      return recorderKey;
-    }
-  }
-
-  private void startRecording(Node<?> node, int operatorId, String portName, boolean recordEvenIfNotConnected)
-  {
-    PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
-    String operatorPortName = getRecorderKey(operatorId, portName);
-    // check any recording conflict
-    boolean conflict = false;
-    if (tupleRecorders.containsKey(String.valueOf(operatorId))) {
-      conflict = true;
-    }
-    else if (portName == null) {
-      for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
-        if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
-          conflict = true;
-          break;
-        }
-      }
-      for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
-        if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
-          conflict = true;
-          break;
-        }
-      }
-    }
-    else {
-      if (tupleRecorders.containsKey(operatorPortName)) {
-        conflict = true;
-      }
-    }
-    if (!conflict) {
-      logger.debug("Executing start recording request for " + operatorPortName);
-
-      TupleRecorder tupleRecorder = new TupleRecorder();
-      String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
-      String defaultName = StramChild.this.containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
-      tupleRecorder.setRecordingName(defaultName);
-      tupleRecorder.setContainerId(containerId);
-      tupleRecorder.getStorage().setBasePath(basePath);
-      tupleRecorder.getStorage().setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
-      tupleRecorder.getStorage().setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
-      if (daemonAddress != null) {
-        String url = "ws://" + daemonAddress + "/pubsub";
-        try {
-          tupleRecorder.setPubSubUrl(url);
-        }
-        catch (URISyntaxException ex) {
-          logger.warn("URL {} is not valid. NOT posting live tuples to daemon.", url, ex);
-        }
-      }
-      HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
-      for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
-        String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-        if (recordEvenIfNotConnected && streamId == null) {
-          streamId = portName + "_implicit_stream";
-        }
-        if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
-          logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
-          tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
-          sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
-        }
-      }
-      for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
-        String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-        if (recordEvenIfNotConnected && streamId == null) {
-          streamId = portName + "_implicit_stream";
-        }
-        if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
-          logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
-          tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
-          sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
-        }
-      }
-      if (!sinkMap.isEmpty()) {
-        logger.debug("Started recording (name: {}) to base path {}", operatorPortName, basePath);
-        node.addSinks(sinkMap);
-        tupleRecorder.setup(node.getOperator());
-        tupleRecorders.put(operatorPortName, tupleRecorder);
-      }
-      else {
-        logger.warn("Tuple recording request ignored because operator is not connected on the specified port.");
-      }
-    }
-    else {
-      logger.error("Operator id {} is already being recorded.", operatorPortName);
-    }
-  }
-
-  private void stopRecording(Node<?> node, int operatorId, String portName)
-  {
-    String operatorPortName = getRecorderKey(operatorId, portName);
-    if (tupleRecorders.containsKey(operatorPortName)) {
-      logger.debug("Executing stop recording request for {}", operatorPortName);
-
-      TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
-      if (tupleRecorder != null) {
-        node.removeSinks(tupleRecorder.getSinkMap());
-        tupleRecorder.teardown();
-        logger.debug("Stopped recording for operator/port {}", operatorPortName);
-        tupleRecorders.remove(operatorPortName);
-      }
-    }
-    // this should be looked at again when we redesign how we handle recordings with ports in a cleaner way
-    else if (portName == null) {
-      Iterator<Map.Entry<String, TupleRecorder>> iterator = tupleRecorders.entrySet().iterator();
-      while (iterator.hasNext()) {
-        Map.Entry<String, TupleRecorder> entry = iterator.next();
-        if (String.valueOf(operatorId).equals(getOperatorFromRecorderKey(entry.getKey()))) {
-          TupleRecorder tupleRecorder = entry.getValue();
-          if (tupleRecorder != null) {
-            node.removeSinks(tupleRecorder.getSinkMap());
-            tupleRecorder.teardown();
-            logger.debug("Stopped recording for operator/port {}", operatorPortName);
-            iterator.remove();
-          }
-        }
-      }
-    }
-    else {
-      logger.error("Operator/port {} is not being recorded.", operatorPortName);
-    }
-  }
-
-  private void syncRecording(Node<?> node, int operatorId, String portName)
-  {
-    String operatorPortName = getRecorderKey(operatorId, portName);
-    if (tupleRecorders.containsKey(operatorPortName)) {
-      logger.debug("Executing sync recording request for {}" + operatorPortName);
-
-      TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
-      if (tupleRecorder != null) {
-        tupleRecorder.getStorage().requestSync();
-        logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
-      }
-    }
-    // this should be looked at again when we redesign how we handle recordings with ports in a cleaner way
-    else if (portName == null) {
-      Iterator<Map.Entry<String, TupleRecorder>> iterator = tupleRecorders.entrySet().iterator();
-      while (iterator.hasNext()) {
-        Map.Entry<String, TupleRecorder> entry = iterator.next();
-        if (String.valueOf(operatorId).equals(getOperatorFromRecorderKey(entry.getKey()))) {
-          TupleRecorder tupleRecorder = entry.getValue();
-          if (tupleRecorder != null) {
-            tupleRecorder.getStorage().requestSync();
-            logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
-          }
-        }
-      }
-    }
-    else {
-      logger.error("(SYNC_RECORDING) Operator/port " + operatorPortName + " is not being recorded.");
-    }
-  }
-
-  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
-
   protected long getFinishedWindowId(OperatorDeployInfo ndi)
   {
     long finishedWindowId;
@@ -1432,4 +1204,15 @@ public class StramChild
     return finishedWindowId;
   }
 
+  public synchronized void addNodeListener(NodeActivationListener l)
+  {
+    nodeListener.add(l);
+  }
+
+  public synchronized void removeNodeListeneser(NodeActivationListener l)
+  {
+    nodeListener.remove(l);
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
 }

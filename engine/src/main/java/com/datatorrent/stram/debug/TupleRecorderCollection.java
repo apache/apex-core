@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -24,14 +25,16 @@ import com.datatorrent.stram.RequestFactory;
 import com.datatorrent.stram.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.TupleRecorder;
+import com.datatorrent.stram.api.NodeActivationListener;
 import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import static com.datatorrent.stram.StramChild.NODE_PORT_CONCAT_SEPARATOR;
 
-public class TupleRecorderCollection extends HashMap<String, TupleRecorder> implements Component<Context>
+public class TupleRecorderCollection extends HashMap<String, TupleRecorder> implements Component<Context>, NodeActivationListener
 {
   private int tupleRecordingPartFileSize;
   private String daemonAddress;
@@ -104,13 +107,13 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
       conflict = true;
     }
     else if (portName == null) {
-      for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
+      for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : descriptor.inputPorts.entrySet()) {
         if (containsKey(getRecorderKey(operatorId, entry.getKey()))) {
           conflict = true;
           break;
         }
       }
-      for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
+      for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : descriptor.outputPorts.entrySet()) {
         if (containsKey(getRecorderKey(operatorId, entry.getKey()))) {
           conflict = true;
           break;
@@ -143,7 +146,7 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
         }
       }
       HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
-      for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
+      for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : descriptor.inputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());
         if (recordEvenIfNotConnected && streamId == null) {
           streamId = portName + "_implicit_stream";
@@ -154,7 +157,7 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
           sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
         }
       }
-      for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
+      for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : descriptor.outputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());
         if (recordEvenIfNotConnected && streamId == null) {
           streamId = portName + "_implicit_stream";
@@ -244,6 +247,28 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
     else {
       logger.error("(SYNC_RECORDING) Operator/port " + operatorPortName + " is not being recorded.");
     }
+  }
+
+  @Override
+  public void activated(Node<?> node)
+  {
+    for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
+      if (entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
+        startRecording(node, node.getId(), entry.getKey(), true);
+      }
+    }
+
+    for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
+      if (entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
+        startRecording(node, node.getId(), entry.getKey(), true);
+      }
+    }
+  }
+
+  @Override
+  public void deactivated(Node<?> node)
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
   private class RequestDelegateImpl implements RequestDelegate
