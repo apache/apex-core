@@ -482,14 +482,13 @@ public class StramChild
         hb.setIntervalMs(heartbeatIntervalMillis);
         OperatorContext ctx = activeNodes.get(e.getKey());
         if (ctx != null) {
-          ctx.drainHeartbeatCounters(hb.getWindowStats());
+          ctx.drainStats(hb.getWindowStats());
           hb.setState(DNodeState.ACTIVE.toString());
         }
         else {
           hb.setState(failedNodes.contains(e.getKey()) ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
-        // this tuplercording code should be seggrated from here... it's sprinkled everywhere!
         TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
         if (tupleRecorder != null) {
           hb.addRecordingName(tupleRecorder.getRecordingName());

@@ -23,6 +23,7 @@ import com.datatorrent.api.Sink;
 
 import com.datatorrent.stram.RequestFactory;
 import com.datatorrent.stram.RequestFactory.RequestDelegate;
+import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.TupleRecorder;
 import com.datatorrent.stram.api.NodeActivationListener;
@@ -32,7 +33,6 @@ import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import static com.datatorrent.stram.StramChild.NODE_PORT_CONCAT_SEPARATOR;
 
 public class TupleRecorderCollection extends HashMap<String, TupleRecorder> implements Component<Context>, NodeActivationListener
 {
@@ -40,7 +40,6 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
   private String daemonAddress;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
-  private String containerId;
 
   public TupleRecorder getTupleRecorder(int operId, String portName)
   {
@@ -49,13 +48,18 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
 
   private static String getRecorderKey(int operatorId, String portName)
   {
-    return String.valueOf(operatorId) + (portName != null ? ("$" + portName) : "");
+    if (portName == null) {
+      return String.valueOf(operatorId);
+    }
+    else {
+      return String.valueOf(operatorId).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
+    }
   }
 
   private static String getOperatorFromRecorderKey(String recorderKey)
   {
-    if (recorderKey.contains("$")) {
-      return recorderKey.substring(0, recorderKey.indexOf('$'));
+    if (recorderKey.contains(StramChild.NODE_PORT_CONCAT_SEPARATOR)) {
+      return recorderKey.substring(0, recorderKey.indexOf(StramChild.NODE_PORT_CONCAT_SEPARATOR));
     }
     else {
       return recorderKey;
@@ -94,10 +98,10 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
    */
   public final String getDeclaredStreamId(int operatorId, String portname)
   {
-    return String.valueOf(operatorId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    return String.valueOf(operatorId).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portname);
   }
 
-  private void startRecording(Node<?> node, int operatorId, String portName, boolean recordEvenIfNotConnected)
+  private void startRecording(Node<?> node, int operatorId, String portName)
   {
     PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
     String operatorPortName = getRecorderKey(operatorId, portName);
@@ -130,9 +134,6 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
 
       TupleRecorder tupleRecorder = new TupleRecorder();
       String basePath = appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
-      String defaultName = containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
-      tupleRecorder.setRecordingName(defaultName);
-      tupleRecorder.setContainerId(containerId);
       tupleRecorder.getStorage().setBasePath(basePath);
       tupleRecorder.getStorage().setBytesPerPartFile(tupleRecordingPartFileSize);
       tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
@@ -148,10 +149,10 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
       HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
       for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : descriptor.inputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-        if (recordEvenIfNotConnected && streamId == null) {
+        if (streamId == null) {
           streamId = portName + "_implicit_stream";
         }
-        if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
+        if (portName == null || entry.getKey().equals(portName)) {
           logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
           tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
           sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
@@ -159,10 +160,10 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
       }
       for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : descriptor.outputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-        if (recordEvenIfNotConnected && streamId == null) {
+        if (streamId == null) {
           streamId = portName + "_implicit_stream";
         }
-        if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
+        if (portName == null || entry.getKey().equals(portName)) {
           logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
           tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
           sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
@@ -254,13 +255,13 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
   {
     for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
       if (entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
-        startRecording(node, node.getId(), entry.getKey(), true);
+        startRecording(node, node.getId(), entry.getKey());
       }
     }
 
     for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
       if (entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
-        startRecording(node, node.getId(), entry.getKey(), true);
+        startRecording(node, node.getId(), entry.getKey());
       }
     }
   }
@@ -283,7 +284,7 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
             {
-              startRecording(node, operatorId, snr.getPortName(), false);
+              startRecording(node, operatorId, snr.getPortName());
             }
 
             @Override

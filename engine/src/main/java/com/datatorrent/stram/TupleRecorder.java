@@ -43,8 +43,6 @@ public class TupleRecorder
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = -1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
-  //private transient long partBeginWindowId = -1;
-  private String recordingName = "Untitled";
   private String containerId;
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
@@ -150,7 +148,6 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
-    public String recordingName;
     public String containerId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
@@ -176,26 +173,6 @@ public class TupleRecorder
       return "[" + String.valueOf(low) + "," + String.valueOf(high) + "]";
     }
 
-  }
-
-  public String getRecordingName()
-  {
-    return recordingName;
-  }
-
-  public void setRecordingName(String recordingName)
-  {
-    this.recordingName = recordingName;
-  }
-
-  public String getContainerId()
-  {
-    return containerId;
-  }
-
-  public void setContainerId(String containerId)
-  {
-    this.containerId = containerId;
   }
 
   public long getStartTime()
@@ -248,7 +225,6 @@ public class TupleRecorder
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
-      recordInfo.recordingName = recordingName;
       recordInfo.containerId = containerId;
 
       if (operator != null) {
@@ -278,7 +254,7 @@ public class TupleRecorder
       storage.writeMetaData(bos.toByteArray());
 
       if (pubSubUrl != null) {
-        recordingNameTopic = "tupleRecorder." + recordingName;
+        recordingNameTopic = "tupleRecorder." + startTime;
         try {
           setupWsClient();
         }
@@ -306,7 +282,7 @@ public class TupleRecorder
       {
         if (topic.equals(recordingNameTopic + ".numSubscribers")) {
           numSubscribers = Integer.valueOf((String)data);
-          logger.info("Number of subscribers for {} is now {}", recordingName, numSubscribers);
+          logger.info("Number of subscribers for recording started at {} is now {}", startTime, numSubscribers);
         }
       }
 

@@ -93,13 +93,13 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
-   * @param counters
+   * @param stats
    * @return int
    */
-  public final synchronized int drainHeartbeatCounters(Collection<? super OperatorStats> counters)
+  public final synchronized int drainStats(Collection<? super OperatorStats> stats)
   {
     //logger.debug("{} draining {}", counters);
-    return statsBuffer.drainTo(counters);
+    return statsBuffer.drainTo(stats);
   }
 
   public final synchronized long getLastProcessedWindowId()

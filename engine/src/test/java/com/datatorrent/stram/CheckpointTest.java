@@ -148,7 +148,7 @@ public class CheckpointTest
     Assert.assertEquals("window 2", 2, context.getLastProcessedWindowId());
 
     ohb.getWindowStats().clear();
-    context.drainHeartbeatCounters(ohb.getWindowStats());
+    context.drainStats(ohb.getWindowStats());
     List<OperatorStats> stats = ohb.getWindowStats();
     Assert.assertEquals("windows stats " + stats, 3, stats.size());
     Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
@@ -171,7 +171,7 @@ public class CheckpointTest
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     ohb.getWindowStats().clear();
-    context.drainHeartbeatCounters(ohb.getWindowStats());
+    context.drainStats(ohb.getWindowStats());
     stats = ohb.getWindowStats();
     Assert.assertEquals("windows stats " + stats, 1, stats.size());
     Assert.assertEquals("windowId " + stats.get(0), 3, stats.get(0).windowId);
