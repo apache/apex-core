@@ -4,27 +4,30 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.TupleRecorder.PortInfo;
-import com.datatorrent.stram.TupleRecorder.RecordInfo;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.TupleRecorder.PortInfo;
+import com.datatorrent.stram.TupleRecorder.RecordInfo;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
 
 /**
  *

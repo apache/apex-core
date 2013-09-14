@@ -40,7 +40,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private long lastProcessedWindowId = -1;
   private final int id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
-  private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
+  private final CircularBuffer<Stats.ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<Stats.ContainerStats.OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(1024);
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
@@ -96,7 +96,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
    * @param stats
    * @return int
    */
-  public final synchronized int drainStats(Collection<? super OperatorStats> stats)
+  public final synchronized int drainStats(Collection<? super Stats.ContainerStats.OperatorStats> stats)
   {
     //logger.debug("{} draining {}", counters);
     return statsBuffer.drainTo(stats);
@@ -107,7 +107,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     return lastProcessedWindowId;
   }
 
-  synchronized void report(OperatorStats stats, long windowId)
+  synchronized void report(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
     lastProcessedWindowId = windowId;
     stats.windowId = windowId;

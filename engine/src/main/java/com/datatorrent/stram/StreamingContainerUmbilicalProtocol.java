@@ -18,7 +18,7 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.engine.OperatorStats;
+import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**

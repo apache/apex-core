@@ -63,8 +63,7 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHe
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
-import com.datatorrent.stram.engine.OperatorStats;
-import com.datatorrent.stram.engine.OperatorStats.PortStats;
+import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
@@ -646,9 +645,9 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
         long maxDequeueTimestamp = -1;
-        List<OperatorStats> statsList = shb.getWindowStats();
+        List<Stats.ContainerStats.OperatorStats> statsList = shb.getWindowStats();
 
-        for (OperatorStats stats: statsList) {
+        for (Stats.ContainerStats.OperatorStats stats: statsList) {
           /* report checkpointedWindowId status of the operator */
           if (status.operator.recoveryCheckpoint < stats.checkpointedWindowId) {
             addCheckpoint(status.operator, stats.checkpointedWindowId);
@@ -658,23 +657,23 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
           // calculate the stats related to end window
           EndWindowStats endWindowStats = new EndWindowStats(); // end window stats for a particular window id for a particular node
-          Collection<PortStats> ports = stats.inputPorts;
+          Collection<Stats.ContainerStats.OperatorStats.PortStats> ports = stats.inputPorts;
           if (ports != null) {
-            for (PortStats s: ports) {
-              PortStatus ps = status.inputPortStatusList.get(s.portname);
+            for (Stats.ContainerStats.OperatorStats.PortStats s : ports) {
+              PortStatus ps = status.inputPortStatusList.get(s.id);
               if (ps == null) {
                 ps = sca.new PortStatus();
-                ps.portName = s.portname;
-                status.inputPortStatusList.put(s.portname, ps);
+                ps.portName = s.id;
+                status.inputPortStatusList.put(s.id, ps);
               }
-              ps.totalTuples += s.processedCount;
+              ps.totalTuples += s.tupleCount;
 
-              tuplesProcessed += s.processedCount;
-              endWindowStats.dequeueTimestamps.put(s.portname, s.endWindowTimestamp);
+              tuplesProcessed += s.tupleCount;
+              endWindowStats.dequeueTimestamps.put(s.id, s.endWindowTimestamp);
 
-              Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
+              Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.id);
               if (lastEndWindowTimestamps.containsKey(operatorPortName) && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA10.add(s.processedCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
+                ps.tuplesPSMA10.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
@@ -687,24 +686,24 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
           ports = stats.outputPorts;
           if (ports != null) {
 
-            for (PortStats s: ports) {
-              PortStatus ps = status.outputPortStatusList.get(s.portname);
+            for (Stats.ContainerStats.OperatorStats.PortStats s: ports) {
+              PortStatus ps = status.outputPortStatusList.get(s.id);
               if (ps == null) {
                 ps = sca.new PortStatus();
-                ps.portName = s.portname;
-                status.outputPortStatusList.put(s.portname, ps);
+                ps.portName = s.id;
+                status.outputPortStatusList.put(s.id, ps);
               }
-              ps.totalTuples += s.processedCount;
+              ps.totalTuples += s.tupleCount;
 
-              tuplesEmitted += s.processedCount;
-              Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.portname);
+              tuplesEmitted += s.tupleCount;
+              Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.id);
 
               // the second condition is needed when
               // 1) the operator is redeployed and is playing back the tuples, or
               // 2) the operator is catching up very fast and the endWindowTimestamp of subsequent windows is less than one millisecond
               if (lastEndWindowTimestamps.containsKey(operatorPortName) &&
                       (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA10.add(s.processedCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
+                ps.tuplesPSMA10.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
             }

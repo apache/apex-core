@@ -20,7 +20,6 @@ import com.datatorrent.api.Sink;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.debug.TappedReservoir;
-import com.datatorrent.stram.engine.OperatorStats.PortStats;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -148,7 +147,7 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
     }
     handleRequests(currentWindowId);
-    OperatorStats stats = new OperatorStats();
+    Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
     reportStats(stats, currentWindowId);
   }
 
@@ -519,12 +518,15 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  protected void reportStats(OperatorStats stats, long windowId)
+  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
-    ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
+    ArrayList<Stats.ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
-      ipstats.add(new PortStats(e.getKey(), ar.getCount(true), endWindowDequeueTimes.get(e.getValue())));
+      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      portStats.tupleCount = ar.getCount(true);
+      portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
+      ipstats.add(portStats);
     }
 
     stats.inputPorts = ipstats;

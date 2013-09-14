@@ -325,15 +325,17 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected void reportStats(OperatorStats stats, long windowId)
+  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
     stats.checkpointedWindowId = checkpointedWindowId;
     context.report(stats, windowId);
 
-    stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
+    stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
-      //logger.info("end window emit time is {}", endWindowEmitTime);
-      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().getCount(true), endWindowEmitTime));
+      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      portStats.tupleCount = e.getValue().getCount(true);
+      portStats.endWindowTimestamp = endWindowEmitTime;
+      stats.outputPorts.add(portStats);
     }
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
