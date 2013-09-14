@@ -301,7 +301,11 @@ public class AlertsManager
     LOG.info("There are {} alerts", alerts.size());
     synchronized (alerts) {
       for (Map.Entry<String, AlertInfo> entry : alerts.entrySet()) {
-        alertsArray.put(entry.getKey());
+        JSONObject alert = new JSONObject();
+        alert.put("name", entry.getKey());
+        alert.put("streamName", entry.getValue().streamName);
+        alert.put("createFrom", entry.getValue().createFrom);
+        alertsArray.put(alert);
       }
     }
     response.put("alerts", alertsArray);
