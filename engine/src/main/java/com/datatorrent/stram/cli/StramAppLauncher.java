@@ -36,10 +36,10 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.cli.*;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
@@ -292,7 +292,8 @@ public class StramAppLauncher {
     }
   }
 
-  public static Configuration getConfig(String launchMode) {
+  public static Configuration getConfig(String launchMode, String overrideConfFileName, Map<String, String> overrideProperties) throws IOException
+  {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
     /*
@@ -309,7 +310,21 @@ public class StramAppLauncher {
     //  LOG.info("Loading settings from: " + cfgResource.toURI());
     //  conf.addResource(new Path(cfgResource.toURI()));
     //}
+    if (overrideConfFileName != null) {
+      File overrideConfFile = new File(overrideConfFileName);
+      if (overrideConfFile.exists()) {
+        LOG.info("Loading settings: " + overrideConfFile.toURI());
+        conf.addResource(new Path(overrideConfFile.toURI()));
+      } else {
+        throw new IOException("Problem opening file " + overrideConfFile);
+      }
+    }
     conf.set(DAG.LAUNCH_MODE, launchMode);
+    if (overrideProperties != null) {
+      for (Map.Entry<String, String> entry : overrideProperties.entrySet()) {
+        conf.set(entry.getKey(), entry.getValue());
+      }
+    }
     return conf;
   }
 
@@ -374,13 +389,14 @@ public class StramAppLauncher {
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
+   * @param overrideConfigFileName
+   * @param overrideProperties
    * @throws Exception
    */
-  public void runLocal(AppConfig appConfig) throws Exception {
+  public void runLocal(AppConfig appConfig, String overrideConfigFileName, Map<String, String> overrideProperties) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    Configuration conf = getConfig(StreamingApplication.LAUNCHMODE_LOCAL);
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, conf));
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, getConfig(StreamingApplication.LAUNCHMODE_LOCAL, overrideConfigFileName, overrideProperties)));
     lc.run();
   }
 
@@ -393,10 +409,12 @@ public class StramAppLauncher {
   /**
    * Submit application to the cluster and return the app id.
    * @param appConfig
+   * @param overrideConfigFileName
+   * @param overrideProperties
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppConfig appConfig) throws Exception {
+  public ApplicationId launchApp(AppConfig appConfig, String overrideConfigFileName, Map<String, String> overrideProperties) throws Exception {
 
     URLClassLoader cl = loadDependencies();
     //Class<?> loadedClass = cl.loadClass("com.datatorrent.example.wordcount.WordCountSerDe");
@@ -405,15 +423,15 @@ public class StramAppLauncher {
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class});
+    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, String.class, Map.class});
     // TODO: with class loader isolation, pass serialized appConfig to launch loader
-    Object appIdStr = runApp.invoke(null, appConfig);
+    Object appIdStr = runApp.invoke(null, appConfig, overrideConfigFileName, overrideProperties);
     return ConverterUtils.toApplicationId(""+appIdStr);
   }
 
-  public static String runApp(AppConfig appConfig) throws Exception {
+  public static String runApp(AppConfig appConfig, String overrideConfigFileName, Map<String, String> overrideProperties) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
-    LogicalPlan dag = prepareDAG(appConfig, getConfig(StreamingApplication.LAUNCHMODE_YARN));
+    LogicalPlan dag = prepareDAG(appConfig, getConfig(StreamingApplication.LAUNCHMODE_YARN, overrideConfigFileName, overrideProperties));
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
@@ -423,17 +441,75 @@ public class StramAppLauncher {
     return Collections.unmodifiableList(this.configurationList);
   }
 
+  public static class CommandLineInfo {
+    boolean localMode;
+    String configFile;
+    Map<String, String> overrideProperties;
+    String[] args;
+  }
+
+  public static Options getCommandLineOptions() {
+    Options options = new Options();
+    Option local = new Option("local", "run in local mode");
+    Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
+    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("def");
+    options.addOption(local);
+    options.addOption(configFile);
+    options.addOption(defProperty);
+    return options;
+  }
+
+  public static CommandLineInfo getCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    CommandLineInfo result = new CommandLineInfo();
+    CommandLine line = parser.parse(getCommandLineOptions(), args);
+    result.localMode = line.hasOption("local");
+
+    result.configFile = line.getOptionValue("conf");
+    String[] defs = line.getOptionValues("def");
+    if (defs != null) {
+      result.overrideProperties = new HashMap<String, String>();
+      for (String def : defs) {
+        int equal = def.indexOf('=');
+        if (equal < 0) {
+          result.overrideProperties.put(def, null);
+        }
+        else {
+          result.overrideProperties.put(def.substring(0, equal), def.substring(equal + 1));
+        }
+      }
+    }
+    result.args = line.getArgs();
+    return result;
+  }
+
   /**
    * @param args
    */
   public static void main(String[] args) throws Exception {
-    String jarFileName = "/home/hdev/devel/malhar/stramproto/examples/wordcount/target/wordcount-example-1.0-SNAPSHOT.jar";
-    StramAppLauncher appLauncher = new StramAppLauncher(new File(jarFileName));
-    if (appLauncher.configurationList.isEmpty()) {
-      throw new IllegalArgumentException("jar file does not contain any topology definitions.");
+    try {
+      CommandLineInfo commandLineInfo = getCommandLineInfo(args);
+
+      //String jarFileName = "/home/hdev/devel/malhar/stramproto/examples/wordcount/target/wordcount-example-1.0-SNAPSHOT.jar";
+      String jarFileName = commandLineInfo.args[0];
+
+      StramAppLauncher appLauncher = new StramAppLauncher(new File(jarFileName));
+      if (appLauncher.configurationList.isEmpty()) {
+        throw new IllegalArgumentException("jar file does not contain any topology definitions.");
+      }
+      AppConfig cfg = appLauncher.configurationList.get(0);
+      if (commandLineInfo.localMode) {
+        appLauncher.runLocal(cfg, commandLineInfo.configFile, commandLineInfo.overrideProperties);
+      } else {
+        appLauncher.launchApp(cfg, commandLineInfo.configFile, commandLineInfo.overrideProperties);
+      }
     }
-    AppConfig cfg = appLauncher.configurationList.get(0);
-    appLauncher.launchApp(cfg);
+    catch (ParseException ex) {
+      HelpFormatter formatter = new HelpFormatter();
+      formatter.printHelp(args[0], getCommandLineOptions());
+      System.exit(1);
+    }
   }
 
 }
