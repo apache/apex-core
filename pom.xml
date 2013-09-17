@@ -49,7 +49,6 @@
     <module>stram</module>
     <module>engine</module>
     <module>malhar</module>
-    <module>poc</module>
     <module>daemon</module>
   </modules>
 
