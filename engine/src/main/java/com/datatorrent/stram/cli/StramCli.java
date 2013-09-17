@@ -1044,13 +1044,14 @@ public class StramCli
       }
 
       if (appConfig != null) {
+        Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
         if (!commandLineInfo.localMode) {
-          ApplicationId appId = submitApp.launchApp(appConfig, commandLineInfo.configFile, commandLineInfo.overrideProperties);
+          ApplicationId appId = submitApp.launchApp(appConfig, config);
           currentApp = rmClient.getApplicationReport(appId);
           System.out.println(appId);
         }
         else {
-          submitApp.runLocal(appConfig, commandLineInfo.configFile, commandLineInfo.overrideProperties);
+          submitApp.runLocal(appConfig, config);
         }
       }
       else {
@@ -1713,7 +1714,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(StreamingApplication.LAUNCHMODE_YARN, null, null));
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(null, null));
           ObjectMapper mapper = new ObjectMapper();
           System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
         }
@@ -1762,7 +1763,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(StreamingApplication.LAUNCHMODE_YARN, null, null));
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(null, null));
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();

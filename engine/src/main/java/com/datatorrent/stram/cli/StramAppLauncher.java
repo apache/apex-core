@@ -292,7 +292,7 @@ public class StramAppLauncher {
     }
   }
 
-  public static Configuration getConfig(String launchMode, String overrideConfFileName, Map<String, String> overrideProperties) throws IOException
+  public static Configuration getConfig(String overrideConfFileName, Map<String, String> overrideProperties) throws IOException
   {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
@@ -319,7 +319,6 @@ public class StramAppLauncher {
         throw new IOException("Problem opening file " + overrideConfFile);
       }
     }
-    conf.set(DAG.LAUNCH_MODE, launchMode);
     if (overrideProperties != null) {
       for (Map.Entry<String, String> entry : overrideProperties.entrySet()) {
         conf.set(entry.getKey(), entry.getValue());
@@ -387,14 +386,14 @@ public class StramAppLauncher {
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
-   * @param overrideConfigFileName
-   * @param overrideProperties
+   * @param config
    * @throws Exception
    */
-  public void runLocal(AppConfig appConfig, String overrideConfigFileName, Map<String, String> overrideProperties) throws Exception {
+  public void runLocal(AppConfig appConfig, Configuration config) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, getConfig(StreamingApplication.LAUNCHMODE_LOCAL, overrideConfigFileName, overrideProperties)));
+    config.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, config));
     lc.run();
   }
 
@@ -407,12 +406,11 @@ public class StramAppLauncher {
   /**
    * Submit application to the cluster and return the app id.
    * @param appConfig
-   * @param overrideConfigFileName
-   * @param overrideProperties
+   * @param config
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppConfig appConfig, String overrideConfigFileName, Map<String, String> overrideProperties) throws Exception {
+  public ApplicationId launchApp(AppConfig appConfig, Configuration config) throws Exception {
 
     URLClassLoader cl = loadDependencies();
     //Class<?> loadedClass = cl.loadClass("com.datatorrent.example.wordcount.WordCountSerDe");
@@ -421,15 +419,16 @@ public class StramAppLauncher {
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, String.class, Map.class});
+    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, Configuration.class});
     // TODO: with class loader isolation, pass serialized appConfig to launch loader
-    Object appIdStr = runApp.invoke(null, appConfig, overrideConfigFileName, overrideProperties);
+    config.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
+    Object appIdStr = runApp.invoke(null, appConfig, config);
     return ConverterUtils.toApplicationId(""+appIdStr);
   }
 
-  public static String runApp(AppConfig appConfig, String overrideConfigFileName, Map<String, String> overrideProperties) throws Exception {
+  public static String runApp(AppConfig appConfig, Configuration config) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
-    LogicalPlan dag = prepareDAG(appConfig, getConfig(StreamingApplication.LAUNCHMODE_YARN, overrideConfigFileName, overrideProperties));
+    LogicalPlan dag = prepareDAG(appConfig, config);
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
@@ -480,34 +479,6 @@ public class StramAppLauncher {
     }
     result.args = line.getArgs();
     return result;
-  }
-
-  /**
-   * @param args
-   */
-  public static void main(String[] args) throws Exception {
-    try {
-      CommandLineInfo commandLineInfo = getCommandLineInfo(args);
-
-      //String jarFileName = "/home/hdev/devel/malhar/stramproto/examples/wordcount/target/wordcount-example-1.0-SNAPSHOT.jar";
-      String jarFileName = commandLineInfo.args[0];
-
-      StramAppLauncher appLauncher = new StramAppLauncher(new File(jarFileName));
-      if (appLauncher.configurationList.isEmpty()) {
-        throw new IllegalArgumentException("jar file does not contain any topology definitions.");
-      }
-      AppConfig cfg = appLauncher.configurationList.get(0);
-      if (commandLineInfo.localMode) {
-        appLauncher.runLocal(cfg, commandLineInfo.configFile, commandLineInfo.overrideProperties);
-      } else {
-        appLauncher.launchApp(cfg, commandLineInfo.configFile, commandLineInfo.overrideProperties);
-      }
-    }
-    catch (ParseException ex) {
-      HelpFormatter formatter = new HelpFormatter();
-      formatter.printHelp(args[0], getCommandLineOptions());
-      System.exit(1);
-    }
   }
 
 }
