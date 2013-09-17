@@ -69,7 +69,7 @@ public class AlertManagerTest
     // create the alert
     alertsManager.createAlert("alertName", json.toString());
     JSONObject alerts = alertsManager.listAlerts();
-    Assert.assertEquals("alert name should match", alerts.getJSONArray("alerts").getString(0), "alertName");
+    Assert.assertEquals("alert name should match", alerts.getJSONArray("alerts").getJSONObject(0).getString("name"), "alertName");
     Assert.assertNotNull(alertsManager.getAlert("alertName"));
 
     // make sure we have the operators
