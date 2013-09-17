@@ -346,8 +346,6 @@ public class StramAppLauncher {
     } else {
       dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(appConfig.getName());
     }
-    // externally configured attributes
-    pb.setApplicationLevelAttributes(dag, appAlias);
 
     // inject external operator configuration
     pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());

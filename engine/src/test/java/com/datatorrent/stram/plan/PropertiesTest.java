@@ -215,6 +215,7 @@ public class PropertiesTest {
           public void populateDAG(DAG dag, Configuration conf)
           {
             Assert.assertEquals("", "hostname:9090", dag.attrValue(DAG.DAEMON_ADDRESS, null));
+            dag.setAttribute(DAG.DAEMON_ADDRESS, "hostname:9091");
             appInitialized.setValue(true);
           }
         };
@@ -223,8 +224,9 @@ public class PropertiesTest {
 
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
-    StramAppLauncher.prepareDAG(appConf, conf);
+    LogicalPlan dag = StramAppLauncher.prepareDAG(appConf, conf);
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
+    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.DAEMON_ADDRESS, null));
   }
 
 }
