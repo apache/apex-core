@@ -99,7 +99,6 @@ public class StramAgent extends HdfsAgent
       return appPath.substring(0, i);
     }
     catch (Exception ex) {
-      LOG.debug("STRAM ROOT: {}", getDefaultStramRoot() + "/" + appId);
       return getDefaultStramRoot() + "/" + appId;
     }
   }
