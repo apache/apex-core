@@ -983,7 +983,7 @@ public class StramCli
       StramAppLauncher submitApp = new StramAppLauncher(jf);
       submitApp.loadDependencies();
       AppConfig appConfig = null;
-      if (args.length >= 2) {
+      if (commandLineInfo.args.length >= 2) {
         File file = new File(commandLineInfo.args[1]);
         if (file.exists()) {
           appConfig = new StramAppLauncher.PropertyFileAppConfig(file);
@@ -991,7 +991,7 @@ public class StramCli
       }
 
       if (appConfig == null) {
-        String matchString = args.length >= 2 ? commandLineInfo.args[1] : null;
+        String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
 
         List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, matchString);
         if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
