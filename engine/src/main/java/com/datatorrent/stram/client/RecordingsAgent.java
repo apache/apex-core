@@ -122,11 +122,11 @@ public class RecordingsAgent extends StramAgent
 
   public String getRecordingsDirectory(String appId)
   {
-    String stramRoot = getAppPath(appId);
-    if (stramRoot == null) {
+    String appPath = getAppPath(appId);
+    if (appPath == null) {
       return null;
     }
-    return stramRoot + Path.SEPARATOR + appId + Path.SEPARATOR + "recordings";
+    return appPath + Path.SEPARATOR + "recordings";
   }
 
   public String getRecordingDirectory(String appId, String opId, long startTime)
@@ -214,18 +214,12 @@ public class RecordingsAgent extends StramAgent
       }
     }
     catch (Exception ex) {
-      LOG.warn("Error getting running containers for {}", appId, ex);
+      LOG.warn("Error getting running containers for {}. Assuming no containers are running.", appId);
     }
     return result;
   }
 
   public List<RecordingInfo> getRecordingInfo(String appId)
-  {
-    Set<String> containers = getRunningContainerIds(appId);
-    return getRecordingInfoHelper(appId, containers);
-  }
-
-  private List<RecordingInfo> getRecordingInfoHelper(String appId, Set<String> containers)
   {
     List<RecordingInfo> result = new ArrayList<RecordingInfo>();
     String dir = getRecordingsDirectory(appId);
