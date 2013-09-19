@@ -165,7 +165,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     attributes.attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).get());
     this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
-    attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(100);
+    attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(1000);
     this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).get();
 
     attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).setIfAbsent(0);
