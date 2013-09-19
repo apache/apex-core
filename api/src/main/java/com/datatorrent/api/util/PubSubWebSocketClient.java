@@ -15,6 +15,7 @@
  */
 package com.datatorrent.api.util;
 
+import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public abstract class PubSubWebSocketClient
   private WebSocketClient client;
   private WebSocket.Connection connection;
   private ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
+  private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
   private URI uri;
 
   private class PubSubWebSocket implements WebSocket.OnTextMessage
@@ -49,10 +51,11 @@ public abstract class PubSubWebSocketClient
       LOG.debug("onMessage {}", message);
       try {
         @SuppressWarnings("unchecked")
-        HashMap<String, Object> map = mapper.readValue(message, HashMap.class);
-        PubSubWebSocketClient.this.onMessage((String)map.get("type"), (String)map.get("topic"), map.get("data"));
+        PubSubMessage<Object> pubSubMessage = codec.parseMessage(message);
+        PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
       }
       catch (Exception ex) {
+        ex.printStackTrace();
         LOG.error("onMessage has problem parsing message {}", message, ex);
       }
     }
@@ -112,15 +115,24 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructPublishMessage.</p>
+   * @deprecated
    */
   public static String constructPublishMessage(String topic, Object data, ObjectMapper mapper) throws IOException
   {
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    map.put("type", "publish");
-    map.put("topic", topic);
-    map.put("data", data);
+    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+    return constructPublishMessage(topic, data, codec);
+  }
 
-    return mapper.writeValueAsString(map);
+  /**
+   * <p>constructPublishMessage.</p>
+   */
+  public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.PUBLISH);
+    pubSubMessage.setTopic(topic);
+    pubSubMessage.setData(data);
+
+    return codec.formatMessage(pubSubMessage);
   }
 
   /**
@@ -128,19 +140,28 @@ public abstract class PubSubWebSocketClient
    */
   public void publish(String topic, Object data) throws IOException
   {
-    connection.sendMessage(constructPublishMessage(topic, data, mapper));
+    connection.sendMessage(constructPublishMessage(topic, data, codec));
+  }
+
+  /**
+   * <p>constructSubscribeMessage.</p>
+   * @deprecated
+   */
+  public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
+  {
+    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+    return constructSubscribeMessage(topic, codec);
   }
 
   /**
    * <p>constructSubscribeMessage.</p>
    */
-  public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    map.put("type", "subscribe");
-    map.put("topic", topic);
+  public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.SUBSCRIBE);
+    pubSubMessage.setTopic(topic);
 
-    return mapper.writeValueAsString(map);
+    return codec.formatMessage(pubSubMessage);
   }
 
   /**
@@ -148,19 +169,28 @@ public abstract class PubSubWebSocketClient
    */
   public void subscribe(String topic) throws IOException
   {
-    connection.sendMessage(constructSubscribeMessage(topic, mapper));
+    connection.sendMessage(constructSubscribeMessage(topic, codec));
+  }
+
+  /**
+   * <p>constructUnsubscribeMessage.</p>
+   * @deprecated
+   */
+  public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
+  {
+    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+    return constructUnsubscribeMessage(topic, codec);
   }
 
   /**
    * <p>constructUnsubscribeMessage.</p>
    */
-  public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    map.put("type", "unsubscribe");
-    map.put("topic", topic);
+  public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE);
+    pubSubMessage.setTopic(topic);
 
-    return mapper.writeValueAsString(map);
+    return codec.formatMessage(pubSubMessage);
   }
 
   /**
@@ -168,19 +198,28 @@ public abstract class PubSubWebSocketClient
    */
   public void unsubscribe(String topic) throws IOException
   {
-    connection.sendMessage(constructUnsubscribeMessage(topic, mapper));
+    connection.sendMessage(constructUnsubscribeMessage(topic, codec));
+  }
+
+  /**
+   * <p>constructSubscribeNumSubscribersMessage.</p>
+   * @deprecated
+   */
+  public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
+  {
+    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+    return constructSubscribeNumSubscribersMessage(topic, codec);
   }
 
   /**
    * <p>constructSubscribeNumSubscribersMessage.</p>
    */
-  public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    map.put("type", "subscribeNumSubscribers");
-    map.put("topic", topic);
+  public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS);
+    pubSubMessage.setTopic(topic);
 
-    return mapper.writeValueAsString(map);
+    return codec.formatMessage(pubSubMessage);
   }
 
   /**
@@ -188,19 +227,28 @@ public abstract class PubSubWebSocketClient
    */
   public void subscribeNumSubscribers(String topic) throws IOException
   {
-    connection.sendMessage(constructSubscribeNumSubscribersMessage(topic, mapper));
+    connection.sendMessage(constructSubscribeNumSubscribersMessage(topic, codec));
+  }
+
+  /**
+   * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   * @deprecated
+   */
+  public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
+  {
+    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+    return constructUnsubscribeNumSubscribersMessage(topic, codec);
   }
 
   /**
    * <p>constructUnsubscribeNumSubscribersMessage.</p>
    */
-  public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    map.put("type", "unsubscribeNumSubscribers");
-    map.put("topic", topic);
+  public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+    PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
+    pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS);
+    pubSubMessage.setTopic(topic);
 
-    return mapper.writeValueAsString(map);
+    return codec.formatMessage(pubSubMessage);
   }
 
   /**
@@ -208,7 +256,7 @@ public abstract class PubSubWebSocketClient
    */
   public void unsubscribeNumSubscribers(String topic) throws IOException
   {
-    connection.sendMessage(constructUnsubscribeNumSubscribersMessage(topic, mapper));
+    connection.sendMessage(constructUnsubscribeNumSubscribersMessage(topic, codec));
   }
 
   /**
