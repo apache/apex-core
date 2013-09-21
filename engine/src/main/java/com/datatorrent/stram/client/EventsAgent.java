@@ -45,11 +45,11 @@ public class EventsAgent extends StramAgent
 
   private String getEventsDirectory(String appId)
   {
-    String stramRoot = getAppPath(appId);
-    if (stramRoot == null) {
+    String appPath = getAppPath(appId);
+    if (appPath == null) {
       return null;
     }
-    return stramRoot + Path.SEPARATOR + appId + Path.SEPARATOR + "events";
+    return appPath + Path.SEPARATOR + "events";
   }
 
   private static IndexLine parseIndexLine(String line) throws JSONException

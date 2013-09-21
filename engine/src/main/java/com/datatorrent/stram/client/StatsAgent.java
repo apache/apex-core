@@ -93,11 +93,11 @@ public class StatsAgent extends StramAgent
 
   public String getStatsDirectory(String appId)
   {
-    String stramRoot = getAppPath(appId);
-    if (stramRoot == null) {
+    String appPath = getAppPath(appId);
+    if (appPath == null) {
       return null;
     }
-    return stramRoot + Path.SEPARATOR + appId + Path.SEPARATOR + "stats";
+    return appPath + Path.SEPARATOR + "stats";
   }
 
   private static IndexLine parseIndexLine(String line) throws JSONException
