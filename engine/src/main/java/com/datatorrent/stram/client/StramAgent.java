@@ -96,7 +96,7 @@ public class StramAgent extends HdfsAgent
         LOG.warn("Cannot get the live Stram root for {}", appId);
         return null;
       }
-      return appPath.substring(0, i);
+      return appPath;
     }
     catch (Exception ex) {
       return getDefaultStramRoot() + "/" + appId;
