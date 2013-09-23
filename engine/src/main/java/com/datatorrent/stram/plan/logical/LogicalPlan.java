@@ -938,13 +938,16 @@ public class LogicalPlan implements Serializable, DAG
     for (StreamMeta os : om.outputStreams.values()) {
       for (InputPortMeta sink: os.sinks) {
         OperatorMeta sinkOm = sink.getOperatorWrapper();
-        if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
-          Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
-          if (sinkPm != pm) {
-            if (sinkPm == null) {
+        Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
+        if (sinkPm != pm) {
+          if (sinkPm == null) {
+            if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm) || Operator.ProcessingMode.EXACTLY_ONCE.equals(pm)) {
               LOG.warn("Setting processing mode for operator {} to {}", sinkOm.getName(), pm);
               sinkOm.getAttributes().attr(OperatorContext.PROCESSING_MODE).set(pm);
-            } else {
+            }
+          } else {
+            if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)
+                    || (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm) && !Operator.ProcessingMode.AT_MOST_ONCE.equals(sinkPm))) {
               String msg = String.format("Processing mode %s/%s not valid for source %s/%s", sinkOm.getName(), sinkPm, om.getName(), pm);
               throw new ValidationException(msg);
             }

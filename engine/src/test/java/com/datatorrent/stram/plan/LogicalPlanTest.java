@@ -414,12 +414,13 @@ public class LogicalPlanTest {
   }
 
   @Test
-  public void testProcessingModeValidation() {
+  public void testAtMostOnceProcessingModeValidation() {
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
+    // Test AT MOST ONCE
     GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
     dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
 
@@ -441,6 +442,44 @@ public class LogicalPlanTest {
 
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
     Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
+
+  }
+
+    @Test
+  public void testExactlyOnceProcessingModeValidation() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
+
+    // Test AT MOST ONCE
+    GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
+    dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.EXACTLY_ONCE);
+
+    dag.addStream("input1.outport", input1.outport, amoOper.inport1);
+    dag.addStream("input2.outport", input2.outport, amoOper.inport2);
+
+    GenericTestOperator outputOper = dag.addOperator("outputOper", GenericTestOperator.class);
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
+    dag.addStream("aloOper.outport1", amoOper.outport1, outputOper.inport1);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + outputOper);
+    } catch (ValidationException ve) {
+      Assert.assertEquals("", ve.getMessage(), "Processing mode outputOper/AT_LEAST_ONCE not valid for source amoOper/EXACTLY_ONCE");
+    }
+
+    // AT_MOST_ONCE is valid
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
+    dag.validate();
+
+    // If no processing mode is set then EXACTLY_ONCE should be inherited
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, null);
+    dag.validate();
+
+    OperatorMeta outputOperOm = dag.getMeta(outputOper);
+    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.EXACTLY_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
 
   }
 
