@@ -420,7 +420,6 @@ public class LogicalPlanTest {
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
-    // Test AT MOST ONCE
     GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
     dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
 
@@ -452,7 +451,6 @@ public class LogicalPlanTest {
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
 
-    // Test AT MOST ONCE
     GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
     dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.EXACTLY_ONCE);
 
