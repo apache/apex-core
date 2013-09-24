@@ -84,7 +84,7 @@ public class PTOperator {
     @Override
     public String toString()
     {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("target", this.target).append("port", this.portName).append("stream", this.logicalStream.getId()).toString();
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("o", this.target).append("port", this.portName).append("source", this.source).toString();
     }
 
   }
@@ -100,7 +100,7 @@ public class PTOperator {
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator source;
     public final String portName;
-    final PhysicalPlan plan;
+    //final PhysicalPlan plan;
     public final List<PTInput> sinks;
 
     /**
@@ -111,9 +111,9 @@ public class PTOperator {
      * @param logicalStream
      * @param source
      */
-    protected PTOutput(PhysicalPlan plan, String portName, StreamMeta logicalStream, PTOperator source)
+    protected PTOutput(String portName, StreamMeta logicalStream, PTOperator source)
     {
-      this.plan = plan;
+      //this.plan = plan;
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
@@ -143,7 +143,7 @@ public class PTOperator {
    @Override
    public String toString() {
      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-         append("source", this.source).
+         append("o", this.source).
          append("port", this.portName).
          append("stream", this.logicalStream.getId()).
          toString();

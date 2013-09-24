@@ -78,12 +78,11 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
               : new Context.OperatorContext.AttributeKey<?>[] {
         Context.OperatorContext.APPLICATION_WINDOW_COUNT,
         Context.OperatorContext.INITIAL_PARTITION_COUNT,
-        Context.OperatorContext.MEMORY_MB,
         Context.OperatorContext.PARTITION_TPS_MAX,
         Context.OperatorContext.PARTITION_TPS_MIN,
         Context.OperatorContext.RECOVERY_ATTEMPTS,
         Context.OperatorContext.SPIN_MILLIS,
-        Context.OperatorContext.STATELESS}) {
+        }) {
         Object attrValue = operatorMeta.getAttributes().attr(attrKey).get();
         if (attrValue != null) {
           attributeMap.put(attrKey.name(), attrValue);
