@@ -163,7 +163,14 @@ public class AlertsAgent extends StramAgent
     Map<String, String> map = new HashMap<String, String>();
     Path path = new Path(dir);
 
-    FileStatus fileStatus = fs.getFileStatus(path);
+    FileStatus fileStatus;
+    try {
+      fileStatus = fs.getFileStatus(path);
+    }
+    catch (FileNotFoundException ex) {
+      return map;
+    }
+    
     if (!fileStatus.isDirectory()) {
       return map;
     }
