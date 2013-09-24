@@ -7,6 +7,8 @@ package com.datatorrent.stram.engine;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+
 /**
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
@@ -17,17 +19,24 @@ public interface Stats extends Serializable
   {
     private static final long serialVersionUID = 201309131904L;
     public final String id;
-    public ArrayList<OperatorStats> operators;
+    //public ArrayList<OperatorStats> operators;
+    public ArrayList<StreamingNodeHeartbeat> nodes;
 
     public ContainerStats(String id)
     {
       this.id = id;
+      nodes = new ArrayList<StreamingNodeHeartbeat>();
     }
 
     @Override
     public String toString()
     {
-      return "ContainerStats{" + "id=" + id + ", operators=" + operators + '}';
+      return "ContainerStats{" + "id=" + id + ", operators=" + nodes + '}';
+    }
+
+    public void addNodeStats(StreamingNodeHeartbeat sn)
+    {
+      nodes.add(sn);
     }
 
     /**

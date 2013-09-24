@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.Component;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -105,7 +106,7 @@ public class StramLocalClusterTest
       // sink to collect tuples emitted by the input module
       sink = new TestSink();
       String streamName = "testSinkStream";
-      String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(publisherPortName);
+      String sourceId = Integer.toString(publisherOperator.getId()).concat(Component.CONCAT_SEPARATOR).concat(publisherPortName);
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());

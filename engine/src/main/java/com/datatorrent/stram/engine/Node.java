@@ -132,15 +132,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   public void connectOutputPort(String port, final Sink<Object> sink)
   {
-    @SuppressWarnings("unchecked")
-    OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
+    PortContextPair<OutputPort<?>> outputPort = descriptor.outputPorts.get(port);
     if (outputPort != null) {
       if (sink == null) {
-        outputPort.setSink(null);
+        outputPort.component.setSink(null);
         outputs.remove(port);
       }
       else {
-        outputPort.setSink(sink);
+        outputPort.component.setSink(sink);
         outputs.put(port, sink);
       }
     }

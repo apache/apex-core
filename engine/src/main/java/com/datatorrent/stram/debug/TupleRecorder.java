@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.debug;
 
 import java.beans.BeanInfo;
 import java.beans.Introspector;
@@ -327,6 +327,11 @@ public class TupleRecorder
 
   public void endWindow()
   {
+//    int countConnectedInputPorts = 0;
+//    for (PortInfo p : portMap.values()) {
+//      if (p.)
+//    }
+
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
         storage.writeDataItem(("E:" + currentWindowId + "\n").getBytes(), false);

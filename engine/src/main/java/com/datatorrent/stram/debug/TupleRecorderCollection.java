@@ -21,20 +21,24 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Sink;
 
-import com.datatorrent.stram.RequestFactory;
-import com.datatorrent.stram.RequestFactory.RequestDelegate;
-import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.TupleRecorder;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeActivationListener;
 import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
+import com.datatorrent.stram.api.RequestFactory;
+import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
+import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
 import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.Stats.ContainerStats;
+import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats;
+import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats.PortStats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 
-public class TupleRecorderCollection extends HashMap<String, TupleRecorder> implements Component<Context>, NodeActivationListener
+public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
 {
   private int tupleRecordingPartFileSize;
   private String daemonAddress;
@@ -43,27 +47,8 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
 
   public TupleRecorder getTupleRecorder(int operId, String portName)
   {
-    return get(getRecorderKey(operId, portName));
-  }
-
-  private static String getRecorderKey(int operatorId, String portName)
-  {
-    if (portName == null) {
-      return String.valueOf(operatorId);
-    }
-    else {
-      return String.valueOf(operatorId).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
-    }
-  }
-
-  private static String getOperatorFromRecorderKey(String recorderKey)
-  {
-    if (recorderKey.contains(StramChild.NODE_PORT_CONCAT_SEPARATOR)) {
-      return recorderKey.substring(0, recorderKey.indexOf(StramChild.NODE_PORT_CONCAT_SEPARATOR));
-    }
-    else {
-      return recorderKey;
-    }
+    //logger.debug("attempting to get tuple recorder for {} on {}", new OperatorIdPortNamePair(operId, portName), System.identityHashCode(this));
+    return get(new OperatorIdPortNamePair(operId, portName));
   }
 
   @Override
@@ -72,12 +57,18 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
     tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
     tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
     daemonAddress = ctx.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
+    appPath = ctx.attrValue(LogicalPlan.APPLICATION_PATH, null);
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
-    RequestFactory rf = RequestFactory.getInstance();
-    rf.registerDelegate(RequestType.START_RECORDING, impl);
-    rf.registerDelegate(RequestType.STOP_RECORDING, impl);
-    rf.registerDelegate(RequestType.SYNC_RECORDING, impl);
+    RequestFactory rf = ctx.attrValue(ContainerContext.REQUEST_FACTORY, null);
+    if (rf == null) {
+      logger.warn("No request factory defined, recording is disabled!");
+    }
+    else {
+      rf.registerDelegate(RequestType.START_RECORDING, impl);
+      rf.registerDelegate(RequestType.STOP_RECORDING, impl);
+      rf.registerDelegate(RequestType.SYNC_RECORDING, impl);
+    }
   }
 
   @Override
@@ -98,39 +89,39 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
    */
   public final String getDeclaredStreamId(int operatorId, String portname)
   {
-    return String.valueOf(operatorId).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    return String.valueOf(operatorId).concat(Component.CONCAT_SEPARATOR).concat(portname);
   }
 
   private void startRecording(Node<?> node, int operatorId, String portName)
   {
     PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
-    String operatorPortName = getRecorderKey(operatorId, portName);
+    OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
     // check any recording conflict
     boolean conflict = false;
-    if (containsKey(String.valueOf(operatorId))) {
+    if (containsKey(new OperatorIdPortNamePair(operatorId, null))) {
       conflict = true;
     }
     else if (portName == null) {
       for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : descriptor.inputPorts.entrySet()) {
-        if (containsKey(getRecorderKey(operatorId, entry.getKey()))) {
+        if (containsKey(new OperatorIdPortNamePair(operatorId, entry.getKey()))) {
           conflict = true;
           break;
         }
       }
       for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : descriptor.outputPorts.entrySet()) {
-        if (containsKey(getRecorderKey(operatorId, entry.getKey()))) {
+        if (containsKey(new OperatorIdPortNamePair(operatorId, entry.getKey()))) {
           conflict = true;
           break;
         }
       }
     }
     else {
-      if (containsKey(operatorPortName)) {
+      if (containsKey(operatorIdPortNamePair)) {
         conflict = true;
       }
     }
     if (!conflict) {
-      logger.debug("Executing start recording request for " + operatorPortName);
+      logger.debug("Executing start recording request for {}", operatorIdPortNamePair);
 
       TupleRecorder tupleRecorder = new TupleRecorder();
       String basePath = appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
@@ -152,8 +143,8 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
         if (streamId == null) {
           streamId = portName + "_implicit_stream";
         }
-        if (portName == null || entry.getKey().equals(portName)) {
-          logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
+        if (entry.getValue().context != null && (portName == null || entry.getKey().equals(portName))) {
+          logger.debug("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
           tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
           sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
         }
@@ -164,89 +155,89 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
           streamId = portName + "_implicit_stream";
         }
         if (portName == null || entry.getKey().equals(portName)) {
-          logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
+          logger.debug("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
           tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
           sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
         }
       }
       if (!sinkMap.isEmpty()) {
-        logger.debug("Started recording (name: {}) to base path {}", operatorPortName, basePath);
+        logger.debug("Started recording on {} through {}", operatorIdPortNamePair, System.identityHashCode(this));
         node.addSinks(sinkMap);
         tupleRecorder.setup(node.getOperator());
-        put(operatorPortName, tupleRecorder);
+        put(operatorIdPortNamePair, tupleRecorder);
       }
       else {
         logger.warn("Tuple recording request ignored because operator is not connected on the specified port.");
       }
     }
     else {
-      logger.error("Operator id {} is already being recorded.", operatorPortName);
+      logger.error("Operator id {} is already being recorded.",  operatorId);
     }
   }
 
   private void stopRecording(Node<?> node, int operatorId, String portName)
   {
-    String operatorPortName = getRecorderKey(operatorId, portName);
-    if (containsKey(operatorPortName)) {
-      logger.debug("Executing stop recording request for {}", operatorPortName);
+    OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
+    if (containsKey(operatorIdPortNamePair)) {
+      logger.debug("Executing stop recording request for {}", operatorIdPortNamePair);
 
-      TupleRecorder tupleRecorder = get(operatorPortName);
+      TupleRecorder tupleRecorder = get(operatorIdPortNamePair);
       if (tupleRecorder != null) {
         node.removeSinks(tupleRecorder.getSinkMap());
         tupleRecorder.teardown();
-        logger.debug("Stopped recording for operator/port {}", operatorPortName);
-        remove(operatorPortName);
+        logger.debug("Stopped recording for operator/port {}", operatorIdPortNamePair);
+        remove(operatorIdPortNamePair);
       }
     }
     // this should be looked at again when we redesign how we handle recordings with ports in a cleaner way
     else if (portName == null) {
-      Iterator<Map.Entry<String, TupleRecorder>> iterator = entrySet().iterator();
+      Iterator<Map.Entry<OperatorIdPortNamePair, TupleRecorder>> iterator = entrySet().iterator();
       while (iterator.hasNext()) {
-        Map.Entry<String, TupleRecorder> entry = iterator.next();
-        if (String.valueOf(operatorId).equals(getOperatorFromRecorderKey(entry.getKey()))) {
+        Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry = iterator.next();
+        if (operatorId == entry.getKey().operatorId) {
           TupleRecorder tupleRecorder = entry.getValue();
           if (tupleRecorder != null) {
             node.removeSinks(tupleRecorder.getSinkMap());
             tupleRecorder.teardown();
-            logger.debug("Stopped recording for operator/port {}", operatorPortName);
+            logger.debug("Stopped recording for operator/port {}", operatorIdPortNamePair);
             iterator.remove();
           }
         }
       }
     }
     else {
-      logger.error("Operator/port {} is not being recorded.", operatorPortName);
+      logger.error("Operator/port {} is not being recorded.", operatorIdPortNamePair);
     }
   }
 
   private void syncRecording(Node<?> node, int operatorId, String portName)
   {
-    String operatorPortName = getRecorderKey(operatorId, portName);
-    if (containsKey(operatorPortName)) {
-      logger.debug("Executing sync recording request for {}" + operatorPortName);
+    OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
+    if (containsKey(operatorIdPortNamePair)) {
+      logger.debug("Executing sync recording request for {}", operatorIdPortNamePair);
 
-      TupleRecorder tupleRecorder = get(operatorPortName);
+      TupleRecorder tupleRecorder = get(operatorIdPortNamePair);
       if (tupleRecorder != null) {
         tupleRecorder.getStorage().requestSync();
-        logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
+        logger.debug("Requested sync recording for operator/port {}", operatorIdPortNamePair);
       }
     }
     // this should be looked at again when we redesign how we handle recordings with ports in a cleaner way
     else if (portName == null) {
-      Iterator<Map.Entry<String, TupleRecorder>> iterator = entrySet().iterator();
+      Iterator<Map.Entry<OperatorIdPortNamePair, TupleRecorder>> iterator = entrySet().iterator();
       while (iterator.hasNext()) {
-        Map.Entry<String, TupleRecorder> entry = iterator.next();
-        if (String.valueOf(operatorId).equals(getOperatorFromRecorderKey(entry.getKey()))) {
+        Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry = iterator.next();
+        if (operatorId == entry.getKey().operatorId) {
           TupleRecorder tupleRecorder = entry.getValue();
           if (tupleRecorder != null) {
             tupleRecorder.getStorage().requestSync();
-            logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
+            logger.debug("Requested sync recording for operator/port {}", operatorIdPortNamePair);
           }
         }
       }
     }
     else {
-      logger.error("(SYNC_RECORDING) Operator/port " + operatorPortName + " is not being recorded.");
+      logger.error("(SYNC_RECORDING) Operator/port {} is not being recorded.", operatorIdPortNamePair);
     }
   }
 
@@ -254,13 +245,13 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
   public void activated(Node<?> node)
   {
     for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
-      if (entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
+      if (entry.getValue().context != null && entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
         startRecording(node, node.getId(), entry.getKey());
       }
     }
 
     for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
-      if (entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
+      if (entry.getValue().context != null && entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
         startRecording(node, node.getId(), entry.getKey());
       }
     }
@@ -269,7 +260,38 @@ public class TupleRecorderCollection extends HashMap<String, TupleRecorder> impl
   @Override
   public void deactivated(Node<?> node)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    logger.error("this method should be implemented!");
+  }
+
+  @Override
+  public void collected(ContainerStats stats)
+  {
+    for (StreamingNodeHeartbeat node : stats.nodes) {
+      TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
+      if (tupleRecorder == null) {
+        for (Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry : this.entrySet()) {
+          if (entry.getKey().operatorId == node.nodeId) {
+            for (OperatorStats os : node.windowStats) {
+              for (PortStats ps: os.inputPorts) {
+                if (ps.id.equals(entry.getKey().portName)) {
+                  ps.recordingStartTime = entry.getValue().getStartTime();
+                }
+              }
+              for (PortStats ps: os.outputPorts) {
+                if (ps.id.equals(entry.getKey().portName)) {
+                  ps.recordingStartTime = entry.getValue().getStartTime();
+                }
+              }
+            }
+          }
+        }
+      }
+      else {
+        for (OperatorStats os : node.windowStats) {
+          os.recordingStartTime = tupleRecorder.getStartTime();
+        }
+      }
+    }
   }
 
   private class RequestDelegateImpl implements RequestDelegate

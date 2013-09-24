@@ -17,6 +17,7 @@ import com.datatorrent.api.Context;
 public interface ContainerContext extends Context
 {
   public static final AttributeKey<String> IDENTIFIER = new AttributeKey<String>("IDENTIFIER", String.class);
+  public static final AttributeKey<RequestFactory> REQUEST_FACTORY = new AttributeKey<RequestFactory>("REQUEST_FACTORY", RequestFactory.class);
 
   public class AttributeKey<T> extends AttributeMap.AttributeKey<T>
   {

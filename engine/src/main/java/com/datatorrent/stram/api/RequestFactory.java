@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.api;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Operator;
+import com.datatorrent.stram.DAGPropertiesBuilder;
 
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.NodeRequest;
@@ -26,20 +27,10 @@ import com.datatorrent.stram.engine.Node;
 public class RequestFactory
 {
   private EnumMap<RequestType, RequestDelegate> map;
-  private static RequestFactory instance;
 
-  private RequestFactory()
+  public RequestFactory()
   {
     this.map = new EnumMap<RequestType, RequestDelegate>(RequestType.class);
-  }
-
-  public static RequestFactory getInstance()
-  {
-    if (instance == null) {
-      instance = new RequestFactory();
-    }
-
-    return instance;
   }
 
   public interface RequestDelegate

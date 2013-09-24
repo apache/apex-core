@@ -88,7 +88,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings("unchecked")
   public InputPort<Object> getInputPort(String port)
   {
-    return (InputPort<Object>)descriptor.inputPorts.get(port);
+    return (InputPort<Object>)descriptor.inputPorts.get(port).component;
   }
 
   @Override
@@ -146,9 +146,10 @@ public class GenericNode extends Node<Operator>
       }
       checkpointWindowCount = 0;
     }
-    handleRequests(currentWindowId);
+
     Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
     reportStats(stats, currentWindowId);
+    handleRequests(currentWindowId);
   }
 
   class ResetTupleTracker

@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
@@ -85,7 +86,12 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
   {
-    T retval = attributes.attr(key).get();
+    Attribute<T> attr = attributes.attr(key);
+    if (attr == null) {
+      return defaultValue;
+    }
+
+    T retval = attr.get();
     if (retval == null) {
       return defaultValue;
     }

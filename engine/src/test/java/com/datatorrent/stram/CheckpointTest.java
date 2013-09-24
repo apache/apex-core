@@ -8,7 +8,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -34,6 +33,7 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartb
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -117,9 +117,12 @@ public class CheckpointTest
     ohb.setNodeId(deployInfo.get(0).id);
     ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
 
+    ContainerStats cstats = new ContainerStats(containerId);
+    cstats.addNodeStats(ohb);
+
     ContainerHeartbeat hb = new ContainerHeartbeat();
     hb.setContainerId(containerId);
-    hb.setDnodeEntries(Collections.singletonList(ohb));
+    hb.setContainerStats(cstats);
 
     dnm.processHeartbeat(hb); // mark deployed
 
@@ -143,9 +146,9 @@ public class CheckpointTest
     StramTestSupport.waitForWindowComplete(context, 2);
     Assert.assertEquals("window 2", 2, context.getLastProcessedWindowId());
 
-    ohb.getWindowStats().clear();
-    context.drainStats(ohb.getWindowStats());
-    List<com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats> stats = ohb.getWindowStats();
+    ohb.getOperatorStatsContainer().clear();
+    context.drainStats(ohb.getOperatorStatsContainer());
+    List<com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats> stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 3, stats.size());
     Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
     Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpointedWindowId); // lags windowId
@@ -166,9 +169,9 @@ public class CheckpointTest
     File cpFile2 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
-    ohb.getWindowStats().clear();
-    context.drainStats(ohb.getWindowStats());
-    stats = ohb.getWindowStats();
+    ohb.getOperatorStatsContainer().clear();
+    context.drainStats(ohb.getOperatorStatsContainer());
+    stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 1, stats.size());
     Assert.assertEquals("windowId " + stats.get(0), 3, stats.get(0).windowId);
     Assert.assertEquals("checkpointedWindowId " + stats.get(0), 2, stats.get(0).checkpointedWindowId); // lags windowId

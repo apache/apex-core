@@ -4,11 +4,11 @@
  */
 package com.datatorrent.stram.debug;
 
-import com.datatorrent.stram.debug.MuxSink;
-import com.datatorrent.api.Sink;
 import junit.framework.Assert;
+
 import org.junit.Test;
 
+import com.datatorrent.api.Sink;
 /**
  *
  * @author Chetan Narsude <chetan@datatorrent.com>

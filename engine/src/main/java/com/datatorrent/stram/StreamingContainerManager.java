@@ -40,6 +40,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Component;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
@@ -86,8 +88,6 @@ import com.datatorrent.stram.webapp.PortInfo;
  */
 public class StreamingContainerManager extends BaseContext implements PlanContext
 {
-  private static final long serialVersionUID = 201306061743L;
-  private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
   private int maxWindowsBehindForStats = 100;
@@ -128,23 +128,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   {
     long latency;
     LinkedList<Integer> path = new LinkedList<Integer>();
-  }
-
-  @Override
-  public AttributeMap getAttributes()
-  {
-    return attributes;
-  }
-
-  @Override
-  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
-  {
-    T retvalue = attributes.attr(key).get();
-    if (retvalue == null) {
-      return defaultValue;
-    }
-
-    return retvalue;
   }
 
   public StreamingContainerManager(LogicalPlan dag)
@@ -541,7 +524,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   private StreamingContainerContext newStreamingContainerContext()
   {
-    StreamingContainerContext scc = new StreamingContainerContext(attributes);
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(StreamingContainerContext.class), this);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
@@ -601,7 +584,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
     long elapsedMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
-    for (StreamingNodeHeartbeat shb: heartbeat.getDnodeEntries()) {
+    for (StreamingNodeHeartbeat shb: heartbeat.getContainerStats().nodes) {
 
       OperatorStatus status = sca.updateOperatorStatus(shb);
       if (status == null) {
@@ -645,7 +628,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
         long maxDequeueTimestamp = -1;
-        List<Stats.ContainerStats.OperatorStats> statsList = shb.getWindowStats();
+        List<Stats.ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
 
         for (Stats.ContainerStats.OperatorStats stats: statsList) {
           /* report checkpointedWindowId status of the operator */
@@ -760,7 +743,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
           }
         }
       }
-      status.recordingNames = shb.getRecordingNames();
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;
@@ -941,7 +923,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       for (PTOutput out: operator.outputs) {
         if (!out.isDownStreamInline()) {
           // following needs to match the concat logic in StramChild
-          String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+          String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
           // delete everything from buffer server prior to new checkpoint
           BufferServerController bsc = getBufferServerClient(operator);
           try {
@@ -1027,7 +1009,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
           for (PTOutput out: operator.outputs) {
             if (!out.isDownStreamInline()) {
               // following needs to match the concat logic in StramChild
-              String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+              String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
               // TODO: find way to mock this when testing rest of logic
               if (operator.container.bufferServerAddress.getPort() != 0) {
                 BufferServerController bsc = getBufferServerClient(operator);
@@ -1403,4 +1385,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   {
     return criticalPathInfo;
   }
+
+  private static final long serialVersionUID = 201306061743L;
+  private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
 }

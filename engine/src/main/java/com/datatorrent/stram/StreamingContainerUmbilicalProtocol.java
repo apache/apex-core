@@ -14,11 +14,12 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context;
 
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats;
+import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -65,9 +66,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       super(null, null);
     }
 
-    public StreamingContainerContext(AttributeMap map)
+    public StreamingContainerContext(AttributeMap map, Context parentContext)
     {
-      super(map, null);
+      super(map, parentContext);
     }
 
     @Override
@@ -102,13 +103,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    */
   public static class StreamingNodeHeartbeat extends AbstractWritableAdapter {
     private static final long serialVersionUID = 201208171625L;
-    public ArrayList<OperatorStats> windowStats = new ArrayList<OperatorStats>();
+    public ArrayList<Stats.ContainerStats.OperatorStats> windowStats = new ArrayList<Stats.ContainerStats.OperatorStats>();
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
      * @return ArrayList<OperatorStats>
      */
-    public ArrayList<OperatorStats> getWindowStats() {
+    public ArrayList<Stats.ContainerStats.OperatorStats> getOperatorStatsContainer() {
       return windowStats;
     }
 
@@ -116,7 +117,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
      * The operator stats for the windows processed during the heartbeat interval.
      * @param stats
      */
-    public void setWindowStats(ArrayList<OperatorStats> stats) {
+    public void setOperatorStatsContainer(ArrayList<Stats.ContainerStats.OperatorStats> stats) {
       this.windowStats = stats;
     }
 
@@ -180,16 +181,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.state = state;
     }
 
-    public final List<String> recordingNames = new ArrayList<String>();
-
-    public List<String> getRecordingNames() {
-      return Collections.unmodifiableList(recordingNames);
-    }
-
-    public void addRecordingName(String recordingName) {
-      this.recordingNames.add(recordingName);
-    }
-
     public final Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
 
     public Map<String, Long> getBufferServerBytes()
@@ -234,17 +225,14 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.containerId = containerId;
     }
 
-    /**
-     * List with all operators in the container.
-     */
-    public List<StreamingNodeHeartbeat> dnodeEntries;
+    public Stats.ContainerStats stats;
 
-    public List<StreamingNodeHeartbeat> getDnodeEntries() {
-      return dnodeEntries;
+    public Stats.ContainerStats getContainerStats() {
+      return stats;
     }
 
-    public void setDnodeEntries(List<StreamingNodeHeartbeat> dnodeEntries) {
-      this.dnodeEntries = dnodeEntries;
+    public void setContainerStats(Stats.ContainerStats stats) {
+      this.stats = stats;
     }
 
   }

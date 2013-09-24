@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.api.RequestFactory;
+import com.datatorrent.api.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,14 +27,10 @@ import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.log4j.LogManager;
 
-import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
@@ -44,13 +42,16 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequ
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeActivationListener;
 import com.datatorrent.stram.api.NodeRequest;
+import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.PortContext;
+import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
@@ -78,7 +79,6 @@ import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
  */
 public class StramChild
 {
-  public static final String NODE_PORT_CONCAT_SEPARATOR = ".";
   public static final int PORT_QUEUE_CAPACITY = 1024;
   private static final int SPIN_MILLIS = 20;
   private final String containerId;
@@ -103,7 +103,19 @@ public class StramChild
   /**
    * List of listeners interested in listening into the status change of the nodes.
    */
+  private long firstWindowMillis;
+  private int windowWidthMillis;
+  private InetSocketAddress bufferServerAddress;
+  private com.datatorrent.bufferserver.server.Server bufferServer;
+  private int checkpointWindowCount;
+  private boolean fastPublisherSubscriber;
+  private StreamingContainerContext containerContext;
+  private List<StramToNodeRequest> nodeRequests;
+  // possibly should combine all the guys below into one type of listeners - containereventlistener!
+  private ArrayList<ContainerStatsListener> statsListener;
   private HashSet<NodeActivationListener> nodeListener;
+  private HashMap<String, Object> singletons;
+  private RequestFactory requestFactory;
 
   static {
     try {
@@ -114,18 +126,13 @@ public class StramChild
     }
   }
 
-  private long firstWindowMillis;
-  private int windowWidthMillis;
-  private InetSocketAddress bufferServerAddress;
-  private com.datatorrent.bufferserver.server.Server bufferServer;
-  private int checkpointWindowCount;
-  private boolean fastPublisherSubscriber;
-  private StreamingContainerContext containerContex;
-  private List<StramToNodeRequest> nodeRequests;
-
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.nodeListener = new HashSet<NodeActivationListener>();
+    this.statsListener = new ArrayList<ContainerStatsListener>();
+    this.singletons = new HashMap<String, Object>();
+    this.nodeRequests = new ArrayList<StramToNodeRequest>();
+
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
     this.containerId = containerId;
@@ -134,7 +141,11 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
-    containerContex = ctx;
+    containerContext = ctx;
+
+    /* add a request factory local to this container */
+    this.requestFactory = new RequestFactory();
+    ctx.attributes.addTransientAttribute(ContainerContext.REQUEST_FACTORY).set(requestFactory);
 
     heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
@@ -159,11 +170,47 @@ public class StramChild
       logger.warn("deploy request failed due to {}", ex);
       throw new IllegalStateException("Failed to deploy buffer server", ex);
     }
+
+    // hack: for now seed the TupleRecorder as both NodeListener and ContainerStatsListener
+    // but this code has to move out of here soon. If you feel like doing it, do it now!!!!
+    String classname = "com.datatorrent.stram.debug.TupleRecorderCollection";
+    try {
+      @SuppressWarnings("unchecked")
+      Class<?> cl = Class.forName(classname);
+      Object newInstance = cl.newInstance();
+      singletons.put(classname, newInstance);
+      //logger.debug("putting {} in {}", System.identityHashCode(newInstance), this);
+
+      if (newInstance instanceof ContainerStatsListener) {
+        logger.info("adding container stats listener {}", classname);
+        addStatsListener((ContainerStatsListener)newInstance);
+      }
+      if (newInstance instanceof NodeActivationListener) {
+        logger.info("adding node activation listener {}", classname);
+        addNodeListener((NodeActivationListener)newInstance);
+      }
+    }
+    catch (Exception ex) {
+      logger.error("Exception while adding listener", ex);
+    }
+
+    operateListeners(ctx, true);
   }
 
   public String getContainerId()
   {
     return this.containerId;
+  }
+
+  /**
+   * This method is introduced as replacement for getTupleRecorder method which was cluttering the code.
+   *
+   * @param classname
+   * @return
+   */
+  public Object getInstance(String classname)
+  {
+    return singletons.get(classname);
   }
 
   /**
@@ -286,7 +333,7 @@ public class StramChild
     PortMappingDescriptor portMappingDescriptor = node.getPortMappingDescriptor();
     Iterator<String> outputPorts = portMappingDescriptor.outputPorts.keySet().iterator();
     while (outputPorts.hasNext()) {
-      String sourceIdentifier = String.valueOf(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(outputPorts.next());
+      String sourceIdentifier = String.valueOf(nodeid).concat(Component.CONCAT_SEPARATOR).concat(outputPorts.next());
       ComponentContextPair<Stream, StreamContext> pair = streams.remove(sourceIdentifier);
       if (pair != null) {
         if (activeStreams.remove(pair.component) != null) {
@@ -325,7 +372,7 @@ public class StramChild
 
     Iterator<String> inputPorts = portMappingDescriptor.inputPorts.keySet().iterator();
     while (inputPorts.hasNext()) {
-      String sinkIdentifier = String.valueOf(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(inputPorts.next());
+      String sinkIdentifier = String.valueOf(nodeid).concat(Component.CONCAT_SEPARATOR).concat(inputPorts.next());
       ComponentContextPair<Stream, StreamContext> pair = streams.remove(sinkIdentifier);
       if (pair != null) {
         if (activeStreams.remove(pair.component) != null) {
@@ -341,7 +388,7 @@ public class StramChild
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
-      chosen1.releaseReservoir(Integer.toString(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT));
+      chosen1.releaseReservoir(Integer.toString(nodeid).concat(Component.CONCAT_SEPARATOR).concat(Node.INPUT));
       // should we send the closure of the port to the node?
 
       int count = 0;
@@ -415,6 +462,8 @@ public class StramChild
 
   public void teardown()
   {
+    operateListeners(containerContext, false);
+
     deactivate();
 
     assert (streams.isEmpty());
@@ -472,7 +521,7 @@ public class StramChild
         }
       }
       msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
+      ContainerStats stats = new ContainerStats(containerId);
 
       // gather heartbeat info for all operators
       for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
@@ -482,27 +531,18 @@ public class StramChild
         hb.setIntervalMs(heartbeatIntervalMillis);
         OperatorContext ctx = activeNodes.get(e.getKey());
         if (ctx != null) {
-          ctx.drainStats(hb.getWindowStats());
+          ctx.drainStats(hb.getOperatorStatsContainer());
           hb.setState(DNodeState.ACTIVE.toString());
         }
         else {
           hb.setState(failedNodes.contains(e.getKey()) ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
-        TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
-        if (tupleRecorder != null) {
-          hb.addRecordingName(tupleRecorder.getRecordingName());
-        }
         PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
         for (String portName : portMappingDescriptor.inputPorts.keySet()) {
-          tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
-          if (tupleRecorder != null) {
-            hb.addRecordingName(tupleRecorder.getRecordingName());
-          }
-
           // the following code should belong to stats collections method.
           if (bufferServerAddress != null) {
-            String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
+            String streamId = e.getKey().toString().concat(Component.CONCAT_SEPARATOR).concat(portName);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof ByteCounterStream)) {
               hb.setBufferServerBytes(portName, ((ByteCounterStream)stream.component).getByteCount(true));
@@ -510,26 +550,26 @@ public class StramChild
           }
         }
         for (String portName : portMappingDescriptor.outputPorts.keySet()) {
-          tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
-          if (tupleRecorder != null) {
-            hb.addRecordingName(tupleRecorder.getRecordingName());
-          }
-
           // the following code should belong to stats collections method.
           if (bufferServerAddress != null) {
-            String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
+            String streamId = e.getKey().toString().concat(Component.CONCAT_SEPARATOR).concat(portName);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof ByteCounterStream)) {
               hb.setBufferServerBytes(portName, ((ByteCounterStream)stream.component).getByteCount(true));
             }
           }
         }
-        heartbeats.add(hb);
+        stats.addNodeStats(hb);
       }
-      msg.setDnodeEntries(heartbeats);
+
+      for (ContainerStatsListener csl : statsListener) {
+        csl.collected(stats);
+      }
+
+      msg.setContainerStats(stats);
 
       // heartbeat call and follow-up processing
-      //logger.debug("Sending heartbeat for {} operators.", msg.getDnodeEntries().size());
+      //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
       try {
         ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
         if (rsp != null) {
@@ -561,7 +601,7 @@ public class StramChild
     umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
   }
 
-  private long lastCommittedWindowId = -1;
+  private long lastCommittedWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
 
   private void processNodeRequests(boolean flagInvalid)
   {
@@ -576,7 +616,7 @@ public class StramChild
       }
       else {
         logger.debug("request received: {}", req);
-        NodeRequest requestExecutor = RequestFactory.getInstance().getRequestExecutor(nodes.get(req.operatorId), req);
+        NodeRequest requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
         if (requestExecutor != null) {
           oc.request(requestExecutor);
         }
@@ -698,7 +738,7 @@ public class StramChild
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
     for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
-      idi.portName += "(" + idi.sourceNodeId + NODE_PORT_CONCAT_SEPARATOR + idi.sourcePortName + ")";
+      idi.portName += "(" + idi.sourceNodeId + Component.CONCAT_SEPARATOR + idi.sourcePortName + ")";
     }
   }
 
@@ -775,7 +815,7 @@ public class StramChild
       long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
-        String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
+        String sourceIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nodi.portName);
         int queueCapacity = nodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
@@ -848,7 +888,7 @@ public class StramChild
    */
   public final String getDeclaredStreamId(int operatorId, String portname)
   {
-    String identifier = String.valueOf(operatorId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    String identifier = String.valueOf(operatorId).concat(Component.CONCAT_SEPARATOR).concat(portname);
     ComponentContextPair<Stream, StreamContext> spair = streams.get(identifier);
     if (spair == null) {
       return null;
@@ -894,8 +934,8 @@ public class StramChild
         Node<?> node = nodes.get(ndi.id);
 
         for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
-          String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
-          String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
+          String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
+          String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
           int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
 
@@ -1076,7 +1116,7 @@ public class StramChild
         {
           try {
             failedNodes.remove(ndi.id);
-            OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, containerContex);
+            OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, containerContext);
             node.setup(operatorContext);
 
             /* setup context for all the input ports */
@@ -1161,7 +1201,7 @@ public class StramChild
   private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, OperatorDeployInfo ndi)
   {
     for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
-      String source = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
+      String source = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /*
        * if we do not want to combine multiple streams with different partitions from the
@@ -1177,7 +1217,7 @@ public class StramChild
         collection = new ArrayList<String>();
         groupedInputStreams.put(source, collection);
       }
-      collection.add(Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
+      collection.add(Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName));
     }
   }
 
@@ -1213,5 +1253,58 @@ public class StramChild
     nodeListener.remove(l);
   }
 
+  public void addStatsListener(ContainerStatsListener listener)
+  {
+    if (statsListener.contains(listener)) {
+      throw new IllegalStateException("Listener " + listener + " not present!");
+    }
+    else {
+      statsListener.add(listener);
+    }
+  }
+
+  public void removeStatsListener(ContainerStatsListener listener)
+  {
+    if (statsListener.contains(listener)) {
+      statsListener.remove(listener);
+    }
+    else {
+      throw new IllegalStateException("Listener " + listener + " already present!");
+    }
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
+
+  @SuppressWarnings("unchecked")
+  public void operateListeners(StreamingContainerContext ctx, boolean setup)
+  {
+    HashSet<Component<ContainerContext>> components = new HashSet<Component<ContainerContext>>();
+    try {
+      for (NodeActivationListener l : nodeListener) {
+        if (l instanceof Component) {
+          components.add((Component<ContainerContext>)l);
+        }
+      }
+      for (ContainerStatsListener l : statsListener) {
+        if (l instanceof Component) {
+          components.add((Component<ContainerContext>)l);
+        }
+      }
+    }
+    catch (Exception ex) {
+      logger.debug("Exception while adding listeners to components", ex);
+    }
+
+    if (setup) {
+      for (Component<ContainerContext> c : components) {
+        c.setup(ctx);
+      }
+    }
+    else {
+      for (Component<ContainerContext> c : components) {
+        c.teardown();
+      }
+    }
+  }
+
 }
