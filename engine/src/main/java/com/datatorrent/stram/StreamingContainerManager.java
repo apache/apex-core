@@ -46,7 +46,6 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContai
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.Operators;
@@ -62,6 +61,7 @@ import com.datatorrent.stram.webapp.PortInfo;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
@@ -80,9 +80,8 @@ import java.util.*;
  *
  * @since 0.3.2
  */
-public class StreamingContainerManager extends BaseContext implements PlanContext
+public class StreamingContainerManager implements PlanContext
 {
-  private static final long serialVersionUID = 201306061743L;
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
@@ -127,23 +126,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     LinkedList<Integer> path = new LinkedList<Integer>();
   }
 
-  @Override
-  public AttributeMap getAttributes()
-  {
-    return attributes;
-  }
-
-  @Override
-  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
-  {
-    T retvalue = attributes.attr(key).get();
-    if (retvalue == null) {
-      return defaultValue;
-    }
-
-    return retvalue;
-  }
-
   public StreamingContainerManager(LogicalPlan dag)
   {
     this(dag, false);
@@ -151,7 +133,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
   {
-    super(dag.getAttributes(), null);
+    AttributeMap attributes = dag.getAttributes();
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
@@ -163,7 +145,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
     attributes.attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).get());
-    this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+    this.heartbeatTimeoutMillis = dag.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
     attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(1000);
     this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).get();
@@ -203,7 +185,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + this.attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.getExternalId(), c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
@@ -545,7 +527,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   private StreamingContainerContext newStreamingContainerContext()
   {
-    StreamingContainerContext scc = new StreamingContainerContext(attributes);
+    StreamingContainerContext scc = new StreamingContainerContext(plan.getDAG().getAttributes());
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }

@@ -69,6 +69,9 @@ public class ProcessingModeTests
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     dag.addStream("connection", rip.output, cm.input);
+    //if (processingMode == ProcessingMode.EXACTLY_ONCE) {
+    //  dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(ProcessingMode.AT_MOST_ONCE);
+    //}
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();

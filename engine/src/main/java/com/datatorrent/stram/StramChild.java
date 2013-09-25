@@ -1420,7 +1420,7 @@ public class StramChild
   {
     long finishedWindowId;
     if (ndi.contextAttributes != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
+            && ndi.contextAttributes.attrOrNull(OperatorContext.PROCESSING_MODE) != null
             && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
       /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
       long currentMillis = System.currentTimeMillis();
