@@ -63,6 +63,16 @@ public interface AttributeMap
   Map<String, Object> valueMap();
 
   /**
+   * Add non-durable attribute.
+   *
+   * This attribute will not get serialized across processes. As the process dies, these attributes disappear.
+   * @param <T>
+   * @param key
+   * @return
+   */
+  <T> Attribute<T> addTransientAttribute(AttributeKey<T> key);
+
+  /**
    * Scoped attribute key. Subclasses define scope.
    *
    * @param <T>
@@ -135,6 +145,19 @@ public interface AttributeMap
         valueMap.put(entry.getKey(), entry.getValue().get());
       }
       return valueMap;
+    }
+
+    @Override
+    public <T> Attribute<T> addTransientAttribute(AttributeKey<T> key)
+    {
+      @SuppressWarnings("unchecked")
+      DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
+      if (attr == null) {
+        attr = new DefaultAttribute<T>();
+        map.put(key.name(), attr);
+      }
+
+      return attr;
     }
 
     private class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T>, Serializable
