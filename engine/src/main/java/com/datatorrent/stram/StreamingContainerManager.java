@@ -42,6 +42,7 @@ import org.apache.hadoop.yarn.webapp.NotFoundException;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
@@ -63,7 +64,6 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequ
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -86,7 +86,7 @@ import com.datatorrent.stram.webapp.PortInfo;
  *
  * @since 0.3.2
  */
-public class StreamingContainerManager extends BaseContext implements PlanContext
+public class StreamingContainerManager implements PlanContext
 {
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
@@ -137,7 +137,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
   {
-    super(dag.getAttributes(), dag);
+    AttributeMap attributes = dag.getAttributes();
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it please eyes.
@@ -149,7 +149,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
     attributes.attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).get());
-    this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+    this.heartbeatTimeoutMillis = dag.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
     attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(100);
     this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).get();
@@ -189,7 +189,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + this.attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.containerId, c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
@@ -524,7 +524,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
   private StreamingContainerContext newStreamingContainerContext()
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(StreamingContainerContext.class), this);
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(StreamingContainerContext.class), plan.getDAG());
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }

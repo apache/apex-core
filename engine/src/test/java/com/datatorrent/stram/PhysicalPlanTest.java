@@ -232,18 +232,6 @@ public class PhysicalPlanTest {
     }
 
     @Override
-    public AttributeMap getAttributes()
-    {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public <T> T attrValue(AttributeKey<T> key, T defaultValue)
-    {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
     public void recordEventAsync(Event ev)
     {
     }

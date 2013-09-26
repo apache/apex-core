@@ -514,6 +514,10 @@ public class GenericNode extends Node<Operator>
         }
         checkpointWindowCount = 0;
       }
+
+      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      reportStats(stats, currentWindowId);
+      handleRequests(currentWindowId);
     }
 
   }

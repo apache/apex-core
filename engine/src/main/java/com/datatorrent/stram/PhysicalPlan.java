@@ -529,7 +529,7 @@ public class PhysicalPlan {
   /**
    * Interface to execution context that can be mocked for plan testing.
    */
-  public interface PlanContext extends Context {
+  public interface PlanContext {
 
     /**
      * Dynamic partitioning requires access to operator state for split or merge.

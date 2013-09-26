@@ -119,6 +119,9 @@ public class InputNode extends Node<InputOperator>
                 }
                 checkpointWindowCount = 0;
               }
+
+              Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+              reportStats(stats, currentWindowId);
               handleRequests(currentWindowId);
               break;
 
@@ -178,6 +181,9 @@ public class InputNode extends Node<InputOperator>
         }
         checkpointWindowCount = 0;
       }
+
+      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
   }
