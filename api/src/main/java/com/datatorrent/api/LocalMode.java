@@ -35,6 +35,25 @@ public abstract class LocalMode {
    * <p>cloneDAG.</p>
    */
   abstract public DAG cloneDAG() throws Exception;
+
+  /**
+   * Build the logical plan through the given streaming application instance and/or from configuration.
+   * <p>
+   * The plan will be constructed through {@link StreamingApplication#populateDAG}. If configuration properties are
+   * specified, they function as override, as would be the case when launching an application through CLI.
+   * <p>
+   * This method can also be used to construct the plan declaratively from configuration only, by passing null for the
+   * application. In this case the configuration contains all operators and streams.
+   * <p>
+   *
+   * @param app
+   * @param conf
+   * @return
+   * @throws Exception
+   * @since 0.3.5
+   */
+  abstract public DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception;
+
   /**
    * <p>getController.</p>
    */
@@ -69,6 +88,13 @@ public abstract class LocalMode {
   public static void runApp(StreamingApplication app, int runMillis) {
     LocalMode lma = newInstance();
     app.populateDAG(lma.getDAG(), new Configuration(false));
+    LocalMode.Controller lc = lma.getController();
+    lc.run(runMillis);
+  }
+
+  public static void runApp(StreamingApplication app, Configuration conf, int runMillis) {
+    LocalMode lma = newInstance();
+    app.populateDAG(lma.getDAG(), conf);
     LocalMode.Controller lc = lma.getController();
     lc.run(runMillis);
   }
