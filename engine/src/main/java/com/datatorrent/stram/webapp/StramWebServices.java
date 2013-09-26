@@ -633,6 +633,18 @@ public class StramWebServices
   }
 
   @GET
+  @Path(PATH_ALERTS + "/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object getAlert(@PathParam("name") String name) throws JSONException, IOException
+  {
+    JSONObject alert = dagManager.getAlertsManager().getAlert(name);
+    if (alert == null) {
+      throw new NotFoundException();
+    }
+    return alert;
+  }
+
+  @GET
   @Path(PATH_ALERTS)
   @Produces(MediaType.APPLICATION_JSON)
   public Object listAlerts() throws JSONException, IOException
@@ -649,7 +661,7 @@ public class StramWebServices
     JSONArray jsonArray = new JSONArray();
     List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
 
-    for (Class clazz : operatorClasses) {
+    for (Class<? extends Operator> clazz : operatorClasses) {
       jsonArray.put(clazz.getName());
     }
     response.put("classes", jsonArray);

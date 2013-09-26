@@ -294,7 +294,7 @@ public class WindowGeneratorTest
   public void testOutofSequenceError() throws Exception
   {
     logger.info("Testing Out of Sequence Error");
-    LogicalPlan dag = new LogicalPlan(new Configuration());
+    LogicalPlan dag = new LogicalPlan();
 
     RandomNumberGenerator rng = dag.addOperator("random", new RandomNumberGenerator());
     MyLogger ml = dag.addOperator("logger", new MyLogger());

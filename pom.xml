@@ -48,8 +48,6 @@
     <module>bufferserver</module>
     <module>stram</module>
     <module>engine</module>
-    <module>malhar</module>
-    <module>poc</module>
     <module>daemon</module>
   </modules>
 
@@ -175,6 +173,7 @@
     <profile>
       <id>release</id>
       <modules>
+        <module>malhar</module>
         <module>dist</module>
       </modules>
       <properties>

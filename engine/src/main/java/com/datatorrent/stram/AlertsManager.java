@@ -37,6 +37,7 @@ public class AlertsManager
     String filterStreamName;
     String escalationStreamName;
     List<String> actionStreamNames = new ArrayList<String>();
+    JSONObject createFrom;
   }
 
   public AlertsManager(StreamingContainerManager dagManager)
@@ -46,7 +47,7 @@ public class AlertsManager
 
   public JSONObject createAlert(String name, String content)
   {
-
+    LOG.debug("Creating Alert: {}", content);
     JSONObject response = new JSONObject();
     try {
       JSONObject json = new JSONObject(content);
@@ -54,6 +55,7 @@ public class AlertsManager
       JSONObject filter = json.getJSONObject("filter");
       JSONObject escalation = json.getJSONObject("escalation");
       JSONArray actions = json.getJSONArray("actions");
+      JSONObject createFrom = json.optJSONObject("createFrom");
       List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
       AlertInfo alertInfo = new AlertInfo();
       alertInfo.streamName = streamName;
@@ -62,6 +64,8 @@ public class AlertsManager
         if (alerts.containsKey(name)) {
           throw new Exception("alert " + name + " already exists");
         }
+
+        alertInfo.createFrom = createFrom;
 
         // create filter operator
         String filterOperatorName = "_alert_filter_" + name;
@@ -163,7 +167,7 @@ public class AlertsManager
               request.setSourceOperatorName(operatorName);
               request.setSourceOperatorPortName(portName);
               request.setSinkOperatorName(filterOperatorName);
-              request.setSinkOperatorPortName("in");
+              request.setSinkOperatorPortName(filter.optString("inputPort", "in"));
               requests.add(request);
             }
             else {
@@ -176,7 +180,7 @@ public class AlertsManager
             alertInfo.filterStreamName = streamName;
             request.setStreamName(streamName);
             request.setSinkOperatorName(filterOperatorName);
-            request.setSinkOperatorPortName("in");
+            request.setSinkOperatorPortName(filter.optString("inputPort", "in"));
             requests.add(request);
           }
         }
@@ -187,9 +191,9 @@ public class AlertsManager
           alertInfo.escalationStreamName = "_alert_stream_escalation_" + name;
           request.setStreamName("_alert_stream_escalation_" + name);
           request.setSourceOperatorName(filterOperatorName);
-          request.setSourceOperatorPortName("out");
+          request.setSourceOperatorPortName(filter.optString("outputPort", "out"));
           request.setSinkOperatorName(escalationOperatorName);
-          request.setSinkOperatorPortName("in");
+          request.setSinkOperatorPortName(filter.optString("inputPort", "in"));
           requests.add(request);
         }
         LOG.info("Alert {} submitted.", name);
@@ -300,10 +304,27 @@ public class AlertsManager
         JSONObject alert = new JSONObject();
         alert.put("name", entry.getKey());
         alert.put("streamName", entry.getValue().streamName);
+        alert.put("createFrom", entry.getValue().createFrom);
         alertsArray.put(alert);
       }
     }
     response.put("alerts", alertsArray);
+    return response;
+  }
+
+  public JSONObject getAlert(String name) throws JSONException
+  {
+    JSONObject response = new JSONObject();
+    AlertInfo alertInfo;
+    synchronized (alerts) {
+      alertInfo = alerts.get(name);
+    }
+    if (alertInfo == null) {
+      return null;
+    }
+    response.put("name", name);
+    response.put("streamName", alertInfo.streamName);
+    response.put("createFrom", alertInfo.createFrom);
     return response;
   }
 }

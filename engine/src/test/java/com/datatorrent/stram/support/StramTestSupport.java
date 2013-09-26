@@ -7,14 +7,17 @@ package com.datatorrent.stram.support;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.bufferserver.packet.MessageType;
 import static java.lang.Thread.sleep;
 import junit.framework.AssertionFailedError;
 import static org.junit.Assert.assertTrue;
+
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,6 +119,30 @@ abstract public class StramTestSupport
       Thread.sleep(500);
     }
     throw new AssertionFailedError("timeout waiting for operator deployment " + operator);
+  }
+
+  public static class RegexMatcher extends BaseMatcher<String>
+  {
+    private final String regex;
+
+    public RegexMatcher(String regex) {
+        this.regex = regex;
+    }
+
+    @Override
+    public boolean matches(Object o) {
+        return ((String)o).matches(regex);
+
+    }
+
+    @Override
+    public void describeTo(Description description) {
+        description.appendText("matches regex=" + regex);
+    }
+
+    public static RegexMatcher matches(String regex) {
+        return new RegexMatcher(regex);
+    }
   }
 
 }

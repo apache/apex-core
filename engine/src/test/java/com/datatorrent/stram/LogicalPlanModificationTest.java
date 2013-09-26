@@ -11,15 +11,16 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTInput;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.PhysicalPlanTest.TestPlanContext;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.google.common.collect.Sets;
 
@@ -198,8 +199,8 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("o2Instances " + o2Instances, 1, o2Instances.size());
     PTOperator o2p1 = o2Instances.get(0);
 
-    Assert.assertEquals("outputs " + o1p1, 0, o1p1.outputs.size());
-    Assert.assertEquals("inputs " + o2p1, 0, o2p1.inputs.size());
+    Assert.assertEquals("outputs " + o1p1, 0, o1p1.getOutputs().size());
+    Assert.assertEquals("inputs " + o2p1, 0, o2p1.getInputs().size());
 
     PlanModifier pm = new PlanModifier(plan);
     pm.addStream("o1.outport1", o1.outport1, o2.inport1);
@@ -209,14 +210,14 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("undeploy " + ctx.undeploy, 2, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
 
-    Assert.assertEquals("outputs " + o1p1, 1, o1p1.outputs.size());
-    Assert.assertEquals("inputs " + o2p1, 2, o2p1.inputs.size());
+    Assert.assertEquals("outputs " + o1p1, 1, o1p1.getOutputs().size());
+    Assert.assertEquals("inputs " + o2p1, 2, o2p1.getInputs().size());
     Set<String> portNames = Sets.newHashSet();
-    for (PTInput in : o2p1.inputs) {
+    for (PTOperator.PTInput in : o2p1.getInputs()) {
       portNames.add(in.portName);
     }
     Set<String> expPortNames = Sets.newHashSet(GenericTestOperator.IPORT1, GenericTestOperator.IPORT2);
-    Assert.assertEquals("input port names " + o2p1.inputs, expPortNames, portNames);
+    Assert.assertEquals("input port names " + o2p1.getInputs(), expPortNames, portNames);
 
   }
 
@@ -241,11 +242,11 @@ public class LogicalPlanModificationTest {
 
     Assert.assertEquals(""+dnm.containerStartRequests, 1, dnm.containerStartRequests.size());
     PTContainer c = dnm.containerStartRequests.poll().container;
-    Assert.assertEquals("operators "+c, 1, c.operators.size());
+    Assert.assertEquals("operators "+c, 1, c.getOperators().size());
 
-    Assert.assertEquals("deploy requests " + c, 1, c.pendingDeploy.size());
+    Assert.assertEquals("deploy requests " + c, 1, c.getPendingDeploy().size());
 
-    PTOperator oper = c.operators.get(0);
+    PTOperator oper = c.getOperators().get(0);
     Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getName());
     Assert.assertEquals("operator class", GenericTestOperator.class, oper.getOperatorMeta().getOperator().getClass());
 

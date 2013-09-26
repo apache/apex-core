@@ -95,7 +95,7 @@ public class NodeTest
   @Test
   public void testStreamingWindowGenericNode() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan(new Configuration(false));
+    LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(10);
     dag.addOperator("GenericOperator", new TestGenericOperator());
 

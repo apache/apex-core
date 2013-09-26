@@ -16,9 +16,9 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -91,7 +91,7 @@ public class ResourceRequestHandler {
 
   public String getHost(ContainerStartRequest csr, int requiredMemory) {
     PTContainer c = csr.container;
-    for (PTOperator oper : c.operators) {
+    for (PTOperator oper : c.getOperators()) {
       Set<PTOperator> nodeLocalSet = oper.getNodeLocalOperators();
       if (nodeLocalSet.size() > 1) {
         String host = nodeLocalMapping.get(nodeLocalSet);
@@ -104,9 +104,9 @@ public class ResourceRequestHandler {
           Set<PTContainer> containers = Sets.newHashSet();
           // aggregate memory required for all containers
           for (PTOperator nodeLocalOper : nodeLocalSet) {
-            if (!containers.contains(nodeLocalOper.container)) {
+            if (!containers.contains(nodeLocalOper.getContainer())) {
               aggrMemory += requiredMemory;
-              containers.add(nodeLocalOper.container);
+              containers.add(nodeLocalOper.getContainer());
             }
           }
           for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
