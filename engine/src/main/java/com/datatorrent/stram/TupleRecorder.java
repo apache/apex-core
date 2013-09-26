@@ -396,6 +396,7 @@ public class TupleRecorder
       //fsOutput.hflush();
       ++totalTupleCount;
       if (numSubscribers > 0) {
+        // this is not asynchronous.  we need to fix this
         publishTupleData(pi.id, obj);
       }
     }
@@ -445,6 +446,7 @@ public class TupleRecorder
         map.put("windowId", currentWindowId);
         map.put("tupleCount", totalTupleCount);
         map.put("data", obj);
+        // this is NOT asynchronous.  We need to fix this!
         wsClient.publish(recordingNameTopic, map);
       }
     }

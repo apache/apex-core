@@ -11,6 +11,7 @@ import com.datatorrent.stram.util.ConfigUtils;
 import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
 
 import java.io.IOException;
@@ -187,7 +188,10 @@ public class StramClient
     }
     LOG.info("Configuration: " + propertyFileName);
 
-    dag = DAGPropertiesBuilder.create(new Configuration(false), propertyFileName);
+    dag = new LogicalPlan();
+    Configuration appConf = new Configuration(false);
+    StreamingApplication app = DAGPropertiesBuilder.create(appConf, propertyFileName);
+    app.populateDAG(dag, appConf);
     dag.validate();
     if (cliParser.hasOption("debug")) {
       dag.getAttributes().attr(LogicalPlan.DEBUG).set(true);

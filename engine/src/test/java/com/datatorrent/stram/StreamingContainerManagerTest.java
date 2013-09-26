@@ -25,20 +25,21 @@ import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.HdfsStorageAgent;
 import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.PhysicalPlan;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
-import com.datatorrent.stram.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.plan.PhysicalPlanTest;
+import com.datatorrent.stram.plan.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.tuple.Tuple;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -344,33 +345,33 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals(""+containers, 2, plan.getContainers().size());
 
     PTContainer c1 = containers.get(0);
-    Assert.assertEquals("c1.operators "+c1.operators, 2, c1.operators.size());
+    Assert.assertEquals("c1.operators "+c1.getOperators(), 2, c1.getOperators().size());
 
     PTContainer c2 = containers.get(1);
-    Assert.assertEquals("c2.operators "+c2.operators, 1, c2.operators.size());
+    Assert.assertEquals("c2.operators "+c2.getOperators(), 1, c2.getOperators().size());
 
     String c1Id = "container1";
     String c2Id = "container2";
 
     assignContainer(scm, c1Id, "localhost");
-    Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
-    StramChildAgent sca1 = scm.getContainerAgent(c1.containerId);
+    Assert.assertEquals(""+c1.getOperators(), c1Id, c1.getExternalId());
+    StramChildAgent sca1 = scm.getContainerAgent(c1.getExternalId());
 
     assignContainer(scm, c2Id, "localhost");
-    Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
-    StramChildAgent sca2 = scm.getContainerAgent(c2.containerId);
-    Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
-    Assert.assertEquals("", 2, sca1.container.pendingDeploy.size());
+    Assert.assertEquals(""+c1.getOperators(), c1Id, c1.getExternalId());
+    StramChildAgent sca2 = scm.getContainerAgent(c2.getExternalId());
+    Assert.assertEquals("", 0, sca1.container.getPendingUndeploy().size());
+    Assert.assertEquals("", 2, sca1.container.getPendingDeploy().size());
 
-    scm.scheduleContainerRestart(c1.containerId);
-    Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
-    Assert.assertEquals("", 2, sca1.container.pendingDeploy.size());
+    scm.scheduleContainerRestart(c1.getExternalId());
+    Assert.assertEquals("", 0, sca1.container.getPendingUndeploy().size());
+    Assert.assertEquals("", 2, sca1.container.getPendingDeploy().size());
     Assert.assertEquals(""+scm.containerStartRequests, 1, scm.containerStartRequests.size());
     ContainerStartRequest dr = scm.containerStartRequests.peek();
     Assert.assertNotNull(dr);
 
-    Assert.assertEquals(""+sca2.container.pendingUndeploy, 1, sca2.container.pendingUndeploy.size());
-    Assert.assertEquals(""+sca2.container.pendingDeploy, 1, sca2.container.pendingDeploy.size());
+    Assert.assertEquals(""+sca2.container.getPendingUndeploy(), 1, sca2.container.getPendingUndeploy().size());
+    Assert.assertEquals(""+sca2.container.getPendingDeploy(), 1, sca2.container.getPendingDeploy().size());
 
   }
 

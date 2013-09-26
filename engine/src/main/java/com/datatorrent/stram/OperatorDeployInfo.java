@@ -107,12 +107,11 @@ public class OperatorDeployInfo implements Serializable
     @Override
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
-      T retvalue = contextAttributes.attr(key).get();
-      if (retvalue == null) {
-        return defaultValue;
+      AttributeMap.Attribute<T> attr = contextAttributes.attrOrNull(key);
+      if (attr != null) {
+        return attr.get();
       }
-
-      return retvalue;
+      return defaultValue;
     }
 
 
@@ -174,12 +173,11 @@ public class OperatorDeployInfo implements Serializable
     @Override
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
-      T retvalue = contextAttributes.attr(key).get();
-      if (retvalue == null) {
-        return defaultValue;
+      AttributeMap.Attribute<T> attr = contextAttributes.attrOrNull(key);
+      if (attr != null) {
+        return attr.get();
       }
-
-      return retvalue;
+      return defaultValue;
     }
 
   }

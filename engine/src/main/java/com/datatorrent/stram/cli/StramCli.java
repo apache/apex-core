@@ -13,6 +13,7 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.cli.StramAppLauncher.CommandLineInfo;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
@@ -75,7 +76,7 @@ public class StramCli
 
   private static class FileLineReader extends ConsoleReader
   {
-    private BufferedReader br;
+    private final BufferedReader br;
 
     FileLineReader(String fileName) throws IOException
     {
@@ -233,14 +234,82 @@ public class StramCli
       this.description = description;
     }
 
+    void verifyArguments(String[] args) throws CliException
+    {
+      int minArgs = 0;
+      int maxArgs = 0;
+      if (requiredArgs != null) {
+        minArgs = requiredArgs.length;
+        maxArgs = requiredArgs.length;
+      }
+      if (optionalArgs != null) {
+        maxArgs += optionalArgs.length;
+      }
+      if (args.length - 1 < minArgs || args.length - 1 > maxArgs) {
+        throw new CliException("Parameter error");
+      }
+    }
+
+    void printUsage(String cmd)
+    {
+      System.err.print("Usage: " + cmd);
+      if (requiredArgs != null) {
+        for (String arg : requiredArgs) {
+          System.err.print(" <" + arg + ">");
+        }
+      }
+      if (optionalArgs != null) {
+        for (String arg : optionalArgs) {
+          System.err.print(" [<" + arg + ">]");
+        }
+      }
+      System.err.println();
+    }
+
+  }
+
+  private static class OptionsCommandSpec extends CommandSpec
+  {
+    Options options;
+
+    OptionsCommandSpec(Command command, String[] requiredArgs, String[] optionalArgs, String description, Options options)
+    {
+      super(command, requiredArgs, optionalArgs, description);
+      this.options = options;
+    }
+
+    @Override
+    void verifyArguments(String[] args) throws CliException
+    {
+      try {
+        args = new PosixParser().parse(options, args).getArgs();
+        super.verifyArguments(args);
+      }
+      catch (Exception ex) {
+        throw new CliException("Command parameter error");
+      }
+    }
+
+    @Override
+    void printUsage(String cmd)
+    {
+      super.printUsage(cmd + ((options == null) ? "" : " [options]"));
+      if (options != null) {
+        System.out.println("Options:");
+        HelpFormatter formatter = new HelpFormatter();
+        PrintWriter pw = new PrintWriter(System.out);
+        formatter.printOptions(pw, 80, options, 4, 4);
+        pw.flush();
+      }
+    }
+
   }
 
   StramCli()
   {
     globalCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(), new String[] {"app-id"}, null, "Connect to an app"));
-    globalCommands.put("launch", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app"));
-    globalCommands.put("launch-local", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app in local mode"));
+    globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", StramAppLauncher.getCommandLineOptions()));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new String[] {"app-id"}, null, "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"pattern"}, "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(), new String[] {"app-id"}, null, "Kill an app"));
@@ -420,7 +489,7 @@ public class StramCli
     completers.add(new StringsCompleter(macros.keySet().toArray(new String[] {})));
 
     List<Completer> launchCompleters = new LinkedList<Completer>();
-    launchCompleters.add(new StringsCompleter(new String[] { "launch", "launch-local", "show-logical-plan", "dump-properties-file", "source", "create-alert" }));
+    launchCompleters.add(new StringsCompleter(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source", "create-alert"}));
     launchCompleters.add(new FileNameCompleter()); // jarFile
     launchCompleters.add(new FileNameCompleter()); // topology
     completers.add(new ArgumentCompleter(launchCompleters));
@@ -514,8 +583,7 @@ public class StramCli
             expandedLine += line.substring(previousIndex, currentIndex);
             expandedLine += args[argIndex];
           }
-          else if ( argIndex >= 0 && argIndex <= 9 )
-          {
+          else if (argIndex >= 0 && argIndex <= 9) {
             // Arguments for $1..$9 were not supplied - replace with empty strings
             expandedLine += line.substring(previousIndex, currentIndex);
           }
@@ -598,32 +666,14 @@ public class StramCli
           }
         }
         else {
-          int minArgs = 0;
-          int maxArgs = 0;
-          if (cs.requiredArgs != null) {
-            minArgs = cs.requiredArgs.length;
-            maxArgs = cs.requiredArgs.length;
+          try {
+            cs.verifyArguments(args);
           }
-          if (cs.optionalArgs != null) {
-            maxArgs += cs.optionalArgs.length;
+          catch (CliException ex) {
+            cs.printUsage(args[0]);
+            throw ex;
           }
-          if (args.length - 1 < minArgs || args.length - 1 > maxArgs) {
-            System.err.print("Usage: " + args[0]);
-            if (cs.requiredArgs != null) {
-              for (String arg : cs.requiredArgs) {
-                System.err.print(" <" + arg + ">");
-              }
-            }
-            if (cs.optionalArgs != null) {
-              for (String arg : cs.optionalArgs) {
-                System.err.print(" [<" + arg + ">]");
-              }
-            }
-            System.err.println();
-          }
-          else {
-            cs.command.execute(args, reader);
-          }
+          cs.command.execute(args, reader);
         }
       }
     }
@@ -654,6 +704,12 @@ public class StramCli
       else {
         System.out.print(entry.getKey());
       }
+      if (cs instanceof OptionsCommandSpec) {
+        OptionsCommandSpec ocs = (OptionsCommandSpec)cs;
+        if (ocs.options != null) {
+          System.out.print(" [options]");
+        }
+      }
       if (cs.requiredArgs != null) {
         for (String arg : cs.requiredArgs) {
           if (consolePresent) {
@@ -675,6 +731,16 @@ public class StramCli
         }
       }
       System.out.println("\n\t" + cs.description);
+      if (cs instanceof OptionsCommandSpec) {
+        OptionsCommandSpec ocs = (OptionsCommandSpec)cs;
+        if (ocs.options != null) {
+          System.out.println("\tOptions:");
+          HelpFormatter formatter = new HelpFormatter();
+          PrintWriter pw = new PrintWriter(System.out);
+          formatter.printOptions(pw, 80, ocs.options, 12, 4);
+          pw.flush();
+        }
+      }
     }
   }
 
@@ -903,27 +969,29 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      boolean localMode = "launch-local".equals(args[0]);
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      CommandLineInfo commandLineInfo = StramAppLauncher.getCommandLineInfo(newArgs);
 
-      if (!localMode && !licensedVersion) {
+      if (!commandLineInfo.localMode && !licensedVersion) {
         System.out.println("This free version only supports launching in local mode. Use the command 'launch-local' to launch in local mode.");
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
-      String fileName = expandFileName(args[1], true);
+      String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf);
       submitApp.loadDependencies();
       AppConfig appConfig = null;
-      if (args.length == 3) {
-        File file = new File(args[2]);
+      if (commandLineInfo.args.length >= 2) {
+        File file = new File(commandLineInfo.args[1]);
         if (file.exists()) {
           appConfig = new StramAppLauncher.PropertyFileAppConfig(file);
         }
       }
 
       if (appConfig == null) {
-        String matchString = args.length > 2 ? args[2] : null;
+        String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
 
         List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, matchString);
         if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
@@ -940,7 +1008,7 @@ public class StramCli
           }
 
           // Exit if not in interactive mode
-          if (! consolePresent ) {
+          if (!consolePresent) {
             throw new CliException("More than one application in jar file match '" + matchString + "'");
           }
           else {
@@ -976,13 +1044,14 @@ public class StramCli
       }
 
       if (appConfig != null) {
-        if (!localMode) {
-          ApplicationId appId = submitApp.launchApp(appConfig);
+        Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
+        if (!commandLineInfo.localMode) {
+          ApplicationId appId = submitApp.launchApp(appConfig, config);
           currentApp = rmClient.getApplicationReport(appId);
           System.out.println(appId);
         }
         else {
-          submitApp.runLocal(appConfig);
+          submitApp.runLocal(appConfig, config);
         }
       }
       else {
@@ -1645,7 +1714,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(null, null));
           ObjectMapper mapper = new ObjectMapper();
           System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
         }
@@ -1694,7 +1763,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(null, null));
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();
@@ -1940,7 +2009,9 @@ public class StramCli
           if (line.equals("end")) {
             macros.put(name, commands);
             updateCompleter(reader);
-            if (consolePresent) System.out.println("Macro '" + name + "' created.");
+            if (consolePresent) {
+              System.out.println("Macro '" + name + "' created.");
+            }
             return;
           }
           else if (line.equals("abort")) {

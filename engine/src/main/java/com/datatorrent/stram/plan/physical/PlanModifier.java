@@ -7,9 +7,6 @@ import java.util.Set;
 import javax.validation.ValidationException;
 
 import com.datatorrent.stram.DAGPropertiesBuilder;
-import com.datatorrent.stram.PhysicalPlan;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;

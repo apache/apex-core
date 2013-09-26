@@ -25,6 +25,7 @@ public class StramAgent extends HdfsAgent
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
   protected static String resourceManagerWebappAddress;
   private static Map<String, String> appMasterTrackingUrls = new LRUCache<String, String>(100);
+  protected static String defaultStramRoot = null;
 
   public class AppNotFoundException extends Exception {
     private static final long serialVersionUID = 1L;
@@ -41,6 +42,11 @@ public class StramAgent extends HdfsAgent
   public static void setResourceManagerWebappAddress(String addr)
   {
     resourceManagerWebappAddress = addr;
+  }
+
+  public static void setDefaultStramRoot(String dir)
+  {
+    defaultStramRoot = dir;
   }
 
   private static synchronized void deleteAppMasterUrl(String appid)
@@ -74,7 +80,7 @@ public class StramAgent extends HdfsAgent
 
   public static String getDefaultStramRoot()
   {
-    return "/user/" + System.getProperty("user.name") + "/Stram";
+    return (defaultStramRoot == null) ? ("/user/" + System.getProperty("user.name") + "/Stram") : defaultStramRoot;
   }
 
   public static String getAppPath(String appId)
@@ -90,7 +96,7 @@ public class StramAgent extends HdfsAgent
         LOG.warn("Cannot get the live Stram root for {}", appId);
         return null;
       }
-      return appPath.substring(0, i);
+      return appPath;
     }
     catch (Exception ex) {
       return getDefaultStramRoot() + "/" + appId;
