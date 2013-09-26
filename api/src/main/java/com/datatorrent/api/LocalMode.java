@@ -92,11 +92,4 @@ public abstract class LocalMode {
     lc.run(runMillis);
   }
 
-  public static void runApp(StreamingApplication app, Configuration conf, int runMillis) {
-    LocalMode lma = newInstance();
-    app.populateDAG(lma.getDAG(), conf);
-    LocalMode.Controller lc = lma.getController();
-    lc.run(runMillis);
-  }
-
 }
