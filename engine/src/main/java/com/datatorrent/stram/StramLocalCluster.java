@@ -4,22 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
-import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.LocalMode.Controller;
-import com.datatorrent.bufferserver.server.Server;
-import com.datatorrent.bufferserver.storage.DiskStorage;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -28,13 +12,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.ProtocolSignature;
 import org.apache.hadoop.net.NetUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.LocalMode.Controller;
+import com.datatorrent.api.Operator;
+
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.bufferserver.storage.DiskStorage;
+import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTOperator;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -348,6 +351,7 @@ public class StramLocalCluster implements Runnable, Controller
     if (cid != null) {
       if ((container = getContainer(cid)) != null) {
         if (container.getNodeContext(planOperator.getId()) != null) {
+          logger.debug("getcontainer returning {}", System.identityHashCode(container));
           return container;
         }
       }

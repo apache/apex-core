@@ -51,6 +51,7 @@ public class AtLeastOnceTest
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
+    rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     dag.addStream("connection", rip.output, cm.input);
@@ -72,6 +73,7 @@ public class AtLeastOnceTest
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
+    rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
@@ -80,9 +82,6 @@ public class AtLeastOnceTest
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.run();
 
-//    for (Long l: collection) {
-//      logger.debug(Codec.getStringWindowId(l));
-//    }
     Assert.assertEquals("Generated Outputs", maxTuples, CollectorOperator.collection.size());
   }
 
@@ -98,6 +97,7 @@ public class AtLeastOnceTest
     dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
+    rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);

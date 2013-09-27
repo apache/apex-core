@@ -310,6 +310,9 @@ public class StramCli
     globalCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(), new String[] {"app-id"}, null, "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", StramAppLauncher.getCommandLineOptions()));
+    /* BEGIN to be deleted */
+    globalCommands.put("launch-local", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", StramAppLauncher.getCommandLineOptions()));
+    /* END to be deleted */
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new String[] {"app-id"}, null, "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"pattern"}, "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(), new String[] {"app-id"}, null, "Kill an app"));
@@ -972,6 +975,11 @@ public class StramCli
       String[] newArgs = new String[args.length - 1];
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       CommandLineInfo commandLineInfo = StramAppLauncher.getCommandLineInfo(newArgs);
+      /* BEGIN to be deleted */
+      if (args[0].equals("launch-local")) {
+        commandLineInfo.localMode = true;
+      }
+      /* END to be deleted */
 
       if (!commandLineInfo.localMode && !licensedVersion) {
         System.out.println("This free version only supports launching in local mode. Use the command 'launch-local' to launch in local mode.");

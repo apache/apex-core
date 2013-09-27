@@ -1,19 +1,20 @@
 package com.datatorrent.stram;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.LocalMode;
+import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.cli.StramAppLauncher;
 import com.datatorrent.stram.cli.StramAppLauncher.AppConfig;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.LocalMode;
-import com.datatorrent.api.StreamingApplication;
 
 /**
  * <p>LocalModeImpl class.</p>

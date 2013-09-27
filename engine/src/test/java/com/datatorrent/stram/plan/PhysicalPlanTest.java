@@ -17,31 +17,33 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions;
+import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.PartitionableOperator;
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {

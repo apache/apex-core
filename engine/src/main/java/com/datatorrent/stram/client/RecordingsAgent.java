@@ -4,29 +4,35 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.util.ObjectMapperString;
-import com.datatorrent.stram.TupleRecorder;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
-import com.datatorrent.stram.util.WebServicesClient;
-import com.datatorrent.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.WebResource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.*;
+
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlType;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.sun.jersey.api.client.WebResource;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+
+import com.datatorrent.api.util.ObjectMapperString;
+
+import com.datatorrent.stram.debug.TupleRecorder;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.StramWebServices;
 
 /**
  * <p>RecordingsAgent class.</p>
@@ -100,6 +106,7 @@ public class RecordingsAgent extends StramAgent
     this.localMode = localMode;
   }
 
+  @Override
   public void setup() throws IOException
   {
     if (localMode) {
@@ -161,7 +168,6 @@ public class RecordingsAgent extends StramAgent
     cursor2 = line.indexOf(':', cursor);
 
     String windowRangesString = line.substring(cursor, cursor2);
-    cursor = cursor2 + 1;
     String[] windowRanges = windowRangesString.split(",");
     for (String windowRange : windowRanges) {
       String[] hilow = windowRange.split("-");

@@ -17,6 +17,10 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+
 import com.datatorrent.api.ActivationListener;
 import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Component;
@@ -28,17 +32,17 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.tuple.CheckpointTuple;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 
 /**
  * <p>Abstract Node class.</p>
@@ -68,7 +72,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
-  protected long currentWindowId;
+  public long currentWindowId;
   protected long endWindowEmitTime = 0;
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
@@ -110,13 +114,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   @Override
   public void teardown()
   {
-    for (InputPort<?> port : descriptor.inputPorts.values()) {
-      port.teardown();
+    for (PortContextPair<InputPort<?>> pcpair : descriptor.inputPorts.values()) {
+      pcpair.component.teardown();
     }
 
-    for (OutputPort<?> port : descriptor.outputPorts.values()) {
-      port.teardown();
+    for (PortContextPair<OutputPort<?>> pcpair : descriptor.outputPorts.values()) {
+      pcpair.component.teardown();
     }
+
     operator.teardown();
   }
 
@@ -127,15 +132,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   public void connectOutputPort(String port, final Sink<Object> sink)
   {
-    @SuppressWarnings("unchecked")
-    OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
+    PortContextPair<OutputPort<?>> outputPort = descriptor.outputPorts.get(port);
     if (outputPort != null) {
       if (sink == null) {
-        outputPort.setSink(null);
+        outputPort.component.setSink(null);
         outputs.remove(port);
       }
       else {
-        outputPort.setSink(sink);
+        outputPort.component.setSink(sink);
         outputs.put(port, sink);
       }
     }
@@ -149,15 +153,15 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     boolean changes = false;
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
-      OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
-      if (port == null) {
+      PortContextPair<OutputPort<?>> pcpair = descriptor.outputPorts.get(e.getKey());
+      if (pcpair == null) {
         continue;
       }
       changes = true;
 
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == null) {
-        port.setSink(e.getValue());
+        pcpair.component.setSink(e.getValue());
         outputs.put(e.getKey(), e.getValue());
         changes = true;
       }
@@ -166,7 +170,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       }
       else {
         MuxSink muxSink = new MuxSink(ics, e.getValue());
-        port.setSink(muxSink);
+        pcpair.component.setSink(muxSink);
         outputs.put(e.getKey(), muxSink);
         changes = true;
       }
@@ -183,14 +187,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     boolean changes = false;
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
-      OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
-      if (port == null) {
+      PortContextPair<OutputPort<?>> pcpair = descriptor.outputPorts.get(e.getKey());
+      if (pcpair == null) {
         continue;
       }
 
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == e.getValue()) {
-        port.setSink(null);
+        pcpair.component.setSink(null);
         outputs.remove(e.getKey());
         changes = true;
       }
@@ -199,12 +203,12 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         ms.remove(e.getValue());
         Sink<Object>[] sinks1 = ms.getSinks();
         if (sinks1.length == 0) {
-          port.setSink(null);
+          pcpair.component.setSink(null);
           outputs.remove(e.getKey());
           changes = true;
         }
         else if (sinks1.length == 1) {
-          port.setSink(sinks1[0]);
+          pcpair.component.setSink(sinks1[0]);
           outputs.put(e.getKey(), sinks1[0]);
           changes = true;
         }
@@ -219,7 +223,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
 
-  @SuppressWarnings( {"unchecked"})
+  @SuppressWarnings({"unchecked"})
   public void activate(OperatorContext context)
   {
     boolean activationListener = operator instanceof ActivationListener;
@@ -239,6 +243,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (activationListener) {
       ((ActivationListener)operator).activate(context);
     }
+
+    /*
+     * If there were any requests which needed to be executed before the operator started
+     * its normal execution, execute those requests now - e.g. Restarting the operator
+     * recording for the operators which failed while recording and being replaced.
+     */
+    handleRequests(currentWindowId);
 
     run();
 
@@ -295,17 +306,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void handleRequests(long windowId)
   {
-    endWindowEmitTime = System.currentTimeMillis();
-    OperatorStats stats = new OperatorStats();
-    reportStats(stats);
-    stats.checkpointedWindowId = checkpointedWindowId;
-    context.report(stats, windowId);
-
     /*
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      BlockingQueue<OperatorContext.NodeRequest> requests = context.getRequests();
+      BlockingQueue<NodeRequest> requests = context.getRequests();
       int size;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {
@@ -319,12 +324,17 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected void reportStats(OperatorStats stats)
+  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
-    stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
+    stats.checkpointedWindowId = checkpointedWindowId;
+    context.report(stats, windowId);
+
+    stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
-      //logger.info("end window emit time is {}", endWindowEmitTime);
-      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().getCount(true), endWindowEmitTime));
+      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      portStats.tupleCount = e.getValue().getCount(true);
+      portStats.endWindowTimestamp = endWindowEmitTime;
+      stats.outputPorts.add(portStats);
     }
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
@@ -449,6 +459,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
     else if (ow.operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
       node = new UnifierNode((Unifier<Object>)ow.operator);
+    }
+    else if (type == OperatorDeployInfo.OperatorType.OIO) {
+      node = new OiONode(ow.operator);
     }
     else {
       node = new GenericNode(ow.operator);
