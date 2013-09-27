@@ -2,29 +2,36 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.debug;
 
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.TupleRecorder.PortInfo;
-import com.datatorrent.stram.TupleRecorder.RecordInfo;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
+import com.datatorrent.stram.debug.TupleRecorder.RecordInfo;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
 
 /**
  *
@@ -32,6 +39,8 @@ import org.junit.Test;
  */
 public class TupleRecorderTest
 {
+  private final String classname;
+
   @Before
   public void setup() throws IOException
   {
@@ -46,6 +55,14 @@ public class TupleRecorderTest
 
   public TupleRecorderTest()
   {
+    classname = "com.datatorrent.stram.debug.TupleRecorderCollection";
+  }
+
+  public TupleRecorder getTupleRecorder(final StramLocalCluster localCluster, final PTOperator op)
+  {
+    TupleRecorderCollection instance = (TupleRecorderCollection)localCluster.getContainer(op).getInstance(classname);
+    TupleRecorder tupleRecorder = instance.getTupleRecorder(op.getId(), null);
+    return tupleRecorder;
   }
 
   public class Tuple
@@ -171,7 +188,6 @@ public class TupleRecorderTest
   @Test
   public void testRecordingFlow() throws Exception
   {
-
     LogicalPlan dag = new LogicalPlan();
 
     dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set("file://" + testWorkDir.getAbsolutePath());
@@ -203,20 +219,19 @@ public class TupleRecorderTest
 
   private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op, int numPorts) throws Exception
   {
-    localCluster.dnmgr.startRecording(op.getId(), null);
+    localCluster.getStreamingContainerManager().startRecording(op.getId(), null);
 
     WaitCondition c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
-        return tupleRecorder != null;
+        return null != getTupleRecorder(localCluster, op);
       }
 
     };
     Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
-    TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
+    TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
     String line;
@@ -240,7 +255,7 @@ public class TupleRecorderTest
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
+        TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
         return (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
@@ -248,13 +263,13 @@ public class TupleRecorderTest
 
     Assert.assertTrue("Should record more than " + testTupleCount + " tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
 
-    localCluster.dnmgr.stopRecording(op.getId(), null);
+    localCluster.getStreamingContainerManager().stopRecording(op.getId(), null);
     c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(op).getTupleRecorder(op.getId(), null);
+        TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
         return (tupleRecorder == null);
       }
 
@@ -300,7 +315,7 @@ public class TupleRecorderTest
         else if (line.startsWith("E:")) {
           endWindowExists = true;
         }
-        else if (line.startsWith("T:"))  {
+        else if (line.startsWith("T:")) {
           tupleCount[Integer.valueOf(line.substring(2, line.indexOf(':', 2)))]++;
         }
       }
@@ -315,4 +330,5 @@ public class TupleRecorderTest
     Assert.assertTrue("total tuple count >= " + testTupleCount, sum >= testTupleCount);
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(TupleRecorderTest.class);
 }

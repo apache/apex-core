@@ -4,9 +4,11 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.tuple.Tuple;
+
 import com.datatorrent.api.Sink;
+
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>DefaultReservoir class.</p>

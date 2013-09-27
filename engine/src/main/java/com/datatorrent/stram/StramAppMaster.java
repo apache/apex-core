@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import static java.lang.Thread.sleep;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,8 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -57,11 +59,12 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.AttributeMap;
 
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -193,8 +196,20 @@ public class StramAppMaster //extends License for licensing using native
 
   }
 
-  private class ClusterAppContextImpl implements StramAppContext
+  private class ClusterAppContextImpl extends BaseContext implements StramAppContext
   {
+    private static final long serialVersionUID = 201309112304L;
+
+    private ClusterAppContextImpl()
+    {
+      super(null, null);
+    }
+
+    ClusterAppContextImpl(AttributeMap attributes)
+    {
+      super(attributes, null);
+    }
+
     @Override
     public ApplicationId getApplicationID()
     {
@@ -210,10 +225,7 @@ public class StramAppMaster //extends License for licensing using native
     @Override
     public String getApplicationName()
     {
-      if (dag != null) {
-        return dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).get();
-      }
-      return "unknown";
+      return attrValue(LogicalPlan.APPLICATION_NAME, "unknown");
     }
 
     @Override
@@ -225,10 +237,7 @@ public class StramAppMaster //extends License for licensing using native
     @Override
     public String getApplicationPath()
     {
-      if (dag != null) {
-        return dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).get();
-      }
-      return "unknown";
+      return attrValue(LogicalPlan.APPLICATION_PATH, "unknown");
     }
 
     @Override
@@ -258,10 +267,7 @@ public class StramAppMaster //extends License for licensing using native
     @Override
     public String getDaemonAddress()
     {
-      if (dag != null) {
-        return dag.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
-      }
-      return "unknown";
+      return attrValue(LogicalPlan.DAEMON_ADDRESS, null);
     }
 
   }
@@ -379,9 +385,9 @@ public class StramAppMaster //extends License for licensing using native
     if (UserGroupInformation.isSecurityEnabled()) {
       //TODO :- Need to perform token renewal
       delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
-                                                              DELEGATION_TOKEN_MAX_LIFETIME,
-                                                              DELEGATION_TOKEN_RENEW_INTERVAL,
-                                                              DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+                                                               DELEGATION_TOKEN_MAX_LIFETIME,
+                                                               DELEGATION_TOKEN_RENEW_INTERVAL,
+                                                               DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     }
   }
 
@@ -454,7 +460,7 @@ public class StramAppMaster //extends License for licensing using native
 
     LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
 
-    StramAppContext appContext = new ClusterAppContextImpl();
+    StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     // start web service
     try {
       org.mortbay.log.Log.setLog(null);
@@ -585,7 +591,8 @@ public class StramAppMaster //extends License for licensing using native
       GetClusterNodesRequest request = Records.newRecord(GetClusterNodesRequest.class);
       ClientRMProtocol clientRMService = yarnClient.connectToASM();
       resourceRequestor.updateNodeReports(clientRMService.getClusterNodes(request).getNodeReports());
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
     }
 

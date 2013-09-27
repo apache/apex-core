@@ -4,6 +4,9 @@
  */
 package com.datatorrent.stram.plan;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -17,31 +20,36 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
+import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions;
+import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.PartitionableOperator;
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
@@ -165,6 +173,67 @@ public class PhysicalPlanTest {
     Assert.assertEquals("assigned partitions ", expectedMask+1,  assignedPartitionKeys.size());
     for (int i=0; i<=expectedMask; i++) {
       Assert.assertTrue(""+assignedPartitionKeys, assignedPartitionKeys.contains(i));
+    }
+
+  }
+
+  public static class TestPlanContext implements PlanContext, StorageAgent {
+    List<Runnable> events = new ArrayList<Runnable>();
+    Collection<PTOperator> undeploy;
+    Collection<PTOperator> deploy;
+    Set<PTContainer> releaseContainers;
+    int backupRequests;
+
+    @Override
+    public StorageAgent getStorageAgent() {
+      return this;
+    }
+
+    @Override
+    public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
+      this.undeploy = undeploy;
+      this.deploy = deploy;
+      this.releaseContainers = releaseContainers;
+    }
+
+    @Override
+    public void dispatch(Runnable r) {
+      events.add(r);
+    }
+
+    @Override
+    public OutputStream getSaveStream(int operatorId, long windowId) throws IOException
+    {
+      return new OutputStream()
+      {
+        @Override
+        public void write(int b) throws IOException
+        {
+        }
+
+        @Override
+        public void close() throws IOException
+        {
+          super.close();
+          backupRequests++;
+        }
+
+      };
+    }
+
+    @Override
+    public InputStream getLoadStream(int operatorId, long windowId) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void delete(int operatorId, long windowId) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void recordEventAsync(Event ev)
+    {
     }
 
   }

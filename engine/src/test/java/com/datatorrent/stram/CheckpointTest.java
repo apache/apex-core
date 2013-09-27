@@ -8,13 +8,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -23,26 +19,27 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.OperatorStats;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StreamingContainerManager;
+import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+
+import com.datatorrent.api.Operator;
+
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.Stats.ContainerStats;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.api.Operator;
 
 /**
  *
@@ -121,9 +118,12 @@ public class CheckpointTest
     ohb.setNodeId(deployInfo.get(0).id);
     ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
 
+    ContainerStats cstats = new ContainerStats(containerId);
+    cstats.addNodeStats(ohb);
+
     ContainerHeartbeat hb = new ContainerHeartbeat();
     hb.setContainerId(containerId);
-    hb.setDnodeEntries(Collections.singletonList(ohb));
+    hb.setContainerStats(cstats);
 
     dnm.processHeartbeat(hb); // mark deployed
 
@@ -147,9 +147,9 @@ public class CheckpointTest
     StramTestSupport.waitForWindowComplete(context, 2);
     Assert.assertEquals("window 2", 2, context.getLastProcessedWindowId());
 
-    ohb.getWindowStats().clear();
-    context.drainHeartbeatCounters(ohb.getWindowStats());
-    List<OperatorStats> stats = ohb.getWindowStats();
+    ohb.getOperatorStatsContainer().clear();
+    context.drainStats(ohb.getOperatorStatsContainer());
+    List<com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats> stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 3, stats.size());
     Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
     Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpointedWindowId); // lags windowId
@@ -170,9 +170,9 @@ public class CheckpointTest
     File cpFile2 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
-    ohb.getWindowStats().clear();
-    context.drainHeartbeatCounters(ohb.getWindowStats());
-    stats = ohb.getWindowStats();
+    ohb.getOperatorStatsContainer().clear();
+    context.drainStats(ohb.getOperatorStatsContainer());
+    stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 1, stats.size());
     Assert.assertEquals("windowId " + stats.get(0), 3, stats.get(0).windowId);
     Assert.assertEquals("checkpointedWindowId " + stats.get(0), 2, stats.get(0).checkpointedWindowId); // lags windowId

@@ -4,17 +4,18 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.util.HdfsPartFileCollection;
-import com.datatorrent.stram.webapp.ContainerInfo;
-import com.datatorrent.stram.webapp.OperatorInfo;
-import com.datatorrent.api.codec.JsonStreamCodec;
-import com.datatorrent.api.annotation.RecordField;
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.common.util.Slice;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
+
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.RecordField;
+import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.webapp.ContainerInfo;
+import com.datatorrent.stram.webapp.OperatorInfo;
 
 /**
  * <p>HdfsStatsRecorder class.</p>

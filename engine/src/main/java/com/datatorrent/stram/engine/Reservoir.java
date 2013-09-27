@@ -20,7 +20,9 @@ public interface Reservoir
   public int size();
 
   /**
-   * Remove the element from head/tail?
+   * Remove an element from the reservoir.
+   *
+   * @return the removed element.
    */
   public Object remove();
 

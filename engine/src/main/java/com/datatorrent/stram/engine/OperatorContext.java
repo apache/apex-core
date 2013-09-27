@@ -4,18 +4,18 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
-import com.datatorrent.api.Operator;
+
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.NodeRequest;
 
 /**
  * The for context for all of the operators<p>
@@ -40,8 +40,8 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private long lastProcessedWindowId = -1;
   private final int id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
-  private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
-  private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
+  private final CircularBuffer<Stats.ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<Stats.ContainerStats.OperatorStats>(1024);
+  private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(1024);
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
@@ -93,13 +93,13 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
-   * @param counters
+   * @param stats
    * @return int
    */
-  public final synchronized int drainHeartbeatCounters(Collection<? super OperatorStats> counters)
+  public final synchronized int drainStats(Collection<? super Stats.ContainerStats.OperatorStats> stats)
   {
     //logger.debug("{} draining {}", counters);
-    return statsBuffer.drainTo(counters);
+    return statsBuffer.drainTo(stats);
   }
 
   public final synchronized long getLastProcessedWindowId()
@@ -107,7 +107,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     return lastProcessedWindowId;
   }
 
-  synchronized void report(OperatorStats stats, long windowId)
+  synchronized void report(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
     lastProcessedWindowId = windowId;
     stats.windowId = windowId;
@@ -122,20 +122,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   {
     //logger.debug("Received request {} for (node={})", request, id);
     requests.add(request);
-  }
-
-  public interface NodeRequest
-  {
-    /**
-     * Command to be executed at subsequent end of window.
-     *
-     * @param operator
-     * @param id
-     * @param windowId
-     * @throws IOException
-     */
-    public void execute(Operator operator, int id, long windowId) throws IOException;
-
   }
 
   private static final Logger logger = LoggerFactory.getLogger(OperatorContext.class);

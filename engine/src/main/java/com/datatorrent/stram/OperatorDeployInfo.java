@@ -14,6 +14,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.stram.engine.WindowGenerator;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -24,9 +25,13 @@ import com.datatorrent.api.DAG.Locality;
 public class OperatorDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
+  /**
+   * WindowId used to store the state of the operator which has not processed a single tuple.
+   */
+  public static final long STATELESS_CHECKPOINT_WINDOW_ID = WindowGenerator.MIN_WINDOW_ID - 1;
 
   public enum OperatorType {
-    INPUT, UNIFIER, GENERIC
+    INPUT, UNIFIER, GENERIC, OIO
   }
 
   /**
@@ -201,9 +206,8 @@ public class OperatorDeployInfo implements Serializable
   /**
    * The checkpoint window identifier.
    * Used to restore state and incoming streams as part of recovery.
-   * Value 0 indicates fresh initialization, no restart.
    */
-  public long checkpointWindowId = -1;
+  public long checkpointWindowId = STATELESS_CHECKPOINT_WINDOW_ID;
 
   /**
    * Inputs to node, either from socket stream or inline from other node(s).

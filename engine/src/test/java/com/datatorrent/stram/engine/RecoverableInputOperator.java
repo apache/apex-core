@@ -24,6 +24,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   transient boolean first;
   transient long windowId;
   int maximumTuples = 20;
+  boolean simulateFailure;
 
   public void setMaximumTuples(int count)
   {
@@ -81,10 +82,15 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   {
     logger.debug("{} committed at {}", this, Codec.getStringWindowId(windowId));
 
-    if (firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
+    if (simulateFailure && firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
       throw new RuntimeException("Failure Simulation from " + this);
     }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverableInputOperator.class);
+
+  void setSimulateFailure(boolean flag)
+  {
+    simulateFailure = flag;
+  }
 }
