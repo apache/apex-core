@@ -56,6 +56,7 @@ public class ProcessingModeTests
 
   public void testLinearInputOperatorRecovery() throws Exception
   {
+    RecoverableInputOperator.initGenTuples();
     CollectorOperator.collection.clear();
     CollectorOperator.duplicates.clear();
 
@@ -79,6 +80,7 @@ public class ProcessingModeTests
 
   public void testLinearOperatorRecovery() throws Exception
   {
+    RecoverableInputOperator.initGenTuples();
     CollectorOperator.collection.clear();
     CollectorOperator.duplicates.clear();
 
@@ -101,6 +103,7 @@ public class ProcessingModeTests
 
   public void testLinearInlineOperatorsRecovery() throws Exception
   {
+    RecoverableInputOperator.initGenTuples();
     CollectorOperator.collection.clear();
     CollectorOperator.duplicates.clear();
 

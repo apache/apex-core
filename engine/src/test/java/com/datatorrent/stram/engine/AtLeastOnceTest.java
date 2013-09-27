@@ -43,6 +43,7 @@ public class AtLeastOnceTest
   @Test
   public void testInputOperatorRecovery() throws Exception
   {
+    RecoverableInputOperator.initGenTuples();
     CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
@@ -64,6 +65,7 @@ public class AtLeastOnceTest
   @Test
   public void testOperatorRecovery() throws Exception
   {
+    RecoverableInputOperator.initGenTuples();
     CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
@@ -89,6 +91,7 @@ public class AtLeastOnceTest
   @Test
   public void testInlineOperatorsRecovery() throws Exception
   {
+    RecoverableInputOperator.initGenTuples();
     CollectorOperator.collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
