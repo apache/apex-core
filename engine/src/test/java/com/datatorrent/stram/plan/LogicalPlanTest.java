@@ -2,21 +2,18 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.plan;
 
+import com.datatorrent.api.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -34,174 +31,34 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.engine.TestOutputOperator;
-import com.datatorrent.stram.DAGPropertiesBuilder;
-import com.datatorrent.stram.cli.StramClientUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.esotericsoftware.kryo.DefaultSerializer;
-import com.google.common.collect.Sets;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.codec.KryoJdkSerializer;
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.TestOutputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+import com.esotericsoftware.kryo.DefaultSerializer;
 
-public class DAGBuilderTest {
-
-  public static OperatorMeta assertNode(LogicalPlan dag, String id) {
-      OperatorMeta n = dag.getOperatorMeta(id);
-      assertNotNull("operator exists id=" + id, n);
-      return n;
-  }
-
-  /**
-   * Test read from stram-site.xml in Hadoop configuration format.
-   */
-  @Test
-  public void testLoadFromConfigXml() {
-    Configuration conf = new Configuration(false);
-    conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
-    //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
-
-    DAGPropertiesBuilder builder = new DAGPropertiesBuilder();
-    builder.addFromConfiguration(conf);
-
-    LogicalPlan dag = new LogicalPlan();
-    builder.populateDAG(dag, new Configuration(false));
-    dag.validate();
-
-//    Map<String, NodeConf> operatorConfs = tb.getAllOperators();
-    assertEquals("number of operator confs", 6, dag.getAllOperators().size());
-
-    OperatorMeta operator1 = assertNode(dag, "operator1");
-    OperatorMeta operator2 = assertNode(dag, "operator2");
-    OperatorMeta operator3 = assertNode(dag, "operator3");
-    OperatorMeta operator4 = assertNode(dag, "operator4");
-
-    assertNotNull("operatorConf for root", operator1);
-    assertEquals("operatorId set", "operator1", operator1.getName());
-
-    // verify operator instantiation
-    assertEquals(operator1.getOperator().getClass(), GenericTestOperator.class);
-    GenericTestOperator GenericTestNode = (GenericTestOperator)operator1.getOperator();
-    assertEquals("myStringPropertyValue", GenericTestNode.getMyStringProperty());
-
-    // check links
-    assertEquals("operator1 inputs", 0, operator1.getInputStreams().size());
-    assertEquals("operator1 outputs", 1, operator1.getOutputStreams().size());
-    StreamMeta n1n2 = operator2.getInputStreams().get(operator2.getMeta(((GenericTestOperator)operator2.getOperator()).inport1));
-    assertNotNull("n1n2", n1n2);
-
-    // output/input stream object same
-    assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getMeta(((GenericTestOperator)operator1.getOperator()).outport1)));
-    assertEquals("n1n2 source", operator1, n1n2.getSource().getOperatorWrapper());
-    Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
-    Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
-
-    assertEquals("stream name", "n1n2", n1n2.getId());
-    Assert.assertEquals("n1n2 not inline (default)", null, n1n2.getLocality());
-
-    // operator 2 streams to operator 3 and operator 4
-    assertEquals("operator 2 number of outputs", 1, operator2.getOutputStreams().size());
-    StreamMeta fromNode2 = operator2.getOutputStreams().values().iterator().next();
-
-    Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
-    for (LogicalPlan.InputPortMeta ip : fromNode2.getSinks()) {
-      targetNodes.add(ip.getOperatorWrapper());
-    }
-    Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(operator3, operator4), targetNodes);
-
-    OperatorMeta operator6 = assertNode(dag, "operator6");
-
-    List<OperatorMeta> rootNodes = dag.getRootOperators();
-    assertEquals("number root operators", 2, rootNodes.size());
-    assertTrue("root operator2", rootNodes.contains(operator1));
-    assertTrue("root operator6", rootNodes.contains(operator6));
-
-    for (OperatorMeta n : rootNodes) {
-      printTopology(n, dag, 0);
-    }
-
-  }
-
-  public void printTopology(OperatorMeta operator, DAG tplg, int level) {
-      String prefix = "";
-      if (level > 0) {
-        prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
-      }
-      System.out.println(prefix + operator.getName());
-      for (StreamMeta downStream : operator.getOutputStreams().values()) {
-          if (!downStream.getSinks().isEmpty()) {
-            for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
-              printTopology(targetNode.getOperatorWrapper(), tplg, level+1);
-            }
-          }
-      }
-  }
-
-  @Test
-  public void testLoadFromPropertiesFile() throws IOException {
-      Properties props = new Properties();
-      String resourcePath = "/testTopology.properties";
-      InputStream is = this.getClass().getResourceAsStream(resourcePath);
-      if (is == null) {
-        fail("Could not load " + resourcePath);
-      }
-      props.load(is);
-      DAGPropertiesBuilder pb = new DAGPropertiesBuilder()
-        .addFromProperties(props);
-
-      LogicalPlan dag = new LogicalPlan();
-      pb.populateDAG(dag, new Configuration(false));
-      dag.validate();
-
-      assertEquals("number of operator confs", 5, dag.getAllOperators().size());
-      assertEquals("number of root operators", 1, dag.getRootOperators().size());
-
-      StreamMeta s1 = dag.getStream("n1n2");
-      assertNotNull(s1);
-      assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
-
-      OperatorMeta operator3 = dag.getOperatorMeta("operator3");
-      assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
-
-      GenericTestOperator doperator3 = (GenericTestOperator)operator3.getOperator();
-      assertEquals("myStringProperty " + doperator3, "myStringPropertyValueFromTemplate", doperator3.getMyStringProperty());
-      assertFalse("booleanProperty " + doperator3, doperator3.booleanProperty);
-
-      OperatorMeta operator4 = dag.getOperatorMeta("operator4");
-      GenericTestOperator doperator4 = (GenericTestOperator)operator4.getOperator();
-      assertEquals("myStringProperty " + doperator4, "overrideOperator4", doperator4.getMyStringProperty());
-      assertEquals("setterOnlyOperator4 " + doperator4, "setterOnlyOperator4", doperator4.propertySetterOnly);
-      assertTrue("booleanProperty " + doperator4, doperator4.booleanProperty);
-
-      StreamMeta input1 = dag.getStream("inputStream");
-      assertNotNull(input1);
-      Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorWrapper());
-      Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
-      for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
-        targetNodes.add(targetPort.getOperatorWrapper());
-      }
-
-      Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
-
-  }
+public class LogicalPlanTest {
 
   @Test
   public void testCycleDetection() {
@@ -273,7 +130,7 @@ public class DAGBuilderTest {
   }
 
   @Test
-  public void testLogicalPlan() throws Exception {
+  public void testLogicalPlanSerialization() throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
 
@@ -467,6 +324,68 @@ public class DAGBuilderTest {
 
   }
 
+  @OperatorAnnotation(partitionable = false)
+  public static class TestOperatorAnnotationOperator extends BaseOperator {
+
+    @InputPortFieldAnnotation(name = "input1", optional = true)
+    final public transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>() {
+      @Override
+      public void process(Object tuple) {
+      }
+    };
+  }
+
+  @OperatorAnnotation(partitionable = false)
+  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements PartitionableOperator {
+
+    @Override
+    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
+    {
+      return null;
+    }
+
+  }
+
+  @Test
+  public void testOperatorAnnotation() {
+    LogicalPlan dag = new LogicalPlan();
+    TestOperatorAnnotationOperator operator = dag.addOperator("operator1", TestOperatorAnnotationOperator.class);
+
+    dag.setAttribute(operator, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+
+    try {
+      dag.validate();
+      Assert.fail("should raise operator is not partitionable for operator1");
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Operator " + operator.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set", e.getMessage());
+    }
+
+    dag.setAttribute(operator, OperatorContext.INITIAL_PARTITION_COUNT, 0);
+    dag.validate();
+
+    dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, true);
+
+    try {
+      dag.validate();
+      Assert.fail("should raise operator is not partitionable for operator1");
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Operator " + operator.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set", e.getMessage());
+    }
+
+    dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, false);
+    dag.validate();
+
+    dag.removeOperator(operator);
+    TestOperatorAnnotationOperator2 operator2 = dag.addOperator("operator2", TestOperatorAnnotationOperator2.class);
+
+    try {
+      dag.validate();
+      Assert.fail("should raise operator is not partitionable for operator2");
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Operator " + operator2.getName() + " is not partitionable but implements PartitionableOperator", e.getMessage());
+    }
+  }
+
   @Test
   public void testPortConnectionValidation() {
 
@@ -495,7 +414,7 @@ public class DAGBuilderTest {
   }
 
   @Test
-  public void testProcessingModeValidation() {
+  public void testAtMostOnceProcessingModeValidation() {
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
@@ -523,6 +442,66 @@ public class DAGBuilderTest {
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
     Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
 
+  }
+
+    @Test
+  public void testExactlyOnceProcessingModeValidation() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
+
+    GenericTestOperator amoOper = dag.addOperator("amoOper", GenericTestOperator.class);
+    dag.setAttribute(amoOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.EXACTLY_ONCE);
+
+    dag.addStream("input1.outport", input1.outport, amoOper.inport1);
+    dag.addStream("input2.outport", input2.outport, amoOper.inport2);
+
+    GenericTestOperator outputOper = dag.addOperator("outputOper", GenericTestOperator.class);
+    dag.addStream("aloOper.outport1", amoOper.outport1, outputOper.inport1);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + outputOper);
+    } catch (ValidationException ve) {
+      Assert.assertEquals("", ve.getMessage(), "Processing mode for outputOper should be AT_MOST_ONCE for source amoOper/EXACTLY_ONCE");
+    }
+
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_LEAST_ONCE);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + outputOper);
+    } catch (ValidationException ve) {
+      Assert.assertEquals("", ve.getMessage(), "Processing mode outputOper/AT_LEAST_ONCE not valid for source amoOper/EXACTLY_ONCE");
+    }
+
+    // AT_MOST_ONCE is valid
+    dag.setAttribute(outputOper, OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
+    dag.validate();
+  }
+
+  @Test
+  public void testLocalityValidation() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    StreamMeta s1 = dag.addStream("input1.outport", input1.outport, o1.inport1).setLocality(Locality.THREAD_LOCAL);
+    dag.validate();
+
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
+    dag.addStream("input2.outport", input2.outport, o1.inport2);
+
+    try {
+      dag.validate();
+      Assert.fail("Exception expected for " + o1);
+    } catch (ValidationException ve) {
+      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams"));
+    }
+
+    s1.setLocality(null);
+    dag.validate();
   }
 
   private class TestAnnotationsOperator extends BaseOperator {

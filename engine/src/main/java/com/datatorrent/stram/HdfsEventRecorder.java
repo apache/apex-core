@@ -24,8 +24,10 @@ import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.util.HdfsPartFileCollection;
 
 /**
+ * <p>HdfsEventRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.4
  */
 public class HdfsEventRecorder implements EventRecorder
 {
@@ -85,7 +87,6 @@ public class HdfsEventRecorder implements EventRecorder
   {
     try {
       streamCodec = new JsonStreamCodec<Object>();
-      storage = new HdfsPartFileCollection();
       storage.setBasePath(basePath);
       storage.setup();
       storage.writeMetaData((VERSION + "\n").getBytes());
@@ -107,6 +108,7 @@ public class HdfsEventRecorder implements EventRecorder
     }
   }
 
+  @Override
   public void recordEventAsync(Event event)
   {
     LOG.debug("Adding event to the queue");
@@ -158,4 +160,8 @@ public class HdfsEventRecorder implements EventRecorder
     wsClient.subscribeNumSubscribers(pubSubTopic);
   }
 
+  public void requestSync()
+  {
+    this.storage.requestSync();
+  }
 }

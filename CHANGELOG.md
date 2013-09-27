@@ -1,5 +1,250 @@
 #Release Notes - Streaming Platform
 
+## Version 0.3.4
+
+## Bug
+* [SPOI-569] - Ads demo charting is not stable; Needs cleanup
+* [SPOI-570] - Mobile demo does not run forever
+* [SPOI-599] - Sometimes in the metrics charts widget some charts are flat
+* [SPOI-617] - Change error code from 500 to 400 for bad request
+* [SPOI-630] - Stop recording action does not work
+* [SPOI-660] - Recording shows a red light, but no recording is being done
+* [SPOI-674] - AppModel and AppInstanceView need clean-up
+* [SPOI-704] - Red dots show up in the dashboard, as if the operator is recording
+* [SPOI-714] - Ads UI load is alow
+* [SPOI-715] - Ads demo chart is 25 mins behind
+* [SPOI-724] - Fix LocalFileInputOperator logic and documentation
+* [SPOI-730] - Developer version for Mac OS X
+* [SPOI-731] - Cannot record anymore. Tuple recorder is broken
+* [SPOI-732] - Cannot stop recording
+* [SPOI-742] - Installation/Compilation fails with maven-eclipse plugin
+* [SPOI-744] - Facilitate the "accepted" app state for the app instance view
+* [SPOI-747] - StreamingContainerManager.getContainerAgents() returns inactive containers
+* [SPOI-748] - Build Kestrel as 3rd party library and depend on it instead of including the code with operator library
+* [SPOI-751] - browser CPU utilization excessive with larger number of updates
+* [SPOI-755] - Evaluate ads dimensional data demo
+* [SPOI-756] - Account for single-item, non-list responses from web services
+* [SPOI-757] - docs directory re-link for new version install
+* [SPOI-762] - Application Model not updating correctly, causing graph issues
+* [SPOI-764] - Malhar engine build is including StramAppMaster in engine jar in some cases
+* [SPOI-765] - Datasource constructing tuple GET URL incorrectly for tupleviewer
+* [SPOI-768] - Log file rotation support issue
+* [SPOI-804] - If a node is bad the app master should choose a different node for the containers.
+* [SPOI-806] - list-apps shows duplicate entries
+* [SPOI-807] - downgrade jvm on node3
+* [SPOI-809] - Add pig distinct semantic operator to library.
+* [SPOI-811] - shutdown app does not work when not connecting to an app
+* [SPOI-842] - Generated javadocs are missing several packages
+* [SPOI-845] - Installer test fails when executing from different directory
+* [SPOI-849] - Start recording from port list
+* [SPOI-863] - Display application-wide latency in Application View
+* [SPOI-883] - StramDelegationTokenManager should not be started if security is not enabled
+* [SPOI-888] - Account for delay in Stram initialization in recently launched apps
+* [SPOI-890] - Stram unit test is creating events data in stram/stram
+* [SPOI-892] - getAppInfo throws an exception during the beginning of the application
+* [SPOI-902] - Tupleviewer filter by port fails
+* [SPOI-903] - Tupleviewer preview of loaded tuples not rendering
+* [SPOI-905] - Review/fix license headers in open source
+* [SPOI-911] - Sync recording call fails with 500 error
+* [SPOI-915] - Log collection tool for hadoop cluster
+* [SPOI-918] - Partitioning stopped on MobileLocatorDemo instance 48
+* [SPOI-933] - Specify application names in stram configuration file for the customer demos on the cluster.
+* [SPOI-946] - Certify Sandbox for Ubuntu
+* [SPOI-951] - Auto completed file name does not work with launch command
+* [SPOI-952] - Remove operator returns error about input stream still connected.
+* [SPOI-958] - LocalFsInputOperator test is failing
+* [SPOI-965] - UI: Make sure empty lists and single-item lists in JSON returned from Daemon is handled properly
+* [SPOI-969] - UI: Stop recording fails with error saying some recording name was not found with operator undefined.
+* [SPOI-971] - Aggregation function for application stats fails intermittently 
+* [SPOI-974] - PageLoaderView Unit Test
+* [SPOI-981] - Ensure "ports" are in the operators of the logicalPlan response
+* [SPOI-991] - Daemon: windowIds must be sent as strings
+* [SPOI-997] - Compute throughput as rolling average
+
+
+## Improvement
+* [SPOI-434] - Ability to subscribe to buffer server stream at next begin window
+* [SPOI-450] - CLI: Allow wildcard in launch file name
+* [SPOI-463] - The appMetrics widget should remember the choices on the graphs (on/off)
+* [SPOI-470] - Provide allocated/planned container count
+* [SPOI-614] - Better Error Handling/Error Pages
+* [SPOI-620] - Allow recording from operator/port page
+* [SPOI-624] - Normalize appid/appId opid/operatorId and similar discrepancies
+* [SPOI-677] - Setup both Core and Front-End to run on local environment
+* [SPOI-685] - Explore other charting libraries to replace custom chart module
+* [SPOI-687] - Improve CSS for tupleviewer
+* [SPOI-696] - Only update whole application collection on applist page
+* [SPOI-712] - Explicit Errors when daemon provides data in unexpected format
+* [SPOI-753] - Overview metrics for Port View should have comma separations
+* [SPOI-835] - CLI needs to be able to handle spaces and escape characters
+* [SPOI-844] - operatorClass REST call should also accept "chart" or "filter" for charting and alert filters
+* [SPOI-901] - Add palette for containers list
+* [SPOI-938] - Centralize reused templates for links
+
+## New Feature
+* [SPOI-70] - Parent JIra: Webservices for Streaming Application
+* [SPOI-73] - Job completed report
+* [SPOI-74] - Reporting: Job completion report should have the list of persisted files per node
+* [SPOI-75] - Parameter to specify if persisted file names should be included in the job completion report
+* [SPOI-127] - CLI: Throughput data (streams)
+* [SPOI-129] - CLI: Streaming Ap Master data
+* [SPOI-134] - Webservice: Stream data/throughput per stream in the application
+* [SPOI-138] - Webservices: Data on committed windows
+* [SPOI-139] - Webservice: Latency across the dag/application
+* [SPOI-140] - Event Logging
+* [SPOI-143] - Webservice: Bottleneck analysis
+* [SPOI-219] - Evaluate if we need a naming scheme to identify a physical node of a logical dnode
+* [SPOI-337] - Do an in-node stream by user choice
+* [SPOI-403] - Design license file format
+* [SPOI-417] - Licensing Specification
+* [SPOI-460] - Create Preconfigured Sandbox
+* [SPOI-471] - Stream View
+* [SPOI-551] - Create Video for Recording Tuples
+* [SPOI-628] - Web service for event logging
+* [SPOI-698] - Add streamquery operators that support expression
+* [SPOI-699] - Add pass through streamquery operators
+* [SPOI-710] - DatatTorrent Wiki
+* [SPOI-718] - Implement at most once for Operators with two or more connected input ports.
+* [SPOI-719] - Implement Dag Validations for At-Most-Once
+* [SPOI-738] - DT Phone Home Phase II
+* [SPOI-829] - Calculate overall latency for application
+* [SPOI-830] - Deduce critical path in DAG for application
+* [SPOI-833] - operator's latency should be shown in the  UI
+* [SPOI-891] - Create a web service API for describing operator class
+* [SPOI-906] - Add palette for ports list
+* [SPOI-908] - Selecting recordings from recording list fails
+* [SPOI-909] - CSS issues with tupleviewer when port name too long
+* [SPOI-920] - Application DAG UI Integration
+* [SPOI-921] - Sandbox icons
+* [SPOI-934] - Alert List Widget - Date/Time
+* [SPOI-936] - Alert List Widget - Dynamic Width
+* [SPOI-949] - Documentation processor from markdown to html
+
+
+## Task
+* [SPOI-60] - Streaming app master logging
+* [SPOI-191] - Enable compression for end of window data or for throttled N tuples (N sent together)
+* [SPOI-198] - Evaluate if buffer server should retain data in a compressed state
+* [SPOI-199] - Evaluate if we need buffer server to keep data in compressed state
+* [SPOI-425] - Checkpointing for exactly once operator recovery
+* [SPOI-514] - Open Source Transition for Library/Contrib/Demos
+* [SPOI-603] - Evaluation version for Mac OS X
+* [SPOI-631] - Make a site operations video
+* [SPOI-633] - Need changelog for new version
+* [SPOI-656] - Performance metrics charts does not remember preferences
+* [SPOI-681] - Added library description to index.html
+* [SPOI-682] - Display Application DAG in UI (evaluation)
+* [SPOI-706] - Allow app name to be specified in launch time config file
+* [SPOI-708] - Set up demo procedures
+* [SPOI-713] - Technical evaluation of UIs
+* [SPOI-717] - Create launch macros on demo server
+* [SPOI-734] - Push 0.3.3 to demo server
+* [SPOI-735] - Launch the latest software on customer app server
+* [SPOI-736] - Certify customer application server
+* [SPOI-737] - Clean up redis history on customer apps
+* [SPOI-740] - Updated documentation generation process
+* [SPOI-745] - DT Phone Home Server side work
+* [SPOI-754] - Create other user for node0 launches
+* [SPOI-759] - Technical Evaluation
+* [SPOI-760] - Format comments for ASF project for Malhar GitHub
+* [SPOI-761] - Format comments in API
+* [SPOI-769] - Fix sql DeleteOperator to make it pass thru.
+* [SPOI-770] - Fix SelectOperator to make it pass thru.
+* [SPOI-771] - Fix sql UpdateOperator code to make it pass thru.
+* [SPOI-773] - Add seolect expression index.
+* [SPOI-774] - Fix sql InnnerJoin operator join condition.
+* [SPOI-775] - Fix sql Outer Join operator to merge left/right/full join sql semantic.
+* [SPOI-776] - Add sql Having  semantic operator to library.
+* [SPOI-777] - Add sql select top operator semantic to library.
+* [SPOI-778] - Add sql select between condition sematic to library.
+* [SPOI-779] - Add  sql select  compound condition  AND/OR semanticf to library. 
+* [SPOI-780] - Add sql in condition semantic to library
+* [SPOI-781] - Add sql like condition semantic to library.
+* [SPOI-782] - Add having coprae value semantic to library.
+* [SPOI-783] - Add having condition interface to support sql having operator semantic.
+* [SPOI-784] - Add sql select unary expression semantic to library.
+* [SPOI-785] - Create sql binary expreesion index semantic in library.
+* [SPOI-786] - Add sql select negate index semantic to library.
+* [SPOI-787] - Add sql slect sum index semantic to library.
+* [SPOI-788] - Add sql select string mid index semantic to library.
+* [SPOI-789] - Add sql slect string len semantic to library.
+* [SPOI-790] - Add sql select string upper/lower semantic to library.
+* [SPOI-791] - Add sql round double semantic to library.
+* [SPOI-792] - Add sql select rtound double semantic to library.
+* [SPOI-794] - Add sql sleect count aggregate semantic to libarry.
+* [SPOI-795] - Add sql select min/max fucntion semantic to library.
+* [SPOI-796] - Add sql select first/last aggregate semantic to library.
+* [SPOI-797] - Add sql sleect sum aggregate semantic to library.
+* [SPOI-798] - Add pig group operator semanitc to library.
+* [SPOI-799] - Add PIG filter operator semantic to library.
+* [SPOI-800] - Add PIG cross operator semantic to library.
+* [SPOI-801] - Add PIG split operator semantic to library.
+* [SPOI-812] - Design wireframes for widget for SiteStats 
+* [SPOI-814] - Prototype UI dashboard change to facilitate "app store" paradigm
+* [SPOI-815] - Add pig join(inner) semantic operator to library.
+* [SPOI-816] - Add pig join(outer => left/right/full) semantic operator to library.
+* [SPOI-820] - Implement Dimension Operator that allows custom explosion
+* [SPOI-825] - Evaluate non-Hadoop Streaming Platforms IDE
+* [SPOI-826] - Add pig order by operator semantic to library.
+* [SPOI-827] - Add pig limit operator semantic to library.
+* [SPOI-828] - Add pig stream operator semantic to library.
+* [SPOI-836] - Design Alert-related API
+* [SPOI-840] - Add spark add flat map function semantic to operator library.
+* [SPOI-848] - Introduce ContainerLocal as replacement for Inline
+* [SPOI-850] - Evaluate Hadoop IDE
+* [SPOI-851] - Evaluate JavaScript  data visualization libraries
+* [SPOI-858] - Class loader support issue: org.fusesource.hawtbuf.UTF8Buffer.class 
+* [SPOI-859] - Evaluate Streaming Platform Back-End Development Workflow
+* [SPOI-860] - Evaluate Node.js as Back-End for Site Stats Demo
+* [SPOI-864] - Redesign REST for altered escalation approach
+* [SPOI-865] - Create "List of Alerts" widget
+* [SPOI-866] - Add DataSource methods for alert REST API
+* [SPOI-879] - Create a data list of grid nodes
+* [SPOI-881] - Create Compute-Local api
+* [SPOI-882] - Add compute local api to documents
+* [SPOI-884] - Update dhcp configuration on cluster nodes.
+* [SPOI-885] - Create prototype with Node.js + Redis + REST for Site Stats
+* [SPOI-886] - Implement remove logical operator
+* [SPOI-889] - Alerts persistence with Backbone.js models
+* [SPOI-893] - Externalize UI settings
+* [SPOI-894] - Implement JavaScript Filter operator for Alerts
+* [SPOI-910] - Node.js Mock Server and JSONP Cross-Domain Requests
+* [SPOI-913] - Flesh out "kill app" command from the instance view
+* [SPOI-914] - Alerts REST API Error Handling
+* [SPOI-935] - Make patch for flawed start/stop recording mechanism
+* [SPOI-939] - Remove references to unfinished features for 0.3.4 release
+* [SPOI-943] - Certify Sandbox on various OS
+* [SPOI-944] - Certify Sandbox on Mac
+* [SPOI-947] - Certify Sandbox for Windows
+* [SPOI-948] - Improvements in sandbox based on OS certification feedback
+* [SPOI-957] - Update license header
+* [SPOI-970] - Download latest G! documents
+* [SPOI-985] - Macro argument expansion in stramcli
+* [SPOI-1006] - Update @since tags for 0.3.4
+
+## Sub-task
+* [SPOI-880] - Investigate options for sandbox environment
+* [SPOI-922] - Sandbox default hadoop configurations
+* [SPOI-923] - Sandbox demo script and application launcher
+* [SPOI-924] - Sandbox size and performance optimizations
+* [SPOI-926] - Sandbox documentation
+* [SPOI-942] - Demo launch page
+* [SPOI-990] - Add launch-demo macro to clirc during install
+* [SPOI-1004] - End user license agreement updates
+
+## GitHub - DataTorrent/Malhar
+* [12] - Site Stats Operator and TopNOperator issues
+* [10] - getTopN() function returns ArrayList in com.datatorrent.lib.util.TopNSort class
+* [9] - Another Bug in offer(E e) function of com.datatorrent.lib.util.TopNSort.java
+* [8] - Bug in offer(E e) function of com.datatorrent.lib.util.TopNSort.java
+* [7] - Add ability to configure timeout of RedisOutputOperator
+* [6] - Add a continue on error functionality to AbstractKeyValueStoreOutputOperator
+* [5] - Add rollback to AbstractKeyValueStoreOutputOperator.
+* [3] - Map Reduce job tracker 
+* [2] - Fix application name of mobile demo
+* [1] - Console Operators
+
+
 ## Version 0.3.3
 
 ## Bug

@@ -1,4 +1,4 @@
-package com.datatorrent.stram;
+package com.datatorrent.stram.plan.physical;
 
 import java.util.*;
 
@@ -36,7 +36,7 @@ public class OperatorPartitions {
     private final Operator operator;
     private final int loadIndicator;
 
-    PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator) {
+    public PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator) {
       this.operator = operator;
       this.partitionKeys = new PartitionPortMap();
       this.partitionKeys.putAll(partitionKeys);

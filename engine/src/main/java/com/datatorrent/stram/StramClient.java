@@ -43,6 +43,7 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.ProtoUtils;
 import org.apache.hadoop.yarn.util.Records;
 
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
 
 import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
@@ -190,7 +191,10 @@ public class StramClient
     }
     LOG.info("Configuration: " + propertyFileName);
 
-    dag = DAGPropertiesBuilder.create(new Configuration(false), propertyFileName);
+    dag = new LogicalPlan();
+    Configuration appConf = new Configuration(false);
+    StreamingApplication app = DAGPropertiesBuilder.create(appConf, propertyFileName);
+    app.populateDAG(dag, appConf);
     dag.validate();
     if (cliParser.hasOption("debug")) {
       dag.getAttributes().attr(LogicalPlan.DEBUG).set(true);

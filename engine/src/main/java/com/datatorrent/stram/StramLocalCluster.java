@@ -28,7 +28,6 @@ import com.datatorrent.api.Operator;
 
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -38,6 +37,7 @@ import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTOperator;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -347,8 +347,9 @@ public class StramLocalCluster implements Runnable, Controller
   public LocalStramChild getContainer(PTOperator planOperator)
   {
     LocalStramChild container;
-    if (planOperator.container.containerId != null) {
-      if ((container = getContainer(planOperator.container.containerId)) != null) {
+    String cid = planOperator.getContainer().getExternalId();
+    if (cid != null) {
+      if ((container = getContainer(cid)) != null) {
         if (container.getNodeContext(planOperator.getId()) != null) {
           logger.debug("getcontainer returning {}", System.identityHashCode(container));
           return container;

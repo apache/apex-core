@@ -96,7 +96,7 @@ public class HdfsPartFileCollection
 
   public void teardown()
   {
-    logger.info("Closing down tuple recorder.");
+    logger.info("Closing hdfs part collection.");
     try {
       if (metaOs != null) {
         metaOs.close();

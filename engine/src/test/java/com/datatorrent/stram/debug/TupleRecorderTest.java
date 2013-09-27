@@ -21,7 +21,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
@@ -29,6 +28,7 @@ import com.datatorrent.stram.debug.TupleRecorder.RecordInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.util.HdfsPartFileCollection;

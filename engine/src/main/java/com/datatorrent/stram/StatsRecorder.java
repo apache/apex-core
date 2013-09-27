@@ -11,8 +11,10 @@ import java.util.Map;
 import com.datatorrent.stram.webapp.OperatorInfo;
 
 /**
+ * <p>StatsRecorder interface.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.4
  */
 public interface StatsRecorder
 {

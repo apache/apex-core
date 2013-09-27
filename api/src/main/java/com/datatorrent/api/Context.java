@@ -142,6 +142,11 @@ public interface Context
     public static final AttributeKey<StorageAgent> STORAGE_AGENT = new AttributeKey<StorageAgent>("backupAgent");
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
+     * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
+     * operators if any, the processing mode of the downstream operators is automatically set to AT_MOST_ONCE. If a different processing
+     * mode is specified for the downstream operators it will result in an error.
+     * If the processing mode for an operator is specified as EXACTLY_ONCE then the processing mode for all downstream operators
+     * should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
     public static final AttributeKey<Operator.ProcessingMode> PROCESSING_MODE = new AttributeKey<Operator.ProcessingMode>("processMode");
 

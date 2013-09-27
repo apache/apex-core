@@ -153,4 +153,24 @@ public class WebServicesClient
     }
 
   }
+
+  public static class DeleteWebServicesHandler<T> extends WebServicesHandler<T>
+  {
+    @Override
+    public T process(WebResource webResource, Class<T> clazz)
+    {
+      return webResource.delete(clazz);
+    }
+
+  }
+
+  public static class DeleteWebServicesAsyncHandler<T> extends WebServicesAsyncHandler<T>
+  {
+    @Override
+    public Future<T> process(AsyncWebResource webResource, ITypeListener<T> listener)
+    {
+      return webResource.delete(listener);
+    }
+
+  }
 }

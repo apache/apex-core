@@ -62,13 +62,13 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 
 import com.datatorrent.api.AttributeMap;
 
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
@@ -176,7 +176,7 @@ public class StramAppMaster //extends License for licensing using native
     {
       int num = 0;
       for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        num += c.operators.size();
+        num += c.getOperators().size();
       }
       return num;
     }
@@ -502,6 +502,8 @@ public class StramAppMaster //extends License for licensing using native
       execute();
     }
     catch (RuntimeException re) {
+      status = false;
+      LOG.error("Caught RuntimeException in execute()", re);
       if (re.getCause() instanceof YarnRemoteException) {
         throw (YarnRemoteException)re.getCause();
       }
@@ -735,7 +737,7 @@ public class StramAppMaster //extends License for licensing using native
           ev.addData("operatorId", entry.getKey());
           ev.addData("operatorName", entry.getValue().operator.getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
-          ev.addData("reason", "container exited");
+          ev.addData("reason", "container exited with status " + exitStatus);
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
@@ -744,7 +746,7 @@ public class StramAppMaster //extends License for licensing using native
         ev.addData("exitStatus", containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
 
-        dnmgr.removeContainerAgent(containerAgent.container.containerId);
+        dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
 
       }
 

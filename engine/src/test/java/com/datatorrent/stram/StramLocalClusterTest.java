@@ -20,17 +20,12 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
 
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.*;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.stream.BufferServerSubscriber;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
@@ -112,7 +107,7 @@ public class StramLocalClusterTest
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setFinishedWindowId(-1);
-      streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
+      streamContext.setBufferServerAddress(publisherOperator.getContainer().bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStatefulStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
       bss = new BufferServerSubscriber(streamContext.getSinkId(), 1024);

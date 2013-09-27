@@ -47,13 +47,22 @@ public interface AttributeMap
 
   /**
    * Return the attribute value for the given key. If the map does not have an
-   * entry for the key, a default attribute value will be returned.
+   * entry for the key, a default attribute value will be created and returned.
+   * Modifies state of the map of key is not present.
    *
    * @param <T>
    * @param key
    * @return <T> Attribute<T>
    */
   <T> Attribute<T> attr(AttributeKey<T> key);
+
+  /**
+   * Return the attribute, or null, if the attribute was not set.
+   * This method will not modify the state of the map.
+   * @param key
+   * @param defaultValue
+   */
+  <T> Attribute<T> attrOrNull(AttributeKey<T> key);
 
   /**
    * Return the value map
@@ -134,6 +143,14 @@ public interface AttributeMap
         attr = new DefaultAttribute<T>();
         map.put(key.name(), attr);
       }
+      return attr;
+    }
+
+    @Override
+    public <T> Attribute<T> attrOrNull(AttributeKey<T> key)
+    {
+      @SuppressWarnings("unchecked")
+      DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
       return attr;
     }
 

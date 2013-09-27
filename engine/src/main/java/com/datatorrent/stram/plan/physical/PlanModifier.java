@@ -7,9 +7,6 @@ import java.util.Set;
 import javax.validation.ValidationException;
 
 import com.datatorrent.stram.DAGPropertiesBuilder;
-import com.datatorrent.stram.PhysicalPlan;
-import com.datatorrent.stram.PhysicalPlan.PTContainer;
-import com.datatorrent.stram.PhysicalPlan.PTOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -57,6 +54,25 @@ public class PlanModifier {
     this.logicalPlan = plan.getDAG();
   }
 
+  public StreamMeta addSinks(String id, Operator.InputPort<?>... sinks)
+  {
+    StreamMeta sm = logicalPlan.getStream(id);
+    if (sm == null) {
+      throw new AssertionError("Stream " + id + " is not found!");
+    }
+    for (Operator.InputPort<?> sink : sinks) {
+      sm.addSink(sink);
+      if (physicalPlan != null) {
+        for (InputPortMeta ipm : sm.getSinks()) {
+          if (ipm.getPortObject() == sink) {
+            physicalPlan.connectInput(ipm, affectedOperators);
+          }
+        }
+      }
+    }
+    return sm;
+  }
+
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<?>... sinks)
   {
     StreamMeta sm = logicalPlan.getStream(id);
@@ -70,18 +86,7 @@ public class PlanModifier {
       StreamMeta newStream = logicalPlan.addStream(id, source);
       sm = newStream;
     }
-
-    for (Operator.InputPort<?> sink : sinks) {
-      sm.addSink(sink);
-      if (physicalPlan != null) {
-        for (InputPortMeta ipm : sm.getSinks()) {
-          if (ipm.getPortObject() == sink) {
-            physicalPlan.connectInput(ipm, affectedOperators);
-          }
-        }
-      }
-    }
-    return sm;
+    return addSinks(id, sinks);
   }
 
   /**
@@ -108,6 +113,18 @@ public class PlanModifier {
       throw new AssertionError(String.format("Invalid port %s (%s)", sourcePortName, om));
     }
     addStream(streamName, sourcePort.component, getInputPort(targetOperName, targetPortName));
+  }
+
+  /**
+   * Add sink to an existing stream to logical plan.
+   *
+   * @param streamName
+   * @param targetOperName
+   * @param targetPortName
+   */
+  public void addSink(String streamName, String targetOperName, String targetPortName)
+  {
+    addSinks(streamName, getInputPort(targetOperName, targetPortName));
   }
 
   private OperatorMeta assertGetOperator(String operName)

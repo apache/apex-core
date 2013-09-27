@@ -40,14 +40,13 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   @Override
   public <T> T attrValue(AttributeKey<T> key, T defaultValue)
   {
-    Attribute<T> attr = attributes.attr(key);
+    Attribute<T> attr = attributes.attrOrNull(key);
     if (attr != null) {
       T get = attr.get();
       if (get != null) {
         return get;
       }
     }
-
     return parentContext == null? defaultValue: parentContext.attrValue(key, defaultValue);
   }
 

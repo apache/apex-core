@@ -36,10 +36,12 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.cli.*;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 
 /**
@@ -98,7 +100,7 @@ public class StramAppLauncher {
 
 
   public static interface AppConfig {
-      LogicalPlan createApp(Configuration conf);
+      StreamingApplication createApp(Configuration conf);
       String getName();
   }
 
@@ -110,7 +112,7 @@ public class StramAppLauncher {
     }
 
     @Override
-    public LogicalPlan createApp(Configuration conf) {
+    public StreamingApplication createApp(Configuration conf) {
       try {
         return DAGPropertiesBuilder.create(conf, propertyFile.getAbsolutePath());
       } catch (IOException e) {
@@ -128,6 +130,15 @@ public class StramAppLauncher {
 
   public StramAppLauncher(File appJarFile) throws Exception {
     this.jarFile = appJarFile;
+    init();
+  }
+
+  public StramAppLauncher(FileSystem fs, Path path) throws Exception {
+    File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
+    jarsDir.mkdirs();
+    File localJarFile = new File(jarsDir, path.getName());
+    fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
+    this.jarFile = localJarFile;
     init();
   }
 
@@ -259,7 +270,7 @@ public class StramAppLauncher {
       try {
         Class<?> clazz = cl.loadClass(className);
         if (StreamingApplication.class.isAssignableFrom(clazz)) {
-          configurationList.add(new AppConfig() {
+          final AppConfig appConfig = new AppConfig() {
 
             @Override
             public String getName() {
@@ -267,15 +278,13 @@ public class StramAppLauncher {
             }
 
             @Override
-            public LogicalPlan createApp(Configuration conf) {
+            public StreamingApplication createApp(Configuration conf) {
               // load class from current context class loader
               Class<? extends StreamingApplication> c = StramUtils.classForName(className, StreamingApplication.class);
-              StreamingApplication f = StramUtils.newInstance(c);
-              LogicalPlan lp = new LogicalPlan(conf);
-              f.populateDAG(lp, conf);
-              return lp;
+              return StramUtils.newInstance(c);
             }
-          });
+          };
+          configurationList.add(appConfig);
         }
       } catch (Throwable e) { // java.lang.NoClassDefFoundError
         LOG.error("Unable to load class: " + className + " " + e);
@@ -283,7 +292,8 @@ public class StramAppLauncher {
     }
   }
 
-  private static Configuration getConfig(String launchMode) {
+  public static Configuration getConfig(String overrideConfFileName, Map<String, String> overrideProperties) throws IOException
+  {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
     /*
@@ -300,35 +310,67 @@ public class StramAppLauncher {
     //  LOG.info("Loading settings from: " + cfgResource.toURI());
     //  conf.addResource(new Path(cfgResource.toURI()));
     //}
-    conf.set(DAG.LAUNCH_MODE, launchMode);
+    if (overrideConfFileName != null) {
+      File overrideConfFile = new File(overrideConfFileName);
+      if (overrideConfFile.exists()) {
+        LOG.info("Loading settings: " + overrideConfFile.toURI());
+        conf.addResource(new Path(overrideConfFile.toURI()));
+      } else {
+        throw new IOException("Problem opening file " + overrideConfFile);
+      }
+    }
+    if (overrideProperties != null) {
+      for (Map.Entry<String, String> entry : overrideProperties.entrySet()) {
+        conf.set(entry.getKey(), entry.getValue());
+      }
+    }
     return conf;
   }
 
-  public static LogicalPlan prepareDAG(AppConfig appConfig, String launchMode) {
-    Configuration conf = getConfig(launchMode);
-    LogicalPlan dag = appConfig.createApp(conf);
-    // process configuration parameters
-    processDAGConfig(dag, conf, appConfig);
-    dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(appConfig.getName());
-    // inject external operator configuration
-    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
-    pb.addFromConfiguration(conf);
-    pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+  public static LogicalPlan prepareDAG(AppConfig appConfig, Configuration conf) {
+    LogicalPlan dag = new LogicalPlan();
+    prepareDAG(dag, appConfig, conf);
     return dag;
   }
 
-  public static void processDAGConfig(DAG dag, Configuration conf, AppConfig appConfig) {
-    // -TODO- Process the Application attributes and properties, Operators attributes and properies and
-    // Ports attributes and properties here
+  public static void prepareDAG(LogicalPlan dag, AppConfig appConfig, Configuration conf) {
+    String appAlias = getAppAlias(appConfig, conf);
 
-    // Set the application name if specified in the config file
-    String appName = null;
+    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    pb.addFromConfiguration(conf);
+
+    // set application level attributes first to make them available to populateDAG
+    pb.setApplicationLevelAttributes(dag, appAlias);
+
+    StreamingApplication app = appConfig.createApp(conf);
+    app.populateDAG(dag, conf);
+
+    if (appAlias != null) {
+      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
+    } else {
+      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(appConfig.getName());
+    }
+
+    // inject external operator configuration
+    pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+  }
+  
+  /**
+   * Resolve the application name by matching the original name against alias
+   * definitions in the configuration.
+   *
+   * @param appConfig
+   * @param conf
+   * @return
+   */
+  public static String getAppAlias(AppConfig appConfig, Configuration conf) {
     StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
     sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
     String appClassRegex = sb.toString();
     String name = appConfig.getName();
     String className = name.replace("/", ".").substring(0, name.length()-6);
     Map<String, String> props = conf.getValByRegex(appClassRegex);
+    String appName = null;
     if (props != null) {
       Set<Map.Entry<String, String>> propEntries =  props.entrySet();
       for (Map.Entry<String, String> propEntry : propEntries) {
@@ -342,24 +384,20 @@ public class StramAppLauncher {
         }
       }
     }
-    if (appName != null) {
-      dag.getAttributes().attr(DAG.APPLICATION_NAME).set(appName);
-    } else {
-      appName = dag.getAttributes().attr(DAG.APPLICATION_NAME).get();
-    }
-
-    // Use appName to process other configs
+    return appName;
   }
 
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
+   * @param config
    * @throws Exception
    */
-  public void runLocal(AppConfig appConfig) throws Exception {
+  public void runLocal(AppConfig appConfig, Configuration config) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_LOCAL));
+    config.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, config));
     lc.run();
   }
 
@@ -372,10 +410,11 @@ public class StramAppLauncher {
   /**
    * Submit application to the cluster and return the app id.
    * @param appConfig
+   * @param config
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppConfig appConfig) throws Exception {
+  public ApplicationId launchApp(AppConfig appConfig, Configuration config) throws Exception {
 
     URLClassLoader cl = loadDependencies();
     //Class<?> loadedClass = cl.loadClass("com.datatorrent.example.wordcount.WordCountSerDe");
@@ -384,16 +423,16 @@ public class StramAppLauncher {
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class});
+    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, Configuration.class});
     // TODO: with class loader isolation, pass serialized appConfig to launch loader
-    Object appIdStr = runApp.invoke(null, appConfig);
+    config.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
+    Object appIdStr = runApp.invoke(null, appConfig, config);
     return ConverterUtils.toApplicationId(""+appIdStr);
   }
 
-  public static String runApp(AppConfig appConfig) throws Exception {
+  public static String runApp(AppConfig appConfig, Configuration config) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
-
-    LogicalPlan dag = prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
+    LogicalPlan dag = prepareDAG(appConfig, config);
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
@@ -403,17 +442,47 @@ public class StramAppLauncher {
     return Collections.unmodifiableList(this.configurationList);
   }
 
-  /**
-   * @param args
-   */
-  public static void main(String[] args) throws Exception {
-    String jarFileName = "/home/hdev/devel/malhar/stramproto/examples/wordcount/target/wordcount-example-1.0-SNAPSHOT.jar";
-    StramAppLauncher appLauncher = new StramAppLauncher(new File(jarFileName));
-    if (appLauncher.configurationList.isEmpty()) {
-      throw new IllegalArgumentException("jar file does not contain any topology definitions.");
+  public static class CommandLineInfo {
+    boolean localMode;
+    String configFile;
+    Map<String, String> overrideProperties;
+    String[] args;
+  }
+
+  public static Options getCommandLineOptions() {
+    Options options = new Options();
+    Option local = new Option("local", "run in local mode");
+    Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
+    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("def");
+    options.addOption(local);
+    options.addOption(configFile);
+    options.addOption(defProperty);
+    return options;
+  }
+
+  public static CommandLineInfo getCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    CommandLineInfo result = new CommandLineInfo();
+    CommandLine line = parser.parse(getCommandLineOptions(), args);
+    result.localMode = line.hasOption("local");
+
+    result.configFile = line.getOptionValue("conf");
+    String[] defs = line.getOptionValues("def");
+    if (defs != null) {
+      result.overrideProperties = new HashMap<String, String>();
+      for (String def : defs) {
+        int equal = def.indexOf('=');
+        if (equal < 0) {
+          result.overrideProperties.put(def, null);
+        }
+        else {
+          result.overrideProperties.put(def.substring(0, equal), def.substring(equal + 1));
+        }
+      }
     }
-    AppConfig cfg = appLauncher.configurationList.get(0);
-    appLauncher.launchApp(cfg);
+    result.args = line.getArgs();
+    return result;
   }
 
 }

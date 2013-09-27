@@ -17,6 +17,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 
+import javax.validation.ValidationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +31,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 
@@ -67,6 +70,8 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   public static final String APPLICATION_PREFIX = "stram.application";
   public static final String APPLICATION_CLASS = "class";
+
+  public static final String ATTR = "attr";
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -220,10 +225,15 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   }
 
+  private class AppConf {
+    Properties properties = new Properties(DAGPropertiesBuilder.this.properties);
+  }
+
   private final Properties properties = new Properties();
   private final Map<String, NodeConf> nodes;
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
+  private final Map<String, AppConf> apps = Maps.newHashMap();
 
   public DAGPropertiesBuilder() {
     this.nodes = new HashMap<String, NodeConf>();
@@ -332,7 +342,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
           stream.properties.put(propertyKey, propertyValue);
         }
       } else if (propertyName.startsWith(OPERATOR_PREFIX)) {
-         // get the node id
+         // get the operator name
          String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
          if (keyComps.length < 4) {
@@ -367,6 +377,30 @@ public class DAGPropertiesBuilder implements StreamingApplication {
           tc.classNameRegExp = propertyValue;
         } else {
           tc.properties.setProperty(propertyKey, propertyValue);
+        }
+      } else if (propertyName.startsWith(APPLICATION_PREFIX)) {
+        // get the operator name
+        String[] keyComps = propertyName.split("\\.");
+        // must have at least id and single component property
+        if (keyComps.length < 4) {
+          LOG.warn("Invalid configuration key: {}", propertyName);
+          continue;
+        }
+        String appName = keyComps[2];
+        String propertyType = keyComps[3];
+
+        AppConf appConf = this.apps.get(appName);
+        if (appConf == null) {
+          appConf = new AppConf();
+          this.apps.put(appName, appConf);
+        }
+
+        if (propertyType.equals(ATTR)) {
+          if (keyComps.length < 5) {
+            throw new ValidationException("Missing attribute name: " + propertyName);
+          }
+          // put with prefix matching global scope in default properties
+          appConf.properties.put("stram." + keyComps[4], propertyValue);
         }
       }
     }
@@ -436,13 +470,11 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   }
 
-  public static LogicalPlan create(Configuration conf, String tplgPropsFile) throws IOException {
+  public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
     DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     tb.addFromProperties(topologyProperties);
-    LogicalPlan lp = new LogicalPlan();
-    tb.populateDAG(lp, conf);
-    return lp;
+    return tb;
   }
 
   public static Properties readProperties(String filePath) throws IOException
@@ -552,5 +584,37 @@ public class DAGPropertiesBuilder implements StreamingApplication {
       setOperatorProperties(ow.getOperator(), properties);
     }
   }
+
+  @SuppressWarnings("unchecked")
+  public void setApplicationLevelAttributes(LogicalPlan dag, String appName) {
+    Properties appProps = this.properties;
+    if (appName != null) {
+      AppConf appConf = this.apps.get(appName);
+      if (appConf != null) {
+        appProps = appConf.properties;
+      }
+    }
+    // process application level settings prior to populate
+    for (@SuppressWarnings("rawtypes") DAGContext.AttributeKey key : DAGContext.ATTRIBUTE_KEYS) {
+      String confKey = "stram." + key.name();
+      String stringValue = appProps.getProperty(confKey, null);
+      if (stringValue != null) {
+        if (key.attributeType == Integer.class) {
+          dag.setAttribute(key, Integer.parseInt(stringValue));
+        } else if (key.attributeType == Long.class) {
+          dag.setAttribute(key, Long.parseLong(stringValue));
+        } else if (key.attributeType == String.class) {
+          dag.setAttribute(key, stringValue);
+        } else if (key.attributeType == Boolean.class) {
+          dag.setAttribute(key, Boolean.parseBoolean(stringValue));
+        } else {
+          String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
+          throw new UnsupportedOperationException(msg);
+        }
+      }
+    }
+
+  }
+
 
 }
