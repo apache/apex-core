@@ -9,8 +9,10 @@ import java.io.IOException;
 import com.datatorrent.api.Operator;
 
 /**
+ * <p>NodeRequest interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public interface NodeRequest
 {

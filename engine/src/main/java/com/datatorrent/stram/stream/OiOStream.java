@@ -14,6 +14,7 @@ import com.datatorrent.stram.tuple.Tuple;
  * A non buffering stream which facilitates the ThreadLocal implementation of an operator.
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public class OiOStream implements Stream, SweepableReservoir
 {
