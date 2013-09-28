@@ -10,6 +10,7 @@ import com.datatorrent.stram.engine.Node;
  * When the node active state changes, listeners are notified of the changes.
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public interface NodeActivationListener
 {

@@ -10,8 +10,10 @@ import java.util.ArrayList;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 
 /**
+ * <p>Stats interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public interface Stats extends Serializable
 {

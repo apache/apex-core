@@ -10,6 +10,7 @@ import java.util.HashMap;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
+ * <p>PubSubMessageCodec class.</p>
  *
  * @param <T>
  * @since 0.3.5

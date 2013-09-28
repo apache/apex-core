@@ -38,6 +38,11 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 
+/**
+ * <p>TupleRecorderCollection class.</p>
+ *
+ * @since 0.3.5
+ */
 public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
 {
   private int tupleRecordingPartFileSize;

@@ -21,8 +21,10 @@ import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Node;
 
 /**
+ * <p>RequestFactory class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public class RequestFactory
 {

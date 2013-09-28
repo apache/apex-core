@@ -8,8 +8,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
+ * <p>LRUCache class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.5
  */
 public class LRUCache<K, V> extends LinkedHashMap<K, V>
 {

@@ -8,9 +8,11 @@ import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.engine.Stats.ContainerStats;
 
 /**
+ * <p>StatsListener interface.</p>
  *
  * @param <STATS> Type of stats which this stats listener handles.
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public interface StatsListener<STATS extends Stats>
 {

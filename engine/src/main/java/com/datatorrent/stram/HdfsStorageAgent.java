@@ -21,7 +21,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
-
 public class HdfsStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
