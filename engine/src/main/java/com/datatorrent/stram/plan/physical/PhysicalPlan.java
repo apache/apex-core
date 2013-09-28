@@ -521,7 +521,15 @@ public class PhysicalPlan {
       final int incrementalCapacity = 0;
       newPartitions = ((PartitionableOperator)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
     } else {
-      newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
+      if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
+        newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
+      } else {
+        newPartitions = OperatorPartitions.DefaultPartitioner.repartitionInputOperator(currentPartitions);
+      }
+    }
+
+    if (newPartitions.isEmpty()) {
+      LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
     }
 
     List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
@@ -663,15 +671,17 @@ public class PhysicalPlan {
   }
 
   private void initCheckpoint(PTOperator partition, Operator operator, long windowId) {
-    partition.checkpointWindows.add(windowId);
     partition.recoveryCheckpoint = windowId;
-    try {
-      OutputStream stream = ctx.getStorageAgent().getSaveStream(partition.id, windowId);
-      Node.storeOperator(stream, operator);
-      stream.close();
-    } catch (IOException e) {
-      // inconsistent state, no recovery option, requires shutdown
-      throw new IllegalStateException("Failed to write operator state after partition change " + partition, e);
+    if (windowId > 0) {
+      partition.checkpointWindows.add(windowId);
+      try {
+        OutputStream stream = ctx.getStorageAgent().getSaveStream(partition.id, windowId);
+        Node.storeOperator(stream, operator);
+        stream.close();
+      } catch (IOException e) {
+        // inconsistent state, no recovery option, requires shutdown
+        throw new IllegalStateException("Failed to write operator state after partition change " + partition, e);
+      }
     }
   }
 

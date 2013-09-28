@@ -17,12 +17,14 @@ import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
+import com.google.common.collect.Lists;
 
 public class TestPlanContext implements PlanContext, StorageAgent {
   public List<Runnable> events = new ArrayList<Runnable>();
   public Collection<PTOperator> undeploy;
   public Collection<PTOperator> deploy;
   public Set<PTContainer> releaseContainers;
+  public List<Integer> checkpointDeletes = Lists.newArrayList();
   public int backupRequests;
 
   @Override

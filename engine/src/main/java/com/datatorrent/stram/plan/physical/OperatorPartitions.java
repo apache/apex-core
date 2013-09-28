@@ -206,7 +206,7 @@ public class OperatorPartitions {
     /**
      * Change existing partitioning based on runtime state (load). Unlike
      * implementations of {@link PartitionableOperator}), decisions are made
-     * solely based on load indicator and state of operator instances is not
+     * solely based on load indicator and operator state is not
      * considered in the event of partition split or merge.
      *
      * @param partitions
@@ -272,6 +272,33 @@ public class OperatorPartitions {
       }
       // put back low load partitions that could not be combined
       newPartitions.addAll(lowLoadPartitions.values());
+      return newPartitions;
+    }
+
+    /**
+     * Adjust the partitions of an input operator (operator with no connected input stream).
+     * @param partitions
+     * @return
+     */
+    public static List<Partition<?>> repartitionInputOperator(Collection<? extends Partition<?>> partitions) {
+      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>();
+      List<Partition<?>> lowLoadPartitions = new ArrayList<Partition<?>>();
+      for (Partition<?> p : partitions) {
+        int load = p.getLoad();
+        if (load < 0) {
+          if (!lowLoadPartitions.isEmpty()) {
+            newPartitions.add(lowLoadPartitions.remove(0));
+          } else {
+            lowLoadPartitions.add(p);
+          }
+        } else if (load > 0) {
+          newPartitions.add(new PartitionImpl(p.getOperator()));
+          newPartitions.add(new PartitionImpl(p.getOperator()));
+        } else {
+          newPartitions.add(p);
+        }
+      }
+      newPartitions.addAll(lowLoadPartitions);
       return newPartitions;
     }
 
