@@ -503,6 +503,7 @@ public class GenericNode extends Node<Operator>
     }
 
     if (insideWindow) {
+      endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;
