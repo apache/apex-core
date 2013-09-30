@@ -599,6 +599,9 @@ public class StreamingContainerManager implements PlanContext
         continue;
       }
 
+      // the following line can be deleted when UI is upgraded to work with recordingStartTime
+      status.recordingNames = new ArrayList<String>();
+
       //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
       //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });
 
@@ -643,6 +646,12 @@ public class StreamingContainerManager implements PlanContext
             addCheckpoint(status.operator, stats.checkpointedWindowId);
           }
 
+          if (stats.recordingStartTime > status.recordingStartTime) {
+            status.recordingStartTime = stats.recordingStartTime;
+            // the following line can be deleted when UI is upgraded to work with recordingStartTime
+            status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat(String.valueOf(stats.recordingStartTime)));
+          }
+
           /* report all the other stuff */
 
           // calculate the stats related to end window
@@ -657,6 +666,12 @@ public class StreamingContainerManager implements PlanContext
                 status.inputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
+
+              if (s.recordingStartTime > ps.recordingStartTime) {
+                ps.recordingStartTime = s.recordingStartTime;
+                // the following line can be deleted when UI is upgraded to work with recordingStartTime
+                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat(String.valueOf(stats.recordingStartTime)));
+              }
 
               tuplesProcessed += s.tupleCount;
               endWindowStats.dequeueTimestamps.put(s.id, s.endWindowTimestamp);
@@ -684,6 +699,12 @@ public class StreamingContainerManager implements PlanContext
                 status.outputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
+
+              if (s.recordingStartTime > ps.recordingStartTime) {
+                ps.recordingStartTime = s.recordingStartTime;
+                // the following line can be deleted when UI is upgraded to work with recordingStartTime
+                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat(String.valueOf(stats.recordingStartTime)));
+              }
 
               tuplesEmitted += s.tupleCount;
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.id);
@@ -1112,6 +1133,8 @@ public class StreamingContainerManager implements PlanContext
     ni.status = operator.getState().toString();
 
     if (os != null) {
+      ni.recordingNames = os.recordingNames; // this should be deleted!
+      ni.recordingStartTime = os.recordingStartTime;
       ni.totalTuplesProcessed = os.totalTuplesProcessed;
       ni.totalTuplesEmitted = os.totalTuplesEmitted;
       ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10;
@@ -1132,6 +1155,7 @@ public class StreamingContainerManager implements PlanContext
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA10 = (long)ps.tuplesPSMA10.getAvg();
         pinfo.bufferServerBytesPSMA10 = (long)ps.bufferServerBytesPSMA10.getAvg();
+        pinfo.recordingStartTime = ps.recordingStartTime;
         ni.addInputPort(pinfo);
       }
       for (PortStatus ps: os.outputPortStatusList.values()) {

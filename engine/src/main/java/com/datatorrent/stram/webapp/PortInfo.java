@@ -23,4 +23,5 @@ public class PortInfo
   public long totalTuples;
   public long tuplesPSMA10;
   public long bufferServerBytesPSMA10;
+  public long recordingStartTime;
 }

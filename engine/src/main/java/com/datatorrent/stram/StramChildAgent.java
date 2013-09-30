@@ -189,10 +189,9 @@ public class StramChildAgent {
     long totalTuplesProcessed;
     long totalTuplesEmitted;
     long currentWindowId;
-    //MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
-    //MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
     long tuplesProcessedPSMA10;
     long tuplesEmittedPSMA10;
+    long recordingStartTime;
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     MovingAverageLong latencyMA = new MovingAverageLong(10);
     List<String> recordingNames; // null if recording is not in progress
@@ -225,7 +224,8 @@ public class StramChildAgent {
   public class PortStatus
   {
     String portName;
-    long totalTuples = 0;
+    long totalTuples;
+    long recordingStartTime;
     TimedMovingAverageLong tuplesPSMA10 = new TimedMovingAverageLong(1000, 10000);
     TimedMovingAverageLong bufferServerBytesPSMA10 = new TimedMovingAverageLong(1000, 10000);  // TBD
   }
@@ -291,7 +291,6 @@ public class StramChildAgent {
           ev.addData("operatorName", status.operator.getName());
           ev.addData("containerId", container.getExternalId());
           dnmgr.recordEventAsync(ev);
-
         }
       }
       LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
