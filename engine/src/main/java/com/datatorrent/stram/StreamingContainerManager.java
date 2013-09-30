@@ -600,7 +600,9 @@ public class StreamingContainerManager implements PlanContext
       }
 
       // the following line can be deleted when UI is upgraded to work with recordingStartTime
-      status.recordingNames = new ArrayList<String>();
+      if (status.recordingNames == null) {
+        status.recordingNames = new ArrayList<String>();
+      }
 
       //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
       //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });
@@ -649,7 +651,8 @@ public class StreamingContainerManager implements PlanContext
           if (stats.recordingStartTime > status.recordingStartTime) {
             status.recordingStartTime = stats.recordingStartTime;
             // the following line can be deleted when UI is upgraded to work with recordingStartTime
-            status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat(String.valueOf(stats.recordingStartTime)));
+            status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
+            LOG.debug("added operator {} as being debuged {}", stats.id, status.recordingNames);
           }
 
           /* report all the other stuff */
@@ -670,7 +673,8 @@ public class StreamingContainerManager implements PlanContext
               if (s.recordingStartTime > ps.recordingStartTime) {
                 ps.recordingStartTime = s.recordingStartTime;
                 // the following line can be deleted when UI is upgraded to work with recordingStartTime
-                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat(String.valueOf(stats.recordingStartTime)));
+                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
+                LOG.debug("added port {} as being debuged {}", stats.id, status.recordingNames);
               }
 
               tuplesProcessed += s.tupleCount;
@@ -703,7 +707,8 @@ public class StreamingContainerManager implements PlanContext
               if (s.recordingStartTime > ps.recordingStartTime) {
                 ps.recordingStartTime = s.recordingStartTime;
                 // the following line can be deleted when UI is upgraded to work with recordingStartTime
-                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat(String.valueOf(stats.recordingStartTime)));
+                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
+                LOG.debug("added port {} as being debuged {}", stats.id, status.recordingNames);
               }
 
               tuplesEmitted += s.tupleCount;
@@ -1144,7 +1149,6 @@ public class StreamingContainerManager implements PlanContext
       ni.failureCount = os.operator.failureCount;
       ni.recoveryWindowId = os.operator.getRecoveryCheckpoint();
       ni.currentWindowId = os.currentWindowId;
-      ni.recordingNames = os.recordingNames;
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }

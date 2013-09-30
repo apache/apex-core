@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.bufferserver.util.Codec;
@@ -38,6 +39,7 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHe
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -45,7 +47,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.webapp.ContainerInfo;
-import com.datatorrent.api.Operator.ProcessingMode;
 
 /**
  *
@@ -191,7 +192,7 @@ public class StramChildAgent {
     long currentWindowId;
     long tuplesProcessedPSMA10;
     long tuplesEmittedPSMA10;
-    long recordingStartTime;
+    long recordingStartTime = Stats.INVALID_TIME_MILLIS;
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     MovingAverageLong latencyMA = new MovingAverageLong(10);
     List<String> recordingNames; // null if recording is not in progress
@@ -225,7 +226,7 @@ public class StramChildAgent {
   {
     String portName;
     long totalTuples;
-    long recordingStartTime;
+    long recordingStartTime = Stats.INVALID_TIME_MILLIS;
     TimedMovingAverageLong tuplesPSMA10 = new TimedMovingAverageLong(1000, 10000);
     TimedMovingAverageLong bufferServerBytesPSMA10 = new TimedMovingAverageLong(1000, 10000);  // TBD
   }

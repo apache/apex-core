@@ -4,9 +4,12 @@
  */
 package com.datatorrent.stram.webapp;
 
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import com.datatorrent.stram.engine.Stats;
 
 /**
  * <p>PortInfo class.</p>
@@ -23,5 +26,5 @@ public class PortInfo
   public long totalTuples;
   public long tuplesPSMA10;
   public long bufferServerBytesPSMA10;
-  public long recordingStartTime;
+  public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
 }
