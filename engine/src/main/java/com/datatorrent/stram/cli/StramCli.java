@@ -13,6 +13,7 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.cli.StramAppLauncher.CommandLineInfo;
 
 import java.io.*;
@@ -45,6 +46,8 @@ import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.JSONException;
 
@@ -986,6 +989,7 @@ public class StramCli
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
+      Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf);
@@ -1010,9 +1014,18 @@ public class StramCli
         }
         else if (matchingAppConfigs.size() > 1) {
 
+          // Get app aliases. Figure out a better way to reuse aliases computed here in future.
+          Map<String, String> appAliases = getAppAliases(config);
+
           // Display matching applications
           for (int i = 0; i < matchingAppConfigs.size(); i++) {
-            System.out.printf("%3d. %s\n", i + 1, matchingAppConfigs.get(i).getName());
+            String appName = matchingAppConfigs.get(i).getName();
+            String className = appName.replace("/", ".").substring(0, appName.length()-6);
+            String appAlias = appAliases.get(className);
+            if (appAlias != null) {
+              appName = appAlias;
+            }
+            System.out.printf("%3d. %s\n", i + 1, appName);
           }
 
           // Exit if not in interactive mode
@@ -1052,7 +1065,6 @@ public class StramCli
       }
 
       if (appConfig != null) {
-        Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
         if (!commandLineInfo.localMode) {
           ApplicationId appId = submitApp.launchApp(appConfig, config);
           currentApp = rmClient.getApplicationReport(appId);
@@ -2143,6 +2155,27 @@ public class StramCli
       System.out.println(json);
     }
 
+  }
+
+  public Map<String, String> getAppAliases(Configuration conf) {
+    Map<String, String> aliases = new HashMap<String, String>();
+    StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
+    sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
+    String appClassRegex = sb.toString();
+    Map<String, String> props = conf.getValByRegex(appClassRegex);
+    String appName = null;
+    if (props != null) {
+      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
+      for (Map.Entry<String, String> propEntry : propEntries) {
+        Pattern p = Pattern.compile(appClassRegex);
+        Matcher m = p.matcher(propEntry.getKey());
+        if (m.find()) {
+          appName = m.group(1);
+          aliases.put(propEntry.getValue(), appName);
+        }
+      }
+    }
+    return aliases;
   }
 
   public static void main(String[] args) throws Exception
