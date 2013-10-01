@@ -602,9 +602,8 @@ public class StreamingContainerManager implements PlanContext
       }
 
       // the following line can be deleted when UI is upgraded to work with recordingStartTime
-      if (status.recordingNames == null) {
-        status.recordingNames = new ArrayList<String>();
-      }
+      status.recordingNames = new ArrayList<String>();
+      status.recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
       //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
       //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });

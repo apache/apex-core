@@ -31,6 +31,7 @@ import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
 import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats;
 import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats.PortStats;
@@ -279,8 +280,10 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   public void collected(ContainerStats stats)
   {
     for (StreamingNodeHeartbeat node : stats.nodes) {
+      long recordingStartTime;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
       if (tupleRecorder == null) {
+        recordingStartTime = Stats.INVALID_TIME_MILLIS;
         for (Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry : this.entrySet()) {
           if (entry.getKey().operatorId == node.nodeId) {
             for (OperatorStats os : node.windowStats) {
@@ -288,10 +291,16 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
                 if (ps.id.equals(entry.getKey().portName)) {
                   ps.recordingStartTime = entry.getValue().getStartTime();
                 }
+                else {
+                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+                }
               }
               for (PortStats ps : os.outputPorts) {
                 if (ps.id.equals(entry.getKey().portName)) {
                   ps.recordingStartTime = entry.getValue().getStartTime();
+                }
+                else {
+                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
                 }
               }
             }
@@ -299,9 +308,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         }
       }
       else {
-        for (OperatorStats os : node.windowStats) {
-          os.recordingStartTime = tupleRecorder.getStartTime();
-        }
+        recordingStartTime = tupleRecorder.getStartTime();
+      }
+
+      for (OperatorStats os : node.windowStats) {
+        os.recordingStartTime = recordingStartTime;
       }
     }
   }
