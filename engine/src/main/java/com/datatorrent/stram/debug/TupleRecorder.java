@@ -46,7 +46,7 @@ public class TupleRecorder
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
-  private long startTime = Stats.INVALID_TIME_MILLIS;
+  private long startTime = System.currentTimeMillis();
   private long stopTime = Stats.INVALID_TIME_MILLIS;
   private String recordingName; // should be retired
   private int nextPortIndex = 0;
@@ -273,7 +273,8 @@ public class TupleRecorder
   {
     try {
       storage.setup();
-      startTime = System.currentTimeMillis();
+      // this is the right place to init startTime, please enable the following call and disable the assignment in the constructor!
+      //setStartTime(System.currentTimeMillis());
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       bos.write((VERSION + "\n").getBytes());

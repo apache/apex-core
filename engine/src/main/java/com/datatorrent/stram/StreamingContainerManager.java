@@ -58,6 +58,7 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequ
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -524,14 +525,15 @@ public class StreamingContainerManager implements PlanContext
     container.bufferServerAddress = bufferServerAddr;
     container.setAllocatedMemoryMB(resource.memoryMB);
 
-    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(), this);
+    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
     containers.put(resource.containerId, sca);
     return sca;
   }
 
-  private StreamingContainerContext newStreamingContainerContext()
+  private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(StreamingContainerContext.class), plan.getDAG());
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(ContainerContext.class), plan.getDAG());
+    scc.attributes.attr(ContainerContext.IDENTIFIER).set(containerId);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
