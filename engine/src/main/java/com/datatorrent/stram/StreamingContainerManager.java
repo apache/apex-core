@@ -141,7 +141,7 @@ public class StreamingContainerManager implements PlanContext
     AttributeMap attributes = dag.getAttributes();
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
-    // try to align to it please eyes.
+    /* try to align to it to please eyes. */
     windowStartMillis -= (windowStartMillis % 1000);
 
     attributes.attr(LogicalPlan.APPLICATION_PATH).setIfAbsent("stram/" + System.currentTimeMillis());

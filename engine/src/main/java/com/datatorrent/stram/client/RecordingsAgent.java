@@ -49,8 +49,8 @@ public class RecordingsAgent extends StramAgent
   public static class RecordingInfo
   {
     public long startTime;
-    public long stopTime;
     public String recordingName;
+    public String containerId;
     public String appId;
     public String operatorId;
     public long totalTuples = 0;
@@ -340,11 +340,11 @@ public class RecordingsAgent extends StramAgent
       line = br.readLine();
       json = new JSONObject(line);
       info.startTime = json.getLong("startTime");
-      info.stopTime = json.getLong("stopTime");
+      info.containerId = json.optString("containerId");
       info.recordingName = json.getString("recordingName");
       info.properties = new HashMap<String, Object>();
 
-      if (info.stopTime > info.startTime) {
+      if (!StringUtils.isBlank(info.containerId) && !containers.contains(info.containerId)) {
         info.ended = true;
       }
 

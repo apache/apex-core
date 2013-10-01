@@ -126,6 +126,8 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       logger.debug("Executing start recording request for {}", operatorIdPortNamePair);
 
       TupleRecorder tupleRecorder = new TupleRecorder();
+      tupleRecorder.setContainerId(containerId);
+
       if (daemonAddress != null) {
         String url = "ws://" + daemonAddress + "/pubsub";
         try {
@@ -191,12 +193,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
     if (containsKey(operatorIdPortNamePair)) {
       logger.debug("Executing stop recording request for {}", operatorIdPortNamePair);
-
       TupleRecorder tupleRecorder = get(operatorIdPortNamePair);
       if (tupleRecorder != null) {
         node.removeSinks(tupleRecorder.getSinkMap());
         tupleRecorder.teardown();
-        logger.debug("Stopped recording for operator/port {}", operatorIdPortNamePair);
+        logger.debug("Stopped recording for {}", operatorIdPortNamePair);
         remove(operatorIdPortNamePair);
       }
     }

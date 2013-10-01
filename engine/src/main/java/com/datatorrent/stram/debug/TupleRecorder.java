@@ -47,7 +47,7 @@ public class TupleRecorder
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
-  private long stopTime = Stats.INVALID_TIME_MILLIS;
+  private String containerId;
   private String recordingName; // should be retired
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
@@ -150,35 +150,31 @@ public class TupleRecorder
   }
 
   /**
-   * @return the stopTime
-   */
-  public long getStopTime()
-  {
-    return stopTime;
-  }
-
-  /**
-   * @param stopTime the stopTime to set
-   */
-  public void setStopTime(long stopTime)
-  {
-    if (this.stopTime == Stats.INVALID_TIME_MILLIS || this.stopTime < this.startTime) {
-      this.stopTime = stopTime;
-    }
-
-    throw new IllegalStateException("Tuple recorder has already stopped");
-  }
-
-  /**
    * @param startTime the startTime to set
    */
   public void setStartTime(long startTime)
   {
-    if (this.startTime == Stats.INVALID_TIME_MILLIS || this.startTime < this.stopTime) {
+    if (this.startTime == Stats.INVALID_TIME_MILLIS) {
       this.startTime = startTime;
     }
 
     throw new IllegalStateException("Tuple recorder has already started");
+  }
+
+  /**
+   * @return the containerId
+   */
+  public String getContainerId()
+  {
+    return containerId;
+  }
+
+  /**
+   * @param containerId the containerId to set
+   */
+  public void setContainerId(String containerId)
+  {
+    this.containerId = containerId;
   }
 
   /* defined for json information */
@@ -200,8 +196,8 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
-    public long stopTime;
     public String recordingName;
+    public String containerId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
 
@@ -263,7 +259,6 @@ public class TupleRecorder
 
   public void teardown()
   {
-    stopTime = System.currentTimeMillis();
     logger.info("Closing down tuple recorder.");
     this.storage.teardown();
   }
@@ -281,8 +276,8 @@ public class TupleRecorder
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
-      recordInfo.stopTime = stopTime;
       recordInfo.recordingName = recordingName;
+      recordInfo.containerId = containerId;
 
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
