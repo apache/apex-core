@@ -4,14 +4,17 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.api.annotation.RecordField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import com.datatorrent.api.annotation.RecordField;
+import com.datatorrent.stram.engine.Stats;
 
 /**
  *
@@ -51,6 +54,7 @@ public class OperatorInfo
   public List<String> recordingNames; // null if recording is not happening
   @RecordField(type="stats") public ArrayList<PortInfo> inputPorts = new ArrayList<PortInfo>();
   @RecordField(type="stats") public ArrayList<PortInfo> outputPorts = new ArrayList<PortInfo>();
+  public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
   /**
    *
@@ -88,10 +92,6 @@ public class OperatorInfo
   public Collection<PortInfo> getOutputPorts()
   {
     return Collections.unmodifiableCollection(outputPorts);
-  }
-
-  public OperatorInfo()
-  {
   }
 
 }
