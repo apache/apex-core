@@ -328,12 +328,17 @@ public class StramAppLauncher {
   }
 
   public static LogicalPlan prepareDAG(AppConfig appConfig, Configuration conf) {
+    LogicalPlan dag = new LogicalPlan();
+    prepareDAG(dag, appConfig, conf);
+    return dag;
+  }
+
+  public static void prepareDAG(LogicalPlan dag, AppConfig appConfig, Configuration conf) {
     String appAlias = getAppAlias(appConfig, conf);
 
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromConfiguration(conf);
 
-    LogicalPlan dag = new LogicalPlan();
     // set application level attributes first to make them available to populateDAG
     pb.setApplicationLevelAttributes(dag, appAlias);
 
@@ -348,9 +353,8 @@ public class StramAppLauncher {
 
     // inject external operator configuration
     pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
-    return dag;
   }
-
+  
   /**
    * Resolve the application name by matching the original name against alias
    * definitions in the configuration.

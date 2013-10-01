@@ -27,6 +27,8 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
+import java.util.Map.Entry;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -97,10 +99,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 
       Operators.PortMappingDescriptor pmd = new Operators.PortMappingDescriptor();
       Operators.describe(operatorMeta.getOperator(), pmd);
-      for (Map.Entry<String, InputPort<?>> entry : pmd.inputPorts.entrySet()) {
+      for (Entry<String, PortContextPair<InputPort<?>>> entry : pmd.inputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
-        InputPortMeta portMeta = operatorMeta.getMeta(entry.getValue());
+        InputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
         String portName = portMeta.getPortName();
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
@@ -116,10 +118,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }
         portMap.put(portName, portDetailMap);
       }
-      for (Map.Entry<String, OutputPort<?>> entry : pmd.outputPorts.entrySet()) {
+      for (Entry<String, PortContextPair<OutputPort<?>>> entry : pmd.outputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
-        OutputPortMeta portMeta = operatorMeta.getMeta(entry.getValue());
+        OutputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
         String portName = portMeta.getPortName();
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);

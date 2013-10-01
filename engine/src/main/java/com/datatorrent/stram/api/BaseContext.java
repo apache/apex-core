@@ -23,7 +23,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
    * the following 2 need to be public since otherwise they are not serialized.
    */
   public final AttributeMap attributes;
-  public final Context parentContext;
+  public final Context parentContext; // may be we do not need to serialize parentContext!
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
@@ -40,14 +40,13 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   @Override
   public <T> T attrValue(AttributeKey<T> key, T defaultValue)
   {
-    Attribute<T> attr = attributes.attr(key);
+    Attribute<T> attr = attributes.attrOrNull(key);
     if (attr != null) {
       T get = attr.get();
       if (get != null) {
         return get;
       }
     }
-
     return parentContext == null? defaultValue: parentContext.attrValue(key, defaultValue);
   }
 

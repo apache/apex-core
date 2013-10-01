@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.api.Context.PortContext;
 import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 
@@ -12,6 +13,8 @@ import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.Port;
+import com.datatorrent.stram.ComponentContextPair;
 
 /**
  * Utilities for dealing with {@link Operator} instances.
@@ -27,23 +30,36 @@ public abstract class Operators
     public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation a);
   }
 
+  public static class PortContextPair<PORT extends Port> extends ComponentContextPair<PORT, PortContext>
+  {
+    public PortContextPair(PORT port, PortContext context)
+    {
+      super(port, context);
+    }
+
+    public PortContextPair(PORT port)
+    {
+      super(port, null);
+    }
+  }
+
   public static class PortMappingDescriptor implements OperatorDescriptor
   {
-    final public LinkedHashMap<String, Operator.InputPort<?>> inputPorts = new LinkedHashMap<String, Operator.InputPort<?>>();
-    final public LinkedHashMap<String, Operator.OutputPort<?>> outputPorts = new LinkedHashMap<String, Operator.OutputPort<?>>();
+    final public LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = new LinkedHashMap<String, PortContextPair<InputPort<?>>>();
+    final public LinkedHashMap<String, PortContextPair<OutputPort<?>>> outputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>();
 
     @Override
     public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation a)
     {
       String portName = (a == null || a.name() == null) ? field.getName() : a.name();
-      inputPorts.put(portName, port);
+      inputPorts.put(portName, new PortContextPair<InputPort<?>>(port));
     }
 
     @Override
     public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation a)
     {
       String portName = (a == null || a.name() == null) ? field.getName() : a.name();
-      outputPorts.put(portName, port);
+      outputPorts.put(portName, new PortContextPair<OutputPort<?>>(port));
     }
   };
 

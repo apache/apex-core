@@ -26,12 +26,25 @@ package com.datatorrent.api;
 public interface Component<T1 extends Context>
 {
   /**
-   * <p>setup.</p>
+   * It's recommended to use this separator to create scoped names for the components.
+   * e.g. Port p on Operator o can be identified as o.concat(CONCAT_SEPARATOR).concat(p).
+   */
+  public static final String CONCAT_SEPARATOR = ".";
+  /**
+   * It's recommended to use this separator to split the scoped names into individual components.
+   * e.g. o.concat(CONCAT_SEPARATOR).concat(p).split(SPLIT_SEPARATOR) will return String[]{o, p}.
+   *
+   */
+  public static final String SPLIT_SEPARATOR = "\\.";
+
+  /**
+   * Callback to give the component a chance to perform tasks required as part of setting itself up.
    */
   public void setup(T1 context);
 
   /**
-   * <p>teardown.</p>
+   * Callback to give the component a chance to perform tasks required as part of tearing itself down.
+   * A recommended practice is to do reciprocate the setup tasks by doing exactly opposite.
    */
   public void teardown();
 

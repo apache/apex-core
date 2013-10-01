@@ -17,31 +17,34 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
+import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions;
+import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.PartitionableOperator;
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
@@ -231,7 +234,66 @@ public class PhysicalPlanTest {
     expDeploy.addAll(plan.getMergeOperators(node2Meta));
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
-    Assert.assertEquals("Count of storage requests", 2, ctx.backupRequests);
+    Assert.assertEquals("Count of storage requests", 0, ctx.backupRequests);
+  }
+
+  /**
+   * Test partitioning of an input operator.
+   * Cover aspects specific to input operators (no input port)
+   * that are not part of generic operator test.
+   */
+  @Test
+  public void testInputOperatorPartitioning() {
+    LogicalPlan dag = new LogicalPlan();
+    TestInputOperator<Object> o1 = dag.addOperator("o1", new TestInputOperator<Object>());
+    OperatorMeta o1Meta = dag.getOperatorMeta(o1.getName());
+    o1Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    o1Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
+    o1Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+
+    List<PTOperator> o1Partitions = plan.getOperators(o1Meta);
+    Assert.assertEquals("partition instances " + o1Partitions, 2, o1Partitions.size());
+    PTOperator o1p1 = o1Partitions.get(0);
+
+    // verify load update generates expected events per configuration
+    Assert.assertEquals("stats handlers " + o1p1, 1, o1p1.statsMonitors.size());
+    PhysicalPlan.StatsHandler sm = o1p1.statsMonitors.get(0);
+    Assert.assertTrue("stats handlers " + o1p1.statsMonitors, sm instanceof PhysicalPlan.PartitionLoadWatch);
+    sm.onThroughputUpdate(o1p1, 0);
+    Assert.assertEquals("load event triggered", 0, ctx.events.size());
+    sm.onThroughputUpdate(o1p1, 3);
+    Assert.assertEquals("load within range", 0, ctx.events.size());
+    sm.onThroughputUpdate(o1p1, 10);
+    Assert.assertEquals("load exceeds max", 1, ctx.events.size());
+
+    Runnable r = ctx.events.remove(0);
+    r.run();
+    ((PhysicalPlan.PartitionLoadWatch)sm).evalIntervalMillis = -1; // no delay
+    Assert.assertEquals("operators after scale up", 3, plan.getOperators(o1Meta).size());
+    for (PTOperator p : plan.getOperators(o1Meta)) {
+      Assert.assertTrue(p.checkpointWindows.isEmpty());
+      sm.onThroughputUpdate(p, -1);
+    }
+    ctx.events.remove(0).run();
+    Assert.assertEquals("operators after scale down", 2, plan.getOperators(o1Meta).size());
+/*
+    // ensure scale up maintains min checkpoint
+    long checkpoint=1;
+    for (PTOperator p : plan.getOperators(o1Meta)) {
+      p.checkpointWindows.add(checkpoint);
+      p.setRecoveryCheckpoint(checkpoint);
+      sm.onThroughputUpdate(p, 10);
+    }
+    ctx.events.remove(0).run();
+    Assert.assertEquals("operators after scale up (2)", 4, plan.getOperators(o1Meta).size());
+    for (PTOperator p : plan.getOperators(o1Meta)) {
+      Assert.assertEquals("checkpoints " + p.checkpointWindows, p.checkpointWindows.size(), 1);
+    }
+*/
   }
 
   @Test
@@ -335,7 +397,7 @@ public class PhysicalPlanTest {
     for (PTOperator oper : ctx.deploy) {
       Assert.assertNotNull("container " + oper , oper.getContainer());
     }
-    Assert.assertEquals("Count of storage requests", 8, ctx.backupRequests);
+    Assert.assertEquals("Count of storage requests", 0, ctx.backupRequests);
   }
 
   @Test

@@ -10,6 +10,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +56,7 @@ public class UnifierNode extends GenericNode
     public int getCount(boolean reset)
     {
       try {
-      return count;
+        return count;
       }
       finally {
         if (reset) {
@@ -73,6 +74,7 @@ public class UnifierNode extends GenericNode
     public void teardown()
     {
     }
+
   }
 
   final UnifiedPort unifiedPort = new UnifiedPort();
@@ -86,7 +88,7 @@ public class UnifierNode extends GenericNode
   @Override
   public InputPort<Object> getInputPort(String port)
   {
-    descriptor.inputPorts.put(port, unifiedPort);
+    descriptor.inputPorts.put(port, new PortContextPair<InputPort<?>>(unifiedPort));
     return unifiedPort;
   }
 

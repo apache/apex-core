@@ -7,18 +7,19 @@ package com.datatorrent.stram.engine;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.UnhandledException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang.UnhandledException;
 
 import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.debug.TappedReservoir;
-import com.datatorrent.stram.engine.OperatorStats.PortStats;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -87,7 +88,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings("unchecked")
   public InputPort<Object> getInputPort(String port)
   {
-    return (InputPort<Object>)descriptor.inputPorts.get(port);
+    return (InputPort<Object>)descriptor.inputPorts.get(port).component;
   }
 
   @Override
@@ -112,11 +113,17 @@ public class GenericNode extends Node<Operator>
     }
   }
 
-  protected void processEndWindow(ArrayList<SweepableReservoir> activeQueues, Tuple endWindowTuple)
+  /**
+   *
+   * @param endWindowTuple the value of endWindowTuple
+   */
+  protected void processEndWindow(Tuple endWindowTuple)
   {
+    endWindowEmitTime = System.currentTimeMillis();
+
     if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-      operator.endWindow();
       insideWindow = false;
+      operator.endWindow();
       applicationWindowCount = 0;
     }
 
@@ -139,8 +146,10 @@ public class GenericNode extends Node<Operator>
       }
       checkpointWindowCount = 0;
     }
+
+    Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+    reportStats(stats, currentWindowId);
     handleRequests(currentWindowId);
-    activeQueues.addAll(inputs.values());
   }
 
   class ResetTupleTracker
@@ -245,7 +254,8 @@ public class GenericNode extends Node<Operator>
                     else {
                       expectingBeginWindow--;
                       if (++receivedEndWindow == totalQueues) {
-                        processEndWindow(activeQueues, null);
+                        processEndWindow(null);
+                        activeQueues.addAll(inputs.values());
                         expectingBeginWindow = activeQueues.size();
                         break activequeue;
                       }
@@ -265,7 +275,8 @@ public class GenericNode extends Node<Operator>
                   endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
                   if (++receivedEndWindow == totalQueues) {
                     assert (activeQueues.isEmpty());
-                    processEndWindow(activeQueues, t);
+                    processEndWindow(t);
+                    activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -283,8 +294,8 @@ public class GenericNode extends Node<Operator>
                   else {
                     checkpoint = true;
                   }
-                  for (final Sink<Object> output : outputs.values()) {
-                    output.put(t);
+                  for (int s = sinks.length; s-- > 0;) {
+                    sinks[s].put(t);
                   }
                 }
                 break;
@@ -350,7 +361,7 @@ public class GenericNode extends Node<Operator>
                   Entry<String, SweepableReservoir> e = it.next();
                   if (e.getValue() == activePort) {
                     if (!descriptor.inputPorts.isEmpty()) {
-                      descriptor.inputPorts.get(e.getKey()).setConnected(false);
+                      descriptor.inputPorts.get(e.getKey()).component.setConnected(false);
                     }
                     it.remove();
 
@@ -388,7 +399,8 @@ public class GenericNode extends Node<Operator>
                 }
                 else if (activeQueues.isEmpty()) {
                   assert (!inputs.isEmpty());
-                  processEndWindow(activeQueues, null);
+                  processEndWindow(null);
+                  activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
                   break_activequeue = true;
                 }
@@ -467,21 +479,11 @@ public class GenericNode extends Node<Operator>
           }
 
           if (need2sleep) {
-            Thread.sleep(spinMillis);
             if (handleIdleTime) {
-              for (SweepableReservoir cb : activeQueues) {
-                if (cb.size() > 0) {
-                  need2sleep = false;
-                  break;
-                }
-              }
-
-              /*
-               * there is still no work scheduled for the operator, so lets give a chance to the operator to handle timeout.
-               */
-              if (need2sleep) {
-                ((IdleTimeHandler)operator).handleIdleTime();
-              }
+              ((IdleTimeHandler)operator).handleIdleTime();
+            }
+            else {
+              Thread.sleep(spinMillis);
             }
           }
         }
@@ -501,6 +503,7 @@ public class GenericNode extends Node<Operator>
     }
 
     if (insideWindow) {
+      endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;
@@ -512,20 +515,28 @@ public class GenericNode extends Node<Operator>
         }
         checkpointWindowCount = 0;
       }
+
+      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      reportStats(stats, currentWindowId);
+      handleRequests(currentWindowId);
     }
+
   }
 
   @Override
-  protected void reportStats(OperatorStats stats)
+  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
-    ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
+    ArrayList<Stats.ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
-      ipstats.add(new PortStats(e.getKey(), ar.getCount(true), endWindowDequeueTimes.get(e.getValue())));
+      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      portStats.tupleCount = ar.getCount(true);
+      portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
+      ipstats.add(portStats);
     }
 
     stats.inputPorts = ipstats;
-    super.reportStats(stats);
+    super.reportStats(stats, windowId);
   }
 
   protected class DeferredInputConnection

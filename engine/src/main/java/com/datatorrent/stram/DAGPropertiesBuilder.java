@@ -19,22 +19,25 @@ import java.util.TreeMap;
 
 import javax.validation.ValidationException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
+
+import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.google.common.collect.Maps;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.Operator;
-import org.apache.commons.beanutils.BeanMap;
+import com.datatorrent.stram.plan.logical.Operators;
 
 /**
  *
@@ -448,7 +451,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
         Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
         Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
         Operators.describe(sourceDecl, sourcePortMap);
-        sd.setSource(sourcePortMap.outputPorts.get(portName));
+        sd.setSource(sourcePortMap.outputPorts.get(portName).component);
       }
 
       for (NodeConf targetNode : streamConf.targetNodes) {
@@ -461,7 +464,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
         Operator targetDecl = nodeMap.get(targetNode);
         Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
         Operators.describe(targetDecl, targetPortMap);
-        sd.addSink(targetPortMap.inputPorts.get(portName));
+        sd.addSink(targetPortMap.inputPorts.get(portName).component);
       }
     }
 

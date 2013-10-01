@@ -21,8 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>AlertsAgent class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.3.5
  */
 public class AlertsAgent extends StramAgent
 {
@@ -163,7 +165,14 @@ public class AlertsAgent extends StramAgent
     Map<String, String> map = new HashMap<String, String>();
     Path path = new Path(dir);
 
-    FileStatus fileStatus = fs.getFileStatus(path);
+    FileStatus fileStatus;
+    try {
+      fileStatus = fs.getFileStatus(path);
+    }
+    catch (FileNotFoundException ex) {
+      return map;
+    }
+    
     if (!fileStatus.isDirectory()) {
       return map;
     }

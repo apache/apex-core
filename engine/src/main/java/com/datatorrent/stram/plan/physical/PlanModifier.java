@@ -16,6 +16,7 @@ import com.google.common.collect.Sets;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 
 /**
  * Modification of the query plan on running application. Will first apply
@@ -107,12 +108,11 @@ public class PlanModifier {
 
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(om.getOperator(), portMap);
-
-    OutputPort<?> sourcePort = portMap.outputPorts.get(sourcePortName);
+    PortContextPair<OutputPort<?>> sourcePort = portMap.outputPorts.get(sourcePortName);
     if (sourcePort == null) {
       throw new AssertionError(String.format("Invalid port %s (%s)", sourcePortName, om));
     }
-    addStream(streamName, sourcePort, getInputPort(targetOperName, targetPortName));
+    addStream(streamName, sourcePort.component, getInputPort(targetOperName, targetPortName));
   }
 
   /**
@@ -141,12 +141,11 @@ public class PlanModifier {
     OperatorMeta om = assertGetOperator(operName);
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(om.getOperator(), portMap);
-
-    InputPort<?> port = portMap.inputPorts.get(portName);
+    PortContextPair<InputPort<?>> port = portMap.inputPorts.get(portName);
     if (port == null) {
       throw new AssertionError(String.format("Invalid port %s (%s)", portName, om));
     }
-    return port;
+    return port.component;
   }
 
   /**

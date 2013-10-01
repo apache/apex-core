@@ -4,10 +4,11 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import com.datatorrent.stram.webapp.OperatorInfo;
 
 /**
  * <p>StatsRecorder interface.</p>

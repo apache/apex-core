@@ -1,5 +1,195 @@
 #Release Notes - Streaming Platform
 
+## Version 0.3.5
+
+## Bug
+* [SPOI-349] - InlineStream undeploy error
+* [SPOI-766] - Process for certification of 0.3.3 launch on demo server
+* [SPOI-953] - Implement Exactly Once
+* [SPOI-959] - Operator Properties Widget
+* [SPOI-976] - Mobile apps keep dying
+* [SPOI-1013] - Cluster clocks are not in sync
+* [SPOI-1017] - Daemon stopped publishing over WebSocket
+* [SPOI-1022] - Alert is removed from the list on server failure
+* [SPOI-1023] - "Method Not Allowed" error when deleting an alert
+* [SPOI-1030] - DT Phone Home throw NullPointerException
+* [SPOI-1034] - 404 Not Found when getting alerts
+* [SPOI-1035] - Cannot create alerts with stramcli
+* [SPOI-1041] - Operator Properties fail to load
+* [SPOI-1051] - URLs templating for REST API
+* [SPOI-1075] - Container planned/alloc does not update in real time
+* [SPOI-1076] - Buffer server read is a flat line
+* [SPOI-1081] - Get common urls for all demos
+* [SPOI-1087] - Fix container chart
+* [SPOI-1089] - Widgets initializing twice
+* [SPOI-1090] - Add d3 to package.json deps
+* [SPOI-1091] - dashboard manager css issue with background color
+* [SPOI-1092] - Widget list not rendering on initial page load
+* [SPOI-1093] - Memory leak when switching between pages
+* [SPOI-1097] - dashboards not being saved
+* [SPOI-1101] - Explore Kibana 3 as UI option for site stats
+* [SPOI-1103] - Kill button doesn't work on applist palette
+* [SPOI-1104] - Mode switch separator in header still visible
+* [SPOI-1105] - shutdown application command requires empty data object
+* [SPOI-1114] - Test for  AlertManagerTest.testAlertManager failed
+* [SPOI-1118] - Upgrade grid to 4GB containers
+* [SPOI-1121] - URL for deleting alert is incorrect
+* [SPOI-1123] - Add alert action not sending all parameters
+* [SPOI-1126] - Latency is whacked after adding alerts
+* [SPOI-1137] - DAG Page View - JavaScript Error
+* [SPOI-1144] - stram-site properties not applied to the operators (possibly?)
+* [SPOI-1145] - ConcurrentModificationException when used launch local in stramcli
+* [SPOI-1147] - Cannot kill "running" or relaunch "killed" application instance from AppLIst widget
+* [SPOI-1157] - NoSuchElementException in stramcli
+
+## Epic
+* [SPOI-870] - Alerts parent jira for phase I
+
+## Improvement
+* [SPOI-462] - Feature to specify that an operator cannot be partitioned.
+* [SPOI-523] - Document OS style guidelines
+* [SPOI-750] - Performance Metrics Widget Unit Test
+* [SPOI-937] - Incorporate jQuery UI into current dashboard
+* [SPOI-962] - Daemon REST API Conventions
+* [SPOI-963] - For exactly-once pick the correct checkpoint for recovery 
+* [SPOI-979] - Need old versions of javadoc available online
+* [SPOI-983] - Front-End Release Branch
+* [SPOI-1019] - switch to jquery ui tooltip
+* [SPOI-1028] - Correctly order output port list for operator AlertThreeLevelTimedEscalationOperator
+* [SPOI-1078] - Add appInfo to apps.list WebSocket topic
+* [SPOI-1094] - Subscribe to app-specific websocket topic while on application
+* [SPOI-1102] - Alerts should be a list of js object literals
+* [SPOI-1106] - tables should resize as widget resizes by default
+* [SPOI-1119] - Remove Malhar subtree dependency from Core
+* [SPOI-1125] - Utilize new "optional" attribute with alert template parameters
+
+## New Feature
+* [SPOI-641] - Setting partition on operator not supporting partitioning must result in error.
+* [SPOI-810] - Create a line charting module using d3.js
+* [SPOI-831] - Create REST API call for uploading JAR files
+* [SPOI-832] - Create REST API call to retrieve all uploaded jar files
+* [SPOI-834] - Create "Top N" widget
+* [SPOI-874] - Provide description information for filter/throttle/action classes to be used by UI
+* [SPOI-940] - Alert List Widget - Actions (Add/View/Delete)
+* [SPOI-987] - Add stramcli tab completion for alias and macro
+* [SPOI-989] - Operator Properties Widget - Data Access Logic
+* [SPOI-1011] - AlertModel - Delete
+* [SPOI-1012] - Mock Node.js Server - Alert Delete
+* [SPOI-1014] - AlertCollection - Retrieve
+* [SPOI-1016] - AlertModel - Create
+* [SPOI-1018] - GitHub issue exporter for changelog
+* [SPOI-1024] - AlertModel - Unit Test
+* [SPOI-1025] - AlertCollection - Unit Test
+* [SPOI-1026] - OpPropertiesModel - Unit Test
+* [SPOI-1029] - Unit Testing - FakeXMLHttpRequest
+* [SPOI-1040] - Node.js back-end for Ads Dimensions Demo
+* [SPOI-1046] - Templatized Alert Creation Page
+* [SPOI-1055] - Node.js Redis Client (Ads Dimensions Demo)
+* [SPOI-1080] - Node.js Daemon
+* [SPOI-1085] - Unified Demos Page
+* [SPOI-1095] - Move Twitter Demo to Node.js
+* [SPOI-1096] - Move Mobile Demo to Node.js
+* [SPOI-1111] - Get common urls for all demos - POC
+* [SPOI-1112] - Shutdown command from UI
+* [SPOI-1116] - Move Machine Gen Demo to Node.js
+
+
+## Task
+* [SPOI-843] - Evaluate current market features
+* [SPOI-846] - Implement exactly once
+* [SPOI-855] - Dynamic re-partitioning happens on a snapshot, need to do a moving average by default
+* [SPOI-895] - Implement REST API filterClasses for Alerts
+* [SPOI-896] - Implement REST API escalationClasses for Alerts
+* [SPOI-932] - CLI: support alert operations
+* [SPOI-941] - Include latency in operator list in the dashboard.
+* [SPOI-955] - Demo showing recurring payment check
+* [SPOI-956] - Demo application for Machine (appliance) generated data monitoring resource usage (resources like CPU, RAM, etc)
+* [SPOI-972] - Adapt core versioning scheme
+* [SPOI-973] - Setup node.js as a supported technology
+* [SPOI-982] - Version Eclipse settings
+* [SPOI-986] - Version Nebeans settings
+* [SPOI-995] - Unit test for AlertsManager
+* [SPOI-996] - Unit test for AlertEscalation Operator
+* [SPOI-1001] - Create a convenience script to start and stop hadoop cluster
+* [SPOI-1008] - Cluster configuration versioning
+* [SPOI-1009] - Need a signup link to Google group on Malhar first page
+* [SPOI-1010] - Notificaitons on Malhar to include Google group
+* [SPOI-1015] - Evaluate anomaly algorithms
+* [SPOI-1021] - Set up user communication process
+* [SPOI-1031] - Hide operations/development mode switch in UI
+* [SPOI-1039] - Grid access
+* [SPOI-1052] - Update node1 with latest release (0.3.4)
+* [SPOI-1053] - Add users to grid
+* [SPOI-1056] - Add create alert template REST call
+* [SPOI-1057] - Change create alert REST call to use a template and parameters
+* [SPOI-1058] - Retrieve alert REST call should include template name and parameters
+* [SPOI-1060] - Get rid of stramRoot from the REST API (back end)
+* [SPOI-1061] - Get rid of stramRoot from the REST API call (front end)
+* [SPOI-1064] - Make machine generated data demo generic and launch on node1
+* [SPOI-1070] - Dashboard look and feel for demos
+* [SPOI-1071] - Dashboard look and feel for twitter firehose demo
+* [SPOI-1072] - Dashboard look and feel for mobile demo
+* [SPOI-1073] - Dashboard look and feel for ads dimensional demo
+* [SPOI-1074] - Dashboard look and feel for machine gen demo
+* [SPOI-1077] - Dashboard look and feel for logs demo
+* [SPOI-1079] - Evaluate Integration with third party tools
+* [SPOI-1100] - Update https://github.com/DataTorrent/Malhar
+* [SPOI-1117] - Allow exactly-once with downstream at-most-once only
+* [SPOI-1132] - Create Training session 1
+* [SPOI-1151] - AngularJS Integration
+
+## Sub-task
+* [SPOI-876] - Allow for saving alert configurations as templates for future use, back-end
+* [SPOI-877] - Allow for saving alert configurations as templates for future use, front-end
+* [SPOI-978] - Fix dependency among open source and platform
+* [SPOI-1042] - create alert template model
+* [SPOI-1047] - create new page for add alert and re-route current url
+* [SPOI-1048] - create parameter fill-in fields
+* [SPOI-1113] - Remove child module poc build from framework build
+* [SPOI-1176] - Remove malhar subtree from Core
+
+## GitHub - DataTorrent/Malhar
+* [90] - Fixed generics usage and renamed operator classes as per convention
+* [89] - Added operator to convert json byte stream to java hash map
+* [87] - Added operator to convert json byte stream to java hash map
+* [86] - Web Demos Update
+* [85] - Web Demos - Architecture Documentation
+* [84] - Adding TravisCI build status to README #83
+* [83] - Add TravisCI Build status to README
+* [82] - Add TravisCI Integration
+* [81] - [Logstream] Reads apache logs from RabbitMQ and prints basic aggregations to console
+* [80] - Webdemos - round time to minute
+* [79] - Adding apps project and logstream application skeleton.  #62
+* [78] - SiteOps Demo - Totals Calculation
+* [77] - Operator changes for issue #76
+* [76] - Remove hardcoded values from RabbitMQ input operator
+* [75] - [Issue 52]: addCombination doesn't work in DimensionTimeBucketOperator
+* [74] - AMQP input operator for logs with sample aggregations #35
+* [71] - Move Machine Generated Data Demo to Node.js
+* [70] - Clean kafka package in malhar library #53
+* [69] - Pull request for issue #53
+* [68] - Web Demos Update
+* [67] - SiteOps Demo - Redis Service
+* [66] - Web Demos - Describe Configuration in Readme
+* [65] - Ads Dimensions Demo - Redis Configuration
+* [64] - Web Demos - Relative URLs for JS/CSS
+* [63] - Adding apps project and logstream application skeleton.  #62
+* [62] - Create skeleton application for log stream processing
+* [60] - Move SiteOps Demo to Node.js - Unit Tests
+* [59] - Move SiteOps Demo to Node.js - License Headers
+* [58] - Move SiteOps Demo to Node.js - Charts
+* [56] - Clean input operators in malhar-library
+* [55] - Github 54
+* [54] - PubSubWebSocket operators tests should be self contained and not need other helpers.
+* [53] - Clean up Kafka input/output operator
+* [51] - Ads webdemo is showing a drop in the graphs at the end
+* [50] - Link to webdemos in main readme
+* [49] - Clean input operators in lib
+* [47] - Ads Dimensions Demo - JavaScript Loading Issue
+* [22] - Node.js Ads Dimensions Demo
+* [15] - Cleanup malhar-library input operator packages
+
+
 ## Version 0.3.4
 
 ## Bug

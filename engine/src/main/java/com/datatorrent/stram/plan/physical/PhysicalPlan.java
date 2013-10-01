@@ -7,26 +7,18 @@ package com.datatorrent.stram.plan.physical;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Context;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.apache.commons.lang.StringUtils;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -46,9 +38,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -189,7 +178,7 @@ public class PhysicalPlan {
   /**
    * Interface to execution context that can be mocked for plan testing.
    */
-  public interface PlanContext extends Context {
+  public interface PlanContext {
 
     /**
      * Dynamic partitioning requires access to operator state for split or merge.
@@ -529,7 +518,15 @@ public class PhysicalPlan {
       final int incrementalCapacity = 0;
       newPartitions = ((PartitionableOperator)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
     } else {
-      newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
+      if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
+        newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
+      } else {
+        newPartitions = OperatorPartitions.DefaultPartitioner.repartitionInputOperator(currentPartitions);
+      }
+    }
+
+    if (newPartitions.isEmpty()) {
+      LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
     }
 
     List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
@@ -721,15 +718,17 @@ public class PhysicalPlan {
   }
 
   private void initCheckpoint(PTOperator partition, Operator operator, long windowId) {
-    partition.checkpointWindows.add(windowId);
     partition.recoveryCheckpoint = windowId;
-    try {
-      OutputStream stream = ctx.getStorageAgent().getSaveStream(partition.id, windowId);
-      Node.storeOperator(stream, operator);
-      stream.close();
-    } catch (IOException e) {
-      // inconsistent state, no recovery option, requires shutdown
-      throw new IllegalStateException("Failed to write operator state after partition change " + partition, e);
+    if (windowId > 0) {
+      partition.checkpointWindows.add(windowId);
+      try {
+        OutputStream stream = ctx.getStorageAgent().getSaveStream(partition.id, windowId);
+        Node.storeOperator(stream, operator);
+        stream.close();
+      } catch (IOException e) {
+        // inconsistent state, no recovery option, requires shutdown
+        throw new IllegalStateException("Failed to write operator state after partition change " + partition, e);
+      }
     }
   }
 

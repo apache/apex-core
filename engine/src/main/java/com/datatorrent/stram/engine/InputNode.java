@@ -4,15 +4,16 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.api.IdleTimeHandler;
 import java.util.ArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>InputNode class.</p>
@@ -48,6 +49,8 @@ public class InputNode extends Node<InputOperator>
   public final void run()
   {
     long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
+    final boolean handleIdleTime = operator instanceof IdleTimeHandler;
+
     boolean insideWindow = false;
     boolean checkpoint = false;
 
@@ -69,7 +72,12 @@ public class InputNode extends Node<InputOperator>
             }
 
             if (generatedTuples == 0) {
-              Thread.sleep(spinMillis);
+              if (handleIdleTime) {
+                ((IdleTimeHandler)operator).handleIdleTime();
+              }
+              else {
+                Thread.sleep(spinMillis);
+              }
             }
           }
           else {
@@ -92,9 +100,10 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case END_WINDOW:
+              endWindowEmitTime = System.currentTimeMillis();
               if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
-                operator.endWindow();
                 insideWindow = false;
+                operator.endWindow();
                 applicationWindowCount = 0;
               }
 
@@ -111,6 +120,9 @@ public class InputNode extends Node<InputOperator>
                 }
                 checkpointWindowCount = 0;
               }
+
+              Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+              reportStats(stats, currentWindowId);
               handleRequests(currentWindowId);
               break;
 
@@ -160,6 +172,7 @@ public class InputNode extends Node<InputOperator>
     }
 
     if (insideWindow) {
+      endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;
@@ -170,6 +183,9 @@ public class InputNode extends Node<InputOperator>
         }
         checkpointWindowCount = 0;
       }
+
+      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
   }

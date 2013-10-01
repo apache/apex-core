@@ -105,7 +105,8 @@ public interface Context
      * Default partitioning (operators that do not implement
      * {@link PartitionableOperator}):<br>
      * If the attribute is not present or set to 0 partitioning is off. Else the
-     * number of initial partitions (statically created during initialization).
+     * number of initial partitions (statically created during initialization).<br>
+     * Default partitioning does not consider operator state on split or merge.
      * <p>
      * Operator that implements {@link PartitionableOperator}:<br>
      * Count 0 disables partitioning. Other values are ignored as number of
@@ -150,6 +151,11 @@ public interface Context
     public static final AttributeKey<StorageAgent> STORAGE_AGENT = new AttributeKey<StorageAgent>("backupAgent");
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
+     * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
+     * operators if any, the processing mode of the downstream operators is automatically set to AT_MOST_ONCE. If a different processing
+     * mode is specified for the downstream operators it will result in an error.
+     * If the processing mode for an operator is specified as EXACTLY_ONCE then the processing mode for all downstream operators
+     * should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
     public static final AttributeKey<Operator.ProcessingMode> PROCESSING_MODE = new AttributeKey<Operator.ProcessingMode>("processMode");
 

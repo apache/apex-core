@@ -12,19 +12,19 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.StorageAgent;
-import com.datatorrent.api.AttributeMap.AttributeKey;
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
+import com.google.common.collect.Lists;
 
 public class TestPlanContext implements PlanContext, StorageAgent {
   public List<Runnable> events = new ArrayList<Runnable>();
   public Collection<PTOperator> undeploy;
   public Collection<PTOperator> deploy;
   public Set<PTContainer> releaseContainers;
+  public List<Integer> checkpointDeletes = Lists.newArrayList();
   public int backupRequests;
 
   @Override
@@ -75,15 +75,8 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   }
 
   @Override
-  public AttributeMap getAttributes()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-  }
-
-  @Override
-  public <T> T attrValue(AttributeKey<T> key, T defaultValue)
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  public Long getMostRecentWindowId(int operatorId) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override

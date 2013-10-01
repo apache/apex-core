@@ -33,6 +33,7 @@ import com.google.common.collect.Sets;
  * Representation of an operator in the physical layout<p>
  * <br>
  *
+ * @since 0.3.5
  */
 public class PTOperator {
 

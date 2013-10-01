@@ -32,6 +32,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
   public static final int WINDOW_MASK = 0x3fff;
+  public static final int MIN_WINDOW_ID = 0;
   public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
   public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID) > 0 ? (int)(Long.MAX_VALUE / MAX_WINDOW_ID) : Integer.MAX_VALUE;
   private final ScheduledExecutorService ses;

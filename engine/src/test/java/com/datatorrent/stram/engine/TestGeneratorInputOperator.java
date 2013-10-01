@@ -3,13 +3,15 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 public class TestGeneratorInputOperator extends BaseOperator implements InputOperator
 {

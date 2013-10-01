@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
@@ -86,12 +87,11 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
   {
-    T retval = attributes.attr(key).get();
-    if (retval == null) {
-      return defaultValue;
+    AttributeMap.Attribute<T> retvalue = attributes.attrOrNull(key);
+    if (retvalue != null) {
+      return retvalue.get();
     }
-
-    return retval;
+    return defaultValue;
   }
 
   public static class OperatorProxy implements Serializable
@@ -166,12 +166,11 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
-      T retval = attributes.attr(key).get();
-      if (retval == null) {
-        return defaultValue;
+      AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
+      if (attr != null) {
+        return attr.get();
       }
-
-      return retval;
+      return defaultValue;
     }
   }
 
@@ -211,12 +210,11 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
-      T retval = attributes.attr(key).get();
-      if (retval == null) {
-        return defaultValue;
+      AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
+      if (attr != null) {
+        return attr.get();
       }
-
-      return retval;
+      return defaultValue;
     }
 
     @Override
@@ -388,7 +386,7 @@ public class LogicalPlan implements Serializable, DAG
     private final AttributeMap attributes = new DefaultAttributeMap(OperatorContext.class);
     private final OperatorProxy operatorProxy;
     private final String name;
-    private OperatorAnnotation operatorAnnotation;
+    private final OperatorAnnotation operatorAnnotation;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
@@ -414,12 +412,11 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
-      T retval = attributes.attr(key).get();
-      if (retval == null) {
-        return defaultValue;
+      Attribute<T> attr = attributes.attrOrNull(key);
+      if (attr != null) {
+        return attr.get();
       }
-
-      return retval;
+      return defaultValue;
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -938,16 +935,26 @@ public class LogicalPlan implements Serializable, DAG
     for (StreamMeta os : om.outputStreams.values()) {
       for (InputPortMeta sink: os.sinks) {
         OperatorMeta sinkOm = sink.getOperatorWrapper();
-        if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
-          Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
-          if (sinkPm != pm) {
-            if (sinkPm == null) {
-              LOG.warn("Setting processing mode for operator {} to {}", sinkOm.getName(), pm);
-              sinkOm.getAttributes().attr(OperatorContext.PROCESSING_MODE).set(pm);
-            } else {
-              String msg = String.format("Processing mode %s/%s not valid for source %s/%s", sinkOm.getName(), sinkPm, om.getName(), pm);
-              throw new ValidationException(msg);
-            }
+        Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
+        if (sinkPm == null) {
+          // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then set it to AT_MOST_ONCE as well
+          if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
+            LOG.warn("Setting processing mode for operator {} to {}", sinkOm.getName(), pm);
+            sinkOm.getAttributes().attr(OperatorContext.PROCESSING_MODE).set(pm);
+          } else if (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm)) {
+            // If the source processing mode is EXACTLY_ONCE and a processing mode is not specified for the sink then throw a validation error
+            String msg = String.format("Processing mode for %s should be AT_MOST_ONCE for source %s/%s", sinkOm.getName(), om.getName(), pm);
+            throw new ValidationException(msg);
+          }
+        } else {
+          /*
+           * If the source processing mode is AT_MOST_ONCE and the processing mode for the sink is not AT_MOST_ONCE throw a validation error
+           * If the source processing mode is EXACTLY_ONCE and the processing mode for the sink is not AT_MOST_ONCE throw a validation error
+           */
+          if ((Operator.ProcessingMode.AT_MOST_ONCE.equals(pm) && (sinkPm != pm))
+                  || (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm) && !Operator.ProcessingMode.AT_MOST_ONCE.equals(sinkPm))) {
+            String msg = String.format("Processing mode %s/%s not valid for source %s/%s", sinkOm.getName(), sinkPm, om.getName(), pm);
+            throw new ValidationException(msg);
           }
         }
         validateProcessingMode(sinkOm, visited);
