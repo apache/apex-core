@@ -134,14 +134,6 @@ public class TupleRecorder
   }
 
   /**
-   * @return the containerId
-   */
-  public String getContainerId()
-  {
-    return "this_container_id_should_be_retired";
-  }
-
-  /**
    * @return the recordingName
    */
   public String getRecordingName()
