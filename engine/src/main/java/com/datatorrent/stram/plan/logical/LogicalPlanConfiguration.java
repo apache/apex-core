@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.plan.logical;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,30 +16,26 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.validation.ValidationException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Maps;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-
-import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.Operators;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.google.common.collect.Maps;
 
 /**
  *
@@ -50,9 +46,9 @@ import java.util.regex.Pattern;
  *
  * @since 0.3.2
  */
-public class DAGPropertiesBuilder implements StreamingApplication {
+public class LogicalPlanConfiguration implements StreamingApplication {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DAGPropertiesBuilder.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCE = "source";
@@ -201,7 +197,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     private String getClassNameReqd() {
       String className = properties.getProperty(OPERATOR_CLASSNAME);
       if (className == null) {
-        throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), DAGPropertiesBuilder.OPERATOR_CLASSNAME));
+        throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), LogicalPlanConfiguration.OPERATOR_CLASSNAME));
       }
       return className;
     }
@@ -228,7 +224,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   }
 
   private class AppConf {
-    Properties properties = new Properties(DAGPropertiesBuilder.this.properties);
+    Properties properties = new Properties(LogicalPlanConfiguration.this.properties);
   }
 
   private final Properties properties = new Properties();
@@ -238,13 +234,13 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   private final Map<String, AppConf> apps = Maps.newHashMap();
   private final Map<String, String> appAliases = Maps.newHashMap();
 
-  public DAGPropertiesBuilder() {
+  public LogicalPlanConfiguration() {
     this.operators = new HashMap<String, OperatorConf>();
     this.streams = new HashMap<String, StreamConf>();
     this.templates = new HashMap<String,TemplateConf>();
   }
 
-  private OperatorConf getOrAddNode(String nodeId) {
+  private OperatorConf getOrAddOperator(String nodeId) {
     OperatorConf nc = operators.get(nodeId);
     if (nc == null) {
       nc = new OperatorConf(nodeId);
@@ -309,9 +305,9 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    * @param conf
    * @return
    */
-  public DAGPropertiesBuilder addAliasesFromConfig(Configuration conf) {
-    StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
-    sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
+  public LogicalPlanConfiguration addAliasesFromConfig(Configuration conf) {
+    StringBuilder sb = new StringBuilder(LogicalPlanConfiguration.APPLICATION_PREFIX.replace(".", "\\."));
+    sb.append("\\.(.*)\\.").append(LogicalPlanConfiguration.APPLICATION_CLASS.replace(".", "\\."));
     String appClassRegex = sb.toString();
     Map<String, String> props = conf.getValByRegex(appClassRegex);
     if (props != null) {
@@ -335,7 +331,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    *
    * @param props
    */
-  public DAGPropertiesBuilder addFromProperties(Properties props) {
+  public LogicalPlanConfiguration addFromProperties(Properties props) {
 
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
@@ -357,12 +353,12 @@ public class DAGPropertiesBuilder implements StreamingApplication {
               throw new IllegalArgumentException("Duplicate " + propertyName);
             }
             String[] parts = getNodeAndPortId(propertyValue);
-            stream.setSource(parts[1], getOrAddNode(parts[0]));
+            stream.setSource(parts[1], getOrAddOperator(parts[0]));
         } else if (STREAM_SINKS.equals(propertyKey)) {
             String[] targetPorts = propertyValue.split(",");
             for (String nodeAndPort : targetPorts) {
               String[] parts = getNodeAndPortId(nodeAndPort.trim());
-              stream.addSink(parts[1], getOrAddNode(parts[0]));
+              stream.addSink(parts[1], getOrAddOperator(parts[0]));
             }
         } else if (STREAM_TEMPLATE.equals(propertyKey)) {
           stream.template = getOrAddTemplate(propertyValue);
@@ -382,7 +378,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
          }
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
-         OperatorConf nc = getOrAddNode(nodeId);
+         OperatorConf nc = getOrAddOperator(nodeId);
          if (OPERATOR_TEMPLATE.equals(propertyKey)) {
            nc.template = getOrAddTemplate(propertyValue);
            // TODO: defer until all keys are read?
@@ -533,7 +529,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     tb.addFromProperties(topologyProperties);
     return tb;
   }
@@ -556,7 +552,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     // if there are properties set directly, an entry exists
     // else it will be created so we can evaluate the templates against it
-    OperatorConf n = getOrAddNode(ow.getName());
+    OperatorConf n = getOrAddOperator(ow.getName());
     n.properties.put(OPERATOR_CLASSNAME, ow.getOperator().getClass().getName());
 
     Map<String, String> properties = new HashMap<String, String>();

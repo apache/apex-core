@@ -13,12 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Operator;
-import com.datatorrent.stram.DAGPropertiesBuilder;
 
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  * <p>RequestFactory class.</p>
@@ -72,7 +72,7 @@ public class RequestFactory
           {
             final Map<String, String> properties = Collections.singletonMap(snr.setPropertyKey, snr.setPropertyValue);
             logger.info("Setting property {} on operator {}", properties, operator);
-            DAGPropertiesBuilder.setOperatorProperties(operator, properties);
+            LogicalPlanConfiguration.setOperatorProperties(operator, properties);
           }
 
           @Override

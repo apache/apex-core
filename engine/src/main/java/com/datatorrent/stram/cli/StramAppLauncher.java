@@ -32,11 +32,11 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 
 /**
@@ -57,7 +57,7 @@ public class StramAppLauncher {
 
   final File jarFile;
   private Configuration conf;
-  private final DAGPropertiesBuilder propertiesBuilder = new DAGPropertiesBuilder();
+  private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
 
@@ -108,7 +108,7 @@ public class StramAppLauncher {
     @Override
     public StreamingApplication createApp(Configuration conf) {
       try {
-        return DAGPropertiesBuilder.create(conf, propertyFile.getAbsolutePath());
+        return LogicalPlanConfiguration.create(conf, propertyFile.getAbsolutePath());
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
       }

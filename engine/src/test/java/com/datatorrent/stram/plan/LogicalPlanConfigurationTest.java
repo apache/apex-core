@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -24,16 +25,18 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.cli.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.plan.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.collect.Sets;
 
-public class PropertiesTest {
+public class LogicalPlanConfigurationTest {
 
   private static OperatorMeta assertNode(LogicalPlan dag, String id) {
       OperatorMeta n = dag.getOperatorMeta(id);
@@ -50,7 +53,7 @@ public class PropertiesTest {
     conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    DAGPropertiesBuilder builder = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
     builder.addFromConfiguration(conf);
 
     LogicalPlan dag = new LogicalPlan();
@@ -135,7 +138,7 @@ public class PropertiesTest {
         fail("Could not load " + resourcePath);
       }
       props.load(is);
-      DAGPropertiesBuilder pb = new DAGPropertiesBuilder()
+      LogicalPlanConfiguration pb = new LogicalPlanConfiguration()
         .addFromProperties(props);
 
       LogicalPlan dag = new LogicalPlan();
@@ -184,7 +187,7 @@ public class PropertiesTest {
     props.put("stram.application." + appName + ".attr." + DAG.APPLICATION_PATH.name(), "/otherdir");
     props.put("stram.application." + appName + ".attr." + DAG.STREAMING_WINDOW_SIZE_MILLIS.name(), "1000");
 
-    DAGPropertiesBuilder dagBuilder = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
 
     LogicalPlan dag = new LogicalPlan();
@@ -211,7 +214,7 @@ public class PropertiesTest {
     };
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
-    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
     pb.addFromConfiguration(conf);
 
     LogicalPlan dag = new LogicalPlan();
@@ -219,6 +222,70 @@ public class PropertiesTest {
 
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
     Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.DAEMON_ADDRESS, null));
+  }
+
+  @Test
+  public void testOperatorConfigurationLookup() {
+
+    Properties props = new Properties();
+
+    // match operator by name
+    props.put("stram.template.matchId1.matchIdRegExp", ".*operator1.*");
+    props.put("stram.template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
+    props.put("stram.template.matchId1.nested.property", "nested.propertyValue-matchId1");
+
+    // match class name, lower priority
+    props.put("stram.template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
+    props.put("stram.template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
+
+    // match class name
+    props.put("stram.template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
+    props.put("stram.template.t2.myStringProperty", "myStringPropertyValue");
+
+    // direct setting
+    props.put("stram.operator.operator3.emitFormat", "emitFormatValue");
+
+    LogicalPlan dag = new LogicalPlan();
+    Operator operator1 = dag.addOperator("operator1", new ValidationTestOperator());
+    Operator operator2 = dag.addOperator("operator2", new ValidationTestOperator());
+    Operator operator3 = dag.addOperator("operator3", new GenericTestOperator());
+
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
+    pb.addFromProperties(props);
+
+    Map<String, String> configProps = pb.getProperties(dag.getMeta(operator1), "appName");
+    Assert.assertEquals("" + configProps, 2, configProps.size());
+    Assert.assertEquals("" + configProps, "stringProperty2Value-matchId1", configProps.get("stringProperty2"));
+    Assert.assertEquals("" + configProps, "nested.propertyValue-matchId1", configProps.get("nested.property"));
+
+    configProps = pb.getProperties(dag.getMeta(operator2), "appName");
+    Assert.assertEquals("" + configProps, 1, configProps.size());
+    Assert.assertEquals("" + configProps, "stringProperty2Value-matchClass1", configProps.get("stringProperty2"));
+
+    configProps = pb.getProperties(dag.getMeta(operator3), "appName");
+    Assert.assertEquals("" + configProps, 2, configProps.size());
+    Assert.assertEquals("" + configProps, "myStringPropertyValue", configProps.get("myStringProperty"));
+    Assert.assertEquals("" + configProps, "emitFormatValue", configProps.get("emitFormat"));
+
+  }
+
+  @Test
+  public void testSetOperatorProperties() {
+
+    Configuration conf = new Configuration(false);
+    conf.set("stram.operator.o1.myStringProperty", "myStringPropertyValue");
+    conf.set("stram.operator.o2.stringArrayField", "a,b,c");
+
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
+    ValidationTestOperator o2 = dag.addOperator("o2", new ValidationTestOperator());
+
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
+    pb.addFromConfiguration(conf);
+
+    pb.setOperatorProperties(dag, "testSetOperatorProperties");
+    Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
+    Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.getStringArrayField());
   }
 
 }

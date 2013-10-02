@@ -29,11 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.inject.Inject;
@@ -541,7 +541,7 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
-    Map<String, Object> m = DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
+    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
 
     try {
       if (propertyName == null) {

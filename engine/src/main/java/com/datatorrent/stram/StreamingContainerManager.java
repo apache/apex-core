@@ -8,17 +8,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -62,6 +51,7 @@ import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -1273,7 +1263,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
-    DAGPropertiesBuilder.setOperatorProperties(logicalOperator.getOperator(), properties);
+    LogicalPlanConfiguration.setOperatorProperties(logicalOperator.getOperator(), properties);
     // need to record this to a log in the future when review history is supported
 
     List<PTOperator> operators = plan.getOperators(logicalOperator);

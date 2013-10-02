@@ -54,12 +54,12 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.StramAppMaster;
 import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
@@ -177,7 +177,7 @@ public class StramMiniClusterTest
     LOG.info("testJar: " + testJar);
 
     // create test application
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)

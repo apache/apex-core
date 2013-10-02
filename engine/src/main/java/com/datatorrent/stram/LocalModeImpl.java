@@ -11,6 +11,7 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  * <p>LocalModeImpl class.</p>
@@ -45,7 +46,7 @@ public class LocalModeImpl extends LocalMode {
       throw new IllegalArgumentException("Require app or configuration to populate logical plan.");
     }
 
-    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
     pb.addFromConfiguration(conf);
     String name = "unknown";
     if (app != null) {
@@ -73,7 +74,7 @@ public class LocalModeImpl extends LocalMode {
       public StreamingApplication createApp(Configuration conf)
       {
         if (app == null) {
-          DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
+          LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
           tb.addFromConfiguration(conf);
           return tb;
         } else {
