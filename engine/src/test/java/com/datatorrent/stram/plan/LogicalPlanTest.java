@@ -15,8 +15,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
 import javax.validation.ConstraintViolation;
@@ -31,7 +29,6 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
-import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -48,7 +45,6 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.codec.KryoJdkSerializer;
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
@@ -556,70 +552,6 @@ public class LogicalPlanTest {
     dag.addOperator("multiOutputPorts3", new TestAnnotationsOperator3());
     dag.validate();
 
-  }
-
-  @Test
-  public void testOperatorConfigurationLookup() {
-
-    Properties props = new Properties();
-
-    // match operator by name
-    props.put("stram.template.matchId1.matchIdRegExp", ".*operator1.*");
-    props.put("stram.template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
-    props.put("stram.template.matchId1.nested.property", "nested.propertyValue-matchId1");
-
-    // match class name, lower priority
-    props.put("stram.template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
-    props.put("stram.template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
-
-    // match class name
-    props.put("stram.template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
-    props.put("stram.template.t2.myStringProperty", "myStringPropertyValue");
-
-    // direct setting
-    props.put("stram.operator.operator3.emitFormat", "emitFormatValue");
-
-    LogicalPlan dag = new LogicalPlan();
-    Operator operator1 = dag.addOperator("operator1", new ValidationTestOperator());
-    Operator operator2 = dag.addOperator("operator2", new ValidationTestOperator());
-    Operator operator3 = dag.addOperator("operator3", new GenericTestOperator());
-
-    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
-    pb.addFromProperties(props);
-
-    Map<String, String> configProps = pb.getProperties(dag.getMeta(operator1), "appName");
-    Assert.assertEquals("" + configProps, 2, configProps.size());
-    Assert.assertEquals("" + configProps, "stringProperty2Value-matchId1", configProps.get("stringProperty2"));
-    Assert.assertEquals("" + configProps, "nested.propertyValue-matchId1", configProps.get("nested.property"));
-
-    configProps = pb.getProperties(dag.getMeta(operator2), "appName");
-    Assert.assertEquals("" + configProps, 1, configProps.size());
-    Assert.assertEquals("" + configProps, "stringProperty2Value-matchClass1", configProps.get("stringProperty2"));
-
-    configProps = pb.getProperties(dag.getMeta(operator3), "appName");
-    Assert.assertEquals("" + configProps, 2, configProps.size());
-    Assert.assertEquals("" + configProps, "myStringPropertyValue", configProps.get("myStringProperty"));
-    Assert.assertEquals("" + configProps, "emitFormatValue", configProps.get("emitFormat"));
-
-  }
-
-  @Test
-  public void testSetOperatorProperties() {
-
-    Configuration conf = new Configuration(false);
-    conf.set("stram.operator.o1.myStringProperty", "myStringPropertyValue");
-    conf.set("stram.operator.o2.stringArrayField", "a,b,c");
-
-    LogicalPlan dag = new LogicalPlan();
-    GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
-    ValidationTestOperator o2 = dag.addOperator("o2", new ValidationTestOperator());
-
-    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
-    pb.addFromConfiguration(conf);
-
-    pb.setOperatorProperties(dag, "testSetOperatorProperties");
-    Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
-    Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.stringArrayField);
   }
 
   public class DuplicatePortOperator extends GenericTestOperator {

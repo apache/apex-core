@@ -31,6 +31,7 @@ import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
 import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats;
 import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats.PortStats;
@@ -49,6 +50,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private String daemonAddress;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
+  private String containerId; // this should be retired!
 
   public TupleRecorder getTupleRecorder(int operId, String portName)
   {
@@ -61,6 +63,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   {
     tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
     tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
+    containerId = ctx.attrValue(ContainerContext.IDENTIFIER, "unknown_container_id");
     daemonAddress = ctx.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
     appPath = ctx.attrValue(LogicalPlan.APPLICATION_PATH, null);
 
@@ -129,10 +132,8 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       logger.debug("Executing start recording request for {}", operatorIdPortNamePair);
 
       TupleRecorder tupleRecorder = new TupleRecorder();
-      String basePath = appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
-      tupleRecorder.getStorage().setBasePath(basePath);
-      tupleRecorder.getStorage().setBytesPerPartFile(tupleRecordingPartFileSize);
-      tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
+      tupleRecorder.setContainerId(containerId);
+
       if (daemonAddress != null) {
         String url = "ws://" + daemonAddress + "/pubsub";
         try {
@@ -167,6 +168,19 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       }
       if (!sinkMap.isEmpty()) {
         logger.debug("Started recording on {} through {}", operatorIdPortNamePair, System.identityHashCode(this));
+        String basePath = appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
+        tupleRecorder.getStorage().setBasePath(basePath);
+        tupleRecorder.getStorage().setBytesPerPartFile(tupleRecordingPartFileSize);
+        tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
+
+        // this is not needed, and should be deleted when UI upgrades
+        if (portName == null) {
+          tupleRecorder.setRecordingName(containerId.concat("_").concat(String.valueOf(operatorId)).concat("_").concat(String.valueOf(tupleRecorder.getStartTime())));
+        }
+        else {
+          tupleRecorder.setRecordingName(containerId.concat("_").concat(String.valueOf(operatorId)).concat("$").concat(portName).concat("_").concat(String.valueOf(tupleRecorder.getStartTime())));
+        }
+
         node.addSinks(sinkMap);
         tupleRecorder.setup(node.getOperator());
         put(operatorIdPortNamePair, tupleRecorder);
@@ -176,7 +190,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       }
     }
     else {
-      logger.error("Operator id {} is already being recorded.",  operatorId);
+      logger.error("Operator id {} is already being recorded.", operatorId);
     }
   }
 
@@ -185,12 +199,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
     if (containsKey(operatorIdPortNamePair)) {
       logger.debug("Executing stop recording request for {}", operatorIdPortNamePair);
-
       TupleRecorder tupleRecorder = get(operatorIdPortNamePair);
       if (tupleRecorder != null) {
         node.removeSinks(tupleRecorder.getSinkMap());
         tupleRecorder.teardown();
-        logger.debug("Stopped recording for operator/port {}", operatorIdPortNamePair);
+        logger.debug("Stopped recording for {}", operatorIdPortNamePair);
         remove(operatorIdPortNamePair);
       }
     }
@@ -272,19 +285,27 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   public void collected(ContainerStats stats)
   {
     for (StreamingNodeHeartbeat node : stats.nodes) {
+      long recordingStartTime;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
       if (tupleRecorder == null) {
+        recordingStartTime = Stats.INVALID_TIME_MILLIS;
         for (Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry : this.entrySet()) {
           if (entry.getKey().operatorId == node.nodeId) {
             for (OperatorStats os : node.windowStats) {
-              for (PortStats ps: os.inputPorts) {
+              for (PortStats ps : os.inputPorts) {
                 if (ps.id.equals(entry.getKey().portName)) {
                   ps.recordingStartTime = entry.getValue().getStartTime();
                 }
+                else {
+                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+                }
               }
-              for (PortStats ps: os.outputPorts) {
+              for (PortStats ps : os.outputPorts) {
                 if (ps.id.equals(entry.getKey().portName)) {
                   ps.recordingStartTime = entry.getValue().getStartTime();
+                }
+                else {
+                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
                 }
               }
             }
@@ -292,9 +313,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         }
       }
       else {
-        for (OperatorStats os : node.windowStats) {
-          os.recordingStartTime = tupleRecorder.getStartTime();
-        }
+        recordingStartTime = tupleRecorder.getStartTime();
+      }
+
+      for (OperatorStats os : node.windowStats) {
+        os.recordingStartTime = recordingStartTime;
       }
     }
   }

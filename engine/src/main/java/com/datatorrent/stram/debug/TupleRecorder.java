@@ -24,8 +24,11 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.api.util.PubSubWebSocketClient;
+
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.engine.Stats;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.util.HdfsPartFileCollection;
 
@@ -41,10 +44,11 @@ public class TupleRecorder
   private int totalTupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
-  private transient long currentWindowId = -1;
+  private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
+  private long startTime = System.currentTimeMillis();
   private String containerId;
-  private final long startTime = System.currentTimeMillis();
+  private String recordingName; // should be retired
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
@@ -129,6 +133,50 @@ public class TupleRecorder
     return Collections.unmodifiableMap(sinks);
   }
 
+  /**
+   * @return the recordingName
+   */
+  public String getRecordingName()
+  {
+    return recordingName;
+  }
+
+  /**
+   * @param recordingName the recordingName to set
+   */
+  public void setRecordingName(String recordingName)
+  {
+    this.recordingName = recordingName;
+  }
+
+  /**
+   * @param startTime the startTime to set
+   */
+  public void setStartTime(long startTime)
+  {
+    if (this.startTime == Stats.INVALID_TIME_MILLIS) {
+      this.startTime = startTime;
+    }
+
+    throw new IllegalStateException("Tuple recorder has already started");
+  }
+
+  /**
+   * @return the containerId
+   */
+  public String getContainerId()
+  {
+    return containerId;
+  }
+
+  /**
+   * @param containerId the containerId to set
+   */
+  public void setContainerId(String containerId)
+  {
+    this.containerId = containerId;
+  }
+
   /* defined for json information */
   public static class PortInfo
   {
@@ -148,6 +196,7 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
+    public String recordingName;
     public String containerId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
@@ -219,12 +268,15 @@ public class TupleRecorder
   {
     try {
       storage.setup();
+      // this is the right place to init startTime, please enable the following call and disable the assignment in the constructor!
+      //setStartTime(System.currentTimeMillis());
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       bos.write((VERSION + "\n").getBytes());
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
+      recordInfo.recordingName = recordingName;
       recordInfo.containerId = containerId;
 
       if (operator != null) {
@@ -254,7 +306,7 @@ public class TupleRecorder
       storage.writeMetaData(bos.toByteArray());
 
       if (pubSubUrl != null) {
-        recordingNameTopic = "tupleRecorder." + startTime;
+        recordingNameTopic = "tupleRecorder." + getStartTime();
         try {
           setupWsClient();
         }
@@ -282,7 +334,7 @@ public class TupleRecorder
       {
         if (topic.equals(recordingNameTopic + ".numSubscribers")) {
           numSubscribers = Integer.valueOf((String)data);
-          logger.info("Number of subscribers for recording started at {} is now {}", startTime, numSubscribers);
+          logger.info("Number of subscribers for recording started at {} is now {}", getStartTime(), numSubscribers);
         }
       }
 
@@ -327,11 +379,6 @@ public class TupleRecorder
 
   public void endWindow()
   {
-//    int countConnectedInputPorts = 0;
-//    for (PortInfo p : portMap.values()) {
-//      if (p.)
-//    }
-
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
         storage.writeDataItem(("E:" + currentWindowId + "\n").getBytes(), false);

@@ -3,18 +3,15 @@ package com.datatorrent.stram;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode;
 import com.datatorrent.api.StreamingApplication;
-
-import com.datatorrent.stram.cli.StramAppLauncher;
-import com.datatorrent.stram.cli.StramAppLauncher.AppConfig;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  * <p>LocalModeImpl class.</p>
@@ -49,7 +46,20 @@ public class LocalModeImpl extends LocalMode {
       throw new IllegalArgumentException("Require app or configuration to populate logical plan.");
     }
 
-    final AppConfig appConfig = new AppConfig() {
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
+    pb.addFromConfiguration(conf);
+    String name = "unknown";
+    if (app != null) {
+      name = app.getClass().getName();
+    }
+    StreamingApplication sapp = app;
+    if (app == null) {
+      sapp = pb;
+    }
+    pb.prepareDAG(lp, sapp, name, conf);
+
+    /*
+    final AppFactory appConfig = new AppFactory() {
       @Override
       public String getName()
       {
@@ -59,11 +69,12 @@ public class LocalModeImpl extends LocalMode {
           return "unknown";
         }
       }
+
       @Override
       public StreamingApplication createApp(Configuration conf)
       {
         if (app == null) {
-          DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
+          LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
           tb.addFromConfiguration(conf);
           return tb;
         } else {
@@ -71,7 +82,10 @@ public class LocalModeImpl extends LocalMode {
         }
       }
     };
-    StramAppLauncher.prepareDAG(this.lp, appConfig, conf);
+    StramAppAgent appAgent = new StramAppAgent(conf);
+    appAgent.prepareDAG(this.lp, appConfig);
+    */
+    //StramAppLauncher.prepareDAG(this.lp, appConfig, conf);
     return lp;
   }
 

@@ -11,50 +11,42 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.lf5.util.StreamUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.api.annotation.ShipContainingJars;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.DAG;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.apache.commons.cli.*;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 
 /**
- *
- * Launch a streaming application packaged as jar file<p>
- * <br>
- * Parses the jar file for
- * dependency pom and topology files. Dependency resolution is based on the
- * bundled pom.xml (if any) and the application is launched with a modified
- * client classpath that includes application dependencies so that classes
- * defined in the topology can be loaded and {@link ShipContainingJars}
- * annotations processed. Caching is performed for dependency classpath
- * resolution.<br>
+ * Launch a streaming application packaged as jar file
+ * <p>
+ * Parses the jar file for application resources (implementations of {@link StreamingApplication} or property files per
+ * naming convention).<br>
+ * Dependency resolution is based on the bundled pom.xml (if any) and the application is launched with a modified client
+ * classpath that includes application dependencies so that classes defined in the DAG can be loaded and
+ * {@link ShipContainingJars} annotations processed. Caching is performed for dependency classpath resolution.<br>
  * <br>
  *
  * @since 0.3.2
@@ -64,7 +56,9 @@ public class StramAppLauncher {
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
   final File jarFile;
-  private final List<AppConfig> configurationList = new ArrayList<AppConfig>();
+  private Configuration conf;
+  private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
+  private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
 
   /**
@@ -99,12 +93,12 @@ public class StramAppLauncher {
   }
 
 
-  public static interface AppConfig {
+  public static interface AppFactory {
       StreamingApplication createApp(Configuration conf);
       String getName();
   }
 
-  public static class PropertyFileAppConfig implements AppConfig {
+  public static class PropertyFileAppConfig implements AppFactory {
     final File propertyFile;
 
     public PropertyFileAppConfig(File file) {
@@ -114,7 +108,7 @@ public class StramAppLauncher {
     @Override
     public StreamingApplication createApp(Configuration conf) {
       try {
-        return DAGPropertiesBuilder.create(conf, propertyFile.getAbsolutePath());
+        return LogicalPlanConfiguration.create(conf, propertyFile.getAbsolutePath());
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
       }
@@ -129,21 +123,36 @@ public class StramAppLauncher {
 
 
   public StramAppLauncher(File appJarFile) throws Exception {
+    this(appJarFile, null);
+  }
+
+  public StramAppLauncher(File appJarFile, Configuration conf) throws Exception {
     this.jarFile = appJarFile;
+    this.conf = conf;
     init();
   }
 
-  public StramAppLauncher(FileSystem fs, Path path) throws Exception {
+    public StramAppLauncher(FileSystem fs, Path path) throws Exception {
+      this(fs, path, null);
+    }
+
+  public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception {
     File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
     jarsDir.mkdirs();
     File localJarFile = new File(jarsDir, path.getName());
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
+    this.conf = conf;
     init();
   }
 
   @SuppressWarnings("UseOfSystemOutOrSystemErr")
   private void init() throws Exception {
+
+    if (conf == null) {
+      conf = getConfig(null, null);
+    }
+    propertiesBuilder.addFromConfiguration(conf);
 
     File baseDir =  StramClientUtils.getSettingsRootDir();
     baseDir = new File(baseDir, jarFile.getName());
@@ -188,7 +197,7 @@ public class StramAppLauncher {
           } else if (jarEntry.getName().endsWith(".app.properties")) {
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
-            configurationList.add(new PropertyFileAppConfig(targetFile));
+            appResourceList.add(new PropertyFileAppConfig(targetFile));
           } else if (jarEntry.getName().endsWith(".class")) {
             classFileNames.add(jarEntry.getName());
           }
@@ -270,7 +279,7 @@ public class StramAppLauncher {
       try {
         Class<?> clazz = cl.loadClass(className);
         if (StreamingApplication.class.isAssignableFrom(clazz)) {
-          final AppConfig appConfig = new AppConfig() {
+          final AppFactory appConfig = new AppFactory() {
 
             @Override
             public String getName() {
@@ -284,7 +293,7 @@ public class StramAppLauncher {
               return StramUtils.newInstance(c);
             }
           };
-          configurationList.add(appConfig);
+          appResourceList.add(appConfig);
         }
       } catch (Throwable e) { // java.lang.NoClassDefFoundError
         LOG.error("Unable to load class: " + className + " " + e);
@@ -327,64 +336,15 @@ public class StramAppLauncher {
     return conf;
   }
 
-  public static LogicalPlan prepareDAG(AppConfig appConfig, Configuration conf) {
+  public Map<String, String> getAppAliases() {
+    return propertiesBuilder.getAppAliases();
+  }
+
+  public LogicalPlan prepareDAG(AppFactory appConfig) {
     LogicalPlan dag = new LogicalPlan();
-    prepareDAG(dag, appConfig, conf);
-    return dag;
-  }
-
-  public static void prepareDAG(LogicalPlan dag, AppConfig appConfig, Configuration conf) {
-    String appAlias = getAppAlias(appConfig, conf);
-
-    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
-    pb.addFromConfiguration(conf);
-
-    // set application level attributes first to make them available to populateDAG
-    pb.setApplicationLevelAttributes(dag, appAlias);
-
     StreamingApplication app = appConfig.createApp(conf);
-    app.populateDAG(dag, conf);
-
-    if (appAlias != null) {
-      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
-    } else {
-      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(appConfig.getName());
-    }
-
-    // inject external operator configuration
-    pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
-  }
-  
-  /**
-   * Resolve the application name by matching the original name against alias
-   * definitions in the configuration.
-   *
-   * @param appConfig
-   * @param conf
-   * @return
-   */
-  public static String getAppAlias(AppConfig appConfig, Configuration conf) {
-    StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
-    sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
-    String appClassRegex = sb.toString();
-    String name = appConfig.getName();
-    String className = name.replace("/", ".").substring(0, name.length()-6);
-    Map<String, String> props = conf.getValByRegex(appClassRegex);
-    String appName = null;
-    if (props != null) {
-      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
-      for (Map.Entry<String, String> propEntry : propEntries) {
-        if (propEntry.getValue().equals(className)) {
-          Pattern p = Pattern.compile(appClassRegex);
-          Matcher m = p.matcher(propEntry.getKey());
-          if (m.find()) {
-            appName = m.group(1);
-            break;
-          }
-        }
-      }
-    }
-    return appName;
+    propertiesBuilder.prepareDAG(dag, app, appConfig.getName(), conf);
+    return dag;
   }
 
   /**
@@ -393,11 +353,11 @@ public class StramAppLauncher {
    * @param config
    * @throws Exception
    */
-  public void runLocal(AppConfig appConfig, Configuration config) throws Exception {
+  public void runLocal(AppFactory appConfig) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    config.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, config));
+    conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig));
     lc.run();
   }
 
@@ -409,80 +369,23 @@ public class StramAppLauncher {
 
   /**
    * Submit application to the cluster and return the app id.
+   * Sets the context class loader for application dependencies.
    * @param appConfig
-   * @param config
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppConfig appConfig, Configuration config) throws Exception {
+  public ApplicationId launchApp(AppFactory appConfig) throws Exception {
 
-    URLClassLoader cl = loadDependencies();
-    //Class<?> loadedClass = cl.loadClass("com.datatorrent.example.wordcount.WordCountSerDe");
-    //LOG.info("loaded " + loadedClass);
-
-    // below would be needed w/o parent delegation only
-    // using parent delegation assumes that stram is in the JVM launch classpath
-    Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, Configuration.class});
-    // TODO: with class loader isolation, pass serialized appConfig to launch loader
-    config.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
-    Object appIdStr = runApp.invoke(null, appConfig, config);
-    return ConverterUtils.toApplicationId(""+appIdStr);
-  }
-
-  public static String runApp(AppConfig appConfig, Configuration config) throws Exception {
-    LOG.info("Launching configuration: {}", appConfig.getName());
-    LogicalPlan dag = prepareDAG(appConfig, config);
+    loadDependencies();
+    conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
+    LogicalPlan dag = prepareDAG(appConfig);
     StramClient client = new StramClient(dag);
     client.startApplication();
-    return client.getApplicationReport().getApplicationId().toString();
+    return client.getApplicationReport().getApplicationId();
   }
 
-  public List<AppConfig> getBundledTopologies() {
-    return Collections.unmodifiableList(this.configurationList);
-  }
-
-  public static class CommandLineInfo {
-    boolean localMode;
-    String configFile;
-    Map<String, String> overrideProperties;
-    String[] args;
-  }
-
-  public static Options getCommandLineOptions() {
-    Options options = new Options();
-    Option local = new Option("local", "run in local mode");
-    Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
-    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("def");
-    options.addOption(local);
-    options.addOption(configFile);
-    options.addOption(defProperty);
-    return options;
-  }
-
-  public static CommandLineInfo getCommandLineInfo(String[] args) throws ParseException
-  {
-    CommandLineParser parser = new PosixParser();
-    CommandLineInfo result = new CommandLineInfo();
-    CommandLine line = parser.parse(getCommandLineOptions(), args);
-    result.localMode = line.hasOption("local");
-
-    result.configFile = line.getOptionValue("conf");
-    String[] defs = line.getOptionValues("def");
-    if (defs != null) {
-      result.overrideProperties = new HashMap<String, String>();
-      for (String def : defs) {
-        int equal = def.indexOf('=');
-        if (equal < 0) {
-          result.overrideProperties.put(def, null);
-        }
-        else {
-          result.overrideProperties.put(def.substring(0, equal), def.substring(equal + 1));
-        }
-      }
-    }
-    result.args = line.getArgs();
-    return result;
+  public List<AppFactory> getBundledTopologies() {
+    return Collections.unmodifiableList(this.appResourceList);
   }
 
 }
