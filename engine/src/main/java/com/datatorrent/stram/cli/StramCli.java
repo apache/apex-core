@@ -992,7 +992,7 @@ public class StramCli
       Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
-      StramAppLauncher submitApp = new StramAppLauncher(jf);
+      StramAppLauncher submitApp = new StramAppLauncher(jf, config);
       submitApp.loadDependencies();
       AppConfig appConfig = null;
       if (commandLineInfo.args.length >= 2) {
@@ -1015,13 +1015,14 @@ public class StramCli
         else if (matchingAppConfigs.size() > 1) {
 
           // Get app aliases. Figure out a better way to reuse aliases computed here in future.
-          Map<String, String> appAliases = getAppAliases(config);
+          Map<String, String> appAliases = submitApp.getAppAliases();
 
           // Display matching applications
           for (int i = 0; i < matchingAppConfigs.size(); i++) {
             String appName = matchingAppConfigs.get(i).getName();
-            String className = appName.replace("/", ".").substring(0, appName.length()-6);
-            String appAlias = appAliases.get(className);
+            //String className = appName.replace("/", ".").substring(0, appName.length()-6);
+            //String appAlias = appAliases.get(className);
+            String appAlias = appAliases.get(appName);
             if (appAlias != null) {
               appName = appAlias;
             }
@@ -1066,12 +1067,12 @@ public class StramCli
 
       if (appConfig != null) {
         if (!commandLineInfo.localMode) {
-          ApplicationId appId = submitApp.launchApp(appConfig, config);
+          ApplicationId appId = submitApp.launchApp(appConfig);
           currentApp = rmClient.getApplicationReport(appId);
           System.out.println(appId);
         }
         else {
-          submitApp.runLocal(appConfig, config);
+          submitApp.runLocal(appConfig);
         }
       }
       else {
@@ -1734,7 +1735,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(null, null));
+          LogicalPlan logicalPlan = submitApp.prepareDAG(appConfig);
           ObjectMapper mapper = new ObjectMapper();
           System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
         }
@@ -1783,7 +1784,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StramAppLauncher.getConfig(null, null));
+          LogicalPlan logicalPlan = submitApp.prepareDAG(appConfig);
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();
@@ -2155,27 +2156,6 @@ public class StramCli
       System.out.println(json);
     }
 
-  }
-
-  public Map<String, String> getAppAliases(Configuration conf) {
-    Map<String, String> aliases = new HashMap<String, String>();
-    StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
-    sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
-    String appClassRegex = sb.toString();
-    Map<String, String> props = conf.getValByRegex(appClassRegex);
-    String appName = null;
-    if (props != null) {
-      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
-      for (Map.Entry<String, String> propEntry : propEntries) {
-        Pattern p = Pattern.compile(appClassRegex);
-        Matcher m = p.matcher(propEntry.getKey());
-        if (m.find()) {
-          appName = m.group(1);
-          aliases.put(propEntry.getValue(), appName);
-        }
-      }
-    }
-    return aliases;
   }
 
   public static void main(String[] args) throws Exception

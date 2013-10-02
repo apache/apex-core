@@ -201,12 +201,14 @@ public class PropertiesTest {
   @Test
   public void testPrepareDAG() {
     final MutableBoolean appInitialized = new MutableBoolean(false);
+    /*
     StramAppLauncher.AppConfig appConf = new StramAppLauncher.AppConfig() {
       @Override
       public String getName()
       {
         return "testconfig";
       }
+
       @Override
       public StreamingApplication createApp(Configuration conf)
       {
@@ -221,10 +223,23 @@ public class PropertiesTest {
         };
       }
     };
+    */
 
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        Assert.assertEquals("", "hostname:9090", dag.attrValue(DAG.DAEMON_ADDRESS, null));
+        dag.setAttribute(DAG.DAEMON_ADDRESS, "hostname:9091");
+        appInitialized.setValue(true);
+      }
+    };
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
-    LogicalPlan dag = StramAppLauncher.prepareDAG(appConf, conf);
+    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    pb.addFromConfiguration(conf);
+    LogicalPlan dag = pb.prepareDAG(app, "testconfig", conf);
+    //LogicalPlan dag = StramAppLauncher.prepareDAG(appConf, conf);
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
     Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.DAEMON_ADDRESS, null));
   }

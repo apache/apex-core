@@ -38,6 +38,8 @@ import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.Operators;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -234,6 +236,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
   private final Map<String, AppConf> apps = Maps.newHashMap();
+  private final Map<String, String> appAliases = Maps.newHashMap();
 
   public DAGPropertiesBuilder() {
     this.nodes = new HashMap<String, NodeConf>();
@@ -273,6 +276,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
+    addAliasesFromConfig(conf);
     addFromProperties(toProperties(conf, "stram."));
   }
 
@@ -295,6 +299,33 @@ public class DAGPropertiesBuilder implements StreamingApplication {
       throw new IllegalArgumentException("Invalid node.port reference: " + s);
     }
     return parts;
+  }
+
+  /**
+   * Resolve the application name by matching the original name against alias
+   * definitions in the configuration.
+   *
+   * @param appConfig
+   * @param conf
+   * @return
+   */
+  public DAGPropertiesBuilder addAliasesFromConfig(Configuration conf) {
+    StringBuilder sb = new StringBuilder(DAGPropertiesBuilder.APPLICATION_PREFIX.replace(".", "\\."));
+    sb.append("\\.(.*)\\.").append(DAGPropertiesBuilder.APPLICATION_CLASS.replace(".", "\\."));
+    String appClassRegex = sb.toString();
+    Map<String, String> props = conf.getValByRegex(appClassRegex);
+    if (props != null) {
+      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
+      for (Map.Entry<String, String> propEntry : propEntries) {
+        Pattern p = Pattern.compile(appClassRegex);
+        Matcher m = p.matcher(propEntry.getKey());
+        if (m.find()) {
+          String appName = m.group(1);
+          appAliases.put(propEntry.getValue(), appName);
+        }
+      }
+    }
+    return this;
   }
 
   /**
@@ -416,6 +447,10 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     return this.properties;
   }
 
+  public Map<String, String> getAppAliases() {
+    return this.appAliases;
+  }
+
   @Override
   public void populateDAG(DAG dag, Configuration appConf) {
 
@@ -469,6 +504,30 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     }
 
   }
+
+  public LogicalPlan prepareDAG(StreamingApplication app, String name, Configuration conf) {
+    LogicalPlan dag = new LogicalPlan();
+    prepareDAG(app, dag, name, conf);
+    return dag;
+  }
+
+  public void prepareDAG(StreamingApplication app, LogicalPlan dag, String name, Configuration conf) {
+    String appAlias = appAliases.get(name);
+
+    // set application level attributes first to make them available to populateDAG
+    setApplicationLevelAttributes(dag, appAlias);
+
+    app.populateDAG(dag, conf);
+
+    if (appAlias != null) {
+      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
+    } else {
+      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(name);
+    }
+
+    // inject external operator configuration
+    setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+}
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);

@@ -49,6 +49,19 @@ public class LocalModeImpl extends LocalMode {
       throw new IllegalArgumentException("Require app or configuration to populate logical plan.");
     }
 
+    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    pb.addFromConfiguration(conf);
+    String name = "unknown";
+    if (app != null) {
+      name = app.getClass().getName();
+    }
+    StreamingApplication sapp = app;
+    if (app == null) {
+      sapp = pb;
+    }
+    pb.prepareDAG(sapp, lp, name, conf);
+
+    /*
     final AppConfig appConfig = new AppConfig() {
       @Override
       public String getName()
@@ -59,6 +72,7 @@ public class LocalModeImpl extends LocalMode {
           return "unknown";
         }
       }
+
       @Override
       public StreamingApplication createApp(Configuration conf)
       {
@@ -71,7 +85,10 @@ public class LocalModeImpl extends LocalMode {
         }
       }
     };
-    StramAppLauncher.prepareDAG(this.lp, appConfig, conf);
+    StramAppAgent appAgent = new StramAppAgent(conf);
+    appAgent.prepareDAG(this.lp, appConfig);
+    */
+    //StramAppLauncher.prepareDAG(this.lp, appConfig, conf);
     return lp;
   }
 
