@@ -350,6 +350,10 @@ public class StramAppLauncher {
   }
 
   public LogicalPlan prepareDAG(AppConfig appConfig) {
+    return prepareDAG(appConfig, propertiesBuilder, conf);
+  }
+
+  public static LogicalPlan prepareDAG(AppConfig appConfig, DAGPropertiesBuilder propertiesBuilder, Configuration conf) {
     LogicalPlan dag = new LogicalPlan();
     StreamingApplication app = appConfig.createApp(conf);
     propertiesBuilder.prepareDAG(app, dag, appConfig.getName(), conf);
@@ -422,18 +426,18 @@ public class StramAppLauncher {
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, StramAppLauncher.class});
+    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class, Configuration.class});
     // TODO: with class loader isolation, pass serialized appConfig to launch loader
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
-    Object appIdStr = runApp.invoke(null, appConfig, this);
+    Object appIdStr = runApp.invoke(null, appConfig, conf);
     return ConverterUtils.toApplicationId(""+appIdStr);
   }
 
-  public static String runApp(AppConfig appConfig, StramAppLauncher appLauncher) throws Exception {
+  public static String runApp(AppConfig appConfig, Configuration conf) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
-    LogicalPlan dag = new LogicalPlan();
-    StreamingApplication app = appConfig.createApp(appLauncher.conf);
-    appLauncher.propertiesBuilder.prepareDAG(app, dag, appConfig.getName(), appLauncher.conf);
+    DAGPropertiesBuilder propertiesBuilder = new DAGPropertiesBuilder();
+    propertiesBuilder.addFromConfiguration(conf);
+    LogicalPlan dag = prepareDAG(appConfig, propertiesBuilder, conf);
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
