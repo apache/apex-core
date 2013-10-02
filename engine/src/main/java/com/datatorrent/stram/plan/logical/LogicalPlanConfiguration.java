@@ -66,8 +66,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
   public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
-  public static final String APPLICATION_PREFIX = "stram.application";
-  public static final String APPLICATION_CLASS = "class";
+  public static final String APPLICATION_PREFIX = "stram.application.";
+  public static final String APPLICATION_CLASS = ".class";
 
   public static final String ATTR = "attr";
 
@@ -307,7 +307,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   public LogicalPlanConfiguration addAliasesFromConfig(Configuration conf) {
     StringBuilder sb = new StringBuilder(LogicalPlanConfiguration.APPLICATION_PREFIX.replace(".", "\\."));
-    sb.append("\\.(.*)\\.").append(LogicalPlanConfiguration.APPLICATION_CLASS.replace(".", "\\."));
+    sb.append("(.*)").append(LogicalPlanConfiguration.APPLICATION_CLASS.replace(".", "\\."));
     String appClassRegex = sb.toString();
     Map<String, String> props = conf.getValByRegex(appClassRegex);
     if (props != null) {
@@ -322,6 +322,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
     return this;
+  }
+
+  public String getAppAlias(String appPath) {
+    String appAlias = null;
+    if (appPath.endsWith(APPLICATION_CLASS)) {
+      String className = appPath.replace("/", ".").substring(0, appPath.length()-APPLICATION_CLASS.length());
+      appAlias = appAliases.get(className);
+    }
+    return appAlias;
   }
 
   /**
@@ -510,7 +519,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param conf
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
-    String appAlias = appAliases.get(name);
+    String appAlias = getAppAlias(name);
 
     // set application level attributes first to make them available to populateDAG
     setApplicationLevelAttributes(dag, appAlias);
