@@ -4,7 +4,7 @@
 package com.datatorrent.stram.cli;
 
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.cli.StramAppLauncher.AppConfig;
+import com.datatorrent.stram.cli.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.*;
@@ -12,13 +12,11 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.DAGPropertiesBuilder;
-import com.datatorrent.stram.cli.StramAppLauncher.CommandLineInfo;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
 import javax.ws.rs.core.MediaType;
 
 import jline.console.completer.*;
@@ -46,8 +44,6 @@ import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.JSONException;
 
@@ -312,9 +308,9 @@ public class StramCli
   {
     globalCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(), new String[] {"app-id"}, null, "Connect to an app"));
-    globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", StramAppLauncher.getCommandLineOptions()));
+    globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", getCommandLineOptions()));
     /* BEGIN to be deleted */
-    globalCommands.put("launch-local", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", StramAppLauncher.getCommandLineOptions()));
+    globalCommands.put("launch-local", new OptionsCommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app", getCommandLineOptions()));
     /* END to be deleted */
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new String[] {"app-id"}, null, "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"pattern"}, "List applications"));
@@ -891,10 +887,10 @@ public class StramCli
     return wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
   }
 
-  private List<AppConfig> getMatchingAppConfigs(StramAppLauncher submitApp, String matchString)
+  private List<AppFactory> getMatchingAppConfigs(StramAppLauncher submitApp, String matchString)
   {
     try {
-      List<AppConfig> cfgList = submitApp.getBundledTopologies();
+      List<AppFactory> cfgList = submitApp.getBundledTopologies();
 
       if (cfgList.isEmpty()) {
         return null;
@@ -903,8 +899,8 @@ public class StramCli
         return cfgList;
       }
       else {
-        List<AppConfig> result = new ArrayList<AppConfig>();
-        for (AppConfig ac : cfgList) {
+        List<AppFactory> result = new ArrayList<AppFactory>();
+        for (AppFactory ac : cfgList) {
           if (ac.getName().matches(".*" + matchString + ".*")) {
             result.add(ac);
           }
@@ -977,7 +973,7 @@ public class StramCli
     {
       String[] newArgs = new String[args.length - 1];
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
-      CommandLineInfo commandLineInfo = StramAppLauncher.getCommandLineInfo(newArgs);
+      CommandLineInfo commandLineInfo = getCommandLineInfo(newArgs);
       /* BEGIN to be deleted */
       if (args[0].equals("launch-local")) {
         commandLineInfo.localMode = true;
@@ -994,7 +990,7 @@ public class StramCli
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf, config);
       submitApp.loadDependencies();
-      AppConfig appConfig = null;
+      AppFactory appConfig = null;
       if (commandLineInfo.args.length >= 2) {
         File file = new File(commandLineInfo.args[1]);
         if (file.exists()) {
@@ -1005,7 +1001,7 @@ public class StramCli
       if (appConfig == null) {
         String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
 
-        List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, matchString);
+        List<AppFactory> matchingAppConfigs = getMatchingAppConfigs(submitApp, matchString);
         if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
           throw new CliException("No matching applications bundled in jar.");
         }
@@ -1726,7 +1722,7 @@ public class StramCli
         File jf = new File(jarfile);
         StramAppLauncher submitApp = new StramAppLauncher(jf);
         submitApp.loadDependencies();
-        List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, appName);
+        List<AppFactory> matchingAppConfigs = getMatchingAppConfigs(submitApp, appName);
         if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
           throw new CliException("No application in jar file matches '" + appName + "'");
         }
@@ -1734,7 +1730,7 @@ public class StramCli
           throw new CliException("More than one application in jar file match '" + appName + "'");
         }
         else {
-          AppConfig appConfig = matchingAppConfigs.get(0);
+          AppFactory appConfig = matchingAppConfigs.get(0);
           LogicalPlan logicalPlan = submitApp.prepareDAG(appConfig);
           ObjectMapper mapper = new ObjectMapper();
           System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
@@ -1775,7 +1771,7 @@ public class StramCli
         File jf = new File(jarfile);
         StramAppLauncher submitApp = new StramAppLauncher(jf);
         submitApp.loadDependencies();
-        List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, appName);
+        List<AppFactory> matchingAppConfigs = getMatchingAppConfigs(submitApp, appName);
         if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
           throw new CliException("No application in jar file matches '" + appName + "'");
         }
@@ -1783,7 +1779,7 @@ public class StramCli
           throw new CliException("More than one application in jar file match '" + appName + "'");
         }
         else {
-          AppConfig appConfig = matchingAppConfigs.get(0);
+          AppFactory appConfig = matchingAppConfigs.get(0);
           LogicalPlan logicalPlan = submitApp.prepareDAG(appConfig);
           File file = new File(outfilename);
           if (!file.exists()) {
@@ -2156,6 +2152,49 @@ public class StramCli
       System.out.println(json);
     }
 
+  }
+
+  public static Options getCommandLineOptions() {
+    Options options = new Options();
+    Option local = new Option("local", "run in local mode");
+    Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
+    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("def");
+    options.addOption(local);
+    options.addOption(configFile);
+    options.addOption(defProperty);
+    return options;
+  }
+
+  private static CommandLineInfo getCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    CommandLineInfo result = new CommandLineInfo();
+    CommandLine line = parser.parse(getCommandLineOptions(), args);
+    result.localMode = line.hasOption("local");
+
+    result.configFile = line.getOptionValue("conf");
+    String[] defs = line.getOptionValues("def");
+    if (defs != null) {
+      result.overrideProperties = new HashMap<String, String>();
+      for (String def : defs) {
+        int equal = def.indexOf('=');
+        if (equal < 0) {
+          result.overrideProperties.put(def, null);
+        }
+        else {
+          result.overrideProperties.put(def.substring(0, equal), def.substring(equal + 1));
+        }
+      }
+    }
+    result.args = line.getArgs();
+    return result;
+  }
+
+  private static class CommandLineInfo {
+    boolean localMode;
+    String configFile;
+    Map<String, String> overrideProperties;
+    String[] args;
   }
 
   public static void main(String[] args) throws Exception

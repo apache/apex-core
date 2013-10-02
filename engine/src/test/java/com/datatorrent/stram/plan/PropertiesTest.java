@@ -26,7 +26,6 @@ import org.junit.Test;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.DAGPropertiesBuilder;
-import com.datatorrent.stram.cli.StramAppLauncher;
 import com.datatorrent.stram.cli.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -201,30 +200,6 @@ public class PropertiesTest {
   @Test
   public void testPrepareDAG() {
     final MutableBoolean appInitialized = new MutableBoolean(false);
-    /*
-    StramAppLauncher.AppConfig appConf = new StramAppLauncher.AppConfig() {
-      @Override
-      public String getName()
-      {
-        return "testconfig";
-      }
-
-      @Override
-      public StreamingApplication createApp(Configuration conf)
-      {
-        return new StreamingApplication() {
-          @Override
-          public void populateDAG(DAG dag, Configuration conf)
-          {
-            Assert.assertEquals("", "hostname:9090", dag.attrValue(DAG.DAEMON_ADDRESS, null));
-            dag.setAttribute(DAG.DAEMON_ADDRESS, "hostname:9091");
-            appInitialized.setValue(true);
-          }
-        };
-      }
-    };
-    */
-
     StreamingApplication app = new StreamingApplication() {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
@@ -238,8 +213,10 @@ public class PropertiesTest {
     conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromConfiguration(conf);
-    LogicalPlan dag = pb.prepareDAG(app, "testconfig", conf);
-    //LogicalPlan dag = StramAppLauncher.prepareDAG(appConf, conf);
+
+    LogicalPlan dag = new LogicalPlan();
+    pb.prepareDAG(dag, app, "testconfig", conf);
+
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
     Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.DAEMON_ADDRESS, null));
   }

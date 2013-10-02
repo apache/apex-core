@@ -100,8 +100,8 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    */
   private class StreamConf {
     private final String id;
-    private NodeConf sourceNode;
-    private final Set<NodeConf> targetNodes = new HashSet<NodeConf>();
+    private OperatorConf sourceNode;
+    private final Set<OperatorConf> targetNodes = new HashSet<OperatorConf>();
 
     private final PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     private TemplateConf template;
@@ -112,7 +112,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     }
 
     /**
-     * Hint to manager that adjacent operators should be deployed in same container.
+     * Locality for adjacent operators.
      * @return boolean
      */
     public DAG.Locality getLocality() {
@@ -125,7 +125,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
      * @param portName
      * @param node
      */
-    public StreamConf setSource(String portName, NodeConf node) {
+    public StreamConf setSource(String portName, OperatorConf node) {
       if (this.sourceNode != null) {
         throw new IllegalArgumentException(String.format("Stream already receives input from %s", sourceNode));
       }
@@ -134,7 +134,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
       return this;
     }
 
-    public StreamConf addSink(String portName, NodeConf targetNode) {
+    public StreamConf addSink(String portName, OperatorConf targetNode) {
       if (targetNode.inputs.containsKey(portName)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, targetNode.inputs.get(portName)));
       }
@@ -170,8 +170,8 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   /**
    * Operator configuration
    */
-  private class NodeConf {
-    public NodeConf(String id) {
+  private class OperatorConf {
+    public OperatorConf(String id) {
       this.id = id;
     }
     private final String id;
@@ -232,23 +232,23 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   }
 
   private final Properties properties = new Properties();
-  private final Map<String, NodeConf> nodes;
+  private final Map<String, OperatorConf> operators;
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
   private final Map<String, AppConf> apps = Maps.newHashMap();
   private final Map<String, String> appAliases = Maps.newHashMap();
 
   public DAGPropertiesBuilder() {
-    this.nodes = new HashMap<String, NodeConf>();
+    this.operators = new HashMap<String, OperatorConf>();
     this.streams = new HashMap<String, StreamConf>();
     this.templates = new HashMap<String,TemplateConf>();
   }
 
-  private NodeConf getOrAddNode(String nodeId) {
-    NodeConf nc = nodes.get(nodeId);
+  private OperatorConf getOrAddNode(String nodeId) {
+    OperatorConf nc = operators.get(nodeId);
     if (nc == null) {
-      nc = new NodeConf(nodeId);
-      nodes.put(nodeId, nc);
+      nc = new OperatorConf(nodeId);
+      operators.put(nodeId, nc);
     }
     return nc;
   }
@@ -382,7 +382,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
          }
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
-         NodeConf nc = getOrAddNode(nodeId);
+         OperatorConf nc = getOrAddNode(nodeId);
          if (OPERATOR_TEMPLATE.equals(propertyKey)) {
            nc.template = getOrAddTemplate(propertyValue);
            // TODO: defer until all keys are read?
@@ -460,10 +460,10 @@ public class DAGPropertiesBuilder implements StreamingApplication {
       conf.setIfUnset(propertyName, propertyValue);
     }
 
-    Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
+    Map<OperatorConf, Operator> nodeMap = new HashMap<OperatorConf, Operator>(this.operators.size());
     // add all operators first
-    for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
-      NodeConf nodeConf = nodeConfEntry.getValue();
+    for (Map.Entry<String, OperatorConf> nodeConfEntry : this.operators.entrySet()) {
+      OperatorConf nodeConf = nodeConfEntry.getValue();
       Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
       Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
       setOperatorProperties(nd, nodeConf.getProperties());
@@ -489,7 +489,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
         sd.setSource(sourcePortMap.outputPorts.get(portName).component);
       }
 
-      for (NodeConf targetNode : streamConf.targetNodes) {
+      for (OperatorConf targetNode : streamConf.targetNodes) {
         String portName = null;
         for (Map.Entry<String, StreamConf> e : targetNode.inputs.entrySet()) {
           if (e.getValue() == streamConf) {
@@ -505,13 +505,15 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   }
 
-  public LogicalPlan prepareDAG(StreamingApplication app, String name, Configuration conf) {
-    LogicalPlan dag = new LogicalPlan();
-    prepareDAG(app, dag, name, conf);
-    return dag;
-  }
-
-  public void prepareDAG(StreamingApplication app, LogicalPlan dag, String name, Configuration conf) {
+  /**
+   * Populate the logical plan from the streaming application definition and configuration.
+   * Configuration is resolved based on application alias, if any.
+   * @param app
+   * @param dag
+   * @param name
+   * @param conf
+   */
+  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
     String appAlias = appAliases.get(name);
 
     // set application level attributes first to make them available to populateDAG
@@ -527,7 +529,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
     // inject external operator configuration
     setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
-}
+  }
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
@@ -554,7 +556,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     // if there are properties set directly, an entry exists
     // else it will be created so we can evaluate the templates against it
-    NodeConf n = getOrAddNode(ow.getName());
+    OperatorConf n = getOrAddNode(ow.getName());
     n.properties.put(OPERATOR_CLASSNAME, ow.getOperator().getClass().getName());
 
     Map<String, String> properties = new HashMap<String, String>();
@@ -580,7 +582,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    * @param appName
    * @return TreeMap<Integer, TemplateConf>
    */
-  public TreeMap<Integer, TemplateConf> getMatchingTemplates(NodeConf nodeConf, String appName) {
+  public TreeMap<Integer, TemplateConf> getMatchingTemplates(OperatorConf nodeConf, String appName) {
     TreeMap<Integer, TemplateConf> tm = new TreeMap<Integer, TemplateConf>();
     for (TemplateConf t : this.templates.values()) {
       if (t == nodeConf.template) {
