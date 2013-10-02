@@ -66,11 +66,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
   public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
-  public static final String APPLICATION_PREFIX = "stram.application.";
-  public static final String APPLICATION_CLASS = ".class";
+  public static final String APPLICATION_PREFIX = "stram.application";
 
   public static final String ATTR = "attr";
   public static final String CLASS = "class";
+
+  private static final String CLASS_SUFFIX = "." + CLASS;
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -297,10 +298,19 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return parts;
   }
 
+  /**
+   * Get the application alias name for an application class if one is available.
+   * The path for the application class is specified as a parameter. If an alias was specified
+   * in the configuration file or configuration properties for the application class it is returned
+   * otherwise null is returned.
+   * 
+   * @param appPath The path of the application class in the jar
+   * @return The alias name if one is available, null otherwise
+   */
   public String getAppAlias(String appPath) {
     String appAlias = null;
-    if (appPath.endsWith(APPLICATION_CLASS)) {
-      String className = appPath.replace("/", ".").substring(0, appPath.length()-APPLICATION_CLASS.length());
+    if (appPath.endsWith(CLASS_SUFFIX)) {
+      String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
       appAlias = appAliases.get(className);
     }
     return appAlias;
