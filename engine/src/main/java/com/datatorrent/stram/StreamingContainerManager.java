@@ -47,6 +47,7 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequ
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -130,7 +131,7 @@ public class StreamingContainerManager implements PlanContext
     AttributeMap attributes = dag.getAttributes();
 
     attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
-    // try to align to it please eyes.
+    /* try to align to it to please eyes. */
     windowStartMillis -= (windowStartMillis % 1000);
 
     attributes.attr(LogicalPlan.APPLICATION_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
@@ -514,14 +515,15 @@ public class StreamingContainerManager implements PlanContext
     container.bufferServerAddress = bufferServerAddr;
     container.setAllocatedMemoryMB(resource.memoryMB);
 
-    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(), this);
+    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
     containers.put(resource.containerId, sca);
     return sca;
   }
 
-  private StreamingContainerContext newStreamingContainerContext()
+  private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(StreamingContainerContext.class), plan.getDAG());
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(ContainerContext.class), plan.getDAG());
+    scc.attributes.attr(ContainerContext.IDENTIFIER).set(containerId);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
@@ -589,6 +591,10 @@ public class StreamingContainerManager implements PlanContext
         continue;
       }
 
+      // the following line can be deleted when UI is upgraded to work with recordingStartTime
+      status.recordingNames = new ArrayList<String>();
+      status.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+
       //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
       //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });
 
@@ -633,6 +639,13 @@ public class StreamingContainerManager implements PlanContext
             addCheckpoint(status.operator, stats.checkpointedWindowId);
           }
 
+          if (stats.recordingStartTime > status.recordingStartTime) {
+            status.recordingStartTime = stats.recordingStartTime;
+            // the following line can be deleted when UI is upgraded to work with recordingStartTime
+            status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
+            LOG.debug("added operator {} as being debuged {}", stats.id, status.recordingNames);
+          }
+
           /* report all the other stuff */
 
           // calculate the stats related to end window
@@ -647,6 +660,13 @@ public class StreamingContainerManager implements PlanContext
                 status.inputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
+
+              if (s.recordingStartTime > ps.recordingStartTime) {
+                ps.recordingStartTime = s.recordingStartTime;
+                // the following line can be deleted when UI is upgraded to work with recordingStartTime
+                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
+                LOG.debug("added port {} as being debuged {}", stats.id, status.recordingNames);
+              }
 
               tuplesProcessed += s.tupleCount;
               endWindowStats.dequeueTimestamps.put(s.id, s.endWindowTimestamp);
@@ -674,6 +694,13 @@ public class StreamingContainerManager implements PlanContext
                 status.outputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
+
+              if (s.recordingStartTime > ps.recordingStartTime) {
+                ps.recordingStartTime = s.recordingStartTime;
+                // the following line can be deleted when UI is upgraded to work with recordingStartTime
+                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
+                LOG.debug("added port {} as being debuged {}", stats.id, status.recordingNames);
+              }
 
               tuplesEmitted += s.tupleCount;
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.id);
@@ -1102,6 +1129,8 @@ public class StreamingContainerManager implements PlanContext
     ni.status = operator.getState().toString();
 
     if (os != null) {
+      ni.recordingNames = os.recordingNames; // this should be deleted!
+      ni.recordingStartTime = os.recordingStartTime;
       ni.totalTuplesProcessed = os.totalTuplesProcessed;
       ni.totalTuplesEmitted = os.totalTuplesEmitted;
       ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10;
@@ -1111,7 +1140,6 @@ public class StreamingContainerManager implements PlanContext
       ni.failureCount = os.operator.failureCount;
       ni.recoveryWindowId = os.operator.getRecoveryCheckpoint();
       ni.currentWindowId = os.currentWindowId;
-      ni.recordingNames = os.recordingNames;
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
@@ -1122,6 +1150,7 @@ public class StreamingContainerManager implements PlanContext
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA10 = (long)ps.tuplesPSMA10.getAvg();
         pinfo.bufferServerBytesPSMA10 = (long)ps.bufferServerBytesPSMA10.getAvg();
+        pinfo.recordingStartTime = ps.recordingStartTime;
         ni.addInputPort(pinfo);
       }
       for (PortStatus ps: os.outputPortStatusList.values()) {
