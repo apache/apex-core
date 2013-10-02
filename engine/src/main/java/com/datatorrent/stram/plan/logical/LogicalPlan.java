@@ -87,11 +87,12 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
   {
-    AttributeMap.Attribute<T> retvalue = attributes.attrOrNull(key);
-    if (retvalue != null) {
-      return retvalue.get();
+    AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
+    if (attr == null || attr.get() == null) {
+      return defaultValue;
     }
-    return defaultValue;
+
+    return attr.get();
   }
 
   public static class OperatorProxy implements Serializable
@@ -167,10 +168,11 @@ public class LogicalPlan implements Serializable, DAG
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
       AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
-      if (attr != null) {
-        return attr.get();
+      if (attr == null || attr.get() == null) {
+        return defaultValue;
       }
-      return defaultValue;
+
+      return attr.get();
     }
   }
 
@@ -211,10 +213,11 @@ public class LogicalPlan implements Serializable, DAG
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
       AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
-      if (attr != null) {
-        return attr.get();
+      if (attr == null || attr.get() == null) {
+        return defaultValue;
       }
-      return defaultValue;
+
+      return attr.get();
     }
 
     @Override
@@ -413,10 +416,11 @@ public class LogicalPlan implements Serializable, DAG
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
       Attribute<T> attr = attributes.attrOrNull(key);
-      if (attr != null) {
-        return attr.get();
+      if (attr == null || attr.get() == null) {
+        return defaultValue;
       }
-      return defaultValue;
+
+      return attr.get();
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
