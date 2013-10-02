@@ -70,6 +70,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String APPLICATION_CLASS = ".class";
 
   public static final String ATTR = "attr";
+  public static final String CLASS = "class";
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -272,7 +273,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
-    addAliasesFromConfig(conf);
     addFromProperties(toProperties(conf, "stram."));
   }
 
@@ -295,33 +295,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       throw new IllegalArgumentException("Invalid node.port reference: " + s);
     }
     return parts;
-  }
-
-  /**
-   * Resolve the application name by matching the original name against alias
-   * definitions in the configuration.
-   *
-   * @param appConfig
-   * @param conf
-   * @return
-   */
-  public LogicalPlanConfiguration addAliasesFromConfig(Configuration conf) {
-    StringBuilder sb = new StringBuilder(LogicalPlanConfiguration.APPLICATION_PREFIX.replace(".", "\\."));
-    sb.append("(.*)").append(LogicalPlanConfiguration.APPLICATION_CLASS.replace(".", "\\."));
-    String appClassRegex = sb.toString();
-    Map<String, String> props = conf.getValByRegex(appClassRegex);
-    if (props != null) {
-      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
-      for (Map.Entry<String, String> propEntry : propEntries) {
-        Pattern p = Pattern.compile(appClassRegex);
-        Matcher m = p.matcher(propEntry.getKey());
-        if (m.find()) {
-          String appName = m.group(1);
-          appAliases.put(propEntry.getValue(), appName);
-        }
-      }
-    }
-    return this;
   }
 
   public String getAppAlias(String appPath) {
@@ -437,6 +410,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           }
           // put with prefix matching global scope in default properties
           appConf.properties.put("stram." + keyComps[4], propertyValue);
+        } else if (propertyType.equals(CLASS)) {
+          this.appAliases.put(propertyValue, appName);
         }
       }
     }
@@ -450,10 +425,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   public Properties getProperties() {
     return this.properties;
-  }
-
-  public Map<String, String> getAppAliases() {
-    return this.appAliases;
   }
 
   @Override
