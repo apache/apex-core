@@ -25,6 +25,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.cli.StramClientUtils;
@@ -286,6 +287,32 @@ public class LogicalPlanConfigurationTest {
     pb.setOperatorProperties(dag, "testSetOperatorProperties");
     Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
     Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.getStringArrayField());
+  }
+
+  @Test
+  public void testAppAlias() {
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
+      }
+    };
+    Configuration conf = new Configuration(false);
+    conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
+
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
+
+    Properties properties = new Properties();
+    properties.put("stram.application.TestAliasApp.class", app.getClass().getName());
+
+    builder.addFromProperties(properties);
+
+    LogicalPlan dag = new LogicalPlan();
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+    builder.prepareDAG(dag, app, appPath, conf);
+
+    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().attr(DAGContext.APPLICATION_NAME).get());
   }
 
 }
