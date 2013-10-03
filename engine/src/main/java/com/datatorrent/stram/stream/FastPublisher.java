@@ -4,27 +4,29 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.engine.Stream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.tuple.Tuple;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.KryoException;
-import com.esotericsoftware.kryo.io.Output;
-import com.datatorrent.api.Sink;
-import com.datatorrent.bufferserver.packet.*;
-import com.datatorrent.netlet.DefaultEventLoop;
-import com.datatorrent.netlet.EventLoop;
-import com.datatorrent.netlet.Listener;
-import com.datatorrent.netlet.Listener.ClientListener;
 import java.io.IOException;
-import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import static java.lang.Thread.sleep;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Output;
+
+import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.netlet.Listener;
+import com.datatorrent.netlet.Listener.ClientListener;
+import com.datatorrent.stram.engine.Stream;
+import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * <p>FastPublisher class.</p>
@@ -148,18 +150,6 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   }
 
   @Override
-  public boolean isMultiSinkCapable()
-  {
-    return false;
-  }
-
-  @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("setSink(id, sink) not supported on this stream.");
-  }
-
-  @Override
   public void setup(StreamContext context)
   {
     spinMillis = 5; // somehow get it context.attrValue(PortContext.SPIN_MILLIS, 5);
@@ -198,6 +188,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   }
 
   long item;
+
   @Override
   @SuppressWarnings("SleepWhileInLoop")
   public void put(Object tuple)

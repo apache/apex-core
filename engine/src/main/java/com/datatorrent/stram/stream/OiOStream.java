@@ -22,20 +22,15 @@ public class OiOStream implements Stream, SweepableReservoir
   private Sink<Tuple> control;
   private int count;
 
-  @Override
-  public boolean isMultiSinkCapable()
-  {
-    return false;
-  }
-
-  @Override
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  public void setSink(String id, Sink<Object> sink)
-  {
-    assert(id != null && CONTROL_SINK.equals(id));
-    Sink temp = sink;
-    control = (Sink<Tuple>)temp;
-  }
+//  @Override
+//  @SuppressWarnings({"rawtypes", "unchecked"})
+//  public void setSink(String id, Sink<Object> sink)
+//  {
+//    //    This is a wrong place to have this implementation.
+//    //    assert(id != null && CONTROL_SINK.equals(id));
+//    //    Sink temp = sink;
+//    //    control = (Sink<Tuple>)temp;
+//  }
 
   @Override
   public void setup(StreamContext context)

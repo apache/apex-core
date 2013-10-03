@@ -35,6 +35,7 @@ import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeActivationListener;
@@ -334,7 +335,7 @@ public class StramChild
           pair.component.deactivate();
         }
 
-        if (pair.component.isMultiSinkCapable()) {
+        if (pair.component instanceof Stream.MultiSinkCapableStream) {
           String sinks = pair.context.getSinkId();
           if (sinks == null) {
             logger.error("mux sinks found connected at {} with sink id null", sourceIdentifier);
@@ -868,7 +869,8 @@ public class StramChild
             else {
               pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
             }
-            pair.component.setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
+
+            ((Stream.MultiSinkCapableStream)pair.component).setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
           }
         }
       }
@@ -1009,7 +1011,7 @@ public class StramChild
             node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
             newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
 
-            if (!pair.component.isMultiSinkCapable()) {
+            if (!(pair.component instanceof Stream.MultiSinkCapableStream)) {
               String originalSinkId = pair.context.getSinkId();
 
               /* we come here only if we are trying to augment the dag */
@@ -1029,7 +1031,7 @@ public class StramChild
 
             /* here everything should be multisink capable */
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.setSink(sinkIdentifier, stream);
+              ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, stream);
             }
             else {
               /*
@@ -1037,7 +1039,7 @@ public class StramChild
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, stream);
-              pair.component.setSink(sinkIdentifier, pas);
+              ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
             String streamSinkId = pair.context.getSinkId();
@@ -1151,15 +1153,15 @@ public class StramChild
 
     final ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo> activatedOrFailed = new ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo>();
     for (final OperatorDeployInfo ndi : nodeMap.values()) {
-      final Node<?> node = nodes.get(ndi.id);
-
       /*
-       * In case of OiO, some nodes from this list would be active already in some other threads, so skip them!
+       * OiO nodes get activated with their primary nodes.
        */
-      if (activeNodes.containsKey(ndi.id)) {
+      if (ndi.type == OperatorType.OIO) {
         continue;
       }
+      assert (!activeNodes.containsKey(ndi.id));
 
+      final Node<?> node = nodes.get(ndi.id);
       new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
         @Override

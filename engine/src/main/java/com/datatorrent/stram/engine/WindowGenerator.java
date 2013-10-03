@@ -4,16 +4,17 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.stram.util.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.Sink;
-import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.netlet.util.CircularBuffer;
-import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.datatorrent.stram.util.ScheduledExecutorService;
 
 /**
  *
@@ -208,18 +209,6 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   @Override
   public void teardown()
   {
-  }
-
-  @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public boolean isMultiSinkCapable()
-  {
-    return true;
   }
 
   @Override

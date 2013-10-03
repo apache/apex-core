@@ -4,13 +4,14 @@
  */
 package com.datatorrent.stram.stream;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.stram.engine.DefaultReservoir;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.api.Sink;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -72,12 +73,6 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   }
 
   @Override
-  public boolean isMultiSinkCapable()
-  {
-    return false;
-  }
-
-  @Override
   public void put(Object tuple)
   {
     try {
@@ -92,12 +87,6 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   public String toString()
   {
     return "InlineStream{" + super.toString() + '}';
-  }
-
-  @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   private static final Logger logger = LoggerFactory.getLogger(InlineStream.class);
