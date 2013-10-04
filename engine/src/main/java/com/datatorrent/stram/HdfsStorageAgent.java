@@ -7,6 +7,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,11 +16,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
-
 public class HdfsStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
@@ -59,5 +60,23 @@ public class HdfsStorageAgent implements StorageAgent
     fs.delete(path, false);
   }
 
+  @Override
+  public Long getMostRecentWindowId(int id) throws IOException {
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id);
+    FileSystem fs = FileSystem.get(path.toUri(), conf);
+    Long mrWindowId = null;
+    try {
+      FileStatus[] files = fs.listStatus(path);
+      for (FileStatus fst : files) {
+        long windowId = Long.valueOf(fst.getPath().getName());
+        mrWindowId = (mrWindowId == null || windowId > mrWindowId) ? windowId : mrWindowId;
+      }
+    } catch (FileNotFoundException e) {
+      // ignore
+    }
+    return mrWindowId;
+  }
+
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(HdfsStorageAgent.class);
 }

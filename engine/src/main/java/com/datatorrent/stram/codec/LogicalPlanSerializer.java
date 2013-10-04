@@ -15,8 +15,8 @@ import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
 
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
@@ -91,7 +91,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           attributeMap.put(attrKey.name(), attrValue);
         }
       }
-      Map<String, Object> operatorProperties = DAGPropertiesBuilder.getOperatorProperties(operatorMeta.getOperator());
+      Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
       for (Map.Entry<String, Object> entry : operatorProperties.entrySet()) {
         if (entry.getValue() != null) {
           propertyMap.put(entry.getKey(), entry.getValue());
@@ -174,7 +174,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       String operatorKey = "stram.operator." + operatorMeta.getName();
       Operator operator = operatorMeta.getOperator();
       props.setProperty(operatorKey + ".classname", operator.getClass().getName());
-      Map<String, Object> operatorProperties = DAGPropertiesBuilder.getOperatorProperties(operator);
+      Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
       for (Map.Entry<String, Object> entry : operatorProperties.entrySet()) {
         if (!entry.getKey().equals("class") && !entry.getKey().equals("name") && entry.getValue() != null) {
           props.setProperty(operatorKey + "." + entry.getKey(), entry.getValue());

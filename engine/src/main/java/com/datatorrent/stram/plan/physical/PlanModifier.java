@@ -6,8 +6,8 @@ import java.util.Set;
 
 import javax.validation.ValidationException;
 
-import com.datatorrent.stram.DAGPropertiesBuilder;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -246,7 +246,7 @@ public class PlanModifier {
       }
     }
     Map<String, String> props = Collections.singletonMap(propertyName, propertyValue);
-    DAGPropertiesBuilder.setOperatorProperties(om.getOperator(), props);
+    LogicalPlanConfiguration.setOperatorProperties(om.getOperator(), props);
   }
 
   /**

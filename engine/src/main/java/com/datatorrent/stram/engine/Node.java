@@ -287,9 +287,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
   {
-    stats.checkpointedWindowId = checkpointedWindowId;
-    context.report(stats, windowId);
-
     stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
@@ -301,6 +298,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
+    stats.checkpointedWindowId = checkpointedWindowId;
+    
+    context.report(stats, windowId);
   }
 
   protected void activateSinks()

@@ -100,6 +100,7 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case END_WINDOW:
+              endWindowEmitTime = System.currentTimeMillis();
               if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                 insideWindow = false;
                 operator.endWindow();
@@ -171,6 +172,7 @@ public class InputNode extends Node<InputOperator>
     }
 
     if (insideWindow) {
+      endWindowEmitTime = System.currentTimeMillis();
       operator.endWindow();
       if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
         applicationWindowCount = 0;

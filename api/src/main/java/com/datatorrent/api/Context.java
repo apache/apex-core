@@ -97,7 +97,8 @@ public interface Context
      * Default partitioning (operators that do not implement
      * {@link PartitionableOperator}):<br>
      * If the attribute is not present or set to 0 partitioning is off. Else the
-     * number of initial partitions (statically created during initialization).
+     * number of initial partitions (statically created during initialization).<br>
+     * Default partitioning does not consider operator state on split or merge.
      * <p>
      * Operator that implements {@link PartitionableOperator}:<br>
      * Count 0 disables partitioning. Other values are ignored as number of

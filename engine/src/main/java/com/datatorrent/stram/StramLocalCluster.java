@@ -351,7 +351,6 @@ public class StramLocalCluster implements Runnable, Controller
     if (cid != null) {
       if ((container = getContainer(cid)) != null) {
         if (container.getNodeContext(planOperator.getId()) != null) {
-          logger.debug("getcontainer returning {}", System.identityHashCode(container));
           return container;
         }
       }

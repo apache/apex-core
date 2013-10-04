@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.plan.logical;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,28 +16,26 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.validation.ValidationException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Maps;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-
-import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.Operators;
+import com.google.common.collect.Maps;
 
 /**
  *
@@ -48,9 +46,9 @@ import com.datatorrent.stram.plan.logical.Operators;
  *
  * @since 0.3.2
  */
-public class DAGPropertiesBuilder implements StreamingApplication {
+public class LogicalPlanConfiguration implements StreamingApplication {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DAGPropertiesBuilder.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCE = "source";
@@ -69,9 +67,11 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
   public static final String APPLICATION_PREFIX = "stram.application";
-  public static final String APPLICATION_CLASS = "class";
 
   public static final String ATTR = "attr";
+  public static final String CLASS = "class";
+
+  private static final String CLASS_SUFFIX = "." + CLASS;
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -98,8 +98,8 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    */
   private class StreamConf {
     private final String id;
-    private NodeConf sourceNode;
-    private final Set<NodeConf> targetNodes = new HashSet<NodeConf>();
+    private OperatorConf sourceNode;
+    private final Set<OperatorConf> targetNodes = new HashSet<OperatorConf>();
 
     private final PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     private TemplateConf template;
@@ -110,7 +110,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     }
 
     /**
-     * Hint to manager that adjacent operators should be deployed in same container.
+     * Locality for adjacent operators.
      * @return boolean
      */
     public DAG.Locality getLocality() {
@@ -123,7 +123,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
      * @param portName
      * @param node
      */
-    public StreamConf setSource(String portName, NodeConf node) {
+    public StreamConf setSource(String portName, OperatorConf node) {
       if (this.sourceNode != null) {
         throw new IllegalArgumentException(String.format("Stream already receives input from %s", sourceNode));
       }
@@ -132,7 +132,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
       return this;
     }
 
-    public StreamConf addSink(String portName, NodeConf targetNode) {
+    public StreamConf addSink(String portName, OperatorConf targetNode) {
       if (targetNode.inputs.containsKey(portName)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, targetNode.inputs.get(portName)));
       }
@@ -168,8 +168,8 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   /**
    * Operator configuration
    */
-  private class NodeConf {
-    public NodeConf(String id) {
+  private class OperatorConf {
+    public OperatorConf(String id) {
       this.id = id;
     }
     private final String id;
@@ -199,7 +199,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
     private String getClassNameReqd() {
       String className = properties.getProperty(OPERATOR_CLASSNAME);
       if (className == null) {
-        throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), DAGPropertiesBuilder.OPERATOR_CLASSNAME));
+        throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), LogicalPlanConfiguration.OPERATOR_CLASSNAME));
       }
       return className;
     }
@@ -226,26 +226,27 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   }
 
   private class AppConf {
-    Properties properties = new Properties(DAGPropertiesBuilder.this.properties);
+    Properties properties = new Properties(LogicalPlanConfiguration.this.properties);
   }
 
   private final Properties properties = new Properties();
-  private final Map<String, NodeConf> nodes;
+  private final Map<String, OperatorConf> operators;
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
   private final Map<String, AppConf> apps = Maps.newHashMap();
+  private final Map<String, String> appAliases = Maps.newHashMap();
 
-  public DAGPropertiesBuilder() {
-    this.nodes = new HashMap<String, NodeConf>();
+  public LogicalPlanConfiguration() {
+    this.operators = new HashMap<String, OperatorConf>();
     this.streams = new HashMap<String, StreamConf>();
     this.templates = new HashMap<String,TemplateConf>();
   }
 
-  private NodeConf getOrAddNode(String nodeId) {
-    NodeConf nc = nodes.get(nodeId);
+  private OperatorConf getOrAddOperator(String nodeId) {
+    OperatorConf nc = operators.get(nodeId);
     if (nc == null) {
-      nc = new NodeConf(nodeId);
-      nodes.put(nodeId, nc);
+      nc = new OperatorConf(nodeId);
+      operators.put(nodeId, nc);
     }
     return nc;
   }
@@ -298,13 +299,31 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   }
 
   /**
+   * Get the application alias name for an application class if one is available.
+   * The path for the application class is specified as a parameter. If an alias was specified
+   * in the configuration file or configuration properties for the application class it is returned
+   * otherwise null is returned.
+   * 
+   * @param appPath The path of the application class in the jar
+   * @return The alias name if one is available, null otherwise
+   */
+  public String getAppAlias(String appPath) {
+    String appAlias = null;
+    if (appPath.endsWith(CLASS_SUFFIX)) {
+      String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
+      appAlias = appAliases.get(className);
+    }
+    return appAlias;
+  }
+
+  /**
    * Read node configurations from properties. The properties can be in any
    * random order, as long as they represent a consistent configuration in their
    * entirety.
    *
    * @param props
    */
-  public DAGPropertiesBuilder addFromProperties(Properties props) {
+  public LogicalPlanConfiguration addFromProperties(Properties props) {
 
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
@@ -326,12 +345,12 @@ public class DAGPropertiesBuilder implements StreamingApplication {
               throw new IllegalArgumentException("Duplicate " + propertyName);
             }
             String[] parts = getNodeAndPortId(propertyValue);
-            stream.setSource(parts[1], getOrAddNode(parts[0]));
+            stream.setSource(parts[1], getOrAddOperator(parts[0]));
         } else if (STREAM_SINKS.equals(propertyKey)) {
             String[] targetPorts = propertyValue.split(",");
             for (String nodeAndPort : targetPorts) {
               String[] parts = getNodeAndPortId(nodeAndPort.trim());
-              stream.addSink(parts[1], getOrAddNode(parts[0]));
+              stream.addSink(parts[1], getOrAddOperator(parts[0]));
             }
         } else if (STREAM_TEMPLATE.equals(propertyKey)) {
           stream.template = getOrAddTemplate(propertyValue);
@@ -351,7 +370,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
          }
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
-         NodeConf nc = getOrAddNode(nodeId);
+         OperatorConf nc = getOrAddOperator(nodeId);
          if (OPERATOR_TEMPLATE.equals(propertyKey)) {
            nc.template = getOrAddTemplate(propertyValue);
            // TODO: defer until all keys are read?
@@ -401,6 +420,8 @@ public class DAGPropertiesBuilder implements StreamingApplication {
           }
           // put with prefix matching global scope in default properties
           appConf.properties.put("stram." + keyComps[4], propertyValue);
+        } else if (propertyType.equals(CLASS)) {
+          this.appAliases.put(propertyValue, appName);
         }
       }
     }
@@ -425,10 +446,10 @@ public class DAGPropertiesBuilder implements StreamingApplication {
       conf.setIfUnset(propertyName, propertyValue);
     }
 
-    Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
+    Map<OperatorConf, Operator> nodeMap = new HashMap<OperatorConf, Operator>(this.operators.size());
     // add all operators first
-    for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
-      NodeConf nodeConf = nodeConfEntry.getValue();
+    for (Map.Entry<String, OperatorConf> nodeConfEntry : this.operators.entrySet()) {
+      OperatorConf nodeConf = nodeConfEntry.getValue();
       Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
       Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
       setOperatorProperties(nd, nodeConf.getProperties());
@@ -454,7 +475,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
         sd.setSource(sourcePortMap.outputPorts.get(portName).component);
       }
 
-      for (NodeConf targetNode : streamConf.targetNodes) {
+      for (OperatorConf targetNode : streamConf.targetNodes) {
         String portName = null;
         for (Map.Entry<String, StreamConf> e : targetNode.inputs.entrySet()) {
           if (e.getValue() == streamConf) {
@@ -470,9 +491,35 @@ public class DAGPropertiesBuilder implements StreamingApplication {
 
   }
 
+  /**
+   * Populate the logical plan from the streaming application definition and configuration.
+   * Configuration is resolved based on application alias, if any.
+   * @param app
+   * @param dag
+   * @param name
+   * @param conf
+   */
+  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
+    String appAlias = getAppAlias(name);
+
+    // set application level attributes first to make them available to populateDAG
+    setApplicationLevelAttributes(dag, appAlias);
+
+    app.populateDAG(dag, conf);
+
+    if (appAlias != null) {
+      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
+    } else {
+      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(name);
+    }
+
+    // inject external operator configuration
+    setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+  }
+
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     tb.addFromProperties(topologyProperties);
     return tb;
   }
@@ -495,7 +542,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
   public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     // if there are properties set directly, an entry exists
     // else it will be created so we can evaluate the templates against it
-    NodeConf n = getOrAddNode(ow.getName());
+    OperatorConf n = getOrAddOperator(ow.getName());
     n.properties.put(OPERATOR_CLASSNAME, ow.getOperator().getClass().getName());
 
     Map<String, String> properties = new HashMap<String, String>();
@@ -521,7 +568,7 @@ public class DAGPropertiesBuilder implements StreamingApplication {
    * @param appName
    * @return TreeMap<Integer, TemplateConf>
    */
-  public TreeMap<Integer, TemplateConf> getMatchingTemplates(NodeConf nodeConf, String appName) {
+  public TreeMap<Integer, TemplateConf> getMatchingTemplates(OperatorConf nodeConf, String appName) {
     TreeMap<Integer, TemplateConf> tm = new TreeMap<Integer, TemplateConf>();
     for (TemplateConf t : this.templates.values()) {
       if (t == nodeConf.template) {

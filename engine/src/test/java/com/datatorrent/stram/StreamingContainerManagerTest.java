@@ -7,12 +7,14 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import junit.framework.Assert;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
@@ -375,6 +377,22 @@ public class StreamingContainerManagerTest {
 
   }
 
+  @Test
+  public void testGetMostRecetCheckpointWindowId() throws Exception {
+    File path =  new File("target", StreamingContainerManagerTest.class.getName() + ".testGetMostRecetCheckpointWindowId");
+    FileUtils.deleteDirectory(path.getAbsoluteFile());
+
+    HdfsStorageAgent sa = new HdfsStorageAgent(new Configuration(), path.getAbsolutePath());
+
+    Assert.assertEquals("", null, sa.getMostRecentWindowId(1));
+    long windowIds[] = {123, 345, 234};
+    for (long windowId : windowIds) {
+      OutputStream os = sa.getSaveStream(1, windowId);
+      os.write(String.valueOf(windowId).getBytes());
+      os.close();
+    }
+    Assert.assertEquals(Long.valueOf(345), sa.getMostRecentWindowId(1));
+  }
 
   public static class TestStaticPartitioningSerDe extends DefaultStatefulStreamCodec<Object> {
 

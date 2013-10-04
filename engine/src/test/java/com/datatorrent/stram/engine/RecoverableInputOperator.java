@@ -9,6 +9,10 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.bufferserver.util.Codec;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,9 +30,19 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   int maximumTuples = 20;
   boolean simulateFailure;
 
+  private static Map<Long,Long> idMap = new HashMap<Long, Long>();
+  private static long tuple = 0;
+  public static List<Long> emittedTuples = new ArrayList<Long>();
+
   public void setMaximumTuples(int count)
   {
     maximumTuples = count;
+  }
+
+  public static void initGenTuples() {
+    tuple = 0;
+    idMap.clear();
+    emittedTuples.clear();
   }
 
   @Override
@@ -36,7 +50,13 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   {
     if (first) {
       logger.debug("emitting {}", Codec.getStringWindowId(windowId));
-      output.emit(windowId);
+      Long etuple = idMap.get(windowId);
+      if (etuple == null) {
+        etuple = tuple++;
+        idMap.put(windowId, etuple);
+      }
+      output.emit(etuple);
+      emittedTuples.add(etuple);
       first = false;
       if (--maximumTuples == 0) {
         throw new RuntimeException(new InterruptedException("Done!"));

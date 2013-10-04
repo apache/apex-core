@@ -49,6 +49,7 @@ import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ConfigUtils;
 
 /**
@@ -193,7 +194,7 @@ public class StramClient
 
     dag = new LogicalPlan();
     Configuration appConf = new Configuration(false);
-    StreamingApplication app = DAGPropertiesBuilder.create(appConf, propertyFileName);
+    StreamingApplication app = LogicalPlanConfiguration.create(appConf, propertyFileName);
     app.populateDAG(dag, appConf);
     dag.validate();
     if (cliParser.hasOption("debug")) {

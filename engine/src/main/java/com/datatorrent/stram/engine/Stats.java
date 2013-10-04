@@ -10,11 +10,15 @@ import java.util.ArrayList;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 
 /**
+ * <p>Stats interface.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.3.5
  */
 public interface Stats extends Serializable
 {
+  public static final long INVALID_TIME_MILLIS = -1;
+
   public static class ContainerStats implements Stats
   {
     private static final long serialVersionUID = 201309131904L;
@@ -62,9 +66,10 @@ public interface Stats extends Serializable
         public int tupleCount;
         public long endWindowTimestamp;
         /**
-         * If this value is negative, the recording has not started. If it's time when the recording had started in milliseconds.
+         * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
+         * INVALID_TIME_MILLIS otherwise.
          */
-        public long recordingStartTime;
+        public long recordingStartTime = INVALID_TIME_MILLIS;
 
         public PortStats(String id)
         {
@@ -91,9 +96,10 @@ public interface Stats extends Serializable
       public ArrayList<PortStats> outputPorts;
       public long cpuTimeUsed;
       /**
-       * If this value is negative, the recording has not started. If it's time when the recording had started in milliseconds.
+       * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
+       * INVALID_TIME_MILLIS otherwise.
        */
-      public long recordingStartTime;
+      public long recordingStartTime = INVALID_TIME_MILLIS;
     }
 
   }
