@@ -16,6 +16,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Sink;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
+import com.datatorrent.stram.stream.OiOStream;
 
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -37,6 +38,13 @@ public class OiONode extends GenericNode implements Sink<Tuple>
   public OiONode(Operator operator)
   {
     super(operator);
+  }
+
+  @Override
+  public void connectInputPort(String port, SweepableReservoir reservoir)
+  {
+    ((OiOStream)reservoir).setControlSink(this);
+    super.connectInputPort(port, reservoir);
   }
 
   @Override

@@ -213,7 +213,7 @@ public class StramChild
    * distribute through the callback address provided on the command line. Deploys
    * initial modules, then enters the heartbeat loop, which will only terminate
    * once container receives shutdown request from the master. On shutdown,
-   * after exiting heartbeat loop, deactivate all modules and terminate
+   * after exiting heartbeat loop, shutdown all modules and terminate
    * processing threads.
    *
    * @param args
@@ -293,7 +293,7 @@ public class StramChild
       else {
         activeThreads.add(oc.getThread());
         activeOperators.add(e.getKey());
-        e.getValue().deactivate();
+        e.getValue().shutdown();
       }
     }
 
@@ -431,7 +431,7 @@ public class StramChild
       else {
         joinList.add(oc.getThread());
         discoList.add(ndi.id);
-        nodes.get(ndi.id).deactivate();
+        nodes.get(ndi.id).shutdown();
       }
     }
 
@@ -1123,6 +1123,7 @@ public class StramChild
     activeNodes.put(ndi.id, operatorContext);
     logger.info("activating {} in container {}", node, containerId);
     processNodeRequests(false);
+    node.activate(operatorContext);
     for (NodeActivationListener l : nodeListener) {
       l.activated(node);
     }
@@ -1134,6 +1135,7 @@ public class StramChild
     activeNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
 
+    node.deactivate();
     for (NodeActivationListener l : nodeListener) {
       l.deactivated(node);
     }
@@ -1169,7 +1171,7 @@ public class StramChild
         {
           try {
             /* primary operator initialization */
-            OperatorContext operatorContext = setupNode(ndi, this);
+            setupNode(ndi, this);
             activatedOrFailed.put(ndi, ndi);
 
             /* lets go for OiO operator initializtion */
@@ -1180,13 +1182,16 @@ public class StramChild
                 activatedOrFailed.put(oiodi, oiodi);
               }
             }
-            node.activate(operatorContext); /* this is a blocking call */
+            node.run(); /* this is a blocking call */
           }
           catch (Throwable ex) {
             logger.error("Node stopped abnormally because of exception", ex);
             failedNodes.add(ndi.id);
           }
           finally {
+            activatedOrFailed.put(ndi, ndi);
+            teardownNode(ndi);
+            
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
                 OperatorDeployInfo oiodi = nodeMap.get(e.getKey());
@@ -1194,8 +1199,6 @@ public class StramChild
                 teardownNode(oiodi);
               }
             }
-            activatedOrFailed.put(ndi, ndi);
-            teardownNode(ndi);
           }
         }
 

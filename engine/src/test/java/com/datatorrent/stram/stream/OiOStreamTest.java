@@ -36,7 +36,7 @@ public class OiOStreamTest
   {
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiO()
   {
     logger.info("Checking the logic for sanity checking of OiO");
@@ -58,7 +58,7 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiOOptionalInput()
   {
     LogicalPlan plan = new LogicalPlan();
@@ -78,7 +78,7 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
+  @Test
   public void validateNegativeOiO()
   {
     LogicalPlan plan = new LogicalPlan();

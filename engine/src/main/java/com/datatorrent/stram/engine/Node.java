@@ -223,46 +223,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
 
-  @SuppressWarnings({"unchecked"})
-  public void activate(OperatorContext context)
-  {
-    boolean activationListener = operator instanceof ActivationListener;
-
-    activateSinks();
-    alive = true;
-    this.context = context;
-    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
-    PROCESSING_MODE = context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_LEAST_ONCE);
-
-    if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
-      logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
-      CHECKPOINT_WINDOW_COUNT = 1;
-    }
-
-    if (activationListener) {
-      ((ActivationListener)operator).activate(context);
-    }
-
-    /*
-     * If there were any requests which needed to be executed before the operator started
-     * its normal execution, execute those requests now - e.g. Restarting the operator
-     * recording for the operators which failed while recording and being replaced.
-     */
-    handleRequests(currentWindowId);
-
-    run();
-
-    if (activationListener) {
-      ((ActivationListener)operator).deactivate();
-    }
-
-    this.context = null;
-    emitEndStream();
-    deactivateSinks();
-  }
-
-  public void deactivate()
+  public void shutdown()
   {
     alive = false;
   }
@@ -490,6 +451,43 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     else {
       throw new RuntimeException("Id cannot be changed from " + this.id + " to " + id);
     }
+  }
+
+  public void activate(OperatorContext context)
+  {
+    this.context = context;
+    alive = true;
+    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
+    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
+
+    PROCESSING_MODE = context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_LEAST_ONCE);
+    if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
+      logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
+      CHECKPOINT_WINDOW_COUNT = 1;
+    }
+
+    activateSinks();
+    if (operator instanceof ActivationListener) {
+      ((ActivationListener)operator).activate(context);
+    }
+
+    /*
+     * If there were any requests which needed to be executed before the operator started
+     * its normal execution, execute those requests now - e.g. Restarting the operator
+     * recording for the operators which failed while recording and being replaced.
+     */
+    handleRequests(currentWindowId);
+  }
+
+  public void deactivate()
+  {
+    if (operator instanceof ActivationListener) {
+      ((ActivationListener)operator).deactivate();
+    }
+    emitEndStream();
+
+    deactivateSinks();
+    this.context = null;
   }
 
   public static class OperatorWrapper

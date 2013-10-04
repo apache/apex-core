@@ -268,6 +268,8 @@ public class ProcessingModeTests
         map.attr(OperatorContext.PROCESSING_MODE).set(processingMode);
         active.set(true);
         node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
+        node.run();
+        node.deactivate();
       }
 
     };
