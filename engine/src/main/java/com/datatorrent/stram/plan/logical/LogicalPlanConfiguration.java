@@ -69,6 +69,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String APPLICATION_PREFIX = "stram.application";
 
   public static final String ATTR = "attr";
+  public static final String PROP = "prop";
   public static final String CLASS = "class";
 
   private static final String CLASS_SUFFIX = "." + CLASS;
@@ -177,6 +178,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
      * The properties of the node, can be subclass properties which will be set via reflection.
      */
     private final PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
+    /**
+     * The attributes of the node, which will be set via reflection.
+     */
+    private Properties attributes = new Properties();
     /**
      * The inputs for the node
      */
@@ -303,7 +308,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * The path for the application class is specified as a parameter. If an alias was specified
    * in the configuration file or configuration properties for the application class it is returned
    * otherwise null is returned.
-   * 
+   *
    * @param appPath The path of the application class in the jar
    * @return The alias name if one is available, null otherwise
    */
@@ -369,15 +374,29 @@ public class LogicalPlanConfiguration implements StreamingApplication {
            continue;
          }
          String nodeId = keyComps[2];
-         String propertyKey = keyComps[3];
+         String comp = keyComps[3];
          OperatorConf nc = getOrAddOperator(nodeId);
-         if (OPERATOR_TEMPLATE.equals(propertyKey)) {
-           nc.template = getOrAddTemplate(propertyValue);
-           // TODO: defer until all keys are read?
-           nc.properties.setDefaultProperties(nc.template.properties);
-         } else {
-           // simple property
-           nc.properties.put(propertyKey, propertyValue);
+         // For backwards compatibility the current way of specifying operator property directly after the operator
+         // name is supported. The new way would be to use a property type of PROP after the operator name
+         // and then specify the name of the property after that.
+         if ((keyComps.length == 4) || comp.equals(PROP)) {
+          String propertyKey = comp;
+          if (keyComps.length > 4) {
+            propertyKey = keyComps[4];
+          }
+          if (OPERATOR_TEMPLATE.equals(propertyKey)) {
+            nc.template = getOrAddTemplate(propertyValue);
+            // TODO: defer until all keys are read?
+            nc.properties.setDefaultProperties(nc.template.properties);
+          } else {
+            // simple property
+            nc.properties.put(propertyKey, propertyValue);
+          }
+         } else if (comp.equals(ATTR)) {
+            if (keyComps.length < 5) {
+              throw new ValidationException("Missing attribute name: " + propertyName);
+            }
+            nc.attributes.put(keyComps[4], propertyValue);
          }
       } else if (propertyName.startsWith(TEMPLATE_PREFIX)) {
         String[] keyComps = propertyName.split("\\.", 4);
@@ -514,6 +533,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     // inject external operator configuration
+    setOperatorAttributes(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
     setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
   }
 
@@ -632,6 +652,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
+  public void setOperatorAttributes(LogicalPlan dag, String applicationName) {
+    for (OperatorMeta ow : dag.getAllOperators()) {
+      OperatorConf nc = operators.get(ow.getName());
+      if (nc != null) {
+        setOperatorLevelAttributes(dag, ow, nc.attributes);
+      }
+    }
+  }
+
   @SuppressWarnings("unchecked")
   public void setApplicationLevelAttributes(LogicalPlan dag, String appName) {
     Properties appProps = this.properties;
@@ -646,6 +675,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       String confKey = "stram." + key.name();
       String stringValue = appProps.getProperty(confKey, null);
       if (stringValue != null) {
+          dag.setAttribute(key, getAttributeAsType(stringValue, key.attributeType));
+          /*
         if (key.attributeType == Integer.class) {
           dag.setAttribute(key, Integer.parseInt(stringValue));
         } else if (key.attributeType == Long.class) {
@@ -658,10 +689,37 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
           throw new UnsupportedOperationException(msg);
         }
+        */
       }
     }
 
   }
 
+  public void setOperatorLevelAttributes(LogicalPlan dag, OperatorMeta operatorMeta, Properties attributes) {
+    for (@SuppressWarnings("rawtypes") DAGContext.AttributeKey key : DAGContext.ATTRIBUTE_KEYS) {
+      String stringValue = attributes.getProperty(key.name(), null);
+      if (stringValue != null) {
+          dag.setAttribute(key, getAttributeAsType(stringValue, key.attributeType));
+      }
+    }
+  }
+
+  @SuppressWarnings( "unchecked")
+  private <T> T getAttributeAsType(String stringValue, Class<T> clazz) {
+    T value = null;
+    if (clazz == Integer.class) {
+      value = (T)Integer.valueOf(stringValue);
+    } else if (clazz == Long.class) {
+      value = (T)Long.valueOf(stringValue);
+    } else if (clazz == String.class) {
+      value = (T)stringValue;
+    } else if (clazz == Boolean.class) {
+      value = (T)Boolean.valueOf(stringValue);
+    } else {
+        String msg = String.format("Unsupported attribute type: %s", clazz);
+        throw new UnsupportedOperationException(msg);
+    }
+    return value;
+  }
 
 }
