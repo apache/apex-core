@@ -89,6 +89,7 @@ public class StreamMapping
     }
     pu.unifier = unifier;
     pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
+    plan.newOpers.add(pu);
     return pu;
   }
 
@@ -100,6 +101,7 @@ public class StreamMapping
         if (!pooledUnifiers.isEmpty()) {
           pu = pooledUnifiers.remove(0);
         } else {
+          // TODO: assign container
           pu = createUnifier();
         }
         assert (pu.outputs.size() == 1) : "unifier has single output";
@@ -174,13 +176,13 @@ public class StreamMapping
 
       List<PTOperator> currentUnifiers = Lists.newArrayList(this.cascadingUnifiers);
       this.cascadingUnifiers.clear();
-      plan.modifiedOpers.addAll(currentUnifiers);
+      plan.undeployOpers.addAll(currentUnifiers);
 
       int limit = streamMeta.getSource().attrValue(PortContext.UNIFIER_LIMIT, 1);
 
       List<PTOutput> unifierSources = this.upstream;
       if (limit > 1 && this.upstream.size() > 1) {
-        // cascade
+        // cascading unifier
         unifierSources = setupUnifiers(this.upstream, currentUnifiers, limit, 0);
       }
 

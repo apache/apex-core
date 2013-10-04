@@ -875,7 +875,7 @@ public class PhysicalPlanTest {
     Assert.assertTrue("stats handlers " + p1.statsMonitors, sm instanceof PartitioningTest.PartitionLoadWatch);
     PartitioningTest.PartitionLoadWatch.loadIndicators.put(p1, 1);
 
-    sm.onThroughputUpdate(p1, 5);
+    sm.onThroughputUpdate(p1, 1);
     Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
 
     o1.partitionKeys = new Integer[] {0,1,2,3,4};

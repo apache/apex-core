@@ -161,7 +161,10 @@ public class PhysicalPlan {
   private int maxContainers = 1;
   private final LocalityPrefs localityPrefs = new LocalityPrefs();
   private final LocalityPrefs inlinePrefs = new LocalityPrefs();
-  final Set<PTOperator> modifiedOpers = Sets.newHashSet();
+
+  final Set<PTOperator> deployOpers = Sets.newHashSet();
+  final Set<PTOperator> newOpers = Sets.newHashSet();
+  final Set<PTOperator> undeployOpers = Sets.newHashSet();
 
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
@@ -386,6 +389,10 @@ public class PhysicalPlan {
 
     // request initial deployment
     ctx.deploy(Collections.<PTContainer>emptySet(), Collections.<PTOperator>emptySet(), Sets.newHashSet(containers), deployOperators);
+    this.newOpers.clear();
+    this.deployOpers.clear();
+    this.undeployOpers.clear();
+
   }
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
@@ -548,12 +555,13 @@ public class PhysicalPlan {
       }
     }
 
-    Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
-    Set<PTOperator> deployOperators = new HashSet<PTOperator>();
     // remaining entries represent deprecated partitions
-    undeployOperators.addAll(currentPartitionMap.values());
-    // resolve dependencies that require redeploy
-    undeployOperators = this.getDependents(undeployOperators);
+    this.undeployOpers.addAll(currentPartitionMap.values());
+    // downstream dependencies require redeploy, resolve prior to modifying plan
+    Set<PTOperator> deps = this.getDependents(currentPartitionMap.values());
+    this.undeployOpers.addAll(deps);
+    // dependencies need redeploy, except operators that excluded from the set in remove
+    this.deployOpers.addAll(deps);
 
     // plan updates start here, after all changes were identified
     // remove obsolete operators first, any freed resources
@@ -574,18 +582,16 @@ public class PhysicalPlan {
     currentMapping.partitions = newMapping.partitions;
 
     // add new operators after cleanup complete
-    Set<PTContainer> newContainers = Sets.newHashSet();
-    Set<PTOperator> newOperators = Sets.newHashSet();
 
     for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
       PTOperator p = addPTOperator(currentMapping, newPartition);
-      newOperators.add(p);
-      deployOperators.add(p);
       initCheckpoint(p, newPartition.getOperator(), minCheckpoint);
 
       for (PTOperator mergeOper : p.upstreamMerge.values()) {
-        deployOperators.add(mergeOper);
+        // TODO: remove as unifier is now handled in stream mapping?
+        this.undeployOpers.add(mergeOper);
+        this.deployOpers.add(mergeOper);
         initCheckpoint(mergeOper, mergeOper.unifier, minCheckpoint);
       }
 
@@ -607,9 +613,8 @@ public class PhysicalPlan {
         PTOperator ppOper = addPTOperator(this.logicalToPTOperator.get(pp), null);
 
         // even though we don't track state for parallel partitions
-        // set recovery windowId to play with upstream checkpoints
+        // set recovery windowId to confirm with upstream checkpoints
         initCheckpoint(ppOper, pp.getOperator(), minCheckpoint);
-        newOperators.add(ppOper);
       }
     }
 
@@ -618,17 +623,14 @@ public class PhysicalPlan {
       updateStreamMappings(this.logicalToPTOperator.get(pp));
     }
 
-    Set<PTContainer> releaseContainers = Sets.newHashSet();
-    assignContainers(newOperators, newContainers, releaseContainers);
-
-    deployOperators = this.getDependents(deployOperators);
-    ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
+    deployChanges();
 
     EventRecorder.Event ev = new HdfsEventRecorder.Event("partition");
     ev.addData("operatorName", currentMapping.logicalOperator.getName());
     ev.addData("currentNumPartitions", currentPartitions.size());
     ev.addData("newNumPartitions", newPartitions.size());
     this.ctx.recordEventAsync(ev);
+
   }
 
   private void updateStreamMappings(PMapping m) {
@@ -661,7 +663,7 @@ public class PhysicalPlan {
           }
         }
       } else {
-        // we have potentially changed the input operators, refresh stream mapping
+        // TODO: we have potentially changed the input operators, refresh stream mapping
         StreamMapping ug = sourceMapping.outputStreams.get(ipm.getValue().getSource());
         if (ug == null) {
           ug = new StreamMapping(ipm.getValue(), this);
@@ -675,9 +677,25 @@ public class PhysicalPlan {
 
   }
 
-  public void assignContainers(Set<PTOperator> newOperators, Set<PTContainer> newContainers, Set<PTContainer> releaseContainers) {
+  public void deployChanges() {
+    Set<PTContainer> newContainers = Sets.newHashSet();
+    Set<PTContainer> releaseContainers = Sets.newHashSet();
+    assignContainers(newContainers, releaseContainers);
+    this.undeployOpers.removeAll(newOpers);
+    // include downstream dependencies of affected operators into redeploy
+    Set<PTOperator> deployOperators = this.getDependents(this.deployOpers);
+    ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
+    this.newOpers.clear();
+    this.deployOpers.clear();
+    this.undeployOpers.clear();
+  }
+
+  private void assignContainers(Set<PTContainer> newContainers, Set<PTContainer> releaseContainers) {
     // assign containers to new operators
-    for (PTOperator oper : newOperators) {
+    for (PTOperator oper : this.newOpers) {
+
+      initCheckpoint(oper);
+
       PTContainer newContainer = null;
       // check for existing inline set
       for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL)) {
@@ -738,7 +756,7 @@ public class PhysicalPlan {
    * NoOp when already initialized.
    * @param oper
    */
-  public void initCheckpoint(PTOperator oper)
+  private void initCheckpoint(PTOperator oper)
   {
     if (oper.checkpointWindows.isEmpty()) {
       long activationWindowId = 0;
@@ -802,16 +820,18 @@ public class PhysicalPlan {
   }
 
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition) {
-    PTOperator pOperator = createInstance(nodeDecl, partition);
-    nodeDecl.addPartition(pOperator);
+    PTOperator oper = createInstance(nodeDecl, partition);
+    nodeDecl.addPartition(oper);
+    this.newOpers.add(oper);
+    this.deployOpers.add(oper);
 
     //
     // update locality
     //
-    setLocalityGrouping(nodeDecl, pOperator, inlinePrefs, Locality.CONTAINER_LOCAL);
-    setLocalityGrouping(nodeDecl, pOperator, localityPrefs, Locality.NODE_LOCAL);
+    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL);
+    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL);
 
-    return pOperator;
+    return oper;
   }
 
   /**
@@ -911,6 +931,7 @@ public class PhysicalPlan {
     List<PTOperator> cowList = Lists.newArrayList(oper.container.operators);
     cowList.remove(oper);
     oper.container.operators = cowList;
+    this.deployOpers.remove(oper);
   }
 
   public LogicalPlan getDAG() {
@@ -1054,9 +1075,8 @@ public class PhysicalPlan {
    * automatically remove operators from the plan.
    *
    * @param sm
-   * @param affectedOperators
    */
-  public void removeLogicalStream(StreamMeta sm, Set<PTOperator> affectedOperators)
+  public void removeLogicalStream(StreamMeta sm)
   {
     // remove incoming connections for logical stream
     for (InputPortMeta ipm : sm.getSinks()) {
@@ -1071,7 +1091,8 @@ public class PhysicalPlan {
           if (input.logicalStream == sm) {
             input.source.sinks.remove(input);
             inputsCopy.remove(input);
-            affectedOperators.add(oper);
+            undeployOpers.add(oper);
+            deployOpers.add(oper);
           }
         }
         oper.inputs = inputsCopy;
@@ -1086,10 +1107,13 @@ public class PhysicalPlan {
           for (PTInput input : out.sinks) {
             PTOperator downstreamOper = input.source.source;
             downstreamOper.inputs.remove(input);
-            affectedOperators.add(downstreamOper);
+            Set<PTOperator> deps = this.getDependents(Collections.singletonList(downstreamOper));
+            undeployOpers.addAll(deps);
+            deployOpers.addAll(deps);
           }
           outputsCopy.remove(out);
-          affectedOperators.add(oper);
+          undeployOpers.add(oper);
+          deployOpers.add(oper);
         }
       }
       oper.outputs = outputsCopy;
@@ -1099,9 +1123,8 @@ public class PhysicalPlan {
   /**
    * Connect operators through stream. Currently new stream will not affect locality.
    * @param sm
-   * @param affectedOperators
    */
-  public void connectInput(InputPortMeta ipm, Set<PTOperator> affectedOperators)
+  public void connectInput(InputPortMeta ipm)
   {
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : ipm.getOperatorWrapper().getInputStreams().entrySet()) {
       if (inputEntry.getKey() == ipm) {
@@ -1110,13 +1133,15 @@ public class PhysicalPlan {
           PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorWrapper());
           for (PTOperator oper : sourceOpers.partitions) {
             setupOutput(sourceOpers, oper, outputEntry); // idempotent
-            affectedOperators.add(oper);
+            undeployOpers.add(oper);
+            deployOpers.add(oper);
           }
         }
         PMapping m = this.logicalToPTOperator.get(ipm.getOperatorWrapper());
         updateStreamMappings(m);
         for (PTOperator oper : m.partitions) {
-          affectedOperators.add(oper);
+          undeployOpers.add(oper);
+          deployOpers.add(oper);
         }
       }
     }
@@ -1127,7 +1152,7 @@ public class PhysicalPlan {
    * All connected streams must have been previously removed.
    * @param om
    */
-  public void removeLogicalOperator(OperatorMeta om, Set<PTOperator> removedOpers)
+  public void removeLogicalOperator(OperatorMeta om)
   {
     PMapping opers = this.logicalToPTOperator.get(om);
     if (opers == null) {
@@ -1136,17 +1161,14 @@ public class PhysicalPlan {
 
     for (PTOperator oper : opers.partitions) {
       removePartition(oper, opers.parallelPartitions);
-      removedOpers.add(oper);
     }
 
     for (StreamMapping ug : opers.outputStreams.values()) {
       for (PTOperator oper : ug.cascadingUnifiers) {
         removePTOperator(oper);
-        removedOpers.add(oper);
       }
       if (ug.finalUnifier != null) {
         removePTOperator(ug.finalUnifier);
-        removedOpers.add(ug.finalUnifier);
       }
     }
 
