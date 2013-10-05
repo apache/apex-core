@@ -3,23 +3,23 @@
  */
 package com.datatorrent.stram.stream;
 
-import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicLong;
+import static java.lang.Thread.sleep;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.StreamCodec;
+
+import com.datatorrent.bufferserver.client.Publisher;
+import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.bufferserver.client.Publisher;
-import com.datatorrent.bufferserver.packet.*;
-import com.datatorrent.netlet.EventLoop;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>
@@ -141,12 +141,6 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   }
 
   @Override
-  public boolean isMultiSinkCapable()
-  {
-    return false;
-  }
-
-  @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
     throw new RuntimeException("OutputStream is not supposed to receive anything!");
@@ -170,12 +164,6 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
     }
 
     return publishedByteCount.get();
-  }
-
-  @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override

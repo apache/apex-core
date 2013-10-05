@@ -113,10 +113,11 @@ public class OperatorDeployInfo implements Serializable
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
       AttributeMap.Attribute<T> attr = contextAttributes.attrOrNull(key);
-      if (attr != null) {
-        return attr.get();
+      if (attr == null || attr.get() == null) {
+        return defaultValue;
       }
-      return defaultValue;
+
+      return attr.get();
     }
 
 
@@ -179,12 +180,12 @@ public class OperatorDeployInfo implements Serializable
     public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
     {
       AttributeMap.Attribute<T> attr = contextAttributes.attrOrNull(key);
-      if (attr != null) {
-        return attr.get();
+      if (attr == null || attr.get() == null) {
+        return defaultValue;
       }
-      return defaultValue;
-    }
 
+      return attr.get();
+    }
   }
 
   /**

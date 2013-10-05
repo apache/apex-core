@@ -336,8 +336,8 @@ public class StramAppLauncher {
     return conf;
   }
 
-  public Map<String, String> getAppAliases() {
-    return propertiesBuilder.getAppAliases();
+  public LogicalPlanConfiguration getLogicalPlanConfiguration() {
+    return propertiesBuilder;
   }
 
   public LogicalPlan prepareDAG(AppFactory appConfig) {

@@ -67,9 +67,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
   public static final String APPLICATION_PREFIX = "stram.application";
-  public static final String APPLICATION_CLASS = "class";
 
   public static final String ATTR = "attr";
+  public static final String CLASS = "class";
+
+  private static final String CLASS_SUFFIX = "." + CLASS;
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -272,7 +274,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
-    addAliasesFromConfig(conf);
     addFromProperties(toProperties(conf, "stram."));
   }
 
@@ -298,30 +299,21 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   /**
-   * Resolve the application name by matching the original name against alias
-   * definitions in the configuration.
-   *
-   * @param appConfig
-   * @param conf
-   * @return
+   * Get the application alias name for an application class if one is available.
+   * The path for the application class is specified as a parameter. If an alias was specified
+   * in the configuration file or configuration properties for the application class it is returned
+   * otherwise null is returned.
+   * 
+   * @param appPath The path of the application class in the jar
+   * @return The alias name if one is available, null otherwise
    */
-  public LogicalPlanConfiguration addAliasesFromConfig(Configuration conf) {
-    StringBuilder sb = new StringBuilder(LogicalPlanConfiguration.APPLICATION_PREFIX.replace(".", "\\."));
-    sb.append("\\.(.*)\\.").append(LogicalPlanConfiguration.APPLICATION_CLASS.replace(".", "\\."));
-    String appClassRegex = sb.toString();
-    Map<String, String> props = conf.getValByRegex(appClassRegex);
-    if (props != null) {
-      Set<Map.Entry<String, String>> propEntries =  props.entrySet();
-      for (Map.Entry<String, String> propEntry : propEntries) {
-        Pattern p = Pattern.compile(appClassRegex);
-        Matcher m = p.matcher(propEntry.getKey());
-        if (m.find()) {
-          String appName = m.group(1);
-          appAliases.put(propEntry.getValue(), appName);
-        }
-      }
+  public String getAppAlias(String appPath) {
+    String appAlias = null;
+    if (appPath.endsWith(CLASS_SUFFIX)) {
+      String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
+      appAlias = appAliases.get(className);
     }
-    return this;
+    return appAlias;
   }
 
   /**
@@ -428,6 +420,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           }
           // put with prefix matching global scope in default properties
           appConf.properties.put("stram." + keyComps[4], propertyValue);
+        } else if (propertyType.equals(CLASS)) {
+          this.appAliases.put(propertyValue, appName);
         }
       }
     }
@@ -441,10 +435,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   public Properties getProperties() {
     return this.properties;
-  }
-
-  public Map<String, String> getAppAliases() {
-    return this.appAliases;
   }
 
   @Override
@@ -510,7 +500,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param conf
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
-    String appAlias = appAliases.get(name);
+    String appAlias = getAppAlias(name);
 
     // set application level attributes first to make them available to populateDAG
     setApplicationLevelAttributes(dag, appAlias);

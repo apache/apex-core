@@ -4,13 +4,16 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.engine.Stream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.api.Sink;
 import java.lang.reflect.Array;
 import java.util.HashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Sink;
+
+import com.datatorrent.stram.engine.Stream;
+import com.datatorrent.stram.engine.StreamContext;
 
 /**
  * <p>MuxStream class.</p>
@@ -18,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
-public class MuxStream implements Stream
+public class MuxStream implements Stream.MultiSinkCapableStream
 {
   private HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings("VolatileArrayField")
@@ -102,12 +105,6 @@ public class MuxStream implements Stream
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].put(payload);
     }
-  }
-
-  @Override
-  public boolean isMultiSinkCapable()
-  {
-    return true;
   }
 
   @Override

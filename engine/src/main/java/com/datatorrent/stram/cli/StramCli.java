@@ -1010,15 +1010,10 @@ public class StramCli
         }
         else if (matchingAppConfigs.size() > 1) {
 
-          // Get app aliases. Figure out a better way to reuse aliases computed here in future.
-          Map<String, String> appAliases = submitApp.getAppAliases();
-
           // Display matching applications
           for (int i = 0; i < matchingAppConfigs.size(); i++) {
             String appName = matchingAppConfigs.get(i).getName();
-            //String className = appName.replace("/", ".").substring(0, appName.length()-6);
-            //String appAlias = appAliases.get(className);
-            String appAlias = appAliases.get(appName);
+            String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
             if (appAlias != null) {
               appName = appAlias;
             }
