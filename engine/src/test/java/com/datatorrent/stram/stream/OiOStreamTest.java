@@ -214,14 +214,14 @@ public class OiOStreamTest
     lp.validate();
     StramLocalCluster slc = new StramLocalCluster(lp);
     slc.run();
-    Assert.assertNotSame("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
+    Assert.assertFalse("Thread Id", ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericOperator.threadId);
 
     /* This test makes sure that since they are ThreadLocal, they indeed share a thread */
     stream.setLocality(Locality.THREAD_LOCAL);
     lp.validate();
     slc = new StramLocalCluster(lp);
     slc.run();
-    Assert.assertSame("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
+    Assert.assertEquals("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(OiOStreamTest.class);
