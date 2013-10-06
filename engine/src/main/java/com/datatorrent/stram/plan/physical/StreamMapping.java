@@ -101,7 +101,6 @@ public class StreamMapping
         if (!pooledUnifiers.isEmpty()) {
           pu = pooledUnifiers.remove(0);
         } else {
-          // TODO: assign container
           pu = createUnifier();
         }
         assert (pu.outputs.size() == 1) : "unifier has single output";

@@ -238,7 +238,6 @@ public class LogicalPlan implements Serializable, DAG
   {
     private static final long serialVersionUID = 1L;
     private Locality locality;
-    private boolean nodeLocal;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
     private Class<? extends StreamCodec<?>> codecClass;
@@ -255,34 +254,6 @@ public class LogicalPlan implements Serializable, DAG
       return id;
     }
 
-    @Deprecated
-    @Override
-    public boolean isInline()
-    {
-      return Locality.CONTAINER_LOCAL.equals(this.locality);
-    }
-
-    @Deprecated
-    @Override
-    public StreamMeta setInline(boolean inline)
-    {
-      return setLocality(inline ? Locality.CONTAINER_LOCAL : null);
-    }
-
-    @Deprecated
-    @Override
-    public boolean isNodeLocal()
-    {
-      return this.nodeLocal;
-    }
-
-    @Deprecated
-    @Override
-    public StreamMeta setNodeLocal(boolean local)
-    {
-      return setLocality(Locality.NODE_LOCAL);
-    }
-
     @Override
     public Locality getLocality() {
       return this.locality;
@@ -290,9 +261,6 @@ public class LogicalPlan implements Serializable, DAG
 
     @Override
     public StreamMeta setLocality(Locality locality) {
-      if (Locality.NODE_LOCAL == locality || Locality.RACK_LOCAL == locality) {
-        LOG.warn("Locality {} is not supported yet.", locality);
-      }
       this.locality = locality;
       return this;
     }
