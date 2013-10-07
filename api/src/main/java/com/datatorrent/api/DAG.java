@@ -85,30 +85,6 @@ public interface DAG extends DAGContext, Serializable
     public String getId();
 
     /**
-     * @deprecated use {@link #getLocality()} instead.
-     */
-    @Deprecated
-    public boolean isInline();
-
-    /**
-     * @deprecated use {@link #setLocality(Locality)} instead.
-     */
-    @Deprecated
-    public StreamMeta setInline(boolean inline);
-
-    /**
-     * @deprecated use {@link #getLocality()} instead.
-     */
-    @Deprecated
-    public boolean isNodeLocal();
-
-    /**
-     * @deprecated use {@link #setLocality(Locality)} instead.
-     */
-    @Deprecated
-    public StreamMeta setNodeLocal(boolean local);
-
-    /**
      * Returns the locality for this stream.
      * @return locality for this stream, default is null.
      */

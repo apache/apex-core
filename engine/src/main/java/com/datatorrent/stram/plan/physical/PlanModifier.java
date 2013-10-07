@@ -2,7 +2,6 @@ package com.datatorrent.stram.plan.physical;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 
 import javax.validation.ValidationException;
 
@@ -12,7 +11,6 @@ import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.google.common.collect.Sets;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -29,10 +27,6 @@ public class PlanModifier {
 
   final private LogicalPlan logicalPlan;
   final private PhysicalPlan physicalPlan;
-
-  private final Set<PTOperator> affectedOperators = Sets.newHashSet();
-  private final Set<PTOperator> newOperators = Sets.newHashSet();
-  private final Set<PTOperator> removedOperators = Sets.newHashSet();
 
   /**
    * For dry run on logical plan only
@@ -65,7 +59,7 @@ public class PlanModifier {
       if (physicalPlan != null) {
         for (InputPortMeta ipm : sm.getSinks()) {
           if (ipm.getPortObject() == sink) {
-            physicalPlan.connectInput(ipm, affectedOperators);
+            physicalPlan.connectInput(ipm);
           }
         }
       }
@@ -161,7 +155,7 @@ public class PlanModifier {
 
     if (physicalPlan != null) {
       // associated operators will redeploy
-      physicalPlan.removeLogicalStream(sm, affectedOperators);
+      physicalPlan.removeLogicalStream(sm);
     }
     // remove from logical plan
     sm.remove();
@@ -178,8 +172,6 @@ public class PlanModifier {
     if (physicalPlan != null) {
       OperatorMeta om = logicalPlan.getMeta(operator);
       physicalPlan.addLogicalOperator(om);
-      // keep track of new instances
-      newOperators.addAll(physicalPlan.getOperators(om));
     }
   }
 
@@ -222,7 +214,7 @@ public class PlanModifier {
     logicalPlan.removeOperator(om.getOperator());
 
     if (physicalPlan != null) {
-      physicalPlan.removeLogicalOperator(om, removedOperators);
+      physicalPlan.removeLogicalOperator(om);
     }
   }
 
@@ -240,7 +232,7 @@ public class PlanModifier {
     if (physicalPlan != null)
     {
       for (PTOperator oper : physicalPlan.getOperators(om)) {
-        if (!newOperators.contains(oper)) {
+        if (!physicalPlan.newOpers.contains(oper)) {
           throw new ValidationException("Properties can only be set on new operators: " + om + " " + propertyName + " " + propertyValue);
         }
       }
@@ -254,30 +246,7 @@ public class PlanModifier {
    */
   public void applyChanges(PhysicalPlan.PlanContext physicalPlanContext)
   {
-    // assign containers
-    Set<PTContainer> newContainers = Sets.newHashSet();
-    Set<PTContainer> releaseContainers = Sets.newHashSet();
-    physicalPlan.assignContainers(newOperators, newContainers, releaseContainers);
-
-    for (PTOperator newOperator : newOperators) {
-      physicalPlan.initCheckpoint(newOperator);
-    }
-
-    // existing downstream operators require redeploy
-    Set<PTOperator> undeployOperators = physicalPlan.getDependents(newOperators);
-    undeployOperators.removeAll(newOperators);
-
-    Set<PTOperator> deployOperators = physicalPlan.getDependents(newOperators);
-
-    Set<PTOperator> redeployOperators = physicalPlan.getDependents(this.affectedOperators);
-    undeployOperators.addAll(redeployOperators);
-    undeployOperators.addAll(removedOperators);
-    undeployOperators.removeAll(newOperators);
-
-    deployOperators.addAll(redeployOperators);
-    deployOperators.removeAll(removedOperators);
-
-    physicalPlanContext.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
+    physicalPlan.deployChanges();
   }
 
 }

@@ -177,7 +177,7 @@ public class PartitioningTest
 
   public static class PartitionLoadWatch extends PhysicalPlan.PartitionLoadWatch
   {
-    final private static Map<PTOperator, Integer> loadIndicators = new ConcurrentHashMap<PTOperator, Integer>();
+    final public static Map<PTOperator, Integer> loadIndicators = new ConcurrentHashMap<PTOperator, Integer>();
 
     public PartitionLoadWatch(PMapping mapping)
     {

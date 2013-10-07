@@ -63,14 +63,22 @@ public interface Context
      */
     public static final AttributeKey<Integer> SPIN_MILLIS = new AttributeKey<Integer>("spinMillis");
     /**
-     * Extend partitioning of an upstream operator to this port w/o intermediate merge.
-     * Can be used to form parallel partitions that span a groups of operators.
+     * Input port attribute. Extend partitioning of an upstream operator w/o intermediate merge.
+     * Can be used to form parallel partitions that span a group of operators.
      * Defined on a per input port basis to allow for stream to be shared with non-partitioned sinks.
      * If multiple ports of an operator have the setting, incoming streams must track back to
      * a common root partition, i.e. the operator join forks of the same origin.
      * At the moment each partition would be deployed to a single container (inline).
      */
     public static final AttributeKey<Boolean> PARTITION_PARALLEL = new AttributeKey<Boolean>("partitionInline");
+    /**
+     * Attribute of output port to specify how many partitions should be merged by a single unifier instance. If the
+     * number of partitions exceeds the limit set, a cascading unifier plan will be created. For example, 4 partitions
+     * with the limit set to 2 will result in 3 unifiers arranged in 2 levels. The setting can be used to cap the
+     * network I/O or other resource requirement for each unifier container (depends on the specific functionality of
+     * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
+     */
+    public static final AttributeKey<Integer> UNIFIER_LIMIT = new AttributeKey<Integer>("unifierLimit");
     /**
      * Whether or not to auto record the tuples
      */
@@ -111,18 +119,18 @@ public interface Context
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
-    public static final AttributeKey<Boolean> STATELESS = new AttributeKey<Boolean>("stateless");
+    //public static final AttributeKey<Boolean> STATELESS = new AttributeKey<Boolean>("stateless");
     /**
      * Attribute of the operator that suggests the ideal RAM that the operator may need for optimal functioning.
      */
-    public static final AttributeKey<Integer> MEMORY_MB = new AttributeKey<Integer>("memoryMB");
+    //public static final AttributeKey<Integer> MEMORY_MB = new AttributeKey<Integer>("memoryMB");
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
     public static final AttributeKey<Integer> APPLICATION_WINDOW_COUNT = new AttributeKey<Integer>("applicationWindowCount");
     /**
      * Attribute of the operator that hints at the optimal checkpoint boundary.
-     * By default checkpointing happens after every predetermined streaming windows. But application developer can override
+     * By default checkpointing happens after every predetermined streaming windows. Application developer can override
      * this behavior by defining the following attribute. When this attribute is defined, checkpointing will be done after
      * completion of later of regular checkpointing window and the window whose serial number is divisible by the attribute
      * value. Typically user would define this value to be the same as that of APPLICATION_WINDOW_COUNT so checkpointing
