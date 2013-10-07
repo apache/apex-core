@@ -103,6 +103,12 @@ public interface DAGContext extends Context
   public static final AttributeKey<String> DAEMON_ADDRESS = new AttributeKey<String>("daemon.address", String.class);
   /** Constant <code>FAST_PUBLISHER_SUBSCRIBER</code> */
   public static final AttributeKey<Boolean> FAST_PUBLISHER_SUBSCRIBER = new AttributeKey<Boolean>("bufferserver.fast", Boolean.class);
+
+  /**
+   * Maximum number of simultaneous heartbeat connections to process.
+   */
+  public static final AttributeKey<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new AttributeKey<Integer>("heartbeatListenerThreadCount", Integer.class);
+
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
    * 1000ms. Value 0 will disable heartbeat (for unit testing).

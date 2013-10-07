@@ -41,11 +41,13 @@ public class StreamingContainerParent extends CompositeService implements Stream
   private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
   private final StreamingContainerManager dagManager;
+  private final int listenerThreadCount;
 
-  public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr, SecretManager<? extends TokenIdentifier> secretManager) {
+  public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr, SecretManager<? extends TokenIdentifier> secretManager, int listenerThreadCount) {
     super(name);
     this.dagManager = dnodeMgr;
     this.tokenSecretManager = secretManager;
+    this.listenerThreadCount = listenerThreadCount;
   }
 
   @Override
@@ -68,10 +70,11 @@ public class StreamingContainerParent extends CompositeService implements Stream
   protected void startRpcServer() {
     Configuration conf = getConfig();
     LOG.info("Config: " + conf);
+    LOG.info("Listener thread count " + listenerThreadCount);
     try {
       server =
           RPC.getServer(StreamingContainerUmbilicalProtocol.class, this, "0.0.0.0", 0,
-              DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT,
+              listenerThreadCount,
               false, conf, tokenSecretManager);
 
       // Enable service authorization?
@@ -105,6 +108,12 @@ public class StreamingContainerParent extends CompositeService implements Stream
 
   public InetSocketAddress getAddress() {
     return address;
+  }
+
+  // Can be used to help test listener thread count
+  public int getListenerThreadCount()
+  {
+    return listenerThreadCount;
   }
 
   void refreshServiceAcls(Configuration configuration,

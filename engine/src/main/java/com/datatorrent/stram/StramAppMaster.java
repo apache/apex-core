@@ -61,6 +61,7 @@ import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
 
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.DAGContext;
 
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
@@ -452,8 +453,10 @@ public class StramAppMaster //extends License for licensing using native
       delegationTokenManager.startThreads();
     }
 
+    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
+
     // start RPC server
-    rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager);
+    rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     rpcImpl.init(conf);
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
