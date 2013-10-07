@@ -8,7 +8,6 @@ import javax.validation.ConstraintViolationException;
 import javax.validation.ValidationException;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +30,13 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  */
-@Ignore
 public class OiOStreamTest
 {
   public OiOStreamTest()
   {
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiO()
   {
     logger.info("Checking the logic for sanity checking of OiO");
@@ -60,7 +58,7 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiOOptionalInput()
   {
     LogicalPlan plan = new LogicalPlan();
@@ -80,7 +78,7 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
+  @Test
   public void validateNegativeOiO()
   {
     LogicalPlan plan = new LogicalPlan();
@@ -216,14 +214,14 @@ public class OiOStreamTest
     lp.validate();
     StramLocalCluster slc = new StramLocalCluster(lp);
     slc.run();
-    Assert.assertNotSame("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
+    Assert.assertFalse("Thread Id", ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericOperator.threadId);
 
     /* This test makes sure that since they are ThreadLocal, they indeed share a thread */
     stream.setLocality(Locality.THREAD_LOCAL);
     lp.validate();
     slc = new StramLocalCluster(lp);
     slc.run();
-    Assert.assertSame("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
+    Assert.assertEquals("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperator.threadId);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(OiOStreamTest.class);

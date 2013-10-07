@@ -123,7 +123,7 @@ public class InlineStreamTest
 
     stream.deactivate();
     for (Node<?> node : activeNodes.values()) {
-      node.deactivate();
+      node.shutdown();
     }
 
     for (int i = 0; i < 10; i++) {
@@ -155,6 +155,8 @@ public class InlineStreamTest
                                                   null);
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
+        node.run();
+        node.deactivate();
         activeNodes.remove(ctx.getId());
       }
 

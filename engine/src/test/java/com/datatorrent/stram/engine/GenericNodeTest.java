@@ -42,7 +42,7 @@ public class GenericNodeTest
       }
 
     };
-    
+
     @InputPortFieldAnnotation(name = "ip2", optional = true)
     public final transient DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
     {
@@ -125,6 +125,8 @@ public class GenericNodeTest
                                         this,
                                         new DefaultAttributeMap(Context.OperatorContext.class),
                                         null));
+        gn.run();
+        gn.deactivate();
       }
 
     };

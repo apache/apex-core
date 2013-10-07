@@ -18,25 +18,9 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class OiOStream implements Stream, SweepableReservoir
 {
-  public static final String CONTROL_SINK = "CONTROL";
   private Sink<Object> sink;
   private Sink<Tuple> control;
   private int count;
-
-  @Override
-  public boolean isMultiSinkCapable()
-  {
-    return false;
-  }
-
-  @Override
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  public void setSink(String id, Sink<Object> sink)
-  {
-    assert(id != null && CONTROL_SINK.equals(id));
-    Sink temp = sink;
-    control = (Sink<Tuple>)temp;
-  }
 
   @Override
   public void setup(StreamContext context)
@@ -48,6 +32,11 @@ public class OiOStream implements Stream, SweepableReservoir
   {
   }
 
+  public void setControlSink(Sink<Tuple> control)
+  {
+    this.control = control;
+  }
+  
   @Override
   public void activate(StreamContext cntxt)
   {
@@ -100,6 +89,10 @@ public class OiOStream implements Stream, SweepableReservoir
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
+  /**
+   * OiOStream is active when there is exactly one tuple present.
+   * It's an error to have more than one tuple active on OiO.
+   */
   @Override
   public int size()
   {

@@ -4,11 +4,13 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.bufferserver.packet.Tuple;
 import java.net.InetSocketAddress;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.stram.engine.StreamContext;
 
 /**
  * <p>FastSubscriber class.</p>

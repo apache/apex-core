@@ -290,8 +290,8 @@ public class LogicalPlan implements Serializable, DAG
 
     @Override
     public StreamMeta setLocality(Locality locality) {
-      if (!(locality == null || Locality.CONTAINER_LOCAL == locality)) {
-        LOG.warn("Locality not yet supported: " + locality);
+      if (Locality.NODE_LOCAL == locality || Locality.RACK_LOCAL == locality) {
+        LOG.warn("Locality {} is not supported yet.", locality);
       }
       this.locality = locality;
       return this;

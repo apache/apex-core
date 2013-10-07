@@ -3,11 +3,6 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.datatorrent.stram.tuple.CheckpointTuple;
-import com.datatorrent.stram.tuple.ResetWindowTuple;
-import com.datatorrent.stram.tuple.EndStreamTuple;
-import com.datatorrent.stram.tuple.Tuple;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -16,18 +11,21 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.codec.StatefulStreamCodec;
-import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
-import com.datatorrent.stram.engine.ByteCounterStream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.bufferserver.client.Subscriber;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.codec.StatefulStreamCodec;
+import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
+import com.datatorrent.stram.engine.*;
+import com.datatorrent.stram.tuple.CheckpointTuple;
+import com.datatorrent.stram.tuple.EndStreamTuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.ResetWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
@@ -106,12 +104,6 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   }
 
   @Override
-  public boolean isMultiSinkCapable()
-  {
-    return true;
-  }
-
-  @Override
   public void setup(StreamContext context)
   {
     serde = context.attr(StreamContext.CODEC).get();
@@ -173,12 +165,6 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     }
 
     return r;
-  }
-
-  @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
