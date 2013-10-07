@@ -14,27 +14,35 @@ import java.util.Collections;
 import java.util.List;
 import junit.framework.Assert;
 
+import org.junit.Test;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
-import org.junit.Test;
 
-import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.stram.engine.DefaultUnifier;
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.HdfsStorageAgent;
-import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.stram.engine.DefaultUnifier;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.PhysicalPlanTest;
 import com.datatorrent.stram.plan.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -43,15 +51,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.tuple.Tuple;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
 
 public class StreamingContainerManagerTest {
 
@@ -383,15 +382,21 @@ public class StreamingContainerManagerTest {
     FileUtils.deleteDirectory(path.getAbsoluteFile());
 
     HdfsStorageAgent sa = new HdfsStorageAgent(new Configuration(), path.getAbsolutePath());
+    try {
+      sa.getMostRecentWindowId(1);
+      Assert.fail("There should not be any most recently saved windowId!");
+    }
+    catch (IOException io) {
+      Assert.assertTrue("No State Saved", true);
+    }
 
-    Assert.assertEquals("", null, sa.getMostRecentWindowId(1));
     long windowIds[] = {123, 345, 234};
     for (long windowId : windowIds) {
       OutputStream os = sa.getSaveStream(1, windowId);
       os.write(String.valueOf(windowId).getBytes());
       os.close();
     }
-    Assert.assertEquals(Long.valueOf(345), sa.getMostRecentWindowId(1));
+    Assert.assertEquals("Most recently saved windowId", windowIds[1], sa.getMostRecentWindowId(1));
   }
 
   public static class TestStaticPartitioningSerDe extends DefaultStatefulStreamCodec<Object> {

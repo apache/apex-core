@@ -4,14 +4,10 @@
  */
 package com.datatorrent.stram;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
@@ -40,6 +36,7 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHe
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.Stats;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -548,18 +545,17 @@ public class StramChildAgent {
       }
       // pick the checkpoint most recently written to HDFS
       try {
-        Long mrCheckpoint = agent.getMostRecentWindowId(oper.getId());
-        if (mrCheckpoint == null || 0 == mrCheckpoint) {
-          // StramChild expects initial state to be written as -1
-          OutputStream stream = agent.getSaveStream(oper.getId(), -1);
-          Node.storeOperator(stream, operator);
-          stream.close();
-        } else {
-          checkpointWindowId = mrCheckpoint > 0 ? mrCheckpoint : 0;
-        }
+        checkpointWindowId = agent.getMostRecentWindowId(oper.getId());
       }
       catch (Exception e) {
-        throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
+        try {
+          OutputStream stream = agent.getSaveStream(oper.getId(), OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+          Node.storeOperator(stream, operator);
+          stream.close();
+        }
+        catch (IOException io) {
+          throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
+        }
       }
     }
 

@@ -75,7 +75,7 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   }
 
   @Override
-  public Long getMostRecentWindowId(int operatorId) throws IOException {
+  public long getMostRecentWindowId(int operatorId) throws IOException {
     throw new UnsupportedOperationException();
   }
 
