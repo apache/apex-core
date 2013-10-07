@@ -19,7 +19,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
-import java.util.Iterator;
 
 public class HdfsStorageAgent implements StorageAgent
 {
