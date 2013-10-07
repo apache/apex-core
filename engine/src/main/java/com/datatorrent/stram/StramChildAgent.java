@@ -36,7 +36,6 @@ import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHe
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.Stats;
-import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -552,6 +551,7 @@ public class StramChildAgent {
           OutputStream stream = agent.getSaveStream(oper.getId(), OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
           Node.storeOperator(stream, operator);
           stream.close();
+          checkpointWindowId = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
         }
         catch (IOException io) {
           throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
@@ -559,12 +559,8 @@ public class StramChildAgent {
       }
     }
 
-    LOG.debug("Operator {} recovery checkpoint {}", oper, checkpointWindowId);
-    if (checkpointWindowId > 0) {
-      LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
-      ndi.checkpointWindowId = checkpointWindowId;
-    }
-
+    LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
+    ndi.checkpointWindowId = checkpointWindowId;
     ndi.declaredId = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
