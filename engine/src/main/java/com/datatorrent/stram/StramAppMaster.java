@@ -856,11 +856,16 @@ public class StramAppMaster //extends License for licensing using native
       Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
       if (allocatedContainer != null) {
         // issue stop container - TODO: separate thread to not block heartbeat
-        ContainerManager cm = yarnClient.connectToCM(allocatedContainer);
-        StopContainerRequest stopContainer = Records.newRecord(StopContainerRequest.class);
-        stopContainer.setContainerId(allocatedContainer.getId());
-        cm.stopContainer(stopContainer);
-        LOG.info("Stopped container {}", containerIdStr);
+        try {
+          ContainerManager cm = yarnClient.connectToCM(allocatedContainer);
+          StopContainerRequest stopContainer = Records.newRecord(StopContainerRequest.class);
+          stopContainer.setContainerId(allocatedContainer.getId());
+          cm.stopContainer(stopContainer);
+          LOG.info("Stopped container {}", containerIdStr);
+        } catch (Exception e) {
+          // the node manager might be gone and we don't want that to fail the AM
+          LOG.warn("Failed to stop container {}", containerIdStr, e);
+        }
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
