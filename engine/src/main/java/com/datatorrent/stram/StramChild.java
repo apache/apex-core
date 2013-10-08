@@ -1099,6 +1099,16 @@ public class StramChild
     final Node<?> node = nodes.get(ndi.id);
 
     OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
+    // Figure out a better way than to go through inputs twice
+    for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
+      // Set the partitioned state
+      if (!operatorContext.isPartitioned()) {
+        if ((idi.partitionKeys != null) && (idi.partitionKeys.size() != 0)) {
+          operatorContext.setPartitioned(true);
+          break;
+        }
+      }
+    }
     node.setup(operatorContext);
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
@@ -1191,7 +1201,7 @@ public class StramChild
           finally {
             activatedOrFailed.put(ndi, ndi);
             teardownNode(ndi);
-            
+
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
                 OperatorDeployInfo oiodi = nodeMap.get(e.getKey());

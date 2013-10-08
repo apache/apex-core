@@ -162,9 +162,16 @@ public interface Context
     /**
      * Return the operator runtime id.
      *
-     * @return String
+     * @return The id
      */
     int getId();
+
+    /**
+     * Return if the operator is partitioned.
+     *
+     * @return A boolean indicating whether the operator is partitioned or not
+     */
+    boolean isPartitioned();
 
   }
 
