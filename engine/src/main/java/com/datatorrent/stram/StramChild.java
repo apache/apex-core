@@ -1099,14 +1099,12 @@ public class StramChild
     final Node<?> node = nodes.get(ndi.id);
 
     OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
-    // Figure out a better way than to go through inputs twice
+    // Figure out a better way than going through the inputs twice, once here and second time in the input port setup below
     for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
       // Set the partitioned state
-      if (!operatorContext.isPartitioned()) {
-        if ((idi.partitionKeys != null) && (idi.partitionKeys.size() != 0)) {
-          operatorContext.setPartitioned(true);
-          break;
-        }
+      if ((idi.partitionKeys != null) && (idi.partitionKeys.size() != 0)) {
+        operatorContext.setPartitioned(true);
+        break;
       }
     }
     node.setup(operatorContext);

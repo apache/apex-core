@@ -167,7 +167,7 @@ public interface Context
     int getId();
 
     /**
-     * Return if the operator is partitioned.
+     * Return true if the operator is partitioned, false otherwise.
      *
      * @return A boolean indicating whether the operator is partitioned or not
      */
