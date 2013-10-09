@@ -1102,7 +1102,8 @@ public class StramChild
     // Figure out a better way than going through the inputs twice, once here and second time in the input port setup below
     for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
       // Set the partitioned state
-      if ((idi.partitionKeys != null) && (idi.partitionKeys.size() != 0)) {
+      if (((idi.partitionKeys != null) && (idi.partitionKeys.size() != 0))
+              || (idi.getAttributes().attr(PortContext.PARTITION_PARALLEL).get() == Boolean.TRUE)) {
         operatorContext.setPartitioned(true);
         break;
       }
