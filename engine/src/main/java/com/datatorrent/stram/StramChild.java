@@ -1093,7 +1093,7 @@ public class StramChild
     return windowGenerator;
   }
 
-  private OperatorContext setupNode(OperatorDeployInfo ndi, Thread thread)
+  private void setupNode(OperatorDeployInfo ndi, Thread thread)
   {
     failedNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
@@ -1127,20 +1127,23 @@ public class StramChild
     for (NodeActivationListener l : nodeListener) {
       l.activated(node);
     }
-    return operatorContext;
   }
 
   private void teardownNode(OperatorDeployInfo ndi)
   {
     activeNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
-
-    node.deactivate();
-    for (NodeActivationListener l : nodeListener) {
-      l.deactivated(node);
+    if (node == null) {
+      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.declaredId);
     }
-    node.teardown();
-    logger.info("deactivated {}", node.getId());
+    else {
+      node.deactivate();
+      for (NodeActivationListener l : nodeListener) {
+        l.deactivated(node);
+      }
+      node.teardown();
+      logger.info("deactivated {}", node.getId());
+    }
   }
 
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
@@ -1191,7 +1194,7 @@ public class StramChild
           finally {
             activatedOrFailed.put(ndi, ndi);
             teardownNode(ndi);
-            
+
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
                 OperatorDeployInfo oiodi = nodeMap.get(e.getKey());
