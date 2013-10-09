@@ -73,8 +73,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
   public long currentWindowId;
-  protected long endWindowEmitTime = 0;
-  protected long lastSampleCpuTime = 0;
+  protected long endWindowEmitTime;
+  protected long lastSampleCpuTime;
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
   protected long checkpointedWindowId;
@@ -299,7 +299,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
     stats.checkpointedWindowId = checkpointedWindowId;
-    
+
     context.report(stats, windowId);
   }
 
@@ -328,11 +328,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public boolean isAlive()
   {
     return alive;
-  }
-
-  public long getBackupWindowId()
-  {
-    return checkpointedWindowId;
   }
 
   public boolean isApplicationWindowBoundary()
