@@ -107,9 +107,9 @@ public class StramChild
   private StreamingContainerContext containerContext;
   private List<StramToNodeRequest> nodeRequests;
   // possibly should combine all the guys below into one type of listeners - containereventlistener!
-  private ArrayList<ContainerStatsListener> statsListener;
-  private HashSet<NodeActivationListener> nodeListener;
-  private HashMap<String, Object> singletons;
+  private final ArrayList<ContainerStatsListener> statsListener;
+  private final HashSet<NodeActivationListener> nodeListener;
+  private final HashMap<String, Object> singletons;
   private RequestFactory requestFactory;
 
   static {
@@ -170,7 +170,6 @@ public class StramChild
     // but this code has to move out of here soon. If you feel like doing it, do it now!!!!
     String classname = "com.datatorrent.stram.debug.TupleRecorderCollection";
     try {
-      @SuppressWarnings("unchecked")
       Class<?> cl = Class.forName(classname);
       Object newInstance = cl.newInstance();
       singletons.put(classname, newInstance);
@@ -624,7 +623,6 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings("unchecked")
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.nodeRequests != null) {
@@ -1191,7 +1189,7 @@ public class StramChild
           finally {
             activatedOrFailed.put(ndi, ndi);
             teardownNode(ndi);
-            
+
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
                 OperatorDeployInfo oiodi = nodeMap.get(e.getKey());

@@ -181,7 +181,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  @SuppressWarnings({"unchecked"})
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
     boolean changes = false;
@@ -299,7 +298,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
     stats.checkpointedWindowId = checkpointedWindowId;
-    
+
     context.report(stats, windowId);
   }
 
@@ -328,11 +327,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public boolean isAlive()
   {
     return alive;
-  }
-
-  public long getBackupWindowId()
-  {
-    return checkpointedWindowId;
   }
 
   public boolean isApplicationWindowBoundary()
