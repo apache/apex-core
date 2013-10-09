@@ -308,7 +308,7 @@ public class StreamingContainerManager implements PlanContext
 
     if (upstreamMaxEmitTimestamp > 0) {
       if (upstreamMaxEmitTimestamp < endWindowStats.emitTimestamp) {
-        LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
+        //LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
         operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
       }
       else if (upstreamMaxEmitTimestamp != endWindowStats.emitTimestamp) {
@@ -940,6 +940,7 @@ public class StreamingContainerManager implements PlanContext
       PTOperator operator = p.getFirst();
       try {
         ba.delete(operator.getId(), p.getSecond());
+        LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
       }
       catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
