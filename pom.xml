@@ -28,7 +28,7 @@
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <netbeans.hint.license>malhar-inc</netbeans.hint.license>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
-    <hadoop.version>2.0.4-alpha</hadoop.version>
+    <hadoop.version>2.1.0-beta</hadoop.version>
     <github.global.server>github</github.global.server>
   </properties>
 

@@ -11,7 +11,7 @@ import junit.framework.Assert;
 
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
-import org.apache.hadoop.yarn.util.BuilderUtils;
+import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
@@ -61,10 +61,10 @@ public class LocalityTest {
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-    		NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null);
+    		NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources

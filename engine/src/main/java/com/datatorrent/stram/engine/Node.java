@@ -476,7 +476,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public void deactivate()
   {
     if (operator instanceof ActivationListener) {
-      ((ActivationListener)operator).deactivate();
+      ((ActivationListener<?>)operator).deactivate();
     }
     emitEndStream();
 

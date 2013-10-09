@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,20 +32,18 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.Clock;
-import org.apache.hadoop.yarn.SystemClock;
-import org.apache.hadoop.yarn.api.AMRMProtocol;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.util.SystemClock;
+import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.ClientRMProtocol;
-import org.apache.hadoop.yarn.api.ContainerManager;
+import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.StopContainerRequest;
-import org.apache.hadoop.yarn.api.records.AMResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.Container;
@@ -53,8 +52,10 @@ import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
+import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
+import org.apache.hadoop.yarn.client.api.async.impl.NMClientAsyncImpl;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.webapp.WebApp;
@@ -96,7 +97,7 @@ public class StramAppMaster //extends License for licensing using native
   static {
     // set system properties so they can be used in logger configuration
     Map<String, String> envs = System.getenv();
-    String containerIdString = envs.get(ApplicationConstants.AM_CONTAINER_ID_ENV);
+    String containerIdString = envs.get(Environment.CONTAINER_ID.name());
     if (containerIdString == null) {
       // container id should always be set in the env by the framework
       throw new IllegalArgumentException(
@@ -115,13 +116,12 @@ public class StramAppMaster //extends License for licensing using native
   // Configuration
   private final Configuration conf;
   private final YarnClientHelper yarnClient;
+  private final NMClientAsync nmClient;
   private LogicalPlan dag;
   // Handle to communicate with the Resource Manager
-  private AMRMProtocol resourceManager;
+  private ApplicationMasterProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
   private ApplicationAttemptId appAttemptID;
-  // TODO
-  // For status update for clients - yet to be implemented
   // Hostname of the container
   private final String appMasterHostname = "";
   // Tracking url to which app master publishes info for clients to monitor
@@ -145,7 +145,6 @@ public class StramAppMaster //extends License for licensing using native
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
-  //private AbstractDelegationTokenSecretManager<? extends TokenIdentifier> delegationTokenManager;
   private StramDelegationTokenManager delegationTokenManager = null;
 
   /**
@@ -390,6 +389,9 @@ public class StramAppMaster //extends License for licensing using native
                                                                DELEGATION_TOKEN_RENEW_INTERVAL,
                                                                DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     }
+    nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
+    nmClient.init(conf);
+    nmClient.start();
   }
 
   /**
@@ -419,7 +421,7 @@ public class StramAppMaster //extends License for licensing using native
     Map<String, String> envs = System.getenv();
 
     appAttemptID = Records.newRecord(ApplicationAttemptId.class);
-    if (!envs.containsKey(ApplicationConstants.AM_CONTAINER_ID_ENV)) {
+    if (!envs.containsKey(Environment.CONTAINER_ID.name())) {
       if (cliParser.hasOption("app_attempt_id")) {
         String appIdStr = cliParser.getOptionValue("app_attempt_id", "");
         appAttemptID = ConverterUtils.toApplicationAttemptId(appIdStr);
@@ -429,7 +431,7 @@ public class StramAppMaster //extends License for licensing using native
       }
     }
     else {
-      ContainerId containerId = ConverterUtils.toContainerId(envs.get(ApplicationConstants.AM_CONTAINER_ID_ENV));
+      ContainerId containerId = ConverterUtils.toContainerId(envs.get(Environment.CONTAINER_ID.name()));
       appAttemptID = containerId.getApplicationAttemptId();
     }
 
@@ -448,7 +450,7 @@ public class StramAppMaster //extends License for licensing using native
 
     this.dnmgr = new StreamingContainerManager(dag, true);
 
-    if (UserGroupInformation.isSecurityEnabled()) {
+    if (delegationTokenManager != null) {
       // start the secret manager
       delegationTokenManager.startThreads();
     }
@@ -482,9 +484,10 @@ public class StramAppMaster //extends License for licensing using native
 
   public void destroy()
   {
-    if (UserGroupInformation.isSecurityEnabled()) {
+    if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
+    nmClient.stop();
   }
 
   /**
@@ -497,18 +500,18 @@ public class StramAppMaster //extends License for licensing using native
     new HelpFormatter().printHelp("ApplicationMaster", opts);
   }
 
-  public boolean run() throws YarnRemoteException
+  public boolean run() throws YarnException
   {
     try {
       StramChild.eventloop.start();
       //executeLicensedCode(); for licensing using native
       execute();
     }
-    catch (RuntimeException re) {
+    catch (Exception re) {
       status = false;
-      LOG.error("Caught RuntimeException in execute()", re);
-      if (re.getCause() instanceof YarnRemoteException) {
-        throw (YarnRemoteException)re.getCause();
+      LOG.error("Caught Exception in execute()", re);
+      if (re.getCause() instanceof YarnException) {
+        throw (YarnException)re.getCause();
       }
     }
     finally {
@@ -527,7 +530,7 @@ public class StramAppMaster //extends License for licensing using native
 
   //@Override - for licensing using native
   @SuppressWarnings("SleepWhileInLoop")
-  public void execute()
+  public void execute() throws Exception
   {
     LOG.info("Starting ApplicationMaster");
 
@@ -535,30 +538,14 @@ public class StramAppMaster //extends License for licensing using native
     resourceManager = yarnClient.connectToRM();
 
     // Register self with ResourceManager
-    RegisterApplicationMasterResponse response;
-    try {
-      response = registerToRM();
-    }
-    catch (YarnRemoteException ex) {
-      throw new RuntimeException(ex);
-    }
+    RegisterApplicationMasterResponse response = registerToRM();
+
     // Dump out information about cluster capability as seen by the resource manager
-    int minMem = response.getMinimumResourceCapability().getMemory();
     int maxMem = response.getMaximumResourceCapability().getMemory();
-    LOG.info("Min mem capabililty of resources in this cluster " + minMem);
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
 
-    // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
-    // a multiple of the min value and cannot exceed the max.
-    // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
     int containerMemory = dag.getContainerMemoryMB();
-    if (containerMemory < minMem) {
-      LOG.info("Container memory specified below min threshold of cluster. Using min value."
-              + ", specified=" + containerMemory
-              + ", min=" + minMem);
-      containerMemory = minMem;
-    }
-    else if (containerMemory > maxMem) {
+    if (containerMemory > maxMem) {
       LOG.info("Container memory specified above max threshold of cluster. Using max value."
               + ", specified=" + containerMemory
               + ", max=" + maxMem);
@@ -592,7 +579,7 @@ public class StramAppMaster //extends License for licensing using native
       // we need getClusterNodes to populate the initial node list,
       // subsequent updates come through the heartbeat response
       GetClusterNodesRequest request = Records.newRecord(GetClusterNodesRequest.class);
-      ClientRMProtocol clientRMService = yarnClient.connectToASM();
+      ApplicationClientProtocol clientRMService = yarnClient.connectToASM();
       resourceRequestor.updateNodeReports(clientRMService.getClusterNodes(request).getNodeReports());
     }
     catch (Exception e) {
@@ -635,13 +622,7 @@ public class StramAppMaster //extends License for licensing using native
         }
       }
 
-      AMResponse amResp;
-      try {
-        amResp = sendContainerAskToRM(resourceReq, releasedContainers);
-      }
-      catch (YarnRemoteException ex) {
-        throw new RuntimeException(ex);
-      }
+      AllocateResponse amResp = sendContainerAskToRM(resourceReq, releasedContainers);
       releasedContainers.clear();
 
       // Retrieve list of allocated containers from the response
@@ -654,7 +635,6 @@ public class StramAppMaster //extends License for licensing using native
                 + ", containerId=" + allocatedContainer.getId()
                 + ", containerNode=" + allocatedContainer.getNodeId()
                 + ", containerNodeURI=" + allocatedContainer.getNodeHttpAddress()
-                + ", containerState" + allocatedContainer.getState()
                 + ", containerResourceMemory" + allocatedContainer.getResource().getMemory()
                 + ", priority" + allocatedContainer.getPriority());
         //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
@@ -680,7 +660,7 @@ public class StramAppMaster //extends License for licensing using native
         else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
-          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, delegationTokenManager, rpcImpl.getAddress());
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, rpcImpl.getAddress());
           Thread launchThread = new Thread(runnableLaunchContainer);
           launchThreads.add(launchThread);
           launchThread.start();
@@ -786,12 +766,11 @@ public class StramAppMaster //extends License for licensing using native
     LOG.info("Application completed. Signalling finish to RM");
 
     FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
-    finishReq.setAppAttemptId(appAttemptID);
     if (numFailedContainers.get() == 0) {
-      finishReq.setFinishApplicationStatus(FinalApplicationStatus.SUCCEEDED);
+      finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
     }
     else {
-      finishReq.setFinishApplicationStatus(FinalApplicationStatus.FAILED);
+      finishReq.setFinalApplicationStatus(FinalApplicationStatus.FAILED);
       String diagnostics = "Diagnostics."
               + ", total=" + numTotalContainers
               + ", completed=" + numCompletedContainers.get()
@@ -811,7 +790,7 @@ public class StramAppMaster //extends License for licensing using native
     try {
       resourceManager.finishApplicationMaster(finishReq);
     }
-    catch (YarnRemoteException ex) {
+    catch (YarnException ex) {
       throw new RuntimeException(ex);
     }
   }
@@ -822,10 +801,9 @@ public class StramAppMaster //extends License for licensing using native
    * @return the registration response from the RM
    * @throws YarnRemoteException
    */
-  private RegisterApplicationMasterResponse registerToRM() throws YarnRemoteException
+  private RegisterApplicationMasterResponse registerToRM() throws YarnException, IOException
   {
     RegisterApplicationMasterRequest appMasterRequest = Records.newRecord(RegisterApplicationMasterRequest.class);
-    appMasterRequest.setApplicationAttemptId(appAttemptID);
     appMasterRequest.setHost(appMasterHostname);
     appMasterRequest.setRpcPort(0);
     appMasterRequest.setTrackingUrl(appMasterTrackingUrl);
@@ -839,14 +817,13 @@ public class StramAppMaster //extends License for licensing using native
    * @return Response from RM to AM with allocated containers
    * @throws YarnRemoteException
    */
-  private AMResponse sendContainerAskToRM(List<ResourceRequest> requestedContainers, List<ContainerId> releasedContainers)
-          throws YarnRemoteException
+  private AllocateResponse sendContainerAskToRM(List<ResourceRequest> requestedContainers, List<ContainerId> releasedContainers)
+          throws YarnException, IOException
   {
     AllocateRequest req = Records.newRecord(AllocateRequest.class);
     req.setResponseId(rmRequestID.incrementAndGet());
-    req.setApplicationAttemptId(appAttemptID);
 
-    req.addAllAsks(requestedContainers);
+    req.setAskList(requestedContainers);
     // Send the request to RM
     if (requestedContainers.size() > 0) {
       LOG.info("Asking RM for containers: " + requestedContainers);
@@ -855,22 +832,13 @@ public class StramAppMaster //extends License for licensing using native
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
       Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
       if (allocatedContainer != null) {
-        // issue stop container - TODO: separate thread to not block heartbeat
-        try {
-          ContainerManager cm = yarnClient.connectToCM(allocatedContainer);
-          StopContainerRequest stopContainer = Records.newRecord(StopContainerRequest.class);
-          stopContainer.setContainerId(allocatedContainer.getId());
-          cm.stopContainer(stopContainer);
-          LOG.info("Stopped container {}", containerIdStr);
-        } catch (Exception e) {
-          // the node manager might be gone and we don't want that to fail the AM
-          LOG.warn("Failed to stop container {}", containerIdStr, e);
-        }
+        nmClient.stopContainerAsync(allocatedContainer.getId(), allocatedContainer.getNodeId());
+        LOG.info("Requested stop container {}", containerIdStr);
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
 
-    req.addAllReleases(releasedContainers);
+    req.setReleaseList(releasedContainers);
     //req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
 
     //LOG.info("Sending request to RM for containers"
@@ -887,8 +855,54 @@ public class StramAppMaster //extends License for licensing using native
 
     AllocateResponse resp = resourceManager.allocate(req);
 
-    return resp.getAMResponse();
+    return resp;
 
+  }
+
+  private class NMCallbackHandler
+    implements NMClientAsync.CallbackHandler {
+
+    public NMCallbackHandler() {
+    }
+
+    @Override
+    public void onContainerStopped(ContainerId containerId) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Succeeded to stop Container " + containerId);
+      }
+    }
+
+    @Override
+    public void onContainerStatusReceived(ContainerId containerId,
+        ContainerStatus containerStatus) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Container Status: id=" + containerId + ", status=" +
+            containerStatus);
+      }
+    }
+
+    @Override
+    public void onContainerStarted(ContainerId containerId, Map<String, ByteBuffer> allServiceResponse) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Succeeded to start Container " + containerId);
+      }
+    }
+
+    @Override
+    public void onStartContainerError(ContainerId containerId, Throwable t) {
+      LOG.error("Start container failed for: containerId={}" + containerId, t);
+    }
+
+    @Override
+    public void onGetContainerStatusError(
+        ContainerId containerId, Throwable t) {
+      LOG.error("Failed to query the status of Container " + containerId);
+    }
+
+    @Override
+    public void onStopContainerError(ContainerId containerId, Throwable t) {
+      LOG.warn("Failed to stop container {}", containerId);
+    }
   }
 
 }

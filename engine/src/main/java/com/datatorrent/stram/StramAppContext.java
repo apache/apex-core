@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.yarn.Clock;
+import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 

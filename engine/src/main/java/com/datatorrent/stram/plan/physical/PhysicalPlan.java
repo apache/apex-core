@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -957,6 +958,7 @@ public class PhysicalPlan {
   }
 
   // used for testing only
+  @VisibleForTesting
   public List<PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
     List<PTOperator> opers = Lists.newArrayList();
     for (StreamMapping ug : this.logicalToPTOperator.get(logicalOperator).outputStreams.values()) {

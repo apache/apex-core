@@ -56,7 +56,7 @@ public class ResourceRequestHandler {
 
   private ResourceRequest newResourceRequest(int priority, String resourceName, int containerMemory) {
     ResourceRequest request = Records.newRecord(ResourceRequest.class);
-    request.setHostName(resourceName);
+    request.setResourceName(resourceName);
     request.setNumContainers(1);
     Priority pri = Records.newRecord(Priority.class);
     pri.setPriority(priority);

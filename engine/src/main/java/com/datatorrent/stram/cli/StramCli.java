@@ -28,13 +28,12 @@ import jline.console.history.MemoryHistory;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
-import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
-import org.apache.hadoop.yarn.util.Records;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
@@ -775,8 +774,8 @@ public class StramCli
   private List<ApplicationReport> getApplicationList()
   {
     try {
-      GetAllApplicationsRequest appsReq = Records.newRecord(GetAllApplicationsRequest.class);
-      return rmClient.clientRM.getAllApplications(appsReq).getApplicationList();
+      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
     }
     catch (Exception e) {
       throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
@@ -827,7 +826,10 @@ public class StramCli
         throw new CliException(msg);
       }
     }
-    catch (YarnRemoteException rmExc) {
+    catch (YarnException rmExc) {
+      throw new CliException("Unable to determine application status.", rmExc);
+    }
+    catch (IOException rmExc) {
       throw new CliException("Unable to determine application status.", rmExc);
     }
     return r;
@@ -1204,7 +1206,7 @@ public class StramCli
             rmClient.killApplication(currentApp.getApplicationId());
             currentApp = null;
           }
-          catch (YarnRemoteException e) {
+          catch (YarnException e) {
             throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
           }
         }
@@ -1223,7 +1225,7 @@ public class StramCli
           }
         }
       }
-      catch (YarnRemoteException e) {
+      catch (YarnException e) {
         throw new CliException("Failed to kill " + ((app == null || app.getApplicationId() == null) ? "unknown application" : app.getApplicationId()) + ". Aborting killing of any additional applications.", e);
       }
       catch (NumberFormatException nfe) {
@@ -1423,7 +1425,7 @@ public class StramCli
           System.err.println("Application terminated unsucessful.");
         }
       }
-      catch (YarnRemoteException e) {
+      catch (YarnException e) {
         throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
       }
     }

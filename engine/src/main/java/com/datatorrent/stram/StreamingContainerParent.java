@@ -7,9 +7,6 @@ package com.datatorrent.stram;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.ProtocolSignature;
@@ -20,10 +17,9 @@ import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.security.authorize.Service;
 import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.TokenIdentifier;
-import org.apache.hadoop.yarn.YarnException;
-import org.apache.hadoop.yarn.service.CompositeService;
-
-import com.datatorrent.api.DAGContext;
+import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.util.SecureExecutor;
 
@@ -34,7 +30,7 @@ import com.datatorrent.stram.util.SecureExecutor;
  *
  * @since 0.3.2
  */
-public class StreamingContainerParent extends CompositeService implements StreamingContainerUmbilicalProtocol {
+public class StreamingContainerParent extends org.apache.hadoop.service.CompositeService implements StreamingContainerUmbilicalProtocol {
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerParent.class);
   private Server server;
@@ -72,10 +68,8 @@ public class StreamingContainerParent extends CompositeService implements Stream
     LOG.info("Config: " + conf);
     LOG.info("Listener thread count " + listenerThreadCount);
     try {
-      server =
-          RPC.getServer(StreamingContainerUmbilicalProtocol.class, this, "0.0.0.0", 0,
-              listenerThreadCount,
-              false, conf, tokenSecretManager);
+      server = new RPC.Builder(conf).setProtocol(StreamingContainerUmbilicalProtocol.class).setInstance(this)
+          .setBindAddress("0.0.0.0").setPort(0).setNumHandlers(listenerThreadCount).setSecretManager(tokenSecretManager).setVerbose(false).build();
 
       // Enable service authorization?
       if (conf.getBoolean(
@@ -98,7 +92,7 @@ public class StreamingContainerParent extends CompositeService implements Stream
       server.start();
       this.address = NetUtils.getConnectAddress(server);
     } catch (IOException e) {
-      throw new YarnException(e);
+      throw new YarnRuntimeException(e);
     }
   }
 

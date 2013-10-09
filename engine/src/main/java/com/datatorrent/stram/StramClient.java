@@ -5,16 +5,13 @@
 package com.datatorrent.stram;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.esotericsoftware.kryo.Kryo;
-import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -34,23 +31,43 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.protocolrecords.*;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.SubmitApplicationRequest;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
+import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
+import org.apache.hadoop.yarn.api.records.LocalResource;
+import org.apache.hadoop.yarn.api.records.LocalResourceType;
+import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
+import org.apache.hadoop.yarn.api.records.NodeReport;
+import org.apache.hadoop.yarn.api.records.Priority;
+import org.apache.hadoop.yarn.api.records.QueueACL;
+import org.apache.hadoop.yarn.api.records.QueueUserACLInfo;
+import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
-import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.apache.hadoop.yarn.util.ProtoUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
-
 import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.util.ConfigUtils;
+import com.esotericsoftware.kryo.Kryo;
+import com.google.common.base.Objects;
+import com.google.common.collect.Lists;
 
 /**
  *
@@ -73,8 +90,6 @@ public class StramClient
   private int amPriority = 0;
   // Queue for App master
   private String amQueue = "default";
-  // User to run app master as
-  private String amUser = "";
   private ApplicationId appId;
   private LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
@@ -203,7 +218,6 @@ public class StramClient
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
     amQueue = cliParser.getOptionValue("queue", amQueue);
-    amUser = cliParser.getOptionValue("user", amUser);
     int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", ""+dag.getMasterMemoryMB()));
 
     if (amMemory < 0) {
@@ -329,7 +343,7 @@ public class StramClient
    *
    * @throws IOException
    */
-  public void startApplication() throws IOException
+  public void startApplication() throws YarnException, IOException
   {
     // process dependencies
     LinkedHashSet<String> localJarFiles = findJars(dag);
@@ -354,7 +368,7 @@ public class StramClient
                + ", nodeAddress" + node.getHttpAddress()
                + ", nodeRackName" + node.getRackName()
                + ", nodeNumContainers" + node.getNumContainers()
-               + ", nodeHealthStatus" + node.getNodeHealthStatus());
+               + ", nodeHealthStatus" + node.getHealthReport());
     }
     /*
      * This is NPE in 2.0-alpha as request needs to provide specific queue name GetQueueInfoRequest queueInfoReq = Records.newRecord(GetQueueInfoRequest.class);
@@ -378,27 +392,11 @@ public class StramClient
     GetNewApplicationResponse newApp = getNewApplication();
     appId = newApp.getApplicationId();
 
-    // TODO get min/max resource capabilities from RM and change memory ask if needed
-    // If we do not have min/max, we may not be able to correctly request
-    // the required resources from the RM for the app master
-    // Memory ask has to be a multiple of min and less than max.
     // Dump out information about cluster capability as seen by the resource manager
-    int minMem = newApp.getMinimumResourceCapability().getMemory();
     int maxMem = newApp.getMaximumResourceCapability().getMemory();
-    LOG.info("Min mem capabililty of resources in this cluster " + minMem);
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
-
-    // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
-    // a multiple of the min value and cannot exceed the max.
-    // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
     int amMemory = dag.getMasterMemoryMB();
-    if (amMemory < minMem) {
-      LOG.info("AM memory specified below min threshold of cluster. Using min value."
-               + ", specified=" + amMemory
-               + ", min=" + minMem);
-      amMemory = minMem;
-    }
-    else if (amMemory > maxMem) {
+    if (amMemory > maxMem) {
       LOG.info("AM memory specified above max threshold of cluster. Using max value."
                + ", specified=" + amMemory
                + ", max=" + maxMem);
@@ -420,6 +418,30 @@ public class StramClient
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
+    // Setup security tokens
+    if (UserGroupInformation.isSecurityEnabled()) {
+      Credentials credentials = new Credentials();
+      String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
+      if (tokenRenewer == null || tokenRenewer.length() == 0) {
+        throw new IOException(
+          "Can't get Master Kerberos principal for the RM to use as renewer");
+      }
+
+      // For now, only getting tokens for the default file-system.
+      FileSystem fs = FileSystem.get(conf);
+      final Token<?> tokens[] = fs.addDelegationTokens(tokenRenewer, credentials);
+      if (tokens != null) {
+        for (Token<?> token : tokens) {
+          LOG.info("Got dt for " + fs.getUri() + "; " + token);
+        }
+      }
+      DataOutputBuffer dob = new DataOutputBuffer();
+      credentials.writeTokenStorageToStream(dob);
+      ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
+      amContainer.setTokens(fsTokens);
+    }
+
+/*
     // If Kerberos security is enabled get ResourceManager and NameNode delegation tokens.
     // Set these tokens on the container so that they are sent as part of application submission.
     // This also sets them up for renewal by ResourceManager. The NameNode delegation rmToken
@@ -435,13 +457,8 @@ public class StramClient
       GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
       gdtr.setRenewer("yarn");
       GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
-      DelegationToken rmDelToken = gdresp.getRMDelegationToken();
+      org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
 
-      /*
-      String rmStrAddress = rmAddress.getHostName() + ":" + rmAddress.getPort();
-      Token<RMDelegationTokenIdentifier> rmToken = new Token<RMDelegationTokenIdentifier>(rmDelToken.getIdentifier().array(), rmDelToken.getPassword().array(),
-                                                                                                                                            new Text(rmDelToken.getKind()), new Text(rmStrAddress));
-      */
       Token<RMDelegationTokenIdentifier> rmToken = ProtoUtils.convertFromProtoFormat(rmDelToken, rmAddress);
 
       // Get the NameNode delegation rmToken
@@ -457,9 +474,9 @@ public class StramClient
       credentials.writeTokenStorageToStream(dataOutput);
       byte[] tokensBytes = dataOutput.getData();
       ByteBuffer tokensBuf = ByteBuffer.wrap(tokensBytes);
-      amContainer.setContainerTokens(tokensBuf);
+      amContainer.setTokens(tokensBuf);
     }
-
+*/
     String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
     // copy required jar files to dfs, to be localized for containers
@@ -583,7 +600,7 @@ public class StramClient
     // For now, only memory is supported so we set memory requirements
     Resource capability = Records.newRecord(Resource.class);
     capability.setMemory(amMemory);
-    amContainer.setResource(capability);
+    appContext.setResource(capability);
 
     // Service data is a binary blob that can be passed to the application
     // Not needed in this scenario
@@ -599,12 +616,8 @@ public class StramClient
     // TODO - what is the range for priority? how to decide?
     pri.setPriority(amPriority);
     appContext.setPriority(pri);
-
     // Set the queue to which this application is to be submitted in the RM
     appContext.setQueue(amQueue);
-    // Set the user submitting this application
-    // TODO can it be empty?
-    appContext.setUser(amUser);
 
     // Create the request to send to the applications manager
     SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
@@ -617,8 +630,8 @@ public class StramClient
     String specStr = Objects.toStringHelper("Submitting application: ")
       .add("name", appContext.getApplicationName())
       .add("queue", appContext.getQueue())
-      .add("user", appContext.getUser())
-      .add("resource", appContext.getAMContainerSpec().getResource())
+      .add("user", UserGroupInformation.getLoginUser())
+      .add("resource", appContext.getResource())
       .toString();
     LOG.info(specStr);
     if (dag.isDebug()) {
@@ -628,12 +641,12 @@ public class StramClient
 
   }
 
-  public ApplicationReport getApplicationReport() throws YarnRemoteException
+  public ApplicationReport getApplicationReport() throws YarnException, IOException
   {
     return this.rmClient.getApplicationReport(this.appId);
   }
 
-  public void killApplication() throws YarnRemoteException {
+  public void killApplication() throws YarnException, IOException {
     this.rmClient.killApplication(this.appId);
   }
 
@@ -647,14 +660,14 @@ public class StramClient
    * @return true if application completed successfully
    * @throws YarnRemoteException
    */
-  public boolean monitorApplication() throws YarnRemoteException
+  public boolean monitorApplication() throws YarnException, IOException
   {
     ClientRMHelper.AppStatusCallback callback = new ClientRMHelper.AppStatusCallback() {
       @Override
       public boolean exitLoop(ApplicationReport report) {
         LOG.info("Got application report from ASM for"
             + ", appId=" + appId.getId()
-            + ", clientToken=" + report.getClientToken()
+            + ", clientToken=" + report.getClientToAMToken()
             + ", appDiagnostics=" + report.getDiagnostics()
             + ", appMasterHost=" + report.getHost()
             + ", appQueue=" + report.getQueue()
@@ -677,7 +690,7 @@ public class StramClient
    * @return New Application
    * @throws YarnRemoteException
    */
-  private GetNewApplicationResponse getNewApplication() throws YarnRemoteException
+  private GetNewApplicationResponse getNewApplication() throws YarnException, IOException
   {
     GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);
     GetNewApplicationResponse response = rmClient.clientRM.getNewApplication(request);
