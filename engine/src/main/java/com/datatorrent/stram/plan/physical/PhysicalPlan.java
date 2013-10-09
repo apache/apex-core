@@ -1122,7 +1122,7 @@ public class PhysicalPlan {
 
   /**
    * Connect operators through stream. Currently new stream will not affect locality.
-   * @param sm
+   * @param ipm Meta information about the input port
    */
   public void connectInput(InputPortMeta ipm)
   {
