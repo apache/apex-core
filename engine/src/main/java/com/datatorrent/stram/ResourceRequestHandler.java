@@ -17,7 +17,6 @@ import com.google.common.collect.Sets;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
-import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.util.Records;
 
@@ -42,7 +41,7 @@ public class ResourceRequestHandler {
   /**
    * Setup the request(s) that will be sent to the RM for the container ask.
    */
-  public void addResourceRequests(ContainerStartRequest csr, int memory, List<ContainerRequest> requests) {
+  public ContainerRequest createContainerRequest(ContainerStartRequest csr, int memory) {
     int priority = csr.container.getResourceRequestPriority();
     // check for node locality constraint
     String[] nodes = null;
@@ -57,7 +56,7 @@ public class ResourceRequestHandler {
     // For now, only memory is supported so we set memory requirements
     Resource capability = Records.newRecord(Resource.class);
     capability.setMemory(memory);
-    requests.add(new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority)));
+    return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority));
   }
 
   private final Map<String, NodeReport> nodeReportMap = Maps.newHashMap();

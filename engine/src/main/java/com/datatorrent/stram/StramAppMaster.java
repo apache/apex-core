@@ -116,8 +116,6 @@ public class StramAppMaster //extends License for licensing using native
   private final AMRMClient<ContainerRequest> amRmClient;
   private final NMClientAsync nmClient;
   private LogicalPlan dag;
-  // Handle to communicate with the Resource Manager
-  //private ApplicationMasterProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
   private ApplicationAttemptId appAttemptID;
   // Hostname of the container
@@ -133,7 +131,7 @@ public class StramAppMaster //extends License for licensing using native
   // Count of failed containers
   private final AtomicInteger numFailedContainers = new AtomicInteger();
   // Launch threads
-  private final List<Thread> launchThreads = new ArrayList<Thread>();
+  //private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
   private StreamingContainerParent rpcImpl;
   private StreamingContainerManager dnmgr;
@@ -528,7 +526,7 @@ public class StramAppMaster //extends License for licensing using native
 
   //@Override - for licensing using native
   @SuppressWarnings("SleepWhileInLoop")
-  public void execute() throws Exception
+  public void execute() throws YarnException, IOException
   {
     LOG.info("Starting ApplicationMaster");
 
@@ -541,11 +539,9 @@ public class StramAppMaster //extends License for licensing using native
       LOG.debug("token: " + token);
     }
 
+    // Register self with ResourceManager
     RegisterApplicationMasterResponse response = amRmClient.registerApplicationMaster(appMasterHostname, 0, appMasterTrackingUrl);
     
-    // Register self with ResourceManager
-    //RegisterApplicationMasterResponse response = registerToRM();
-
     // Dump out information about cluster capability as seen by the resource manager
     int maxMem = response.getMaximumResourceCapability().getMemory();
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
@@ -618,19 +614,19 @@ public class StramAppMaster //extends License for licensing using native
       }
 
       // Setup request to be sent to RM to allocate containers
-      List<ContainerRequest> resourceReq = new ArrayList<ContainerRequest>();
+      List<ContainerRequest> containerRequests = new ArrayList<ContainerRequest>();
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
         StramChildAgent.ContainerStartRequest csr;
         while ((csr = dnmgr.containerStartRequests.poll()) != null) {
           csr.container.setResourceRequestPriority(nextRequestPriority++);
-          resourceRequestor.addResourceRequests(csr, containerMemory, resourceReq);
+          containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory));
           numTotalContainers++;
           numRequestedContainers++;
         }
       }
 
-      AllocateResponse amResp = sendContainerAskToRM(resourceReq, releasedContainers);
+      AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
       releasedContainers.clear();
 
       // Retrieve list of allocated containers from the response
@@ -668,10 +664,11 @@ public class StramAppMaster //extends License for licensing using native
         else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
-          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, rpcImpl.getAddress());
-          Thread launchThread = new Thread(runnableLaunchContainer);
-          launchThreads.add(launchThread);
-          launchThread.start();
+          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, rpcImpl.getAddress());
+          //Thread launchThread = new Thread(runnableLaunchContainer);
+          //launchThreads.add(launchThread);
+          //launchThread.start();
+          launchContainer.run(); // communication with NMs is now async
         }
       }
 
@@ -757,18 +754,6 @@ public class StramAppMaster //extends License for licensing using native
       dnmgr.monitorHeartbeat();
     }
 
-    // Join all launched threads
-    // needed for when we time out
-    // and we need to release containers
-    for (Thread launchThread : launchThreads) {
-      try {
-        launchThread.join(10000);
-      }
-      catch (InterruptedException e) {
-        LOG.info("Exception thrown in thread join", e);
-      }
-    }
-
     // When the application completes, it should send a finish application signal
     // to the RM
     LOG.info("Application completed. Signalling finish to RM");
@@ -795,12 +780,7 @@ public class StramAppMaster //extends License for licensing using native
       status = true;
     }
     LOG.info("diagnostics: " + finishReq.getDiagnostics());
-    try {
-      amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
-    }
-    catch (YarnException ex) {
-      throw new RuntimeException(ex);
-    }
+    amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
   }
 
   /**
