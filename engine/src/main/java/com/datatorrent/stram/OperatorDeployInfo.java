@@ -225,6 +225,7 @@ public class OperatorDeployInfo implements Serializable
    */
   public AttributeMap contextAttributes;
 
+  public AttributeMap runtimeAttributes;
 
   /**
    *

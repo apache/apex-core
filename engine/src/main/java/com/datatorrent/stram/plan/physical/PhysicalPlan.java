@@ -956,6 +956,10 @@ public class PhysicalPlan {
     return this.logicalToPTOperator.containsKey(om);
   }
 
+  public Set<OperatorMeta> getParallelPartitions(OperatorMeta om) {
+    return this.logicalToPTOperator.get(om).parallelPartitions;
+  }
+
   // used for testing only
   public List<PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
     List<PTOperator> opers = Lists.newArrayList();

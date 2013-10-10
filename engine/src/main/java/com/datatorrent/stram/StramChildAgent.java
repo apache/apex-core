@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -563,7 +565,43 @@ public class StramChildAgent {
     ndi.checkpointWindowId = checkpointWindowId;
     ndi.declaredId = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
+    // Need to investigate if one attribute list can be used for context and runtime attributes in which case a new attribute list
+    // needs to be created instead of all instances using a common one from logical
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
+
+    ndi.runtimeAttributes = new DefaultAttributeMap(com.datatorrent.api.Context.OperatorContext.class);
+
+    if (oper.getPlan().getOperators(oper.getOperatorMeta()).size() > 1) {
+      ndi.runtimeAttributes.attr(OperatorContext.IS_PARTITIONED).set(true);
+
+      // Strict partitioning specifies that instances of an operator are not in independent parallel partition paths
+      // If the instances are the last operator in the path and have their output unified then they are not independent and hence strictly partitioned
+      Set<LogicalPlan.OperatorMeta> parallelPartitions = oper.getPlan().getParallelPartitions(oper.getOperatorMeta());
+      if (parallelPartitions.size() > 0) {
+        boolean strict = true;
+        if (!oper.getOperatorMeta().getOutputStreams().isEmpty()) {
+          for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> output : oper.getOperatorMeta().getOutputStreams().entrySet()) {
+            StreamMeta stream = output.getValue();
+            List<InputPortMeta> inputs = stream.getSinks();
+            for (InputPortMeta input : inputs) {
+              if (parallelPartitions.contains(input.getOperatorWrapper())) {
+                strict = false;
+                break;
+              }
+            }
+          }
+        } else {
+          strict = false;
+        }
+        ndi.runtimeAttributes.attr(OperatorContext.IS_STRICT_PARTITIONED).set(strict);
+      } else {
+        ndi.runtimeAttributes.attr(OperatorContext.IS_STRICT_PARTITIONED).set(true);
+      }
+    } else {
+      ndi.runtimeAttributes.attr(OperatorContext.IS_PARTITIONED).set(false);
+      ndi.runtimeAttributes.attr(OperatorContext.IS_STRICT_PARTITIONED).set(false);
+    }
+
     return ndi;
   }
 

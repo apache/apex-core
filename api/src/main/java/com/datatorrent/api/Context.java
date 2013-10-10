@@ -159,6 +159,10 @@ public interface Context
      */
     public static final AttributeKey<Operator.ProcessingMode> PROCESSING_MODE = new AttributeKey<Operator.ProcessingMode>("processMode");
 
+    public static final AttributeKey<Boolean> IS_PARTITIONED = new AttributeKey<Boolean>("isPartitioned");
+
+    public static final AttributeKey<Boolean> IS_STRICT_PARTITIONED = new AttributeKey<Boolean>("isStrictPartitioned");
+
     /**
      * Return the operator runtime id.
      *
@@ -172,6 +176,8 @@ public interface Context
      * @return A boolean indicating whether the operator is partitioned or not
      */
     boolean isPartitioned();
+
+    boolean isStrictPartitioned();
 
   }
 

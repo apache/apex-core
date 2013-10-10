@@ -7,6 +7,7 @@ package com.datatorrent.api;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.util.ArrayList;
@@ -22,9 +23,33 @@ import org.junit.Test;
 public class PartitionedStateTest
 {
 
-  private static List<Boolean> partitionedStates = new ArrayList<Boolean>();
-
   public static class TestPartitionOperator extends BaseOperator {
+
+    public static PartitionedState partitionedState = new PartitionedState();
+
+    public static final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>() {
+
+      @Override
+      public void process(Object tuple)
+      {
+      }
+
+    };
+
+    @OutputPortFieldAnnotation(name="output", optional = true)
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
+
+    @Override
+    public void setup(OperatorContext context)
+    {
+      partitionedState.setStates(context);
+    }
+
+  }
+
+  public static class TestOutputOperator extends BaseOperator {
+
+    public static PartitionedState partitionedState = new PartitionedState();
 
     public static final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>() {
 
@@ -38,13 +63,14 @@ public class PartitionedStateTest
     @Override
     public void setup(OperatorContext context)
     {
-      boolean partitioned = context.isPartitioned();
-      partitionedStates.add(partitioned);
+      partitionedState.setStates(context);
     }
 
   }
 
   public static class TestInputOperator implements InputOperator {
+
+    public static PartitionedState partitionedState = new PartitionedState();
 
     public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
 
@@ -66,6 +92,9 @@ public class PartitionedStateTest
     @Override
     public void setup(OperatorContext context)
     {
+      System.out.println("Input partition " + context.isPartitioned());
+      System.out.println("Input strict partition " + context.isStrictPartitioned());
+      partitionedState.setStates(context);
     }
 
     @Override
@@ -73,6 +102,21 @@ public class PartitionedStateTest
     {
     }
 
+  }
+
+  private static class PartitionedState {
+    public List<Boolean> partitionedStates = new ArrayList<Boolean>();
+    public List<Boolean> strictPartitionedStates = new ArrayList<Boolean>();
+
+    public void setStates(OperatorContext context) {
+      partitionedStates.add(context.isPartitioned());
+      strictPartitionedStates.add(context.isStrictPartitioned());
+    }
+
+    public void clearStates() {
+      partitionedStates.clear();
+      strictPartitionedStates.clear();
+    }
   }
 
   @Test
@@ -85,20 +129,45 @@ public class PartitionedStateTest
     TestPartitionOperator op1 = new TestPartitionOperator();
     dag.addOperator("op1", op1);
 
-    dag.setAttribute(op1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(op1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+
+    TestOutputOperator op2 = new TestOutputOperator();
+    dag.addOperator("op2", op2);
+
+    dag.setAttribute(op2, OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
     dag.addStream("s1", i1.output, op1.input);
+    dag.addStream("s2", op1.output, op2.input);
 
-    partitionedStates.clear();
+    TestInputOperator.partitionedState.clearStates();
+    TestPartitionOperator.partitionedState.clearStates();
+    TestOutputOperator.partitionedState.clearStates();
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.run(2000);
+    lc.run(4000);
+    lc.shutdown();
 
-    Assert.assertTrue("partitioned states not empty ", partitionedStates.size() > 0);
-
-    for (boolean partitionedState : partitionedStates) {
-      Assert.assertTrue("partitioned state", partitionedState);
+    for (boolean partitioned : TestInputOperator.partitionedState.partitionedStates) {
+      Assert.assertFalse("input operator partitioned", partitioned);
     }
+    for (boolean partitioned : TestInputOperator.partitionedState.strictPartitionedStates) {
+      Assert.assertFalse("input operator strict partitioned", partitioned);
+    }
+
+    for (boolean partitioned : TestPartitionOperator.partitionedState.partitionedStates) {
+      Assert.assertTrue("partition operator partitioned", partitioned);
+    }
+    for (boolean partitioned : TestPartitionOperator.partitionedState.strictPartitionedStates) {
+      Assert.assertTrue("partition operator strict partitioned", partitioned);
+    }
+
+    for (boolean partitioned : TestOutputOperator.partitionedState.partitionedStates) {
+      Assert.assertTrue("output operator partitioned", partitioned);
+    }
+    for (boolean partitioned : TestPartitionOperator.partitionedState.strictPartitionedStates) {
+      Assert.assertTrue("output operator strict partitioned", partitioned);
+    }
+
   }
 
   @Test
@@ -109,23 +178,48 @@ public class PartitionedStateTest
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
+    dag.setAttribute(i1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+
     TestPartitionOperator op1 = new TestPartitionOperator();
     dag.addOperator("op1", op1);
 
     dag.setInputPortAttribute(op1.input, PortContext.PARTITION_PARALLEL, true);
 
-    dag.addStream("s1", i1.output, op1.input);
+    TestOutputOperator op2 = new TestOutputOperator();
+    dag.addOperator("op2", op2);
 
-    partitionedStates.clear();
+    dag.addStream("s1", i1.output, op1.input);
+    dag.addStream("s2", op1.output, op2.input);
+
+    TestInputOperator.partitionedState.clearStates();
+    TestPartitionOperator.partitionedState.clearStates();
+    TestOutputOperator.partitionedState.clearStates();
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.run(2000);
+    lc.run(4000);
+    lc.shutdown();
 
-    Assert.assertTrue("partitioned states not empty ", partitionedStates.size() > 0);
-
-    for (boolean partitionedState : partitionedStates) {
-      Assert.assertTrue("partitioned state", partitionedState);
+    for (boolean partitioned : TestInputOperator.partitionedState.partitionedStates) {
+      Assert.assertTrue("input operator partitioned", partitioned);
     }
+    for (boolean partitioned : TestInputOperator.partitionedState.strictPartitionedStates) {
+      Assert.assertFalse("input operator strict partitioned", partitioned);
+    }
+
+    for (boolean partitioned : TestPartitionOperator.partitionedState.partitionedStates) {
+      Assert.assertTrue("partition operator partitioned", partitioned);
+    }
+    for (boolean partitioned : TestPartitionOperator.partitionedState.strictPartitionedStates) {
+      Assert.assertTrue("partition operator strict partitioned", partitioned);
+    }
+
+    for (boolean partitioned : TestOutputOperator.partitionedState.partitionedStates) {
+      Assert.assertFalse("output operator partitioned", partitioned);
+    }
+    for (boolean partitioned : TestOutputOperator.partitionedState.strictPartitionedStates) {
+      Assert.assertFalse("partition operator strict partitioned", partitioned);
+    }
+
   }
 
 }

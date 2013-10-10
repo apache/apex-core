@@ -1099,15 +1099,9 @@ public class StramChild
     final Node<?> node = nodes.get(ndi.id);
 
     OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
-    // Figure out a better way than going through the inputs twice, once here and second time in the input port setup below
-    for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
-      // Set the partitioned state
-      if (((idi.partitionKeys != null) && (idi.partitionKeys.size() != 0))
-              || (idi.getAttributes().attr(PortContext.PARTITION_PARALLEL).get() == Boolean.TRUE)) {
-        operatorContext.setPartitioned(true);
-        break;
-      }
-    }
+    // Investigate using context attributes directly instead of additional fields in context
+    operatorContext.setPartitioned(ndi.runtimeAttributes.attr(OperatorContext.IS_PARTITIONED).get());
+    operatorContext.setStrictPartitioned(ndi.runtimeAttributes.attr(OperatorContext.IS_STRICT_PARTITIONED).get());
     node.setup(operatorContext);
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
