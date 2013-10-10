@@ -63,12 +63,12 @@ public class LaunchContainerRunnable implements Runnable
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, LogicalPlan topology, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
+  public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, LogicalPlan dag, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
   {
     this.container = lcontainer;
     this.nmClient = nmClient;
     this.heartbeatAddress = heartbeatAddress;
-    this.dag = topology;
+    this.dag = dag;
     this.delegationTokenManager = delegationTokenManager;
   }
 
@@ -117,7 +117,7 @@ public class LaunchContainerRunnable implements Runnable
   }
 
   /**
-   * Connects to CM, sets up container launch context for shell command and eventually dispatches the container start request to the CM.
+   * Connects to CM, sets up container launch context and eventually dispatches the container start request to the CM.
    */
   @Override
   public void run()
@@ -129,7 +129,7 @@ public class LaunchContainerRunnable implements Runnable
     // Set the environment
     ctx.setEnvironment(containerEnv);
 
-    //if (UserGroupInformation.isSecurityEnabled()) {
+    if (UserGroupInformation.isSecurityEnabled()) {
       Token<StramDelegationTokenIdentifier> stramToken = null;
       try {
         UserGroupInformation ugi = UserGroupInformation.getLoginUser();
@@ -158,8 +158,7 @@ public class LaunchContainerRunnable implements Runnable
       catch (IOException e) {
         LOG.error("Error generating delegation token", e);
       }
-
-    //}
+    }
 
     // Set the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();

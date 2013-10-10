@@ -5,6 +5,7 @@
 package com.datatorrent.stram;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +36,8 @@ import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.GetDelegationTokenRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.GetDelegationTokenResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoRequest;
@@ -52,8 +55,10 @@ import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.QueueACL;
 import org.apache.hadoop.yarn.api.records.QueueUserACLInfo;
 import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.impl.pb.ProtoUtils;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
@@ -65,6 +70,7 @@ import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
@@ -440,7 +446,6 @@ public class StramClient
       ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
       amContainer.setTokens(fsTokens);
     }
-
 /*
     // If Kerberos security is enabled get ResourceManager and NameNode delegation tokens.
     // Set these tokens on the container so that they are sent as part of application submission.
@@ -451,25 +456,24 @@ public class StramClient
 
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = ConfigUtils.getRMAddress(yarnConf);
-      String rmUsername = ConfigUtils.getRMUsername(yarnConf);
+      //String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
+      String tokenRenewer = ConfigUtils.getRMUsername(yarnConf);
 
       // Get the ResourceManager delegation rmToken
       GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
-      gdtr.setRenewer("yarn");
+      gdtr.setRenewer(tokenRenewer);
       GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
       org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
-
-      Token<RMDelegationTokenIdentifier> rmToken = ProtoUtils.convertFromProtoFormat(rmDelToken, rmAddress);
+      Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
 
       // Get the NameNode delegation rmToken
       FileSystem dfs = FileSystem.get(conf);
-      Token<?> hdfsToken = dfs.getDelegationToken(rmUsername);
+      Token<?> hdfsToken = dfs.getDelegationToken(tokenRenewer);
 
       // Setup the credentials to serialize the tokens which can be set on the container.
       Credentials credentials = new Credentials();
       credentials.addToken(rmToken.getService(), rmToken);
       credentials.addToken(hdfsToken.getService(), hdfsToken);
-
       DataOutputBuffer dataOutput = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dataOutput);
       byte[] tokensBytes = dataOutput.getData();

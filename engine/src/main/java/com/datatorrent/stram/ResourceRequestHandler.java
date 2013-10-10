@@ -18,6 +18,7 @@ import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
+import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
@@ -41,33 +42,22 @@ public class ResourceRequestHandler {
   /**
    * Setup the request(s) that will be sent to the RM for the container ask.
    */
-  public void addResourceRequests(ContainerStartRequest csr, int memory, List<ResourceRequest> requests) {
+  public void addResourceRequests(ContainerStartRequest csr, int memory, List<ContainerRequest> requests) {
     int priority = csr.container.getResourceRequestPriority();
     // check for node locality constraint
+    String[] nodes = null;
+    String[] racks = null;
+    
     String host = getHost(csr, memory);
     if(host != null) {
-      requests.add(newResourceRequest(priority, host, memory));
+      nodes = new String[] {host};
       // in order to request a host, we also have to request the rack
-      requests.add(newResourceRequest(priority, this.nodeToRack.get(host), memory));
+      racks = new String[] {this.nodeToRack.get(host)};
     }
-    // off-switch always required
-    requests.add(newResourceRequest(priority, "*", memory));
-  }
-
-  private ResourceRequest newResourceRequest(int priority, String resourceName, int containerMemory) {
-    ResourceRequest request = Records.newRecord(ResourceRequest.class);
-    request.setResourceName(resourceName);
-    request.setNumContainers(1);
-    Priority pri = Records.newRecord(Priority.class);
-    pri.setPriority(priority);
-    request.setPriority(pri);
-
-    // Set up resource type requirements
     // For now, only memory is supported so we set memory requirements
     Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(containerMemory);
-    request.setCapability(capability);
-    return request;
+    capability.setMemory(memory);
+    requests.add(new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority)));
   }
 
   private final Map<String, NodeReport> nodeReportMap = Maps.newHashMap();

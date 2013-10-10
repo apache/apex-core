@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram;
 
+import static java.lang.Thread.sleep;
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -13,15 +15,12 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -31,18 +30,13 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.util.Clock;
-import org.apache.hadoop.yarn.util.SystemClock;
-import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
-import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
-import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -51,23 +45,27 @@ import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.ResourceRequest;
+import org.apache.hadoop.yarn.client.api.AMRMClient;
+import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
 import org.apache.hadoop.yarn.client.api.async.impl.NMClientAsyncImpl;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
-
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -115,20 +113,17 @@ public class StramAppMaster //extends License for licensing using native
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
   // Configuration
   private final Configuration conf;
-  private final YarnClientHelper yarnClient;
+  private final AMRMClient<ContainerRequest> amRmClient;
   private final NMClientAsync nmClient;
   private LogicalPlan dag;
   // Handle to communicate with the Resource Manager
-  private ApplicationMasterProtocol resourceManager;
+  //private ApplicationMasterProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
   private ApplicationAttemptId appAttemptID;
   // Hostname of the container
   private final String appMasterHostname = "";
   // Tracking url to which app master publishes info for clients to monitor
   private String appMasterTrackingUrl = "";
-  // App Master configuration
-  // Incremental counter for rpc calls to the RM
-  private final AtomicInteger rmRequestID = new AtomicInteger();
   // Simple flag to denote whether all works is done
   private boolean appDone = false;
   // Counter for completed containers ( complete denotes successful or failed )
@@ -381,7 +376,6 @@ public class StramAppMaster //extends License for licensing using native
   {
     // Set up the configuration and RPC
     this.conf = new YarnConfiguration();
-    this.yarnClient = new YarnClientHelper(this.conf);
     if (UserGroupInformation.isSecurityEnabled()) {
       //TODO :- Need to perform token renewal
       delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
@@ -392,6 +386,9 @@ public class StramAppMaster //extends License for licensing using native
     nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     nmClient.init(conf);
     nmClient.start();
+    amRmClient = AMRMClient.createAMRMClient();    
+    amRmClient.init(conf);
+    amRmClient.start();
   }
 
   /**
@@ -488,6 +485,7 @@ public class StramAppMaster //extends License for licensing using native
       delegationTokenManager.stopThreads();
     }
     nmClient.stop();
+    amRmClient.stop();
   }
 
   /**
@@ -534,11 +532,19 @@ public class StramAppMaster //extends License for licensing using native
   {
     LOG.info("Starting ApplicationMaster");
 
-    // Connect to ResourceManager
-    resourceManager = yarnClient.connectToRM();
+    Credentials credentials =
+        UserGroupInformation.getCurrentUser().getCredentials();
+    LOG.info("number of tokens: {}", credentials.getAllTokens().size());
+    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
+    while (iter.hasNext()) {
+      Token<?> token = iter.next();
+      LOG.debug("token: " + token);
+    }
 
+    RegisterApplicationMasterResponse response = amRmClient.registerApplicationMaster(appMasterHostname, 0, appMasterTrackingUrl);
+    
     // Register self with ResourceManager
-    RegisterApplicationMasterResponse response = registerToRM();
+    //RegisterApplicationMasterResponse response = registerToRM();
 
     // Dump out information about cluster capability as seen by the resource manager
     int maxMem = response.getMaximumResourceCapability().getMemory();
@@ -557,7 +563,7 @@ public class StramAppMaster //extends License for licensing using native
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
     // The heartbeat interval after which an AM is timed out by the RM is defined by a config setting:
     // RM_AM_EXPIRY_INTERVAL_MS with default defined by DEFAULT_RM_AM_EXPIRY_INTERVAL_MS
-    // The allocate calls to the RM count as heartbeats so, for now, this additional heartbeat emitter
+    // The allocate calls to the RM count as heartbeat so, for now, this additional heartbeat emitter
     // is not required.
 
     // Setup ask for containers from RM
@@ -578,9 +584,11 @@ public class StramAppMaster //extends License for licensing using native
       // YARN-435
       // we need getClusterNodes to populate the initial node list,
       // subsequent updates come through the heartbeat response
-      GetClusterNodesRequest request = Records.newRecord(GetClusterNodesRequest.class);
-      ApplicationClientProtocol clientRMService = yarnClient.connectToASM();
-      resourceRequestor.updateNodeReports(clientRMService.getClusterNodes(request).getNodeReports());
+      YarnClient clientRMService = YarnClient.createYarnClient();
+      clientRMService.init(conf);
+      clientRMService.start();
+      resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
+      clientRMService.stop();
     }
     catch (Exception e) {
       throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
@@ -610,7 +618,7 @@ public class StramAppMaster //extends License for licensing using native
       }
 
       // Setup request to be sent to RM to allocate containers
-      List<ResourceRequest> resourceReq = new ArrayList<ResourceRequest>();
+      List<ContainerRequest> resourceReq = new ArrayList<ContainerRequest>();
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
         StramChildAgent.ContainerStartRequest csr;
@@ -788,26 +796,11 @@ public class StramAppMaster //extends License for licensing using native
     }
     LOG.info("diagnostics: " + finishReq.getDiagnostics());
     try {
-      resourceManager.finishApplicationMaster(finishReq);
+      amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
     }
     catch (YarnException ex) {
       throw new RuntimeException(ex);
     }
-  }
-
-  /**
-   * Register the Application Master to the Resource Manager
-   *
-   * @return the registration response from the RM
-   * @throws YarnRemoteException
-   */
-  private RegisterApplicationMasterResponse registerToRM() throws YarnException, IOException
-  {
-    RegisterApplicationMasterRequest appMasterRequest = Records.newRecord(RegisterApplicationMasterRequest.class);
-    appMasterRequest.setHost(appMasterHostname);
-    appMasterRequest.setRpcPort(0);
-    appMasterRequest.setTrackingUrl(appMasterTrackingUrl);
-    return resourceManager.registerApplicationMaster(appMasterRequest);
   }
 
   /**
@@ -817,18 +810,22 @@ public class StramAppMaster //extends License for licensing using native
    * @return Response from RM to AM with allocated containers
    * @throws YarnRemoteException
    */
-  private AllocateResponse sendContainerAskToRM(List<ResourceRequest> requestedContainers, List<ContainerId> releasedContainers)
+  private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerId> releasedContainers)
           throws YarnException, IOException
   {
-    AllocateRequest req = Records.newRecord(AllocateRequest.class);
-    req.setResponseId(rmRequestID.incrementAndGet());
-
-    req.setAskList(requestedContainers);
-    // Send the request to RM
-    if (requestedContainers.size() > 0) {
-      LOG.info("Asking RM for containers: " + requestedContainers);
+    if (containerRequests.size() > 0) {
+      LOG.info("Asking RM for containers: " + containerRequests);
+      for (ContainerRequest cr : containerRequests) {
+        LOG.info("Requested container: {}", cr.toString());
+        amRmClient.addContainerRequest(cr);
+      }
     }
 
+    for (ContainerId containerId : releasedContainers) {
+      LOG.info("Released container, id={}", containerId.getId());
+      amRmClient.releaseAssignedContainer(containerId);
+    }
+    
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
       Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
       if (allocatedContainer != null) {
@@ -838,25 +835,7 @@ public class StramAppMaster //extends License for licensing using native
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
 
-    req.setReleaseList(releasedContainers);
-    //req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
-
-    //LOG.info("Sending request to RM for containers"
-    //         + ", requestedSet=" + requestedContainers.size()
-    //         + ", releasedSet=" + releasedContainers.size()
-    //         + ", progress=" + req.getProgress());
-    for (ResourceRequest rsrcReq : requestedContainers) {
-      LOG.info("Requested container: {}", rsrcReq.toString());
-    }
-
-    for (ContainerId id : releasedContainers) {
-      LOG.info("Released container, id={}", id.getId());
-    }
-
-    AllocateResponse resp = resourceManager.allocate(req);
-
-    return resp;
-
+    return amRmClient.allocate(0);
   }
 
   private class NMCallbackHandler
