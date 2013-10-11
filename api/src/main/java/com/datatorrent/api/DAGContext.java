@@ -131,6 +131,12 @@ public interface DAGContext extends Context
   /** Constant <code>STATS_RECORD_INTERVAL_MILLIS</code> */
   public static final AttributeKey<Integer> STATS_RECORD_INTERVAL_MILLIS = new AttributeKey<Integer>("recordStatsIntervalMillis", Integer.class);
 
+  /** Constant <code>THROUGHPUT_CALCULATION_INTERVAL</code> */
+  public static final AttributeKey<Integer> THROUGHPUT_CALCULATION_INTERVAL = new AttributeKey<Integer>("throughputCalculationInterval", Integer.class);
+
+  /** Constant <code>THROUGHPUT_CALCULATION_MAX_SAMPLES</code> */
+  public static final AttributeKey<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new AttributeKey<Integer>("throughputCalculationMaxSamples", Integer.class);
+
   /** Constant <code>ATTRIBUTE_KEYS</code> */
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
 

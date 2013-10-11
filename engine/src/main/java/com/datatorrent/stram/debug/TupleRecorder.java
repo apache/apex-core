@@ -9,13 +9,10 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.*;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,14 +20,15 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
-import com.datatorrent.api.util.PubSubWebSocketClient;
 
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient.Handler;
 
 /**
  * <p>TupleRecorder class.</p>
@@ -54,42 +52,47 @@ public class TupleRecorder
   private transient long endWindowTuplesProcessed = 0;
   private transient StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
   private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
-  private URI pubSubUrl = null;
   private int numSubscribers = 0;
-  private PubSubWebSocketClient wsClient;
+  private SharedPubSubWebSocketClient wsClient;
   private String recordingNameTopic;
-  private HdfsPartFileCollection storage = new HdfsPartFileCollection()
+  private FSPartFileCollection storage = new FSPartFileCollection()
   {
     @Override
-    protected String getAndResetIndexExtraInfo()
+    protected String getIndexExtraInfo()
     {
+      if (windowIdRanges.isEmpty())
+        return null;
       String str;
       windowIdRanges.get(windowIdRanges.size() - 1).high = TupleRecorder.this.currentWindowId;
       str = convertToString(windowIdRanges);
       int i = 0;
       str += ":";
-      String countStr;
-      countStr = "{";
-      for (String key : portCountMap.keySet()) {
-        PortCount pc = portCountMap.get(key);
+      StringBuilder countStr = new StringBuilder("{");
+      for (PortCount pc : portCountMap.values()) {
         if (i != 0) {
-          countStr += ",";
+          countStr.append(",");
         }
-        countStr += "\"" + pc.id + "\"" + ":\"" + pc.count + "\"";
+        countStr.append("\"").append(pc.id).append("\":\"").append(pc.count).append("\"");
         i++;
-        pc.count = 0;
-        portCountMap.put(key, pc);
       }
-      countStr += "}";
+      countStr.append("}");
       str += countStr.length();
-      str += ":" + countStr;
-      windowIdRanges.clear();
+      str += ":" + countStr.toString();
       return str;
+    }
+
+    @Override
+    protected void resetIndexExtraInfo()
+    {
+      for (PortCount pc : portCountMap.values()) {
+        pc.count = 0;
+      }
+      windowIdRanges.clear();
     }
 
   };
 
-  public HdfsPartFileCollection getStorage()
+  public FSPartFileCollection getStorage()
   {
     return storage;
   }
@@ -113,9 +116,9 @@ public class TupleRecorder
     this.streamCodec = streamCodec;
   }
 
-  public void setPubSubUrl(String pubSubUrl) throws URISyntaxException
+  public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)
   {
-    this.pubSubUrl = new URI(pubSubUrl);
+    this.wsClient = wsClient;
   }
 
   public Map<String, PortInfo> getPortInfoMap()
@@ -305,14 +308,9 @@ public class TupleRecorder
 
       storage.writeMetaData(bos.toByteArray());
 
-      if (pubSubUrl != null) {
+      if (wsClient != null) {
         recordingNameTopic = "tupleRecorder." + getStartTime();
-        try {
-          setupWsClient();
-        }
-        catch (Exception ex) {
-          logger.error("Cannot connect to daemon at {}", pubSubUrl);
-        }
+        setupWsClient();
       }
     }
     catch (Exception ex) {
@@ -322,32 +320,24 @@ public class TupleRecorder
 
   private void setupWsClient() throws ExecutionException, IOException, InterruptedException, TimeoutException
   {
-    wsClient = new PubSubWebSocketClient()
-    {
-      @Override
-      public void onOpen(WebSocket.Connection connection)
+    if (wsClient != null) {
+      wsClient.addHandler(recordingNameTopic + ".numSubscribers", new Handler()
       {
-      }
-
-      @Override
-      public void onMessage(String type, String topic, Object data)
-      {
-        if (topic.equals(recordingNameTopic + ".numSubscribers")) {
+        @Override
+        public void onMessage(String type, String topic, Object data)
+        {
           numSubscribers = Integer.valueOf((String)data);
           logger.info("Number of subscribers for recording started at {} is now {}", getStartTime(), numSubscribers);
         }
-      }
 
-      @Override
-      public void onClose(int code, String message)
-      {
-        numSubscribers = 0;
-      }
+        @Override
+        public void onClose()
+        {
+          numSubscribers = 0;
+        }
 
-    };
-    wsClient.setUri(pubSubUrl);
-    wsClient.openConnection(500);
-    wsClient.subscribeNumSubscribers(recordingNameTopic);
+      });
+    }
   }
 
   public void beginWindow(long windowId)
@@ -383,17 +373,8 @@ public class TupleRecorder
       try {
         storage.writeDataItem(("E:" + currentWindowId + "\n").getBytes(), false);
         logger.debug("Got last end window tuple.  Flushing...");
-        storage.flushData();
-        if (pubSubUrl != null) {
-          // check web socket connection
-          if (!wsClient.isConnectionOpen()) {
-            try {
-              setupWsClient();
-            }
-            catch (Exception ex) {
-              logger.error("Cannot connect to daemon");
-            }
-          }
+        if (!storage.flushData() && wsClient != null) {
+          wsClient.publish(SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".tuple." + storage.getBasePath(), storage.getLatestIndexLine());
         }
       }
       catch (IOException ex) {
@@ -468,18 +449,17 @@ public class TupleRecorder
   private void publishTupleData(int portId, Object obj)
   {
     try {
-      if (pubSubUrl != null && wsClient.isConnectionOpen()) {
+      if (wsClient != null && wsClient.isConnectionOpen()) {
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("portId", String.valueOf(portId));
         map.put("windowId", currentWindowId);
         map.put("tupleCount", totalTupleCount);
         map.put("data", obj);
-        // this is NOT asynchronous.  We need to fix this!
         wsClient.publish(recordingNameTopic, map);
       }
     }
     catch (Exception ex) {
-      logger.warn("Error posting to URL {}", pubSubUrl, ex);
+      logger.warn("Error publishing tuple data", ex);
     }
   }
 

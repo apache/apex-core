@@ -28,7 +28,7 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.cli.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;

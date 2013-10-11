@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram.cli;
+package com.datatorrent.stram.client;
 
 import java.io.*;
 import java.lang.reflect.Modifier;
@@ -91,10 +91,10 @@ public class StramAppLauncher {
       String getName();
   }
 
-  public static class PropertyFileAppConfig implements AppFactory {
+  public static class PropertyFileAppFactory implements AppFactory {
     final File propertyFile;
 
-    public PropertyFileAppConfig(File file) {
+    public PropertyFileAppFactory(File file) {
       this.propertyFile = file;
     }
 
@@ -190,7 +190,7 @@ public class StramAppLauncher {
           } else if (jarEntry.getName().endsWith(".app.properties")) {
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
-            appResourceList.add(new PropertyFileAppConfig(targetFile));
+            appResourceList.add(new PropertyFileAppFactory(targetFile));
           } else if (jarEntry.getName().endsWith(".class")) {
             classFileNames.add(jarEntry.getName());
           }
@@ -327,6 +327,11 @@ public class StramAppLauncher {
       }
     }
     return conf;
+  }
+
+
+  public Map<String, String> getAppAliases() {
+    return propertiesBuilder.getAppAliases();
   }
 
   public LogicalPlanConfiguration getLogicalPlanConfiguration() {

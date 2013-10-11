@@ -57,7 +57,7 @@ import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.StramAppMaster;
 import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.webapp.StramWebServices;
@@ -275,10 +275,10 @@ public class StramMiniClusterTest
       JSONObject json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
       assertEquals("incorrect number of elements", 1, json.length());
-      assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject(StramWebServices.PATH_INFO).get("appId"));
+      assertEquals("appId", appReport.getApplicationId().toString(), json.get("id"));
 
 
-      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_OPERATORS);
+      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS);
       LOG.info("Requesting: " + r.getURI());
       response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());

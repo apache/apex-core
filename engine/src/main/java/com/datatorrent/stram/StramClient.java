@@ -46,8 +46,8 @@ import org.apache.hadoop.yarn.util.Records;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
 
-import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ConfigUtils;
@@ -83,7 +83,7 @@ public class StramClient
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  private static final String DEFAULT_APPNAME = "Stram";
+  public static final String DEFAULT_APPNAME = "Stram";
 
   /**
    * @param args Command line arguments
@@ -244,9 +244,7 @@ public class StramClient
       com.datatorrent.stram.StramAppMaster.class,
       com.datatorrent.api.StreamCodec.class,
       javax.validation.ConstraintViolationException.class,
-      org.eclipse.jetty.websocket.WebSocketFactory.class,
-      org.eclipse.jetty.io.nio.SelectorManager.class,
-      org.eclipse.jetty.http.HttpParser.class,
+      com.ning.http.client.websocket.WebSocketUpgradeHandler.class,
       Kryo.class,
       org.apache.bval.jsr303.ApacheValidationProvider.class,
       org.apache.bval.BeanValidationContext.class,

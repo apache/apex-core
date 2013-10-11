@@ -22,28 +22,28 @@ import javax.xml.bind.annotation.XmlSeeAlso;
  * @since 0.3.2
  */
 
-@XmlRootElement(name = "operators")
+@XmlRootElement(name = "streams")
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlSeeAlso({OperatorInfo.class})
-public class OperatorsInfo {
+@XmlSeeAlso({StreamInfo.class})
+public class StreamsInfo {
 
-  protected List<OperatorInfo> operators = new ArrayList<OperatorInfo>();
+  protected List<StreamInfo> streams = new ArrayList<StreamInfo>();
 
   /**
    *
-   * @param operatorInfo
+   * @param streamInfo
    */
-  public void add(OperatorInfo operatorInfo) {
-    operators.add(operatorInfo);
+  public void add(StreamInfo streamInfo) {
+    streams.add(streamInfo);
   }
 
   /**
    *
-   * @return List<OperatorInfo>
+   * @return List<StreamInfo>
    *
    */
-  public List<OperatorInfo> getOperators() {
-    return operators;
+  public List<StreamInfo> getStreams() {
+    return streams;
   }
 
 }

@@ -1,20 +1,22 @@
 #!/bin/bash
 
+echoerr() { echo "$@" 1>&2; }
+
 BUILD_DIR="$( dirname "$0" )/../../../target"
 MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode  
-  echo "Setting classpath from: $MVN_GENERATED_PATH"
+  echoerr "Setting classpath from: $MVN_GENERATED_PATH"
   STRAM_CORE_JAR=`ls $BUILD_DIR/malhar-stram-*.jar | grep -v tests`
   if [ ! -f "$STRAM_CORE_JAR" ]; then
-    echo "Error: Cannot find $STRAM_CORE_JAR";
+    echoerr "Error: Cannot find $STRAM_CORE_JAR";
     exit 1;
   fi 
   STRAM_CLASSPATH="$STRAM_CLASSPATH:$STRAM_CORE_JAR"
 else
   MVN_GENERATED_PATH="$( dirname "$0" )/mvn-generated-runtime-classpath"
   if [ ! -f "$MVN_GENERATED_PATH" ]; then
-    echo "Error: Cannot find $MVN_GENERATED_PATH (has $( cd $(dirname $0)/..; pwd -P )/install.sh run?)";
+    echoerr "Error: Cannot find $MVN_GENERATED_PATH (has $( cd $(dirname $0)/..; pwd -P )/install.sh run?)";
     exit 1;
   fi
 fi
@@ -38,7 +40,7 @@ fi
 export HADOOP_CLIENT_OPTS="$STRAM_CLIENT_OPTS"
 
 if [ "$HADOOP_PREFIX" = "" ]; then
-  echo "Warning: HADOOP_PREFIX is not set, running standalone."
+  echoerr "Warning: HADOOP_PREFIX is not set, running standalone."
   export CLASSPATH=$STRAM_CLASSPATH
   java $STRAM_CLIENT_OPTS com.datatorrent.stram.cli.StramCli "$@"
 else

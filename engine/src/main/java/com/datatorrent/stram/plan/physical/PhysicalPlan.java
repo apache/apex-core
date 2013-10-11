@@ -27,7 +27,7 @@ import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.EventRecorder;
-import com.datatorrent.stram.HdfsEventRecorder;
+import com.datatorrent.stram.FSEventRecorder;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -625,7 +625,7 @@ public class PhysicalPlan {
 
     deployChanges();
 
-    EventRecorder.Event ev = new HdfsEventRecorder.Event("partition");
+    EventRecorder.Event ev = new FSEventRecorder.Event("partition");
     ev.addData("operatorName", currentMapping.logicalOperator.getName());
     ev.addData("currentNumPartitions", currentPartitions.size());
     ev.addData("newNumPartitions", newPartitions.size());

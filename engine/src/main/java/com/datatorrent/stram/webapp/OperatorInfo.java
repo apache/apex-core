@@ -42,36 +42,27 @@ public class OperatorInfo
   @RecordField(type="stats") public String host;
   @RecordField(type="stats") public long totalTuplesProcessed;
   @RecordField(type="stats") public long totalTuplesEmitted;
-  @RecordField(type="stats") public long tuplesProcessedPSMA10;
-  @RecordField(type="stats") public long tuplesEmittedPSMA10;
-  @RecordField(type="stats") public double cpuPercentageMA10;
+  @RecordField(type="stats") public long tuplesProcessedPSMA;
+  @RecordField(type="stats") public long tuplesEmittedPSMA;
+  @RecordField(type="stats") public double cpuPercentageMA;
   @RecordField(type="stats") public long latencyMA;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
-  public List<String> recordingNames; // null if recording is not happening
-  @RecordField(type="stats") public ArrayList<PortInfo> inputPorts = new ArrayList<PortInfo>();
-  @RecordField(type="stats") public ArrayList<PortInfo> outputPorts = new ArrayList<PortInfo>();
+  @RecordField(type="stats") public ArrayList<PortInfo> ports = new ArrayList<PortInfo>();
+  @RecordField(type="meta") public String unifierClass;
+  @RecordField(type="meta") public String logicalName;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
   /**
    *
    * @param info
    */
-  public void addInputPort(PortInfo info)
+  public void addPort(PortInfo info)
   {
-    inputPorts.add(info);
-  }
-
-  /**
-   *
-   * @param info
-   */
-  public void addOutputPort(PortInfo info)
-  {
-    outputPorts.add(info);
+    ports.add(info);
   }
 
   /**
@@ -79,19 +70,9 @@ public class OperatorInfo
    * @return ArrayList<ContainerInfo>
    *
    */
-  public Collection<PortInfo> getInputPorts()
+  public Collection<PortInfo> getPorts()
   {
-    return Collections.unmodifiableCollection(inputPorts);
-  }
-
-  /**
-   *
-   * @return ArrayList<ContainerInfo>
-   *
-   */
-  public Collection<PortInfo> getOutputPorts()
-  {
-    return Collections.unmodifiableCollection(outputPorts);
+    return Collections.unmodifiableCollection(ports);
   }
 
 }

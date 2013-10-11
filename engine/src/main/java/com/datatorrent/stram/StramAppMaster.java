@@ -64,9 +64,10 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
 
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
+import com.datatorrent.stram.StramChildAgent.PortStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -183,16 +184,136 @@ public class StramAppMaster //extends License for licensing using native
     }
 
     @Override
-    public AppInfo.CriticalPathInfo getCriticalPathInfo()
+    public long getCurrentWindowId()
     {
-      AppInfo.CriticalPathInfo cpi = new AppInfo.CriticalPathInfo();
-      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
-      if (criticalPathInfo == null) {
-        return null;
+      long min = Long.MAX_VALUE;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          if (min > entry.getValue().currentWindowId) {
+            min = entry.getValue().currentWindowId;
+          }
+        }
       }
-      cpi.latency = criticalPathInfo.latency;
-      cpi.path = criticalPathInfo.path;
-      return cpi;
+      return min == Long.MAX_VALUE ? 0 : min;
+    }
+
+    @Override
+    public long getRecoveryWindowId()
+    {
+      long min = Long.MAX_VALUE;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          if (min > entry.getValue().operator.getRecoveryCheckpoint()) {
+            min = entry.getValue().operator.getRecoveryCheckpoint();
+          }
+        }
+      }
+      return min == Long.MAX_VALUE ? 0 : min;
+    }
+
+    @Override
+    public long getTuplesProcessedPSMA()
+    {
+      long result = 0;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().tuplesProcessedPSMA;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalTuplesProcessed()
+    {
+      long result = 0;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().totalTuplesProcessed;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTuplesEmittedPSMA()
+    {
+      long result = 0;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().tuplesEmittedPSMA;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalTuplesEmitted()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().totalTuplesEmitted;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalMemoryAllocated()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        result += c.getAllocatedMemoryMB();
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalBufferServerReadBytesPSMA()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          OperatorStatus os = entry.getValue();
+          for (Map.Entry<String, PortStatus> portEntry : os.inputPortStatusList.entrySet()) {
+            result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
+          }
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalBufferServerWriteBytesPSMA()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          OperatorStatus os = entry.getValue();
+          for (Map.Entry<String, PortStatus> portEntry : os.outputPortStatusList.entrySet()) {
+            result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
+          }
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public List<Integer> getCriticalPath()
+    {
+      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      return (criticalPathInfo == null) ? null : criticalPathInfo.path;
+    }
+
+    @Override
+    public long getLatency()
+    {
+      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      return (criticalPathInfo == null) ? 0 : criticalPathInfo.latency;
     }
 
   }
@@ -564,7 +685,6 @@ public class StramAppMaster //extends License for licensing using native
               + ", max=" + maxMem);
       containerMemory = maxMem;
     }
-    stats.containerMemory = containerMemory;
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -665,7 +785,7 @@ public class StramAppMaster //extends License for licensing using native
 
         {
           // record container start event
-          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("container-start");
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("container-start");
           ev.addData("containerId", allocatedContainer.getId().toString());
           ev.addData("containerNode", allocatedContainer.getNodeId().toString());
           ev.setTimestamp(timestamp);
@@ -736,7 +856,7 @@ public class StramAppMaster //extends License for licensing using native
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-stop");
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
           ev.addData("operatorId", entry.getKey());
           ev.addData("operatorName", entry.getValue().operator.getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
@@ -744,7 +864,7 @@ public class StramAppMaster //extends License for licensing using native
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
-        HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("container-stop");
+        FSEventRecorder.Event ev = new FSEventRecorder.Event("container-stop");
         ev.addData("containerId", containerStatus.getContainerId().toString());
         ev.addData("exitStatus", containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
