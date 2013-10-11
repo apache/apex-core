@@ -105,6 +105,7 @@ public class StramClient
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   private static final String DEFAULT_APPNAME = "Stram";
+  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
 
   /**
    * @param args Command line arguments
@@ -420,6 +421,7 @@ public class StramClient
     appContext.setApplicationId(appId);
     // set the application name
     appContext.setApplicationName(dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).get());
+    appContext.setApplicationType(YARN_APPLICATION_TYPE);
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);

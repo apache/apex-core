@@ -3,6 +3,7 @@
  */
 package com.datatorrent.stram.cli;
 
+import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.cli.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
@@ -12,6 +13,7 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
+import com.google.common.collect.Sets;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
@@ -775,6 +777,7 @@ public class StramCli
   {
     try {
       GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
       return rmClient.clientRM.getApplications(appsReq).getApplicationList();
     }
     catch (Exception e) {
