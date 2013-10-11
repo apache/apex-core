@@ -1463,7 +1463,7 @@ public class StramCli
 
           });
           if (consolePresent) {
-            System.out.println("shutdown requested: " + response);
+            System.out.println("Shutdown requested: " + response);
           }
           currentApp = null;
         }
@@ -1604,6 +1604,9 @@ public class StramCli
         throw new CliException("Alias to itself!");
       }
       aliases.put(args[1], args[2]);
+      if (consolePresent) {
+        System.out.println("Alias " + args[1] + " created.");
+      }
       updateCompleter(reader);
     }
 
@@ -1615,6 +1618,9 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       processSourceFile(args[1], reader);
+      if (consolePresent) {
+        System.out.println("File " + args[1] + " sourced.");
+      }
     }
 
   }
