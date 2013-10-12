@@ -53,10 +53,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
   public static Map<String, Object> convertToMap(LogicalPlan dag)
   {
     HashMap<String, Object> result = new HashMap<String, Object>();
-    HashMap<String, Object> operatorMap = new HashMap<String, Object>();
-    HashMap<String, Object> streamMap = new HashMap<String, Object>();
+    ArrayList<Object> operatorArray = new ArrayList< Object>();
+    ArrayList<Object> streamMap = new ArrayList<Object>();
     //result.put("applicationName", appConfig.getName());
-    result.put("operators", operatorMap);
+    result.put("operators", operatorArray);
     result.put("streams", streamMap);
     //LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
     //
@@ -72,7 +72,8 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       HashMap<String, Object> propertyMap = new HashMap<String, Object>();
 
       String operatorName = operatorMeta.getName();
-      operatorMap.put(operatorName, operatorDetailMap);
+      operatorArray.add(operatorDetailMap);
+      operatorDetailMap.put("name", operatorName);
       operatorDetailMap.put("ports", portMap);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
@@ -144,12 +145,13 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     for (StreamMeta streamMeta : allStreams) {
       HashMap<String, Object> streamDetailMap = new HashMap<String, Object>();
       String streamName = streamMeta.getId();
-      streamMap.put(streamName, streamDetailMap);
+      streamMap.add(streamDetailMap);
       String sourcePortName = streamMeta.getSource().getPortName();
       OperatorMeta operatorMeta = streamMeta.getSource().getOperatorWrapper();
       HashMap<String, Object> sourcePortDetailMap = new HashMap<String, Object>();
       sourcePortDetailMap.put("operatorName", operatorMeta.getName());
       sourcePortDetailMap.put("portName", sourcePortName);
+      streamDetailMap.put("name", streamName);
       streamDetailMap.put("source", sourcePortDetailMap);
       List<InputPortMeta> sinks = streamMeta.getSinks();
       ArrayList<HashMap<String, Object>> sinkPortList = new ArrayList<HashMap<String, Object>>();
