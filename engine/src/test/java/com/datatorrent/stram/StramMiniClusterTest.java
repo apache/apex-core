@@ -363,7 +363,7 @@ public class StramMiniClusterTest
 
     LogicalPlan dag = new LogicalPlan();
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
-    dag.getContextAttributes(badOperator).attr(OperatorContext.RECOVERY_ATTEMPTS).set(1);
+    dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 
     LOG.info("Initializing Client");
     StramClient client = new StramClient(dag);

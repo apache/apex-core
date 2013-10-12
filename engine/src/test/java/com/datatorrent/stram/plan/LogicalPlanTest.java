@@ -145,7 +145,7 @@ public class LogicalPlanTest {
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
     Assert.assertEquals("root operator id", "validationNode", dag.getRootOperators().get(0).getName());
 
-    dag.getContextAttributes(countGoodNode).attr(OperatorContext.SPIN_MILLIS).set(10);
+    dag.getContextAttributes(countGoodNode).put(OperatorContext.SPIN_MILLIS, 10);
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     LogicalPlan.write(dag, bos);
@@ -161,7 +161,7 @@ public class LogicalPlanTest {
 
 
     Operator countGoodNodeClone = dagClone.getOperatorMeta("countGoodNode").getOperator();
-    Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).attr(OperatorContext.SPIN_MILLIS).get());
+    Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).get(OperatorContext.SPIN_MILLIS));
 
   }
 

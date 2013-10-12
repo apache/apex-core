@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -303,7 +305,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * The path for the application class is specified as a parameter. If an alias was specified
    * in the configuration file or configuration properties for the application class it is returned
    * otherwise null is returned.
-   * 
+   *
    * @param appPath The path of the application class in the jar
    * @return The alias name if one is available, null otherwise
    */
@@ -510,11 +512,13 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appAlias != null) {
       dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
     } else {
-      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(name);
+      if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
+        dag.getAttributes().put(DAG.APPLICATION_NAME, name);
+      }
     }
 
     // inject external operator configuration
-    setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+    setOperatorProperties(dag, dag.getAttributes().get(DAG.APPLICATION_NAME));
   }
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
@@ -632,7 +636,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings( {"unchecked"})
   public void setApplicationLevelAttributes(LogicalPlan dag, String appName) {
     Properties appProps = this.properties;
     if (appName != null) {
@@ -642,20 +646,20 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
     // process application level settings prior to populate
-    for (@SuppressWarnings("rawtypes") DAGContext.AttributeKey key : DAGContext.ATTRIBUTE_KEYS) {
+    for (@SuppressWarnings("rawtypes") Attribute key : AttributeInitializer.getAttributes(DAGContext.class)) {
       String confKey = "stram." + key.name();
       String stringValue = appProps.getProperty(confKey, null);
       if (stringValue != null) {
-        if (key.attributeType == Integer.class) {
+        if (key.clazz == Integer.class) {
           dag.setAttribute(key, Integer.parseInt(stringValue));
-        } else if (key.attributeType == Long.class) {
+        } else if (key.clazz == Long.class) {
           dag.setAttribute(key, Long.parseLong(stringValue));
-        } else if (key.attributeType == String.class) {
+        } else if (key.clazz == String.class) {
           dag.setAttribute(key, stringValue);
-        } else if (key.attributeType == Boolean.class) {
+        } else if (key.clazz == Boolean.class) {
           dag.setAttribute(key, Boolean.parseBoolean(stringValue));
         } else {
-          String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
+          String msg = String.format("Unsupported attribute type: %s (%s)", key.clazz, key.name());
           throw new UnsupportedOperationException(msg);
         }
       }

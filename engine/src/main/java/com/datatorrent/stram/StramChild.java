@@ -140,7 +140,7 @@ public class StramChild
 
     /* add a request factory local to this container */
     this.requestFactory = new RequestFactory();
-    ctx.attributes.addTransientAttribute(ContainerContext.REQUEST_FACTORY).set(requestFactory);
+    ctx.attributes.put(ContainerContext.REQUEST_FACTORY, requestFactory);
 
     heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
@@ -747,10 +747,10 @@ public class StramChild
         backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
       }
       else {
-        backupAgent = ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).get();
+        backupAgent = ndi.contextAttributes.get(OperatorContext.STORAGE_AGENT);
         if (backupAgent == null) {
           backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
-          ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).set(backupAgent);
+          ndi.contextAttributes.put(OperatorContext.STORAGE_AGENT, backupAgent);
         }
       }
 
@@ -784,8 +784,8 @@ public class StramChild
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(startingWindowId);
-    bssc.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
-    bssc.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
@@ -957,8 +957,8 @@ public class StramChild
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nidi.serDeClassName));
-            context.attr(StreamContext.EVENT_LOOP).set(eventloop);
+            context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
@@ -1262,8 +1262,7 @@ public class StramChild
   {
     long finishedWindowId;
     if (ndi.contextAttributes != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
+            && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
       /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
       long currentMillis = System.currentTimeMillis();
       long diff = currentMillis - firstWindowMillis;

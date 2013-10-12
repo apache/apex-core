@@ -61,17 +61,17 @@ public class ProcessingModeTests
     CollectorOperator.duplicates.clear();
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
-    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
+    dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
     rip.setSimulateFailure(true);
-    dag.getMeta(rip).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+    dag.getMeta(rip).getAttributes().put(OperatorContext.PROCESSING_MODE, processingMode);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     if (Operator.ProcessingMode.EXACTLY_ONCE.equals(processingMode)) {
-      dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(Operator.ProcessingMode.AT_MOST_ONCE);
+      dag.getMeta(cm).getAttributes().put(OperatorContext.PROCESSING_MODE, Operator.ProcessingMode.AT_MOST_ONCE);
     }
     dag.addStream("connection", rip.output, cm.input);
 
@@ -86,16 +86,16 @@ public class ProcessingModeTests
     CollectorOperator.duplicates.clear();
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
-    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
+    dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
     rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
-    dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+    dag.getMeta(cm).getAttributes().put(OperatorContext.PROCESSING_MODE, processingMode);
 
     dag.addStream("connection", rip.output, cm.input);
 
@@ -110,16 +110,16 @@ public class ProcessingModeTests
     CollectorOperator.duplicates.clear();
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
-    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
+    dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
     rip.setSimulateFailure(true);
 
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
-    dag.getMeta(cm).getAttributes().attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+    dag.getMeta(cm).getAttributes().put(OperatorContext.PROCESSING_MODE, processingMode);
 
     dag.addStream("connection", rip.output, cm.input).setLocality(Locality.CONTAINER_LOCAL);
 
@@ -266,9 +266,9 @@ public class ProcessingModeTests
       @Override
       public void run()
       {
-        AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap(OperatorContext.class);
-        map.attr(OperatorContext.CHECKPOINT_WINDOW_COUNT).set(0);
-        map.attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+        AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
+        map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
+        map.put(OperatorContext.PROCESSING_MODE, processingMode);
         active.set(true);
         node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
         node.run();

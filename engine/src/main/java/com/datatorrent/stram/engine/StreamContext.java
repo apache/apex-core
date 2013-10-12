@@ -9,15 +9,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.netlet.EventLoop;
 
 /**
@@ -30,9 +32,10 @@ import com.datatorrent.netlet.EventLoop;
 public class StreamContext extends DefaultAttributeMap implements Context
 {
   private static final long serialVersionUID = 201212042146L;
-  public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>(StreamContext.class, "BUFFER_SERVER");
-  public static final AttributeKey<EventLoop> EVENT_LOOP = new AttributeKey<EventLoop>(StreamContext.class, "EVENT_LOOP");
-  public static final AttributeKey<StreamCodec<Object>> CODEC = new AttributeKey<StreamCodec<Object>>(StreamContext.class, "CODEC");
+  public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(InetSocketAddress.class);
+  public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(EventLoop.class);
+  @SuppressWarnings("rawtypes")
+  public static final Attribute<StreamCodec> CODEC = new Attribute<StreamCodec>(StreamCodec.class);
 
   @Override
   public AttributeMap getAttributes()
@@ -41,9 +44,9 @@ public class StreamContext extends DefaultAttributeMap implements Context
   }
 
   @Override
-  public <T> T attrValue(AttributeKey<T> key, T defaultValue)
+  public <T> T attrValue(Attribute<T> key, T defaultValue)
   {
-    T retvalue = attr(key).get();
+    T retvalue = get(key);
     if (retvalue == null) {
       return defaultValue;
     }
@@ -53,13 +56,13 @@ public class StreamContext extends DefaultAttributeMap implements Context
 
   public InetSocketAddress getBufferServerAddress()
   {
-    InetSocketAddress isa = attr(BUFFER_SERVER_ADDRESS).get();
+    InetSocketAddress isa = get(BUFFER_SERVER_ADDRESS);
     return new InetSocketAddress(isa.getHostName(), isa.getPort());
   }
 
   public void setBufferServerAddress(InetSocketAddress isa)
   {
-    attr(BUFFER_SERVER_ADDRESS).set(isa);
+    put(BUFFER_SERVER_ADDRESS, isa);
   }
 
   public static enum State
@@ -109,7 +112,6 @@ public class StreamContext extends DefaultAttributeMap implements Context
 
   public StreamContext(String id)
   {
-    super(StreamContext.class);
     this.id = id;
   }
 
@@ -188,5 +190,8 @@ public class StreamContext extends DefaultAttributeMap implements Context
             .toString();
   }
 
+  static {
+    AttributeInitializer.initialize(StreamContext.class);
+  }
   private static final Logger logger = LoggerFactory.getLogger(StreamContext.class);
 }

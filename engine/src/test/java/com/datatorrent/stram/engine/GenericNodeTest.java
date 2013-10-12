@@ -123,7 +123,7 @@ public class GenericNodeTest
         ab.set(true);
         gn.activate(new OperatorContext(0,
                                         this,
-                                        new DefaultAttributeMap(Context.OperatorContext.class),
+                                        new DefaultAttributeMap(),
                                         null));
         gn.run();
         gn.deactivate();
