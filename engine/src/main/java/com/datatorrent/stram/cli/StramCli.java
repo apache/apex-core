@@ -49,7 +49,10 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.log4j.Appender;
+import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
+import org.apache.log4j.Priority;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.JSONException;
 
@@ -681,8 +684,17 @@ public class StramCli
     }
 
     if (!verbose) {
-      org.apache.log4j.Logger logger = org.apache.log4j.Logger.getRootLogger();
-      logger.setLevel(Level.WARN);
+      for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
+                                                                           org.apache.log4j.Logger.getLogger(StramCli.class)}) {
+        @SuppressWarnings("unchecked")
+        Enumeration<Appender> allAppenders = logger.getAllAppenders();
+        while (allAppenders.hasMoreElements()) {
+          Appender appender = allAppenders.nextElement();
+          if (appender instanceof ConsoleAppender) {
+            ((ConsoleAppender)appender).setThreshold(Level.WARN);
+          }
+        }
+      }
     }
 
     if (commandsToExecute != null) {
