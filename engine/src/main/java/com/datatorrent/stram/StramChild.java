@@ -1099,9 +1099,6 @@ public class StramChild
     final Node<?> node = nodes.get(ndi.id);
 
     OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
-    // Investigate using context attributes directly instead of additional fields in context
-    operatorContext.setPartitioned(ndi.runtimeAttributes.attr(OperatorContext.IS_PARTITIONED).get());
-    operatorContext.setStrictPartitioned(ndi.runtimeAttributes.attr(OperatorContext.IS_STRICT_PARTITIONED).get());
     node.setup(operatorContext);
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
@@ -1119,6 +1116,7 @@ public class StramChild
     for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
       OutputPort<?> port = outputPorts.get(odi.portName).component;
       PortContext context = new PortContext(odi.contextAttributes, operatorContext);
+      context.attributes.attr(PortContext.IS_OUTPUT_UNIFIED).set(odi.runtimeAttributes.attr(PortContext.IS_OUTPUT_UNIFIED).get());
       newOutputPorts.put(odi.portName, new PortContextPair<OutputPort<?>>(port, context));
       port.setup(context);
     }

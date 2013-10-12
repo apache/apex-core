@@ -160,6 +160,12 @@ public class OperatorDeployInfo implements Serializable
      */
     public AttributeMap contextAttributes;
 
+    /**
+     * Runtime attributes for output port.
+     * Will be merged with contextAttributes when new attribute API is available.
+     */
+    public AttributeMap runtimeAttributes;
+
     @Override
     public String toString()
     {
@@ -224,8 +230,6 @@ public class OperatorDeployInfo implements Serializable
    * Context attributes for operator
    */
   public AttributeMap contextAttributes;
-
-  public AttributeMap runtimeAttributes;
 
   /**
    *

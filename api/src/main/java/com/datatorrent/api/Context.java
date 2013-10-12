@@ -83,6 +83,12 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     public static final AttributeKey<Boolean> AUTO_RECORD = new AttributeKey<Boolean>("autoRecord");
+
+    /**
+     * Whether the output is unified.
+     * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
+     */
+    public static final AttributeKey<Boolean> IS_OUTPUT_UNIFIED = new AttributeKey<Boolean>("isOutputUnified");
   }
 
   public interface OperatorContext extends Context
@@ -159,25 +165,12 @@ public interface Context
      */
     public static final AttributeKey<Operator.ProcessingMode> PROCESSING_MODE = new AttributeKey<Operator.ProcessingMode>("processMode");
 
-    public static final AttributeKey<Boolean> IS_PARTITIONED = new AttributeKey<Boolean>("isPartitioned");
-
-    public static final AttributeKey<Boolean> IS_STRICT_PARTITIONED = new AttributeKey<Boolean>("isStrictPartitioned");
-
     /**
      * Return the operator runtime id.
      *
      * @return The id
      */
     int getId();
-
-    /**
-     * Return true if the operator is partitioned, false otherwise.
-     *
-     * @return A boolean indicating whether the operator is partitioned or not
-     */
-    boolean isPartitioned();
-
-    boolean isStrictPartitioned();
 
   }
 
