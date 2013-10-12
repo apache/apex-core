@@ -20,13 +20,13 @@ import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
 
-public class HdfsStorageAgent implements StorageAgent
+public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
   final String checkpointFsPath;
   final Configuration conf;
 
-  HdfsStorageAgent(Configuration conf, String checkpointFsPath)
+  FSStorageAgent(Configuration conf, String checkpointFsPath)
   {
     this.conf = conf;
     this.checkpointFsPath = checkpointFsPath;
@@ -82,5 +82,5 @@ public class HdfsStorageAgent implements StorageAgent
   }
 
   @SuppressWarnings("unused")
-  private static final Logger logger = LoggerFactory.getLogger(HdfsStorageAgent.class);
+  private static final Logger logger = LoggerFactory.getLogger(FSStorageAgent.class);
 }

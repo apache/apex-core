@@ -56,11 +56,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_LOCALITY = "locality";
 
-  public static final String OPERATOR_PREFIX = "stram.operator.";
+  public static final String OPERATOR_PREFIX = "stram.operator";
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
-  public static final String TEMPLATE_PREFIX = "stram.template.";
+  public static final String TEMPLATE_PREFIX = "stram.template";
 
   public static final String TEMPLATE_idRegExp = "matchIdRegExp";
   public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
@@ -303,7 +303,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * The path for the application class is specified as a parameter. If an alias was specified
    * in the configuration file or configuration properties for the application class it is returned
    * otherwise null is returned.
-   * 
+   *
    * @param appPath The path of the application class in the jar
    * @return The alias name if one is available, null otherwise
    */
@@ -328,7 +328,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
       this.properties.setProperty(propertyName, propertyValue);
-      if (propertyName.startsWith(STREAM_PREFIX)) {
+      if (propertyName.startsWith(STREAM_PREFIX + ".")) {
          // stream definition
         String[] keyComps = propertyName.split("\\.");
         // must have at least id and single component property
@@ -360,7 +360,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
            // all other stream properties
           stream.properties.put(propertyKey, propertyValue);
         }
-      } else if (propertyName.startsWith(OPERATOR_PREFIX)) {
+      } else if (propertyName.startsWith(OPERATOR_PREFIX + ".")) {
          // get the operator name
          String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
@@ -379,7 +379,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
            // simple property
            nc.properties.put(propertyKey, propertyValue);
          }
-      } else if (propertyName.startsWith(TEMPLATE_PREFIX)) {
+      } else if (propertyName.startsWith(TEMPLATE_PREFIX + ".")) {
         String[] keyComps = propertyName.split("\\.", 4);
         // must have at least id and single component property
         if (keyComps.length < 4) {
@@ -397,7 +397,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           tc.properties.setProperty(propertyKey, propertyValue);
         }
-      } else if (propertyName.startsWith(APPLICATION_PREFIX)) {
+      } else if (propertyName.startsWith(APPLICATION_PREFIX + ".")) {
         // get the operator name
         String[] keyComps = propertyName.split("\\.");
         // must have at least id and single component property
@@ -435,6 +435,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   public Properties getProperties() {
     return this.properties;
+  }
+
+  public Map<String, String> getAppAliases() {
+    return this.appAliases;
   }
 
   @Override

@@ -31,7 +31,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.FSPartFileCollection;
 
 /**
  *
@@ -121,7 +121,7 @@ public class TupleRecorderTest
       String line;
       BufferedReader br;
 
-      path = new Path(recorder.getStorage().getBasePath(), HdfsPartFileCollection.INDEX_FILE);
+      path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.INDEX_FILE);
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
@@ -129,7 +129,7 @@ public class TupleRecorderTest
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
       Assert.assertTrue("check index", line.matches("F:part0.txt:\\d+-\\d+:4:T:1000-1000:33:\\{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"\\}"));
 
-      path = new Path(recorder.getStorage().getBasePath(), HdfsPartFileCollection.META_FILE);
+      path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.META_FILE);
       //fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));

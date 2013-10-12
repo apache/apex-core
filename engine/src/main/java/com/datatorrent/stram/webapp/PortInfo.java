@@ -24,7 +24,7 @@ public class PortInfo
   public String name;
   public String type;
   public long totalTuples;
-  public long tuplesPSMA10;
-  public long bufferServerBytesPSMA10;
+  public long tuplesPSMA;
+  public long bufferServerBytesPSMA;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
 }

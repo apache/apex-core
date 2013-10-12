@@ -41,7 +41,7 @@ public class AppInfo {
   protected String appId;
   protected String name;
   protected String user;
-  protected long startedOn;
+  protected long startTime;
   protected long elapsedTime;
   protected String appPath;
   protected String daemonAddress;
@@ -74,25 +74,74 @@ public class AppInfo {
       return 0;
     }
 
-    public int containerMemory;
-
     @javax.xml.bind.annotation.XmlElement
     public int getNumOperators() {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
-    public CriticalPathInfo getCriticalPathInfo() {
+    public long getLatency() {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public List<Integer> getCriticalPath() {
       return null;
     }
 
-  }
+    @javax.xml.bind.annotation.XmlElement
+    public long getCurrentWindowId()
+    {
+      return 0;
+    }
 
-  @XmlRootElement
-  @XmlAccessorType(XmlAccessType.FIELD)
-  public static class CriticalPathInfo {
-    public long latency;
-    public List<Integer> path;
+    @javax.xml.bind.annotation.XmlElement
+    public long getRecoveryWindowId()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTuplesProcessedPSMA()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTotalTuplesProcessed()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTuplesEmittedPSMA()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTotalTuplesEmitted()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTotalMemoryAllocated()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTotalBufferServerReadBytesPSMA()
+    {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public long getTotalBufferServerWriteBytesPSMA()
+    {
+      return 0;
+    }
   }
 
   /**
@@ -104,8 +153,8 @@ public class AppInfo {
     this.appId = context.getApplicationID().toString();
     this.name = context.getApplicationName();
     this.user = context.getUser().toString();
-    this.startedOn = context.getStartTime();
-    this.elapsedTime = Times.elapsed(this.startedOn, 0);
+    this.startTime = context.getStartTime();
+    this.elapsedTime = Times.elapsed(this.startTime, 0);
     this.appPath = context.getApplicationPath();
     this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
     this.stats = context.getStats();
@@ -142,7 +191,7 @@ public class AppInfo {
    * @return long
    */
   public long getStartTime() {
-    return this.startedOn;
+    return this.startTime;
   }
 
   /**

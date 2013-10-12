@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram.cli;
+package com.datatorrent.stram.client;
 
 import java.io.File;
 import java.io.IOException;

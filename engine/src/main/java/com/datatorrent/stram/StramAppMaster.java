@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
+import com.datatorrent.stram.StramChildAgent.PortStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
@@ -174,16 +175,136 @@ public class StramAppMaster extends CompositeService
     }
 
     @Override
-    public AppInfo.CriticalPathInfo getCriticalPathInfo()
+    public long getCurrentWindowId()
     {
-      AppInfo.CriticalPathInfo cpi = new AppInfo.CriticalPathInfo();
-      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
-      if (criticalPathInfo == null) {
-        return null;
+      long min = Long.MAX_VALUE;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          if (min > entry.getValue().currentWindowId) {
+            min = entry.getValue().currentWindowId;
+          }
+        }
       }
-      cpi.latency = criticalPathInfo.latency;
-      cpi.path = criticalPathInfo.path;
-      return cpi;
+      return min == Long.MAX_VALUE ? 0 : min;
+    }
+
+    @Override
+    public long getRecoveryWindowId()
+    {
+      long min = Long.MAX_VALUE;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          if (min > entry.getValue().operator.getRecoveryCheckpoint()) {
+            min = entry.getValue().operator.getRecoveryCheckpoint();
+          }
+        }
+      }
+      return min == Long.MAX_VALUE ? 0 : min;
+    }
+
+    @Override
+    public long getTuplesProcessedPSMA()
+    {
+      long result = 0;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().tuplesProcessedPSMA;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalTuplesProcessed()
+    {
+      long result = 0;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().totalTuplesProcessed;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTuplesEmittedPSMA()
+    {
+      long result = 0;
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().tuplesEmittedPSMA;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalTuplesEmitted()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().totalTuplesEmitted;
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalMemoryAllocated()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        result += c.getAllocatedMemoryMB();
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalBufferServerReadBytesPSMA()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          OperatorStatus os = entry.getValue();
+          for (Map.Entry<String, PortStatus> portEntry : os.inputPortStatusList.entrySet()) {
+            result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
+          }
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public long getTotalBufferServerWriteBytesPSMA()
+    {
+      long result = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+          OperatorStatus os = entry.getValue();
+          for (Map.Entry<String, PortStatus> portEntry : os.outputPortStatusList.entrySet()) {
+            result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
+          }
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public List<Integer> getCriticalPath()
+    {
+      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      return (criticalPathInfo == null) ? null : criticalPathInfo.path;
+    }
+
+    @Override
+    public long getLatency()
+    {
+      StreamingContainerManager.CriticalPathInfo criticalPathInfo = dnmgr.getCriticalPathInfo();
+      return (criticalPathInfo == null) ? 0 : criticalPathInfo.latency;
     }
 
   }
@@ -293,7 +414,7 @@ public class StramAppMaster extends CompositeService
 
       Configuration conf = new YarnConfiguration();
       appMaster.init(conf);
-      appMaster.start();      
+      appMaster.start();
       result = appMaster.run();
     }
     catch (Throwable t) {
@@ -436,10 +557,10 @@ public class StramAppMaster extends CompositeService
     if (dag.isDebug()) {
       dumpOutDebugInfo();
     }
-    
+
     this.dnmgr = new StreamingContainerManager(dag, true);
     LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
-    
+
     if (UserGroupInformation.isSecurityEnabled()) {
       //TODO :- Need to perform token renewal
       delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
@@ -449,9 +570,9 @@ public class StramAppMaster extends CompositeService
     }
     this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     addService(nmClient);
-    this.amRmClient = AMRMClient.createAMRMClient();    
+    this.amRmClient = AMRMClient.createAMRMClient();
     addService(amRmClient);
-    
+
     // start RPC server
     int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
@@ -468,7 +589,7 @@ public class StramAppMaster extends CompositeService
     if (delegationTokenManager != null) {
       delegationTokenManager.startThreads();
     }
-    
+
     // start web service
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
@@ -550,7 +671,7 @@ public class StramAppMaster extends CompositeService
 
     // Register self with ResourceManager
     RegisterApplicationMasterResponse response = amRmClient.registerApplicationMaster(appMasterHostname, 0, appMasterTrackingUrl);
-    
+
     // Dump out information about cluster capability as seen by the resource manager
     int maxMem = response.getMaximumResourceCapability().getMemory();
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
@@ -562,7 +683,6 @@ public class StramAppMaster extends CompositeService
               + ", max=" + maxMem);
       containerMemory = maxMem;
     }
-    stats.containerMemory = containerMemory;
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -658,7 +778,7 @@ public class StramAppMaster extends CompositeService
 
         {
           // record container start event
-          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("container-start");
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("container-start");
           ev.addData("containerId", allocatedContainer.getId().toString());
           ev.addData("containerNode", allocatedContainer.getNodeId().toString());
           ev.setTimestamp(timestamp);
@@ -730,7 +850,7 @@ public class StramAppMaster extends CompositeService
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-stop");
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
           ev.addData("operatorId", entry.getKey());
           ev.addData("operatorName", entry.getValue().operator.getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
@@ -738,7 +858,7 @@ public class StramAppMaster extends CompositeService
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
-        HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("container-stop");
+        FSEventRecorder.Event ev = new FSEventRecorder.Event("container-stop");
         ev.addData("containerId", containerStatus.getContainerId().toString());
         ev.addData("exitStatus", containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
@@ -814,7 +934,7 @@ public class StramAppMaster extends CompositeService
       LOG.info("Released container, id={}", containerId.getId());
       amRmClient.releaseAssignedContainer(containerId);
     }
-    
+
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
       Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
       if (allocatedContainer != null) {

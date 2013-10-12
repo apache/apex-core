@@ -61,23 +61,21 @@ import java.lang.reflect.Field;
 public class StramWebServices
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramWebServices.class);
-  public static final String PATH = "/ws/v1/stram";
+  public static final String PATH = WebServices.PATH + "/" + WebServices.VERSION + "/stram";
   public static final String PATH_INFO = "info";
-  public static final String PATH_OPERATORS = "operators";
+  public static final String PATH_PHYSICAL_PLAN = "physicalPlan";
+  public static final String PATH_PHYSICAL_PLAN_OPERATORS = PATH_PHYSICAL_PLAN + "/operators";
+  public static final String PATH_PHYSICAL_PLAN_STREAMS = PATH_PHYSICAL_PLAN + "/streams";
   public static final String PATH_SHUTDOWN = "shutdown";
-  public static final String PATH_STARTRECORDING = "startRecording";
-  public static final String PATH_STOPRECORDING = "stopRecording";
-  public static final String PATH_SYNCRECORDING = "syncRecording";
-  public static final String PATH_SYNCSTATS = "syncStats";
-  public static final String PATH_SYNCEVENTS = "syncEvents";
-  public static final String PATH_CONTAINERS = "containers";
+  public static final String PATH_RECORDINGS = "recordings";
+  public static final String PATH_RECORDINGS_START = PATH_RECORDINGS + "/start";
+  public static final String PATH_RECORDINGS_STOP = PATH_RECORDINGS + "/stop";
+  public static final String PATH_PHYSICAL_PLAN_CONTAINERS = PATH_PHYSICAL_PLAN + "/containers";
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
-  public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
-  public static final String PATH_DESCRIBE_OPERATOR = "describeOperator";
   public static final String PATH_ALERTS = "alerts";
-  public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
+  //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse httpResponse;
@@ -121,24 +119,35 @@ public class StramWebServices
   }
 
   @GET
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public AppInfo get()
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject get() throws Exception
   {
     return getAppInfo();
   }
 
   @GET
   @Path(PATH_INFO)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public AppInfo getAppInfo()
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getAppInfo() throws Exception
   {
     init();
-    return new AppInfo(this.appCtx);
+    return new JSONObject(objectMapper.writeValueAsString(new AppInfo(this.appCtx)));
   }
 
   @GET
-  @Path(PATH_OPERATORS)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Path(PATH_PHYSICAL_PLAN)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPhysicalPlan() throws Exception
+  {
+    Map<String, Object> result = new HashMap<String, Object>();
+    result.put("operators", dagManager.getOperatorInfoList());
+    result.put("streams", dagManager.getStreamInfoList());
+    return new JSONObject(objectMapper.writeValueAsString(result));
+  }
+
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS)
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorsInfo() throws Exception
   {
     init();
@@ -149,8 +158,19 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_OPERATORS + "/{operatorId}")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Path(PATH_PHYSICAL_PLAN_STREAMS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getStreamsInfo() throws Exception
+  {
+    init();
+    StreamsInfo streamList = new StreamsInfo();
+    streamList.streams = dagManager.getStreamInfoList();
+    return new JSONObject(objectMapper.writeValueAsString(streamList));
+  }
+
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}")
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorInfo(@PathParam("operatorId") String operatorId) throws Exception
   {
     init();
@@ -162,8 +182,8 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_OPERATORS + "/{operatorId}/ports")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports")
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId) throws Exception
   {
     init();
@@ -172,14 +192,13 @@ public class StramWebServices
     if (oi == null) {
       throw new NotFoundException();
     }
-    map.put("inputPorts", oi.inputPorts);
-    map.put("outputPorts", oi.outputPorts);
+    map.put("ports", oi.ports);
     return new JSONObject(objectMapper.writeValueAsString(map));
   }
 
   @GET
-  @Path(PATH_OPERATORS + "/{operatorId}/ports/{portName}")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports/{portName}")
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
   {
     init();
@@ -187,12 +206,7 @@ public class StramWebServices
     if (oi == null) {
       throw new NotFoundException();
     }
-    for (PortInfo pi : oi.inputPorts) {
-      if (pi.name.equals(portName)) {
-        return new JSONObject(objectMapper.writeValueAsString(pi));
-      }
-    }
-    for (PortInfo pi : oi.outputPorts) {
+    for (PortInfo pi : oi.ports) {
       if (pi.name.equals(portName)) {
         return new JSONObject(objectMapper.writeValueAsString(pi));
       }
@@ -202,7 +216,7 @@ public class StramWebServices
 
   @GET
   @Path(PATH_OPERATOR_CLASSES)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   @SuppressWarnings({"rawtypes", "unchecked"})
   public JSONObject getOperatorClasses(@QueryParam("parent") String parent)
   {
@@ -222,7 +236,9 @@ public class StramWebServices
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
       for (Class clazz : operatorClasses) {
-        classNames.put(clazz.getName());
+        JSONObject j = new JSONObject();
+        j.put("name", clazz.getName());
+        classNames.put(j);
       }
 
       result.put("classes", classNames);
@@ -236,9 +252,9 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_DESCRIBE_OPERATOR)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject describeOperator(@QueryParam("class") String className)
+  @Path(PATH_OPERATOR_CLASSES + "/{className}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject describeOperator(@PathParam("className") String className)
   {
     if (className == null) {
       throw new UnsupportedOperationException();
@@ -324,97 +340,61 @@ public class StramWebServices
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_SHUTDOWN)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject shutdown()
   {
+    LOG.debug("Shutdown requested");
     dagManager.shutdownAllContainers("Shutdown requested externally.");
     return new JSONObject();
   }
 
-  @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_STARTRECORDING)
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject startRecording(JSONObject request)
+  @POST
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_START)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject startRecording(@PathParam("opId") String opId)
   {
+    LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
-    try {
-      int operId = Integer.valueOf(request.getString("operId"));
-      String portName = request.optString("portName");
-      dagManager.startRecording(operId, portName);
-    }
-    catch (JSONException ex) {
-      try {
-        response.put("error", ex.toString());
-      }
-      catch (JSONException ex1) {
-        throw new RuntimeException(ex1);
-      }
-    }
+    dagManager.startRecording(Integer.valueOf(opId), null);
     return response;
   }
 
-  @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_STOPRECORDING)
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject stopRecording(JSONObject request)
+  @POST
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}" + PATH_RECORDINGS_START)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
   {
+    LOG.debug("Start recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
-    try {
-      int operId = request.getInt("operId");
-      String portName = request.optString("portName");
-      dagManager.stopRecording(operId, portName);
-    }
-    catch (JSONException ex) {
-      LOG.warn("Got JSON Exception: ", ex);
-    }
+    dagManager.startRecording(Integer.valueOf(opId), portName);
     return response;
   }
 
-  @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_SYNCRECORDING)
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject syncRecording(JSONObject request)
+  @POST
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_STOP)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject stopRecording(@PathParam("opId") String opId)
   {
+    LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
-    try {
-      int operId = request.getInt("operId");
-      String portName = request.optString("portName");
-      dagManager.syncRecording(operId, portName);
-    }
-    catch (JSONException ex) {
-      LOG.warn("Got JSON Exception: ", ex);
-    }
+    dagManager.stopRecording(Integer.valueOf(opId), null);
     return response;
   }
 
-  @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_SYNCSTATS)
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject syncStats(JSONObject request)
+  @POST
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}" + PATH_RECORDINGS_STOP)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject stopRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
   {
+    LOG.debug("Stop recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
-    dagManager.syncStats();
-    return response;
-  }
-
-  @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_SYNCEVENTS)
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject syncEvents(JSONObject request)
-  {
-    JSONObject response = new JSONObject();
-    dagManager.syncEvents();
+    dagManager.stopRecording(Integer.valueOf(opId), portName);
     return response;
   }
 
   @GET
-  @Path(PATH_CONTAINERS)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject listContainers() throws Exception
   {
     init();
@@ -428,8 +408,8 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_CONTAINERS + "/{containerId}")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}")
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getContainer(@PathParam("containerId") String containerId) throws Exception
   {
     init();
@@ -441,9 +421,9 @@ public class StramWebServices
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_CONTAINERS + "/{containerId}/kill")
+  @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}/kill")
   @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject killContainer(JSONObject request, @PathParam("containerId") String containerId)
   {
     JSONObject response = new JSONObject();
@@ -452,16 +432,19 @@ public class StramWebServices
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/setProperty")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public JSONObject setOperatorProperty(JSONObject request, @PathParam("operatorId") String operatorId)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject setOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
   {
     JSONObject response = new JSONObject();
     try {
-      String propertyName = request.getString("propertyName");
-      String propertyValue = request.getString("propertyValue");
-      dagManager.setOperatorProperty(operatorId, propertyName, propertyValue);
+      Iterator<String> keys = request.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        String val = request.getString(key);
+        dagManager.setOperatorProperty(operatorId, key, val);
+      }
     }
     catch (JSONException ex) {
       LOG.warn("Got JSON Exception: ", ex);
@@ -471,7 +454,7 @@ public class StramWebServices
 
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/attributes")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorAttributes(@PathParam("operatorId") String operatorId, @QueryParam("attributeName") String attributeName)
   {
     Map<String, Object> m = dagManager.getOperatorAttributes(operatorId);
@@ -492,7 +475,7 @@ public class StramWebServices
 
   @GET
   @Path(PATH_LOGICAL_PLAN + "/attributes")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
   {
     Map<String, Object> m = dagManager.getApplicationAttributes();
@@ -513,7 +496,7 @@ public class StramWebServices
 
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/{portName}/attributes")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
     Map<String, Object> m = dagManager.getPortAttributes(operatorId, portName);
@@ -534,7 +517,7 @@ public class StramWebServices
 
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/properties")
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
   {
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
@@ -561,7 +544,7 @@ public class StramWebServices
 
   @GET
   @Path(PATH_LOGICAL_PLAN)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getLogicalPlan() throws JSONException, IOException
   {
     LogicalPlan lp = dagManager.getLogicalPlan();
@@ -569,9 +552,9 @@ public class StramWebServices
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_LOGICAL_PLAN_MODIFICATION)
+  @Path(PATH_LOGICAL_PLAN)
   @Consumes(MediaType.APPLICATION_JSON)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces(MediaType.APPLICATION_JSON)
   public JSONObject logicalPlanModification(JSONObject request)
   {
     JSONObject response = new JSONObject();
@@ -652,20 +635,21 @@ public class StramWebServices
     return dagManager.getAlertsManager().listAlerts();
   }
 
-  @GET
-  @Path(PATH_ACTION_OPERATOR_CLASSES)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
-  {
-    JSONObject response = new JSONObject();
-    JSONArray jsonArray = new JSONArray();
-    List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
+  /*
+   @GET
+   @Path(PATH_ACTION_OPERATOR_CLASSES)
+   @Produces(MediaType.APPLICATION_JSON)
+   public Object listActionOperatorClasses(@PathParam("appId") String appId) throws JSONException
+   {
+   JSONObject response = new JSONObject();
+   JSONArray jsonArray = new JSONArray();
+   List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getActionOperatorClasses();
 
-    for (Class<? extends Operator> clazz : operatorClasses) {
-      jsonArray.put(clazz.getName());
-    }
-    response.put("classes", jsonArray);
-    return response;
-  }
-
+   for (Class<? extends Operator> clazz : operatorClasses) {
+   jsonArray.put(clazz.getName());
+   }
+   response.put("classes", jsonArray);
+   return response;
+   }
+   */
 }

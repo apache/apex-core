@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.ning.http.client.websocket.WebSocket;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -12,8 +13,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
-
-import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,25 +20,26 @@ import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.api.util.PubSubWebSocketClient;
 import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 
 /**
- * <p>HdfsEventRecorder class.</p>
+ * <p>FSEventRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.4
  */
-public class HdfsEventRecorder implements EventRecorder
+public class FSEventRecorder implements EventRecorder
 {
   public static final String VERSION = "1.0";
   private final BlockingQueue<Event> queue = new LinkedBlockingQueue<Event>();
-  private static final Logger LOG = LoggerFactory.getLogger(HdfsEventRecorder.class);
-  private HdfsPartFileCollection storage = new HdfsPartFileCollection();
+  private static final Logger LOG = LoggerFactory.getLogger(FSEventRecorder.class);
+  private FSPartFileCollection storage;
   private String basePath = ".";
   private transient StreamCodec<Object> streamCodec;
   private URI pubSubUrl = null;
   private int numSubscribers = 0;
-  private PubSubWebSocketClient wsClient;
+  private SharedPubSubWebSocketClient wsClient;
   private String pubSubTopic;
   private String appid;
 
@@ -53,7 +53,10 @@ public class HdfsEventRecorder implements EventRecorder
           Event event = queue.take();
           writeEvent(event);
           if (queue.isEmpty()) {
-            storage.flushData();
+            if (!storage.flushData() && wsClient != null) {
+              String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".event." + storage.getBasePath();
+              wsClient.publish(topic, storage.getLatestIndexLine());
+            }
           }
         }
         catch (InterruptedException ex) {
@@ -67,15 +70,15 @@ public class HdfsEventRecorder implements EventRecorder
 
   }
 
-  public HdfsEventRecorder(String appid)
+  public FSEventRecorder(String appid)
   {
     LOG.debug("Event recorder created for {}", appid);
     this.appid = appid;
   }
 
-  public void setPubSubUrl(String pubSubUrl) throws URISyntaxException
+  public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)
   {
-    this.pubSubUrl = new URI(pubSubUrl);
+    this.wsClient = wsClient;
   }
 
   public void setBasePath(String basePath)
@@ -87,12 +90,12 @@ public class HdfsEventRecorder implements EventRecorder
   {
     try {
       streamCodec = new JsonStreamCodec<Object>();
+      storage = new FSPartFileCollection();
       storage.setBasePath(basePath);
       storage.setup();
       storage.writeMetaData((VERSION + "\n").getBytes());
 
-      if (pubSubUrl != null) {
-        pubSubTopic = "eventRecorder." + appid;
+      if (wsClient != null) {
         try {
           setupWsClient();
         }
@@ -132,36 +135,27 @@ public class HdfsEventRecorder implements EventRecorder
 
   private void setupWsClient() throws ExecutionException, IOException, InterruptedException, TimeoutException
   {
-    wsClient = new PubSubWebSocketClient()
+    wsClient.addHandler(pubSubTopic + ".numSubscribers", new SharedPubSubWebSocketClient.Handler()
     {
-      @Override
-      public void onOpen(WebSocket.Connection connection)
-      {
-      }
-
       @Override
       public void onMessage(String type, String topic, Object data)
       {
-        if (topic.equals(pubSubTopic + ".numSubscribers")) {
-          numSubscribers = Integer.valueOf((String)data);
-          LOG.info("Number of subscribers is now {}", numSubscribers);
-        }
+        numSubscribers = Integer.valueOf((String)data);
+        LOG.info("Number of subscribers is now {}", numSubscribers);
       }
 
       @Override
-      public void onClose(int code, String message)
+      public void onClose()
       {
         numSubscribers = 0;
       }
 
-    };
-    wsClient.setUri(pubSubUrl);
-    wsClient.openConnection(500);
-    wsClient.subscribeNumSubscribers(pubSubTopic);
+    });
   }
 
   public void requestSync()
   {
     this.storage.requestSync();
   }
+
 }

@@ -732,10 +732,15 @@ public class StramChild
     activate(operatorMap, newStreams);
   }
 
+  public static String getUnifierInputPortName(String portName, int sourceNodeId, String sourcePortName)
+  {
+    return portName + "(" + sourceNodeId + Component.CONCAT_SEPARATOR + sourcePortName + ")";
+  }
+
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
     for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
-      idi.portName += "(" + idi.sourceNodeId + Component.CONCAT_SEPARATOR + idi.sourcePortName + ")";
+      idi.portName = getUnifierInputPortName(idi.portName, idi.sourceNodeId, idi.sourcePortName);
     }
   }
 
@@ -744,12 +749,12 @@ public class StramChild
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent;
       if (ndi.contextAttributes == null) {
-        backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
+        backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
       }
       else {
         backupAgent = ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).get();
         if (backupAgent == null) {
-          backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
+          backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
           ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).set(backupAgent);
         }
       }
