@@ -33,6 +33,7 @@ import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.service.CompositeService;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
@@ -90,7 +91,7 @@ import com.datatorrent.stram.webapp.StramWebApp;
  *
  * @since 0.3.2
  */
-public class StramAppMaster //extends License for licensing using native
+public class StramAppMaster extends CompositeService
 {
   static {
     // set system properties so they can be used in logger configuration
@@ -111,10 +112,8 @@ public class StramAppMaster //extends License for licensing using native
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
-  // Configuration
-  private final Configuration conf;
-  private final AMRMClient<ContainerRequest> amRmClient;
-  private final NMClientAsync nmClient;
+  private AMRMClient<ContainerRequest> amRmClient;
+  private NMClientAsync nmClient;
   private LogicalPlan dag;
   // Application Attempt Id ( combination of attemptId and fail count )
   private ApplicationAttemptId appAttemptID;
@@ -133,7 +132,7 @@ public class StramAppMaster //extends License for licensing using native
   // Launch threads
   //private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
-  private StreamingContainerParent rpcImpl;
+  private StreamingContainerParent heartbeatListener;
   private StreamingContainerManager dnmgr;
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
@@ -287,10 +286,14 @@ public class StramAppMaster //extends License for licensing using native
     try {
       appMaster = new StramAppMaster();
       LOG.info("Initializing ApplicationMaster");
-      boolean doRun = appMaster.init(args);
+      boolean doRun = appMaster.parseCmdArgs(args);
       if (!doRun) {
         System.exit(0);
       }
+
+      Configuration conf = new YarnConfiguration();
+      appMaster.init(conf);
+      appMaster.start();      
       result = appMaster.run();
     }
     catch (Throwable t) {
@@ -299,7 +302,7 @@ public class StramAppMaster //extends License for licensing using native
     }
     finally {
       if (appMaster != null) {
-        appMaster.destroy();
+        appMaster.stop();
       }
     }
 
@@ -351,10 +354,10 @@ public class StramAppMaster //extends License for licensing using native
     }
 
     LOG.info("Classpath: {}", System.getProperty("java.class.path"));
-    LOG.info("Config resources: {}", conf.toString());
+    LOG.info("Config resources: {}", getConfig().toString());
     try {
       // find a better way of logging this using the logger.
-      Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
+      Configuration.dumpConfiguration(getConfig(), new PrintWriter(System.out));
     }
     catch (Exception e) {
       LOG.error("Error dumping configuration.", e);
@@ -370,23 +373,9 @@ public class StramAppMaster //extends License for licensing using native
     }
   }
 
-  public StramAppMaster() throws Exception
+  public StramAppMaster()
   {
-    // Set up the configuration and RPC
-    this.conf = new YarnConfiguration();
-    if (UserGroupInformation.isSecurityEnabled()) {
-      //TODO :- Need to perform token renewal
-      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
-                                                               DELEGATION_TOKEN_MAX_LIFETIME,
-                                                               DELEGATION_TOKEN_RENEW_INTERVAL,
-                                                               DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
-    }
-    nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
-    nmClient.init(conf);
-    nmClient.start();
-    amRmClient = AMRMClient.createAMRMClient();    
-    amRmClient.init(conf);
-    amRmClient.start();
+    super(StramAppMaster.class.getName());
   }
 
   /**
@@ -398,7 +387,7 @@ public class StramAppMaster //extends License for licensing using native
    * @throws IOException
    * @throws ClassNotFoundException
    */
-  public boolean init(String[] args) throws ParseException, IOException, ClassNotFoundException
+  private boolean parseCmdArgs(String[] args) throws ParseException, IOException, ClassNotFoundException
   {
 
     Options opts = new Options();
@@ -429,11 +418,16 @@ public class StramAppMaster //extends License for licensing using native
       ContainerId containerId = ConverterUtils.toContainerId(envs.get(Environment.CONTAINER_ID.name()));
       appAttemptID = containerId.getApplicationAttemptId();
     }
+    return true;
+  }
 
-    LOG.info("Application master for app"
-            + ", appId=" + appAttemptID.getApplicationId().getId()
-            + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
-            + ", attemptId=" + appAttemptID.getAttemptId());
+  @Override
+  protected void serviceInit(Configuration conf) throws Exception
+  {
+    LOG.info("Application master"
+        + ", appId=" + appAttemptID.getApplicationId().getId()
+        + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
+        + ", attemptId=" + appAttemptID.getAttemptId());
 
     FileInputStream fis = new FileInputStream("./" + LogicalPlan.SER_FILE_NAME);
     this.dag = LogicalPlan.read(fis);
@@ -442,43 +436,58 @@ public class StramAppMaster //extends License for licensing using native
     if (dag.isDebug()) {
       dumpOutDebugInfo();
     }
-
+    
     this.dnmgr = new StreamingContainerManager(dag, true);
+    LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
+    
+    if (UserGroupInformation.isSecurityEnabled()) {
+      //TODO :- Need to perform token renewal
+      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
+                                                               DELEGATION_TOKEN_MAX_LIFETIME,
+                                                               DELEGATION_TOKEN_RENEW_INTERVAL,
+                                                               DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+    }
+    this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
+    addService(nmClient);
+    this.amRmClient = AMRMClient.createAMRMClient();    
+    addService(amRmClient);
+    
+    // start RPC server
+    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
+    this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
+    addService(heartbeatListener);
 
+    // initialize all services added above
+    super.serviceInit(conf);
+  }
+
+  @Override
+  protected void serviceStart() throws Exception
+  {
+    super.serviceStart();
     if (delegationTokenManager != null) {
-      // start the secret manager
       delegationTokenManager.startThreads();
     }
-
-    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
-
-    // start RPC server
-    rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
-    rpcImpl.init(conf);
-    rpcImpl.start();
-    LOG.info("Container callback server listening at " + rpcImpl.getAddress());
-
-    LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
-
-    StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
+    
     // start web service
+    StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
-      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(conf).
+      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).
               start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
-      this.appMasterTrackingUrl = NetUtils.getConnectAddress(rpcImpl.getAddress()).getHostName() + ":" + webApp.port();
+      this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
     }
     catch (Exception e) {
       LOG.error("Webapps failed to start. Ignoring for now:", e);
     }
-
-    return true;
   }
 
-  public void destroy()
+  @Override
+  protected void serviceStop() throws Exception
   {
+    super.serviceStop();
     if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
@@ -496,7 +505,7 @@ public class StramAppMaster //extends License for licensing using native
     new HelpFormatter().printHelp("ApplicationMaster", opts);
   }
 
-  public boolean run() throws YarnException
+  private boolean run() throws YarnException
   {
     try {
       StramChild.eventloop.start();
@@ -581,7 +590,7 @@ public class StramAppMaster //extends License for licensing using native
       // we need getClusterNodes to populate the initial node list,
       // subsequent updates come through the heartbeat response
       YarnClient clientRMService = YarnClient.createYarnClient();
-      clientRMService.init(conf);
+      clientRMService.init(getConfig());
       clientRMService.start();
       resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
       clientRMService.stop();
@@ -664,7 +673,7 @@ public class StramAppMaster //extends License for licensing using native
         else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
-          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, rpcImpl.getAddress());
+          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, heartbeatListener.getAddress());
           //Thread launchThread = new Thread(runnableLaunchContainer);
           //launchThreads.add(launchThread);
           //launchThread.start();

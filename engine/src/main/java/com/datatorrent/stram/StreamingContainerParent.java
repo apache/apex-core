@@ -91,6 +91,7 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
 
       server.start();
       this.address = NetUtils.getConnectAddress(server);
+      LOG.info("Container callback server listening at " + this.address);
     } catch (IOException e) {
       throw new YarnRuntimeException(e);
     }
