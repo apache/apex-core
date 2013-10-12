@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,26 +16,30 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.validation.ValidationException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
+
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.google.common.collect.Maps;
 
 /**
  *
@@ -646,21 +648,27 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
     // process application level settings prior to populate
-    for (@SuppressWarnings("rawtypes") Attribute key : AttributeInitializer.getAttributes(DAGContext.class)) {
-      String confKey = "stram." + key.name();
-      String stringValue = appProps.getProperty(confKey, null);
-      if (stringValue != null) {
-        if (key.clazz == Integer.class) {
-          dag.setAttribute(key, Integer.parseInt(stringValue));
-        } else if (key.clazz == Long.class) {
-          dag.setAttribute(key, Long.parseLong(stringValue));
-        } else if (key.clazz == String.class) {
-          dag.setAttribute(key, stringValue);
-        } else if (key.clazz == Boolean.class) {
-          dag.setAttribute(key, Boolean.parseBoolean(stringValue));
-        } else {
-          String msg = String.format("Unsupported attribute type: %s (%s)", key.clazz, key.name());
-          throw new UnsupportedOperationException(msg);
+    if (DAGContext.initialized) {
+      for (@SuppressWarnings("rawtypes") Attribute key : AttributeInitializer.getAttributes(DAGContext.class)) {
+        String confKey = "stram." + key.name();
+        String stringValue = appProps.getProperty(confKey, null);
+        if (stringValue != null) {
+          if (key.clazz == Integer.class) {
+            dag.setAttribute(key, Integer.parseInt(stringValue));
+          }
+          else if (key.clazz == Long.class) {
+            dag.setAttribute(key, Long.parseLong(stringValue));
+          }
+          else if (key.clazz == String.class) {
+            dag.setAttribute(key, stringValue);
+          }
+          else if (key.clazz == Boolean.class) {
+            dag.setAttribute(key, Boolean.parseBoolean(stringValue));
+          }
+          else {
+            String msg = String.format("Unsupported attribute type: %s (%s)", key.clazz, key.name());
+            throw new UnsupportedOperationException(msg);
+          }
         }
       }
     }
