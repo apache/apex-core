@@ -48,9 +48,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
 
-  private boolean partitioned = false;
-  private boolean strictPartitioned = false;
-
   @SuppressWarnings("ReturnOfCollectionOrArrayField")
   public BlockingQueue<NodeRequest> getRequests()
   {
@@ -91,28 +88,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   public int getId()
   {
     return id;
-  }
-
-  @Override
-  public boolean isPartitioned()
-  {
-    return partitioned;
-  }
-
-  public void setPartitioned(boolean partitioned)
-  {
-    this.partitioned = partitioned;
-  }
-
-  @Override
-  public boolean isStrictPartitioned()
-  {
-    return strictPartitioned;
-  }
-
-  public void setStrictPartitioned(boolean strictPartitioned)
-  {
-    this.strictPartitioned = strictPartitioned;
   }
 
   /**

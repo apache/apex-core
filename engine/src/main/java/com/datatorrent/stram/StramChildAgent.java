@@ -402,8 +402,6 @@ public class StramChildAgent {
       ndi.inputs = new ArrayList<InputDeployInfo>(oper.getInputs().size());
       ndi.outputs = new ArrayList<OutputDeployInfo>(oper.getOutputs().size());
 
-      //System.out.println("ABC oper name " + oper.getName() + " operMeta " + oper.getOperatorMeta() + " unifier " + oper.getUnifier() );
-
       for (PTOperator.PTOutput out : oper.getOutputs()) {
         final StreamMeta streamMeta = out.logicalStream;
         // buffer server or inline publisher
