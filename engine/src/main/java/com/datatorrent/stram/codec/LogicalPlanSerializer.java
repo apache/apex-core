@@ -87,7 +87,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }) {
         Object attrValue = operatorMeta.getAttributes().get(attrKey);
         if (attrValue != null) {
-          attributeMap.put(attrKey.name(), attrValue);
+          attributeMap.put(attrKey.name, attrValue);
         }
       }
       Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
@@ -112,7 +112,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           Context.PortContext.SPIN_MILLIS}) {
           Object attrValue = portMeta.getAttributes().get(attrKey);
           if (attrValue != null) {
-            portAttributeMap.put(attrKey.name(), attrValue);
+            portAttributeMap.put(attrKey.name, attrValue);
           }
         }
         portMap.put(portName, portDetailMap);
@@ -130,7 +130,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           Context.PortContext.SPIN_MILLIS}) {
           Object attrValue = portMeta.getAttributes().get(attrKey);
           if (attrValue != null) {
-            portAttributeMap.put(attrKey.name(), attrValue);
+            portAttributeMap.put(attrKey.name, attrValue);
           }
         }
         portMap.put(portName, portDetailMap);

@@ -16,6 +16,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
@@ -31,11 +32,10 @@ import com.datatorrent.netlet.EventLoop;
  */
 public class StreamContext extends DefaultAttributeMap implements Context
 {
-  private static final long serialVersionUID = 201212042146L;
-  public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(InetSocketAddress.class);
-  public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(EventLoop.class);
+  public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
+  public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
   @SuppressWarnings("rawtypes")
-  public static final Attribute<StreamCodec> CODEC = new Attribute<StreamCodec>(StreamCodec.class);
+  public static final Attribute<StreamCodec> CODEC = new Attribute<StreamCodec>(null, null);
 
   @Override
   public AttributeMap getAttributes()
@@ -193,5 +193,8 @@ public class StreamContext extends DefaultAttributeMap implements Context
   static {
     AttributeInitializer.initialize(StreamContext.class);
   }
+
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+  private static final long serialVersionUID = 201212042146L;
   private static final Logger logger = LoggerFactory.getLogger(StreamContext.class);
 }

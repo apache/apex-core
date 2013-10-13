@@ -17,7 +17,7 @@ import com.datatorrent.api.Context;
 public interface ContainerContext extends Context
 {
   public static final Attribute<String> IDENTIFIER = new Attribute<String>("unknown_container_id");
-  public static final Attribute<RequestFactory> REQUEST_FACTORY = new Attribute<RequestFactory>(RequestFactory.class);
+  public static final Attribute<RequestFactory> REQUEST_FACTORY = new Attribute<RequestFactory>(null, null);
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-  boolean initialized = AttributeInitializer.initialize(ContainerContext.class);
+  long serialVersionUID = AttributeInitializer.initialize(ContainerContext.class);
 }

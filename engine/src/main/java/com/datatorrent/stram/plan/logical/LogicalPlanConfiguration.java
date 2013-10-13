@@ -32,7 +32,6 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
-
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
@@ -648,31 +647,21 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
     // process application level settings prior to populate
-    if (DAGContext.initialized) {
-      for (@SuppressWarnings("rawtypes") Attribute key : AttributeInitializer.getAttributes(DAGContext.class)) {
-        String confKey = "stram." + key.name();
+//    if (AttributeInitializer.initialize(DAGContext.class)) {
+      for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
+        String confKey = "stram." + attribute.name;
         String stringValue = appProps.getProperty(confKey, null);
         if (stringValue != null) {
-          if (key.clazz == Integer.class) {
-            dag.setAttribute(key, Integer.parseInt(stringValue));
-          }
-          else if (key.clazz == Long.class) {
-            dag.setAttribute(key, Long.parseLong(stringValue));
-          }
-          else if (key.clazz == String.class) {
-            dag.setAttribute(key, stringValue);
-          }
-          else if (key.clazz == Boolean.class) {
-            dag.setAttribute(key, Boolean.parseBoolean(stringValue));
+          if (attribute.codec == null) {
+            String msg = String.format("Unsupported attribute type: %s (%s)", attribute.codec, attribute.name);
+            throw new UnsupportedOperationException(msg);
           }
           else {
-            String msg = String.format("Unsupported attribute type: %s (%s)", key.clazz, key.name());
-            throw new UnsupportedOperationException(msg);
+            dag.setAttribute(attribute, attribute.codec.fromString(stringValue));
           }
         }
       }
-    }
-
+//    }
   }
 
 

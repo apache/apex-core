@@ -17,6 +17,8 @@ package com.datatorrent.api;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.String2String;
 
 /**
  * <p>DAGContext interface.</p>
@@ -61,14 +63,14 @@ public interface DAGContext extends Context
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
    */
-  Attribute<String> APPLICATION_NAME = new Attribute<String>(String.class);
+  Attribute<String> APPLICATION_NAME = new Attribute<String>(new String2String());
   /**
    * Application instance identifier. An application with the same name can run in multiple instances, each with a unique identifier.
    * The identifier is set by the client that submits the application and can be used in operators along with the operator ID to segregate output etc.
    * When running in distributed mode, the value would be the Yarn application id as shown in the resource manager (example:
    * <code>application_1355713111917_0002</code>).
    */
-  Attribute<String> APPLICATION_ID = new Attribute<String>(String.class);
+  Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
    * The launcher will combine the list with built-in dependencies and those specified
@@ -76,7 +78,7 @@ public interface DAGContext extends Context
    * that are made available through the distributed file system to application master
    * and child containers.
    */
-  Attribute<String> LIBRARY_JARS = new Attribute<String>(String.class);
+  Attribute<String> LIBRARY_JARS = new Attribute<String>(new String2String());
   /**
    * The maximum number or containers (excluding the application master) that the application is allowed to request.
    * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
@@ -96,7 +98,7 @@ public interface DAGContext extends Context
    * Constant
    * <code>CONTAINER_JVM_OPTIONS</code>
    */
-  Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(String.class);
+  Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());
   /**
    * The amount of memory to be requested for the application master. Not used in local mode.
    */
@@ -130,7 +132,7 @@ public interface DAGContext extends Context
    * Constant
    * <code>DAEMON_ADDRESS</code>
    */
-  Attribute<String> DAEMON_ADDRESS = new Attribute<String>(String.class);
+  Attribute<String> DAEMON_ADDRESS = new Attribute<String>(new String2String());
   /**
    * Constant
    * <code>FAST_PUBLISHER_SUBSCRIBER</code>
@@ -163,7 +165,6 @@ public interface DAGContext extends Context
    * <code>STATS_RECORD_INTERVAL_MILLIS</code>
    */
   Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
-  
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-  boolean initialized = AttributeInitializer.initialize(DAGContext.class);
+  long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
 }

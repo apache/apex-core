@@ -18,6 +18,8 @@ package com.datatorrent.api;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.String2String;
 
 /**
  *
@@ -78,9 +80,8 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
-
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    boolean initialized = AttributeInitializer.initialize(PortContext.class);
+    long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
   }
 
   public interface OperatorContext extends Context
@@ -104,7 +105,7 @@ public interface Context
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
-    Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(String.class);
+    Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
@@ -129,15 +130,15 @@ public interface Context
     /**
      * Logical name of a host to control locality between operators (even when not connected through stream)
      */
-    Attribute<String> LOCALITY_HOST = new Attribute<String>(String.class);
+    Attribute<String> LOCALITY_HOST = new Attribute<String>(new String2String());
     /**
      * Logical name of a rack to control locality between operators (even when not connected through stream)
      */
-    Attribute<String> LOCALITY_RACK = new Attribute<String>(String.class);
+    Attribute<String> LOCALITY_RACK = new Attribute<String>(new String2String());
     /**
      * The agent which can be used to checkpoint the windows.
      */
-    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(StorageAgent.class);
+    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(null, null);
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
      * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
@@ -156,8 +157,8 @@ public interface Context
     int getId();
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    boolean initialized = AttributeInitializer.initialize(OperatorContext.class);
+    long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);
   }
 
-  boolean initialized = AttributeInitializer.initialize(Context.class);
+  long serialVersionUID = AttributeInitializer.initialize(Context.class);
 }
