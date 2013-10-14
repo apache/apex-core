@@ -22,6 +22,7 @@ import javax.validation.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 
 import org.apache.commons.beanutils.BeanMap;
@@ -650,22 +651,27 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         appProps = appConf.properties;
       }
     }
-    // process application level settings prior to populate
-//    if (AttributeInitializer.initialize(DAGContext.class)) {
-      for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
-        String confKey = "stram." + attribute.name;
-        String stringValue = appProps.getProperty(confKey, null);
+
+    for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
+      String stringValue = appProps.getProperty("stram." + attribute.name);
+      if (stringValue == null) {
+        String camelCase = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, attribute.name);
+        stringValue = appProps.getProperty("stram." + camelCase);
         if (stringValue != null) {
-          if (attribute.codec == null) {
-            String msg = String.format("Unsupported attribute type: %s (%s)", attribute.codec, attribute.name);
-            throw new UnsupportedOperationException(msg);
-          }
-          else {
-            dag.setAttribute(attribute, attribute.codec.fromString(stringValue));
-          }
+          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", camelCase, attribute.name);
         }
       }
-//    }
+
+      if (stringValue != null) {
+        if (attribute.codec == null) {
+          String msg = String.format("Unsupported attribute type: %s (%s)", attribute.codec, attribute.name);
+          throw new UnsupportedOperationException(msg);
+        }
+        else {
+          dag.setAttribute(attribute, attribute.codec.fromString(stringValue));
+        }
+      }
+    }
   }
 
 
