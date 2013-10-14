@@ -19,21 +19,27 @@ import java.util.TreeMap;
 
 import javax.validation.ValidationException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
+
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.google.common.collect.Maps;
 
 /**
  *
@@ -512,11 +518,13 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appAlias != null) {
       dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
     } else {
-      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(name);
+      if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
+        dag.getAttributes().put(DAG.APPLICATION_NAME, name);
+      }
     }
 
     // inject external operator configuration
-    setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+    setOperatorProperties(dag, dag.getAttributes().get(DAG.APPLICATION_NAME));
   }
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
@@ -634,7 +642,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings( {"unchecked"})
   public void setApplicationLevelAttributes(LogicalPlan dag, String appName) {
     Properties appProps = this.properties;
     if (appName != null) {
@@ -643,26 +651,27 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         appProps = appConf.properties;
       }
     }
-    // process application level settings prior to populate
-    for (@SuppressWarnings("rawtypes") DAGContext.AttributeKey key : DAGContext.ATTRIBUTE_KEYS) {
-      String confKey = "stram." + key.name();
-      String stringValue = appProps.getProperty(confKey, null);
+
+    for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
+      String stringValue = appProps.getProperty("stram." + attribute.name);
+      if (stringValue == null) {
+        String camelCase = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, attribute.name);
+        stringValue = appProps.getProperty("stram." + camelCase);
+        if (stringValue != null) {
+          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", camelCase, attribute.name);
+        }
+      }
+
       if (stringValue != null) {
-        if (key.attributeType == Integer.class) {
-          dag.setAttribute(key, Integer.parseInt(stringValue));
-        } else if (key.attributeType == Long.class) {
-          dag.setAttribute(key, Long.parseLong(stringValue));
-        } else if (key.attributeType == String.class) {
-          dag.setAttribute(key, stringValue);
-        } else if (key.attributeType == Boolean.class) {
-          dag.setAttribute(key, Boolean.parseBoolean(stringValue));
-        } else {
-          String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
+        if (attribute.codec == null) {
+          String msg = String.format("Unsupported attribute type: %s (%s)", attribute.codec, attribute.name);
           throw new UnsupportedOperationException(msg);
+        }
+        else {
+          dag.setAttribute(attribute, attribute.codec.fromString(stringValue));
         }
       }
     }
-
   }
 
 

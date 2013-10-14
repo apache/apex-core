@@ -69,7 +69,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   public void activate(StreamContext context)
   {
     InetSocketAddress address = context.getBufferServerAddress();
-    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
@@ -106,7 +106,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   @Override
   public void setup(StreamContext context)
   {
-    serde = context.attr(StreamContext.CODEC).get();
+    serde = context.get(StreamContext.CODEC);
     statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
     baseSeconds = context.getFinishedWindowId() & 0xffffffff00000000L;
   }

@@ -7,7 +7,6 @@ package com.datatorrent.stram.api;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeKey;
 import com.datatorrent.api.Context;
 
 /**
@@ -38,14 +37,11 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   }
 
   @Override
-  public <T> T attrValue(AttributeKey<T> key, T defaultValue)
+  public <T> T attrValue(Attribute<T> key, T defaultValue)
   {
-    Attribute<T> attr = attributes.attrOrNull(key);
+    T attr = attributes.get(key);
     if (attr != null) {
-      T get = attr.get();
-      if (get != null) {
-        return get;
-      }
+      return attr;
     }
     return parentContext == null? defaultValue: parentContext.attrValue(key, defaultValue);
   }

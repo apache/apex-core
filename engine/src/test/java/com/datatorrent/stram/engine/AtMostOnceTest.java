@@ -98,9 +98,9 @@ public class AtMostOnceTest extends ProcessingModeTests
       @Override
       public void run()
       {
-        AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap(OperatorContext.class);
-        map.attr(OperatorContext.CHECKPOINT_WINDOW_COUNT).set(0);
-        map.attr(OperatorContext.PROCESSING_MODE).set(processingMode);
+        AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
+        map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
+        map.put(OperatorContext.PROCESSING_MODE, processingMode);
         active.set(true);
         node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
         node.run();

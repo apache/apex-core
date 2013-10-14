@@ -10,14 +10,28 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import static java.lang.Thread.sleep;
 import java.net.URL;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import junit.framework.Assert;
+import static java.lang.Thread.sleep;
 
 import javax.ws.rs.core.MediaType;
+
+import org.codehaus.jettison.json.JSONObject;
+import org.junit.*;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import static org.junit.Assert.assertEquals;
+
+import com.google.common.collect.Lists;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -43,32 +57,18 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
-import org.codehaus.jettison.json.JSONObject;
-import org.junit.*;
-import static org.junit.Assert.assertEquals;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.StramAppMaster;
-import com.datatorrent.stram.StramChild;
-import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.annotation.ShipContainingJars;
-import com.google.common.collect.Lists;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
+
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.webapp.StramWebServices;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -199,10 +199,10 @@ public class StramMiniClusterTest
     dagProps.put("stram.stream.n1n2.source", "module1.output1");
     dagProps.put("stram.stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(LogicalPlan.MASTER_MEMORY_MB.name(), "128");
-    dagProps.setProperty(LogicalPlan.CONTAINER_MEMORY_MB.name(), "512");
-    dagProps.setProperty(LogicalPlan.DEBUG.name(), "true");
-    dagProps.setProperty(LogicalPlan.CONTAINERS_MAX_COUNT.name(), "2");
+    dagProps.setProperty(LogicalPlan.MASTER_MEMORY_MB.name, "128");
+    dagProps.setProperty(LogicalPlan.CONTAINER_MEMORY_MB.name, "512");
+    dagProps.setProperty(LogicalPlan.DEBUG.name, "true");
+    dagProps.setProperty(LogicalPlan.CONTAINERS_MAX_COUNT.name, "2");
     tb.addFromProperties(dagProps);
 
     Properties tplgProperties = tb.getProperties();
@@ -363,7 +363,7 @@ public class StramMiniClusterTest
 
     LogicalPlan dag = new LogicalPlan();
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
-    dag.getContextAttributes(badOperator).attr(OperatorContext.RECOVERY_ATTEMPTS).set(1);
+    dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 
     LOG.info("Initializing Client");
     StramClient client = new StramClient(dag);

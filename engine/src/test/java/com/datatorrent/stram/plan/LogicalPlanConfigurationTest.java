@@ -183,10 +183,10 @@ public class LogicalPlanConfigurationTest {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put("stram." + DAG.CONTAINER_MEMORY_MB.name(), "123");
-    props.put("stram." + DAG.APPLICATION_PATH.name(), "/defaultdir");
-    props.put("stram.application." + appName + ".attr." + DAG.APPLICATION_PATH.name(), "/otherdir");
-    props.put("stram.application." + appName + ".attr." + DAG.STREAMING_WINDOW_SIZE_MILLIS.name(), "1000");
+    props.put("stram." + DAG.CONTAINER_MEMORY_MB.name, "123");
+    props.put("stram." + DAG.APPLICATION_PATH.name, "/defaultdir");
+    props.put("stram.application." + appName + ".attr." + DAG.APPLICATION_PATH.name, "/otherdir");
+    props.put("stram.application." + appName + ".attr." + DAG.STREAMING_WINDOW_SIZE_MILLIS.name, "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -312,7 +312,7 @@ public class LogicalPlanConfigurationTest {
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
     builder.prepareDAG(dag, app, appPath, conf);
 
-    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().attr(DAGContext.APPLICATION_NAME).get());
+    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
   }
 
 }

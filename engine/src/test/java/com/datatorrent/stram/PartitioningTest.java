@@ -150,7 +150,7 @@ public class PartitioningTest
     }
     CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
-    dag.getMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(collector).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
@@ -339,7 +339,7 @@ public class PartitioningTest
     {
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       LogicalPlan dag = new LogicalPlan();
-      dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set(checkpointDir.getPath());
+      dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
       dag.setAttribute(input, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());

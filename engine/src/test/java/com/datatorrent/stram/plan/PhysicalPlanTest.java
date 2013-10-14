@@ -101,8 +101,8 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
-    dag.getMeta(node2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(3);
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getMeta(node2).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
 
@@ -138,7 +138,7 @@ public class PhysicalPlanTest {
 
     int initialPartitionCount = 5;
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
-    node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(initialPartitionCount);
+    node2Decl.getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, initialPartitionCount);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
@@ -184,12 +184,12 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
-    node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
-    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
-    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+    node2Meta.getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MIN, 0);
+    node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
@@ -246,9 +246,9 @@ public class PhysicalPlanTest {
     LogicalPlan dag = new LogicalPlan();
     TestInputOperator<Object> o1 = dag.addOperator("o1", new TestInputOperator<Object>());
     OperatorMeta o1Meta = dag.getOperatorMeta(o1.getName());
-    o1Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
-    o1Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
-    o1Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+    o1Meta.getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    o1Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MIN, 0);
+    o1Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
@@ -311,12 +311,12 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.addStream("o3parallel_outport1", o3parallel.outport1, mergeNode.inport1);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(o2.getName());
-    node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(8);
-    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(3);
-    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+    node2Meta.getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 8);
+    node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MIN, 3);
+    node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
@@ -519,7 +519,7 @@ public class PhysicalPlanTest {
 
     PartitioningTestOperator partNode = dag.addOperator("partNode", PartitioningTestOperator.class);
     partNode.partitionKeys = new Integer[] {0,1};
-    dag.getMeta(partNode).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(partNode.partitionKeys.length);
+    dag.getMeta(partNode).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, partNode.partitionKeys.length);
 
     dag.addStream("o1_outport1", o1.outport1, o2.inport1, o3.inport1, partNode.inport1)
             .setLocality(null);
@@ -531,7 +531,7 @@ public class PhysicalPlanTest {
     dag.addStream("o3_outport1", o3.outport1, partNode.inport2);
 
     int maxContainers = 4;
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(maxContainers);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 1, plan.getContainers().get(0).getOperators().size());
@@ -570,7 +570,7 @@ public class PhysicalPlanTest {
             .setLocality(Locality.CONTAINER_LOCAL);
 
     int maxContainers = 5;
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(maxContainers);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
     PhysicalPlan deployer = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
@@ -592,7 +592,7 @@ public class PhysicalPlanTest {
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
-    dag.getMeta(partitioned).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(partitioned).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
     GenericTestOperator partitionedParallel = dag.addOperator("partitionedParallel", GenericTestOperator.class);
 
@@ -646,7 +646,7 @@ public class PhysicalPlanTest {
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    dag.getMeta(o2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(o2).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 

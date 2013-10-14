@@ -3,33 +3,30 @@
  */
 package com.datatorrent.stram.cli;
 
-import com.datatorrent.stram.client.RecordingsAgent;
-import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
-import com.datatorrent.stram.client.StramAppLauncher;
-import com.datatorrent.stram.client.StramClientUtils;
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
-import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
-import com.datatorrent.stram.plan.logical.*;
-import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.util.VersionInfo;
-import com.datatorrent.stram.util.WebServicesClient;
-import com.datatorrent.stram.webapp.StramWebServices;
-
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import jline.console.ConsoleReader;
+import jline.console.completer.*;
+import jline.console.history.FileHistory;
+import jline.console.history.History;
+import jline.console.history.MemoryHistory;
 
 import javax.ws.rs.core.MediaType;
 
-import jline.console.completer.*;
-import jline.console.ConsoleReader;
-import jline.console.history.History;
-import jline.console.history.FileHistory;
-import jline.console.history.MemoryHistory;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 import org.apache.commons.cli.*;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
@@ -39,22 +36,24 @@ import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.Records;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
-import org.apache.log4j.Priority;
 import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jettison.json.JSONException;
+
+import com.datatorrent.stram.client.RecordingsAgent;
+import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
+import com.datatorrent.stram.client.StramAppLauncher;
+import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
+import com.datatorrent.stram.client.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.security.StramUserLogin;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.StramWebServices;
 
 /**
  *
@@ -142,7 +141,7 @@ public class StramCli
         boolean potentialEmptyArg = false;
         StringBuffer buf = new StringBuffer();
 
-        for (int i = 0; i < len; ++i) {
+        for (@SuppressWarnings("AssignmentToForLoopParameter") int i = 0; i < len; ++i) {
           char c = commandLine.charAt(i);
           if (c == '"') {
             potentialEmptyArg = true;
@@ -2396,7 +2395,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ApplicationReport appReport = currentApp;
+      ApplicationReport appReport;
       if (args.length > 1) {
         appReport = getApplication(args[1]);
       }
@@ -2502,7 +2501,9 @@ public class StramCli
   {
     Options options = new Options();
     Option local = new Option("local", "run in local mode");
+    @SuppressWarnings("static-access")
     Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
+    @SuppressWarnings("static-access")
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("D");
     options.addOption(local);
     options.addOption(configFile);
