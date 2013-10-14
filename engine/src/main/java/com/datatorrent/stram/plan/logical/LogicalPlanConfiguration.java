@@ -652,6 +652,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
 
+    LOG.debug("Initializing DAGContext!", DAGContext.serialVersionUID); /* make sure that the DAGContext.class is initialized */
     for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
       String stringValue = appProps.getProperty("stram." + attribute.name);
       if (stringValue == null) {
