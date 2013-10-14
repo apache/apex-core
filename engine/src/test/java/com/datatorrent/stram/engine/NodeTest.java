@@ -96,7 +96,7 @@ public class NodeTest
   public void testStreamingWindowGenericNode() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(10);
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 10);
     dag.addOperator("GenericOperator", new TestGenericOperator());
 
     final StramLocalCluster lc = new StramLocalCluster(dag);

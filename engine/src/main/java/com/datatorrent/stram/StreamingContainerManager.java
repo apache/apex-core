@@ -138,27 +138,38 @@ public class StreamingContainerManager implements PlanContext
   {
     AttributeMap attributes = dag.getAttributes();
 
-    attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
+    if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
+      attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
+    }
     /* try to align to it to please eyes. */
     windowStartMillis -= (windowStartMillis % 1000);
 
-    attributes.attr(LogicalPlan.APPLICATION_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.appPath = attributes.attr(LogicalPlan.APPLICATION_PATH).get();
+    if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
+      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + System.currentTimeMillis());
+    }
+
+    this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
-    attributes.attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).get());
+    if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
+      attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+    }
     this.heartbeatIntervalMillis = dag.attrValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS, this.heartbeatIntervalMillis);
     this.heartbeatTimeoutMillis = dag.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
-    attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(1000);
-    this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).get();
+    if (attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG) == null) {
+      attributes.put(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 1000);
+    }
+    this.maxWindowsBehindForStats = attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
 
     this.throughputCalculationInterval = dag.attrValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL, this.throughputCalculationInterval);
     this.throughputCalculationMaxSamples = dag.attrValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES, this.throughputCalculationMaxSamples);
 
-    attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).setIfAbsent(0);
-    this.recordStatsInterval = attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).get();
+    if (attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS) == null) {
+      attributes.put(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS, 0);
+    }
+    this.recordStatsInterval = attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
 
     if (this.recordStatsInterval > 0 || enableEventRecording) {
       setupWsClient(attributes);
@@ -170,7 +181,7 @@ public class StreamingContainerManager implements PlanContext
       }
       if (enableEventRecording) {
         this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
-        eventRecorder = new FSEventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
+        eventRecorder = new FSEventRecorder(attributes.get(LogicalPlan.APPLICATION_ID));
         eventRecorder.setBasePath(this.eventsFsPath);
         eventRecorder.setWebSocketClient(wsClient);
         eventRecorder.setup();
@@ -181,7 +192,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupWsClient(AttributeMap attributes)
   {
-    String daemonAddress = attributes.attr(LogicalPlan.DAEMON_ADDRESS).get();
+    String daemonAddress = attributes.get(LogicalPlan.DAEMON_ADDRESS);
     if (daemonAddress != null) {
       try {
         wsClient = new SharedPubSubWebSocketClient("ws://" + daemonAddress + "/pubsub", 500);
@@ -553,8 +564,8 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(ContainerContext.class), plan.getDAG());
-    scc.attributes.attr(ContainerContext.IDENTIFIER).set(containerId);
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getDAG());
+    scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
@@ -563,7 +574,7 @@ public class StreamingContainerManager implements PlanContext
   {
     return heartbeatIntervalMillis;
   }
-  
+
   public int getThroughputCalculationMaxSamples()
   {
     return throughputCalculationMaxSamples;
@@ -1383,22 +1394,22 @@ public class StreamingContainerManager implements PlanContext
     recordEventAsync(ev);
   }
 
-  public Map<String, Object> getApplicationAttributes()
+  public AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
-    return lp.getAttributes().valueMap();
+    return lp.getAttributes().clone();
   }
 
-  public Map<String, Object> getOperatorAttributes(String operatorId)
+  public AttributeMap getOperatorAttributes(String operatorId)
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
-    return logicalOperator.getAttributes().valueMap();
+    return logicalOperator.getAttributes().clone();
   }
 
-  public Map<String, Object> getPortAttributes(String operatorId, String portName)
+  public AttributeMap getPortAttributes(String operatorId, String portName)
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
@@ -1409,13 +1420,13 @@ public class StreamingContainerManager implements PlanContext
     Operators.describe(logicalOperator.getOperator(), portMap);
     InputPort<?> inputPort = portMap.inputPorts.get(portName).component;
     if (inputPort != null) {
-      return logicalOperator.getMeta(inputPort).getAttributes().valueMap();
+      return logicalOperator.getMeta(inputPort).getAttributes().clone();
     } else {
       OutputPort<?> outputPort = portMap.outputPorts.get(portName).component;
       if (outputPort == null) {
         throw new IllegalArgumentException("Invalid port name " + portName);
       }
-      return logicalOperator.getMeta(outputPort).getAttributes().valueMap();
+      return logicalOperator.getMeta(outputPort).getAttributes().clone();
     }
   }
 

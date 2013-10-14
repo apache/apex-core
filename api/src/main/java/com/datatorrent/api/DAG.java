@@ -15,6 +15,7 @@
  */
 package com.datatorrent.api;
 
+import com.datatorrent.api.AttributeMap.Attribute;
 import java.io.Serializable;
 
 /**
@@ -178,22 +179,22 @@ public interface DAG extends DAGContext, Serializable
   /**
    * <p>setAttribute.</p>
    */
-  public abstract <T> void setAttribute(DAGContext.AttributeKey<T> key, T value);
+  public abstract <T> void setAttribute(Attribute<T> key, T value);
 
   /**
    * <p>setAttribute.</p>
    */
-  public abstract <T> void setAttribute(Operator operator, OperatorContext.AttributeKey<T> key, T value);
+  public abstract <T> void setAttribute(Operator operator, Attribute<T> key, T value);
 
   /**
    * <p>setOutputPortAttribute.</p>
    */
-  public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value);
+  public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
 
   /**
    * <p>setInputPortAttribute.</p>
    */
-  public abstract <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value);
+  public abstract <T> void setInputPortAttribute(Operator.InputPort<?> port, Attribute<T> key, T value);
 
   /**
    * <p>getOperatorMeta.</p>

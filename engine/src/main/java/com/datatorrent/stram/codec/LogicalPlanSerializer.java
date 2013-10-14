@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.codec;
 
+import com.datatorrent.api.AttributeMap.Attribute;
 import java.io.IOException;
 import java.util.*;
 
@@ -78,8 +79,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
       operatorDetailMap.put("properties", propertyMap);
-      for (Context.OperatorContext.AttributeKey<?> attrKey
-              : new Context.OperatorContext.AttributeKey<?>[] {
+      for (Attribute<?> attrKey : new Attribute<?>[] {
         Context.OperatorContext.APPLICATION_WINDOW_COUNT,
         Context.OperatorContext.INITIAL_PARTITION_COUNT,
         Context.OperatorContext.PARTITION_TPS_MAX,
@@ -87,9 +87,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         Context.OperatorContext.RECOVERY_ATTEMPTS,
         Context.OperatorContext.SPIN_MILLIS,
         }) {
-        Object attrValue = operatorMeta.getAttributes().attr(attrKey).get();
+        Object attrValue = operatorMeta.getAttributes().get(attrKey);
         if (attrValue != null) {
-          attributeMap.put(attrKey.name(), attrValue);
+          attributeMap.put(attrKey.name, attrValue);
         }
       }
       Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
@@ -108,14 +108,13 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         String portName = portMeta.getPortName();
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Context.PortContext.AttributeKey<?> attrKey
-                : new Context.PortContext.AttributeKey<?>[] {
+        for (Attribute<?> attrKey : new Attribute<?>[] {
           Context.PortContext.QUEUE_CAPACITY,
           Context.PortContext.PARTITION_PARALLEL,
           Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().attr(attrKey).get();
+          Object attrValue = portMeta.getAttributes().get(attrKey);
           if (attrValue != null) {
-            portAttributeMap.put(attrKey.name(), attrValue);
+            portAttributeMap.put(attrKey.name, attrValue);
           }
         }
         portMap.put(portName, portDetailMap);
@@ -127,14 +126,13 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         String portName = portMeta.getPortName();
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Context.PortContext.AttributeKey<?> attrKey
-                : new Context.PortContext.AttributeKey<?>[] {
+        for (Attribute<?> attrKey : new Attribute<?>[] {
           Context.PortContext.QUEUE_CAPACITY,
           Context.PortContext.PARTITION_PARALLEL,
           Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().attr(attrKey).get();
+          Object attrValue = portMeta.getAttributes().get(attrKey);
           if (attrValue != null) {
-            portAttributeMap.put(attrKey.name(), attrValue);
+            portAttributeMap.put(attrKey.name, attrValue);
           }
         }
         portMap.put(portName, portDetailMap);

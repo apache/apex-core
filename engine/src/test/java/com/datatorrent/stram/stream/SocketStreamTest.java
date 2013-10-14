@@ -100,8 +100,8 @@ public class SocketStreamTest
     issContext.setSinkId(downstreamNodeId);
     issContext.setFinishedWindowId(-1);
     issContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-    issContext.attr(StreamContext.CODEC).set(serde);
-    issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    issContext.put(StreamContext.CODEC, serde);
+    issContext.put(StreamContext.EVENT_LOOP, eventloop);
 
     BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
     iss.setup(issContext);
@@ -112,8 +112,8 @@ public class SocketStreamTest
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
     ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-    ossContext.attr(StreamContext.CODEC).set(serde);
-    ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    ossContext.put(StreamContext.CODEC, serde);
+    ossContext.put(StreamContext.EVENT_LOOP, eventloop);
 
     BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId, 1024);
     oss.setup(ossContext);

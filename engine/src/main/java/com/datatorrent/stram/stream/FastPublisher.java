@@ -164,7 +164,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   public void activate(StreamContext context)
   {
     InetSocketAddress address = context.getBufferServerAddress();
-    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getBufferServerAddress()});

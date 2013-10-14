@@ -4,15 +4,12 @@
  */
 package com.datatorrent.stram;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.yarn.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 
-import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context;
 
 import com.datatorrent.stram.webapp.AppInfo;
@@ -53,19 +50,6 @@ public interface StramAppContext extends Context
 
   String getDaemonAddress();
 
-  public class AttributeKey<T> extends AttributeMap.AttributeKey<T>
-  {
-    public final Class<T> attributeType;
-    private final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
-
-    @SuppressWarnings("LeakingThisInConstructor")
-    private AttributeKey(String name, Class<T> type)
-    {
-      super(StramAppContext.class, name);
-      this.attributeType = type;
-      INSTANCES.add(this);
-    }
-
-  }
-
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+  long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);
 }

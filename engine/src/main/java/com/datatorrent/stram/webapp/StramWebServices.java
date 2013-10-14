@@ -4,8 +4,13 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -17,9 +22,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
@@ -28,24 +30,27 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.inject.Inject;
+
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+
+import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Field;
+
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 
 /**
  *
@@ -458,14 +463,17 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorAttributes(@PathParam("operatorId") String operatorId, @QueryParam("attributeName") String attributeName)
   {
-    Map<String, Object> m = dagManager.getOperatorAttributes(operatorId);
     if (attributeName == null) {
-      return new JSONObject(m);
+      HashMap<String, Object> map = new HashMap<String, Object>();
+      for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorId).entrySet()) {
+        map.put(entry.getKey().name, entry.getValue());
+      }
+      return new JSONObject(map);
     }
     else {
       JSONObject json = new JSONObject();
       try {
-        json.put(attributeName, m.get(attributeName));
+        json.put(attributeName, dagManager.getOperatorAttributes(operatorId).get(attributeName));
       }
       catch (JSONException ex) {
         LOG.warn("Got JSON Exception: ", ex);
@@ -479,14 +487,17 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
   {
-    Map<String, Object> m = dagManager.getApplicationAttributes();
     if (attributeName == null) {
-      return new JSONObject(m);
+      HashMap<String, Object> map = new HashMap<String, Object>();
+      for (Entry<Attribute<?>, Object> entry : dagManager.getApplicationAttributes().entrySet()) {
+        map.put(entry.getKey().name, entry.getValue());
+      }
+      return new JSONObject(map);
     }
     else {
       JSONObject json = new JSONObject();
       try {
-        json.put(attributeName, m.get(attributeName));
+        json.put(attributeName, dagManager.getApplicationAttributes().get(attributeName));
       }
       catch (JSONException ex) {
         LOG.warn("Got JSON Exception: ", ex);
@@ -500,14 +511,17 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
-    Map<String, Object> m = dagManager.getPortAttributes(operatorId, portName);
     if (attributeName == null) {
-      return new JSONObject(m);
+      HashMap<String, Object> map = new HashMap<String, Object>();
+      for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorId, portName).entrySet()) {
+        map.put(entry.getKey().name, entry.getValue());
+      }
+      return new JSONObject(map);
     }
     else {
       JSONObject json = new JSONObject();
       try {
-        json.put(attributeName, m.get(attributeName));
+        json.put(attributeName, dagManager.getPortAttributes(operatorId, portName).get(attributeName));
       }
       catch (JSONException ex) {
         LOG.warn("Got JSON Exception: ", ex);

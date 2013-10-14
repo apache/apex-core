@@ -15,8 +15,10 @@
  */
 package com.datatorrent.api;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.String2String;
 
 /**
  * <p>DAGContext interface.</p>
@@ -29,32 +31,46 @@ public interface DAGContext extends Context
    * Launch mode for the application.
    * Used in the client to set configuration depending on how the DAG is executed.
    */
-  public static final String LAUNCH_MODE = "stram.launchmode";
-
-  /** Constant <code>DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT=30</code> */
-  public static final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
-  /** Constant <code>SUBDIR_CHECKPOINTS="checkpoints"</code> */
-  public static final String SUBDIR_CHECKPOINTS = "checkpoints";
-  /** Constant <code>SUBDIR_STATS="stats"</code> */
-  public static final String SUBDIR_STATS = "stats";
-  /** Constant <code>SUBDIR_EVENTS="events"</code> */
-  public static final String SUBDIR_EVENTS = "events";
-  /** Constant <code>DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS=60000</code> */
-  public static final int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
-
+  String LAUNCH_MODE = "stram.launchmode";
+  /**
+   * Constant
+   * <code>DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT=30</code>
+   */
+  // should be taken out
+  int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
+  /**
+   * Constant
+   * <code>SUBDIR_CHECKPOINTS="checkpoints"</code>
+   */
+  String SUBDIR_CHECKPOINTS = "checkpoints";
+  /**
+   * Constant
+   * <code>SUBDIR_STATS="stats"</code>
+   */
+  String SUBDIR_STATS = "stats";
+  /**
+   * Constant
+   * <code>SUBDIR_EVENTS="events"</code>
+   */
+  String SUBDIR_EVENTS = "events";
+  /**
+   * Constant
+   * <code>DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS=60000</code>
+   */
+  // shoudl be taken out
+  int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
    */
-  public static final AttributeKey<String> APPLICATION_NAME = new AttributeKey<String>("appName", String.class);
-
+  Attribute<String> APPLICATION_NAME = new Attribute<String>(new String2String());
   /**
    * Application instance identifier. An application with the same name can run in multiple instances, each with a unique identifier.
    * The identifier is set by the client that submits the application and can be used in operators along with the operator ID to segregate output etc.
-   * When running in distributed mode, the value would be the Yarn application id as shown in the resource manager (example: <code>application_1355713111917_0002</code>).
+   * When running in distributed mode, the value would be the Yarn application id as shown in the resource manager (example:
+   * <code>application_1355713111917_0002</code>).
    */
-  public static final AttributeKey<String> APPLICATION_ID = new AttributeKey<String>("appId", String.class);
-
+  Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
    * The launcher will combine the list with built-in dependencies and those specified
@@ -62,94 +78,100 @@ public interface DAGContext extends Context
    * that are made available through the distributed file system to application master
    * and child containers.
    */
-  public static final AttributeKey<String> LIBRARY_JARS = new AttributeKey<String>("libjars", String.class);
-
+  Attribute<String> LIBRARY_JARS = new Attribute<String>(new String2String());
   /**
    * The maximum number or containers (excluding the application master) that the application is allowed to request.
    * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
    * Example: DAG with several operators and all inline streams would require one container,
    * only one container will be requested from the resource manager.
    */
-  public static final AttributeKey<Integer> CONTAINERS_MAX_COUNT = new AttributeKey<Integer>("maxContainers", Integer.class);
-
+  Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
   /**
    * Dump extra debug information in launcher, master and containers.
    */
-  public static final AttributeKey<Boolean> DEBUG = new AttributeKey<Boolean>("debug", Boolean.class);
-
+  Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
   /**
    * The amount of memory to be requested for streaming containers. Not used in local mode.
    */
-  public static final AttributeKey<Integer> CONTAINER_MEMORY_MB = new AttributeKey<Integer>("containerMemoryMB", Integer.class);
-  /** Constant <code>CONTAINER_JVM_OPTIONS</code> */
-  public static final AttributeKey<String> CONTAINER_JVM_OPTIONS = new AttributeKey<String>("containerJvmOpts", String.class);
-
+  Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(2048);
+  /**
+   * Constant
+   * <code>CONTAINER_JVM_OPTIONS</code>
+   */
+  Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());
   /**
    * The amount of memory to be requested for the application master. Not used in local mode.
    */
-  public static final AttributeKey<Integer> MASTER_MEMORY_MB = new AttributeKey<Integer>("masterMemoryMB", Integer.class);
-
-  /** Constant <code>STREAMING_WINDOW_SIZE_MILLIS</code> */
-  public static final AttributeKey<Integer> STREAMING_WINDOW_SIZE_MILLIS = new AttributeKey<Integer>("windowSizeMillis", Integer.class);
-  /** Constant <code>CHECKPOINT_WINDOW_COUNT</code> */
-  public static final AttributeKey<Integer> CHECKPOINT_WINDOW_COUNT = new AttributeKey<Integer>("checkpointWindowCount", Integer.class);
-  /** Constant <code>APPLICATION_PATH</code> */
-  public static final AttributeKey<String> APPLICATION_PATH = new AttributeKey<String>("appPath", String.class);
-  /** Constant <code>TUPLE_RECORDING_PART_FILE_SIZE</code> */
-  public static final AttributeKey<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new AttributeKey<Integer>("tupleRecordingPartFileSize", Integer.class);
-  /** Constant <code>TUPLE_RECORDING_PART_FILE_TIME_MILLIS</code> */
-  public static final AttributeKey<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new AttributeKey<Integer>("tupleRecordingPartFileTimeMillis", Integer.class);
-  /** Constant <code>DAEMON_ADDRESS</code> */
-  public static final AttributeKey<String> DAEMON_ADDRESS = new AttributeKey<String>("daemon.address", String.class);
-  /** Constant <code>FAST_PUBLISHER_SUBSCRIBER</code> */
-  public static final AttributeKey<Boolean> FAST_PUBLISHER_SUBSCRIBER = new AttributeKey<Boolean>("bufferserver.fast", Boolean.class);
-
+  Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(2048);
+  /**
+   * Constant
+   * <code>STREAMING_WINDOW_SIZE_MILLIS</code>
+   */
+  Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);
+  /**
+   * Constant
+   * <code>CHECKPOINT_WINDOW_COUNT</code>
+   */
+  Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(60);
+  /**
+   * Constant
+   * <code>APPLICATION_PATH</code>
+   */
+  Attribute<String> APPLICATION_PATH = new Attribute<String>("unknown");
+  /**
+   * Constant
+   * <code>TUPLE_RECORDING_PART_FILE_SIZE</code>
+   */
+  Attribute<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new Attribute<Integer>(128 * 1024);
+  /**
+   * Constant
+   * <code>TUPLE_RECORDING_PART_FILE_TIME_MILLIS</code>
+   */
+  Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
+  /**
+   * Constant
+   * <code>DAEMON_ADDRESS</code>
+   */
+  Attribute<String> DAEMON_ADDRESS = new Attribute<String>(new String2String());
+  /**
+   * Constant
+   * <code>FAST_PUBLISHER_SUBSCRIBER</code>
+   */
+  Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
   /**
    * Maximum number of simultaneous heartbeat connections to process.
    */
-  public static final AttributeKey<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new AttributeKey<Integer>("heartbeatListenerThreadCount", Integer.class);
-
+  Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
    * 1000ms. Value 0 will disable heartbeat (for unit testing).
    */
-  public static final AttributeKey<Integer> HEARTBEAT_INTERVAL_MILLIS = new AttributeKey<Integer>("heartbeatIntervalMillis", Integer.class);
-
+  Attribute<Integer> HEARTBEAT_INTERVAL_MILLIS = new Attribute<Integer>(1000);
   /**
    * Timeout for master to identify a hung container (full GC etc.). Timeout will result in container restart.
    */
-  public static final AttributeKey<Integer> HEARTBEAT_TIMEOUT_MILLIS = new AttributeKey<Integer>("heartbeatTimeoutMillis", Integer.class);
-
+  Attribute<Integer> HEARTBEAT_TIMEOUT_MILLIS = new Attribute<Integer>(30 * 1000);
   /**
    * Timeout for allocating container resources.
    */
-  public static final AttributeKey<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new AttributeKey<Integer>("allocateResourceTimeoutMillis", Integer.class);
-
-  /** Constant <code>STATS_MAX_ALLOWABLE_WINDOWS_LAG</code> */
-  public static final AttributeKey<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new AttributeKey<Integer>("maxWindowsBehindForStats", Integer.class);
-
-  /** Constant <code>STATS_RECORD_INTERVAL_MILLIS</code> */
-  public static final AttributeKey<Integer> STATS_RECORD_INTERVAL_MILLIS = new AttributeKey<Integer>("recordStatsIntervalMillis", Integer.class);
+  Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS);
+  /**
+   * Constant
+   * <code>STATS_MAX_ALLOWABLE_WINDOWS_LAG</code>
+   */
+  Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
+  /**
+   * Constant
+   * <code>STATS_RECORD_INTERVAL_MILLIS</code>
+   */
+  Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
 
   /** Constant <code>THROUGHPUT_CALCULATION_INTERVAL</code> */
-  public static final AttributeKey<Integer> THROUGHPUT_CALCULATION_INTERVAL = new AttributeKey<Integer>("throughputCalculationInterval", Integer.class);
+  public static final Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
 
   /** Constant <code>THROUGHPUT_CALCULATION_MAX_SAMPLES</code> */
-  public static final AttributeKey<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new AttributeKey<Integer>("throughputCalculationMaxSamples", Integer.class);
+  public static final Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
 
-  /** Constant <code>ATTRIBUTE_KEYS</code> */
-  public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
-
-  public class AttributeKey<T> extends AttributeMap.AttributeKey<T> {
-    public final Class<T> attributeType;
-    private final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
-
-    @SuppressWarnings("LeakingThisInConstructor")
-    private AttributeKey(String name, Class<T> type) {
-      super(DAGContext.class, name);
-      this.attributeType = type;
-      INSTANCES.add(this);
-    }
-  }
-
-  }
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+  long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
+}

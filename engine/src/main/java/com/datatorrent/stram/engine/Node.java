@@ -369,7 +369,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected boolean checkpoint(long windowId)
   {
-    StorageAgent ba = context.getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
+    StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
     if (ba != null) {
       try {
         OutputStream stream = ba.getSaveStream(id, windowId);
