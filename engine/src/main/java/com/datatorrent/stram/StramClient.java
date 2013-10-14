@@ -215,7 +215,7 @@ public class StramClient
     app.populateDAG(dag, appConf);
     dag.validate();
     if (cliParser.hasOption("debug")) {
-      dag.getAttributes().attr(LogicalPlan.DEBUG).set(true);
+      dag.getAttributes().put(LogicalPlan.DEBUG, true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
@@ -236,9 +236,9 @@ public class StramClient
                                          + ", numContainer=" + containerCount);
     }
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(containerCount);
-    dag.getAttributes().attr(LogicalPlan.MASTER_MEMORY_MB).set(amMemory);
-    dag.getAttributes().attr(LogicalPlan.CONTAINER_MEMORY_MB).set(containerMemory);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, containerCount);
+    dag.getAttributes().put(LogicalPlan.MASTER_MEMORY_MB, amMemory);
+    dag.getAttributes().put(LogicalPlan.CONTAINER_MEMORY_MB, containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -403,8 +403,13 @@ public class StramClient
       amMemory = maxMem;
     }
 
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).setIfAbsent(DEFAULT_APPNAME);
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_ID).setIfAbsent(appId.toString());
+    if (dag.getAttributes().get(LogicalPlan.APPLICATION_NAME) == null) {
+      dag.getAttributes().put(LogicalPlan.APPLICATION_NAME, DEFAULT_APPNAME);
+    }
+
+    if (dag.getAttributes().get(LogicalPlan.APPLICATION_ID) == null) {
+      dag.getAttributes().put(LogicalPlan.APPLICATION_ID, appId.toString());
+    }
 
     // Create launch context for app master
     LOG.info("Setting up application submission context for ASM");
@@ -413,7 +418,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).get());
+    appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
     appContext.setApplicationType(YARN_APPLICATION_TYPE);
 
     // Set up the container launch context for the application master
@@ -494,8 +499,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    dag.getAttributes().attr(LogicalPlan.LIBRARY_JARS).set(libJarsCsv);
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set(new Path(fs.getHomeDirectory(), pathSuffix).toString());
+    dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // set local resources for the application master
     // local files or archives as needed

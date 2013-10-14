@@ -33,12 +33,12 @@ public class LocalityTest {
   public void testNodeLocal() {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(DAGContext.APPLICATION_PATH).set(new File("target", LocalityTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", LocalityTest.class.getName()).getAbsolutePath());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
-    dag.getMeta(partitioned).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(partitioned).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
     GenericTestOperator partitionedParallel = dag.addOperator("partitionedParallel", GenericTestOperator.class);
 

@@ -5,6 +5,7 @@
 package com.datatorrent.stram.webapp;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -43,7 +44,7 @@ public class StreamsInfo {
    *
    */
   public List<StreamInfo> getStreams() {
-    return streams;
+    return Collections.unmodifiableList(streams);
   }
 
 }

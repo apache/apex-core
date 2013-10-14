@@ -40,52 +40,24 @@ public class LocalModeImpl extends LocalMode {
   }
 
   @Override
-  public DAG prepareDAG(final StreamingApplication app, Configuration conf) throws Exception
+  public DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception
   {
     if (app == null && conf == null) {
       throw new IllegalArgumentException("Require app or configuration to populate logical plan.");
     }
 
-    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
-    pb.addFromConfiguration(conf);
-    String name = "unknown";
-    if (app != null) {
-      name = app.getClass().getName();
-    }
-    StreamingApplication sapp = app;
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration();
+    String appName = "unknown";
     if (app == null) {
-      sapp = pb;
+      lpc.addFromConfiguration(conf);
+      app = lpc;
+    } else {
+      if (conf == null) {
+        conf = new Configuration(false);
+      }
+      appName = app.getClass().getName();
     }
-    pb.prepareDAG(lp, sapp, name, conf);
-
-    /*
-    final AppFactory appConfig = new AppFactory() {
-      @Override
-      public String getName()
-      {
-        if (app != null) {
-          return app.getClass().getName();
-        } else {
-          return "unknown";
-        }
-      }
-
-      @Override
-      public StreamingApplication createApp(Configuration conf)
-      {
-        if (app == null) {
-          LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
-          tb.addFromConfiguration(conf);
-          return tb;
-        } else {
-          return app;
-        }
-      }
-    };
-    StramAppAgent appAgent = new StramAppAgent(conf);
-    appAgent.prepareDAG(this.lp, appConfig);
-    */
-    //StramAppLauncher.prepareDAG(this.lp, appConfig, conf);
+    lpc.prepareDAG(lp, app, appName, conf);
     return lp;
   }
 

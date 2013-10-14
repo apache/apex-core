@@ -74,7 +74,7 @@ public class StramLocalClusterTest
 
     dag.addStream("fromNode1", node1.outport1, outNode.inport);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.setHeartbeatMonitoringEnabled(false);
@@ -108,8 +108,8 @@ public class StramLocalClusterTest
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setFinishedWindowId(-1);
       streamContext.setBufferServerAddress(publisherOperator.getContainer().bufferServerAddress);
-      streamContext.attr(StreamContext.CODEC).set(new DefaultStatefulStreamCodec<Object>());
-      streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
+      streamContext.put(StreamContext.CODEC, new DefaultStatefulStreamCodec<Object>());
+      streamContext.put(StreamContext.EVENT_LOOP, StramChild.eventloop);
       bss = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
       bss.setup(streamContext);
       reservoir = bss.acquireReservoir("testSink", 1024);
@@ -156,7 +156,7 @@ public class StramLocalClusterTest
 
     dag.validate();
 
-    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 

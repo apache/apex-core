@@ -151,7 +151,7 @@ public class InlineStreamTest
       {
         int id = counter.incrementAndGet();
         OperatorContext ctx = new OperatorContext(id, Thread.currentThread(),
-                                                  new AttributeMap.DefaultAttributeMap(Context.OperatorContext.class),
+                                                  new AttributeMap.DefaultAttributeMap(),
                                                   null);
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);

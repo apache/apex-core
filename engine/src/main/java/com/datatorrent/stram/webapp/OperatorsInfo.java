@@ -5,6 +5,7 @@
 package com.datatorrent.stram.webapp;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -43,7 +44,7 @@ public class OperatorsInfo {
    *
    */
   public List<OperatorInfo> getOperators() {
-    return operators;
+    return Collections.unmodifiableList(operators);
   }
 
 }

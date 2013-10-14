@@ -190,8 +190,8 @@ public class TupleRecorderTest
   {
     LogicalPlan dag = new LogicalPlan();
 
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set("file://" + testWorkDir.getAbsolutePath());
-    dag.getAttributes().attr(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE).set(1024);  // 1KB per part
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, "file://" + testWorkDir.getAbsolutePath());
+    dag.getAttributes().put(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 1024);  // 1KB per part
 
     TestGeneratorInputOperator op1 = dag.addOperator("op1", TestGeneratorInputOperator.class);
     GenericTestOperator op2 = dag.addOperator("op2", GenericTestOperator.class);

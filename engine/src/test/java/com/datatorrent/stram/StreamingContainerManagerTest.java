@@ -25,7 +25,6 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 
 import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -59,8 +58,8 @@ public class StreamingContainerManagerTest {
     ndi.declaredId = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
-    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap(Context.OperatorContext.class);
-    ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
+    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap();
+    ndi.contextAttributes.put(OperatorContext.SPIN_MILLIS, 100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
     input.declaredStreamId = "streamToNode";
@@ -99,7 +98,7 @@ public class StreamingContainerManagerTest {
     Assert.assertTrue(nodeToString.contains(input.portName));
     Assert.assertTrue(nodeToString.contains(output.portName));
 
-    Assert.assertEquals("contextAttributes " + ndiClone.contextAttributes, Integer.valueOf(100), ndiClone.contextAttributes.attr(OperatorContext.SPIN_MILLIS).get());
+    Assert.assertEquals("contextAttributes " + ndiClone.contextAttributes, Integer.valueOf(100), ndiClone.contextAttributes.get(OperatorContext.SPIN_MILLIS));
 
   }
 
@@ -107,7 +106,7 @@ public class StreamingContainerManagerTest {
   public void testGenerateDeployInfo() {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(DAGContext.APPLICATION_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -122,7 +121,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("o3.outport1", o3.outport1, o4.inport1)
       .setLocality(Locality.THREAD_LOCAL);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     Assert.assertEquals("number operators", 4, dag.getAllOperators().size());
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
@@ -153,7 +152,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1o1outport.bufferServerHost);
     Assert.assertEquals("stream connects to upstream port", 9001, c1o1outport.bufferServerPort);
     Assert.assertNotNull("contextAttributes " + c1o1outport, c1o1outport.contextAttributes);
-    Assert.assertEquals("contextAttributes " + c1o1outport,  Integer.valueOf(99), c1o1outport.contextAttributes.attr(PortContext.SPIN_MILLIS).get());
+    Assert.assertEquals("contextAttributes " + c1o1outport,  Integer.valueOf(99), c1o1outport.contextAttributes.get(PortContext.SPIN_MILLIS));
 
     List<OperatorDeployInfo> c2 = dnm.assignContainer(new ContainerResource(0, container2Id, "host2", 1024), InetSocketAddress.createUnresolved(container2Id+"Host", 9002)).getDeployInfo();
     Assert.assertEquals("number operators assigned to container", 3, c2.size());
@@ -204,7 +203,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(DAGContext.APPLICATION_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
@@ -274,7 +273,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      InputStream stream = new FSStorageAgent(new Configuration(false), dag.getAttributes().attr(DAGContext.APPLICATION_PATH).get() + "/" + DAGContext.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
+      InputStream stream = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + DAGContext.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
       Operator operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
       stream.close();
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
@@ -314,7 +313,7 @@ public class StreamingContainerManagerTest {
 
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     // node1 and node3 are assigned, node2 unassigned
     StreamingContainerManager dnmgr = new StreamingContainerManager(dag);
@@ -333,7 +332,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("n1n2", node1.outport1, node2.inport1);
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     Assert.assertEquals(""+scm.containerStartRequests, 2, scm.containerStartRequests.size());
