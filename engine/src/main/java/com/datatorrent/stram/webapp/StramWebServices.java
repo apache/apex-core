@@ -439,6 +439,7 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     try {
+      @SuppressWarnings("unchecked")
       Iterator<String> keys = request.keys();
       while (keys.hasNext()) {
         String key = keys.next();

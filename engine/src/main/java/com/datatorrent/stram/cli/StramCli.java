@@ -52,7 +52,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
-import org.apache.log4j.Priority;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.JSONException;
 
@@ -142,7 +141,7 @@ public class StramCli
         boolean potentialEmptyArg = false;
         StringBuffer buf = new StringBuffer();
 
-        for (int i = 0; i < len; ++i) {
+        for (@SuppressWarnings("AssignmentToForLoopParameter") int i = 0; i < len; ++i) {
           char c = commandLine.charAt(i);
           if (c == '"') {
             potentialEmptyArg = true;
@@ -2396,7 +2395,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ApplicationReport appReport = currentApp;
+      ApplicationReport appReport;
       if (args.length > 1) {
         appReport = getApplication(args[1]);
       }
@@ -2502,7 +2501,9 @@ public class StramCli
   {
     Options options = new Options();
     Option local = new Option("local", "run in local mode");
+    @SuppressWarnings("static-access")
     Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
+    @SuppressWarnings("static-access")
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("D");
     options.addOption(local);
     options.addOption(configFile);
