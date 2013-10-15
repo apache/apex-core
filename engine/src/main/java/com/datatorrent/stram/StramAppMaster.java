@@ -251,8 +251,7 @@ public class StramAppMaster //extends License for licensing using native
     public long getTotalTuplesEmitted()
     {
       long result = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
           result += entry.getValue().totalTuplesEmitted;
         }
@@ -274,8 +273,7 @@ public class StramAppMaster //extends License for licensing using native
     public long getTotalBufferServerReadBytesPSMA()
     {
       long result = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
           OperatorStatus os = entry.getValue();
           for (Map.Entry<String, PortStatus> portEntry : os.inputPortStatusList.entrySet()) {
@@ -290,8 +288,7 @@ public class StramAppMaster //extends License for licensing using native
     public long getTotalBufferServerWriteBytesPSMA()
     {
       long result = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
           OperatorStatus os = entry.getValue();
           for (Map.Entry<String, PortStatus> portEntry : os.outputPortStatusList.entrySet()) {
@@ -982,7 +979,8 @@ public class StramAppMaster //extends License for licensing using native
           stopContainer.setContainerId(allocatedContainer.getId());
           cm.stopContainer(stopContainer);
           LOG.info("Stopped container {}", containerIdStr);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           // the node manager might be gone and we don't want that to fail the AM
           LOG.warn("Failed to stop container {}", containerIdStr, e);
         }
