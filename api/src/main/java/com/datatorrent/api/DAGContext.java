@@ -17,7 +17,6 @@ package com.datatorrent.api;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.String2String;
 
 /**
