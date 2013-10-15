@@ -642,7 +642,20 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  @SuppressWarnings( {"unchecked"})
+  private static final Map<Attribute<?>, String> legacyKeyMap = Maps.newHashMap();
+
+  static {
+    legacyKeyMap.put(DAGContext.APPLICATION_NAME, "appName");
+    legacyKeyMap.put(DAGContext.LIBRARY_JARS, "libjars");
+    legacyKeyMap.put(DAGContext.CONTAINERS_MAX_COUNT, "maxContainers");
+    legacyKeyMap.put(DAGContext.CONTAINER_MEMORY_MB, "containerMemoryMB");
+    legacyKeyMap.put(DAGContext.MASTER_MEMORY_MB, "masterMemoryMB");
+    legacyKeyMap.put(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, "windowSizeMillis");
+    legacyKeyMap.put(DAGContext.APPLICATION_PATH, "appPath");
+    legacyKeyMap.put(DAGContext.DAEMON_ADDRESS, "daemon.address");
+    legacyKeyMap.put(DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, "allocateResourceTimeoutMillis");
+  }
+
   public void setApplicationLevelAttributes(LogicalPlan dag, String appName) {
     Properties appProps = this.properties;
     if (appName != null) {
@@ -654,12 +667,19 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     LOG.debug("Initializing DAGContext!", DAGContext.serialVersionUID); /* make sure that the DAGContext.class is initialized */
     for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
-      String stringValue = appProps.getProperty("stram." + attribute.name);
+      String simpleName = attribute.name.substring(attribute.name.lastIndexOf('.')+1);
+      String stringValue = appProps.getProperty("stram." + simpleName);
       if (stringValue == null) {
-        String camelCase = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, attribute.name);
-        stringValue = appProps.getProperty("stram." + camelCase);
+        String legacyKey = legacyKeyMap.get(attribute);
+        if (legacyKey != null) {
+          stringValue = appProps.getProperty("stram." + legacyKey);
+        } else {
+          /* This is temporary fix till we get rid of old inconsistent names from our code. */
+          legacyKey = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, simpleName);
+          stringValue = appProps.getProperty("stram." + legacyKey);
+        }
         if (stringValue != null) {
-          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", camelCase, attribute.name);
+          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", legacyKey, simpleName);
         }
       }
 
@@ -674,6 +694,5 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
   }
-
 
 }

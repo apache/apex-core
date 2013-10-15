@@ -147,7 +147,7 @@ public class StramChild
     windowWidthMillis = ctx.attrValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, 500);
     checkpointWindowCount = ctx.attrValue(DAGContext.CHECKPOINT_WINDOW_COUNT, 60);
 
-    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + DAGContext.SUBDIR_CHECKPOINTS;
+    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
