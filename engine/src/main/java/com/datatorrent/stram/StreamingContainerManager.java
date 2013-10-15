@@ -222,7 +222,7 @@ public class StreamingContainerManager implements PlanContext
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS.defaultValue) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.getExternalId(), c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
