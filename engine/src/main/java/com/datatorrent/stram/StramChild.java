@@ -1119,7 +1119,6 @@ public class StramChild
     for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
       OutputPort<?> port = outputPorts.get(odi.portName).component;
       PortContext context = new PortContext(odi.contextAttributes, operatorContext);
-      context.attributes.attr(PortContext.IS_OUTPUT_UNIFIED).set(odi.runtimeAttributes.attr(PortContext.IS_OUTPUT_UNIFIED).get());
       newOutputPorts.put(odi.portName, new PortContextPair<OutputPort<?>>(port, context));
       port.setup(context);
     }

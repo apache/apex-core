@@ -81,7 +81,7 @@ public class OutputUnifiedTest
       @Override
       public void setup(PortContext context)
       {
-        unifiedStates.add(context.getAttributes().attr(PortContext.IS_OUTPUT_UNIFIED).get());
+        unifiedStates.add(context.getAttributes().get(PortContext.IS_OUTPUT_UNIFIED));
       }
 
     };
@@ -110,7 +110,7 @@ public class OutputUnifiedTest
       @Override
       public void setup(PortContext context)
       {
-        unifiedStates.add(context.getAttributes().attr(PortContext.IS_OUTPUT_UNIFIED).get());
+        unifiedStates.add(context.getAttributes().get(PortContext.IS_OUTPUT_UNIFIED));
       }
 
     };

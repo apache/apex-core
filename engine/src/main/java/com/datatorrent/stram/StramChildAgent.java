@@ -417,12 +417,7 @@ public class StramChildAgent {
         portInfo.portName = out.portName;
 
         streamMeta.getSource().getAttributes();
-        portInfo.contextAttributes =streamMeta.getSource().getAttributes();
-
-        // Need to create one attribute list tha will contain both context and runtime attributes in which case a new attribute list
-        // needs to be created instead of all instances sharing a common one from logical. This will be done when new attribute API
-        // is ready
-        portInfo.runtimeAttributes = new DefaultAttributeMap(com.datatorrent.api.Context.PortContext.class);
+        portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
 
         boolean outputUnified = false;
         for (PTOperator.PTInput input : out.sinks) {
@@ -431,7 +426,7 @@ public class StramChildAgent {
             break;
           }
         }
-        portInfo.runtimeAttributes.attr(PortContext.IS_OUTPUT_UNIFIED).set(outputUnified);
+        portInfo.contextAttributes.put(PortContext.IS_OUTPUT_UNIFIED, outputUnified);
 
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           // input attributes of the downstream operator

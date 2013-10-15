@@ -239,7 +239,6 @@ public class LogicalPlan implements Serializable, DAG
       return attr;
     }
 
-    /*
     @Override
     public String toString()
     {
@@ -249,7 +248,6 @@ public class LogicalPlan implements Serializable, DAG
               append("field", this.fieldName).
               toString();
     }
-    */
   }
 
   /**
