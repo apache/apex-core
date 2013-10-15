@@ -233,7 +233,7 @@ public interface AttributeMap
             if (attribute.name == null) {
               Field nameField = AttributeMap.Attribute.class.getDeclaredField("name");
               nameField.setAccessible(true);
-              nameField.set(attribute, f.getName());
+              nameField.set(attribute, clazz.getCanonicalName() + '.' + f.getName());
               nameField.setAccessible(false);
             }
             /* Handle trivial cases here even though this may spoil API users. */
