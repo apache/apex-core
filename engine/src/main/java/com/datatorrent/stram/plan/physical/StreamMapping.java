@@ -159,18 +159,10 @@ public class StreamMapping
     if (!downstreamOpers.isEmpty()) {
       // unifiers are required
       for (PTOperator unifier : this.cascadingUnifiers) {
-        // remove existing unifiers from downstream inputs
-        for (PTOutput out : unifier.outputs) {
-          for (PTInput input : out.sinks) {
-            input.target.inputs.remove(input);
-          }
-          out.sinks.clear();
-        }
-        // remove from upstream outputs
-        for (PTInput in : unifier.inputs) {
-          in.source.sinks.remove(in);
-        }
-        unifier.inputs.clear();
+        detachUnifier(unifier);
+      }
+      if (this.finalUnifier != null) {
+        detachUnifier(finalUnifier);
       }
 
       List<PTOperator> currentUnifiers = Lists.newArrayList(this.cascadingUnifiers);
@@ -202,7 +194,6 @@ public class StreamMapping
               finalUnifier = createUnifier();
             }
             setInput(doperEntry.first, doperEntry.second, finalUnifier, null);
-            this.finalUnifier.inputs.clear();
             for (PTOutput out : unifierSources) {
               addInput(this.finalUnifier, out, null);
             }
@@ -257,4 +248,19 @@ public class StreamMapping
     target.inputs.add(input);
   }
 
+  private void detachUnifier(PTOperator unifier) {
+    // remove existing unifiers from downstream inputs
+    for (PTOutput out : unifier.outputs) {
+      for (PTInput input : out.sinks) {
+        input.target.inputs.remove(input);
+      }
+      out.sinks.clear();
+    }
+    // remove from upstream outputs
+    for (PTInput in : unifier.inputs) {
+      in.source.sinks.remove(in);
+    }
+    unifier.inputs.clear();
+  }
+  
 }

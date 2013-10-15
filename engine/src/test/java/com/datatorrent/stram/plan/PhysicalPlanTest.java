@@ -216,12 +216,15 @@ public class PhysicalPlanTest {
     sm.onThroughputUpdate(po, 10);
     Assert.assertEquals("load exceeds max", 1, ctx.events.size());
 
-    Runnable r = ctx.events.remove(0);
-    r.run();
+    ctx.events.remove(0).run();
 
     Assert.assertEquals("new partitions", 3, plan.getOperators(node2Meta).size());
+    Assert.assertTrue("", plan.getOperators(node2Meta).contains(po2));
+
     for (PTOperator partition : plan.getOperators(node2Meta)) {
       Assert.assertNotNull("container null " + partition, partition.getContainer());
+      Assert.assertEquals("outputs " + partition, 1, partition.getOutputs().size());
+      Assert.assertEquals("downstream operators " + partition.getOutputs().get(0).sinks, 1, partition.getOutputs().get(0).sinks.size());
     }
     Assert.assertEquals("" + ctx.undeploy, expUndeploy, ctx.undeploy);
 
