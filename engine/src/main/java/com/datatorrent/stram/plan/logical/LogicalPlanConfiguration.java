@@ -674,12 +674,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         if (legacyKey != null) {
           stringValue = appProps.getProperty("stram." + legacyKey);
         } else {
-          // should camel case be permanently supported?
+          /* This is temporary fix till we get rid of old inconsistent names from our code. */
           legacyKey = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, simpleName);
           stringValue = appProps.getProperty("stram." + legacyKey);
         }
         if (stringValue != null) {
-          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", legacyKey, attribute.name);
+          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", legacyKey, simpleName);
         }
       }
 
@@ -694,6 +694,5 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
   }
-
 
 }
