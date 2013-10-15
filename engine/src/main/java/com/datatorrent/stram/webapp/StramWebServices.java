@@ -88,7 +88,7 @@ public class StramWebServices
   @Nullable
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
-  private ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -222,7 +222,6 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  @SuppressWarnings({"rawtypes", "unchecked"})
   public JSONObject getOperatorClasses(@QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
@@ -240,7 +239,7 @@ public class StramWebServices
     try {
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
-      for (Class clazz : operatorClasses) {
+      for (Class<?> clazz : operatorClasses) {
         JSONObject j = new JSONObject();
         j.put("name", clazz.getName());
         classNames.put(j);
@@ -463,23 +462,13 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorAttributes(@PathParam("operatorId") String operatorId, @QueryParam("attributeName") String attributeName)
   {
-    if (attributeName == null) {
-      HashMap<String, Object> map = new HashMap<String, Object>();
-      for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorId).entrySet()) {
+    HashMap<String, Object> map = new HashMap<String, Object>();
+    for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorId).entrySet()) {
+      if (attributeName == null || entry.getKey().equals(attributeName)) {
         map.put(entry.getKey().name, entry.getValue());
       }
-      return new JSONObject(map);
     }
-    else {
-      JSONObject json = new JSONObject();
-      try {
-        json.put(attributeName, dagManager.getOperatorAttributes(operatorId).get(attributeName));
-      }
-      catch (JSONException ex) {
-        LOG.warn("Got JSON Exception: ", ex);
-      }
-      return json;
-    }
+    return new JSONObject(map);
   }
 
   @GET
@@ -487,23 +476,13 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
   {
-    if (attributeName == null) {
-      HashMap<String, Object> map = new HashMap<String, Object>();
-      for (Entry<Attribute<?>, Object> entry : dagManager.getApplicationAttributes().entrySet()) {
+    HashMap<String, Object> map = new HashMap<String, Object>();
+    for (Entry<Attribute<?>, Object> entry : dagManager.getApplicationAttributes().entrySet()) {
+      if (attributeName == null || entry.getKey().equals(attributeName)) {
         map.put(entry.getKey().name, entry.getValue());
       }
-      return new JSONObject(map);
     }
-    else {
-      JSONObject json = new JSONObject();
-      try {
-        json.put(attributeName, dagManager.getApplicationAttributes().get(attributeName));
-      }
-      catch (JSONException ex) {
-        LOG.warn("Got JSON Exception: ", ex);
-      }
-      return json;
-    }
+    return new JSONObject(map);
   }
 
   @GET
@@ -511,23 +490,13 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
-    if (attributeName == null) {
-      HashMap<String, Object> map = new HashMap<String, Object>();
-      for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorId, portName).entrySet()) {
+    HashMap<String, Object> map = new HashMap<String, Object>();
+    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorId, portName).entrySet()) {
+      if (attributeName == null || entry.getKey().equals(attributeName)) {
         map.put(entry.getKey().name, entry.getValue());
       }
-      return new JSONObject(map);
     }
-    else {
-      JSONObject json = new JSONObject();
-      try {
-        json.put(attributeName, dagManager.getPortAttributes(operatorId, portName).get(attributeName));
-      }
-      catch (JSONException ex) {
-        LOG.warn("Got JSON Exception: ", ex);
-      }
-      return json;
-    }
+    return new JSONObject(map);
   }
 
   @GET

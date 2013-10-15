@@ -42,16 +42,13 @@ public interface AttributeMap
 {
   /**
    * Return the attribute value for the given key. If the map does not have an
-   * entry for the key, a default attribute value will be created and returned.
-   * Modifies state of the map of key is not present.
+   * entry for the key, null is returned.
    *
    * @param <T>
    * @param key
    * @return <T> AttributeValue<T>
    */
   <T> T get(Attribute<T> key);
-
-  <T> T get(String key);
 
   <T> T put(Attribute<T> key, T value);
 
@@ -65,7 +62,7 @@ public interface AttributeMap
   AttributeMap clone();
 
   /**
-   * Scoped attribute key. Subclasses define scope.
+   * Attribute key.
    *
    * @param <T>
    */
@@ -154,24 +151,11 @@ public interface AttributeMap
       }
     }
 
-    // if there is at least one attribute, serialize scope for key object lookup
     @Override
     @SuppressWarnings("unchecked")
     public <T> T get(Attribute<T> key)
     {
       return (T)map.get(key);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> T get(String key)
-    {
-      Attribute<?> attribute = attributeMap.get(key);
-      if (attribute != null) {
-        return (T)get(attribute);
-      }
-
-      return null;
     }
 
     @Override
