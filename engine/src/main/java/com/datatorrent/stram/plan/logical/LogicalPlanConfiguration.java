@@ -16,26 +16,30 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.validation.ValidationException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
+
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.google.common.collect.Maps;
 
 /**
  *
@@ -56,11 +60,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_LOCALITY = "locality";
 
-  public static final String OPERATOR_PREFIX = "stram.operator.";
+  public static final String OPERATOR_PREFIX = "stram.operator";
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
-  public static final String TEMPLATE_PREFIX = "stram.template.";
+  public static final String TEMPLATE_PREFIX = "stram.template";
 
   public static final String TEMPLATE_idRegExp = "matchIdRegExp";
   public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
@@ -303,7 +307,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * The path for the application class is specified as a parameter. If an alias was specified
    * in the configuration file or configuration properties for the application class it is returned
    * otherwise null is returned.
-   * 
+   *
    * @param appPath The path of the application class in the jar
    * @return The alias name if one is available, null otherwise
    */
@@ -328,7 +332,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
       this.properties.setProperty(propertyName, propertyValue);
-      if (propertyName.startsWith(STREAM_PREFIX)) {
+      if (propertyName.startsWith(STREAM_PREFIX + ".")) {
          // stream definition
         String[] keyComps = propertyName.split("\\.");
         // must have at least id and single component property
@@ -360,7 +364,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
            // all other stream properties
           stream.properties.put(propertyKey, propertyValue);
         }
-      } else if (propertyName.startsWith(OPERATOR_PREFIX)) {
+      } else if (propertyName.startsWith(OPERATOR_PREFIX + ".")) {
          // get the operator name
          String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
@@ -379,7 +383,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
            // simple property
            nc.properties.put(propertyKey, propertyValue);
          }
-      } else if (propertyName.startsWith(TEMPLATE_PREFIX)) {
+      } else if (propertyName.startsWith(TEMPLATE_PREFIX + ".")) {
         String[] keyComps = propertyName.split("\\.", 4);
         // must have at least id and single component property
         if (keyComps.length < 4) {
@@ -397,7 +401,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           tc.properties.setProperty(propertyKey, propertyValue);
         }
-      } else if (propertyName.startsWith(APPLICATION_PREFIX)) {
+      } else if (propertyName.startsWith(APPLICATION_PREFIX + ".")) {
         // get the operator name
         String[] keyComps = propertyName.split("\\.");
         // must have at least id and single component property
@@ -435,6 +439,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   public Properties getProperties() {
     return this.properties;
+  }
+
+  public Map<String, String> getAppAliases() {
+    return this.appAliases;
   }
 
   @Override
@@ -510,11 +518,13 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appAlias != null) {
       dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
     } else {
-      dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(name);
+      if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
+        dag.getAttributes().put(DAG.APPLICATION_NAME, name);
+      }
     }
 
     // inject external operator configuration
-    setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
+    setOperatorProperties(dag, dag.getAttributes().get(DAG.APPLICATION_NAME));
   }
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
@@ -632,7 +642,20 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  @SuppressWarnings("unchecked")
+  private static final Map<Attribute<?>, String> legacyKeyMap = Maps.newHashMap();
+
+  static {
+    legacyKeyMap.put(DAGContext.APPLICATION_NAME, "appName");
+    legacyKeyMap.put(DAGContext.LIBRARY_JARS, "libjars");
+    legacyKeyMap.put(DAGContext.CONTAINERS_MAX_COUNT, "maxContainers");
+    legacyKeyMap.put(DAGContext.CONTAINER_MEMORY_MB, "containerMemoryMB");
+    legacyKeyMap.put(DAGContext.MASTER_MEMORY_MB, "masterMemoryMB");
+    legacyKeyMap.put(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, "windowSizeMillis");
+    legacyKeyMap.put(DAGContext.APPLICATION_PATH, "appPath");
+    legacyKeyMap.put(DAGContext.DAEMON_ADDRESS, "daemon.address");
+    legacyKeyMap.put(DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, "allocateResourceTimeoutMillis");
+  }
+
   public void setApplicationLevelAttributes(LogicalPlan dag, String appName) {
     Properties appProps = this.properties;
     if (appName != null) {
@@ -641,26 +664,35 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         appProps = appConf.properties;
       }
     }
-    // process application level settings prior to populate
-    for (@SuppressWarnings("rawtypes") DAGContext.AttributeKey key : DAGContext.ATTRIBUTE_KEYS) {
-      String confKey = "stram." + key.name();
-      String stringValue = appProps.getProperty(confKey, null);
-      if (stringValue != null) {
-        if (key.attributeType == Integer.class) {
-          dag.setAttribute(key, Integer.parseInt(stringValue));
-        } else if (key.attributeType == Long.class) {
-          dag.setAttribute(key, Long.parseLong(stringValue));
-        } else if (key.attributeType == String.class) {
-          dag.setAttribute(key, stringValue);
-        } else if (key.attributeType == Boolean.class) {
-          dag.setAttribute(key, Boolean.parseBoolean(stringValue));
+
+    LOG.debug("Initializing DAGContext!", DAGContext.serialVersionUID); /* make sure that the DAGContext.class is initialized */
+    for (Attribute<Object> attribute : AttributeInitializer.getAttributes(DAGContext.class)) {
+      String simpleName = attribute.name.substring(attribute.name.lastIndexOf('.')+1);
+      String stringValue = appProps.getProperty("stram." + simpleName);
+      if (stringValue == null) {
+        String legacyKey = legacyKeyMap.get(attribute);
+        if (legacyKey != null) {
+          stringValue = appProps.getProperty("stram." + legacyKey);
         } else {
-          String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
+          // should camel case be permanently supported?
+          legacyKey = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, simpleName);
+          stringValue = appProps.getProperty("stram." + legacyKey);
+        }
+        if (stringValue != null) {
+          LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", legacyKey, attribute.name);
+        }
+      }
+
+      if (stringValue != null) {
+        if (attribute.codec == null) {
+          String msg = String.format("Unsupported attribute type: %s (%s)", attribute.codec, attribute.name);
           throw new UnsupportedOperationException(msg);
+        }
+        else {
+          dag.setAttribute(attribute, attribute.codec.fromString(stringValue));
         }
       }
     }
-
   }
 
 

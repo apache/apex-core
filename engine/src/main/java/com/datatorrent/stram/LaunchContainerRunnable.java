@@ -33,7 +33,7 @@ import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 
-import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
@@ -180,7 +180,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(yarnClient.getConf());
-      addLibJarsToLocalResources(dag.getAttributes().attr(LogicalPlan.LIBRARY_JARS).get(), localResources, fs);
+      addLibJarsToLocalResources(dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -239,7 +239,7 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
 
-    String jvmOpts = dag.getAttributes().attr(LogicalPlan.CONTAINER_JVM_OPTIONS).get();
+    String jvmOpts = dag.getAttributes().get(LogicalPlan.CONTAINER_JVM_OPTIONS);
     if (jvmOpts != null) {
       Map<String, String> params = new HashMap<String, String>();
       params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));

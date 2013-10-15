@@ -46,8 +46,8 @@ import org.apache.hadoop.yarn.util.Records;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
 
-import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ConfigUtils;
@@ -83,7 +83,7 @@ public class StramClient
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  private static final String DEFAULT_APPNAME = "Stram";
+  public static final String DEFAULT_APPNAME = "Stram";
 
   /**
    * @param args Command line arguments
@@ -198,7 +198,7 @@ public class StramClient
     app.populateDAG(dag, appConf);
     dag.validate();
     if (cliParser.hasOption("debug")) {
-      dag.getAttributes().attr(LogicalPlan.DEBUG).set(true);
+      dag.getAttributes().put(LogicalPlan.DEBUG, true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
@@ -220,9 +220,9 @@ public class StramClient
                                          + ", numContainer=" + containerCount);
     }
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(containerCount);
-    dag.getAttributes().attr(LogicalPlan.MASTER_MEMORY_MB).set(amMemory);
-    dag.getAttributes().attr(LogicalPlan.CONTAINER_MEMORY_MB).set(containerMemory);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, containerCount);
+    dag.getAttributes().put(LogicalPlan.MASTER_MEMORY_MB, amMemory);
+    dag.getAttributes().put(LogicalPlan.CONTAINER_MEMORY_MB, containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -244,9 +244,7 @@ public class StramClient
       com.datatorrent.stram.StramAppMaster.class,
       com.datatorrent.api.StreamCodec.class,
       javax.validation.ConstraintViolationException.class,
-      org.eclipse.jetty.websocket.WebSocketFactory.class,
-      org.eclipse.jetty.io.nio.SelectorManager.class,
-      org.eclipse.jetty.http.HttpParser.class,
+      com.ning.http.client.websocket.WebSocketUpgradeHandler.class,
       Kryo.class,
       org.apache.bval.jsr303.ApacheValidationProvider.class,
       org.apache.bval.BeanValidationContext.class,
@@ -405,8 +403,13 @@ public class StramClient
       amMemory = maxMem;
     }
 
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).setIfAbsent(DEFAULT_APPNAME);
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_ID).setIfAbsent(appId.toString());
+    if (dag.getAttributes().get(LogicalPlan.APPLICATION_NAME) == null) {
+      dag.getAttributes().put(LogicalPlan.APPLICATION_NAME, DEFAULT_APPNAME);
+    }
+
+    if (dag.getAttributes().get(LogicalPlan.APPLICATION_ID) == null) {
+      dag.getAttributes().put(LogicalPlan.APPLICATION_ID, appId.toString());
+    }
 
     // Create launch context for app master
     LOG.info("Setting up application submission context for ASM");
@@ -415,7 +418,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).get());
+    appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
@@ -478,8 +481,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    dag.getAttributes().attr(LogicalPlan.LIBRARY_JARS).set(libJarsCsv);
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set(new Path(fs.getHomeDirectory(), pathSuffix).toString());
+    dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // set local resources for the application master
     // local files or archives as needed

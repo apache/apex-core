@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.*;
 import com.datatorrent.api.util.ObjectMapperString;
 
 import com.datatorrent.stram.debug.TupleRecorder;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 
@@ -40,7 +40,7 @@ import com.datatorrent.stram.webapp.StramWebServices;
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
-public class RecordingsAgent extends StramAgent
+public final class RecordingsAgent extends FSPartFileAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(RecordingsAgent.class);
   private static final long MAX_LIMIT_TUPLES = 1000;
@@ -60,14 +60,13 @@ public class RecordingsAgent extends StramAgent
     public Map<String, Object> properties;
   }
 
-  private static class IndexLine
+  private static class RecordingsIndexLine extends IndexLine
   {
     public List<TupleRecorder.Range> windowIdRanges;
     public long startTime;
     public long endTime;
     public long tupleCount;
     public Map<String, MutableLong> portTupleCount;
-    public String partFile;
   }
 
   @XmlType(name = "port_info") // not really used, but this is to shut jackson up for conflicting xml names with TupleRecorder.PortInfo
@@ -142,9 +141,17 @@ public class RecordingsAgent extends StramAgent
     return (dir == null) ? null : dir + Path.SEPARATOR + String.valueOf(startTime);
   }
 
-  private static IndexLine parseIndexLine(String line) throws JSONException
+  @Override
+  protected RecordingsIndexLine parseIndexLine(String line) throws JSONException
   {
-    IndexLine info = new IndexLine();
+    RecordingsIndexLine info = new RecordingsIndexLine();
+
+    if (line.startsWith("E")) {
+      info.isEndLine = true;
+      return info;
+    }
+    line = line.trim();
+
     info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
     info.portTupleCount = new HashMap<String, MutableLong>();
 
@@ -314,28 +321,28 @@ public class RecordingsAgent extends StramAgent
     RecordingInfo info = new RecordingInfo();
     info.appId = appId;
     info.operatorId = opId;
-    String dir = getRecordingDirectory(appId, opId, startTime);
-    if (dir == null) {
-      return null;
-    }
-
-    Path path = new Path(dir);
-    JSONObject json;
-
     try {
+      String dir = getRecordingDirectory(appId, opId, startTime);
+      if (dir == null) {
+        throw new Exception("recording directory is null");
+      }
+
+      Path path = new Path(dir);
+      JSONObject json;
+
       FileStatus fileStatus = fs.getFileStatus(path);
       HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>();
       if (!fileStatus.isDirectory()) {
-        return null;
+        throw new Exception(path + " is not a directory");
       }
 
       // META file processing
-      FSDataInputStream in = fs.open(new Path(dir, HdfsPartFileCollection.META_FILE));
+      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.META_FILE));
       BufferedReader br = new BufferedReader(new InputStreamReader(in));
       String line;
       line = br.readLine();
       if (!line.equals("1.1")) {
-        return null;
+        throw new Exception("Unexpected line: " + line);
       }
       line = br.readLine();
       json = new JSONObject(line);
@@ -372,21 +379,21 @@ public class RecordingsAgent extends StramAgent
       }
 
       // INDEX file processing
-      in = fs.open(new Path(dir, HdfsPartFileCollection.INDEX_FILE));
-      br = new BufferedReader(new InputStreamReader(in));
+      in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
+      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
       info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
       long prevHiWindowId = -1;
-      while ((line = br.readLine()) != null) {
-        if (line.startsWith("E")) {
+      RecordingsIndexLine indexLine;
+      while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
+        if (indexLine.isEndLine) {
           info.ended = true;
         }
-        else if (line.startsWith("F:")) {
-          IndexLine indexLine = parseIndexLine(line);
+        else {
           info.totalTuples += indexLine.tupleCount;
           for (Map.Entry<String, MutableLong> entry : indexLine.portTupleCount.entrySet()) {
             PortInfo portInfo = portMap.get(entry.getKey());
             if (portInfo == null) {
-              return null;
+              throw new Exception("port info does not exist for " + entry.getKey());
             }
             portInfo.tupleCount += entry.getValue().longValue();
           }
@@ -431,8 +438,8 @@ public class RecordingsAgent extends StramAgent
     }
 
     try {
-      FSDataInputStream in = fs.open(new Path(dir, HdfsPartFileCollection.INDEX_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
+      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
       String line;
       long currentOffset = 0;
       boolean readPartFile = false;
@@ -440,12 +447,11 @@ public class RecordingsAgent extends StramAgent
         limit = MAX_LIMIT_TUPLES;
       }
       long numRemainingTuples = limit;
-
-      while ((line = br.readLine()) != null) {
-        if (!line.startsWith("F:")) {
+      RecordingsIndexLine indexLine;
+      while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
+        if (indexLine.isEndLine) {
           continue;
         }
-        IndexLine indexLine = parseIndexLine(line);
         long currentWindowLow;
         long currentWindowHigh;
         long numTuples = 0;
@@ -561,13 +567,15 @@ public class RecordingsAgent extends StramAgent
     if (wr == null) {
       throw new WebApplicationException(404);
     }
+    LOG.debug("Start recording requested for {}.{}", opId, portName);
     try {
       final JSONObject request = new JSONObject();
-      request.put("operId", opId);
+      String path = StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS + "/" + opId;
       if (!StringUtils.isBlank(portName)) {
-        request.put("portName", portName);
+        path += "/ports/" + portName;
       }
-      return webServicesClient.process(wr.path(StramWebServices.PATH_STARTRECORDING), String.class,
+      path += "/" + StramWebServices.PATH_RECORDINGS_START;
+      return webServicesClient.process(wr.path(path), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
@@ -579,6 +587,7 @@ public class RecordingsAgent extends StramAgent
       });
     }
     catch (Exception ex) {
+      LOG.error("Exception caught", ex);
       return null;
     }
   }
@@ -592,11 +601,12 @@ public class RecordingsAgent extends StramAgent
     }
     try {
       final JSONObject request = new JSONObject();
-      request.put("operId", opId);
+      String path = StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS + "/" + opId;
       if (!StringUtils.isBlank(portName)) {
-        request.put("portName", portName);
+        path += "/ports/" + portName;
       }
-      return webServicesClient.process(wr.path(StramWebServices.PATH_STOPRECORDING), String.class,
+      path += "/" + StramWebServices.PATH_RECORDINGS_STOP;
+      return webServicesClient.process(wr.path(path), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
@@ -608,36 +618,8 @@ public class RecordingsAgent extends StramAgent
       });
     }
     catch (Exception ex) {
+      LOG.error("Exception caught", ex);
       return null;
-    }
-  }
-
-  public void syncRecording(String appId, String opId, String portName) throws IOException, AppNotFoundException
-  {
-    WebServicesClient webServicesClient = new WebServicesClient();
-    WebResource wr = getStramWebResource(webServicesClient, appId);
-    if (wr == null) {
-      throw new AppNotFoundException(appId);
-    }
-    try {
-      final JSONObject request = new JSONObject();
-      request.put("operId", opId);
-      if (!StringUtils.isBlank(portName)) {
-        request.put("portName", portName);
-      }
-      webServicesClient.process(wr.path(StramWebServices.PATH_SYNCRECORDING), String.class,
-                                new WebServicesClient.WebServicesHandler<String>()
-      {
-        @Override
-        public String process(WebResource webResource, Class<String> clazz)
-        {
-          return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
-        }
-
-      });
-    }
-    catch (JSONException ex) {
-      throw new RuntimeException(ex);
     }
   }
 

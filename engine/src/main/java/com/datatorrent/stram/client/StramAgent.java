@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.util.LRUCache;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
@@ -78,19 +79,19 @@ public class StramAgent extends HdfsAgent
     return trackingUrl == null ? null : wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
   }
 
-  public static String getDefaultStramRoot()
+  public String getDefaultStramRoot()
   {
-    return (defaultStramRoot == null) ? ("/user/" + System.getProperty("user.name") + "/Stram") : defaultStramRoot;
+    return (defaultStramRoot == null) ? (fs.getHomeDirectory() + "/" + StramClient.DEFAULT_APPNAME) : defaultStramRoot;
   }
 
-  public static String getAppPath(String appId)
+  public String getAppPath(String appId)
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
       JSONObject response = webServicesClient.process("http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info",
                                                       JSONObject.class,
                                                       new WebServicesClient.GetWebServicesHandler<JSONObject>());
-      String appPath = response.getJSONObject("info").getString("appPath");
+      String appPath = response.getString("appPath");
       int i = appPath.indexOf("/" + appId);
       if (i <= 0) {
         LOG.warn("Cannot get the live Stram root for {}", appId);
@@ -110,7 +111,7 @@ public class StramAgent extends HdfsAgent
       JSONObject response = webServicesClient.process("http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info",
                                                       JSONObject.class,
                                                       new WebServicesClient.GetWebServicesHandler<JSONObject>());
-      return response.getJSONObject("info").getString("appMasterTrackingUrl");
+      return response.getString("appMasterTrackingUrl");
     }
     catch (Exception ex) {
       LOG.warn("Cannot get the live Stram root for {}", appId);

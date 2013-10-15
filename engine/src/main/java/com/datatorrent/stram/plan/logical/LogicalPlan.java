@@ -30,19 +30,20 @@ import javax.validation.ValidationException;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.engine.Node;
+import com.google.common.collect.Sets;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.PartitionableOperator;
@@ -50,7 +51,8 @@ import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.google.common.collect.Sets;
+
+import com.datatorrent.stram.engine.Node;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -71,10 +73,27 @@ public class LogicalPlan implements Serializable, DAG
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlan.class);
   // The name under which the application master expects its configuration.
   public static final String SER_FILE_NAME = "stram-conf.ser";
+
+  /**
+   * Constant
+   * <code>SUBDIR_CHECKPOINTS="checkpoints"</code>
+   */
+  public static String SUBDIR_CHECKPOINTS = "checkpoints";
+  /**
+   * Constant
+   * <code>SUBDIR_STATS="stats"</code>
+   */
+  public static String SUBDIR_STATS = "stats";
+  /**
+   * Constant
+   * <code>SUBDIR_EVENTS="events"</code>
+   */
+  public static String SUBDIR_EVENTS = "events";
+
   private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
   private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
-  private final AttributeMap attributes = new DefaultAttributeMap(DAGContext.class);
+  private final AttributeMap attributes = new DefaultAttributeMap();
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
 
@@ -85,14 +104,14 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+  public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
   {
-    AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
-    if (attr == null || attr.get() == null) {
+    T val = attributes.get(key);
+    if (val == null) {
       return defaultValue;
     }
 
-    return attr.get();
+    return val;
   }
 
   public static class OperatorProxy implements Serializable
@@ -127,7 +146,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta operatorMeta;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
-    private final AttributeMap attributes = new DefaultAttributeMap(PortContext.class);
+    private final AttributeMap attributes = new DefaultAttributeMap();
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -165,14 +184,14 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
     {
-      AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
-      if (attr == null || attr.get() == null) {
+      T attr = attributes.get(key);
+      if (attr == null) {
         return defaultValue;
       }
 
-      return attr.get();
+      return attr;
     }
   }
 
@@ -182,7 +201,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta operatorWrapper;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
-    private final DefaultAttributeMap attributes = new DefaultAttributeMap(PortContext.class);
+    private final DefaultAttributeMap attributes = new DefaultAttributeMap();
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -210,14 +229,14 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
     {
-      AttributeMap.Attribute<T> attr = attributes.attrOrNull(key);
-      if (attr == null || attr.get() == null) {
+      T attr = attributes.get(key);
+      if (attr == null) {
         return defaultValue;
       }
 
-      return attr.get();
+      return attr;
     }
 
     /*
@@ -356,7 +375,7 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 1L;
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
-    private final AttributeMap attributes = new DefaultAttributeMap(OperatorContext.class);
+    private final AttributeMap attributes = new DefaultAttributeMap();
     private final OperatorProxy operatorProxy;
     private final String name;
     private final OperatorAnnotation operatorAnnotation;
@@ -383,14 +402,14 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
     {
-      Attribute<T> attr = attributes.attrOrNull(key);
-      if (attr == null || attr.get() == null) {
+      T attr = attributes.get(key);
+      if (attr == null) {
         return defaultValue;
       }
 
-      return attr.get();
+      return attr;
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -607,15 +626,15 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T> void setAttribute(DAGContext.AttributeKey<T> key, T value)
+  public <T> void setAttribute(Attribute<T> key, T value)
   {
-    this.getAttributes().attr(key).set(value);
+    this.getAttributes().put(key, value);
   }
 
   @Override
-  public <T> void setAttribute(Operator operator, OperatorContext.AttributeKey<T> key, T value)
+  public <T> void setAttribute(Operator operator, Attribute<T> key, T value)
   {
-    this.getMeta(operator).attributes.attr(key).set(value);
+    this.getMeta(operator).attributes.put(key, value);
   }
 
   private OutputPortMeta assertGetPortMeta(Operator.OutputPort<?> port)
@@ -641,15 +660,15 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
+  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value)
   {
-    assertGetPortMeta(port).attributes.attr(key).set(value);
+    assertGetPortMeta(port).attributes.put(key, value);
   }
 
   @Override
-  public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value)
+  public <T> void setInputPortAttribute(Operator.InputPort<?> port, Attribute<T> key, T value)
   {
-    assertGetPortMeta(port).attributes.attr(key).set(value);
+    assertGetPortMeta(port).attributes.put(key, value);
   }
 
   public List<OperatorMeta> getRootOperators()
@@ -914,7 +933,7 @@ public class LogicalPlan implements Serializable, DAG
           // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then set it to AT_MOST_ONCE as well
           if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
             LOG.warn("Setting processing mode for operator {} to {}", sinkOm.getName(), pm);
-            sinkOm.getAttributes().attr(OperatorContext.PROCESSING_MODE).set(pm);
+            sinkOm.getAttributes().put(OperatorContext.PROCESSING_MODE, pm);
           } else if (Operator.ProcessingMode.EXACTLY_ONCE.equals(pm)) {
             // If the source processing mode is EXACTLY_ONCE and a processing mode is not specified for the sink then throw a validation error
             String msg = String.format("Processing mode for %s should be AT_MOST_ONCE for source %s/%s", sinkOm.getName(), om.getName(), pm);

@@ -35,6 +35,7 @@ public class OperatorDiscoverer
   private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>(new ClassComparator());
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
 
+  @SuppressWarnings("unchecked")
   private void init()
   {
     List<String> pathsToScan = new ArrayList<String>();

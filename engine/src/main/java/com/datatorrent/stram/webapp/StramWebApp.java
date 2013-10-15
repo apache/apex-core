@@ -85,6 +85,7 @@ public class StramWebApp extends WebApp {
   public void setup() {
     bind(JAXBContextResolver.class);
     bind(GenericExceptionHandler.class);
+    bind(WebServices.class);
     bind(StramWebServices.class);
     bind(StreamingContainerManager.class).toInstance(this.moduleManager);
   }

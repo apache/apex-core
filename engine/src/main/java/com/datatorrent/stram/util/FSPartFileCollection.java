@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.util;
 
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -18,12 +17,12 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 /**
- * <p>HdfsPartFileCollection class.</p>
+ * <p>FSPartFileCollection class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
-public class HdfsPartFileCollection
+public class FSPartFileCollection
 {
   private transient FileSystem fs;
   private transient FSDataOutputStream partOutStr;
@@ -32,8 +31,8 @@ public class HdfsPartFileCollection
   private transient String localBasePath;
   public static final String INDEX_FILE = "index.txt";
   public static final String META_FILE = "meta.txt";
-  protected int bytesPerPartFile = 100 * 1024;
-  protected long millisPerPartFile = 30 * 60 * 1000; // 30 minutes
+  protected int bytesPerPartFile = 1024 * 1024;
+  protected long millisPerPartFile = 60 * 60 * 1000; // 60 minutes
   protected int fileParts = 0;
   protected int partFileItemCount = 0;
   protected int partFileBytes = 0;
@@ -161,19 +160,21 @@ public class HdfsPartFileCollection
   public boolean isReadyTurnoverPartFile()
   {
     try {
-      return syncRequested || (partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis());
+      return (syncRequested || (partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) && partOutStr.getPos() > 0;
     }
     catch (IOException ex) {
       return true;
     }
   }
 
-  public void flushData() throws IOException
+  public boolean flushData() throws IOException
   {
     partOutStr.hflush();
     if (isReadyTurnoverPartFile()) {
       turnover();
+      return true;
     }
+    return false;
   }
 
   private void turnover() throws IOException
@@ -189,14 +190,9 @@ public class HdfsPartFileCollection
     if (partFileBytes <= 0) {
       return;
     }
-    String extraInfo = getAndResetIndexExtraInfo();
     try {
-      String line = "F:" + hdfsFile + ":" + currentPartFileTimeStamp + "-" + System.currentTimeMillis() + ":" + partFileItemCount;
-      if (extraInfo != null) {
-        line += ":T:" + extraInfo;
-      }
-      line += "\n";
-
+      String line = getLatestIndexLine();
+      resetIndexExtraInfo();
       indexOutStr.write(line.getBytes());
       indexOutStr.hflush();
       indexOutStr.hsync();
@@ -204,6 +200,18 @@ public class HdfsPartFileCollection
     catch (IOException ex) {
       logger.error(ex.toString());
     }
+  }
+
+  public String getLatestIndexLine()
+  {
+    String extraInfo = getIndexExtraInfo();
+
+    String line = "F:" + hdfsFile + ":" + currentPartFileTimeStamp + "-" + System.currentTimeMillis() + ":" + partFileItemCount;
+    if (extraInfo != null) {
+      line += ":T:" + extraInfo;
+    }
+    line += "\n";
+    return line;
   }
 
   private void writeIndexEnd()
@@ -219,10 +227,15 @@ public class HdfsPartFileCollection
   }
 
   // to be overrided if user wants to include extra meta info for the current part file
-  protected String getAndResetIndexExtraInfo()
+  protected String getIndexExtraInfo()
   {
     return null;
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(HdfsPartFileCollection.class);
+  // to be overrided if user wants to reset extra meta info for the current part file
+  protected void resetIndexExtraInfo()
+  {
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(FSPartFileCollection.class);
 }

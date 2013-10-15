@@ -13,38 +13,45 @@ import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.RecordField;
 import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.ContainerInfo;
 import com.datatorrent.stram.webapp.OperatorInfo;
 
 /**
- * <p>HdfsStatsRecorder class.</p>
+ * <p>FSStatsRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
-public class HdfsStatsRecorder implements StatsRecorder
+public class FSStatsRecorder implements StatsRecorder
 {
   public static final String VERSION = "1.0";
   private String basePath = ".";
-  private HdfsPartFileCollection containersStorage;
-  private Map<String, HdfsPartFileCollection> logicalOperatorStorageMap = new HashMap<String, HdfsPartFileCollection>();
+  private FSPartFileCollection containersStorage;
+  private Map<String, FSPartFileCollection> logicalOperatorStorageMap = new HashMap<String, FSPartFileCollection>();
   private Map<String, Integer> knownContainers = new HashMap<String, Integer>();
   private Set<String> knownOperators = new HashSet<String>();
   private transient StreamCodec<Object> streamCodec;
   private Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
   private Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
+  private SharedPubSubWebSocketClient wsClient;
 
   public void setBasePath(String basePath)
   {
     this.basePath = basePath;
   }
 
+  public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)
+  {
+    this.wsClient = wsClient;
+  }
+
   public void setup()
   {
     try {
       streamCodec = new JsonStreamCodec<Object>();
-      containersStorage = new HdfsPartFileCollection();
+      containersStorage = new FSPartFileCollection();
       containersStorage.setBasePath(basePath + "/containers");
       containersStorage.setup();
       containersStorage.writeMetaData((VERSION + "\n").getBytes());
@@ -86,16 +93,20 @@ public class HdfsStatsRecorder implements StatsRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
       containersStorage.writeDataItem(bos.toByteArray(), true);
-      containersStorage.flushData();
+      if (!containersStorage.flushData() && wsClient != null) {
+        String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + containersStorage.getBasePath();
+        wsClient.publish(topic, containersStorage.getLatestIndexLine());
+      }
     }
   }
 
+  @Override
   public void recordOperators(List<OperatorInfo> operatorList, long timestamp) throws IOException
   {
     for (OperatorInfo operatorInfo : operatorList) {
-      HdfsPartFileCollection operatorStorage;
+      FSPartFileCollection operatorStorage;
       if (!logicalOperatorStorageMap.containsKey(operatorInfo.name)) {
-        operatorStorage = new HdfsPartFileCollection();
+        operatorStorage = new FSPartFileCollection();
         operatorStorage.setBasePath(basePath + "/operators/" + operatorInfo.name);
         operatorStorage.setup();
         operatorStorage.writeMetaData((VERSION + "\n").getBytes());
@@ -122,8 +133,11 @@ public class HdfsStatsRecorder implements StatsRecorder
       bos.write("\n".getBytes());
       operatorStorage.writeDataItem(bos.toByteArray(), true);
     }
-    for (HdfsPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
-      operatorStorage.flushData();
+    for (FSPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
+      if (!operatorStorage.flushData() && wsClient != null) {
+        String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + operatorStorage.getBasePath();
+        wsClient.publish(topic, operatorStorage.getLatestIndexLine());
+      }
     }
   }
 
@@ -173,7 +187,7 @@ public class HdfsStatsRecorder implements StatsRecorder
   public void requestSync()
   {
     containersStorage.requestSync();
-    for (Map.Entry<String, HdfsPartFileCollection> entry : logicalOperatorStorageMap.entrySet()) {
+    for (Map.Entry<String, FSPartFileCollection> entry : logicalOperatorStorageMap.entrySet()) {
       entry.getValue().requestSync();
     }
   }

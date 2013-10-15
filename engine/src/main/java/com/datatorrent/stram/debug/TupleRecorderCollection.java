@@ -5,7 +5,6 @@
 package com.datatorrent.stram.debug;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,6 +37,7 @@ import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats.PortStats
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 
 /**
  * <p>TupleRecorderCollection class.</p>
@@ -51,6 +51,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
   private String containerId; // this should be retired!
+  private SharedPubSubWebSocketClient wsClient;
 
   public TupleRecorder getTupleRecorder(int operId, String portName)
   {
@@ -76,6 +77,14 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       rf.registerDelegate(RequestType.START_RECORDING, impl);
       rf.registerDelegate(RequestType.STOP_RECORDING, impl);
       rf.registerDelegate(RequestType.SYNC_RECORDING, impl);
+    }
+    if (daemonAddress != null) {
+      try {
+        wsClient = new SharedPubSubWebSocketClient("ws://" + daemonAddress + "/pubsub", 500);
+      }
+      catch (Exception ex) {
+        logger.warn("Error initializing websocket", ex);
+      }
     }
   }
 
@@ -133,16 +142,8 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
 
       TupleRecorder tupleRecorder = new TupleRecorder();
       tupleRecorder.setContainerId(containerId);
+      tupleRecorder.setWebSocketClient(wsClient);
 
-      if (daemonAddress != null) {
-        String url = "ws://" + daemonAddress + "/pubsub";
-        try {
-          tupleRecorder.setPubSubUrl(url);
-        }
-        catch (URISyntaxException ex) {
-          logger.warn("URL {} is not valid. NOT posting live tuples to daemon.", url, ex);
-        }
-      }
       HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
       for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : descriptor.inputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());

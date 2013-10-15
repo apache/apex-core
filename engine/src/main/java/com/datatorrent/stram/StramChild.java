@@ -107,9 +107,9 @@ public class StramChild
   private StreamingContainerContext containerContext;
   private List<StramToNodeRequest> nodeRequests;
   // possibly should combine all the guys below into one type of listeners - containereventlistener!
-  private ArrayList<ContainerStatsListener> statsListener;
-  private HashSet<NodeActivationListener> nodeListener;
-  private HashMap<String, Object> singletons;
+  private final ArrayList<ContainerStatsListener> statsListener;
+  private final HashSet<NodeActivationListener> nodeListener;
+  private final HashMap<String, Object> singletons;
   private RequestFactory requestFactory;
 
   static {
@@ -140,14 +140,14 @@ public class StramChild
 
     /* add a request factory local to this container */
     this.requestFactory = new RequestFactory();
-    ctx.attributes.addTransientAttribute(ContainerContext.REQUEST_FACTORY).set(requestFactory);
+    ctx.attributes.put(ContainerContext.REQUEST_FACTORY, requestFactory);
 
     heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.attrValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, 500);
     checkpointWindowCount = ctx.attrValue(DAGContext.CHECKPOINT_WINDOW_COUNT, 60);
 
-    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + DAGContext.SUBDIR_CHECKPOINTS;
+    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
@@ -170,7 +170,6 @@ public class StramChild
     // but this code has to move out of here soon. If you feel like doing it, do it now!!!!
     String classname = "com.datatorrent.stram.debug.TupleRecorderCollection";
     try {
-      @SuppressWarnings("unchecked")
       Class<?> cl = Class.forName(classname);
       Object newInstance = cl.newInstance();
       singletons.put(classname, newInstance);
@@ -624,7 +623,6 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings("unchecked")
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.nodeRequests != null) {
@@ -734,10 +732,15 @@ public class StramChild
     activate(operatorMap, newStreams);
   }
 
+  public static String getUnifierInputPortName(String portName, int sourceNodeId, String sourcePortName)
+  {
+    return portName + "(" + sourceNodeId + Component.CONCAT_SEPARATOR + sourcePortName + ")";
+  }
+
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
     for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
-      idi.portName += "(" + idi.sourceNodeId + Component.CONCAT_SEPARATOR + idi.sourcePortName + ")";
+      idi.portName = getUnifierInputPortName(idi.portName, idi.sourceNodeId, idi.sourcePortName);
     }
   }
 
@@ -746,13 +749,13 @@ public class StramChild
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent;
       if (ndi.contextAttributes == null) {
-        backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
+        backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
       }
       else {
-        backupAgent = ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).get();
+        backupAgent = ndi.contextAttributes.get(OperatorContext.STORAGE_AGENT);
         if (backupAgent == null) {
-          backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
-          ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).set(backupAgent);
+          backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
+          ndi.contextAttributes.put(OperatorContext.STORAGE_AGENT, backupAgent);
         }
       }
 
@@ -786,8 +789,8 @@ public class StramChild
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(startingWindowId);
-    bssc.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
-    bssc.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
@@ -959,8 +962,8 @@ public class StramChild
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nidi.serDeClassName));
-            context.attr(StreamContext.EVENT_LOOP).set(eventloop);
+            context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
@@ -1093,7 +1096,7 @@ public class StramChild
     return windowGenerator;
   }
 
-  private OperatorContext setupNode(OperatorDeployInfo ndi, Thread thread)
+  private void setupNode(OperatorDeployInfo ndi, Thread thread)
   {
     failedNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
@@ -1128,20 +1131,23 @@ public class StramChild
     for (NodeActivationListener l : nodeListener) {
       l.activated(node);
     }
-    return operatorContext;
   }
 
   private void teardownNode(OperatorDeployInfo ndi)
   {
     activeNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
-
-    node.deactivate();
-    for (NodeActivationListener l : nodeListener) {
-      l.deactivated(node);
+    if (node == null) {
+      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.declaredId);
     }
-    node.teardown();
-    logger.info("deactivated {}", node.getId());
+    else {
+      node.deactivate();
+      for (NodeActivationListener l : nodeListener) {
+        l.deactivated(node);
+      }
+      node.teardown();
+      logger.info("deactivated {}", node.getId());
+    }
   }
 
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
@@ -1262,8 +1268,7 @@ public class StramChild
   {
     long finishedWindowId;
     if (ndi.contextAttributes != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
+            && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
       /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
       long currentMillis = System.currentTimeMillis();
       long diff = currentMillis - firstWindowMillis;

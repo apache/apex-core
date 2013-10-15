@@ -18,9 +18,6 @@ import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Sets;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -28,15 +25,16 @@ import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
-import com.datatorrent.api.AttributeMap;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
+import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StorageAgent;
-
-import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
@@ -63,6 +61,11 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.StatsHandler;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
+import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
+import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import com.datatorrent.stram.webapp.StreamInfo;
 
 /**
  *
@@ -79,17 +82,19 @@ import com.datatorrent.stram.webapp.PortInfo;
 public class StreamingContainerManager implements PlanContext
 {
   private long windowStartMillis = System.currentTimeMillis();
+  private int heartbeatIntervalMillis = 1000;
   private int heartbeatTimeoutMillis = 30000;
   private int maxWindowsBehindForStats = 100;
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
-  private HdfsStatsRecorder statsRecorder;
-  private HdfsEventRecorder eventRecorder = null;
+  private SharedPubSubWebSocketClient wsClient;
+  private FSStatsRecorder statsRecorder;
+  private FSEventRecorder eventRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
-  private final String statsFsPath;
-  private final String eventsFsPath;
+  private String statsFsPath = null;
+  private String eventsFsPath = null;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
@@ -101,6 +106,9 @@ public class StreamingContainerManager implements PlanContext
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
+
+  private int throughputCalculationMaxSamples = 1000;
+  private int throughputCalculationInterval = 10000;
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -130,37 +138,71 @@ public class StreamingContainerManager implements PlanContext
   {
     AttributeMap attributes = dag.getAttributes();
 
-    attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
+    if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
+      attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
+    }
     /* try to align to it to please eyes. */
     windowStartMillis -= (windowStartMillis % 1000);
 
-    attributes.attr(LogicalPlan.APPLICATION_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.appPath = attributes.attr(LogicalPlan.APPLICATION_PATH).get();
+    if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
+      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + System.currentTimeMillis());
+    }
+
+    this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
-    attributes.attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).get());
+    if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
+      attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+    }
+    this.heartbeatIntervalMillis = dag.attrValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS, this.heartbeatIntervalMillis);
     this.heartbeatTimeoutMillis = dag.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
-    attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(1000);
-    this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).get();
-
-    attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).setIfAbsent(0);
-    this.recordStatsInterval = attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).get();
-    if (this.recordStatsInterval > 0) {
-      statsRecorder = new HdfsStatsRecorder();
-      statsRecorder.setBasePath(this.statsFsPath);
-      statsRecorder.setup();
+    if (attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG) == null) {
+      attributes.put(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 1000);
     }
-    this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
+    this.maxWindowsBehindForStats = attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
 
-    if (enableEventRecording) {
-      eventRecorder = new HdfsEventRecorder(attributes.attr(LogicalPlan.APPLICATION_ID).get());
-      eventRecorder.setBasePath(this.eventsFsPath);
-      eventRecorder.setup();
+    this.throughputCalculationInterval = dag.attrValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL, this.throughputCalculationInterval);
+    this.throughputCalculationMaxSamples = dag.attrValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES, this.throughputCalculationMaxSamples);
+
+    if (attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS) == null) {
+      attributes.put(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS, 0);
+    }
+    this.recordStatsInterval = attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
+
+    if (this.recordStatsInterval > 0 || enableEventRecording) {
+      setupWsClient(attributes);
+      if (this.recordStatsInterval > 0) {
+        statsRecorder = new FSStatsRecorder();
+        statsRecorder.setBasePath(this.statsFsPath);
+        statsRecorder.setWebSocketClient(wsClient);
+        statsRecorder.setup();
+      }
+      if (enableEventRecording) {
+        this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
+        eventRecorder = new FSEventRecorder(attributes.get(LogicalPlan.APPLICATION_ID));
+        eventRecorder.setBasePath(this.eventsFsPath);
+        eventRecorder.setWebSocketClient(wsClient);
+        eventRecorder.setup();
+      }
     }
     this.plan = new PhysicalPlan(dag, this);
   }
+
+  private void setupWsClient(AttributeMap attributes)
+  {
+    String daemonAddress = attributes.get(LogicalPlan.DAEMON_ADDRESS);
+    if (daemonAddress != null) {
+      try {
+        wsClient = new SharedPubSubWebSocketClient("ws://" + daemonAddress + "/pubsub", 500);
+      }
+      catch (Exception ex) {
+        LOG.warn("Cannot establish websocket connection to {}", daemonAddress);
+      }
+    }
+  }
+
 
   protected PhysicalPlan getPhysicalPlan()
   {
@@ -180,7 +222,7 @@ public class StreamingContainerManager implements PlanContext
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS.defaultValue) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.getExternalId(), c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
@@ -308,7 +350,7 @@ public class StreamingContainerManager implements PlanContext
 
     if (upstreamMaxEmitTimestamp > 0) {
       if (upstreamMaxEmitTimestamp < endWindowStats.emitTimestamp) {
-        LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
+        //LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
         operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
       }
       else if (upstreamMaxEmitTimestamp != endWindowStats.emitTimestamp) {
@@ -522,10 +564,25 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(ContainerContext.class), plan.getDAG());
-    scc.attributes.attr(ContainerContext.IDENTIFIER).set(containerId);
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getDAG());
+    scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
+  }
+
+  public int getHeartbeatIntervalMillis()
+  {
+    return heartbeatIntervalMillis;
+  }
+
+  public int getThroughputCalculationMaxSamples()
+  {
+    return throughputCalculationMaxSamples;
+  }
+
+  public int getThroughputCalculationInterval()
+  {
+    return throughputCalculationInterval;
   }
 
   public StramChildAgent getContainerAgent(String containerId)
@@ -591,8 +648,6 @@ public class StreamingContainerManager implements PlanContext
         continue;
       }
 
-      // the following line can be deleted when UI is upgraded to work with recordingStartTime
-      status.recordingNames = new ArrayList<String>();
       status.recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
       //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
@@ -641,9 +696,6 @@ public class StreamingContainerManager implements PlanContext
 
           if (stats.recordingStartTime > status.recordingStartTime) {
             status.recordingStartTime = stats.recordingStartTime;
-            // the following line can be deleted when UI is upgraded to work with recordingStartTime
-            status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
-            LOG.debug("added operator {} as being debuged {}", stats.id, status.recordingNames);
           }
 
           /* report all the other stuff */
@@ -655,7 +707,7 @@ public class StreamingContainerManager implements PlanContext
             for (Stats.ContainerStats.OperatorStats.PortStats s : ports) {
               PortStatus ps = status.inputPortStatusList.get(s.id);
               if (ps == null) {
-                ps = sca.new PortStatus();
+                ps = sca.new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
                 ps.portName = s.id;
                 status.inputPortStatusList.put(s.id, ps);
               }
@@ -663,9 +715,6 @@ public class StreamingContainerManager implements PlanContext
 
               if (s.recordingStartTime > ps.recordingStartTime) {
                 ps.recordingStartTime = s.recordingStartTime;
-                // the following line can be deleted when UI is upgraded to work with recordingStartTime
-                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
-                LOG.debug("added port {} as being debuged {}", stats.id, status.recordingNames);
               }
 
               tuplesProcessed += s.tupleCount;
@@ -673,7 +722,7 @@ public class StreamingContainerManager implements PlanContext
 
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(status.operator.getId(), s.id);
               if (lastEndWindowTimestamps.containsKey(operatorPortName) && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA10.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
+                ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
@@ -689,7 +738,7 @@ public class StreamingContainerManager implements PlanContext
             for (Stats.ContainerStats.OperatorStats.PortStats s: ports) {
               PortStatus ps = status.outputPortStatusList.get(s.id);
               if (ps == null) {
-                ps = sca.new PortStatus();
+                ps = sca.new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
                 ps.portName = s.id;
                 status.outputPortStatusList.put(s.id, ps);
               }
@@ -697,9 +746,6 @@ public class StreamingContainerManager implements PlanContext
 
               if (s.recordingStartTime > ps.recordingStartTime) {
                 ps.recordingStartTime = s.recordingStartTime;
-                // the following line can be deleted when UI is upgraded to work with recordingStartTime
-                status.recordingNames.add(heartbeat.getContainerId().concat("_").concat(stats.id).concat("$").concat(s.id).concat("_").concat(String.valueOf(stats.recordingStartTime)));
-                LOG.debug("added port {} as being debuged {}", stats.id, status.recordingNames);
               }
 
               tuplesEmitted += s.tupleCount;
@@ -710,7 +756,7 @@ public class StreamingContainerManager implements PlanContext
               // 2) the operator is catching up very fast and the endWindowTimestamp of subsequent windows is less than one millisecond
               if (lastEndWindowTimestamps.containsKey(operatorPortName) &&
                       (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA10.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
+                ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
             }
@@ -739,30 +785,30 @@ public class StreamingContainerManager implements PlanContext
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
         if (elapsedMillis > 0) {
-          //status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / elapsedMillis);
-          //status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / elapsedMillis);
-          status.tuplesProcessedPSMA10 = 0;
-          status.tuplesEmittedPSMA10 = 0;
-          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
+          //status.tuplesProcessedPSMA.add((tuplesProcessed * 1000) / elapsedMillis);
+          //status.tuplesEmittedPSMA.add((tuplesEmitted * 1000) / elapsedMillis);
+          status.tuplesProcessedPSMA = 0;
+          status.tuplesEmittedPSMA = 0;
+          status.cpuPercentageMA.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
           for (PortStatus ps: status.inputPortStatusList.values()) {
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes, elapsedMillis);
+              ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
             }
-            status.tuplesProcessedPSMA10 += ps.tuplesPSMA10.getAvg();
+            status.tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes, elapsedMillis);
+              ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
             }
-            status.tuplesEmittedPSMA10 += ps.tuplesPSMA10.getAvg();
+            status.tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
           }
           if (status.operator.statsMonitors != null) {
-            long tps = status.operator.getInputs().isEmpty() ? status.tuplesEmittedPSMA10 : status.tuplesProcessedPSMA10;
+            long tps = status.operator.getInputs().isEmpty() ? status.tuplesEmittedPSMA : status.tuplesProcessedPSMA;
             for (StatsHandler sm: status.operator.statsMonitors) {
               sm.onThroughputUpdate(status.operator, tps);
-              sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
+              sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA.getAvg());
             }
           }
         }
@@ -935,11 +981,12 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    StorageAgent ba = new HdfsStorageAgent(new Configuration(), checkpointFsPath);
+    StorageAgent ba = new FSStorageAgent(new Configuration(), checkpointFsPath);
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
         ba.delete(operator.getId(), p.getSecond());
+        LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
       }
       catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
@@ -983,7 +1030,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public StorageAgent getStorageAgent()
   {
-    return new HdfsStorageAgent(new Configuration(), this.checkpointFsPath);
+    return new FSStorageAgent(new Configuration(), this.checkpointFsPath);
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)
@@ -1101,9 +1148,9 @@ public class StreamingContainerManager implements PlanContext
     return null;
   }
 
-  public ArrayList<OperatorInfo> getOperatorInfoList()
+  public List<OperatorInfo> getOperatorInfoList()
   {
-    ArrayList<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
+    List<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
 
     for (PTContainer container: this.plan.getContainers()) {
 
@@ -1127,15 +1174,16 @@ public class StreamingContainerManager implements PlanContext
     ni.name = operator.getName();
     ni.className = operator.getOperatorMeta().getOperator().getClass().getName();
     ni.status = operator.getState().toString();
+    ni.unifierClass = (operator.getUnifier() == null) ? null : operator.getUnifier().getClass().getName();
+    ni.logicalName = operator.getOperatorMeta().getName();
 
     if (os != null) {
-      ni.recordingNames = os.recordingNames; // this should be deleted!
       ni.recordingStartTime = os.recordingStartTime;
       ni.totalTuplesProcessed = os.totalTuplesProcessed;
       ni.totalTuplesEmitted = os.totalTuplesEmitted;
-      ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10;
-      ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10;
-      ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
+      ni.tuplesProcessedPSMA = os.tuplesProcessedPSMA;
+      ni.tuplesEmittedPSMA = os.tuplesEmittedPSMA;
+      ni.cpuPercentageMA = os.cpuPercentageMA.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = os.operator.failureCount;
       ni.recoveryWindowId = os.operator.getRecoveryCheckpoint();
@@ -1148,22 +1196,52 @@ public class StreamingContainerManager implements PlanContext
         pinfo.name = ps.portName;
         pinfo.type = "input";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA10 = (long)ps.tuplesPSMA10.getAvg();
-        pinfo.bufferServerBytesPSMA10 = (long)ps.bufferServerBytesPSMA10.getAvg();
+        pinfo.tuplesPSMA = (long)ps.tuplesPSMA.getAvg();
+        pinfo.bufferServerBytesPSMA = (long)ps.bufferServerBytesPSMA.getAvg();
+        ni.addPort(pinfo);
         pinfo.recordingStartTime = ps.recordingStartTime;
-        ni.addInputPort(pinfo);
       }
       for (PortStatus ps: os.outputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
         pinfo.name = ps.portName;
         pinfo.type = "output";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA10 = (long)ps.tuplesPSMA10.getAvg();
-        pinfo.bufferServerBytesPSMA10 = (long)ps.bufferServerBytesPSMA10.getAvg();
-        ni.addOutputPort(pinfo);
+        pinfo.tuplesPSMA = (long)ps.tuplesPSMA.getAvg();
+        pinfo.bufferServerBytesPSMA = (long)ps.bufferServerBytesPSMA.getAvg();
+        ni.addPort(pinfo);
       }
     }
     return ni;
+  }
+
+  public List<StreamInfo> getStreamInfoList()
+  {
+    List<StreamInfo> infoList = new ArrayList<StreamInfo>();
+
+    for (PTContainer container: this.plan.getContainers()) {
+      for (PTOperator operator: container.getOperators()) {
+        List<PTOutput> outputs = operator.getOutputs();
+        for (PTOutput output : outputs) {
+          StreamInfo si = new StreamInfo();
+          si.logicalName = output.logicalStream.getId();
+          si.source.operatorId = String.valueOf(operator.getId());
+          si.source.portName = output.portName;
+          for (PTInput input : output.sinks) {
+            StreamInfo.Port p = new StreamInfo.Port();
+            p.operatorId = String.valueOf(input.target.getId());
+            if (input.target.getUnifier() != null) {
+              p.portName = StramChild.getUnifierInputPortName(input.portName, operator.getId(), output.portName);
+            }
+            else {
+              p.portName = input.portName;
+            }
+            si.sinks.add(p);
+          }
+          infoList.add(si);
+        }
+      }
+    }
+    return infoList;
   }
 
   private static class RecordingRequestFilter implements Predicate<StramToNodeRequest>
@@ -1309,29 +1387,29 @@ public class StreamingContainerManager implements PlanContext
     }
     // should probably not record it here because it's better to get confirmation from the nodes first.
     // but right now, the nodes do not give confirmation for the requests.  so record it here for now.
-    HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-property-set");
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
     ev.addData("operatorName", operatorName);
     ev.addData("propertyName", propertyName);
     ev.addData("propertyValue", propertyValue);
     recordEventAsync(ev);
   }
 
-  public Map<String, Object> getApplicationAttributes()
+  public AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
-    return lp.getAttributes().valueMap();
+    return lp.getAttributes().clone();
   }
 
-  public Map<String, Object> getOperatorAttributes(String operatorId)
+  public AttributeMap getOperatorAttributes(String operatorId)
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
-    return logicalOperator.getAttributes().valueMap();
+    return logicalOperator.getAttributes().clone();
   }
 
-  public Map<String, Object> getPortAttributes(String operatorId, String portName)
+  public AttributeMap getPortAttributes(String operatorId, String portName)
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
@@ -1342,13 +1420,13 @@ public class StreamingContainerManager implements PlanContext
     Operators.describe(logicalOperator.getOperator(), portMap);
     InputPort<?> inputPort = portMap.inputPorts.get(portName).component;
     if (inputPort != null) {
-      return logicalOperator.getMeta(inputPort).getAttributes().valueMap();
+      return logicalOperator.getMeta(inputPort).getAttributes().clone();
     } else {
       OutputPort<?> outputPort = portMap.outputPorts.get(portName).component;
       if (outputPort == null) {
         throw new IllegalArgumentException("Invalid port name " + portName);
       }
-      return logicalOperator.getMeta(outputPort).getAttributes().valueMap();
+      return logicalOperator.getMeta(outputPort).getAttributes().clone();
     }
   }
 
@@ -1406,7 +1484,7 @@ public class StreamingContainerManager implements PlanContext
         request.execute(pm);
 
         // record an event for the request.  however, we should probably record these when we get a confirmation.
-        HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("logical-plan-change");
+        FSEventRecorder.Event ev = new FSEventRecorder.Event("logical-plan-change");
         ev.populateData(request);
         recordEventAsync(ev);
       }

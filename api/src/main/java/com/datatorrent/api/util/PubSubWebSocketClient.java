@@ -15,17 +15,17 @@
  */
 package com.datatorrent.api.util;
 
+import com.ning.http.client.AsyncHttpClient;
+import com.ning.http.client.websocket.WebSocket;
+import com.ning.http.client.websocket.WebSocketTextListener;
+import com.ning.http.client.websocket.WebSocketUpgradeHandler;
 import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 import java.io.IOException;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocketClient;
-import org.eclipse.jetty.websocket.WebSocketClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,14 +36,13 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class PubSubWebSocketClient
 {
-  private static final WebSocketClientFactory factory = new WebSocketClientFactory();
-  private WebSocketClient client;
-  private WebSocket.Connection connection;
+  private AsyncHttpClient client;
+  private WebSocket connection;
   private ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
   private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
   private URI uri;
 
-  private class PubSubWebSocket implements WebSocket.OnTextMessage
+  private class PubSubWebSocket implements WebSocketTextListener
   {
     @Override
     public void onMessage(String message)
@@ -55,25 +54,34 @@ public abstract class PubSubWebSocketClient
         PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
       }
       catch (Exception ex) {
-        ex.printStackTrace();
         LOG.error("onMessage has problem parsing message {}", message, ex);
       }
     }
 
     @Override
-    public void onOpen(WebSocket.Connection connection)
+    public void onFragment(String fragment, boolean last)
     {
-      LOG.debug("WebSocket connection opened");
-      PubSubWebSocketClient.this.onOpen(connection);
     }
 
     @Override
-    public void onClose(int code, String message)
+    public void onOpen(WebSocket ws)
     {
-      LOG.warn("WebSocket connection has closed with code {}, message {}", code, message);
-      PubSubWebSocketClient.this.onClose(code, message);
+      LOG.debug("WebSocket connection opened");
+      PubSubWebSocketClient.this.onOpen(ws);
     }
 
+    @Override
+    public void onClose(WebSocket ws)
+    {
+      LOG.info("WebSocket connection has closed");
+      PubSubWebSocketClient.this.onClose(ws);
+    }
+
+    @Override
+    public void onError(Throwable t)
+    {
+      LOG.error("WebSocket connection has an error", t);
+    }
   }
 
   /**
@@ -82,7 +90,7 @@ public abstract class PubSubWebSocketClient
   public PubSubWebSocketClient()
   {
     try {
-      client = factory.newWebSocketClient();
+      client = new AsyncHttpClient();
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
@@ -102,11 +110,26 @@ public abstract class PubSubWebSocketClient
    */
   public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
   {
-    connection = client.open(uri, new PubSubWebSocket()).get(timeoutMillis, TimeUnit.MILLISECONDS);
+    connection = client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build()).get(timeoutMillis, TimeUnit.MILLISECONDS);
+  }
+
+  public void openConnectionAsync() throws IOException
+  {
+    client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket() {
+
+      @Override
+      public void onOpen(WebSocket ws)
+      {
+        connection = ws;
+        super.onOpen(ws);
+      }
+
+    }).build());
   }
 
   /**
    * <p>isConnectionOpen.</p>
+   * @return
    */
   public boolean isConnectionOpen()
   {
@@ -115,6 +138,11 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructPublishMessage.</p>
+   * @param topic
+   * @param mapper
+   * @param data
+   * @return
+   * @throws IOException
    * @deprecated
    */
   public static String constructPublishMessage(String topic, Object data, ObjectMapper mapper) throws IOException
@@ -137,14 +165,21 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>publish.</p>
+   * @param topic
+   * @param data
+   * @throws IOException
    */
   public void publish(String topic, Object data) throws IOException
   {
-    connection.sendMessage(constructPublishMessage(topic, data, codec));
+    connection.sendTextMessage(constructPublishMessage(topic, data, codec));
   }
 
   /**
    * <p>constructSubscribeMessage.</p>
+   * @param topic
+   * @param mapper
+   * @return
+   * @throws IOException
    * @deprecated
    */
   public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
@@ -166,14 +201,21 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>subscribe.</p>
+   * @param topic
+   * @throws IOException
    */
   public void subscribe(String topic) throws IOException
   {
-    connection.sendMessage(constructSubscribeMessage(topic, codec));
+    connection.sendTextMessage(constructSubscribeMessage(topic, codec));
   }
 
   /**
    * <p>constructUnsubscribeMessage.</p>
+
+   * @param topic
+   * @param mapper
+   * @return
+   * @throws IOException
    * @deprecated
    */
   public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
@@ -195,14 +237,20 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>unsubscribe.</p>
+   * @param topic
+   * @throws IOException
    */
   public void unsubscribe(String topic) throws IOException
   {
-    connection.sendMessage(constructUnsubscribeMessage(topic, codec));
+    connection.sendTextMessage(constructUnsubscribeMessage(topic, codec));
   }
 
   /**
    * <p>constructSubscribeNumSubscribersMessage.</p>
+   * @param topic
+   * @param mapper
+   * @return
+   * @throws IOException
    * @deprecated
    */
   public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
@@ -224,14 +272,20 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>subscribeNumSubscribers.</p>
+   * @param topic
+   * @throws IOException
    */
   public void subscribeNumSubscribers(String topic) throws IOException
   {
-    connection.sendMessage(constructSubscribeNumSubscribersMessage(topic, codec));
+    connection.sendTextMessage(constructSubscribeNumSubscribersMessage(topic, codec));
   }
 
   /**
    * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   * @param topic
+   * @param mapper
+   * @return
+   * @throws IOException
    * @deprecated
    */
   public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
@@ -253,36 +307,34 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>unsubscribeNumSubscribers.</p>
+   * @param topic
+   * @throws IOException
    */
   public void unsubscribeNumSubscribers(String topic) throws IOException
   {
-    connection.sendMessage(constructUnsubscribeNumSubscribersMessage(topic, codec));
+    connection.sendTextMessage(constructUnsubscribeNumSubscribersMessage(topic, codec));
   }
 
   /**
    * <p>onOpen.</p>
+   * @param ws
    */
-  public abstract void onOpen(WebSocket.Connection connection);
+  public abstract void onOpen(WebSocket ws);
 
   /**
    * <p>onMessage.</p>
+   * @param type
+   * @param topic
+   * @param data
    */
   public abstract void onMessage(String type, String topic, Object data);
 
   /**
    * <p>onClose.</p>
+   * @param ws
    */
-  public abstract void onClose(int code, String message);
+  public abstract void onClose(WebSocket ws);
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);
-
-  static {
-    try {
-      factory.start();
-    }
-    catch (Exception ex) {
-      LOG.warn("WebSocket initialization failure", ex);
-    }
-  }
 
 }

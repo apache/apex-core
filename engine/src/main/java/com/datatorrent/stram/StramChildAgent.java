@@ -136,13 +136,13 @@ public class StramChildAgent {
     private final long[] values;
     private final long[] timeIntervals;
     private int index = 0;
-    private final long baseTime;
+    private final long baseTimeInterval;
 
-    TimedMovingAverageLong(int periods, long baseTime) {
-      this.periods = periods;
-      this.values = new long[periods];
-      this.timeIntervals = new long[periods];
-      this.baseTime = baseTime;
+    TimedMovingAverageLong(int samples, long baseTimeInterval) {
+      this.periods = samples;
+      this.values = new long[samples];
+      this.timeIntervals = new long[samples];
+      this.baseTimeInterval = baseTimeInterval;
     }
 
     void add(long val, long time) {
@@ -166,7 +166,7 @@ public class StramChildAgent {
         }
         sumValues += values[i];
         sumTimeIntervals += timeIntervals[i];
-        if (sumTimeIntervals >= baseTime) {
+        if (sumTimeIntervals >= baseTimeInterval) {
           break;
         }
       }
@@ -188,24 +188,26 @@ public class StramChildAgent {
     long totalTuplesProcessed;
     long totalTuplesEmitted;
     long currentWindowId;
-    long tuplesProcessedPSMA10;
-    long tuplesEmittedPSMA10;
+    long tuplesProcessedPSMA;
+    long tuplesEmittedPSMA;
     long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
-    MovingAverageLong latencyMA = new MovingAverageLong(10);
+    final MovingAverageDouble cpuPercentageMA;
+    final MovingAverageLong latencyMA;
     List<String> recordingNames; // null if recording is not in progress
     Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
     Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
 
-    private OperatorStatus(PTOperator operator) {
+    private OperatorStatus(PTOperator operator, int throughputCalculationMaxSamples, int throughputCalculationInterval, int heartbeatInterval) {
       this.operator = operator;
+      cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
+      latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
       for (PTOperator.PTInput ptInput: operator.getInputs()) {
-        PortStatus inputPortStatus = new PortStatus();
+        PortStatus inputPortStatus = new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
         inputPortStatus.portName = ptInput.portName;
         inputPortStatusList.put(ptInput.portName, inputPortStatus);
       }
       for (PTOperator.PTOutput ptOutput: operator.getOutputs()) {
-        PortStatus outputPortStatus = new PortStatus();
+        PortStatus outputPortStatus = new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
         outputPortStatus.portName = ptOutput.portName;
         outputPortStatusList.put(ptOutput.portName, outputPortStatus);
       }
@@ -225,8 +227,13 @@ public class StramChildAgent {
     String portName;
     long totalTuples;
     long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    TimedMovingAverageLong tuplesPSMA10 = new TimedMovingAverageLong(1000, 10000);
-    TimedMovingAverageLong bufferServerBytesPSMA10 = new TimedMovingAverageLong(1000, 10000);  // TBD
+    final TimedMovingAverageLong tuplesPSMA;
+    final TimedMovingAverageLong bufferServerBytesPSMA;
+
+    public PortStatus(int throughputCalculationMaxSamples, int throughputCalculationInterval) {
+      tuplesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+      bufferServerBytesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+    }
   }
 
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
@@ -271,7 +278,7 @@ public class StramChildAgent {
     if (status == null) {
       for (PTOperator operator : container.getOperators()) {
         if (operator.getId() == shb.getNodeId()) {
-          status = new OperatorStatus(operator);
+          status = new OperatorStatus(operator, dnmgr.getThroughputCalculationMaxSamples(), dnmgr.getThroughputCalculationInterval(), dnmgr.getHeartbeatIntervalMillis());
           operators.put(shb.getNodeId(), status);
         }
       }
@@ -285,7 +292,7 @@ public class StramChildAgent {
           status.operator.setState(PTOperator.State.ACTIVE);
 
           // record started
-          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-start");
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
           ev.addData("operatorId", status.operator.getId());
           ev.addData("operatorName", status.operator.getName());
           ev.addData("containerId", container.getExternalId());
@@ -326,7 +333,7 @@ public class StramChildAgent {
             operator.setState(PTOperator.State.INACTIVE);
 
             // record operator stop event
-            HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-stop");
+            FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
             ev.addData("operatorId", operator.getId());
             ev.addData("containerId", operator.getContainer().getExternalId());
             ev.addData("reason", "undeploy");
@@ -555,10 +562,10 @@ public class StramChildAgent {
     ProcessingMode pm = oper.getOperatorMeta().attrValue(OperatorContext.PROCESSING_MODE, null);
 
     if (checkpointWindowId == 0 || pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
-      StorageAgent agent = oper.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
+      StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
         String appPath = getInitContext().attrValue(LogicalPlan.APPLICATION_PATH, "app-dfs-path-not-configured");
-        agent = new HdfsStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+        agent = new FSStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
       }
       // pick the checkpoint most recently written to HDFS
       try {
