@@ -574,7 +574,7 @@ public class StramAppMaster //extends License for licensing using native
       delegationTokenManager.startThreads();
     }
 
-    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
+    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT.defaultValue);
 
     // start RPC server
     rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);

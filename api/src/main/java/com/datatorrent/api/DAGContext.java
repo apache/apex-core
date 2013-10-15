@@ -32,33 +32,6 @@ public interface DAGContext extends Context
    */
   String LAUNCH_MODE = "stram.launchmode";
   /**
-   * Constant
-   * <code>DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT=30</code>
-   */
-  // should be taken out
-  int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
-  /**
-   * Constant
-   * <code>SUBDIR_CHECKPOINTS="checkpoints"</code>
-   */
-  String SUBDIR_CHECKPOINTS = "checkpoints";
-  /**
-   * Constant
-   * <code>SUBDIR_STATS="stats"</code>
-   */
-  String SUBDIR_STATS = "stats";
-  /**
-   * Constant
-   * <code>SUBDIR_EVENTS="events"</code>
-   */
-  String SUBDIR_EVENTS = "events";
-  /**
-   * Constant
-   * <code>DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS=60000</code>
-   */
-  // shoudl be taken out
-  int DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
-  /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
    */
@@ -140,7 +113,7 @@ public interface DAGContext extends Context
   /**
    * Maximum number of simultaneous heartbeat connections to process.
    */
-  Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
+  Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(30);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
    * 1000ms. Value 0 will disable heartbeat (for unit testing).
@@ -153,7 +126,7 @@ public interface DAGContext extends Context
   /**
    * Timeout for allocating container resources.
    */
-  Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS);
+  Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(60000);
   /**
    * Constant
    * <code>STATS_MAX_ALLOWABLE_WINDOWS_LAG</code>
@@ -166,10 +139,10 @@ public interface DAGContext extends Context
   Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
 
   /** Constant <code>THROUGHPUT_CALCULATION_INTERVAL</code> */
-  public static final Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
+  Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
 
   /** Constant <code>THROUGHPUT_CALCULATION_MAX_SAMPLES</code> */
-  public static final Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
+  Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
