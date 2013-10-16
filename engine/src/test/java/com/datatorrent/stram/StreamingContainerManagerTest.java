@@ -273,7 +273,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      InputStream stream = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + DAGContext.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
+      InputStream stream = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
       Operator operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
       stream.close();
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);

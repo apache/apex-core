@@ -242,8 +242,7 @@ public class StramAppMaster extends CompositeService
     public long getTotalTuplesEmitted()
     {
       long result = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
           result += entry.getValue().totalTuplesEmitted;
         }
@@ -265,8 +264,7 @@ public class StramAppMaster extends CompositeService
     public long getTotalBufferServerReadBytesPSMA()
     {
       long result = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
           OperatorStatus os = entry.getValue();
           for (Map.Entry<String, PortStatus> portEntry : os.inputPortStatusList.entrySet()) {
@@ -281,8 +279,7 @@ public class StramAppMaster extends CompositeService
     public long getTotalBufferServerWriteBytesPSMA()
     {
       long result = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(c.getExternalId());
+      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
         for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
           OperatorStatus os = entry.getValue();
           for (Map.Entry<String, PortStatus> portEntry : os.outputPortStatusList.entrySet()) {
@@ -574,7 +571,7 @@ public class StramAppMaster extends CompositeService
     addService(amRmClient);
 
     // start RPC server
-    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT);
+    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT.defaultValue);
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 

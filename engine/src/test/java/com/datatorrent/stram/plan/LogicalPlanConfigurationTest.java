@@ -24,6 +24,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
@@ -32,9 +33,9 @@ import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.google.common.collect.Sets;
 
 public class LogicalPlanConfigurationTest {
@@ -178,15 +179,19 @@ public class LogicalPlanConfigurationTest {
 
   }
 
+  private static String getSimpleName(Attribute<?> attr) {
+    return attr.name.substring(attr.name.lastIndexOf('.')+1);
+  }
+
   @Test
   public void testAppLevelAttributes() {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put("stram." + DAG.CONTAINER_MEMORY_MB.name, "123");
-    props.put("stram." + DAG.APPLICATION_PATH.name, "/defaultdir");
-    props.put("stram.application." + appName + ".attr." + DAG.APPLICATION_PATH.name, "/otherdir");
-    props.put("stram.application." + appName + ".attr." + DAG.STREAMING_WINDOW_SIZE_MILLIS.name, "1000");
+    props.put("stram.containerMemoryMB", "123"); // backward compatibility mapping
+    props.put("stram." + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
+    props.put("stram.application." + appName + ".attr." + getSimpleName(DAG.APPLICATION_PATH), "/otherdir");
+    props.put("stram.application." + appName + ".attr." + getSimpleName(DAG.STREAMING_WINDOW_SIZE_MILLIS), "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
