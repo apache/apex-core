@@ -50,21 +50,28 @@ public interface AttributeMap
    */
   <T> T get(Attribute<T> key);
 
+  /**
+   * Assign value for a particular attributes.
+   * @param <T> Type of the value
+   * @param key Attribute which is being assigned the value
+   * @param value Value which is being assigned.
+   * @return Previous value against the attribute or null if it was not assigned.
+   */
   <T> T put(Attribute<T> key, T value);
 
   Set<Map.Entry<Attribute<?>, Object>> entrySet();
 
   /**
-   * Return the value map
+   * Clone the current map.
    *
-   * @return the value map
+   * @return a shallow copy of this AtrributeMap.
    */
   AttributeMap clone();
 
   /**
-   * Attribute key.
+   * Attribute represents the attribute which can be set on various components in the system.
    *
-   * @param <T>
+   * @param <T> type of the value which can be stored against the attribute.
    */
   public static class Attribute<T> implements Serializable
   {
@@ -120,22 +127,19 @@ public interface AttributeMap
     @Override
     public String toString()
     {
-      return "Attribute{" + "defaultValue=" + defaultValue + ", name=" + name + ", clazz=" + codec + '}';
+      return "Attribute{" + "defaultValue=" + defaultValue + ", name=" + name + ", codec=" + codec + '}';
     }
 
     private static final long serialVersionUID = 201310111904L;
   }
 
   /**
-   * AttributeValue map records values against String keys and can therefore be serialized
-   * ({@link Attribute} cannot be serialized)
-   *
+   * DefaultAttributeMap is the default implementation of AttributeMap. It's backed by a map internally.
    */
   public class DefaultAttributeMap implements AttributeMap, Serializable
   {
     private static final long serialVersionUID = 201306051022L;
     private final HashMap<Attribute<?>, Object> map;
-    private final HashMap<String, Attribute<?>> attributeMap;
 
     public DefaultAttributeMap()
     {
@@ -145,10 +149,6 @@ public interface AttributeMap
     private DefaultAttributeMap(HashMap<Attribute<?>, Object> map)
     {
       this.map = map;
-      attributeMap = new HashMap<String, Attribute<?>>(map.size());
-      for (Attribute<?> attribute : map.keySet()) {
-        attributeMap.put(attribute.name, attribute);
-      }
     }
 
     @Override
@@ -175,7 +175,6 @@ public interface AttributeMap
     @SuppressWarnings("unchecked")
     public <T> T put(Attribute<T> key, T value)
     {
-      attributeMap.put(key.name, key);
       return (T)map.put(key, value);
     }
 
@@ -189,7 +188,9 @@ public interface AttributeMap
 
   /**
    * This class inspects and initializes the attributes with their field names so that they can be used
-   * from properties files. The engine initializes this class and
+   * from properties files.
+   *
+   * Engine uses it internally to initialize the Interfaces that may have Attributes defined in them.
    */
   public static class AttributeInitializer
   {
@@ -201,6 +202,11 @@ public interface AttributeMap
       return map.get(clazz);
     }
 
+    /**
+     * Initialize the static attributes defined in the class.
+     * @param clazz class whose static attributes need to be initialized.
+     * @return 0 if the clazz was already initialized, identity hash code of the clazz otherwise.
+     */
     public static long initialize(final Class<?> clazz)
     {
       if (map.containsKey(clazz)) {

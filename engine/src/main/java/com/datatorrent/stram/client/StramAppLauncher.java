@@ -205,14 +205,14 @@ public class StramAppLauncher {
         LOG.info("Generating classpath via mvn from " + pomFile);
         LOG.info("java.home: " + System.getProperty("java.home"));
 
-        String malhar_home;
-        if (StramClientUtils.MALHAR_HOME != null && !StramClientUtils.MALHAR_HOME.isEmpty()) {
-          malhar_home = " -Duser.home=" + StramClientUtils.MALHAR_HOME;
+        String dt_home;
+        if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
+          dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
         }
         else {
-          malhar_home = "";
+          dt_home = "";
         }
-        String cmd = "mvn dependency:build-classpath" + malhar_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
+        String cmd = "mvn dependency:build-classpath" + dt_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
 
         Process p = Runtime.getRuntime().exec(cmd);
         ProcessWatcher pw = new ProcessWatcher(p);
