@@ -62,9 +62,9 @@ import com.datatorrent.stram.webapp.StramWebServices;
  * @since 0.3.2
  */
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
-public class StramCli
+public class DTCli
 {
-  private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private final Configuration conf = new Configuration();
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -350,7 +350,7 @@ public class StramCli
 
   }
 
-  StramCli()
+  DTCli()
   {
     //
     // Global command specification starts here
@@ -673,7 +673,7 @@ public class StramCli
       }
       if (cmd.hasOption("h")) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp(StramCli.class.getSimpleName(), options);
+        formatter.printHelp(DTCli.class.getSimpleName(), options);
         System.exit(0);
       }
     }
@@ -684,7 +684,7 @@ public class StramCli
 
     if (!verbose) {
       for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
-                                                                           org.apache.log4j.Logger.getLogger(StramCli.class)}) {
+                                                                           org.apache.log4j.Logger.getLogger(DTCli.class)}) {
         @SuppressWarnings("unchecked")
         Enumeration<Appender> allAppenders = logger.getAllAppenders();
         while (allAppenders.hasMoreElements()) {
@@ -1023,7 +1023,7 @@ public class StramCli
 
   private void printWelcomeMessage()
   {
-    System.out.println("Stram CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
+    System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
   }
 
   private void printHelp(String command, CommandSpec commandSpec)
@@ -1091,7 +1091,7 @@ public class StramCli
         prompt = "logical-plan-change";
       }
       else {
-        prompt = "stramcli";
+        prompt = "dt";
       }
       if (currentApp != null) {
         prompt += " (";
@@ -2546,7 +2546,7 @@ public class StramCli
 
   public static void main(String[] args) throws Exception
   {
-    StramCli shell = new StramCli();
+    DTCli shell = new DTCli();
     shell.init(args);
     shell.run();
   }

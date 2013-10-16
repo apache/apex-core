@@ -82,7 +82,7 @@ public class StramWebServicesTest extends JerseyTest
     final String appPath = "/testPath";
     final String userId = "testUser";
     final long startTime = System.currentTimeMillis();
-    final String daemonAddress = "localhost:9090";
+    final String gatewayAddress = "localhost:9090";
 
     TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
     {
@@ -156,9 +156,9 @@ public class StramWebServicesTest extends JerseyTest
     }
 
     @Override
-    public String getDaemonAddress()
+    public String getGatewayAddress()
     {
-      return daemonAddress;
+      return gatewayAddress;
     }
 
   }

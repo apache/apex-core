@@ -39,7 +39,7 @@ public class VersionInfo {
         }
       }
 
-      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/malhar-stram/pom.properties");
+      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/dt-stram/pom.properties");
       while (resources.hasMoreElements()) {
         Properties pomInfo = new Properties();
         pomInfo.load(resources.nextElement().openStream());
@@ -47,7 +47,7 @@ public class VersionInfo {
         VersionInfo.version = v;
       }
 
-      resources = VersionInfo.class.getClassLoader().getResources("malhar-stram-git.properties");
+      resources = VersionInfo.class.getClassLoader().getResources("dt-stram-git.properties");
       while (resources.hasMoreElements()) {
         Properties gitInfo = new Properties();
         gitInfo.load(resources.nextElement().openStream());

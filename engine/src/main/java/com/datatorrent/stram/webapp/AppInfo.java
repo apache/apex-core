@@ -44,7 +44,7 @@ public class AppInfo {
   protected long startTime;
   protected long elapsedTime;
   protected String appPath;
-  protected String daemonAddress;
+  protected String gatewayAddress;
   public String appMasterTrackingUrl;
   public String version;
   public AppStats stats;
@@ -158,7 +158,7 @@ public class AppInfo {
     this.appPath = context.getApplicationPath();
     this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
     this.stats = context.getStats();
-    this.daemonAddress = context.getDaemonAddress();
+    this.gatewayAddress = context.getGatewayAddress();
     this.version = VersionInfo.getBuildVersion();
   }
 
@@ -206,7 +206,7 @@ public class AppInfo {
     return this.appPath;
   }
 
-  public String getDaemonAddress() {
-    return this.daemonAddress;
+  public String getGatewayAddress() {
+    return this.gatewayAddress;
   }
 }
