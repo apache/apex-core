@@ -375,9 +375,9 @@ public class StramAppMaster extends CompositeService
     }
 
     @Override
-    public String getDaemonAddress()
+    public String getGatewayAddress()
     {
-      return attrValue(LogicalPlan.DAEMON_ADDRESS, null);
+      return attrValue(LogicalPlan.GATEWAY_ADDRESS, null);
     }
 
   }

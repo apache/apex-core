@@ -48,7 +48,7 @@ public interface StramAppContext extends Context
 
   AppInfo.AppStats getStats();
 
-  String getDaemonAddress();
+  String getGatewayAddress();
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);

@@ -102,9 +102,9 @@ public interface DAGContext extends Context
   Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
   /**
    * Constant
-   * <code>DAEMON_ADDRESS</code>
+   * <code>GATEWAY_ADDRESS</code>
    */
-  Attribute<String> DAEMON_ADDRESS = new Attribute<String>(new String2String());
+  Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
   /**
    * Constant
    * <code>FAST_PUBLISHER_SUBSCRIBER</code>

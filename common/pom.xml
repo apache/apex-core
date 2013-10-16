@@ -4,11 +4,11 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>com.datatorrent</groupId>
-    <artifactId>malhar-framework</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <artifactId>dt-framework</artifactId>
+    <version>0.9.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>malhar-common</artifactId>
+  <artifactId>dt-common</artifactId>
   <name>Base Library</name>
   <packaging>jar</packaging>
 

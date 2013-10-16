@@ -100,7 +100,7 @@ public class FSEventRecorder implements EventRecorder
           setupWsClient();
         }
         catch (Exception ex) {
-          LOG.error("Cannot connect to daemon at {}", pubSubUrl);
+          LOG.error("Cannot connect to gateway at {}", pubSubUrl);
         }
       }
 

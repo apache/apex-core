@@ -47,7 +47,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
 {
   private int tupleRecordingPartFileSize;
-  private String daemonAddress;
+  private String gatewayAddress;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
   private String containerId; // this should be retired!
@@ -65,7 +65,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
     tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
     containerId = ctx.attrValue(ContainerContext.IDENTIFIER, "unknown_container_id");
-    daemonAddress = ctx.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
+    gatewayAddress = ctx.attrValue(LogicalPlan.GATEWAY_ADDRESS, null);
     appPath = ctx.attrValue(LogicalPlan.APPLICATION_PATH, null);
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
@@ -78,9 +78,9 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       rf.registerDelegate(RequestType.STOP_RECORDING, impl);
       rf.registerDelegate(RequestType.SYNC_RECORDING, impl);
     }
-    if (daemonAddress != null) {
+    if (gatewayAddress != null) {
       try {
-        wsClient = new SharedPubSubWebSocketClient("ws://" + daemonAddress + "/pubsub", 500);
+        wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
       }
       catch (Exception ex) {
         logger.warn("Error initializing websocket", ex);

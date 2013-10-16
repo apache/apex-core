@@ -5,11 +5,11 @@
 
   <parent>
     <groupId>com.datatorrent</groupId>
-    <artifactId>malhar-framework</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <artifactId>dt-framework</artifactId>
+    <version>0.9.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>malhar-bufferserver</artifactId>
+  <artifactId>dt-bufferserver</artifactId>
   <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
   <name>Buffer Server</name>
@@ -32,7 +32,7 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>malhar-netlet</artifactId>
+      <artifactId>dt-netlet</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

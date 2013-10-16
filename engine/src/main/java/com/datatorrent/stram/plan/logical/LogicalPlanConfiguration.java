@@ -652,7 +652,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     legacyKeyMap.put(DAGContext.MASTER_MEMORY_MB, "masterMemoryMB");
     legacyKeyMap.put(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, "windowSizeMillis");
     legacyKeyMap.put(DAGContext.APPLICATION_PATH, "appPath");
-    legacyKeyMap.put(DAGContext.DAEMON_ADDRESS, "daemon.address");
+    legacyKeyMap.put(DAGContext.GATEWAY_ADDRESS, "gateway.address");
     legacyKeyMap.put(DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, "allocateResourceTimeoutMillis");
   }
 

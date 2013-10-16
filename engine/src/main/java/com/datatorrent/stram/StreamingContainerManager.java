@@ -192,13 +192,13 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupWsClient(AttributeMap attributes)
   {
-    String daemonAddress = attributes.get(LogicalPlan.DAEMON_ADDRESS);
-    if (daemonAddress != null) {
+    String gatewayAddress = attributes.get(LogicalPlan.GATEWAY_ADDRESS);
+    if (gatewayAddress != null) {
       try {
-        wsClient = new SharedPubSubWebSocketClient("ws://" + daemonAddress + "/pubsub", 500);
+        wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
       }
       catch (Exception ex) {
-        LOG.warn("Cannot establish websocket connection to {}", daemonAddress);
+        LOG.warn("Cannot establish websocket connection to {}", gatewayAddress);
       }
     }
   }
