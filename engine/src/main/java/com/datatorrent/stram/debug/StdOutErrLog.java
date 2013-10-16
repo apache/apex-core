@@ -18,19 +18,19 @@ import org.slf4j.LoggerFactory;
  */
 public class StdOutErrLog
 {
-  public static final String MALHAR_LOG_APPENDER = "MALHAR";
-  public static final String MALHAR_LOGDIR = "malhar.logdir";
+  public static final String DT_LOG_APPENDER = "DT";
+  public static final String DT_LOGDIR = "dt.logdir";
 
   @SuppressWarnings("UseOfSystemOutOrSystemErr")
   public static void tieSystemOutAndErrToLog()
   {
 
     org.apache.log4j.Logger rootLogger = org.apache.log4j.Logger.getRootLogger();
-    Appender appender = rootLogger.getAppender(MALHAR_LOG_APPENDER);
+    Appender appender = rootLogger.getAppender(DT_LOG_APPENDER);
     if (appender instanceof RollingFileAppender) {
       RollingFileAppender rfa = (RollingFileAppender)appender;
       if (rfa.getFile() == null || rfa.getFile().isEmpty()) {
-        rfa.setFile(System.getProperty(MALHAR_LOGDIR));
+        rfa.setFile(System.getProperty(DT_LOGDIR));
         rfa.activateOptions();
       }
     }

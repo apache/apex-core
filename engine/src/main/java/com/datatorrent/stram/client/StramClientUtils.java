@@ -259,15 +259,15 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
-  public static final String MALHAR_HOME = System.getenv("MALHAR_HOME");
+  public static final String DT_HOME = System.getenv("DT_HOME");
 
   public static File getSettingsRootDir()
   {
-    if (MALHAR_HOME == null || MALHAR_HOME.isEmpty()) {
+    if (DT_HOME == null || DT_HOME.isEmpty()) {
       return new File(FileUtils.getUserDirectory(), ".stram");
     }
 
-    return new File(MALHAR_HOME, ".stram");
+    return new File(DT_HOME, ".stram");
   }
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
