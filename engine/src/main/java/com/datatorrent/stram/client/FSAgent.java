@@ -16,14 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>HdfsAgent class.</p>
+ * <p>FSAgent class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.5
  */
-public class HdfsAgent
+public class FSAgent
 {
-  private static final Logger LOG = LoggerFactory.getLogger(HdfsAgent.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FSAgent.class);
   protected FileSystem fs;
 
   public void setup() throws IOException
