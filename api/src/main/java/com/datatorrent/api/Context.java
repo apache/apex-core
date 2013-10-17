@@ -18,7 +18,6 @@ package com.datatorrent.api;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.String2String;
 
 /**
@@ -128,11 +127,13 @@ public interface Context
      */
     Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(1);
     /**
-     * Logical name of a host to control locality between operators (even when not connected through stream)
+     * Name of host to directly control locality of an operator. Complementary to stream locality (NODE_LOCAL affinity).
+     * For example, the user may wish to specify a locality constraint for an input operator relative to its data source.
+     * The attribute can then be set to the host name that is specified in the operator specific connect string property.
      */
     Attribute<String> LOCALITY_HOST = new Attribute<String>(new String2String());
     /**
-     * Logical name of a rack to control locality between operators (even when not connected through stream)
+     * Name of rack to directly control locality of an operator. Complementary to stream locality (RACK_LOCAL affinity).
      */
     Attribute<String> LOCALITY_RACK = new Attribute<String>(new String2String());
     /**
