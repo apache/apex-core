@@ -931,8 +931,10 @@ public class DTCli
       processLine(line, reader, true);
       out.flush();
     }
-    if (topLevelHistory != null && changingLogicalPlanHistory != null) {
+    if (topLevelHistory != null) {
       topLevelHistory.flush();
+    }
+    if (changingLogicalPlanHistory != null) {
       changingLogicalPlanHistory.flush();
     }
     if (consolePresent) {
@@ -1682,8 +1684,10 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (topLevelHistory != null && changingLogicalPlanHistory != null) {
+      if (topLevelHistory != null) {
         topLevelHistory.flush();
+      }
+      if (changingLogicalPlanHistory != null) {
         changingLogicalPlanHistory.flush();
       }
       System.exit(0);
