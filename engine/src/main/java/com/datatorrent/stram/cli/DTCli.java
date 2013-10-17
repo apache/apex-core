@@ -1549,7 +1549,7 @@ public class DTCli
         int totalCnt = 0;
         int runningCnt = 0;
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z");
 
         for (ApplicationReport ar : appList) {
           /*
