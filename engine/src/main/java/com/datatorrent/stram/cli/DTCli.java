@@ -1401,7 +1401,7 @@ public class DTCli
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
-      Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
+      Configuration config = StramAppLauncher.getConfig(expandFileName(commandLineInfo.configFile, true), commandLineInfo.overrideProperties);
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf, config);
