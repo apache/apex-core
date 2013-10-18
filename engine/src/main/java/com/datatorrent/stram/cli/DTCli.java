@@ -94,6 +94,7 @@ import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 
 /**
  *
@@ -749,6 +750,10 @@ public class DTCli
     StramUserLogin.attemptAuthentication(conf);
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
+    String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
+    int colon = socks.indexOf(':');
+    System.setProperty("socksProxyHost", socks.substring(0, colon));
+    System.setProperty("socksProxyPort", socks.substring(colon + 1));
 
     try {
       com.datatorrent.stram.StramAppMaster.class.getClass();
