@@ -292,20 +292,24 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         for (Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry : this.entrySet()) {
           if (entry.getKey().operatorId == node.nodeId) {
             for (OperatorStats os : node.windowStats) {
-              for (PortStats ps : os.inputPorts) {
-                if (ps.id.equals(entry.getKey().portName)) {
-                  ps.recordingStartTime = entry.getValue().getStartTime();
-                }
-                else {
-                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+              if (os.inputPorts != null) {
+                for (PortStats ps : os.inputPorts) {
+                  if (ps.id.equals(entry.getKey().portName)) {
+                    ps.recordingStartTime = entry.getValue().getStartTime();
+                  }
+                  else {
+                    ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+                  }
                 }
               }
-              for (PortStats ps : os.outputPorts) {
-                if (ps.id.equals(entry.getKey().portName)) {
-                  ps.recordingStartTime = entry.getValue().getStartTime();
-                }
-                else {
-                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+              if (os.outputPorts != null) {
+                for (PortStats ps : os.outputPorts) {
+                  if (ps.id.equals(entry.getKey().portName)) {
+                    ps.recordingStartTime = entry.getValue().getStartTime();
+                  }
+                  else {
+                    ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+                  }
                 }
               }
             }
