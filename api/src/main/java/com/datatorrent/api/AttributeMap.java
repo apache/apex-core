@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.StringCodec.Boolean2String;
+import com.datatorrent.api.StringCodec.Enum2String;
 import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Long2String;
 import com.datatorrent.api.StringCodec.String2String;
@@ -207,6 +208,7 @@ public interface AttributeMap
      * @param clazz class whose static attributes need to be initialized.
      * @return 0 if the clazz was already initialized, identity hash code of the clazz otherwise.
      */
+    @SuppressWarnings( {"unchecked", "rawtypes"}) /* both for Enum2String */
     public static long initialize(final Class<?> clazz)
     {
       if (map.containsKey(clazz)) {
@@ -242,6 +244,9 @@ public interface AttributeMap
                 }
                 else if (klass == Boolean.class) {
                   codec = new Boolean2String();
+                }
+                else if (Enum.class.isAssignableFrom(klass)) {
+                  codec = new Enum2String(klass);
                 }
               }
               if (codec == null) {

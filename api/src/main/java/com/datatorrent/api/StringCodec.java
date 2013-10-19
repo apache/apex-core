@@ -111,4 +111,28 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201310141159L;
   }
 
+  public class Enum2String<T extends Enum<T>> implements StringCodec<T>, Serializable
+  {
+    private final Class<T> clazz;
+
+    public Enum2String(Class<T> clazz)
+    {
+      this.clazz = clazz;
+    }
+
+    @Override
+    public T fromString(String string)
+    {
+      return Enum.valueOf(clazz, string);
+    }
+
+    @Override
+    public String toString(T pojo)
+    {
+      return pojo.name();
+    }
+
+    private static final long serialVersionUID = 201310181757L;
+  }
+
 }
