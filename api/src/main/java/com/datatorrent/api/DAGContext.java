@@ -37,10 +37,13 @@ public interface DAGContext extends Context
    */
   Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
   /**
-   * Application instance identifier. An application with the same name can run in multiple instances, each with a unique identifier.
-   * The identifier is set by the client that submits the application and can be used in operators along with the operator ID to segregate output etc.
-   * When running in distributed mode, the value would be the Yarn application id as shown in the resource manager (example:
-   * <code>application_1355713111917_0002</code>).
+   * Application instance identifier. An application with the same name can run in multiple instances, each with a
+   * unique identifier. The identifier is set by the client that submits the application and can be used in operators
+   * along with the operator ID to segregate output etc.
+   * <p>
+   * When running in distributed mode, the value is the YARN application id as shown in the resource manager (example:
+   * <code>application_1355713111917_0002</code>). Note that only the full id string uniquely identifies an application,
+   * the integer offset will reset on RM restart.
    */
   Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
   /**
