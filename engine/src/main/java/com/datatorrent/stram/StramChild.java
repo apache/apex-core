@@ -66,6 +66,7 @@ import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 import java.util.Map.Entry;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.
@@ -1149,7 +1150,6 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(final Map<Integer, OperatorDeployInfo> nodeMap, Map<String, ComponentContextPair<Stream, StreamContext>> newStreams)
   {
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
@@ -1159,7 +1159,7 @@ public class StramChild
       }
     }
 
-    final ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo> activatedOrFailed = new ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo>();
+    final CountDownLatch signal = new CountDownLatch(nodeMap.size());
     for (final OperatorDeployInfo ndi : nodeMap.values()) {
       /*
        * OiO nodes get activated with their primary nodes.
@@ -1175,34 +1175,67 @@ public class StramChild
         @Override
         public void run()
         {
+          HashSet<OperatorDeployInfo> setOperators = new HashSet<OperatorDeployInfo>();
+          OperatorDeployInfo currentdi = ndi;
           try {
             /* primary operator initialization */
-            setupNode(ndi, this);
-            activatedOrFailed.put(ndi, ndi);
+            setupNode(currentdi, this);
+            setOperators.add(currentdi);
 
             /* lets go for OiO operator initializtion */
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
-                OperatorDeployInfo oiodi = nodeMap.get(e.getKey());
-                setupNode(oiodi, this);
-                activatedOrFailed.put(oiodi, oiodi);
+                currentdi = nodeMap.get(e.getKey());
+                setupNode(currentdi, this);
+                setOperators.add(currentdi);
               }
             }
+
+            currentdi = null;
+
+            for (int i = setOperators.size(); i-- > 0;) {
+              signal.countDown();
+            }
+
             node.run(); /* this is a blocking call */
           }
           catch (Throwable ex) {
-            logger.error("Node stopped abnormally because of exception", ex);
-            failedNodes.add(ndi.id);
+            if (currentdi == null) {
+              failedNodes.add(ndi.id);
+              logger.error("Operator set {} failed stopped running due to an exception.", setOperators, ex);
+            }
+            else {
+              failedNodes.add(currentdi.id);
+              logger.error("Abandoning deployment of operator {} due setup failure", currentdi, ex);
+            }
           }
           finally {
-            activatedOrFailed.put(ndi, ndi);
-            teardownNode(ndi);
+            if (setOperators.contains(ndi)) {
+              try {
+                teardownNode(ndi);
+              }
+              catch (Throwable ex) {
+                logger.error("Shutdown of operator {} failed due to an exception", ndi, ex);
+              }
+            }
+            else {
+              signal.countDown();
+            }
 
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
                 OperatorDeployInfo oiodi = nodeMap.get(e.getKey());
-                activatedOrFailed.put(oiodi, oiodi);
-                teardownNode(oiodi);
+                if (setOperators.contains(oiodi)) {
+                  try {
+                    teardownNode(oiodi);
+                  }
+                  catch (Throwable ex) {
+                    logger.error("Shutdown of operator {} failed due to an exception", oiodi, ex);
+                  }
+                }
+                else {
+                  signal.countDown();
+                }
               }
             }
           }
@@ -1216,10 +1249,7 @@ public class StramChild
      * we need to make sure that before any of the operators gets the first message, it's activate.
      */
     try {
-      do {
-        Thread.sleep(SPIN_MILLIS);
-      }
-      while (activatedOrFailed.size() < nodeMap.size());
+      signal.await();
     }
     catch (InterruptedException ex) {
       logger.debug("Activation of Operators interruped", ex);
