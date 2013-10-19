@@ -436,7 +436,7 @@ public class LogicalPlanTest {
     dag.validate();
 
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
-    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
+    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.getValue(OperatorContext.PROCESSING_MODE));
 
   }
 

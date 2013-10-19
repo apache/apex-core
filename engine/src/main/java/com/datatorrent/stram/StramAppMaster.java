@@ -335,7 +335,7 @@ public class StramAppMaster extends CompositeService
     @Override
     public String getApplicationName()
     {
-      return attrValue(LogicalPlan.APPLICATION_NAME, "unknown");
+      return getValue(LogicalPlan.APPLICATION_NAME);
     }
 
     @Override
@@ -347,7 +347,7 @@ public class StramAppMaster extends CompositeService
     @Override
     public String getApplicationPath()
     {
-      return attrValue(LogicalPlan.APPLICATION_PATH, "unknown");
+      return getValue(LogicalPlan.APPLICATION_PATH);
     }
 
     @Override
@@ -377,7 +377,7 @@ public class StramAppMaster extends CompositeService
     @Override
     public String getGatewayAddress()
     {
-      return attrValue(LogicalPlan.GATEWAY_ADDRESS, null);
+      return getValue(LogicalPlan.GATEWAY_ADDRESS);
     }
 
   }
@@ -571,7 +571,7 @@ public class StramAppMaster extends CompositeService
     addService(amRmClient);
 
     // start RPC server
-    int rpcListenerCount = dag.attrValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT, DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT.defaultValue);
+    int rpcListenerCount = dag.getValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT);
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 

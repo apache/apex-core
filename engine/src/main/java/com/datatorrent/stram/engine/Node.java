@@ -451,10 +451,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   {
     this.context = context;
     alive = true;
-    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
+    APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
+    CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
 
-    PROCESSING_MODE = context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_LEAST_ONCE);
+    PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
       logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
       CHECKPOINT_WINDOW_COUNT = 1;

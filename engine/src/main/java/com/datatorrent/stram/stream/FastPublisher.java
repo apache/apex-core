@@ -152,7 +152,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   @Override
   public void setup(StreamContext context)
   {
-    spinMillis = 5; // somehow get it context.attrValue(PortContext.SPIN_MILLIS, 5);
+    spinMillis = 5; // somehow get it context.getValue(PortContext.SPIN_MILLIS, 5);
   }
 
   @Override

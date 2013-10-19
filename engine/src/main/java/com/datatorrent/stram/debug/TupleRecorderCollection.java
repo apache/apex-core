@@ -62,14 +62,14 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   @Override
   public void setup(Context ctx)
   {
-    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    containerId = ctx.attrValue(ContainerContext.IDENTIFIER, "unknown_container_id");
-    gatewayAddress = ctx.attrValue(LogicalPlan.GATEWAY_ADDRESS, null);
-    appPath = ctx.attrValue(LogicalPlan.APPLICATION_PATH, null);
+    tupleRecordingPartFileSize = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE);
+    tupleRecordingPartFileTimeMillis = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS);
+    containerId = ctx.getValue(ContainerContext.IDENTIFIER);
+    gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_ADDRESS);
+    appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
-    RequestFactory rf = ctx.attrValue(ContainerContext.REQUEST_FACTORY, null);
+    RequestFactory rf = ctx.getValue(ContainerContext.REQUEST_FACTORY);
     if (rf == null) {
       logger.warn("No request factory defined, recording is disabled!");
     }
@@ -264,13 +264,13 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   public void activated(Node<?> node)
   {
     for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
-      if (entry.getValue().context != null && entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
+      if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
         startRecording(node, node.getId(), entry.getKey());
       }
     }
 
     for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
-      if (entry.getValue().context != null && entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
+      if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
         startRecording(node, node.getId(), entry.getKey());
       }
     }

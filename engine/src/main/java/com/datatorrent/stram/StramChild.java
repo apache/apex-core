@@ -142,13 +142,13 @@ public class StramChild
     this.requestFactory = new RequestFactory();
     ctx.attributes.put(ContainerContext.REQUEST_FACTORY, requestFactory);
 
-    heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
+    heartbeatIntervalMillis = ctx.getValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.attrValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.attrValue(DAGContext.CHECKPOINT_WINDOW_COUNT, 60);
+    windowWidthMillis = ctx.getValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    checkpointWindowCount = ctx.getValue(DAGContext.CHECKPOINT_WINDOW_COUNT);
 
-    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
-    fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
+    checkpointFsPath = ctx.getValue(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+    fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
     try {
       if (ctx.deployBufferServer) {
@@ -691,13 +691,13 @@ public class StramChild
       if (odi.id == sourceOperatorId) {
         for (OperatorDeployInfo.OutputDeployInfo odiodi : odi.outputs) {
           if (odiodi.portName.equals(sourcePortName)) {
-            return odiodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+            return odiodi.getValue(PortContext.QUEUE_CAPACITY);
           }
         }
       }
     }
 
-    return PORT_QUEUE_CAPACITY;
+    return PortContext.QUEUE_CAPACITY.defaultValue;
   }
 
   private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
@@ -818,7 +818,7 @@ public class StramChild
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nodi.portName);
-        int queueCapacity = nodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+        int queueCapacity = nodi.getValue(PortContext.QUEUE_CAPACITY);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
@@ -940,7 +940,7 @@ public class StramChild
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
-          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.getValue(PortContext.QUEUE_CAPACITY);
 
           long finishedWindowId = getFinishedWindowId(ndi);
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);

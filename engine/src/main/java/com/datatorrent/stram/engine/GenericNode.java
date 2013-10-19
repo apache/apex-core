@@ -182,7 +182,7 @@ public class GenericNode extends Node<Operator>
     insideWindow = false;
     checkpoint = false;
 
-    long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
+    long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
 

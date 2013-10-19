@@ -155,16 +155,16 @@ public class StreamingContainerManager implements PlanContext
     if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
       attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
     }
-    this.heartbeatIntervalMillis = dag.attrValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS, this.heartbeatIntervalMillis);
-    this.heartbeatTimeoutMillis = dag.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+    this.heartbeatIntervalMillis = dag.getValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS);
+    this.heartbeatTimeoutMillis = dag.getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
 
     if (attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG) == null) {
       attributes.put(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 1000);
     }
     this.maxWindowsBehindForStats = attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
 
-    this.throughputCalculationInterval = dag.attrValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL, this.throughputCalculationInterval);
-    this.throughputCalculationMaxSamples = dag.attrValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES, this.throughputCalculationMaxSamples);
+    this.throughputCalculationInterval = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL);
+    this.throughputCalculationMaxSamples = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES);
 
     if (attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS) == null) {
       attributes.put(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS, 0);
@@ -222,7 +222,7 @@ public class StreamingContainerManager implements PlanContext
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + plan.getDAG().attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS.defaultValue) < currentTms) {
+        if (lastResourceRequest + plan.getDAG().getValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.getExternalId(), c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
@@ -661,7 +661,7 @@ public class StreamingContainerManager implements PlanContext
         if (previousHeartbeat == null || DNodeState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
           status.operator.failureCount++;
           LOG.warn("Operator failure: {} count: {}", status.operator, status.operator.failureCount);
-          Integer maxAttempts = status.operator.getOperatorMeta().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
+          Integer maxAttempts = status.operator.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
           if (status.operator.failureCount <= maxAttempts) {
             // restart entire container in attempt to recover operator
             // in the future a more sophisticated recovery strategy could

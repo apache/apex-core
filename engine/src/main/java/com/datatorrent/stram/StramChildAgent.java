@@ -541,12 +541,12 @@ public class StramChildAgent {
     }
 
     long checkpointWindowId = oper.getRecoveryCheckpoint();
-    ProcessingMode pm = oper.getOperatorMeta().attrValue(OperatorContext.PROCESSING_MODE, null);
+    ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 
     if (checkpointWindowId == 0 || pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
       StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
-        String appPath = getInitContext().attrValue(LogicalPlan.APPLICATION_PATH, "app-dfs-path-not-configured");
+        String appPath = getInitContext().getValue(LogicalPlan.APPLICATION_PATH);
         agent = new FSStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
       }
       // pick the checkpoint most recently written to HDFS

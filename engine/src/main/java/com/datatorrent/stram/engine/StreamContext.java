@@ -44,11 +44,11 @@ public class StreamContext extends DefaultAttributeMap implements Context
   }
 
   @Override
-  public <T> T attrValue(Attribute<T> key, T defaultValue)
+  public <T> T getValue(Attribute<T> key)
   {
     T retvalue = get(key);
     if (retvalue == null) {
-      return defaultValue;
+      return key.defaultValue;
     }
 
     return retvalue;

@@ -104,11 +104,11 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+  public <T> T getValue(AttributeMap.Attribute<T> key)
   {
     T val = attributes.get(key);
     if (val == null) {
-      return defaultValue;
+      return key.defaultValue;
     }
 
     return val;
@@ -184,11 +184,11 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -229,11 +229,11 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -400,11 +400,11 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -704,22 +704,22 @@ public class LogicalPlan implements Serializable, DAG
 
   public int getMaxContainerCount()
   {
-    return this.attrValue(CONTAINERS_MAX_COUNT, 3);
+    return this.getValue(CONTAINERS_MAX_COUNT);
   }
 
   public boolean isDebug()
   {
-    return this.attrValue(DEBUG, false);
+    return this.getValue(DEBUG);
   }
 
   public int getContainerMemoryMB()
   {
-    return this.attrValue(CONTAINER_MEMORY_MB, 1024);
+    return this.getValue(CONTAINER_MEMORY_MB);
   }
 
   public int getMasterMemoryMB()
   {
-    return this.attrValue(MASTER_MEMORY_MB, 1024);
+    return this.getValue(MASTER_MEMORY_MB);
   }
 
   /**
@@ -780,13 +780,13 @@ public class LogicalPlan implements Serializable, DAG
         // Check if partition property of the operator is being honored
         if (!n.operatorAnnotation.partitionable()) {
           // Check if INITIAL_PARTITION_COUNT is set
-          int partitionCount = n.attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+          int partitionCount = n.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
           if (partitionCount > 0) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set" );
           } else {
             // Check if any of the input ports have partition attributes set
             for (InputPortMeta pm : portMapping.inPortMap.values()) {
-              Boolean paralellPartition = pm.attrValue(PortContext.PARTITION_PARALLEL, Boolean.FALSE);
+              Boolean paralellPartition = pm.getValue(PortContext.PARTITION_PARALLEL);
               if (paralellPartition) {
                 throw new ValidationException("Operator " + n.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set" );
               }
@@ -922,11 +922,11 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     visited.add(om);
-    Operator.ProcessingMode pm = om.attrValue(OperatorContext.PROCESSING_MODE, null);
+    Operator.ProcessingMode pm = om.getValue(OperatorContext.PROCESSING_MODE);
     for (StreamMeta os : om.outputStreams.values()) {
       for (InputPortMeta sink: os.sinks) {
         OperatorMeta sinkOm = sink.getOperatorWrapper();
-        Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
+        Operator.ProcessingMode sinkPm = sinkOm.attributes == null? null: sinkOm.attributes.get(OperatorContext.PROCESSING_MODE);
         if (sinkPm == null) {
           // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then set it to AT_MOST_ONCE as well
           if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {
