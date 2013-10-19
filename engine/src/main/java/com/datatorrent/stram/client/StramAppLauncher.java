@@ -348,7 +348,6 @@ public class StramAppLauncher {
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
-   * @param config
    * @throws Exception
    */
   public void runLocal(AppFactory appConfig) throws Exception {

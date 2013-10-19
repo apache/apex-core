@@ -94,6 +94,7 @@ import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 
 /**
  *
@@ -251,24 +252,25 @@ public class DTCli
     void execute(String[] args, ConsoleReader reader) throws Exception;
 
   }
-/*
-  private abstract class LicensedCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      if (licensedVersion) {
-        executeLicensed(args, reader);
-      }
-      else {
-        System.out.println("This command is only valid in the licensed version of DataTorrent. Visit http://datatorrent.com for information of obtaining a licensed version.");
-      }
-    }
+  /*
+   private abstract class LicensedCommand implements Command
+   {
+   @Override
+   public void execute(String[] args, ConsoleReader reader) throws Exception
+   {
+   if (licensedVersion) {
+   executeLicensed(args, reader);
+   }
+   else {
+   System.out.println("This command is only valid in the licensed version of DataTorrent. Visit http://datatorrent.com for information of obtaining a licensed version.");
+   }
+   }
 
-    public abstract void executeLicensed(String[] args, ConsoleReader reader) throws Exception;
+   public abstract void executeLicensed(String[] args, ConsoleReader reader) throws Exception;
 
-  }
-*/
+   }
+   */
+
   private static class Arg
   {
     final String name;
@@ -749,7 +751,15 @@ public class DTCli
     StramUserLogin.attemptAuthentication(conf);
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
-
+    String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
+    if (socks != null) {
+      int colon = socks.indexOf(':');
+      if (colon > 0) {
+        System.setProperty("socksProxyHost", socks.substring(0, colon));
+        System.setProperty("socksProxyPort", socks.substring(colon + 1));
+      }
+    }
+    /*
     try {
       com.datatorrent.stram.StramAppMaster.class.getClass();
     }
@@ -760,6 +770,7 @@ public class DTCli
       System.out.println();
       licensedVersion = false;
     }
+    */
   }
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
@@ -1390,7 +1401,7 @@ public class DTCli
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
-      Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
+      Configuration config = StramAppLauncher.getConfig(expandFileName(commandLineInfo.configFile, true), commandLineInfo.overrideProperties);
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf, config);
