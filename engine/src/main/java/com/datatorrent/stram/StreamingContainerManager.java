@@ -90,7 +90,6 @@ public class StreamingContainerManager implements PlanContext
   private SharedPubSubWebSocketClient wsClient;
   private FSStatsRecorder statsRecorder;
   private FSEventRecorder eventRecorder;
-  private final int operatorMaxAttemptCount = 5;
   private final String appPath;
   private final String checkpointFsPath;
   private String statsFsPath = null;
@@ -301,7 +300,7 @@ public class StreamingContainerManager implements PlanContext
               }
             }
             CriticalPathInfo cpi = new CriticalPathInfo();
-            LOG.debug("Finding critical path...");
+            //LOG.debug("Finding critical path...");
             cpi.latency = findCriticalPath(endWindowStatsMap, leafOperators, cpi.path);
             criticalPathInfo = cpi;
             endWindowStatsOperatorMap.remove(windowId);
@@ -477,6 +476,7 @@ public class StreamingContainerManager implements PlanContext
 
   public void removeContainerAgent(String containerId)
   {
+    LOG.debug("Removing container agent {}", containerId);
     containers.remove(containerId);
   }
 
@@ -986,7 +986,7 @@ public class StreamingContainerManager implements PlanContext
       PTOperator operator = p.getFirst();
       try {
         ba.delete(operator.getId(), p.getSecond());
-        LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
+        //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
       }
       catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
