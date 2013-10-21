@@ -41,6 +41,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.webapp.ContainerInfo;
 
@@ -441,6 +442,8 @@ public class StramChildAgent {
     for (Map.Entry<OperatorDeployInfo, PTOperator> operEntry : nodes.entrySet()) {
       OperatorDeployInfo ndi = operEntry.getKey();
       PTOperator oper = operEntry.getValue();
+      boolean isOperOIOble = true;
+
       for (PTOperator.PTInput in : oper.getInputs()) {
         final StreamMeta streamMeta = in.logicalStream;
         if (streamMeta.getSource() == null) {
@@ -474,7 +477,20 @@ public class StramChildAgent {
           if (outputInfo == null) {
             throw new AssertionError("No publisher for inline stream " + sourceOutput);
           }
-          if (streamMeta.getLocality() == Locality.THREAD_LOCAL && oper.getInputs().size() == 1) {
+
+          /*
+           * start with assuming operator is OIOable,
+           * then check if it is non OIOable until its not OIOable or all checks are exhausted
+           * if all checks are exhaused, then operator is indeed OIO.
+           */
+          if (streamMeta.getLocality() == Locality.THREAD_LOCAL && isOperOIOble){
+            isOperOIOble = isOperatorOIOable(oper, inputInfo);
+          } else {
+            isOperOIOble = false;
+          }
+
+
+          if (isOperOIOble) {
             inputInfo.locality = Locality.THREAD_LOCAL;
             ndi.type = OperatorType.OIO;
           } else {
@@ -495,9 +511,36 @@ public class StramChildAgent {
         }
         ndi.inputs.add(inputInfo);
       }
+
     }
 
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
+  }
+
+  /*
+   * For a node to be marked OIO,
+   * 1. all its input streams should be OIO
+   * 2. all its input streams should have OIO from single source node
+   */
+  private boolean isOperatorOIOable(PTOperator oper, InputDeployInfo inputInfo){
+    int oioSourceNodeId = -1;
+    for (PTInput input : oper.getInputs()) {
+      // all input streams should be OIO
+      if (input.logicalStream.getLocality() != Locality.THREAD_LOCAL) {
+        return false;
+      }
+
+      // all input streams' OIO from single source
+      //int streamSourceNodeId = getOioStreamSourceNodeId(input, inputInfo);
+      if (oioSourceNodeId < 0){
+        oioSourceNodeId = inputInfo.oioSourceNodeId;
+      } else {
+        if (oioSourceNodeId != inputInfo.oioSourceNodeId){
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   /**
