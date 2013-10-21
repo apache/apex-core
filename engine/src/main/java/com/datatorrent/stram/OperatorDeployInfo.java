@@ -60,6 +60,12 @@ public class OperatorDeployInfo implements Serializable
     public int sourceNodeId;
 
     /**
+     * node id of the operator in whose thread this operator will execute
+     *
+     */
+    public int oioSourceNodeId;
+
+    /**
      * Port of the upstream node from where this input stream originates.
      * Required to uniquely identify publisher end point.
      */
@@ -96,6 +102,7 @@ public class OperatorDeployInfo implements Serializable
                 .append("portName", this.portName)
                 .append("streamId", this.declaredStreamId)
                 .append("sourceNodeId", this.sourceNodeId)
+                .append("oioSourceNodeId", this.oioSourceNodeId)
                 .append("sourcePortName", this.sourcePortName)
                 .append("locality", this.locality)
                 .append("partitionMask", this.partitionMask)

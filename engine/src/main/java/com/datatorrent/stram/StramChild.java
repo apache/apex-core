@@ -1004,7 +1004,14 @@ public class StramChild
 
               case THREAD_LOCAL:
                 stream = new OiOStream();
-                oioNodes.put(ndi.id, nidi.sourceNodeId);
+                int sourceId = nidi.sourceNodeId;
+
+                while(oioNodes.containsKey(sourceId)){
+                  sourceId = oioNodes.get(sourceId);
+                }
+                nidi.oioSourceNodeId = sourceId;
+
+                oioNodes.put(ndi.id, sourceId);
                 break;
 
               default:
@@ -1181,7 +1188,7 @@ public class StramChild
             setupNode(currentdi, this);
             setOperators.add(currentdi);
 
-            /* lets go for OiO operator initializtion */
+            /* lets go for OiO operator initialization */
             for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
               if (e.getValue() == ndi.id) {
                 currentdi = nodeMap.get(e.getKey());
