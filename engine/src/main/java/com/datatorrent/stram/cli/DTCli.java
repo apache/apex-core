@@ -2528,7 +2528,7 @@ public class DTCli
   public static Options getCommandLineOptions()
   {
     Options options = new Options();
-    Option local = new Option("local", "run in local mode");
+    Option local = new Option("local", "Run application in local mode");
     Option configFile = OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf");
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
@@ -2545,7 +2545,6 @@ public class DTCli
     CommandLineInfo result = new CommandLineInfo();
     CommandLine line = parser.parse(getCommandLineOptions(), args);
     result.localMode = line.hasOption("local");
-
     result.configFile = line.getOptionValue("conf");
     String[] defs = line.getOptionValues("D");
     if (defs != null) {
