@@ -54,6 +54,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
+  public static final String GATEWAY_ADDRESS = "stram.gateway.address";
+
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCE = "source";
   public static final String STREAM_SINKS = "sinks";
@@ -652,7 +654,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     legacyKeyMap.put(DAGContext.MASTER_MEMORY_MB, "masterMemoryMB");
     legacyKeyMap.put(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, "windowSizeMillis");
     legacyKeyMap.put(DAGContext.APPLICATION_PATH, "appPath");
-    legacyKeyMap.put(DAGContext.GATEWAY_ADDRESS, "gateway.address");
     legacyKeyMap.put(DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, "allocateResourceTimeoutMillis");
   }
 
@@ -663,6 +664,13 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       if (appConf != null) {
         appProps = appConf.properties;
       }
+    }
+
+    // gateway has its own set of configuration properties.
+    // set default for GATEWAY_ADDRESS (can be overridden on per application basis)
+    String gatewayAddress = appProps.getProperty(GATEWAY_ADDRESS);
+    if (gatewayAddress !=  null) {
+      dag.setAttribute(DAGContext.GATEWAY_ADDRESS, gatewayAddress);
     }
 
     LOG.debug("Initializing DAGContext!", DAGContext.serialVersionUID); /* make sure that the DAGContext.class is initialized */
