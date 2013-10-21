@@ -279,7 +279,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   @Override
   public void deactivated(Node<?> node)
   {
-    logger.error("this method should be implemented!");
+    stopRecording(node, node.getId(), null);
   }
 
   @Override
