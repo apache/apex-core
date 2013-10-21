@@ -447,6 +447,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
+  @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
   {
     this.context = context;

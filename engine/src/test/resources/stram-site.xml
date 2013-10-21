@@ -7,7 +7,7 @@
   <!-- sample for defining DAG in Hadoop configuration format -->
 
   <property>
-    <name>stram.GATEWAY_ADDRESS</name>
+    <name>stram.gateway.address</name>
     <value>hostname:9090</value>
   </property>
 
