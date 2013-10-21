@@ -120,7 +120,7 @@ public class DTCli
   private final List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
   private FileHistory topLevelHistory;
   private FileHistory changingLogicalPlanHistory;
-  private boolean licensedVersion = true;
+  private final boolean licensedVersion = true;
   private String jsonp;
   private RecordingsAgent recordingsAgent;
   private final ObjectMapper mapper = new ObjectMapper();
@@ -1397,11 +1397,15 @@ public class DTCli
       CommandLineInfo commandLineInfo = getCommandLineInfo(newArgs);
 
       if (!commandLineInfo.localMode && !licensedVersion) {
-        System.out.println("This free version only supports launching in local mode. Use the command 'launch-local' to launch in local mode.");
+        System.out.println("This free version only supports launching in local mode. Use the command 'launch -local' to launch in local mode.");
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
-      Configuration config = StramAppLauncher.getConfig(expandFileName(commandLineInfo.configFile, true), commandLineInfo.overrideProperties);
+
+      if (commandLineInfo.configFile != null) {
+        commandLineInfo.configFile = expandFileName(commandLineInfo.configFile, true);
+      }
+      Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf, config);
