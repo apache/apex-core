@@ -5,12 +5,10 @@
 package com.datatorrent.stram.engine;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.datatorrent.api.Operator.ProcessingMode;
 
-import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 
 /**
  // make a determination of the commented out assertTrues below as to what
