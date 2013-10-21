@@ -55,7 +55,7 @@ public class GenericTestOperator extends BaseOperator {
 
   public boolean booleanProperty;
 
-  private String myStringProperty;
+  private volatile String myStringProperty;
 
   public String getMyStringProperty() {
     return myStringProperty;
