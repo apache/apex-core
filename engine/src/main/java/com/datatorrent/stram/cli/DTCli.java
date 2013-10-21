@@ -2545,7 +2545,6 @@ public class DTCli
     CommandLineInfo result = new CommandLineInfo();
     CommandLine line = parser.parse(getCommandLineOptions(), args);
     result.localMode = line.hasOption("local");
-
     result.configFile = line.getOptionValue("conf");
     String[] defs = line.getOptionValues("D");
     if (defs != null) {
