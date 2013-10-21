@@ -110,11 +110,11 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T get = contextAttributes.get(key);
       if (get == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return get;
@@ -177,11 +177,11 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = contextAttributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;

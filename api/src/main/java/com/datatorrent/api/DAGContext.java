@@ -35,12 +35,15 @@ public interface DAGContext extends Context
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
    */
-  Attribute<String> APPLICATION_NAME = new Attribute<String>(new String2String());
+  Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
   /**
-   * Application instance identifier. An application with the same name can run in multiple instances, each with a unique identifier.
-   * The identifier is set by the client that submits the application and can be used in operators along with the operator ID to segregate output etc.
-   * When running in distributed mode, the value would be the Yarn application id as shown in the resource manager (example:
-   * <code>application_1355713111917_0002</code>).
+   * Application instance identifier. An application with the same name can run in multiple instances, each with a
+   * unique identifier. The identifier is set by the client that submits the application and can be used in operators
+   * along with the operator ID to segregate output etc.
+   * <p>
+   * When running in distributed mode, the value is the YARN application id as shown in the resource manager (example:
+   * <code>application_1355713111917_0002</code>). Note that only the full id string uniquely identifies an application,
+   * the integer offset will reset on RM restart.
    */
   Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
   /**
@@ -57,7 +60,7 @@ public interface DAGContext extends Context
    * Example: DAG with several operators and all inline streams would require one container,
    * only one container will be requested from the resource manager.
    */
-  Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
+  Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(3);
   /**
    * Dump extra debug information in launcher, master and containers.
    */
@@ -65,7 +68,7 @@ public interface DAGContext extends Context
   /**
    * The amount of memory to be requested for streaming containers. Not used in local mode.
    */
-  Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(2048);
+  Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
    * Constant
    * <code>CONTAINER_JVM_OPTIONS</code>
@@ -74,7 +77,7 @@ public interface DAGContext extends Context
   /**
    * The amount of memory to be requested for the application master. Not used in local mode.
    */
-  Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(2048);
+  Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
    * Constant
    * <code>STREAMING_WINDOW_SIZE_MILLIS</code>
@@ -89,7 +92,7 @@ public interface DAGContext extends Context
    * Constant
    * <code>APPLICATION_PATH</code>
    */
-  Attribute<String> APPLICATION_PATH = new Attribute<String>("unknown");
+  Attribute<String> APPLICATION_PATH = new Attribute<String>("unknown-application-path");
   /**
    * Constant
    * <code>TUPLE_RECORDING_PART_FILE_SIZE</code>

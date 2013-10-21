@@ -41,12 +41,12 @@ public interface Context
    * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
    * the application level. If the attribute is not found, then return the defaultValue.
    *
-   * @param <T> - Type of the attribute.
+   * @param <T> - Type of the value stored against the attribute
    * @param key - Attribute to identify the attribute.
-   * @param defaultValue - Default value if the attribute is not found.
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
-  public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue);
+
+  public <T> T getValue(AttributeMap.Attribute<T> key);
 
   public interface PortContext extends Context
   {
@@ -74,7 +74,7 @@ public interface Context
      * network I/O or other resource requirement for each unifier container (depends on the specific functionality of
      * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
      */
-    Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
+    Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(1);
     /**
      * Whether or not to auto record the tuples
      */
@@ -101,7 +101,7 @@ public interface Context
      * Count 0 disables partitioning. Other values are ignored as number of
      * initial partitions is determined by operator implementation.
      */
-    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
+    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(0);
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
     Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());

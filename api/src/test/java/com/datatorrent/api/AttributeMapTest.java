@@ -30,5 +30,24 @@ public class AttributeMapTest
     }
   }
 
+  enum Greeting
+  {
+    hello,
+    howdy
+  };
+
+  interface iface
+  {
+    Attribute<Greeting> greeting = new Attribute<Greeting>(Greeting.hello);
+  }
+
+  @Test
+  public void testEnumAutoCodec()
+  {
+    AttributeMap.AttributeInitializer.initialize(iface.class);
+    Greeting howdy = iface.greeting.codec.fromString(Greeting.howdy.name());
+    assertSame("Attribute", Greeting.howdy, howdy);
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(AttributeMapTest.class);
 }

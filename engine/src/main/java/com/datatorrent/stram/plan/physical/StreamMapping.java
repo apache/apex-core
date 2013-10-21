@@ -148,7 +148,7 @@ public class StreamMapping
     for (InputPortMeta ipm : streamMeta.getSinks()) {
       // gets called prior to all logical operators mapped
       // skipped for parallel partitions - those are handled elsewhere
-      if (!ipm.attrValue(PortContext.PARTITION_PARALLEL, false) && plan.hasMapping(ipm.getOperatorWrapper())) {
+      if (!ipm.getValue(PortContext.PARTITION_PARALLEL) && plan.hasMapping(ipm.getOperatorWrapper())) {
         List<PTOperator> partitions = plan.getOperators(ipm.getOperatorWrapper());
         for (PTOperator doper : partitions) {
           downstreamOpers.add(new Pair<PTOperator, InputPortMeta>(doper, ipm));
@@ -169,7 +169,7 @@ public class StreamMapping
       this.cascadingUnifiers.clear();
       plan.undeployOpers.addAll(currentUnifiers);
 
-      int limit = streamMeta.getSource().attrValue(PortContext.UNIFIER_LIMIT, 1);
+      int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
       List<PTOutput> unifierSources = this.upstream;
       if (limit > 1 && this.upstream.size() > 1) {

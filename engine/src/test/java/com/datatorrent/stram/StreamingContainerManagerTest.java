@@ -259,7 +259,7 @@ public class StreamingContainerManagerTest {
       Assert.assertEquals("portName " + nidi, mergePortName, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       Assert.assertNotNull("contextAttributes " + nidi, nidi.contextAttributes);
-      Assert.assertEquals("contextAttributes " , new Integer(1111), nidi.attrValue(PortContext.QUEUE_CAPACITY, 0));
+      Assert.assertEquals("contextAttributes " , new Integer(1111), nidi.getValue(PortContext.QUEUE_CAPACITY));
       sourceNodeIds.add(nidi.sourceNodeId);
     }
     for (PTOperator node : dnm.getPhysicalPlan().getOperators(dag.getMeta(node2))) {
@@ -269,7 +269,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("outputs " + mergeNodeDI, 1, mergeNodeDI.outputs.size());
     for (OutputDeployInfo odi : mergeNodeDI.outputs) {
       Assert.assertNotNull("contextAttributes " + odi, odi.contextAttributes);
-      Assert.assertEquals("contextAttributes " , new Integer(2222), odi.attrValue(PortContext.QUEUE_CAPACITY, 0));
+      Assert.assertEquals("contextAttributes " , new Integer(2222), odi.getValue(PortContext.QUEUE_CAPACITY));
     }
 
     try {

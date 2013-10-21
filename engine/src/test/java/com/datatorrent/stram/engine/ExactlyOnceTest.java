@@ -26,7 +26,7 @@ public class ExactlyOnceTest extends ProcessingModeTests
     super(ProcessingMode.EXACTLY_ONCE);
   }
 
-  //@Test
+  @Test
   @Override
   public void testLinearInputOperatorRecovery() throws Exception
   {
@@ -39,7 +39,6 @@ public class ExactlyOnceTest extends ProcessingModeTests
     //Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
-  @Ignore // Pramod and Thomas are working on it, they should enable it when it passes.
   @Test
   @Override
   public void testLinearOperatorRecovery() throws Exception

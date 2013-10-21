@@ -6,8 +6,10 @@ package com.datatorrent.stram.client;
 
 import java.io.*;
 import java.lang.reflect.Modifier;
+import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.util.*;
 import java.util.jar.JarEntry;
 
@@ -240,8 +242,17 @@ public class StramAppLauncher {
 //      // launch class path takes precedence - add first
 //      clUrls.addAll(Arrays.asList(baseUrls));
 //    }
-
-    clUrls.add(new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/"));
+    URL mainJarUrl = new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/");
+    URLConnection urlConnection = mainJarUrl.openConnection();
+    if (urlConnection instanceof JarURLConnection) {
+      // JDK6 keeps jar file shared and open as long as the process is running.
+      // we want the jar file to be opened on every launch to pick up latest changes
+      // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
+      // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
+      ((JarURLConnection)urlConnection).getJarFile().close();
+    }
+    
+    clUrls.add(mainJarUrl);
     // add the jar dependencies
     if (cp != null) {
       String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");

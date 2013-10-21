@@ -17,7 +17,6 @@ import com.datatorrent.api.Context;
  */
 public class BaseContext extends AbstractWritableAdapter implements Context
 {
-  private static final long serialVersionUID = 201306060103L;
   /*
    * the following 2 need to be public since otherwise they are not serialized.
    */
@@ -37,13 +36,14 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   }
 
   @Override
-  public <T> T attrValue(Attribute<T> key, T defaultValue)
+  public <T> T getValue(Attribute<T> key)
   {
     T attr = attributes.get(key);
     if (attr != null) {
       return attr;
     }
-    return parentContext == null? defaultValue: parentContext.attrValue(key, defaultValue);
+    return parentContext == null ? key.defaultValue : parentContext.getValue(key);
   }
 
+  private static final long serialVersionUID = 201306060103L;
 }

@@ -200,9 +200,9 @@ public class LogicalPlanConfigurationTest {
     dagBuilder.populateDAG(dag, new Configuration(false));
 
     dagBuilder.setApplicationLevelAttributes(dag, appName);
-    Assert.assertEquals("", "/otherdir", dag.attrValue(DAG.APPLICATION_PATH, null));
-    Assert.assertEquals("", Integer.valueOf(123), dag.attrValue(DAG.CONTAINER_MEMORY_MB, null));
-    Assert.assertEquals("", Integer.valueOf(1000), dag.attrValue(DAG.STREAMING_WINDOW_SIZE_MILLIS, null));
+    Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
+    Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.CONTAINER_MEMORY_MB));
+    Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
 
   }
 
@@ -213,7 +213,7 @@ public class LogicalPlanConfigurationTest {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
-        Assert.assertEquals("", "hostname:9090", dag.attrValue(DAG.GATEWAY_ADDRESS, null));
+        Assert.assertEquals("", "hostname:9090", dag.getValue(DAG.GATEWAY_ADDRESS));
         dag.setAttribute(DAG.GATEWAY_ADDRESS, "hostname:9091");
         appInitialized.setValue(true);
       }
@@ -227,7 +227,7 @@ public class LogicalPlanConfigurationTest {
     pb.prepareDAG(dag, app, "testconfig", conf);
 
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
-    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.GATEWAY_ADDRESS, null));
+    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.getValue(DAG.GATEWAY_ADDRESS));
   }
 
   @Test

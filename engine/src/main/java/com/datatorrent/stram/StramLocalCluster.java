@@ -252,7 +252,6 @@ public class StramLocalCluster implements Runnable, Controller
       }
       finally {
         childContainers.remove(containerId);
-        dnmgr.removeContainerAgent(containerId);
         logger.info("Container {} terminating.", containerId);
       }
     }
@@ -411,8 +410,9 @@ public class StramLocalCluster implements Runnable, Controller
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
-        logger.info("Container {} failed, launching new container.", containerIdStr);
+        logger.info("Container {} restart.", containerIdStr);
         dnmgr.scheduleContainerRestart(containerIdStr);
+        dnmgr.removeContainerAgent(containerIdStr);
       }
 
       // start containers

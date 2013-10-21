@@ -327,7 +327,7 @@ public class StramClient
       localJarFiles.add(jar);
     }
 
-    String libJarsPath = dag.attrValue(LogicalPlan.LIBRARY_JARS, null);
+    String libJarsPath = dag.getValue(LogicalPlan.LIBRARY_JARS);
     if (!StringUtils.isEmpty(libJarsPath)) {
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
       localJarFiles.addAll(Arrays.asList(libJars));
