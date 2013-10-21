@@ -2529,11 +2529,8 @@ public class DTCli
   {
     Options options = new Options();
     Option local = new Option("local", "run in local mode");
-    @SuppressWarnings("static-access")
     Option configFile = OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf");
-    @SuppressWarnings("static-access")
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
-    @SuppressWarnings("static-access")
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     options.addOption(local);
     options.addOption(configFile);
