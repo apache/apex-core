@@ -102,6 +102,8 @@ public class StramClient
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String DEFAULT_APPNAME = "Stram";
 
+  public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
+
   /**
    * @param args Command line arguments
    */
@@ -173,6 +175,7 @@ public class StramClient
    *
    * @param args Parsed command line options
    * @return Whether the init was successful to run the client
+   * @throws Exception
    */
   public boolean init(String[] args) throws Exception
   {
@@ -341,12 +344,18 @@ public class StramClient
   /**
    * Launch application for the dag represented by this client.
    *
+   * @throws YarnException
    * @throws IOException
    */
   public void startApplication() throws YarnException, IOException
   {
     // process dependencies
     LinkedHashSet<String> localJarFiles = findJars(dag);
+    String libjars = conf.get(LIBJARS_CONF_KEY_NAME);
+
+    if (libjars != null) {
+      localJarFiles.addAll(Arrays.asList(libjars.split(",")));
+    }
 
     // Connect to ResourceManager
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
@@ -662,7 +671,8 @@ public class StramClient
    * Monitor the submitted application for completion. Kill application if time expires.
    *
    * @return true if application completed successfully
-   * @throws YarnRemoteException
+   * @throws YarnException
+   * @throws IOException
    */
   public boolean monitorApplication() throws YarnException, IOException
   {

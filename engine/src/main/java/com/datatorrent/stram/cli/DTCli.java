@@ -120,7 +120,6 @@ public class DTCli
   private final List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
   private FileHistory topLevelHistory;
   private FileHistory changingLogicalPlanHistory;
-  private final boolean licensedVersion = true;
   private String jsonp;
   private RecordingsAgent recordingsAgent;
   private final ObjectMapper mapper = new ObjectMapper();
@@ -252,24 +251,6 @@ public class DTCli
     void execute(String[] args, ConsoleReader reader) throws Exception;
 
   }
-  /*
-   private abstract class LicensedCommand implements Command
-   {
-   @Override
-   public void execute(String[] args, ConsoleReader reader) throws Exception
-   {
-   if (licensedVersion) {
-   executeLicensed(args, reader);
-   }
-   else {
-   System.out.println("This command is only valid in the licensed version of DataTorrent. Visit http://datatorrent.com for information of obtaining a licensed version.");
-   }
-   }
-
-   public abstract void executeLicensed(String[] args, ConsoleReader reader) throws Exception;
-
-   }
-   */
 
   private static class Arg
   {
@@ -759,18 +740,6 @@ public class DTCli
         System.setProperty("socksProxyPort", socks.substring(colon + 1));
       }
     }
-    /*
-    try {
-      com.datatorrent.stram.StramAppMaster.class.getClass();
-    }
-    catch (NoClassDefFoundError ex) {
-      System.out.println();
-      System.out.println("Warning: This version of DataTorrent is free and only valid in local mode.");
-      System.out.println("For information of how to obtain a licensed version to be run in a cluster, please visit http://datatorrent.com");
-      System.out.println();
-      licensedVersion = false;
-    }
-    */
   }
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
@@ -1396,16 +1365,13 @@ public class DTCli
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       CommandLineInfo commandLineInfo = getCommandLineInfo(newArgs);
 
-      if (!commandLineInfo.localMode && !licensedVersion) {
-        System.out.println("This free version only supports launching in local mode. Use the command 'launch -local' to launch in local mode.");
-        System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
-        return;
-      }
-
       if (commandLineInfo.configFile != null) {
         commandLineInfo.configFile = expandFileName(commandLineInfo.configFile, true);
       }
       Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
+      if (commandLineInfo.libjars != null) {
+        config.set(StramClient.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+      }
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf, config);
@@ -2564,12 +2530,15 @@ public class DTCli
     Options options = new Options();
     Option local = new Option("local", "run in local mode");
     @SuppressWarnings("static-access")
-    Option configFile = OptionBuilder.withArgName("file").hasArg().withDescription("use given file for configuration").create("conf");
+    Option configFile = OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf");
     @SuppressWarnings("static-access")
-    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("set the property value").create("D");
+    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
+    @SuppressWarnings("static-access")
+    Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
+    options.addOption(libjars);
     return options;
   }
 
@@ -2594,6 +2563,7 @@ public class DTCli
         }
       }
     }
+    result.libjars = line.getOptionValue("libjars");
     result.args = line.getArgs();
     return result;
   }
@@ -2603,6 +2573,7 @@ public class DTCli
     boolean localMode;
     String configFile;
     Map<String, String> overrideProperties;
+    String libjars;
     String[] args;
   }
 
