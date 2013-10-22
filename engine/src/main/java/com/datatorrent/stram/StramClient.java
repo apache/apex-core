@@ -525,6 +525,7 @@ public class StramClient
 
 
     dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
+    dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
     dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // set local resources for the application master

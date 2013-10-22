@@ -81,7 +81,7 @@ public class LaunchContainerRunnable implements Runnable
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("./*");
-    for (String c: nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+    for (String c : nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
@@ -130,7 +130,7 @@ public class LaunchContainerRunnable implements Runnable
     ctx.setEnvironment(containerEnv);
 
     if (UserGroupInformation.isSecurityEnabled()) {
-      Token<StramDelegationTokenIdentifier> stramToken = null;
+      Token<StramDelegationTokenIdentifier> stramToken;
       try {
         UserGroupInformation ugi = UserGroupInformation.getLoginUser();
         StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
@@ -141,14 +141,12 @@ public class LaunchContainerRunnable implements Runnable
 
         Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
         Credentials credentials = new Credentials();
-        for ( Token<? extends TokenIdentifier> token : tokens ) {
+        for (Token<? extends TokenIdentifier> token : tokens) {
           if (token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
             credentials.addToken(token.getService(), token);
           }
         }
-        if (stramToken != null) {
-          credentials.addToken(stramToken.getService(), stramToken);
-        }
+        credentials.addToken(stramToken.getService(), stramToken);
         DataOutputBuffer dataOutput = new DataOutputBuffer();
         credentials.writeTokenStorageToStream(dataOutput);
         byte[] tokenBytes = dataOutput.getData();
@@ -168,6 +166,7 @@ public class LaunchContainerRunnable implements Runnable
       // child VM dependencies
       FileSystem fs = FileSystem.get(nmClient.getConfig());
       addFilesToLocalResources(dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+      addFilesToLocalResources(dag.getAttributes().get(LogicalPlan.FILES), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -180,7 +179,7 @@ public class LaunchContainerRunnable implements Runnable
 
     // Get final command
     StringBuilder command = new StringBuilder();
-    for (CharSequence str: vargs) {
+    for (CharSequence str : vargs) {
       command.append(str).append(" ");
     }
     LOG.info("Launching on node: {} command: {}", container.getNodeId(), command);
@@ -247,7 +246,7 @@ public class LaunchContainerRunnable implements Runnable
 
     // Final commmand
     StringBuilder mergedCommand = new StringBuilder();
-    for (CharSequence str: vargs) {
+    for (CharSequence str : vargs) {
       mergedCommand.append(str).append(" ");
     }
     List<CharSequence> vargsFinal = new ArrayList<CharSequence>(1);
