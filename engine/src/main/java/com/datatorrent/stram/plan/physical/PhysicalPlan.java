@@ -768,7 +768,12 @@ public class PhysicalPlan {
         activationWindowId = Math.max(activationWindowId, sourceOper.getRecentCheckpoint());
       }
       if (activationWindowId > 0) {
-        Operator oo = oper.partition != null ? oper.partition.getOperator() : oper.logicalNode.getOperator();
+        Operator oo = oper.logicalNode.getOperator();
+        if (oper.unifier != null) {
+          oo = oper.unifier;
+        } else if (oper.partition != null) {
+          oo = oper.partition.getOperator();
+        }
         initCheckpoint(oper, oo, activationWindowId);
       }
     }

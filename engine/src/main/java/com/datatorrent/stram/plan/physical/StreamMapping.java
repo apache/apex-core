@@ -182,6 +182,11 @@ public class StreamMapping
         plan.removePTOperator(oper);
       }
 
+      if (finalUnifier != null && upstream.size() == 1) {
+        plan.removePTOperator(finalUnifier);
+        finalUnifier = null;
+      }
+
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
 
@@ -262,5 +267,5 @@ public class StreamMapping
     }
     unifier.inputs.clear();
   }
-  
+
 }
