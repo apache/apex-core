@@ -23,10 +23,10 @@ import static com.datatorrent.bufferserver.packet.MessageType.*;
 
 /**
  * OiONode is driver for the OiO (ThreadLocal) operator.
- *
- * It mostly replicates the functionality of the GenericNode but the logic here is
- * a lot simpler as most of the validation is already handled by the upstream operator.
- *
+ * 
+ * It mostly replicates the functionality of the GenericNode but the logic here is a lot simpler as most of the
+ * validation is already handled by the upstream operator.
+ * 
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.5
  */
@@ -81,8 +81,7 @@ public class OiONode extends GenericNode
               if (checkpoint(currentWindowId)) {
                 lastCheckpointedWindowId = currentWindowId;
               }
-            }
-            else {
+            } else {
               checkpoint = true;
             }
             for (int s = sinks.length; s-- > 0;) {
@@ -124,6 +123,7 @@ public class OiONode extends GenericNode
 
             if (inputs.isEmpty()) {
               if (insideWindow) {
+                applicationWindowCount = APPLICATION_WINDOW_COUNT - 1;
                 expectingEndWindows = 0;
                 endWindowDequeueTimes.put(reservoir, System.currentTimeMillis());
                 processEndWindow(null);
@@ -141,7 +141,8 @@ public class OiONode extends GenericNode
     @Override
     public int getCount(boolean reset)
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
+                                                                     // Tools | Templates.
     }
 
   }
@@ -149,7 +150,7 @@ public class OiONode extends GenericNode
   @Override
   public void connectInputPort(String port, SweepableReservoir reservoir)
   {
-    ((OiOStream)reservoir).setControlSink(new ControlSink(reservoir));
+    ((OiOStream) reservoir).setControlSink(new ControlSink(reservoir));
     super.connectInputPort(port, reservoir);
   }
 
