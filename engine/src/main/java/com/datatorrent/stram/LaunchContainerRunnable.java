@@ -62,6 +62,10 @@ public class LaunchContainerRunnable implements Runnable
 
   /**
    * @param lcontainer Allocated container
+   * @param nmClient
+   * @param dag
+   * @param delegationTokenManager
+   * @param heartbeatAddress
    */
   public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, LogicalPlan dag, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
   {
@@ -91,7 +95,7 @@ public class LaunchContainerRunnable implements Runnable
     LOG.info("CLASSPATH: {}", classPathEnv);
   }
 
-  public static void addFilesToLocalResources(String commaSeparatedFileNames, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
+  public static void addFilesToLocalResources(LocalResourceType type, String commaSeparatedFileNames, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
   {
     String[] files = StringUtils.splitByWholeSeparator(commaSeparatedFileNames, ",");
     for (String file : files) {
@@ -100,7 +104,7 @@ public class LaunchContainerRunnable implements Runnable
       FileStatus destStatus = fs.getFileStatus(dst);
       LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
       // Set the type of resource - file or archive
-      amJarRsrc.setType(LocalResourceType.FILE);
+      amJarRsrc.setType(type);
       // Set visibility of the resource
       // Setting to most private option
       amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
@@ -165,8 +169,15 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(nmClient.getConfig());
-      addFilesToLocalResources(dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
-      addFilesToLocalResources(dag.getAttributes().get(LogicalPlan.FILES), localResources, fs);
+      addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+      String files = dag.getAttributes().get(LogicalPlan.FILES);
+      if (files != null) {
+        addFilesToLocalResources(LocalResourceType.FILE, files, localResources, fs);
+      }
+      String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
+      if (archives != null) {
+        addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
+      }
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {

@@ -62,6 +62,13 @@ public interface DAGContext extends Context
    */
   Attribute<String> FILES = new Attribute<String>(new String2String());
   /**
+   * Comma separated list of archives to be deployed with the application.
+   * The launcher will include the archives into the final set of resources
+   * that are made available through the distributed file system to application master
+   * and child containers.
+   */
+  Attribute<String> ARCHIVES = new Attribute<String>(new String2String());
+  /**
    * The maximum number or containers (excluding the application master) that the application is allowed to request.
    * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
    * Example: DAG with several operators and all inline streams would require one container,

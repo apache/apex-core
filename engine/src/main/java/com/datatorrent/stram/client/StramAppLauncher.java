@@ -50,6 +50,7 @@ public class StramAppLauncher {
 
   public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
+  public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
@@ -393,6 +394,7 @@ public class StramAppLauncher {
     StramClient client = new StramClient(dag);
     client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
     client.setFiles(conf.get(FILES_CONF_KEY_NAME));
+    client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
     client.startApplication();
     return client.getApplicationReport().getApplicationId();
   }

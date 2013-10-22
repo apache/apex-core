@@ -1376,6 +1376,9 @@ public class DTCli
       if (commandLineInfo.files != null) {
         config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
       }
+      if (commandLineInfo.archives != null) {
+        config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
+      }
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf, config);
@@ -2537,11 +2540,13 @@ public class DTCli
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
+    Option archives = OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
     options.addOption(libjars);
     options.addOption(files);
+    options.addOption(archives);
     return options;
   }
 
@@ -2567,6 +2572,7 @@ public class DTCli
     }
     result.libjars = line.getOptionValue("libjars");
     result.files = line.getOptionValue("files");
+    result.archives = line.getOptionValue("archives");
     result.args = line.getArgs();
     return result;
   }
@@ -2578,6 +2584,7 @@ public class DTCli
     Map<String, String> overrideProperties;
     String libjars;
     String files;
+    String archives;
     String[] args;
   }
 
