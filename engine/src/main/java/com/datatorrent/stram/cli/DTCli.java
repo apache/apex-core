@@ -24,9 +24,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-
-import javax.ws.rs.core.MediaType;
-
 import jline.console.ConsoleReader;
 import jline.console.completer.AggregateCompleter;
 import jline.console.completer.ArgumentCompleter;
@@ -36,6 +33,20 @@ import jline.console.completer.StringsCompleter;
 import jline.console.history.FileHistory;
 import jline.console.history.History;
 import jline.console.history.MemoryHistory;
+
+import javax.ws.rs.core.MediaType;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Sets;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -49,6 +60,7 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -59,12 +71,6 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
@@ -90,11 +96,6 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.google.common.collect.Sets;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 
 /**
  *
@@ -633,6 +634,35 @@ public class DTCli
     else {
       return fileName;
     }
+  }
+
+  private static String[] expandFileNames(String fileName) throws IOException
+  {
+    // TODO: need to work with other users
+    if (fileName.startsWith("~" + File.separator)) {
+      fileName = System.getProperty("user.home") + fileName.substring(1);
+    }
+    fileName = new File(fileName).getCanonicalPath();
+    LOG.debug("Canonical path: {}", fileName);
+    DirectoryScanner scanner = new DirectoryScanner();
+    scanner.setIncludes(new String[] {fileName});
+    scanner.scan();
+    return scanner.getIncludedFiles();
+  }
+
+  private static String expandCommaSeparatedFiles(String filenames) throws IOException
+  {
+    String[] entries = filenames.split(",");
+    StringBuilder result = new StringBuilder();
+    for (String entry : entries) {
+      for (String file : expandFileNames(entry)) {
+        if (result.length() > 0) {
+          result.append(",");
+        }
+        result.append(file);
+      }
+    }
+    return result.toString();
   }
 
   protected ApplicationReport getApplication(String appId)
@@ -1370,10 +1400,16 @@ public class DTCli
       }
       Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
       if (commandLineInfo.libjars != null) {
+        commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
         config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
       }
       if (commandLineInfo.files != null) {
+        commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
         config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
+      }
+      if (commandLineInfo.archives != null) {
+        commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
+        config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
@@ -2536,11 +2572,13 @@ public class DTCli
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
+    Option archives = OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
     options.addOption(libjars);
     options.addOption(files);
+    options.addOption(archives);
     return options;
   }
 
@@ -2566,6 +2604,7 @@ public class DTCli
     }
     result.libjars = line.getOptionValue("libjars");
     result.files = line.getOptionValue("files");
+    result.archives = line.getOptionValue("archives");
     result.args = line.getArgs();
     return result;
   }
@@ -2577,6 +2616,7 @@ public class DTCli
     Map<String, String> overrideProperties;
     String libjars;
     String files;
+    String archives;
     String[] args;
   }
 

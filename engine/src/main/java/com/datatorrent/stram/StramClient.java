@@ -101,9 +101,9 @@ public class StramClient
   private long clientTimeout = 600000;
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String DEFAULT_APPNAME = "Stram";
-
   private String libjars;
   private String files;
+  private String archives;
 
   /**
    * @param args Command line arguments
@@ -341,6 +341,23 @@ public class StramClient
     return localJarFiles;
   }
 
+  private String copyFromLocal(FileSystem fs, String pathSuffix, String[] files) throws IOException
+  {
+    StringBuilder csv = new StringBuilder();
+    for (String localFile : files) {
+      Path src = new Path(localFile);
+      String filename = src.getName();
+      Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + filename);
+      LOG.info("Copy {} from local filesystem to {}", localFile, dst);
+      fs.copyFromLocalFile(false, true, src, dst);
+      if (csv.length() > 0) {
+        csv.append(",");
+      }
+      csv.append(dst.toString());
+    }
+    return csv.toString();
+  }
+
   /**
    * Launch application for the dag represented by this client.
    *
@@ -491,42 +508,36 @@ public class StramClient
      */
     String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
-    // copy required jar files to dfs, to be localized for containers
-    FileSystem fs = FileSystem.get(conf);
-    String libJarsCsv = "";
-    for (String localJarFile : localJarFiles) {
-      Path src = new Path(localJarFile);
-      String jarName = src.getName();
-      Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + jarName);
-      LOG.info("Copy {} from local filesystem to {}", localJarFile, dst);
-      fs.copyFromLocalFile(false, true, src, dst);
-      if (libJarsCsv.length() > 0) {
-        libJarsCsv += ",";
-      }
-      libJarsCsv += dst.toString();
-    }
-    LOG.info("libjars: {}", libJarsCsv);
-
-    if (files != null) {
-      String[] localFiles = files.split(",");
-      for (String localFile : localFiles) {
-        Path src = new Path(localFile);
-        String filename = src.getName();
-        Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + filename);
-        LOG.info("Copy {} from local filesystem to {}", localFile, dst);
-        fs.copyFromLocalFile(false, true, src, dst);
-      }
-    }
-
-
-    dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(fs.getHomeDirectory(), pathSuffix).toString());
-
     // set local resources for the application master
     // local files or archives as needed
     // In this scenario, the jar file for the application master is part of the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
-    LaunchContainerRunnable.addLibJarsToLocalResources(libJarsCsv, localResources, fs);
+
+    // copy required jar files to dfs, to be localized for containers
+    FileSystem fs = FileSystem.get(conf);
+    String libJarsCsv = copyFromLocal(fs, pathSuffix, localJarFiles.toArray(new String[] {}));
+
+    LOG.info("libjars: {}", libJarsCsv);
+    dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
+    LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
+
+    if (files != null) {
+      String[] localFiles = files.split(",");
+      String filesCsv = copyFromLocal(fs, pathSuffix, localFiles);
+      LOG.info("files: {}", filesCsv);
+      dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
+      LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
+    }
+
+    if (archives != null) {
+      String[] localFiles = archives.split(",");
+      String archivesCsv = copyFromLocal(fs, pathSuffix, localFiles);
+      LOG.info("archives: {}", archivesCsv);
+      dag.getAttributes().put(LogicalPlan.ARCHIVES, archivesCsv);
+      LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
+    }
+
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
@@ -735,6 +746,11 @@ public class StramClient
   public void setLibJars(String libjars)
   {
     this.libjars = libjars;
+  }
+
+  public void setArchives(String archives)
+  {
+    this.archives = archives;
   }
 
 }

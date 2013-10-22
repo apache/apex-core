@@ -62,6 +62,10 @@ public class LaunchContainerRunnable implements Runnable
 
   /**
    * @param lcontainer Allocated container
+   * @param nmClient
+   * @param dag
+   * @param delegationTokenManager
+   * @param heartbeatAddress
    */
   public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, LogicalPlan dag, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
   {
@@ -81,7 +85,7 @@ public class LaunchContainerRunnable implements Runnable
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("./*");
-    for (String c: nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+    for (String c : nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
@@ -91,16 +95,16 @@ public class LaunchContainerRunnable implements Runnable
     LOG.info("CLASSPATH: {}", classPathEnv);
   }
 
-  public static void addLibJarsToLocalResources(String libJars, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
+  public static void addFilesToLocalResources(LocalResourceType type, String commaSeparatedFileNames, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
   {
-    String[] jarPathList = StringUtils.splitByWholeSeparator(libJars, ",");
-    for (String jarPath: jarPathList) {
-      Path dst = new Path(jarPath);
+    String[] files = StringUtils.splitByWholeSeparator(commaSeparatedFileNames, ",");
+    for (String file : files) {
+      Path dst = new Path(file);
       // Create a local resource to point to the destination jar path
       FileStatus destStatus = fs.getFileStatus(dst);
       LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
       // Set the type of resource - file or archive
-      amJarRsrc.setType(LocalResourceType.FILE);
+      amJarRsrc.setType(type);
       // Set visibility of the resource
       // Setting to most private option
       amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
@@ -130,7 +134,7 @@ public class LaunchContainerRunnable implements Runnable
     ctx.setEnvironment(containerEnv);
 
     if (UserGroupInformation.isSecurityEnabled()) {
-      Token<StramDelegationTokenIdentifier> stramToken = null;
+      Token<StramDelegationTokenIdentifier> stramToken;
       try {
         UserGroupInformation ugi = UserGroupInformation.getLoginUser();
         StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
@@ -141,14 +145,12 @@ public class LaunchContainerRunnable implements Runnable
 
         Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
         Credentials credentials = new Credentials();
-        for ( Token<? extends TokenIdentifier> token : tokens ) {
+        for (Token<? extends TokenIdentifier> token : tokens) {
           if (token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
             credentials.addToken(token.getService(), token);
           }
         }
-        if (stramToken != null) {
-          credentials.addToken(stramToken.getService(), stramToken);
-        }
+        credentials.addToken(stramToken.getService(), stramToken);
         DataOutputBuffer dataOutput = new DataOutputBuffer();
         credentials.writeTokenStorageToStream(dataOutput);
         byte[] tokenBytes = dataOutput.getData();
@@ -167,7 +169,15 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(nmClient.getConfig());
-      addLibJarsToLocalResources(dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+      addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+      String files = dag.getAttributes().get(LogicalPlan.FILES);
+      if (files != null) {
+        addFilesToLocalResources(LocalResourceType.FILE, files, localResources, fs);
+      }
+      String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
+      if (archives != null) {
+        addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
+      }
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -180,7 +190,7 @@ public class LaunchContainerRunnable implements Runnable
 
     // Get final command
     StringBuilder command = new StringBuilder();
-    for (CharSequence str: vargs) {
+    for (CharSequence str : vargs) {
       command.append(str).append(" ");
     }
     LOG.info("Launching on node: {} command: {}", container.getNodeId(), command);
@@ -247,7 +257,7 @@ public class LaunchContainerRunnable implements Runnable
 
     // Final commmand
     StringBuilder mergedCommand = new StringBuilder();
-    for (CharSequence str: vargs) {
+    for (CharSequence str : vargs) {
       mergedCommand.append(str).append(" ");
     }
     List<CharSequence> vargsFinal = new ArrayList<CharSequence>(1);
