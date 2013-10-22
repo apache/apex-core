@@ -9,20 +9,19 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  * 
- * @author Chetan Narsude <chetan@datatorrent.com>
+ * @author Gaurav Gupta <gaurav@datatorrent.com>
  */
 public class OiOEndWindowTest
 {
@@ -30,10 +29,9 @@ public class OiOEndWindowTest
   {
   }
 
-  public static class TestIhnputOperator implements InputOperator
+  public static class TestInputOperator extends BaseOperator implements InputOperator
   {
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
-    public static long threadId;
 
     @Override
     public void emitTuples()
@@ -41,48 +39,18 @@ public class OiOEndWindowTest
       throw new RuntimeException(new InterruptedException());
     }
 
-    @Override
-    public void beginWindow(long windowId)
-    {
-    }
-
-    @Override
-    public void endWindow()
-    {
-      throw new RuntimeException(new InterruptedException());
-    }
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
-    }
-
   }
 
-  public static class FirstGenericOperator implements Operator
+  public static class FirstGenericOperator extends BaseOperator
   {
-    public static long endwindowCount; 
+    public static long endwindowCount;
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
     public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>() {
-      
       @Override
       public void process(Number tuple)
       {
-
       }
-
     };
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-
-    }
 
     @Override
     public void endWindow()
@@ -91,37 +59,18 @@ public class OiOEndWindowTest
       logger.info("in end window of 1st generic operator");
     }
 
-    @Override
-    public void setup(OperatorContext context)
-    {
-
-    }
-
-    @Override
-    public void teardown()
-    {
-
-    }
-
   }
 
-  public static class SecondGenericOperator implements Operator
+  public static class SecondGenericOperator extends BaseOperator
   {
     public static long endwindowCount;
     public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>() {
       @Override
       public void process(Number tuple)
       {
-
       }
 
     };
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-
-    }
 
     @Override
     public void endWindow()
@@ -131,32 +80,24 @@ public class OiOEndWindowTest
 
     }
 
-    @Override
-    public void setup(OperatorContext context)
-    {
-
-    }
-
-    @Override
-    public void teardown()
-    {
-
-    }
-
   }
 
   @Test
   public void validateOiOImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
-    TestIhnputOperator io = lp.addOperator("Input Operator", new TestIhnputOperator());
-    FirstGenericOperator go = lp.addOperator("First Generic Operator", new FirstGenericOperator());    
+    TestInputOperator io = lp.addOperator("Input Operator", new TestInputOperator());
+    FirstGenericOperator go = lp.addOperator("First Generic Operator", new FirstGenericOperator());
     SecondGenericOperator out = lp.addOperator("Second Generic Operator", new SecondGenericOperator());
+  
+    /*
+     * This tests make sure that even if the application_window_count is different the endWindow() is called for
+     * end_stream
+     */
     lp.getOperatorMeta("Second Generic Operator").getAttributes().put(Context.OperatorContext.APPLICATION_WINDOW_COUNT, 2);
     StreamMeta stream = lp.addStream("Stream", io.output, go.input);
     StreamMeta stream1 = lp.addStream("Stream1", go.output, out.input);
 
-    /* This test makes sure that since they are ThreadLocal, they indeed share a thread */
     stream1.setLocality(Locality.THREAD_LOCAL);
     lp.validate();
     StramLocalCluster slc = new StramLocalCluster(lp);
