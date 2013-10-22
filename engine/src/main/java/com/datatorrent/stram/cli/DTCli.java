@@ -1370,7 +1370,10 @@ public class DTCli
       }
       Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
       if (commandLineInfo.libjars != null) {
-        config.set(StramClient.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+        config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+      }
+      if (commandLineInfo.files != null) {
+        config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
       File jf = new File(fileName);
@@ -2528,14 +2531,16 @@ public class DTCli
   public static Options getCommandLineOptions()
   {
     Options options = new Options();
-    Option local = new Option("local", "Run application in local mode");
+    Option local = new Option("local", "Run application in local mode.");
     Option configFile = OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf");
     Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
+    Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
     options.addOption(libjars);
+    options.addOption(files);
     return options;
   }
 
@@ -2560,6 +2565,7 @@ public class DTCli
       }
     }
     result.libjars = line.getOptionValue("libjars");
+    result.files = line.getOptionValue("files");
     result.args = line.getArgs();
     return result;
   }
@@ -2570,6 +2576,7 @@ public class DTCli
     String configFile;
     Map<String, String> overrideProperties;
     String libjars;
+    String files;
     String[] args;
   }
 

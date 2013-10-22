@@ -48,6 +48,9 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  */
 public class StramAppLauncher {
 
+  public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
+  public static final String FILES_CONF_KEY_NAME = "tmpfiles";
+
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
   final File jarFile;
@@ -251,7 +254,7 @@ public class StramAppLauncher {
       // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
       ((JarURLConnection)urlConnection).getJarFile().close();
     }
-    
+
     clUrls.add(mainJarUrl);
     // add the jar dependencies
     if (cp != null) {
@@ -388,6 +391,8 @@ public class StramAppLauncher {
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
     LogicalPlan dag = prepareDAG(appConfig);
     StramClient client = new StramClient(dag);
+    client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
+    client.setFiles(conf.get(FILES_CONF_KEY_NAME));
     client.startApplication();
     return client.getApplicationReport().getApplicationId();
   }
