@@ -343,7 +343,7 @@ public class StramClient
 
   private String copyFromLocal(FileSystem fs, String pathSuffix, String[] files) throws IOException
   {
-    String csv = "";
+    StringBuilder csv = new StringBuilder();
     for (String localFile : files) {
       Path src = new Path(localFile);
       String filename = src.getName();
@@ -351,11 +351,11 @@ public class StramClient
       LOG.info("Copy {} from local filesystem to {}", localFile, dst);
       fs.copyFromLocalFile(false, true, src, dst);
       if (csv.length() > 0) {
-        csv += ",";
+        csv.append(",");
       }
-      csv += dst.toString();
+      csv.append(dst.toString());
     }
-    return csv;
+    return csv.toString();
   }
 
   /**
@@ -752,5 +752,5 @@ public class StramClient
   {
     this.archives = archives;
   }
-  
+
 }

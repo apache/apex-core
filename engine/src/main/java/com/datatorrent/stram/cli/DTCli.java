@@ -636,6 +636,35 @@ public class DTCli
     }
   }
 
+  private static String[] expandFileNames(String fileName) throws IOException
+  {
+    // TODO: need to work with other users
+    if (fileName.startsWith("~" + File.separator)) {
+      fileName = System.getProperty("user.home") + fileName.substring(1);
+    }
+    fileName = new File(fileName).getCanonicalPath();
+    LOG.debug("Canonical path: {}", fileName);
+    DirectoryScanner scanner = new DirectoryScanner();
+    scanner.setIncludes(new String[] {fileName});
+    scanner.scan();
+    return scanner.getIncludedFiles();
+  }
+
+  private static String expandCommaSeparatedFiles(String filenames) throws IOException
+  {
+    String[] entries = filenames.split(",");
+    StringBuilder result = new StringBuilder();
+    for (String entry : entries) {
+      for (String file : expandFileNames(entry)) {
+        if (result.length() > 0) {
+          result.append(",");
+        }
+        result.append(file);
+      }
+    }
+    return result.toString();
+  }
+
   protected ApplicationReport getApplication(String appId)
   {
     List<ApplicationReport> appList = getApplicationList();
@@ -1371,12 +1400,15 @@ public class DTCli
       }
       Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
       if (commandLineInfo.libjars != null) {
+        commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
         config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
       }
       if (commandLineInfo.files != null) {
+        commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
         config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
       }
       if (commandLineInfo.archives != null) {
+        commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
         config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
