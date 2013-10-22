@@ -407,6 +407,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public static Node<?> retrieveNode(InputStream stream, OperatorDeployInfo.OperatorType type)
   {
     OperatorWrapper ow = retrieveOperatorWrapper(stream);
+    logger.debug("type={}, operator class={}", type, ow.operator.getClass());
 
     Node<?> node;
     if (ow.operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
