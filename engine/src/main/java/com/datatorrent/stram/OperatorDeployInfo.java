@@ -235,6 +235,7 @@ public class OperatorDeployInfo implements Serializable
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
             append("declaredId", this.declaredId).
+            append("type", this.type).
             append("checkpoint", this.checkpointWindowId).
             append("inputs", this.inputs).
             append("outputs", this.outputs).
