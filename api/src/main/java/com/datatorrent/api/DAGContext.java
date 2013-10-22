@@ -118,8 +118,7 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
   /**
-   * Constant
-   * <code>GATEWAY_ADDRESS</code>
+   * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "stram.gateway.address" in the configuration.
    */
   Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
   /**
