@@ -91,11 +91,11 @@ public class LaunchContainerRunnable implements Runnable
     LOG.info("CLASSPATH: {}", classPathEnv);
   }
 
-  public static void addLibJarsToLocalResources(String libJars, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
+  public static void addFilesToLocalResources(String commaSeparatedFileNames, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
   {
-    String[] jarPathList = StringUtils.splitByWholeSeparator(libJars, ",");
-    for (String jarPath: jarPathList) {
-      Path dst = new Path(jarPath);
+    String[] files = StringUtils.splitByWholeSeparator(commaSeparatedFileNames, ",");
+    for (String file : files) {
+      Path dst = new Path(file);
       // Create a local resource to point to the destination jar path
       FileStatus destStatus = fs.getFileStatus(dst);
       LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
@@ -167,7 +167,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(nmClient.getConfig());
-      addLibJarsToLocalResources(dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+      addFilesToLocalResources(dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {

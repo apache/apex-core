@@ -101,7 +101,6 @@ public class StramClient
   private long clientTimeout = 600000;
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String DEFAULT_APPNAME = "Stram";
-
   private String libjars;
   private String files;
 
@@ -494,6 +493,7 @@ public class StramClient
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.get(conf);
     String libJarsCsv = "";
+    String filesCsv = "";
     for (String localJarFile : localJarFiles) {
       Path src = new Path(localJarFile);
       String jarName = src.getName();
@@ -515,7 +515,12 @@ public class StramClient
         Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + filename);
         LOG.info("Copy {} from local filesystem to {}", localFile, dst);
         fs.copyFromLocalFile(false, true, src, dst);
+        if (filesCsv.length() > 0) {
+          filesCsv += ",";
+        }
+        filesCsv += dst.toString();
       }
+      LOG.info("files: {}", filesCsv);
     }
 
 
@@ -526,7 +531,8 @@ public class StramClient
     // local files or archives as needed
     // In this scenario, the jar file for the application master is part of the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
-    LaunchContainerRunnable.addLibJarsToLocalResources(libJarsCsv, localResources, fs);
+    LaunchContainerRunnable.addFilesToLocalResources(libJarsCsv, localResources, fs);
+    LaunchContainerRunnable.addFilesToLocalResources(filesCsv, localResources, fs);
 
     // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
