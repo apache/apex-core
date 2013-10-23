@@ -101,7 +101,6 @@ public class PTOperator {
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator source;
     public final String portName;
-    //final PhysicalPlan plan;
     public final List<PTInput> sinks;
 
     /**
@@ -114,7 +113,6 @@ public class PTOperator {
      */
     protected PTOutput(String portName, StreamMeta logicalStream, PTOperator source)
     {
-      //this.plan = plan;
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
