@@ -308,8 +308,6 @@ public class StramAppMaster extends CompositeService
 
   private class ClusterAppContextImpl extends BaseContext implements StramAppContext
   {
-    private static final long serialVersionUID = 201309112304L;
-
     private ClusterAppContextImpl()
     {
       super(null, null);
@@ -380,6 +378,8 @@ public class StramAppMaster extends CompositeService
       return getValue(LogicalPlan.GATEWAY_ADDRESS);
     }
 
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201309112304L;
   }
 
   /**
@@ -627,7 +627,6 @@ public class StramAppMaster extends CompositeService
   {
     try {
       StramChild.eventloop.start();
-      //executeLicensedCode(); for licensing using native
       execute();
     }
     catch (Exception re) {
@@ -947,7 +946,7 @@ public class StramAppMaster extends CompositeService
   private class NMCallbackHandler
     implements NMClientAsync.CallbackHandler {
 
-    public NMCallbackHandler() {
+    NMCallbackHandler() {
     }
 
     @Override
