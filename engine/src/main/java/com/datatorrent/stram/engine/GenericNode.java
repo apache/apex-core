@@ -517,10 +517,25 @@ public class GenericNode extends Node<Operator>
       }
 
       Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
 
+  }
+
+  /**
+   * End window dequeue times may not have been saved for all the input ports during deactivate,
+   * so save them for reporting. SPOI-1324.
+   */
+  private void fixEndWindowDequeueTimesBeforeDeactivate()
+  {
+    long endWindowDequeueTime = System.currentTimeMillis();
+    for (SweepableReservoir sr : inputs.values()) {
+      if (endWindowDequeueTimes.get(sr) == null) {
+        endWindowDequeueTimes.put(sr, endWindowDequeueTime);
+      }
+    }
   }
 
   @Override
