@@ -12,7 +12,6 @@ import java.lang.Thread.State;
 import java.net.*;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
@@ -87,6 +86,12 @@ public class StramChild
    * It's a simple map which maps the oio node to it's the node which owns the thread.
    */
   protected final Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
+  /**
+   * OIO groups map
+   * key: operator id of oio owning thread node
+   * value: list of nodes which are in oio with oio owning thread node
+   */
+  protected final Map<Integer, ArrayList<Integer>> oioGroups = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
   protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
@@ -1004,14 +1009,7 @@ public class StramChild
 
               case THREAD_LOCAL:
                 stream = new OiOStream();
-                int sourceId = nidi.sourceNodeId;
-
-                while(oioNodes.containsKey(sourceId)){
-                  sourceId = oioNodes.get(sourceId);
-                }
-                nidi.oioSourceNodeId = sourceId;
-
-                oioNodes.put(ndi.id, sourceId);
+                oioNodes.put(ndi.id, nidi.sourceNodeId);
                 break;
 
               default:
@@ -1064,6 +1062,9 @@ public class StramChild
       }
     }
 
+    // setup oio groups
+    setupOioGroups();
+
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
       for (OperatorDeployInfo ndi : inputNodes) {
@@ -1079,6 +1080,30 @@ public class StramChild
     }
 
   }
+
+  /**
+   * This method will populate oioGroups with owner OIO Node as key
+   *  and list of corresponding OIO nodes which will run in its thread as value
+   * This method assumes that the dag is valid as per OIO constraints
+   */
+  private void setupOioGroups()
+  {
+    for (Integer child : oioNodes.keySet()) {
+      Integer oioParent = oioNodes.get(child);
+      while (oioNodes.containsKey(oioParent)){
+        oioParent = oioNodes.get(oioParent);
+      }
+
+      if (oioGroups.containsKey(oioParent)) {
+        oioGroups.get(oioParent).add(child);
+      } else {
+        ArrayList children = new ArrayList<Integer>();
+        children.add(child);
+        oioGroups.put(oioParent, children);
+      }
+    }
+  }
+
 
   /**
    * Create the window generator for the given start window id.
@@ -1189,9 +1214,11 @@ public class StramChild
             setOperators.add(currentdi);
 
             /* lets go for OiO operator initialization */
-            for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
-              if (e.getValue() == ndi.id) {
-                currentdi = nodeMap.get(e.getKey());
+
+            List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
+            if (oioNodeIdList != null) {
+              for (Integer oioNodeId : oioNodeIdList) {
+                currentdi = nodeMap.get(oioNodeId);
                 setupNode(currentdi, this);
                 setOperators.add(currentdi);
               }
@@ -1228,9 +1255,10 @@ public class StramChild
               signal.countDown();
             }
 
-            for (Entry<Integer, Integer> e : oioNodes.entrySet()) {
-              if (e.getValue() == ndi.id) {
-                OperatorDeployInfo oiodi = nodeMap.get(e.getKey());
+            List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
+            if (oioNodeIdList != null) {
+              for (Integer oioNodeId : oioNodeIdList) {
+                OperatorDeployInfo oiodi = nodeMap.get(oioNodeId);
                 if (setOperators.contains(oiodi)) {
                   try {
                     teardownNode(oiodi);
@@ -1248,7 +1276,6 @@ public class StramChild
         }
 
       }.start();
-
     }
 
     /**
@@ -1267,6 +1294,7 @@ public class StramChild
         pair.component.activate(pair.context);
       }
     }
+
 
     for (WindowGenerator wg : generators.values()) {
       if (!activeGenerators.containsKey(wg)) {
