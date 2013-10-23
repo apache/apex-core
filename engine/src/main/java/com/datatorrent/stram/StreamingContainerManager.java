@@ -203,7 +203,9 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
+    // events that may modify the plan
     processEvents();
+
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
     if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= currentTms)) {
@@ -948,6 +950,13 @@ public class StreamingContainerManager implements PlanContext
       // delete stream state when using buffer server
       for (PTOperator.PTOutput out: operator.getOutputs()) {
         if (!out.isDownStreamInline()) {
+          if (operator.getContainer().bufferServerAddress == null) {
+            // address should be null only for a new container, in which case there should not be a purge request
+            // TODO: logging added to find out how we got here
+            LOG.warn("purge request w/o buffer server address source {} container {} checkpoints {}",
+                new Object[] { out, operator.getContainer(), operator.checkpointWindows });
+            continue;
+          }
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
           // delete everything from buffer server prior to new checkpoint

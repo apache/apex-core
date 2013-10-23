@@ -9,17 +9,14 @@ import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.UnhandledException;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Sink;
-
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.tuple.Tuple;
-import static com.datatorrent.bufferserver.packet.MessageType.*;
 
 /**
  * OiONode is driver for the OiO (ThreadLocal) operator.
@@ -153,5 +150,6 @@ public class OiONode extends GenericNode
     super.connectInputPort(port, reservoir);
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(OiONode.class);
 }
