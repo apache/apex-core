@@ -83,10 +83,6 @@ public class StramChild
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
   /**
-   * It's a simple map which maps the oio node to it's the node which owns the thread.
-   */
-  protected final Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
-  /**
    * OIO groups map
    * key: operator id of oio owning thread node
    * value: list of nodes which are in oio with oio owning thread node
@@ -913,6 +909,8 @@ public class StramChild
      */
     ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<OperatorDeployInfo>();
     long smallestCheckpointedWindowId = Long.MAX_VALUE;
+    //a simple map which maps the oio node to it's the node which owns the thread.
+    Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
 
     /*
      * Hook up all the downstream ports. There are 2 places where we deal with more than 1
@@ -1062,8 +1060,7 @@ public class StramChild
       }
     }
 
-    // setup oio groups
-    setupOioGroups();
+    setupOioGroups(oioNodes);
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
@@ -1082,11 +1079,10 @@ public class StramChild
   }
 
   /**
-   * This method will populate oioGroups with owner OIO Node as key
-   *  and list of corresponding OIO nodes which will run in its thread as value
-   * This method assumes that the dag is valid as per OIO constraints
+   * Populates oioGroups with owner OIO Node as key and list of corresponding OIO nodes which will run in its thread as value
+   * This method assumes that the DAG is valid as per OIO constraints
    */
-  private void setupOioGroups()
+  private void setupOioGroups(Map<Integer, Integer> oioNodes)
   {
     for (Integer child : oioNodes.keySet()) {
       Integer oioParent = oioNodes.get(child);
@@ -1103,7 +1099,6 @@ public class StramChild
       }
     }
   }
-
 
   /**
    * Create the window generator for the given start window id.
@@ -1214,7 +1209,6 @@ public class StramChild
             setOperators.add(currentdi);
 
             /* lets go for OiO operator initialization */
-
             List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
             if (oioNodeIdList != null) {
               for (Integer oioNodeId : oioNodeIdList) {
@@ -1294,7 +1288,6 @@ public class StramChild
         pair.component.activate(pair.context);
       }
     }
-
 
     for (WindowGenerator wg : generators.values()) {
       if (!activeGenerators.containsKey(wg)) {

@@ -4,7 +4,12 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.api.*;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+
 import javax.validation.ConstraintViolationException;
 import javax.validation.ValidationException;
 
@@ -13,6 +18,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 
@@ -22,7 +28,6 @@ import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.engine.RecoverableInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import java.util.*;
 
 /**
  *
@@ -267,7 +272,6 @@ public class OiOStreamTest
   public static class ThreadIdValidatingInputOperator implements InputOperator
   {
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
-    //public final transient DefaultOutputPort<Long> output2 = new DefaultOutputPort<Long>();
     public static long threadId;
 
     @Override
@@ -306,7 +310,7 @@ public class OiOStreamTest
   public static class ThreadIdValidatingOutputOperator implements Operator
   {
     public static long threadId;
-    public static List<Long> threadList = new ArrayList<Long>();
+    public static List<Long> threadList = Collections.synchronizedList(new ArrayList<Long>());
 
     public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>()
     {
@@ -315,7 +319,6 @@ public class OiOStreamTest
       {
         assert (threadList.contains(Thread.currentThread().getId()));
       }
-
     };
 
     @Override
@@ -348,7 +351,6 @@ public class OiOStreamTest
   public static class ThreadIdValidatingGenericIntermediateOperator implements Operator
   {
     public static long threadId;
-    //public static HashMap<Integer, Long> threadMap = new HashMap<Integer, Long>();
     public static List<Long> threadList = Collections.synchronizedList(new ArrayList<Long>());
 
     public final transient DefaultInputPort<Number> input = new DefaultInputPort<Number>()
@@ -358,7 +360,6 @@ public class OiOStreamTest
       {
         assert (threadList.contains(Thread.currentThread().getId()));
       }
-
     };
 
     @Override
@@ -378,8 +379,6 @@ public class OiOStreamTest
     {
       threadId = Thread.currentThread().getId();
       threadList.add(Thread.currentThread().getId());
-
-      //threadMap.put(this.hashCode(), Thread.currentThread().getId());
     }
 
     @Override
@@ -401,7 +400,6 @@ public class OiOStreamTest
       {
         assert (threadId == Thread.currentThread().getId());
       }
-
     };
 
     public final transient DefaultInputPort<Number> input2 = new DefaultInputPort<Number>()
@@ -411,7 +409,6 @@ public class OiOStreamTest
       {
         assert (threadId == Thread.currentThread().getId());
       }
-
     };
 
     @Override
@@ -437,9 +434,6 @@ public class OiOStreamTest
     {
       assert (threadId == Thread.currentThread().getId());
     }
-
-    //public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
-
   }
 
   @Test
@@ -465,7 +459,6 @@ public class OiOStreamTest
     slc.run();
     Assert.assertEquals("Thread Id", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingOutputOperator.threadId);
   }
-
 
   @Test
   public void validateOiOiOImplementation() throws Exception
@@ -550,7 +543,6 @@ public class OiOStreamTest
                         ThreadIdValidatingInputOperator.threadId, (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertEquals("OIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0), ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertEquals("OIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, outputOperator.threadId);
-
   }
 
   @Test
@@ -608,7 +600,6 @@ public class OiOStreamTest
     Assert.assertEquals("OIO: Number of unique threads ThreadIdValidatingOutputOperator", 3 , (new HashSet<Long>(ThreadIdValidatingOutputOperator.threadList)).size());
     Assert.assertTrue("OIO:: inputOperator1 : ThreadIdValidatingOutputOperator", ThreadIdValidatingOutputOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
     Assert.assertTrue("OIO:: inputOperator1 : ThreadIdValidatingGenericIntermediateOperator", ThreadIdValidatingGenericIntermediateOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
-
   }
 
   private static final Logger logger = LoggerFactory.getLogger(OiOStreamTest.class);

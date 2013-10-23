@@ -10,11 +10,11 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -441,7 +441,6 @@ public class StramChildAgent {
     for (Map.Entry<OperatorDeployInfo, PTOperator> operEntry : nodes.entrySet()) {
       OperatorDeployInfo ndi = operEntry.getKey();
       PTOperator oper = operEntry.getValue();
-
       for (PTOperator.PTInput in : oper.getInputs()) {
         final StreamMeta streamMeta = in.logicalStream;
         if (streamMeta.getSource() == null) {
@@ -475,7 +474,6 @@ public class StramChildAgent {
           if (outputInfo == null) {
             throw new AssertionError("No publisher for inline stream " + sourceOutput);
           }
-
           if (streamMeta.getLocality() == Locality.THREAD_LOCAL) {
             inputInfo.locality = Locality.THREAD_LOCAL;
             ndi.type = OperatorType.OIO;
@@ -497,7 +495,6 @@ public class StramChildAgent {
         }
         ndi.inputs.add(inputInfo);
       }
-
     }
 
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
