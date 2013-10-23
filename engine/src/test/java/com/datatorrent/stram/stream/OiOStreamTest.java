@@ -34,7 +34,7 @@ public class OiOStreamTest
   {
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiO()
   {
     logger.info("Checking the logic for sanity checking of OiO");
@@ -56,7 +56,7 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiOiO()
   {
     logger.info("Checking the logic for sanity checking of OiO");
@@ -81,8 +81,8 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
-  public void validatePositiveOiOiOdiamond()
+  @Test
+  public void validateNegativeOiOiOdiamond()
   {
     logger.info("Checking the logic for sanity checking of OiO");
 
@@ -94,21 +94,20 @@ public class OiOStreamTest
 
     plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
     plan.addStream("OiOout1", intermediateOperator1.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
-    plan.addStream("OiOout2", intermediateOperator2.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
 
     try {
       plan.validate();
-      Assert.assertTrue("OiO validation", true);
+      Assert.fail("OIO diamond");
     }
     catch (ConstraintViolationException ex) {
-      Assert.fail("OIO Single InputPort");
+      Assert.assertTrue("OiO validation passed", true);
     }
     catch (ValidationException ex) {
-      Assert.fail("OIO Single InputPort");
+      Assert.assertTrue("OiO validation passed", true);
     }
   }
 
-  //@Test
+  @Test
   public void validatePositiveOiOOptionalInput()
   {
     LogicalPlan plan = new LogicalPlan();
@@ -128,7 +127,7 @@ public class OiOStreamTest
     }
   }
 
-  //@Test
+  @Test
   public void validateNegativeOiO()
   {
     LogicalPlan plan = new LogicalPlan();
@@ -209,7 +208,7 @@ public class OiOStreamTest
     @Override
     public void teardown()
     {
-      //assert (threadId == Thread.currentThread().getId());
+      assert (threadId == Thread.currentThread().getId());
     }
 
   }
@@ -288,12 +287,7 @@ public class OiOStreamTest
     public void setup(OperatorContext context)
     {
       threadId = Thread.currentThread().getId();
-      //int operatorId = context.getId();
-      //int hashCode1 = this.hashCode();
-      //int hashCode2 = Thread.currentThread().hashCode();
-      //if(!threadList.contains(threadId)){
-        threadList.add(Thread.currentThread().getId());
-      //}
+      threadList.add(Thread.currentThread().getId());
 
       //threadMap.put(this.hashCode(), Thread.currentThread().getId());
     }
@@ -301,7 +295,7 @@ public class OiOStreamTest
     @Override
     public void teardown()
     {
-      //assert (threadId == Thread.currentThread().getId());
+      assert (threadList.contains(Thread.currentThread().getId()));
     }
 
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
@@ -358,7 +352,7 @@ public class OiOStreamTest
 
   }
 
-  //@Test
+  @Test
   public void validateOiOImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
@@ -367,12 +361,14 @@ public class OiOStreamTest
     StreamMeta stream = lp.addStream("Stream", io.output, go.input);
 
     /* The first test makes sure that when they are not ThreadLocal they use different threads */
+    ThreadIdValidatingOutputOperator.threadList.clear();
     lp.validate();
     StramLocalCluster slc = new StramLocalCluster(lp);
     slc.run();
     Assert.assertFalse("Thread Id", ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingOutputOperator.threadId);
 
     /* This test makes sure that since they are ThreadLocal, they indeed share a thread */
+    ThreadIdValidatingOutputOperator.threadList.clear();
     stream.setLocality(Locality.THREAD_LOCAL);
     lp.validate();
     slc = new StramLocalCluster(lp);
@@ -381,7 +377,7 @@ public class OiOStreamTest
   }
 
 
-  //@Test
+  @Test
   public void validateOiOiOImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
@@ -395,6 +391,7 @@ public class OiOStreamTest
     StramLocalCluster slc;
 
     /* The first test makes sure that when they are not ThreadLocal they use different threads */
+    ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
     lp.validate();
     slc = new StramLocalCluster(lp);
     slc.run();
@@ -402,6 +399,7 @@ public class OiOStreamTest
     Assert.assertFalse("Thread Id 2", ThreadIdValidatingGenericIntermediateOperator.threadId == ThreadIdValidatingOutputOperator.threadId);
 
     /* This test makes sure that since they are ThreadLocal, they indeed share a thread */
+    ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
     stream1.setLocality(Locality.THREAD_LOCAL);
     stream2.setLocality(Locality.THREAD_LOCAL);
     lp.validate();
@@ -411,7 +409,7 @@ public class OiOStreamTest
     Assert.assertEquals("Thread Id 4", ThreadIdValidatingGenericIntermediateOperator.threadId, ThreadIdValidatingOutputOperator.threadId);
   }
 
-  //@Test
+  @Test
   public void validateOiOiODiamondImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
@@ -419,7 +417,6 @@ public class OiOStreamTest
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = lp.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = lp.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = lp.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
-    //ThreadIdValidatingOutputOperator idValidatingOutputOperator = lp.addOperator("outputSink", new ThreadIdValidatingOutputOperator());
 
     StreamMeta stream1 = lp.addStream("OiOinput", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input);
     StreamMeta stream2 = lp.addStream("OiOintermediateToOutput1", intermediateOperator1.output, outputOperator.input);
@@ -432,6 +429,8 @@ public class OiOStreamTest
      * The first test makes sure that when they are not ThreadLocal they use different threads
      */
 
+    ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
+    ThreadIdValidatingOutputOperator.threadList.clear();
     lp.validate();
     slc = new StramLocalCluster(lp);
     slc.run();
@@ -449,6 +448,7 @@ public class OiOStreamTest
      */
 
     ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
+    ThreadIdValidatingOutputOperator.threadList.clear();
     stream1.setLocality(Locality.THREAD_LOCAL);
     stream2.setLocality(Locality.THREAD_LOCAL);
     stream3.setLocality(Locality.THREAD_LOCAL);
@@ -463,26 +463,6 @@ public class OiOStreamTest
                         ThreadIdValidatingInputOperator.threadId, (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertEquals("OIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0), ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertEquals("OIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, outputOperator.threadId);
-
-    /*
-     * This test makes sure that since one input stream to the output stream is not ThreadLocal, the output stream does not share a thread
-     */
-    ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
-    stream1.setLocality(Locality.THREAD_LOCAL);
-    stream2.setLocality(null);
-    stream3.setLocality(Locality.THREAD_LOCAL);
-    lp.validate();
-    slc = new StramLocalCluster(lp);
-    slc.run();
-
-    Assert.assertEquals("OIO: Number of threads", 2 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
-    Assert.assertEquals("OIO: Thread Ids of input operator and intermediate operator1",
-                        ThreadIdValidatingInputOperator.threadId, (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
-    Assert.assertEquals("OIO: Thread Ids of input operator and intermediate operator2",
-                        ThreadIdValidatingInputOperator.threadId, (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
-    Assert.assertEquals("OIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0), ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
-    Assert.assertFalse("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId == outputOperator.threadId);
-
 
   }
 
@@ -505,6 +485,30 @@ public class OiOStreamTest
     StreamMeta stream4 = lp.addStream("nonOiO1", intermediateOperatorfromInterOper12.output, outputOperatorFromInterOper21.input, outputOperatorFromInterOper22.input);
 
     StramLocalCluster slc;
+
+    /*
+     * This test makes sure that since no operators in dag tree are ThreadLocal, they dont share threads
+    */
+
+    ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
+    ThreadIdValidatingOutputOperator.threadList.clear();
+
+    lp.validate();
+    slc = new StramLocalCluster(lp);
+    slc.run();
+
+    Assert.assertEquals("nonOIO: Number of threads ThreadIdValidatingGenericIntermediateOperator", 3 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
+    Assert.assertEquals("nonOIO: Number of unique threads ThreadIdValidatingGenericIntermediateOperator", 3 , (new HashSet<Long>(ThreadIdValidatingGenericIntermediateOperator.threadList)).size());
+    Assert.assertEquals("nonOIO: Number of threads ThreadIdValidatingOutputOperator", 4 ,ThreadIdValidatingOutputOperator.threadList.size());
+    Assert.assertEquals("nonOIO: Number of unique threads ThreadIdValidatingOutputOperator", 4 , (new HashSet<Long>(ThreadIdValidatingOutputOperator.threadList)).size());
+    Assert.assertFalse("nonOIO:: inputOperator1 : ThreadIdValidatingOutputOperator", ThreadIdValidatingOutputOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
+    Assert.assertFalse("nonOIO:: inputOperator1 : ThreadIdValidatingGenericIntermediateOperator", ThreadIdValidatingGenericIntermediateOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
+
+    /*
+     * This test makes sure that since some operators in the dag tree are ThreadLocal, they indeed share a thread
+     */
+    ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
+    ThreadIdValidatingOutputOperator.threadList.clear();
     stream1.setLocality(Locality.THREAD_LOCAL);
     stream2.setLocality(Locality.THREAD_LOCAL);
     stream3.setLocality(Locality.THREAD_LOCAL);
