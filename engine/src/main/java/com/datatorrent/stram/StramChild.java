@@ -633,7 +633,12 @@ public class StramChild
       lastCommittedWindowId = rsp.committedWindowId;
       NodeRequest nr = null;
       for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
-        if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
+        Node<?> node = nodes.get(e.getKey());
+        if (node == null) {
+          continue;
+        }
+        
+        if (node.getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new NodeRequest()
             {
