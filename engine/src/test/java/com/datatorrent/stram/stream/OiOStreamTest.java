@@ -71,39 +71,13 @@ public class OiOStreamTest
 
     try {
       plan.validate();
-      Assert.assertTrue("OiO validation", true);
+      Assert.assertTrue("OiOiO validation", true);
     }
     catch (ConstraintViolationException ex) {
-      Assert.fail("OIO Single InputPort");
+      Assert.fail("OiOiO validation");
     }
     catch (ValidationException ex) {
-      Assert.fail("OIO Single InputPort");
-    }
-  }
-
-  @Test
-  public void validateNegativeOiOiOdiamond()
-  {
-    logger.info("Checking the logic for sanity checking of OiO");
-
-    LogicalPlan plan = new LogicalPlan();
-    ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
-    ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
-    ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
-    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
-
-    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
-    plan.addStream("OiOout1", intermediateOperator1.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
-
-    try {
-      plan.validate();
-      Assert.fail("OIO diamond");
-    }
-    catch (ConstraintViolationException ex) {
-      Assert.assertTrue("OiO validation passed", true);
-    }
-    catch (ValidationException ex) {
-      Assert.assertTrue("OiO validation passed", true);
+      Assert.fail("OiOiO validation");
     }
   }
 
@@ -171,6 +145,122 @@ public class OiOStreamTest
     }
     catch (ValidationException ex) {
       Assert.assertTrue("OiO validation passed", true);
+    }
+  }
+
+  @Test
+  public void validatePositiveOiOiOdiamond()
+  {
+    logger.info("Checking the logic for sanity checking of OiO");
+
+    LogicalPlan plan = new LogicalPlan();
+    ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
+
+    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout1", intermediateOperator1.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout2", intermediateOperator2.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
+
+    try {
+      plan.validate();
+      Assert.assertTrue("OiOiO diamond validation", true);
+    }
+    catch (ConstraintViolationException ex) {
+      Assert.fail("OIOIO diamond validation");
+    }
+    catch (ValidationException ex) {
+      Assert.fail("OIOIO diamond validation");
+    }
+  }
+
+  @Test
+  public void validateNegativeOiOiOdiamond()
+  {
+    logger.info("Checking the logic for sanity checking of OiO");
+
+    LogicalPlan plan = new LogicalPlan();
+    ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
+
+    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout1", intermediateOperator1.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("nonOiOout2", intermediateOperator2.output, outputOperator.input2).setLocality(null);
+
+    try {
+      plan.validate();
+      Assert.fail("OIOIO negative diamond");
+    }
+    catch (ConstraintViolationException ex) {
+      Assert.assertTrue("OIOIO negative diamond", true);
+    }
+    catch (ValidationException ex) {
+      Assert.assertTrue("OIOIO negative diamond", true);
+    }
+  }
+
+  @Test
+  public void validatePositiveOiOiOExtendeddiamond()
+  {
+    logger.info("Checking the logic for sanity checking of OiO");
+
+    LogicalPlan plan = new LogicalPlan();
+    ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator3 = plan.addOperator("intermediateOperator3", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator4 = plan.addOperator("intermediateOperator4", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
+
+    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator3.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOIntermediate1", intermediateOperator1.output, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOIntermediate2", intermediateOperator3.output, intermediateOperator4.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout1", intermediateOperator2.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout2", intermediateOperator4.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
+
+    try {
+      plan.validate();
+      Assert.assertTrue("OiOiO extended diamond validation", true);
+    }
+    catch (ConstraintViolationException ex) {
+      Assert.fail("OIOIO extended diamond validation");
+    }
+    catch (ValidationException ex) {
+      Assert.fail("OIOIO extended diamond validation");
+    }
+  }
+
+  @Test
+  public void validateNegativeOiOiOExtendeddiamond()
+  {
+    logger.info("Checking the logic for sanity checking of OiO");
+
+    LogicalPlan plan = new LogicalPlan();
+    ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator3 = plan.addOperator("intermediateOperator3", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator4 = plan.addOperator("intermediateOperator4", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
+
+    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator3.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOIntermediate1", intermediateOperator1.output, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("nonOiOIntermediate2", intermediateOperator3.output, intermediateOperator4.input).setLocality(null);
+    plan.addStream("OiOout1", intermediateOperator2.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout2", intermediateOperator4.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
+
+    try {
+      plan.validate();
+      Assert.fail("OiOiO extended diamond validation");
+    }
+    catch (ConstraintViolationException ex) {
+      Assert.assertTrue("OiOiO extended diamond validation", true);
+    }
+    catch (ValidationException ex) {
+      Assert.assertTrue("OiOiO extended diamond validation", true);
     }
   }
 
@@ -421,14 +511,12 @@ public class OiOStreamTest
     StreamMeta stream1 = lp.addStream("OiOinput", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input);
     StreamMeta stream2 = lp.addStream("OiOintermediateToOutput1", intermediateOperator1.output, outputOperator.input);
     StreamMeta stream3 = lp.addStream("OiOintermediateToOutput2", intermediateOperator2.output, outputOperator.input2);
-    //lp.addStream("NonOiOOutputSink", outputOperator.output, idValidatingOutputOperator.input);
 
     StramLocalCluster slc;
 
     /*
      * The first test makes sure that when they are not ThreadLocal they use different threads
      */
-
     ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
     ThreadIdValidatingOutputOperator.threadList.clear();
     lp.validate();
@@ -446,7 +534,6 @@ public class OiOStreamTest
     /*
      * This test makes sure that since all operators in diamond are ThreadLocal, they indeed share a thread
      */
-
     ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
     ThreadIdValidatingOutputOperator.threadList.clear();
     stream1.setLocality(Locality.THREAD_LOCAL);
@@ -488,8 +575,7 @@ public class OiOStreamTest
 
     /*
      * This test makes sure that since no operators in dag tree are ThreadLocal, they dont share threads
-    */
-
+     */
     ThreadIdValidatingGenericIntermediateOperator.threadList.clear();
     ThreadIdValidatingOutputOperator.threadList.clear();
 
