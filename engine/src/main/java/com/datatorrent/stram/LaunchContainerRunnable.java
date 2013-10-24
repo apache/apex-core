@@ -250,7 +250,7 @@ public class LaunchContainerRunnable implements Runnable
       params.put("containerId", Integer.toString(container.getId().getId()));
       StrSubstitutor sub = new StrSubstitutor(params, "%(", ")");
       vargs.add(sub.replace(jvmOpts));
-      if (dag.isDebug() && jvmOpts.indexOf("-agentlib:jdwp=") != -1) {
+      if (dag.isDebug() && jvmOpts.indexOf("-agentlib:jdwp=") == -1) {
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
     }
