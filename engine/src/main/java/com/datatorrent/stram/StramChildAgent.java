@@ -10,11 +10,11 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -474,7 +474,7 @@ public class StramChildAgent {
           if (outputInfo == null) {
             throw new AssertionError("No publisher for inline stream " + sourceOutput);
           }
-          if (streamMeta.getLocality() == Locality.THREAD_LOCAL && oper.getInputs().size() == 1) {
+          if (streamMeta.getLocality() == Locality.THREAD_LOCAL) {
             inputInfo.locality = Locality.THREAD_LOCAL;
             ndi.type = OperatorType.OIO;
           } else {

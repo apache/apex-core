@@ -30,10 +30,10 @@ import javax.validation.ValidationException;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Sets;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -379,6 +379,13 @@ public class LogicalPlan implements Serializable, DAG
     private final OperatorAnnotation operatorAnnotation;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
+    /*
+     * Used for  OIO validation,
+     *  value null => node not visited yet
+     *  value -1  => node visited and not oio
+     *  other value => represents the root oio node for this node
+     */
+    private transient Integer oioRoot = null;
 
     private OperatorMeta(String name, Operator operator)
     {
@@ -756,6 +763,11 @@ public class LogicalPlan implements Serializable, DAG
             Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
 
+    // clear oioRoot values in all operators
+    for (OperatorMeta n: operators.values()) {
+      n.oioRoot = null;
+    }
+
     // clear visited on all operators
     for (OperatorMeta n: operators.values()) {
       n.nindex = null;
@@ -811,8 +823,7 @@ public class LogicalPlan implements Serializable, DAG
           DAG.Locality locality = sm.getLocality();
           if (locality == DAG.Locality.THREAD_LOCAL) {
             if (n.inputStreams.size() > 1) {
-              String msg = String.format("Locality %s invalid for operator %s with multiple input streams", locality, n);
-              throw new ValidationException(msg);
+              validateThreadLocal(n);
             }
           }
         }
@@ -855,6 +866,85 @@ public class LogicalPlan implements Serializable, DAG
       validateProcessingMode(om, visited);
     }
 
+  }
+
+  /*
+   * Validates OIO constraints for nodes with more than one input streams
+   * For a node to be OIO,
+   *  1. all its input streams should be OIO
+   *  2. all its input streams should have OIO from single source node
+   */
+  private void validateThreadLocal(OperatorMeta om) {
+    Integer oioRoot = null;
+
+    // already visited and validated
+    if (om.oioRoot != null) {
+      return;
+    }
+
+    for (StreamMeta sm: om.inputStreams.values()){
+      // validation fail as each input stream should be OIO
+      if (sm.locality != Locality.THREAD_LOCAL){
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not %s",
+                                   Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
+        throw new ValidationException(msg);
+      }
+
+      // gets oio root for input operator for the stream
+      Integer oioStreamRoot = getOioRoot(sm.source.operatorWrapper);
+
+      // validation fail as each input stream should have a common OIO root
+      if (oioStreamRoot == -1){
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not originating from common OIO owner node",
+                                   Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
+        throw new ValidationException(msg);
+      }
+
+      // populate oioRoot with root OIO node id for first stream, then validate for subsequent streams to have same root OIO node
+      if (oioRoot == null) {
+        oioRoot = oioStreamRoot;
+      } else if (oioRoot.intValue() != oioStreamRoot.intValue()) {
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as they origin from different owner OIO nodes", sm.locality, om);
+        throw new ValidationException(msg);
+      }
+    }
+
+    om.oioRoot = oioRoot;
+  }
+
+  /*
+   * Helper method for validateThreadLocal method, runs recursively
+   * For a given node, visits all upstream nodes in DFS, validates and marks them as visited
+   * returns hashcode of owner oio node if it exists, else returns -1
+   */
+  private Integer getOioRoot(OperatorMeta om) {
+    // operators which were already marked a visited
+    if (om.oioRoot != null){
+      return om.oioRoot;
+    }
+
+    // operators which were not visited before
+    switch (om.inputStreams.size()) {
+      case 1:
+        StreamMeta sm = om.inputStreams.values().iterator().next();
+        if (sm.locality == Locality.THREAD_LOCAL) {
+          Integer oioStreamRoot = getOioRoot(sm.source.operatorWrapper);
+          if (oioStreamRoot == -1)
+            om.oioRoot = sm.source.operatorWrapper.hashCode();
+          else
+            om.oioRoot = oioStreamRoot;
+          return om.oioRoot;
+        } else {
+          om.oioRoot = -1;
+          return om.hashCode();
+        }
+      case 0:
+        om.oioRoot = -1;
+        return om.hashCode();
+      default:
+        validateThreadLocal(om);
+        return om.oioRoot;
+    }
   }
 
   /**
