@@ -53,6 +53,7 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 public class LaunchContainerRunnable implements Runnable
 {
   private static final Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
+  private static final String JAVA_REMOTE_DEBUG_OPTS = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n";
   private final Map<String, String> containerEnv = new HashMap<String, String>();
   private final InetSocketAddress heartbeatAddress;
   private final LogicalPlan dag;
@@ -221,22 +222,23 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("java");
     }
 
-    if (dag.isDebug()) {
-      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
-    }
-
     String jvmOpts = dag.getAttributes().get(LogicalPlan.CONTAINER_JVM_OPTIONS);
-    if (jvmOpts != null) {
+    if (jvmOpts == null) {
+      /* default Xmx based on total allocated memory size; default heap size 75% of total memory */
+      vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
+      if (dag.isDebug()) {
+        vargs.add(JAVA_REMOTE_DEBUG_OPTS);
+      }
+    }
+    else {
       Map<String, String> params = new HashMap<String, String>();
       params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));
       params.put("containerId", Integer.toString(container.getId().getId()));
       StrSubstitutor sub = new StrSubstitutor(params, "%(", ")");
       vargs.add(sub.replace(jvmOpts));
-    }
-    else {
-      // default Xmx based on total allocated memory size
-      // default heap size 75% of total memory
-      vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
+      if (dag.isDebug() && jvmOpts.indexOf("-agentlib:jdwp=") == -1) {
+        vargs.add(JAVA_REMOTE_DEBUG_OPTS);
+      }
     }
 
     Path childTmpDir = new Path(Environment.PWD.$(),
