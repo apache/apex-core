@@ -157,7 +157,7 @@ public class StramChild
         bufferServer = new Server(0, 64 * 1024 * 1024);
         bufferServer.setSpoolStorage(new DiskStorage());
         SocketAddress bindAddr = bufferServer.run(eventloop);
-        logger.info("Buffer server started: {}", bindAddr);
+        logger.debug("Buffer server started: {}", bindAddr);
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
       }
     }
@@ -176,11 +176,11 @@ public class StramChild
       //logger.debug("putting {} in {}", System.identityHashCode(newInstance), this);
 
       if (newInstance instanceof ContainerStatsListener) {
-        logger.info("adding container stats listener {}", classname);
+        logger.debug("adding container stats listener {}", classname);
         addStatsListener((ContainerStatsListener)newInstance);
       }
       if (newInstance instanceof NodeActivationListener) {
-        logger.info("adding node activation listener {}", classname);
+        logger.debug("adding node activation listener {}", classname);
         addNodeListener((NodeActivationListener)newInstance);
       }
     }
@@ -340,7 +340,7 @@ public class StramChild
             logger.error("mux sinks found connected at {} with sink id null", sourceIdentifier);
           }
           else {
-            String[] split = sinks.split(", ");
+            String[] split = sinks.split(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR);
             for (int i = split.length; i-- > 0;) {
               ComponentContextPair<Stream, StreamContext> spair = streams.remove(split[i]);
               if (spair == null) {
@@ -357,7 +357,9 @@ public class StramChild
           }
         }
         else {
-          // it's either inline stream or it's bufferserver publisher.
+          /*
+           * it's either inline stream or it's bufferserver publisher. we do not need to do anything about them.
+           */
         }
 
         pair.component.teardown();
@@ -374,8 +376,68 @@ public class StramChild
         }
 
         pair.component.teardown();
+
+        /**
+         * we should also make sure that if this stream is connected to mux stream,
+         * we deregister it from the mux stream to avoid clogged sink problem.
+         */
+        ComponentContextPair<Stream, StreamContext> sourcePair = streams.get(pair.context.getSourceId());
+        if (sourcePair != null) {
+          if (sourcePair == pair) {
+            /* for some reason we had the stream stored against both source and sink identifiers */
+            streams.remove(pair.context.getSourceId());
+          }
+          else {
+            /* the stream was one of the many streams sourced by a muxstream */
+            unregisterSinkFromMux(sourcePair, sinkIdentifier);
+          }
+        }
       }
     }
+  }
+
+  private boolean unregisterSinkFromMux(ComponentContextPair<Stream, StreamContext> muxpair, String sinkIdentifier)
+  {
+    String[] sinks = muxpair.context.getSinkId().split(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR);
+    boolean found = false;
+    for (int i = sinks.length; i-- > 0;) {
+      if (sinks[i].equals(sinkIdentifier)) {
+        sinks[i] = null;
+        found = true;
+        break;
+      }
+    }
+
+    if (found) {
+      ((Stream.MultiSinkCapableStream)muxpair.component).setSink(sinkIdentifier, null);
+
+      if (sinks.length == 1) {
+        muxpair.context.setSinkId(null);
+      }
+      else {
+        StringBuilder builder = new StringBuilder(muxpair.context.getSinkId().length() - MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR.length() - sinkIdentifier.length());
+
+        found = false;
+        for (int i = sinks.length; i-- > 0;) {
+          if (sinks[i] != null) {
+            if (found) {
+              builder.append(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR).append(sinks[i]);
+            }
+            else {
+              builder.append(sinks[i]);
+              found = true;
+            }
+          }
+        }
+
+        muxpair.context.setSinkId(builder.toString());
+      }
+    }
+    else {
+      logger.error("{} was not connected to stream connected to {}", sinkIdentifier, muxpair.context.getSourceId());
+    }
+
+    return found;
   }
 
   private void disconnectWindowGenerator(int nodeid, Node<?> node)
@@ -637,7 +699,7 @@ public class StramChild
         if (node == null) {
           continue;
         }
-        
+
         if (node.getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new NodeRequest()
@@ -870,7 +932,7 @@ public class StramChild
               pair.context.setSinkId(deployBufferServerPublisher.getKey());
             }
             else {
-              pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
+              pair.context.setSinkId(sinkIdentifier.concat(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR).concat(deployBufferServerPublisher.getKey()));
             }
 
             ((Stream.MultiSinkCapableStream)pair.component).setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
@@ -1050,7 +1112,7 @@ public class StramChild
               pair.context.setSinkId(sinkIdentifier);
             }
             else {
-              pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
+              pair.context.setSinkId(streamSinkId.concat(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR).concat(sinkIdentifier));
             }
           }
         }

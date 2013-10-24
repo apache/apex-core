@@ -40,7 +40,7 @@ public class TestGeneratorInputOperator extends BaseOperator implements InputOpe
 
   public void setMaxTuples(int maxNumbers)
   {
-    LOG.info("setting max tuples to {}", maxNumbers);
+    LOG.debug("setting max tuples to {}", maxNumbers);
     this.maxTuples = maxNumbers;
   }
 
@@ -73,7 +73,7 @@ public class TestGeneratorInputOperator extends BaseOperator implements InputOpe
     }
     else if (maxTuples != 0) {
       generatedTuples++;
-      LOG.info("sending tuple " + generatedTuples);
+      LOG.debug("sending tuple " + generatedTuples);
       outport.emit(String.valueOf(generatedTuples));
       if (maxTuples > 0 && maxTuples <= generatedTuples) {
         throw new RuntimeException(new InterruptedException("done emitting all."));
