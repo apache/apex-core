@@ -493,7 +493,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("Exception expected for " + o1);
     } catch (ValidationException ve) {
-      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams"));
+      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams .*"));
     }
 
     s1.setLocality(null);

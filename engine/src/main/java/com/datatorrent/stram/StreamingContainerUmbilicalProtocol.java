@@ -113,14 +113,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       return windowStats;
     }
 
-    /**
-     * The operator stats for the windows processed during the heartbeat interval.
-     * @param stats
-     */
-    public void setOperatorStatsContainer(ArrayList<Stats.ContainerStats.OperatorStats> stats) {
-      this.windowStats = stats;
-    }
-
     public static enum DNodeState {
       NEW, // node instantiated but not processing yet
       ACTIVE,
