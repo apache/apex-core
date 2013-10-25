@@ -61,10 +61,9 @@ public interface Context
     /**
      * Input port attribute. Extend partitioning of an upstream operator w/o intermediate merge.
      * Can be used to form parallel partitions that span a group of operators.
-     * Defined on a per input port basis to allow for stream to be shared with non-partitioned sinks.
+     * Defined on input port to allow for stream to be shared with non-partitioned sinks.
      * If multiple ports of an operator have the setting, incoming streams must track back to
      * a common root partition, i.e. the operator join forks of the same origin.
-     * At the moment each partition would be deployed to a single container (inline).
      */
     Attribute<Boolean> PARTITION_PARALLEL = new Attribute<Boolean>(false);
     /**
