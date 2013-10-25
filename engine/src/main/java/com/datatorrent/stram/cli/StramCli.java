@@ -454,9 +454,11 @@ public class StramCli
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
     String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
-    int colon = socks.indexOf(':');
-    System.setProperty("socksProxyHost", socks.substring(0, colon));
-    System.setProperty("socksProxyPort", socks.substring(colon + 1));
+    if (socks != null) {
+      int colon = socks.indexOf(':');
+      System.setProperty("socksProxyHost", socks.substring(0, colon));
+      System.setProperty("socksProxyPort", socks.substring(colon + 1));
+    }
 
     try {
       com.datatorrent.stram.StramAppMaster.class.getClass();
