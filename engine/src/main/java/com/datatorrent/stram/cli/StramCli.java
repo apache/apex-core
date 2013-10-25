@@ -14,6 +14,10 @@ import jline.console.history.MemoryHistory;
 
 import javax.ws.rs.core.MediaType;
 
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -21,13 +25,10 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-
 import org.apache.commons.cli.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -114,6 +115,7 @@ public class StramCli
       return newCommand;
     }
 
+    @SuppressWarnings("AssignmentToForLoopParameter")
     public static List<String[]> tokenize(String commandLine)
     {
       List<List<String>> resultBuffer = new ArrayList<List<String>>();
@@ -451,6 +453,10 @@ public class StramCli
     StramUserLogin.attemptAuthentication(conf);
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
+    String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
+    int colon = socks.indexOf(':');
+    System.setProperty("socksProxyHost", socks.substring(0, colon));
+    System.setProperty("socksProxyPort", socks.substring(colon + 1));
 
     try {
       com.datatorrent.stram.StramAppMaster.class.getClass();
