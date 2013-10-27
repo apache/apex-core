@@ -595,15 +595,7 @@ public class DTCli
       os.println(json);
     }
     os.flush();
-    if (os != System.out) {
-      os.close();
-      try {
-        pagerProcess.waitFor();
-      }
-      catch (InterruptedException ex) {
-        LOG.debug("Interrupted");
-      }
-    }
+    closeOutputPrintStream(os);
   }
 
   private void printJson(JSONObject json) throws JSONException, IOException
@@ -638,6 +630,19 @@ public class DTCli
       pagerProcess = Runtime.getRuntime().exec(new String[] {"sh", "-c",
                                                              pagerCommand + " >/dev/tty"});
       return new PrintStream(pagerProcess.getOutputStream());
+    }
+  }
+
+  private void closeOutputPrintStream(PrintStream os)
+  {
+    if (os != System.out) {
+      os.close();
+      try {
+        pagerProcess.waitFor();
+      }
+      catch (InterruptedException ex) {
+        LOG.debug("Interrupted");
+      }
     }
   }
 
@@ -1381,15 +1386,7 @@ public class DTCli
           }
         }
       }
-      if (os != System.out) {
-        os.close();
-        try {
-          pagerProcess.waitFor();
-        }
-        catch (InterruptedException ex) {
-          LOG.debug("Interrupted");
-        }
-      }
+      closeOutputPrintStream(os);
     }
 
   }
