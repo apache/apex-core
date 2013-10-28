@@ -49,7 +49,6 @@ public final class RecordingsAgent extends FSPartFileAgent
   public static class RecordingInfo
   {
     public long startTime;
-    public String recordingName;
     public String containerId;
     public String appId;
     public String operatorId;
@@ -348,7 +347,6 @@ public final class RecordingsAgent extends FSPartFileAgent
       json = new JSONObject(line);
       info.startTime = json.getLong("startTime");
       info.containerId = json.optString("containerId");
-      info.recordingName = json.getString("recordingName");
       info.properties = new HashMap<String, Object>();
 
       if (!StringUtils.isBlank(info.containerId) && !containers.contains(info.containerId)) {

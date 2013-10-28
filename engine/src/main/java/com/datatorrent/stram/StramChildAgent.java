@@ -191,7 +191,6 @@ public class StramChildAgent {
     long recordingStartTime = Stats.INVALID_TIME_MILLIS;
     final MovingAverageDouble cpuPercentageMA;
     final MovingAverageLong latencyMA;
-    List<String> recordingNames; // null if recording is not in progress
     Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
     Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
 

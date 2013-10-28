@@ -46,7 +46,6 @@ public class TupleRecorder
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
   private String containerId;
-  private String recordingName; // should be retired
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
@@ -137,22 +136,6 @@ public class TupleRecorder
   }
 
   /**
-   * @return the recordingName
-   */
-  public String getRecordingName()
-  {
-    return recordingName;
-  }
-
-  /**
-   * @param recordingName the recordingName to set
-   */
-  public void setRecordingName(String recordingName)
-  {
-    this.recordingName = recordingName;
-  }
-
-  /**
    * @param startTime the startTime to set
    */
   public void setStartTime(long startTime)
@@ -199,7 +182,6 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
-    public String recordingName;
     public String containerId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
@@ -279,7 +261,6 @@ public class TupleRecorder
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
-      recordInfo.recordingName = recordingName;
       recordInfo.containerId = containerId;
 
       if (operator != null) {

@@ -174,14 +174,6 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         tupleRecorder.getStorage().setBytesPerPartFile(tupleRecordingPartFileSize);
         tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
 
-        // this is not needed, and should be deleted when UI upgrades
-        if (portName == null) {
-          tupleRecorder.setRecordingName(containerId.concat("_").concat(String.valueOf(operatorId)).concat("_").concat(String.valueOf(tupleRecorder.getStartTime())));
-        }
-        else {
-          tupleRecorder.setRecordingName(containerId.concat("_").concat(String.valueOf(operatorId)).concat("$").concat(portName).concat("_").concat(String.valueOf(tupleRecorder.getStartTime())));
-        }
-
         node.addSinks(sinkMap);
         tupleRecorder.setup(node.getOperator());
         put(operatorIdPortNamePair, tupleRecorder);

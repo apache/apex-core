@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -124,6 +125,8 @@ public class DTCli
   private String jsonp;
   private RecordingsAgent recordingsAgent;
   private final ObjectMapper mapper = new ObjectMapper();
+  private String pagerCommand;
+  private Process pagerProcess;
 
   private static class FileLineReader extends ConsoleReader
   {
@@ -431,6 +434,10 @@ public class DTCli
                                                        new Arg[] {new Arg("app-id")},
                                                        null,
                                                        "Get the information of an app"));
+    globalCommands.put("set-pager", new CommandSpec(new SetPagerCommand(),
+                                                    new Arg[] {new Arg("on/off")},
+                                                    null,
+                                                    "Set the pager program for output"));
     //
     // Connected command specification starts here
     //
@@ -577,22 +584,26 @@ public class DTCli
                                                            "Abort the plan change"));
   }
 
-  private void printJson(String json)
+  private void printJson(String json) throws IOException
   {
+    PrintStream os = getOutputPrintStream();
+
     if (jsonp != null) {
-      System.out.println(jsonp + "(" + json + ");");
+      os.println(jsonp + "(" + json + ");");
     }
     else {
-      System.out.println(json);
+      os.println(json);
     }
+    os.flush();
+    closeOutputPrintStream(os);
   }
 
-  private void printJson(JSONObject json) throws JSONException
+  private void printJson(JSONObject json) throws JSONException, IOException
   {
     printJson(json.toString(2));
   }
 
-  private void printJson(JSONArray jsonArray, String name) throws JSONException
+  private void printJson(JSONArray jsonArray, String name) throws JSONException, IOException
   {
     JSONObject json = new JSONObject();
     json.put(name, jsonArray);
@@ -607,6 +618,32 @@ public class DTCli
   private <T> void printJson(List<T> list, String name) throws IOException, JSONException
   {
     printJson(new JSONArray(mapper.writeValueAsString(list)), name);
+  }
+
+  private PrintStream getOutputPrintStream() throws IOException
+  {
+    if (pagerCommand == null) {
+      pagerProcess = null;
+      return System.out;
+    }
+    else {
+      pagerProcess = Runtime.getRuntime().exec(new String[] {"sh", "-c",
+                                                             pagerCommand + " >/dev/tty"});
+      return new PrintStream(pagerProcess.getOutputStream());
+    }
+  }
+
+  private void closeOutputPrintStream(PrintStream os)
+  {
+    if (os != System.out) {
+      os.close();
+      try {
+        pagerProcess.waitFor();
+      }
+      catch (InterruptedException ex) {
+        LOG.debug("Interrupted");
+      }
+    }
   }
 
   private static String expandFileName(String fileName, boolean expandWildCard) throws IOException
@@ -1078,59 +1115,59 @@ public class DTCli
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
   }
 
-  private void printHelp(String command, CommandSpec commandSpec)
+  private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
   {
     if (consolePresent) {
-      System.out.print("\033[0;93m");
-      System.out.print(command);
-      System.out.print("\033[0m");
+      os.print("\033[0;93m");
+      os.print(command);
+      os.print("\033[0m");
     }
     else {
-      System.out.print(command);
+      os.print(command);
     }
     if (commandSpec instanceof OptionsCommandSpec) {
       OptionsCommandSpec ocs = (OptionsCommandSpec)commandSpec;
       if (ocs.options != null) {
-        System.out.print(" [options]");
+        os.print(" [options]");
       }
     }
     if (commandSpec.requiredArgs != null) {
       for (Arg arg : commandSpec.requiredArgs) {
         if (consolePresent) {
-          System.out.print(" \033[3m" + arg + "\033[0m");
+          os.print(" \033[3m" + arg + "\033[0m");
         }
         else {
-          System.out.print(" <" + arg + ">");
+          os.print(" <" + arg + ">");
         }
       }
     }
     if (commandSpec.optionalArgs != null) {
       for (Arg arg : commandSpec.optionalArgs) {
         if (consolePresent) {
-          System.out.print(" [\033[3m" + arg + "\033[0m]");
+          os.print(" [\033[3m" + arg + "\033[0m]");
         }
         else {
-          System.out.print(" [<" + arg + ">]");
+          os.print(" [<" + arg + ">]");
         }
       }
     }
-    System.out.println("\n\t" + commandSpec.description);
+    os.println("\n\t" + commandSpec.description);
     if (commandSpec instanceof OptionsCommandSpec) {
       OptionsCommandSpec ocs = (OptionsCommandSpec)commandSpec;
       if (ocs.options != null) {
-        System.out.println("\tOptions:");
+        os.println("\tOptions:");
         HelpFormatter formatter = new HelpFormatter();
-        PrintWriter pw = new PrintWriter(System.out);
+        PrintWriter pw = new PrintWriter(os);
         formatter.printOptions(pw, 80, ocs.options, 12, 4);
         pw.flush();
       }
     }
   }
 
-  private void printHelp(Map<String, CommandSpec> commandSpecs)
+  private void printHelp(Map<String, CommandSpec> commandSpecs, PrintStream os)
   {
     for (Map.Entry<String, CommandSpec> entry : commandSpecs.entrySet()) {
-      printHelp(entry.getKey(), entry.getValue());
+      printHelp(entry.getKey(), entry.getValue(), os);
     }
   }
 
@@ -1312,42 +1349,44 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      PrintStream os = getOutputPrintStream();
       if (args.length < 2) {
-        System.out.println("GLOBAL COMMANDS EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
-        printHelp(globalCommands);
-        System.out.println();
-        System.out.println("COMMANDS WHEN CONNECTED TO AN APP (via connect <appid>) EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
-        printHelp(connectedCommands);
-        System.out.println();
-        System.out.println("COMMANDS WHEN CHANGING LOGICAL PLAN (via begin-logical-plan-change):\n");
-        printHelp(logicalPlanChangeCommands);
-        System.out.println();
+        os.println("GLOBAL COMMANDS EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
+        printHelp(globalCommands, os);
+        os.println();
+        os.println("COMMANDS WHEN CONNECTED TO AN APP (via connect <appid>) EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
+        printHelp(connectedCommands, os);
+        os.println();
+        os.println("COMMANDS WHEN CHANGING LOGICAL PLAN (via begin-logical-plan-change):\n");
+        printHelp(logicalPlanChangeCommands, os);
+        os.println();
       }
       else {
         if (args[1].equals("help")) {
-          printHelp("help", globalCommands.get("help"));
+          printHelp("help", globalCommands.get("help"), os);
         }
         else {
           CommandSpec cs = globalCommands.get(args[1]);
           if (cs != null) {
-            System.out.println("This usage is valid except when changing logical plan");
-            printHelp(args[1], cs);
-            System.out.println();
+            os.println("This usage is valid except when changing logical plan");
+            printHelp(args[1], cs, os);
+            os.println();
           }
           cs = connectedCommands.get(args[1]);
           if (cs != null) {
-            System.out.println("This usage is valid when connected to an app except when changing logical plan");
-            printHelp(args[1], cs);
-            System.out.println();
+            os.println("This usage is valid when connected to an app except when changing logical plan");
+            printHelp(args[1], cs, os);
+            os.println();
           }
           cs = logicalPlanChangeCommands.get(args[1]);
           if (cs != null) {
-            System.out.println("This usage is only valid when changing logical plan (via begin-logical-plan-change)");
-            printHelp(args[1], cs);
-            System.out.println();
+            os.println("This usage is only valid when changing logical plan (via begin-logical-plan-change)");
+            printHelp(args[1], cs, os);
+            os.println();
           }
         }
       }
+      closeOutputPrintStream(os);
     }
 
   }
@@ -2450,6 +2489,24 @@ public class DTCli
       }
       catch (IOException ex) {
         System.err.println("Aborted");
+      }
+    }
+
+  }
+
+  private class SetPagerCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (args[1].equals("off")) {
+        pagerCommand = null;
+      }
+      else if (args[1].equals("on")) {
+        pagerCommand = "less -F -X -r";
+      }
+      else {
+        throw new CliException("set-pager parameter is either on or off.");
       }
     }
 
