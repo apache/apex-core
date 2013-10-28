@@ -1366,23 +1366,30 @@ public class DTCli
           printHelp("help", globalCommands.get("help"), os);
         }
         else {
+          boolean valid = false;
           CommandSpec cs = globalCommands.get(args[1]);
           if (cs != null) {
             os.println("This usage is valid except when changing logical plan");
             printHelp(args[1], cs, os);
             os.println();
+            valid = true;
           }
           cs = connectedCommands.get(args[1]);
           if (cs != null) {
             os.println("This usage is valid when connected to an app except when changing logical plan");
             printHelp(args[1], cs, os);
             os.println();
+            valid = true;
           }
           cs = logicalPlanChangeCommands.get(args[1]);
           if (cs != null) {
             os.println("This usage is only valid when changing logical plan (via begin-logical-plan-change)");
             printHelp(args[1], cs, os);
             os.println();
+            valid = true;
+          }
+          if (!valid) {
+            os.println("Help for \"" + args[1] + "\" does not exist.");
           }
         }
       }
