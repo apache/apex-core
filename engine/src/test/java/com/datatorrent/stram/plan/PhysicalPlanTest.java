@@ -399,6 +399,57 @@ public class PhysicalPlanTest {
     Assert.assertEquals("Count of storage requests", 0, ctx.backupRequests);
   }
 
+  /**
+   * Test unifier gets removed when number partitions drops to 1.
+   */
+  @Test
+  public void testRepartitioningScaleDownSinglePartition() {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestInputOperator<?> o1 = dag.addOperator("o1", TestInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+
+    dag.addStream("o1.outport1", o1.output, o2.inport1);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(o1, OperatorContext.PARTITION_STATS_HANDLER, PartitioningTest.PartitionLoadWatch.class.getName());
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+
+    List<PTOperator> o1Partitions = plan.getOperators(o1Meta);
+    Assert.assertEquals("partitions " + o1Partitions, 2, o1Partitions.size());
+    PTOperator o1p1 = o1Partitions.get(0);
+    PTOperator p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
+    Assert.assertTrue("", p1Doper.getOperatorMeta() == o1Meta);
+    Assert.assertNotNull("unifier ", p1Doper.getUnifier());
+
+    Collection<PTOperator> o1Unifiers = plan.getMergeOperators(o1Meta);
+    Assert.assertEquals("unifiers " + o1Meta, 1, o1Unifiers.size());
+
+    PhysicalPlan.StatsHandler sm = o1p1.statsMonitors.get(0);
+    Assert.assertTrue("stats handlers " + o1p1.statsMonitors, sm instanceof PartitioningTest.PartitionLoadWatch);
+    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p1, -1);
+    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1Partitions.get(1), -1);
+    sm.onThroughputUpdate(o1p1, -1);
+    sm.onThroughputUpdate(o1Partitions.get(1), -1);
+    Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
+    ctx.events.remove(0).run();
+
+    List<PTOperator> o1NewPartitions = plan.getOperators(o1Meta);
+    Assert.assertEquals("partitions " + o1NewPartitions, 1, o1NewPartitions.size());
+
+    Collection<PTOperator> o1NewUnifiers = plan.getMergeOperators(o1Meta);
+    Assert.assertEquals("unifiers " + o1Meta, 0, o1NewUnifiers.size());
+    p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
+    Assert.assertTrue("", p1Doper.getOperatorMeta() == dag.getMeta(o2));
+    Assert.assertNull("unifier ", p1Doper.getUnifier());
+
+    Assert.assertTrue("removed unifier from deployment " + ctx.undeploy,  ctx.undeploy.containsAll(o1Unifiers));
+    Assert.assertFalse("removed unifier from deployment " + ctx.deploy,  ctx.deploy.containsAll(o1Unifiers));
+
+  }
+
   @Test
   public void testDefaultRepartitioning() {
 
