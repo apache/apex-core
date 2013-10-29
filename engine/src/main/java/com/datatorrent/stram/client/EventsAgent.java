@@ -71,7 +71,7 @@ public final class EventsAgent extends FSPartFileAgent
   }
 
   @SuppressWarnings("unchecked")
-  public List<Event> getEvents(String appId, Long startTime, Long endTime)
+  public List<Event> getEvents(String appId, Long fromTime, Long toTime)
   {
     List<Event> result = new ArrayList<Event>();
     String dir = getEventsDirectory(appId);
@@ -88,14 +88,14 @@ public final class EventsAgent extends FSPartFileAgent
         if (indexLine.isEndLine) {
           continue;
         }
-        if (startTime != null) {
-          if (startTime.longValue() > indexLine.endTime) {
+        if (fromTime != null) {
+          if (fromTime.longValue() > indexLine.endTime) {
             continue;
           }
         }
 
-        if (endTime != null) {
-          if (endTime.longValue() < indexLine.startTime) {
+        if (toTime != null) {
+          if (toTime.longValue() < indexLine.startTime) {
             return result;
           }
         }
@@ -113,7 +113,7 @@ public final class EventsAgent extends FSPartFileAgent
           cursor2 = partLine.indexOf(':', cursor);
           ev.type = partLine.substring(cursor, cursor2);
           cursor = cursor2 + 1;
-          if ((startTime == null || ev.timestamp >= startTime) && (endTime == null || ev.timestamp <= endTime)) {
+          if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
             ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
             result.add(ev);
           }

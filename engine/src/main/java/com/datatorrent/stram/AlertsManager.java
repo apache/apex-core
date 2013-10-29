@@ -47,6 +47,21 @@ public class AlertsManager
     this.dagManager = dagManager;
   }
 
+  public static String getAlertFilterOperatorName(String alertName)
+  {
+    return "_alert_filter_" + alertName;
+  }
+
+  public static String getAlertEscalationOperatorName(String alertName)
+  {
+    return "_alert_escalation_" + alertName;
+  }
+
+  public static String getAlertActionOperatorName(String alertName, int index)
+  {
+    return "_alert_action_" + alertName + "_" + index;
+  }
+
   public JSONObject createAlert(String name, String content)
   {
     LOG.debug("Creating Alert: {}", content);
@@ -70,7 +85,7 @@ public class AlertsManager
         alertInfo.createFrom = createFrom;
 
         // create filter operator
-        String filterOperatorName = "_alert_filter_" + name;
+        String filterOperatorName = getAlertFilterOperatorName(name);
         alertInfo.filterOperatorName = filterOperatorName;
         {
           CreateOperatorRequest request = new CreateOperatorRequest();
@@ -95,7 +110,7 @@ public class AlertsManager
           }
         }
         // create escalation operator
-        String escalationOperatorName = "_alert_escalation_" + name;
+        String escalationOperatorName = getAlertEscalationOperatorName(name);
         alertInfo.escalationOperatorName = escalationOperatorName;
 
         {
@@ -121,7 +136,7 @@ public class AlertsManager
         }
         // create action operators and set properties
         for (int i = 0; i < actions.length(); i++) {
-          String actionOperatorName = "_alert_action_" + name + "_" + i;
+          String actionOperatorName = getAlertActionOperatorName(name, i);
           alertInfo.actionOperatorNames.add(actionOperatorName);
 
           JSONObject action = actions.getJSONObject(i);
