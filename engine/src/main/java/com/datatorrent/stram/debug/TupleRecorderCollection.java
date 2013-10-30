@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -255,15 +256,19 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   @Override
   public void activated(Node<?> node)
   {
-    for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
-      if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
-        startRecording(node, node.getId(), entry.getKey());
-      }
+    if (node.getContext().getValue(OperatorContext.AUTO_RECORD)) {
+      startRecording(node, node.getId(), null);
     }
-
-    for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
-      if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
-        startRecording(node, node.getId(), entry.getKey());
+    else {
+      for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
+        if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
+          startRecording(node, node.getId(), entry.getKey());
+        }
+      }
+      for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
+        if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
+          startRecording(node, node.getId(), entry.getKey());
+        }
       }
     }
   }
