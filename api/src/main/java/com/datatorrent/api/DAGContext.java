@@ -81,40 +81,41 @@ public interface DAGContext extends Context
   Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
   /**
    * The amount of memory to be requested for streaming containers. Not used in local mode.
+   * Default value is 1GB.
    */
   Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
-   * Constant
-   * <code>CONTAINER_JVM_OPTIONS</code>
+   * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
    */
   Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());
   /**
    * The amount of memory to be requested for the application master. Not used in local mode.
+   * Default value is 1GB.
    */
   Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
-   * Constant
-   * <code>STREAMING_WINDOW_SIZE_MILLIS</code>
+   * The streaming window size to use for the application. It is specified in milliseconds. Default value is 500ms.
    */
   Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);
   /**
-   * Constant
-   * <code>CHECKPOINT_WINDOW_COUNT</code>
+   * The time interval for saving the operator state. It is specified as a multiple of streaming windows. The operator
+   * state is saved periodically with interval equal to the checkpoint interval. Default value is 60 streaming windows.
    */
   Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(60);
   /**
-   * Constant
-   * <code>APPLICATION_PATH</code>
+   * The path to store the application jars under when starting application master and containers. This parameter
+   * is needed only if the default location needs to be overriden.
    */
   Attribute<String> APPLICATION_PATH = new Attribute<String>("unknown-application-path");
   /**
-   * Constant
-   * <code>TUPLE_RECORDING_PART_FILE_SIZE</code>
+   * The size limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
+   * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new file. Default value is 128k.
    */
   Attribute<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new Attribute<Integer>(128 * 1024);
   /**
-   * Constant
-   * <code>TUPLE_RECORDING_PART_FILE_TIME_MILLIS</code>
+   * The time limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
+   * in files. When a tuple recording file creation time falls beyond the time limit window from the current time a new file
+   * is created and the tuples start getting stored in the new file. Default value is 30hrs.
    */
   Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
   /**
@@ -127,20 +128,21 @@ public interface DAGContext extends Context
    */
   Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
   /**
-   * Maximum number of simultaneous heartbeat connections to process.
+   * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
    */
   Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(30);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
-   * 1000ms. Value 0 will disable heartbeat (for unit testing).
+   * 1000ms. Value 0 will disable heartbeat (for unit testing). Default value is 1000ms.
    */
   Attribute<Integer> HEARTBEAT_INTERVAL_MILLIS = new Attribute<Integer>(1000);
   /**
    * Timeout for master to identify a hung container (full GC etc.). Timeout will result in container restart.
+   * Default value is 30s.
    */
   Attribute<Integer> HEARTBEAT_TIMEOUT_MILLIS = new Attribute<Integer>(30 * 1000);
   /**
-   * Timeout for allocating container resources.
+   * Timeout for allocating container resources. Default value is 60s.
    */
   Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(60000);
   /**
@@ -149,15 +151,21 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
   /**
-   * Constant
-   * <code>STATS_RECORD_INTERVAL_MILLIS</code>
+   * The time interval for recording statistics. The statistics are periodically recorded with interval equal to the stats
+   * record interval. If the interval is specified as 0 then no statistics are recorded. The defaul value is 0.
    */
   Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
 
-  /** Constant <code>THROUGHPUT_CALCULATION_INTERVAL</code> */
+  /**
+   * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
+   * equal to the throughput calculation interval. The default value is 10s.
+   */
   Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
 
-  /** Constant <code>THROUGHPUT_CALCULATION_MAX_SAMPLES</code> */
+  /**
+   * The maximum number of samples to use when calculating throughput. In practice lesser samples may be used
+   * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
+   */
   Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
