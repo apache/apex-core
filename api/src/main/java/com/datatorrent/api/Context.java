@@ -148,7 +148,10 @@ public interface Context
      * should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
     Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<Operator.ProcessingMode>(ProcessingMode.AT_LEAST_ONCE);
-
+    /**
+     * Whether or not to auto record the tuples
+     */
+    Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
     /**
      * Return the operator runtime id.
      *

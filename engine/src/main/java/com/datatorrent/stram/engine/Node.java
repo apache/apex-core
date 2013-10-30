@@ -448,6 +448,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
+  public OperatorContext getContext()
+  {
+    return context;
+  }
+
   @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
   {
