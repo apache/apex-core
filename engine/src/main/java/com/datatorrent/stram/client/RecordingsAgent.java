@@ -523,6 +523,9 @@ public final class RecordingsAgent extends FSPartFileAgent
           while ((partLine = partBr.readLine()) != null) {
             int partCursor = 2;
             if (partLine.startsWith("B:")) {
+              int partCursor2 = partLine.indexOf(':', partCursor);
+              currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
+              partCursor = partCursor2 + 1;
               currentWindowLow = Long.valueOf(partLine.substring(partCursor));
               if (limit != numRemainingTuples) {
                 WindowTuplesInfo wtinfo;
@@ -535,6 +538,7 @@ public final class RecordingsAgent extends FSPartFileAgent
               int partCursor2 = partLine.indexOf(':', partCursor);
               currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
               partCursor = partCursor2 + 1;
+              partCursor2 = partLine.indexOf(':', partCursor);
               String port = partLine.substring(partCursor, partCursor2);
               boolean portMatch = (ports == null) || (ports.length == 0) || Arrays.asList(ports).contains(port);
               partCursor = partCursor2 + 1;
