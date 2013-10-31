@@ -38,7 +38,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient.Handler;
  */
 public class TupleRecorder
 {
-  public static final String VERSION = "1.1";
+  public static final String VERSION = "1.2";
   private int totalTupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
@@ -340,7 +340,7 @@ public class TupleRecorder
       this.currentWindowId = windowId;
       endWindowTuplesProcessed = 0;
       try {
-        storage.writeDataItem(("B:" + windowId + "\n").getBytes(), false);
+        storage.writeDataItem(("B:" + System.currentTimeMillis() + ":" + windowId + "\n").getBytes(), false);
       }
       catch (IOException ex) {
         logger.error(ex.toString());
@@ -352,7 +352,7 @@ public class TupleRecorder
   {
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
-        storage.writeDataItem(("E:" + currentWindowId + "\n").getBytes(), false);
+        storage.writeDataItem(("E:" + System.currentTimeMillis() + ":" + currentWindowId + "\n").getBytes(), false);
         logger.debug("Got last end window tuple.  Flushing...");
         if (!storage.flushData() && wsClient != null) {
           wsClient.publish(SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".tuple." + storage.getBasePath(), storage.getLatestIndexLine());
@@ -373,7 +373,7 @@ public class TupleRecorder
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       Slice f = streamCodec.toByteArray(obj);
       PortInfo pi = portMap.get(port);
-      String str = "T:" + pi.id + ":" + f.length + ":";
+      String str = "T:" + System.currentTimeMillis() + ":" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
@@ -401,7 +401,7 @@ public class TupleRecorder
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       PortInfo pi = portMap.get(port);
       Slice f = streamCodec.toByteArray(tuple);
-      String str = "C:" + pi.id + ":" + f.length + ":";
+      String str = "C:" + System.currentTimeMillis() + ":" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
