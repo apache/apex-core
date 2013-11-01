@@ -20,10 +20,10 @@ import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * OiONode is driver for the OiO (ThreadLocal) operator.
- * 
+ *
  * It mostly replicates the functionality of the GenericNode but the logic here is a lot simpler as most of the
  * validation is already handled by the upstream operator.
- * 
+ *
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.5
  */
@@ -58,6 +58,8 @@ public class OiONode extends GenericNode
             for (int s = sinks.length; s-- > 0;) {
               sinks[s].put(t);
             }
+            controlTupleCount++;
+
             if (applicationWindowCount == 0) {
               insideWindow = true;
               operator.beginWindow(currentWindowId);
@@ -84,6 +86,7 @@ public class OiONode extends GenericNode
             for (int s = sinks.length; s-- > 0;) {
               sinks[s].put(t);
             }
+            controlTupleCount++;
           }
           break;
 
@@ -93,6 +96,7 @@ public class OiONode extends GenericNode
             for (int s = sinks.length; s-- > 0;) {
               sinks[s].put(t);
             }
+            controlTupleCount++;
           }
           break;
 
@@ -139,7 +143,6 @@ public class OiONode extends GenericNode
     public int getCount(boolean reset)
     {
       throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
-                                                                     // Tools | Templates.
     }
 
   }

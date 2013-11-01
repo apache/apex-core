@@ -91,6 +91,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
               currentWindowId = t.getWindowId();
               if (applicationWindowCount == 0) {
                 insideWindow = true;
@@ -110,6 +111,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
 
               if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
                 if (checkpoint && checkpoint(currentWindowId)) {
@@ -136,6 +138,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
               break;
 
             case END_STREAM:
@@ -143,6 +146,7 @@ public class InputNode extends Node<InputOperator>
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].put(t);
                 }
+                controlTupleCount++;
                 alive = false;
               }
               else {
@@ -154,6 +158,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
               break;
           }
         }

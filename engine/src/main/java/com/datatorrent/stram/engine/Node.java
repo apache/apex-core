@@ -80,6 +80,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected long checkpointedWindowId;
   public int applicationWindowCount;
   public int checkpointWindowCount;
+  protected int controlTupleCount;
 
   public Node(OPERATOR operator)
   {
@@ -235,7 +236,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void emitEndStream()
   {
-//    logger.debug("{} sending EndOfStream", this);
+    // logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
@@ -243,25 +244,26 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     for (final Sink<Object> output : outputs.values()) {
       output.put(est);
     }
+    controlTupleCount++;
   }
 
   protected void emitEndWindow()
   {
-    // This function currently only gets called upon END_STREAM.
-    // DO NOT assume this will get called to emit an end window tuple
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
-    for (final Sink<Object> output : outputs.values()) {
-      output.put(ewt);
+    for (int s = sinks.length; s-- > 0;) {
+      sinks[s].put(ewt);
     }
+    controlTupleCount++;
   }
 
   public void emitCheckpoint(long windowId)
   {
     CheckpointTuple ct = new CheckpointTuple(windowId);
     ct.setWindowId(currentWindowId);
-    for (final Sink<Object> output : outputs.values()) {
-      output.put(ct);
+    for (int s = sinks.length; s-- > 0;) {
+      sinks[s].put(ct);
     }
+    controlTupleCount++;
   }
 
   protected void handleRequests(long windowId)
@@ -289,7 +291,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
-      portStats.tupleCount = e.getValue().getCount(true);
+      portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
+      controlTupleCount = 0;
       portStats.endWindowTimestamp = endWindowEmitTime;
       stats.outputPorts.add(portStats);
     }

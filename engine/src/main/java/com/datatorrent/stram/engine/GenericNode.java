@@ -131,9 +131,10 @@ public class GenericNode extends Node<Operator>
       emitEndWindow();
     }
     else {
-      for (final Sink<Object> output : outputs.values()) {
-        output.put(endWindowTuple);
+      for (int s = sinks.length; s-- > 0;) {
+        sinks[s].put(endWindowTuple);
       }
+      controlTupleCount++;
     }
 
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
@@ -210,6 +211,8 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
+
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
@@ -297,6 +300,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
                 }
                 break;
 
@@ -346,6 +350,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
 
                   assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
@@ -452,6 +457,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(tuple);
                   }
+                  controlTupleCount++;
                 }
 
                 if (break_activequeue) {
