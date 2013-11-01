@@ -638,7 +638,7 @@ public class StramChild
         if (node == null) {
           continue;
         }
-        
+
         if (node.getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new NodeRequest()
@@ -1065,7 +1065,7 @@ public class StramChild
       }
     }
 
-    setupOioGroups(oioNodes);
+    setupOiOGroups(oioNodes);
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
@@ -1087,21 +1087,21 @@ public class StramChild
    * Populates oioGroups with owner OIO Node as key and list of corresponding OIO nodes which will run in its thread as value
    * This method assumes that the DAG is valid as per OIO constraints
    */
-  private void setupOioGroups(Map<Integer, Integer> oioNodes)
+  private void setupOiOGroups(Map<Integer, Integer> oioNodes)
   {
     for (Integer child : oioNodes.keySet()) {
       Integer oioParent = oioNodes.get(child);
-      while (oioNodes.containsKey(oioParent)){
-        oioParent = oioNodes.get(oioParent);
+
+      Integer temp;
+      while ((temp = oioNodes.get(oioParent)) != null) {
+        oioParent = temp;
       }
 
-      if (oioGroups.containsKey(oioParent)) {
-        oioGroups.get(oioParent).add(child);
-      } else {
-        ArrayList children = new ArrayList<Integer>();
-        children.add(child);
-        oioGroups.put(oioParent, children);
+      ArrayList<Integer> children = oioGroups.get(oioParent);
+      if (children == null) {
+        oioGroups.put(oioParent, children = new ArrayList<Integer>());
       }
+      children.add(child);
     }
   }
 
