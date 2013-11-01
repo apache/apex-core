@@ -68,6 +68,7 @@ import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.webapp.StramWebServices;
+import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -101,7 +102,7 @@ public class StramMiniClusterTest
     conf.setStrings("yarn.scheduler.capacity.root.queues", "default");
     conf.setStrings("yarn.scheduler.capacity.root.default.capacity", "100");
 
-    StringBuilder adminEnv = new StringBuilder();
+    StringBuilder adminEnv = new StringBuilder(1024);
     if (System.getenv("JAVA_HOME") == null) {
       adminEnv.append("JAVA_HOME=").append(System.getProperty(System.getProperty("java.home")));
       adminEnv.append(",");
@@ -534,11 +535,9 @@ public class StramMiniClusterTest
       @SuppressWarnings("SleepWhileInLoop")
       public void runAM(ApplicationAttemptId attemptId) throws Exception {
         LOG.debug("AM running {}", attemptId);
-
-        AMRMClient amRmClient = AMRMClient.createAMRMClient();
+        AMRMClient<ContainerRequest> amRmClient = AMRMClient.createAMRMClient();
         amRmClient.init(conf);
         amRmClient.start();
-
 
         // register with the RM (LAUNCHED -> RUNNING)
         amRmClient.registerApplicationMaster("", 0, null);
@@ -573,7 +572,6 @@ public class StramMiniClusterTest
           for (Container c : ar.getAllocatedContainers()) {
             LOG.debug("*** allocated {}", c.getResource());
             amRmClient.removeContainerRequest(req);
-
           }
           /*
           GetClusterNodesRequest request =
