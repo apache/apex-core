@@ -163,7 +163,7 @@ public interface DAGContext extends Context
   Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
 
   /**
-   * The maximum number of samples to use when calculating throughput. In practice lesser samples may be used
+   * The maximum number of samples to use when calculating throughput. In practice fewer samples may be used
    * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
    */
   Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
