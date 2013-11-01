@@ -146,8 +146,10 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(60000);
   /**
-   * Constant
-   * <code>STATS_MAX_ALLOWABLE_WINDOWS_LAG</code>
+   * Maximum number of windows that can be pending for statistics calculation. Statistics are computed when
+   * the metrics are available from all operators for a window. If the information is not available from all operators then
+   * the window is pending. When the number of pending windows reaches this limit the information for the oldest window
+   * is purged. Default value is 1000 windows.
    */
   Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
   /**
