@@ -40,6 +40,7 @@ import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import java.util.*;
 
 /**
  *
@@ -175,7 +176,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * Operator configuration
    */
   private class OperatorConf {
-    public OperatorConf(String id) {
+    OperatorConf(String id) {
       this.id = id;
     }
     private final String id;
@@ -328,6 +329,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * entirety.
    *
    * @param props
+   * @return Logical plan configuration.
    */
   public LogicalPlanConfiguration addFromProperties(Properties props) {
 
@@ -444,7 +446,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   public Map<String, String> getAppAliases() {
-    return this.appAliases;
+    return Collections.unmodifiableMap(this.appAliases);
   }
 
   @Override
