@@ -651,6 +651,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     legacyKeyMap.put(DAGContext.LIBRARY_JARS, "libjars");
     legacyKeyMap.put(DAGContext.CONTAINERS_MAX_COUNT, "maxContainers");
     legacyKeyMap.put(DAGContext.CONTAINER_MEMORY_MB, "containerMemoryMB");
+    legacyKeyMap.put(DAGContext.CONTAINER_JVM_OPTIONS, "containerJvmOpts");
     legacyKeyMap.put(DAGContext.MASTER_MEMORY_MB, "masterMemoryMB");
     legacyKeyMap.put(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, "windowSizeMillis");
     legacyKeyMap.put(DAGContext.APPLICATION_PATH, "appPath");
