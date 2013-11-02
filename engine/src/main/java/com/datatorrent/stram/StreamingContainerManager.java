@@ -960,7 +960,7 @@ public class StreamingContainerManager implements PlanContext
 
     Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
     for (OperatorMeta logicalOperator: plan.getDAG().getRootOperators()) {
-      LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
+      //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator: operators) {
