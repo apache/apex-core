@@ -84,7 +84,16 @@ public interface Context
 
   public interface OperatorContext extends Context
   {
+    /**
+     * Poll period in milliseconds when there are no tuples available on any of the input ports of the operator.
+     * Default value is 10 milliseconds.
+     */
     Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
+    /**
+     * The maximum number of attempts to restart a failing operator before shutting down the application.
+     * When an operator fails to start it is re-spawned in a new container. If it continues to fail after the number of restart
+     * attempts reaches this limit the application is shutdown. The default value is 5 attempts.
+     */
     Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(5);
     /**
      * Initial partition count for an operator that supports partitioning. The
@@ -101,8 +110,27 @@ public interface Context
      * initial partitions is determined by operator implementation.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(0);
+
+    /**
+     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning.
+     * When this attribute is set and partitioning is enabled by setting INITIAL_PARTITION_COUNT if the number of tuples
+     * per second falls below the specified rate the physical operators are consolidated into fewer operators till the rate
+     * goes above the specified minimum.
+     */
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
+
+    /**
+     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning.
+     * When this attribute is set and partitioning is enabled by setting INITIAL_PARTITION_COUNT if the number of tuples
+     * per second goes above the specified rate new physical operators are spawned till the rate again goes below the specified
+     * maximum.
+     */
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
+
+    /**
+     * Specify a custom statistics handler class. The class should implement the StatsHandler interface. The handler
+     * will be called with statistic metric updates for physical operators.
+     */
     Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
