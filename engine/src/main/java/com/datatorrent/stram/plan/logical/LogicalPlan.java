@@ -90,6 +90,17 @@ public class LogicalPlan implements Serializable, DAG
    */
   public static String SUBDIR_EVENTS = "events";
 
+  /**
+   * A flag to specify whether to use the fast publisher or not. This attribute was moved
+   * from DAGContext. This can be here till the fast publisher is fully tested and working as desired.
+   * Then it can be moved back to DAGContext.
+   */
+  public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
+
+  static {
+    AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
+  }
+
   private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
   private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
