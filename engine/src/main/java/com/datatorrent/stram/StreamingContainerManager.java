@@ -17,7 +17,6 @@ import javax.annotation.Nullable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -27,7 +26,6 @@ import org.apache.hadoop.yarn.webapp.NotFoundException;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.AttributeMap;
@@ -97,6 +95,7 @@ public class StreamingContainerManager implements PlanContext
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
+  private final HashSet<PTContainer> pendingAllocation = Sets.newLinkedHashSet();
   protected String shutdownDiagnosticsMessage = "";
   protected boolean forcedShutdown = false;
   private long lastResourceRequest = 0;
@@ -209,36 +208,49 @@ public class StreamingContainerManager implements PlanContext
   }
 
   /**
-   * Check periodically that child containers phone home.
-   * This is run by the App Master thread (only accessed by one thread).
+   * Check periodically that deployed containers phone home.
+   * Run from the master main loop (single threaded access).
    */
   public void monitorHeartbeat()
   {
     long currentTms = System.currentTimeMillis();
 
     // look for resource allocation timeout
-    for (PTContainer c: plan.getContainers()) {
-      // TODO: single state for resource requested
-      if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
-        // look for resource allocation timeout
-        if (lastResourceRequest + plan.getDAG().getValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS) < currentTms) {
-          String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.getExternalId(), c.getState().name());
-          LOG.warn(msg);
-          forcedShutdown = true;
-          shutdownAllContainers(msg);
+    if (!pendingAllocation.isEmpty()) {
+      // look for resource allocation timeout
+      if (lastResourceRequest + plan.getDAG().getValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS) < currentTms) {
+        String msg = String.format("Shutdown due to resource allocation timeout (%s ms) waiting for %s containers", currentTms - lastResourceRequest, pendingAllocation.size());
+        LOG.warn(msg);
+        for (PTContainer c : pendingAllocation) {
+          LOG.warn("Waiting for resource: {}m priority: {} {}", c.getRequiredMemoryMB(), c.getResourceRequestPriority(), c);
         }
-        else {
+        forcedShutdown = true;
+        shutdownAllContainers(msg);
+      }
+      else {
+        for (PTContainer c : pendingAllocation) {
           LOG.debug("Waiting for resource: {}m {}", c.getRequiredMemoryMB(), c);
         }
       }
-      else if (c.getExternalId() != null) {
-        StramChildAgent cs = containers.get(c.getExternalId());
-        if (cs != null && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
-          // TODO: handle containers hung in deploy requests
-          if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork() && !isApplicationIdle()) {
-            // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
-            LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - cs.lastHeartbeatMillis});
+    }
+
+    // monitor currently deployed containers
+    for (StramChildAgent sca : containers.values()) {
+      PTContainer c = sca.container;
+      if (!pendingAllocation.contains(c) && c.getExternalId() != null) {
+        if (sca.lastHeartbeatMillis == 0) {
+          // container allocated but process was either not launched or is not able to phone home
+          if (currentTms - sca.createdMillis > 2 * heartbeatTimeoutMillis) {
+            LOG.info("Container {}@{} startup timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.createdMillis});
             containerStopRequests.put(c.getExternalId(), c.getExternalId());
+          }
+        } else {
+          if (currentTms - sca.lastHeartbeatMillis > heartbeatTimeoutMillis) {
+            if (!isApplicationIdle()) {
+              // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
+              LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.lastHeartbeatMillis});
+              containerStopRequests.put(c.getExternalId(), c.getExternalId());
+            }
           }
         }
       }
@@ -517,7 +529,7 @@ public class StreamingContainerManager implements PlanContext
   {
     PTContainer match = null;
     // match container waiting for resource
-    for (PTContainer c: plan.getContainers()) {
+    for (PTContainer c : pendingAllocation) {
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         if (c.getResourceRequestPriority() == resource.priority) {
           return c;
@@ -549,6 +561,7 @@ public class StreamingContainerManager implements PlanContext
       return null;
     }
 
+    pendingAllocation.remove(container);
     container.setState(PTContainer.State.ALLOCATED);
     if (container.getExternalId() != null) {
       LOG.info("Removing existing container agent {}", container.getExternalId());
@@ -1074,6 +1087,7 @@ public class StreamingContainerManager implements PlanContext
     for (PTContainer c: startContainers) {
       ContainerStartRequest dr = new ContainerStartRequest(c);
       containerStartRequests.add(dr);
+      pendingAllocation.add(dr.container);
       lastResourceRequest = System.currentTimeMillis();
       for (PTOperator operator: c.getOperators()) {
         operator.setState(PTOperator.State.INACTIVE);
