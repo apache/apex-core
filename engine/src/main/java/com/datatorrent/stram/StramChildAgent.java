@@ -46,7 +46,9 @@ import com.datatorrent.stram.webapp.ContainerInfo;
 
 /**
  *
- * Representation of a child container in the master<p>
+ * Representation of child container (execution layer) in the master<p>
+ * Created when resource for container was allocated.
+ * Destroyed after resource is deallocated (container released, killed etc.)
  * <br>
  *
  * @since 0.3.2
@@ -243,7 +245,6 @@ public class StramChildAgent {
 
   boolean shutdownRequested = false;
   long lastHeartbeatMillis = 0;
-  //long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
   Map<Integer, OperatorStatus> operators;

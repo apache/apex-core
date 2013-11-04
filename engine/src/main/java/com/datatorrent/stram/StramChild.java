@@ -17,7 +17,6 @@ import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -31,7 +30,6 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
-
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -267,10 +265,10 @@ public class StramChild
     }
     finally {
       RPC.stopProxy(umbilical);
+      //FileSystem.closeAll();
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
-      // This assumes that on return from Task.activate()
-      // there is no more logging done.
+      logger.info("exit status: {}", exitStatus);
       LogManager.shutdown();
     }
 
