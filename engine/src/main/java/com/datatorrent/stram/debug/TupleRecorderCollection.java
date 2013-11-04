@@ -95,6 +95,10 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     for (TupleRecorder entry : values()) {
       entry.teardown();
     }
+    if (wsClient != null) {
+      // SPOI-1328: clean up IO threads or else process won't exit
+      wsClient.teardown();
+    }
     clear();
   }
 
