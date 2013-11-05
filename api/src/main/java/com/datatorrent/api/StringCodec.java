@@ -24,6 +24,7 @@ import java.io.Serializable;
  * conversion from and to String for attribute values.
  *
  * @param <T> Type of the object which can be converted to/from String.
+ * @since 0.9.0
  */
 public interface StringCodec<T>
 {
