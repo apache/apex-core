@@ -8,8 +8,10 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 
 /**
+ * <p>WebServices class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.0
  */
 @Path(WebServices.PATH)
 public class WebServices
