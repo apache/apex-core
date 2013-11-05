@@ -35,6 +35,8 @@ import com.google.common.collect.Sets;
 /**
  * Encapsulates the mapping of input to output operators, including unifiers. Depending on logical plan setting and
  * number of partitions, unifiers are created as needed and potentially cascaded.
+ *
+ * @since 0.9.0
  */
 public class StreamMapping
 {

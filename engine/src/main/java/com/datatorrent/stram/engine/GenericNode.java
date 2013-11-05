@@ -288,10 +288,11 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (lastCheckpointedWindowId < currentWindowId && !checkpoint) {
+                long checkPtWinId = t.getWindowId();
+                if (lastCheckpointedWindowId < checkPtWinId && !checkpoint) {
                   if (checkpointWindowCount == 0) {
-                    if (checkpoint(currentWindowId)) {
-                      lastCheckpointedWindowId = currentWindowId;
+                    if (checkpoint(checkPtWinId)) {
+                      lastCheckpointedWindowId = checkPtWinId;
                     }
                   }
                   else {

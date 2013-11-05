@@ -123,11 +123,6 @@ public interface DAGContext extends Context
    */
   Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
   /**
-   * Constant
-   * <code>FAST_PUBLISHER_SUBSCRIBER</code>
-   */
-  Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
-  /**
    * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
    */
   Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(30);

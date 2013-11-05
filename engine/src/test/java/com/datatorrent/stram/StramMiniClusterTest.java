@@ -382,6 +382,7 @@ public class StramMiniClusterTest
     ApplicationReport ar = client.getApplicationReport();
     Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
     // unable to get the diagnostics message set by the AM here - see YARN-208
+    // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
     //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
   }
 
