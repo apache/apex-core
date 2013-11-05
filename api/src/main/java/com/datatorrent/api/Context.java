@@ -73,7 +73,7 @@ public interface Context
      * network I/O or other resource requirement for each unifier container (depends on the specific functionality of
      * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
      */
-    Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(1);
+    Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
     /**
      * Whether or not to auto record the tuples
      */

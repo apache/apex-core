@@ -95,7 +95,7 @@ public class StreamMapping
     return pu;
   }
 
-  private List<PTOutput> setupUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level) {
+  private List<PTOutput> setupCascadingUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level) {
     List<PTOutput> nextLevel = Lists.newArrayList();
     PTOperator pu = null;
     for (int i=0; i<upstream.size(); i++) {
@@ -115,7 +115,7 @@ public class StreamMapping
     }
 
     if (nextLevel.size() > limit) {
-      return setupUnifiers(nextLevel, pooledUnifiers, limit, level);
+      return setupCascadingUnifiers(nextLevel, pooledUnifiers, limit, level);
     } else {
       return nextLevel;
     }
@@ -174,9 +174,9 @@ public class StreamMapping
       int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
       List<PTOutput> unifierSources = this.upstream;
-      if (limit > 1 && this.upstream.size() > 1) {
+      if (limit > 1 && this.upstream.size() > limit) {
         // cascading unifier
-        unifierSources = setupUnifiers(this.upstream, currentUnifiers, limit, 0);
+        unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
       }
 
       // remove remaining unifiers
