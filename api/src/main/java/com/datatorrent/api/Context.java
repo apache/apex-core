@@ -128,8 +128,8 @@ public interface Context
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
 
     /**
-     * Specify a custom statistics handler class. The class should implement the StatsHandler interface. The handler
-     * will be called with statistic metric updates for physical operators.
+     * Internal Attribute (TBD). Specify a custom statistics handler class. The class should implement the StatsHandler
+     * interface. The handler will be called with statistic metric updates for physical operators.
      */
     Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());
     /**
