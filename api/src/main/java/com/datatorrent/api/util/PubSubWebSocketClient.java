@@ -15,24 +15,25 @@
  */
 package com.datatorrent.api.util;
 
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.websocket.WebSocket;
-import com.ning.http.client.websocket.WebSocketTextListener;
-import com.ning.http.client.websocket.WebSocketUpgradeHandler;
-import com.datatorrent.api.Component;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
-import com.ning.http.client.AsyncHttpClientConfigBean;
-
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com.ning.http.client.AsyncHttpClient;
+import com.ning.http.client.AsyncHttpClientConfigBean;
+import com.ning.http.client.websocket.WebSocket;
+import com.ning.http.client.websocket.WebSocketTextListener;
+import com.ning.http.client.websocket.WebSocketUpgradeHandler;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
@@ -342,7 +343,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * <p>constructUnsubscribeNumSubscribersMessage.</p>
    * @param <T>
    * @param topic
-   * @param codec 
+   * @param codec
    * @return
    * @throws IOException
    */
