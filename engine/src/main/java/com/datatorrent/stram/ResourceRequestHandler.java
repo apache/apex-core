@@ -46,7 +46,7 @@ public class ResourceRequestHandler {
     // check for node locality constraint
     String[] nodes = null;
     String[] racks = null;
-    
+
     String host = getHost(csr, memory);
     if(host != null) {
       nodes = new String[] {host};
@@ -83,6 +83,7 @@ public class ResourceRequestHandler {
   public String getHost(ContainerStartRequest csr, int requiredMemory) {
     PTContainer c = csr.container;
     for (PTOperator oper : c.getOperators()) {
+      // TODO: LOCALITY_HOST support: get host name along with the set to match against actual hosts
       Set<PTOperator> nodeLocalSet = oper.getNodeLocalOperators();
       if (nodeLocalSet.size() > 1) {
         String host = nodeLocalMapping.get(nodeLocalSet);
