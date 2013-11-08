@@ -4,15 +4,16 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.bufferserver.storage.Storage;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.bufferserver.util.SerializedData;
-import com.datatorrent.bufferserver.util.Codec.MutableInt;
-
 import java.util.Iterator;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.common.util.VarInt;
+import com.datatorrent.common.util.VarInt.MutableInt;
 
 /**
  * <p>DataListIterator class.</p>
@@ -62,7 +63,7 @@ public class DataListIterator implements Iterator<SerializedData>
   public synchronized boolean hasNext()
   {
     while (size == 0) {
-      size = Codec.readVarInt(buffer, readOffset, da.writingOffset, nextOffset);
+      size = VarInt.read(buffer, readOffset, da.writingOffset, nextOffset);
       switch (nextOffset.integer) {
         case -5:
           throw new RuntimeException("problemo!");

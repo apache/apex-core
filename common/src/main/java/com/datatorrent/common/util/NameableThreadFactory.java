@@ -2,18 +2,15 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.bufferserver.util;
+package com.datatorrent.common.util;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- *
- * @author Chetan Narsude <chetan@datatorrent.com>
- */
-/**
  * Class copy-pasted from java.util.concurrent.Executors and modified to meet our needs.
  *
+ * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
 public class NameableThreadFactory implements ThreadFactory

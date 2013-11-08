@@ -2,11 +2,12 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram.util;
+package com.datatorrent.common.util;
 
-import com.datatorrent.bufferserver.util.NameableThreadFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * <p>ScheduledThreadPoolExecutor class.</p>

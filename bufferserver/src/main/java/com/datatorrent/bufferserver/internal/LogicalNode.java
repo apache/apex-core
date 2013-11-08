@@ -4,21 +4,22 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-import com.datatorrent.bufferserver.client.AbstractClient;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.policy.GiveAll;
 import com.datatorrent.bufferserver.policy.Policy;
 import com.datatorrent.bufferserver.util.BitVector;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.bufferserver.util.SerializedData;
+import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.netlet.AbstractLengthPrependerClient;
 import com.datatorrent.netlet.EventLoop;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * LogicalNode represents a logical node in a DAG<p>
@@ -88,7 +89,7 @@ public class LogicalNode implements DataListener
    *
    * @param connection
    */
-  public void addConnection(AbstractClient connection)
+  public void addConnection(AbstractLengthPrependerClient connection)
   {
     PhysicalNode pn = new PhysicalNode(connection);
     if (!physicalNodes.contains(pn)) {
@@ -100,7 +101,7 @@ public class LogicalNode implements DataListener
    *
    * @param client
    */
-  public void removeChannel(AbstractClient client)
+  public void removeChannel(AbstractLengthPrependerClient client)
   {
     for (PhysicalNode pn: physicalNodes) {
       if (pn.getClient() == client) {

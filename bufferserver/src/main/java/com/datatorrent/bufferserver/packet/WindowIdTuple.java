@@ -4,8 +4,9 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.bufferserver.util.Codec;
+
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.common.util.VarInt;
 
 /**
  * <p>WindowIdTuple class.</p>
@@ -70,7 +71,7 @@ public class WindowIdTuple extends Tuple
     offset += bits / 7 + 1;
 
     byte[] array = new byte[offset];
-    Codec.writeRawVarint32(windowId, array, 1);
+    VarInt.write(windowId, array, 1);
 
     return array;
   }
