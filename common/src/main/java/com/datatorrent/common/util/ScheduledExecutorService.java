@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram.util;
+package com.datatorrent.common.util;
 
 /**
  * <p>ScheduledExecutorService interface.</p>
