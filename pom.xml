@@ -49,6 +49,7 @@
     <module>stram</module>
     <module>engine</module>
     <module>gateway</module>
+    <module>certification</module>
   </modules>
 
   <build>
