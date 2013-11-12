@@ -411,7 +411,7 @@ public class PhysicalPlan {
     }
   }
 
-  private void initPartitioning(PMapping m,String host)  {
+  private void initPartitioning(PMapping m)  {
     /*
      * partitioning is enabled through initial count attribute.
      * if the attribute is not present or set to zero, partitioning is off
@@ -1077,7 +1077,7 @@ public class PhysicalPlan {
     //
     this.logicalToPTOperator.put(om, pnodes);
     if (pnodes.isPartitionable()) {
-      initPartitioning(pnodes,host);
+      initPartitioning(pnodes);
     } else {
       if (upstreamPartitioned != null) {
         // parallel partition
