@@ -6,14 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
-
+import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -35,6 +35,7 @@ public class OperatorPartitions {
     private final PartitionPortMap partitionKeys;
     private final Operator operator;
     private final int loadIndicator;
+    private final AttributeMap attributes = new DefaultAttributeMap();
 
     public PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator) {
       this.operator = operator;
@@ -70,6 +71,12 @@ public class OperatorPartitions {
 
     boolean isModified() {
       return partitionKeys.modified;
+    }
+
+    @Override
+    public AttributeMap getAttributes()
+    {
+      return attributes;
     }
 
   }

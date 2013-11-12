@@ -170,9 +170,10 @@ public class PTOperator {
   long recoveryCheckpoint = 0;
   public int failureCount = 0;
   int loadIndicator = 0;
+  private String hostName;
   public List<? extends StatsHandler> statsMonitors;
 
-  final Map<Locality, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
+  final Map<Locality, GroupObject> groupings = Maps.newHashMapWithExpectedSize(3);
 
   public List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
@@ -265,17 +266,24 @@ public class PTOperator {
     return unifier;
   }
 
-  Set<PTOperator> getGrouping(Locality type) {
-    Set<PTOperator> s = this.groupings.get(type);
-    if (s == null) {
-      s = Sets.newHashSet();
-      this.groupings.put(type, s);
+  GroupObject getGrouping(Locality type) {
+    GroupObject grpObj = this.groupings.get(type);
+    if (grpObj == null) {
+      grpObj = new GroupObject();
+      grpObj.s = Sets.newHashSet();
+      this.groupings.put(type, grpObj);
     }
-    return s;
+    return grpObj;
   }
 
-  public Set<PTOperator> getNodeLocalOperators() {
+  public GroupObject getNodeLocalOperators() {
     return getGrouping(Locality.NODE_LOCAL);
+  }
+  
+  
+  public class GroupObject{
+    public String host;
+    public Set<PTOperator> s;
   }
 
   /**
@@ -287,5 +295,5 @@ public class PTOperator {
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", id).append("name", name).toString();
   }
-
+ 
 }

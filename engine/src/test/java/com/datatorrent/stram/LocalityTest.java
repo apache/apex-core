@@ -86,9 +86,9 @@ public class LocalityTest {
 
     for (Map.Entry<PTContainer, String> e : requestedHosts.entrySet()) {
       for (PTOperator oper : e.getKey().getOperators()) {
-        if (oper.getNodeLocalOperators().size() > 1) {
+        if (oper.getNodeLocalOperators().s.size() > 1) {
           String expHost = null;
-          for (PTOperator nodeLocalOper : oper.getNodeLocalOperators()) {
+          for (PTOperator nodeLocalOper : oper.getNodeLocalOperators().s) {
             Assert.assertNotNull("host null "+nodeLocalOper.getContainer(), nodeLocalOper.getContainer().host);
             if (expHost == null) {
               expHost = nodeLocalOper.getContainer().host;

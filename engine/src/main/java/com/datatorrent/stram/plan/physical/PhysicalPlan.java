@@ -20,6 +20,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.apache.commons.lang.StringUtils;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -37,6 +38,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
+import com.datatorrent.stram.plan.physical.PTOperator.GroupObject;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 
@@ -374,7 +376,7 @@ public class PhysicalPlan {
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL);
+          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).s;
           if (!inlineSet.isEmpty()) {
             // process inline operators
             for (PTOperator inlineOper : inlineSet) {
@@ -409,7 +411,7 @@ public class PhysicalPlan {
     }
   }
 
-  private void initPartitioning(PMapping m)  {
+  private void initPartitioning(PMapping m,String host)  {
     /*
      * partitioning is enabled through initial count attribute.
      * if the attribute is not present or set to zero, partitioning is off
@@ -467,7 +469,10 @@ public class PhysicalPlan {
 
     // create operator instance per partition
     for (Partition<?> p: partitions) {
-      addPTOperator(m, p);
+      if(p.getAttributes().get(OperatorContext.LOCALITY_HOST) == null)
+        addPTOperator(m, p);
+      else
+        addPTOperator(m, p);
     }
     updateStreamMappings(m);
 
@@ -699,7 +704,7 @@ public class PhysicalPlan {
 
       PTContainer newContainer = null;
       // check for existing inline set
-      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL)) {
+      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).s) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
@@ -826,16 +831,24 @@ public class PhysicalPlan {
   }
 
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition) {
+    String host = null;
+    if(partition != null){
+     host = partition.getAttributes().get(OperatorContext.LOCALITY_HOST);
+    }
+    if(host == null){
+     host = nodeDecl.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
+    }
+    
     PTOperator oper = createInstance(nodeDecl, partition);
     nodeDecl.addPartition(oper);
     this.newOpers.add(oper);
     this.deployOpers.add(oper);
-
+    
     //
     // update locality
     //
-    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL);
-    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL);
+    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL,host);
+    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL,host);
 
     return oper;
   }
@@ -883,9 +896,11 @@ public class PhysicalPlan {
     return pOperator;
   }
 
-  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype) {
+  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype,String host) {
 
-    Set<PTOperator> s = newOperator.getGrouping(ltype);
+    GroupObject grpObj = newOperator.getGrouping(ltype);
+    grpObj.host = host;
+    Set<PTOperator> s = grpObj.s;
     s.add(newOperator);
     LocalityPref loc = localityPrefs.prefs.get(pnodes);
     if (loc != null) {
@@ -893,16 +908,16 @@ public class PhysicalPlan {
         if (pnodes.parallelPartitions == localPM.parallelPartitions) {
           if (localPM.partitions.size() >= pnodes.partitions.size()) {
             // apply locality setting per partition
-            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype));
+            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype).s);
           }
         } else {
           for (PTOperator otherNode : localPM.partitions) {
-            s.addAll(otherNode.getGrouping(ltype));
+            s.addAll(otherNode.getGrouping(ltype).s);
           }
         }
       }
       for (PTOperator localOper : s) {
-        localOper.groupings.put(ltype, s);
+        localOper.groupings.put(ltype, grpObj);
       }
     }
   }
@@ -1029,7 +1044,8 @@ public class PhysicalPlan {
   public void addLogicalOperator(OperatorMeta om)
   {
     PMapping pnodes = new PMapping(om);
-    localityPrefs.add(pnodes, pnodes.logicalOperator.getValue(OperatorContext.LOCALITY_HOST));
+    String host = pnodes.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
+    localityPrefs.add(pnodes, host);
 
     PMapping upstreamPartitioned = null;
 
@@ -1061,7 +1077,7 @@ public class PhysicalPlan {
     //
     this.logicalToPTOperator.put(om, pnodes);
     if (pnodes.isPartitionable()) {
-      initPartitioning(pnodes);
+      initPartitioning(pnodes,host);
     } else {
       if (upstreamPartitioned != null) {
         // parallel partition

@@ -137,5 +137,13 @@ public interface PartitionableOperator extends Operator
      * @return Partition
      */
     public Partition<OPERATOR> getInstance(OPERATOR operator);
+    
+    /**
+     * Get the attributes associated with this partition.
+     * The returned map does not contain any attributes that may have been defined in the parent context of this context.
+     *
+     * @return attributes defined for the current context.
+     */
+    public AttributeMap getAttributes();
   }
 }
