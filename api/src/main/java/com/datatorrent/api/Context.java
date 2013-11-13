@@ -127,10 +127,10 @@ public interface Context
      */
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
     /**
-     * Specify a custom stats handler class interface.
-     * The handler will be called with statistic metric updates for physical operators.
+     * Specify a listener to process and optionally react to operator status updates.
+     * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Class<? extends HeartbeatListener>> PARTITION_STATS_HANDLER = new Attribute<Class<? extends HeartbeatListener>>(null, null);
+    Attribute<Class<? extends HeartbeatListener>> HEARTBEAT_LISTENER = new Attribute<Class<? extends HeartbeatListener>>(null, null);
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */

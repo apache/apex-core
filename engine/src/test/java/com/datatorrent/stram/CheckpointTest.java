@@ -28,7 +28,7 @@ import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
@@ -112,9 +112,9 @@ public class CheckpointTest
 
     container.processHeartbeatResponse(rsp);
 
-    StreamingNodeHeartbeat ohb = new StreamingNodeHeartbeat();
+    OperatorHeartbeat ohb = new OperatorHeartbeat();
     ohb.setNodeId(deployInfo.get(0).id);
-    ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
+    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
 
     ContainerStats cstats = new ContainerStats(containerId);
     cstats.addNodeStats(ohb);
@@ -157,7 +157,7 @@ public class CheckpointTest
     File cpFile1 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
-    ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
+    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
 
     container.processHeartbeatResponse(rsp);
     mses.tick(1); // end window 3, begin window 4

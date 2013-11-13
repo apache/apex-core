@@ -36,8 +36,6 @@ import com.datatorrent.stram.util.AbstractWritableAdapter;
 public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static final long versionID = 201208081755L;
 
-  void log(String containerId, String msg) throws IOException;
-
   /**
    * Initialization parameters for StramChild container. Container
    * wide settings remain effective as long as the process is running. Operators can
@@ -77,25 +75,11 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   }
 
   /**
-   *
-   * The child obtains its configuration context after container launch.
-   * <p>
-   * <br>
-   * Context will provide all information to initialize or reconfigure the
-   * node(s)<br>
-   *
-   * @param containerId
-   * @throws IOException
-   * <br>
-   */
-  StreamingContainerContext getInitContext(String containerId) throws IOException;
-
-  /**
-   *
-   * Stats of the operator that is sent to the application master
+   * Stats of deployed operator sent to the application master
    * <p>
    */
-  public static class StreamingNodeHeartbeat extends AbstractWritableAdapter {
+  public static class OperatorHeartbeat implements Serializable
+  {
     private static final long serialVersionUID = 201208171625L;
     public ArrayList<ContainerStats.OperatorStats> windowStats = new ArrayList<ContainerStats.OperatorStats>();
 
@@ -107,7 +91,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       return windowStats;
     }
 
-    public static enum DNodeState {
+    public static enum DeployState {
       NEW, // node instantiated but not processing yet
       ACTIVE,
       IDLE,// the node stopped processing (no more input etc.)
@@ -115,7 +99,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     /**
-     * The originating node. There can be multiple operators in a container.
+     * Operator id.
      */
     public int nodeId;
 
@@ -186,12 +170,12 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 201309131904L;
     public final String id;
     //public ArrayList<OperatorStats> operators;
-    public ArrayList<StreamingNodeHeartbeat> nodes;
+    public ArrayList<OperatorHeartbeat> nodes;
 
     public ContainerStats(String id)
     {
       this.id = id;
-      nodes = new ArrayList<StreamingNodeHeartbeat>();
+      nodes = new ArrayList<OperatorHeartbeat>();
     }
 
     @Override
@@ -200,7 +184,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       return "ContainerStats{" + "id=" + id + ", operators=" + nodes + '}';
     }
 
-    public void addNodeStats(StreamingNodeHeartbeat sn)
+    public void addNodeStats(OperatorHeartbeat sn)
     {
       nodes.add(sn);
     }
@@ -213,7 +197,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeat extends AbstractWritableAdapter {
+  public static class ContainerHeartbeat extends AbstractWritableAdapter
+  {
     private static final long serialVersionUID = 1L;
     public String containerId;
 
@@ -258,7 +243,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StramToNodeRequest extends AbstractWritableAdapter {
+  public static class StramToNodeRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public int operatorId;
@@ -352,8 +337,21 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   }
 
   /**
-   * To be called periodically by child for heartbeat protocol. Container may
-   * return response for node to shutdown etc.
+   * The child container obtains its configuration context after launch.
+   * <p>
+   * <br>
+   * Context will provide all information to initialize and prepare it for operator deployment<br>
+   *
+   * @param containerId
+   * @throws IOException
+   * <br>
+   */
+  StreamingContainerContext getInitContext(String containerId) throws IOException;
+
+  void log(String containerId, String msg) throws IOException;
+
+  /**
+   * To be called periodically by child for heartbeat protocol.
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
 

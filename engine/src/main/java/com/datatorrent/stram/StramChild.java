@@ -518,17 +518,17 @@ public class StramChild
 
       // gather heartbeat info for all operators
       for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
-        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+        OperatorHeartbeat hb = new OperatorHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
         OperatorContext ctx = activeNodes.get(e.getKey());
         if (ctx != null) {
           ctx.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.toString());
+          hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
         }
         else {
-          hb.setState(failedNodes.contains(e.getKey()) ? StreamingNodeHeartbeat.DNodeState.FAILED.toString() : StreamingNodeHeartbeat.DNodeState.IDLE.toString());
+          hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString());
         }
 
         PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();

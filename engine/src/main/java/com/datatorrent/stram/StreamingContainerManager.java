@@ -55,8 +55,8 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHe
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -666,7 +666,7 @@ public class StreamingContainerManager implements PlanContext
 
     long elapsedMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
-    for (StreamingNodeHeartbeat shb: heartbeat.getContainerStats().nodes) {
+    for (OperatorHeartbeat shb: heartbeat.getContainerStats().nodes) {
 
       OperatorStatus status = sca.updateOperatorStatus(shb);
       if (status == null) {
@@ -679,12 +679,12 @@ public class StreamingContainerManager implements PlanContext
       //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
       //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });
 
-      StreamingNodeHeartbeat previousHeartbeat = status.lastHeartbeat;
+      OperatorHeartbeat previousHeartbeat = status.lastHeartbeat;
       status.lastHeartbeat = shb;
 
-      if (shb.getState().compareTo(DNodeState.FAILED.name()) == 0) {
+      if (shb.getState().compareTo(DeployState.FAILED.name()) == 0) {
         // count failure transitions *->FAILED, applies to initialization as well as intermittent failures
-        if (previousHeartbeat == null || DNodeState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
+        if (previousHeartbeat == null || DeployState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
           status.operator.failureCount++;
           LOG.warn("Operator failure: {} count: {}", status.operator, status.operator.failureCount);
           Integer maxAttempts = status.operator.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);

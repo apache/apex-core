@@ -32,8 +32,8 @@ import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -183,7 +183,7 @@ public class StramChildAgent {
 
   protected class OperatorStatus implements OperatorStatusUpdate
   {
-    StreamingNodeHeartbeat lastHeartbeat;
+    OperatorHeartbeat lastHeartbeat;
     final PTOperator operator;
     long totalTuplesProcessed;
     long totalTuplesEmitted;
@@ -215,7 +215,7 @@ public class StramChildAgent {
 
     public boolean isIdle()
     {
-      if ((lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()))) {
+      if ((lastHeartbeat != null && DeployState.IDLE.name().equals(lastHeartbeat.getState()))) {
         return true;
       }
       return false;
@@ -320,7 +320,7 @@ public class StramChildAgent {
     }
   }
 
-  protected OperatorStatus updateOperatorStatus(StreamingNodeHeartbeat shb) {
+  protected OperatorStatus updateOperatorStatus(OperatorHeartbeat shb) {
     OperatorStatus status = this.operators.get(shb.getNodeId());
     if (status == null) {
       for (PTOperator operator : container.getOperators()) {

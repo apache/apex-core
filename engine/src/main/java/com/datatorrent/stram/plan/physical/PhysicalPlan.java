@@ -67,7 +67,7 @@ public class PhysicalPlan {
 
   /**
    * Stats listener for throughput based partitioning.
-   * Used when throughput thresholds are configured through operator attributes.
+   * Used when thresholds are configured on operator through attributes.
    */
   public static class PartitionLoadWatch implements HeartbeatListener {
     public long evalIntervalMillis = 30*1000;
@@ -453,7 +453,7 @@ public class PhysicalPlan {
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    Class<? extends HeartbeatListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.PARTITION_STATS_HANDLER);
+    Class<? extends HeartbeatListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.HEARTBEAT_LISTENER);
     if (statsListenerClass != null) {
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<HeartbeatListener>(1);
