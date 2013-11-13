@@ -120,7 +120,6 @@ public class CheckpointTest
     cstats.addNodeStats(ohb);
 
     ContainerHeartbeat hb = new ContainerHeartbeat();
-    hb.setContainerId(containerId);
     hb.setContainerStats(cstats);
 
     dnm.processHeartbeat(hb); // mark deployed

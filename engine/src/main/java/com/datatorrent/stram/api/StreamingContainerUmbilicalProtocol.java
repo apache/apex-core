@@ -169,24 +169,23 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   {
     private static final long serialVersionUID = 201309131904L;
     public final String id;
-    //public ArrayList<OperatorStats> operators;
-    public ArrayList<OperatorHeartbeat> nodes;
+    public ArrayList<OperatorHeartbeat> operators;
 
     public ContainerStats(String id)
     {
       this.id = id;
-      nodes = new ArrayList<OperatorHeartbeat>();
+      operators = new ArrayList<OperatorHeartbeat>();
     }
 
     @Override
     public String toString()
     {
-      return "ContainerStats{" + "id=" + id + ", operators=" + nodes + '}';
+      return "ContainerStats{" + "id=" + id + ", operators=" + operators + '}';
     }
 
     public void addNodeStats(OperatorHeartbeat sn)
     {
-      nodes.add(sn);
+      operators.add(sn);
     }
   }
 
@@ -200,7 +199,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class ContainerHeartbeat extends AbstractWritableAdapter
   {
     private static final long serialVersionUID = 1L;
-    public String containerId;
 
     /**
      * Buffer server address for this container.
@@ -213,14 +211,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int memoryMBFree;
     public boolean restartRequested;
 
-    public String getContainerId() {
-      return containerId;
-    }
-
-    public void setContainerId(String containerId) {
-      this.containerId = containerId;
-    }
-
     public ContainerStats stats;
 
     public ContainerStats getContainerStats() {
@@ -229,6 +219,10 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public void setContainerStats(ContainerStats stats) {
       this.stats = stats;
+    }
+
+    public String getContainerId() {
+      return stats.id;
     }
 
   }

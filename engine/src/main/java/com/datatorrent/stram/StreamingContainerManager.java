@@ -320,7 +320,7 @@ public class StreamingContainerManager implements PlanContext
             for (OperatorMeta root: rootOperatorMetas) {
               List<PTOperator> rootOperators = plan.getOperators(root);
               for (PTOperator rootOperator: rootOperators) {
-                // DFS for visiting the nodes for latency calculation
+                // DFS for visiting the operators for latency calculation
                 calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited, leafOperators);
               }
             }
@@ -666,7 +666,7 @@ public class StreamingContainerManager implements PlanContext
 
     long elapsedMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
-    for (OperatorHeartbeat shb: heartbeat.getContainerStats().nodes) {
+    for (OperatorHeartbeat shb: heartbeat.getContainerStats().operators) {
 
       OperatorStatus status = sca.updateOperatorStatus(shb);
       if (status == null) {
@@ -1417,8 +1417,8 @@ public class StreamingContainerManager implements PlanContext
       // restart on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
-    // should probably not record it here because it's better to get confirmation from the nodes first.
-    // but right now, the nodes do not give confirmation for the requests.  so record it here for now.
+    // should probably not record it here because it's better to get confirmation from the operators first.
+    // but right now, the operators do not give confirmation for the requests.  so record it here for now.
     FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
     ev.addData("operatorName", operatorName);
     ev.addData("propertyName", propertyName);

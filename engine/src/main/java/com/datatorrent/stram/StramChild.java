@@ -503,7 +503,9 @@ public class StramChild
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-      msg.setContainerId(this.containerId);
+      ContainerStats stats = new ContainerStats(containerId);
+      msg.setContainerStats(stats);
+
       msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
@@ -514,7 +516,6 @@ public class StramChild
         }
       }
       msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-      ContainerStats stats = new ContainerStats(containerId);
 
       // gather heartbeat info for all operators
       for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
@@ -558,8 +559,6 @@ public class StramChild
       for (ContainerStatsListener csl : statsListener) {
         csl.collected(stats);
       }
-
-      msg.setContainerStats(stats);
 
       // heartbeat call and follow-up processing
       //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());

@@ -285,7 +285,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   @Override
   public void collected(ContainerStats stats)
   {
-    for (OperatorHeartbeat node : stats.nodes) {
+    for (OperatorHeartbeat node : stats.operators) {
       long recordingStartTime;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
       if (tupleRecorder == null) {
