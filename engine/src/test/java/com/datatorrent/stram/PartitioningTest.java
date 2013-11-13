@@ -182,10 +182,10 @@ public class PartitioningTest
     final public static Map<Integer, Integer> loadIndicators = new ConcurrentHashMap<Integer, Integer>();
 
     @Override
-    public HeartbeatListenerResponse onOperatorStatusUpdate(OperatorStatusUpdate status)
+    public Response processStats(BatchedOperatorStats status)
     {
       Integer l = loadIndicators.get(status.getOperatorId());
-      HeartbeatListenerResponse hbr = new HeartbeatListenerResponse();
+      Response hbr = new Response();
       if (l != null) {
         hbr.repartitionRequired = true;
         hbr.loadIndicator = l.intValue();

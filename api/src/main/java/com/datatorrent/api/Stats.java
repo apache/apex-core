@@ -30,7 +30,6 @@ public interface Stats extends Serializable
   public static class OperatorStats implements Stats
   {
     private static final long serialVersionUID = 201309131905L;
-    public final String id;
     public long windowId;
     public long checkpointedWindowId;
     public ArrayList<PortStats> inputPorts;
@@ -43,11 +42,6 @@ public interface Stats extends Serializable
      * INVALID_TIME_MILLIS otherwise.
      */
     public long recordingStartTime = INVALID_TIME_MILLIS;
-
-    public OperatorStats(int id)
-    {
-      this.id = String.valueOf(id);
-    }
 
     public static class PortStats implements Stats
     {

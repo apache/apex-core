@@ -126,7 +126,7 @@ public class InputNode extends Node<InputOperator>
                 checkpointWindowCount = 0;
               }
 
-              ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats(id);
+              ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
               reportStats(stats, currentWindowId);
               handleRequests(currentWindowId);
               break;
@@ -192,7 +192,7 @@ public class InputNode extends Node<InputOperator>
         checkpointWindowCount = 0;
       }
 
-      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats(id);
+      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }

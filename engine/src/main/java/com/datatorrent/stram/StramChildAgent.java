@@ -23,7 +23,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.HeartbeatListener.OperatorStatusUpdate;
+import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
@@ -181,7 +181,7 @@ public class StramChildAgent {
   }
 
 
-  protected class OperatorStatus implements OperatorStatusUpdate
+  protected class OperatorStatus implements BatchedOperatorStats
   {
     OperatorHeartbeat lastHeartbeat;
     final PTOperator operator;

@@ -51,11 +51,10 @@ public interface HeartbeatListener
   /**
    * Controller view of operator status with latest windowed OperatorStats and moving averages.
    */
-  public interface OperatorStatusUpdate
+  public interface BatchedOperatorStats
   {
     List<OperatorStats> getLastWindowedStats();
     int getOperatorId();
-    boolean isRootOperator();
     long getCurrentWindowId();
     long getTuplesProcessedPSMA();
     long getTuplesEmittedPSMA();
@@ -63,7 +62,7 @@ public interface HeartbeatListener
     long getLatencyMA();
   }
 
-  public class HeartbeatListenerResponse
+  public class Response
   {
     /**
      * Set true to request repartition of the logical operator.
@@ -87,6 +86,6 @@ public interface HeartbeatListener
    * Called when new stats become available and status for an operator is updated.
    * @param status
    */
-  HeartbeatListenerResponse onOperatorStatusUpdate(OperatorStatusUpdate status);
+  Response processStats(BatchedOperatorStats status);
 
 }

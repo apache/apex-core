@@ -88,7 +88,7 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   {
   }
 
-  public static class MockOperatorStatus implements HeartbeatListener.OperatorStatusUpdate
+  public static class MockOperatorStatus implements HeartbeatListener.BatchedOperatorStats
   {
     final PTOperator oper;
 
@@ -107,12 +107,6 @@ public class TestPlanContext implements PlanContext, StorageAgent {
     public int getOperatorId()
     {
       return oper.getId();
-    }
-
-    @Override
-    public boolean isRootOperator()
-    {
-      return oper.getInputs().isEmpty();
     }
 
     @Override

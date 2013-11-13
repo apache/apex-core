@@ -25,7 +25,7 @@ import org.apache.commons.lang.StringUtils;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.HeartbeatListener.OperatorStatusUpdate;
+import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
@@ -125,11 +125,11 @@ public class PhysicalPlan {
 */
 
     @Override
-    public HeartbeatListenerResponse onOperatorStatusUpdate(OperatorStatusUpdate status)
+    public Response processStats(BatchedOperatorStats status)
     {
-      HeartbeatListenerResponse rsp = new HeartbeatListenerResponse();
+      Response rsp = new Response();
       long tps = status.getTuplesProcessedPSMA();
-      if (status.isRootOperator()) {
+      if (operMapping.logicalOperator.getInputStreams().isEmpty()) {
         tps = status.getTuplesProcessedPSMA();
       }
       rsp.loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
@@ -1192,10 +1192,10 @@ public class PhysicalPlan {
     this.logicalToPTOperator = copyMap;
   }
 
-  public void onStatusUpdate(PTOperator oper, OperatorStatusUpdate status)
+  public void onStatusUpdate(PTOperator oper, BatchedOperatorStats status)
   {
     for (HeartbeatListener l : oper.statsListeners) {
-      HeartbeatListener.HeartbeatListenerResponse rsp = l.onOperatorStatusUpdate(status);
+      HeartbeatListener.Response rsp = l.processStats(status);
       if (rsp != null && rsp.repartitionRequired) {
         oper.loadIndicator = rsp.loadIndicator;
         final OperatorMeta om = oper.getOperatorMeta();

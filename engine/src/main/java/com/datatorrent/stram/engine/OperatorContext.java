@@ -94,12 +94,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   }
 
   @Override
-  public CustomStats getCustomStats()
-  {
-    return customStats;
-  }
-
-  @Override
   public void setCustomStats(CustomStats stats)
   {
     this.customStats = stats;

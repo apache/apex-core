@@ -187,12 +187,6 @@ public interface Context
     int getId();
 
     /**
-     * Custom stats previously set on the context within the current window, if any.
-     * @return
-     */
-    Stats.OperatorStats.CustomStats getCustomStats();
-
-    /**
      * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
      * current window, reset at window boundary.
      *

@@ -147,7 +147,7 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
     }
 
-    ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats(id);
+    ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
     reportStats(stats, currentWindowId);
     handleRequests(currentWindowId);
   }
@@ -522,7 +522,7 @@ public class GenericNode extends Node<Operator>
         checkpointWindowCount = 0;
       }
 
-      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats(id);
+      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
