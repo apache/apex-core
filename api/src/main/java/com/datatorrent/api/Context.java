@@ -126,12 +126,11 @@ public interface Context
      * maximum.
      */
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
-
     /**
-     * Internal Attribute (TBD). Specify a custom statistics handler class. The class should implement the StatsHandler
-     * interface. The handler will be called with statistic metric updates for physical operators.
+     * Specify a custom stats handler class interface.
+     * The handler will be called with statistic metric updates for physical operators.
      */
-    Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());
+    Attribute<Class<? extends HeartbeatListener>> PARTITION_STATS_HANDLER = new Attribute<Class<? extends HeartbeatListener>>(null, null);
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
@@ -186,6 +185,20 @@ public interface Context
      * @return String
      */
     int getId();
+
+    /**
+     * Custom stats previously set on the context within the current window, if any.
+     * @return
+     */
+    Stats.OperatorStats.CustomStats getCustomStats();
+
+    /**
+     * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
+     * current window, reset at window boundary.
+     *
+     * @param stats
+     */
+    void setCustomStats(Stats.OperatorStats.CustomStats stats);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);

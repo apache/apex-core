@@ -15,27 +15,27 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Stats;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.api.HeartbeatListener.OperatorStatusUpdate;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -181,7 +181,7 @@ public class StramChildAgent {
   }
 
 
-  protected class OperatorStatus
+  protected class OperatorStatus implements OperatorStatusUpdate
   {
     StreamingNodeHeartbeat lastHeartbeat;
     final PTOperator operator;
@@ -195,6 +195,7 @@ public class StramChildAgent {
     final MovingAverageLong latencyMA;
     Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
     Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
+    List<OperatorStats> lastWindowedStats = Collections.emptyList();
 
     private OperatorStatus(PTOperator operator, int throughputCalculationMaxSamples, int throughputCalculationInterval, int heartbeatInterval) {
       this.operator = operator;
@@ -219,6 +220,54 @@ public class StramChildAgent {
       }
       return false;
     }
+
+    @Override
+    public int getOperatorId()
+    {
+      return operator.getId();
+    }
+
+    @Override
+    public List<OperatorStats> getLastWindowedStats()
+    {
+      return lastWindowedStats;
+    }
+
+    @Override
+    public long getCurrentWindowId()
+    {
+      return currentWindowId;
+    }
+
+    @Override
+    public long getTuplesProcessedPSMA()
+    {
+      return tuplesProcessedPSMA;
+    }
+
+    @Override
+    public long getTuplesEmittedPSMA()
+    {
+      return tuplesEmittedPSMA;
+    }
+
+    @Override
+    public double getCpuPercentageMA()
+    {
+      return this.cpuPercentageMA.getAvg();
+    }
+
+    @Override
+    public long getLatencyMA()
+    {
+      return this.latencyMA.getAvg();
+    }
+
+    public boolean isRootOperator()
+    {
+      return this.operator.getInputs().isEmpty();
+    }
+
   }
 
   public class PortStatus

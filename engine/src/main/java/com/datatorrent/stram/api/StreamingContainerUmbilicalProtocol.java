@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.api;
 
 import java.io.*;
 import java.util.*;
@@ -15,11 +15,8 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
-
-import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.engine.Stats;
+import com.datatorrent.api.Stats;
+import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -95,21 +92,18 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
   /**
    *
-   * Stats of the node that is sent to the hadoop container
+   * Stats of the operator that is sent to the application master
    * <p>
-   * <br>
-   * Hadoop container wraps this together with stats from other operators and sends
-   * it to stram <br>
    */
   public static class StreamingNodeHeartbeat extends AbstractWritableAdapter {
     private static final long serialVersionUID = 201208171625L;
-    public ArrayList<Stats.ContainerStats.OperatorStats> windowStats = new ArrayList<Stats.ContainerStats.OperatorStats>();
+    public ArrayList<ContainerStats.OperatorStats> windowStats = new ArrayList<ContainerStats.OperatorStats>();
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
      * @return ArrayList<OperatorStats>
      */
-    public ArrayList<Stats.ContainerStats.OperatorStats> getOperatorStatsContainer() {
+    public ArrayList<ContainerStats.OperatorStats> getOperatorStatsContainer() {
       return windowStats;
     }
 
@@ -187,6 +181,31 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
   }
 
+  public static class ContainerStats implements Stats
+  {
+    private static final long serialVersionUID = 201309131904L;
+    public final String id;
+    //public ArrayList<OperatorStats> operators;
+    public ArrayList<StreamingNodeHeartbeat> nodes;
+
+    public ContainerStats(String id)
+    {
+      this.id = id;
+      nodes = new ArrayList<StreamingNodeHeartbeat>();
+    }
+
+    @Override
+    public String toString()
+    {
+      return "ContainerStats{" + "id=" + id + ", operators=" + nodes + '}';
+    }
+
+    public void addNodeStats(StreamingNodeHeartbeat sn)
+    {
+      nodes.add(sn);
+    }
+  }
+
   /**
    *
    * Sends stats aggregated by all operators in the this container to the stram
@@ -217,13 +236,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.containerId = containerId;
     }
 
-    public Stats.ContainerStats stats;
+    public ContainerStats stats;
 
-    public Stats.ContainerStats getContainerStats() {
+    public ContainerStats getContainerStats() {
       return stats;
     }
 
-    public void setContainerStats(Stats.ContainerStats stats) {
+    public void setContainerStats(ContainerStats stats) {
       this.stats = stats;
     }
 

@@ -18,21 +18,19 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.Operator;
-
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -149,7 +147,7 @@ public class CheckpointTest
 
     ohb.getOperatorStatsContainer().clear();
     context.drainStats(ohb.getOperatorStatsContainer());
-    List<com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats> stats = ohb.getOperatorStatsContainer();
+    List<com.datatorrent.api.Stats.OperatorStats> stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 3, stats.size());
     Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
     Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpointedWindowId); // lags windowId

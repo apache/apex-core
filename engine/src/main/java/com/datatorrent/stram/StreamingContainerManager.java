@@ -7,7 +7,18 @@ package com.datatorrent.stram;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -15,37 +26,37 @@ import java.util.concurrent.FutureTask;
 
 import javax.annotation.Nullable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Sets;
+import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StramChildAgent.OperatorStatus;
 import com.datatorrent.stram.StramChildAgent.PortStatus;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
-import com.datatorrent.stram.engine.Stats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -53,17 +64,17 @@ import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.plan.physical.PlanModifier;
-import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
-import com.datatorrent.stram.plan.physical.PhysicalPlan.StatsHandler;
-import com.datatorrent.stram.webapp.OperatorInfo;
-import com.datatorrent.stram.webapp.PortInfo;
-import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
+import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import com.datatorrent.stram.webapp.OperatorInfo;
+import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Sets;
 
 /**
  *
@@ -701,9 +712,9 @@ public class StreamingContainerManager implements PlanContext
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
         long maxDequeueTimestamp = -1;
-        List<Stats.ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
+        List<ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
 
-        for (Stats.ContainerStats.OperatorStats stats: statsList) {
+        for (ContainerStats.OperatorStats stats: statsList) {
           /* report checkpointedWindowId status of the operator */
           if (status.operator.getRecentCheckpoint() < stats.checkpointedWindowId) {
             addCheckpoint(status.operator, stats.checkpointedWindowId);
@@ -717,9 +728,9 @@ public class StreamingContainerManager implements PlanContext
 
           // calculate the stats related to end window
           EndWindowStats endWindowStats = new EndWindowStats(); // end window stats for a particular window id for a particular node
-          Collection<Stats.ContainerStats.OperatorStats.PortStats> ports = stats.inputPorts;
+          Collection<ContainerStats.OperatorStats.PortStats> ports = stats.inputPorts;
           if (ports != null) {
-            for (Stats.ContainerStats.OperatorStats.PortStats s : ports) {
+            for (ContainerStats.OperatorStats.PortStats s : ports) {
               PortStatus ps = status.inputPortStatusList.get(s.id);
               if (ps == null) {
                 ps = sca.new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
@@ -750,7 +761,7 @@ public class StreamingContainerManager implements PlanContext
           ports = stats.outputPorts;
           if (ports != null) {
 
-            for (Stats.ContainerStats.OperatorStats.PortStats s: ports) {
+            for (ContainerStats.OperatorStats.PortStats s: ports) {
               PortStatus ps = status.outputPortStatusList.get(s.id);
               if (ps == null) {
                 ps = sca.new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
@@ -800,8 +811,6 @@ public class StreamingContainerManager implements PlanContext
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
         if (elapsedMillis > 0) {
-          //status.tuplesProcessedPSMA.add((tuplesProcessed * 1000) / elapsedMillis);
-          //status.tuplesEmittedPSMA.add((tuplesEmitted * 1000) / elapsedMillis);
           status.tuplesProcessedPSMA = 0;
           status.tuplesEmittedPSMA = 0;
           status.cpuPercentageMA.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
@@ -819,12 +828,10 @@ public class StreamingContainerManager implements PlanContext
             }
             status.tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
           }
-          if (status.operator.statsMonitors != null) {
-            long tps = status.operator.getInputs().isEmpty() ? status.tuplesEmittedPSMA : status.tuplesProcessedPSMA;
-            for (StatsHandler sm: status.operator.statsMonitors) {
-              sm.onThroughputUpdate(status.operator, tps);
-              sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA.getAvg());
-            }
+
+          status.lastWindowedStats = statsList;
+          if (status.operator.statsListeners != null) {
+            plan.onStatusUpdate(status.operator, status);
           }
         }
       }
@@ -1078,6 +1085,8 @@ public class StreamingContainerManager implements PlanContext
     // stop affected operators (exclude new/failed containers)
     // order does not matter, remove all operators in each container in one sweep
     for (Map.Entry<PTContainer, List<PTOperator>> e: undeployGroups.entrySet()) {
+      // TODO: container may already be in failed or pending deploy state,
+      // notified by RM or timed out
       if (!startContainers.contains(e.getKey()) && !releaseContainers.contains(e.getKey())) {
         e.getKey().getPendingUndeploy().addAll(e.getValue());
       }
@@ -1357,7 +1366,7 @@ public class StreamingContainerManager implements PlanContext
       updateOnDeployRequests(os.operator, new RecordingRequestFilter(), null);
     }
   }
-
+/*
   public void syncRecording(int operId, String portName)
   {
     StramChildAgent sca = getContainerAgentFromOperatorId(operId);
@@ -1369,7 +1378,7 @@ public class StreamingContainerManager implements PlanContext
     request.setRequestType(RequestType.SYNC_RECORDING);
     sca.addOperatorRequest(request);
   }
-
+*/
   public void syncStats()
   {
     statsRecorder.requestSync();

@@ -12,8 +12,8 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.datatorrent.api.Stats;
 import com.datatorrent.api.annotation.RecordField;
-import com.datatorrent.stram.engine.Stats;
 
 /**
  *

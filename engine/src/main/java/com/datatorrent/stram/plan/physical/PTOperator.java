@@ -19,12 +19,12 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.api.HeartbeatListener;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.physical.PhysicalPlan.StatsHandler;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -169,8 +169,8 @@ public class PTOperator {
   public final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
   long recoveryCheckpoint = 0;
   public int failureCount = 0;
-  int loadIndicator = 0;
-  public List<? extends StatsHandler> statsMonitors;
+  public int loadIndicator = 0;
+  public List<? extends HeartbeatListener> statsListeners;
 
   final Map<Locality, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
 

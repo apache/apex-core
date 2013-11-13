@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-
 import com.datatorrent.api.ActivationListener;
 import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Component;
@@ -32,10 +31,10 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.api.NodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
@@ -286,11 +285,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
+  protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
   {
-    stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
+    stats.outputPorts = new ArrayList<ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
-      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
       controlTupleCount = 0;
       portStats.endWindowTimestamp = endWindowEmitTime;
@@ -472,7 +471,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     activateSinks();
     if (operator instanceof ActivationListener) {
-      ((ActivationListener)operator).activate(context);
+      ((ActivationListener<OperatorContext>)operator).activate(context);
     }
 
     /*
