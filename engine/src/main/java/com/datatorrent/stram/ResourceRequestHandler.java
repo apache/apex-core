@@ -49,14 +49,16 @@ public class ResourceRequestHandler {
     String[] racks = null;
 
     String host = getHost(csr, memory);
+    Resource capability = Records.newRecord(Resource.class);
+    capability.setMemory(memory);
+    
     if(host != null) {
       nodes = new String[] {host};
       // in order to request a host, we also have to request the rack
       racks = new String[] {this.nodeToRack.get(host)};
+      return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority),false);
     }
     // For now, only memory is supported so we set memory requirements
-    Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(memory);
     return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority));
   }
 
