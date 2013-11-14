@@ -683,7 +683,7 @@ public class PhysicalPlanTest {
       Set<OperatorMeta> actualLogical = Sets.newHashSet();
       for (PTOperator p: c.getOperators()) {
         actualLogical.add(p.getOperatorMeta());
-        Assert.assertEquals("nodeLocal " + p.getNodeLocalOperators(), 2, p.getNodeLocalOperators().s.size());
+        Assert.assertEquals("nodeLocal " + p.getNodeLocalOperators(), 2, p.getNodeLocalOperators().getOperatorSet().size());
       }
       Assert.assertEquals("operators " + c, expectedLogical, actualLogical);
     }

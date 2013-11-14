@@ -23,7 +23,7 @@ import org.apache.hadoop.yarn.util.Records;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PTOperator.GroupObject;
+import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 
 /**
  * Handle mapping from physical plan locality groupings to resource allocation requests.
@@ -87,25 +87,25 @@ public class ResourceRequestHandler {
     PTContainer c = csr.container;
     String host = null;
     for (PTOperator oper : c.getOperators()) {
-      GroupObject grpObj = oper.getNodeLocalOperators();
-      host = nodeLocalMapping.get(grpObj.s);
-      if(host == null && grpObj.host != null){
-        host = grpObj.host;
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();
+      host = nodeLocalMapping.get(grpObj.getOperatorSet());
+      if(host == null && grpObj.getHost() != null){
+        host = grpObj.getHost();
         // using the 1st host value as host for container
         break;
       }
     }
     if(host != null){
       for (PTOperator oper : c.getOperators()) {
-        GroupObject grpObj = oper.getNodeLocalOperators();
-        Set<PTOperator> nodeLocalSet = grpObj.s;
+        HostOperatorSet grpObj = oper.getNodeLocalOperators();
+        Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
         nodeLocalMapping.put(nodeLocalSet, host);        
       }
       return host;
     }
     for (PTOperator oper : c.getOperators()) {
-      GroupObject grpObj = oper.getNodeLocalOperators();      
-      Set<PTOperator> nodeLocalSet = grpObj.s;
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();      
+      Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
       if (nodeLocalSet.size() > 1) {
         host = nodeLocalMapping.get(nodeLocalSet);
         if (host != null) {

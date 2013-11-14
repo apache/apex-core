@@ -170,10 +170,10 @@ public class PTOperator {
   long recoveryCheckpoint = 0;
   public int failureCount = 0;
   int loadIndicator = 0;
-  private String hostName;
+  
   public List<? extends StatsHandler> statsMonitors;
 
-  final Map<Locality, GroupObject> groupings = Maps.newHashMapWithExpectedSize(3);
+  final Map<Locality, HostOperatorSet> groupings = Maps.newHashMapWithExpectedSize(3);
 
   public List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
@@ -266,24 +266,42 @@ public class PTOperator {
     return unifier;
   }
 
-  GroupObject getGrouping(Locality type) {
-    GroupObject grpObj = this.groupings.get(type);
+  HostOperatorSet getGrouping(Locality type) {
+    HostOperatorSet grpObj = this.groupings.get(type);
     if (grpObj == null) {
-      grpObj = new GroupObject();
-      grpObj.s = Sets.newHashSet();
+      grpObj = new HostOperatorSet();
+      grpObj.operatorSet = Sets.newHashSet();
       this.groupings.put(type, grpObj);
     }
     return grpObj;
   }
 
-  public GroupObject getNodeLocalOperators() {
+  public HostOperatorSet getNodeLocalOperators() {
     return getGrouping(Locality.NODE_LOCAL);
   }
   
   
-  public class GroupObject{
-    public String host;
-    public Set<PTOperator> s;
+  public class HostOperatorSet{
+    private String host;
+    private Set<PTOperator> operatorSet;
+    public String getHost()
+    {
+      return host;
+    }
+    public void setHost(String host)
+    {
+      this.host = host;
+    }
+    public Set<PTOperator> getOperatorSet()
+    {
+      return operatorSet;
+    }
+    public void setOperatorSet(Set<PTOperator> operatorSet)
+    {
+      this.operatorSet = operatorSet;
+    }
+   
+    
   }
 
   /**

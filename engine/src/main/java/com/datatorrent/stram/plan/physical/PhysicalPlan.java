@@ -38,7 +38,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
-import com.datatorrent.stram.plan.physical.PTOperator.GroupObject;
+import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 
@@ -376,7 +376,7 @@ public class PhysicalPlan {
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).s;
+          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet();
           if (!inlineSet.isEmpty()) {
             // process inline operators
             for (PTOperator inlineOper : inlineSet) {
@@ -704,7 +704,7 @@ public class PhysicalPlan {
 
       PTContainer newContainer = null;
       // check for existing inline set
-      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).s) {
+      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
@@ -898,9 +898,10 @@ public class PhysicalPlan {
 
   private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype,String host) {
 
-    GroupObject grpObj = newOperator.getGrouping(ltype);
-    grpObj.host = host;
-    Set<PTOperator> s = grpObj.s;
+    HostOperatorSet grpObj = newOperator.getGrouping(ltype);
+    if(host!= null)
+      grpObj.setHost(host);
+    Set<PTOperator> s = grpObj.getOperatorSet();
     s.add(newOperator);
     LocalityPref loc = localityPrefs.prefs.get(pnodes);
     if (loc != null) {
@@ -908,11 +909,11 @@ public class PhysicalPlan {
         if (pnodes.parallelPartitions == localPM.parallelPartitions) {
           if (localPM.partitions.size() >= pnodes.partitions.size()) {
             // apply locality setting per partition
-            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype).s);
+            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype).getOperatorSet());
           }
         } else {
           for (PTOperator otherNode : localPM.partitions) {
-            s.addAll(otherNode.getGrouping(ltype).s);
+            s.addAll(otherNode.getGrouping(ltype).getOperatorSet());
           }
         }
       }
