@@ -76,7 +76,7 @@ public class HostLocalTest {
   }
 
   @Test
-  public void testPartitionalOperator() {
+  public void testParitionLocality() {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
