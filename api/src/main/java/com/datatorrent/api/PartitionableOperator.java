@@ -125,9 +125,11 @@ public interface PartitionableOperator extends Operator
     public int getLoad();
 
     /**
-     * Get the latest statistics for this partition. Stats would typically be used to determine utilization and decide
-     * whether partitions should be merged or split. Through {@link Stats.OperatorStats.CustomStats} operator
-     * implementation specific stats can be collected and used to derive optimal partitioning.
+     * Get the latest statistics for this partition. Null when no stats have been collected yet.
+     * <p>
+     * Stats would typically be used to determine utilization and decide whether partitions should be merged or split.
+     * Through {@link Stats.OperatorStats.CustomStats} operator implementation specific stats can be collected and used
+     * to derive optimal partitioning.
      *
      * @return
      */
