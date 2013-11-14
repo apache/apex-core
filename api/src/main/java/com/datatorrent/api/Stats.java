@@ -68,8 +68,11 @@ public interface Stats extends Serializable
     }
 
     /**
-     * Custom operator stats that can be defined by an operator implementation to communicate information from
-     * the execution environment to the application master. Treated by the engine as opaque object.
+     * Custom operator stats that can be defined by an operator implementation to communicate information from the
+     * execution environment to the application master. Treated by the engine as opaque object.
+     * <p>
+     * Implementation needs to be {@link java.io.Serializable} and, if desired, can implement
+     * {@link java.io.Externalizable} to use an alternative serialization mechanism.
      */
     public static interface CustomStats extends Stats
     {
