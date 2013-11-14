@@ -25,7 +25,6 @@ import org.apache.commons.lang.StringUtils;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
@@ -521,7 +520,7 @@ public class PhysicalPlan {
       }
 
       // assume it does not matter which operator instance's port objects are referenced in mapping
-      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
+      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
     }
@@ -1192,10 +1191,10 @@ public class PhysicalPlan {
     this.logicalToPTOperator = copyMap;
   }
 
-  public void onStatusUpdate(PTOperator oper, BatchedOperatorStats status)
+  public void onStatusUpdate(PTOperator oper)
   {
     for (HeartbeatListener l : oper.statsListeners) {
-      HeartbeatListener.Response rsp = l.processStats(status);
+      HeartbeatListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null && rsp.repartitionRequired) {
         oper.loadIndicator = rsp.loadIndicator;
         final OperatorMeta om = oper.getOperatorMeta();

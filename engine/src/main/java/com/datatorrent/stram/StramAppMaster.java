@@ -64,13 +64,13 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
-import com.datatorrent.stram.StramChildAgent.OperatorStatus;
-import com.datatorrent.stram.StramChildAgent.PortStatus;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
@@ -179,9 +179,9 @@ public class StramAppMaster extends CompositeService
     {
       long min = Long.MAX_VALUE;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          if (min > entry.getValue().currentWindowId) {
-            min = entry.getValue().currentWindowId;
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          if (min > entry.getValue().stats.currentWindowId) {
+            min = entry.getValue().stats.currentWindowId;
           }
         }
       }
@@ -191,15 +191,7 @@ public class StramAppMaster extends CompositeService
     @Override
     public long getRecoveryWindowId()
     {
-      long min = Long.MAX_VALUE;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          if (min > entry.getValue().operator.getRecoveryCheckpoint()) {
-            min = entry.getValue().operator.getRecoveryCheckpoint();
-          }
-        }
-      }
-      return min == Long.MAX_VALUE ? 0 : min;
+      return dnmgr.getCommittedWindowId();
     }
 
     @Override
@@ -207,8 +199,8 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().tuplesProcessedPSMA;
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().stats.tuplesProcessedPSMA;
         }
       }
       return result;
@@ -219,8 +211,8 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().totalTuplesProcessed;
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().stats.totalTuplesProcessed;
         }
       }
       return result;
@@ -231,8 +223,8 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().tuplesEmittedPSMA;
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().stats.tuplesEmittedPSMA;
         }
       }
       return result;
@@ -243,8 +235,8 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().totalTuplesEmitted;
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          result += entry.getValue().stats.totalTuplesEmitted;
         }
       }
       return result;
@@ -265,9 +257,8 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          OperatorStatus os = entry.getValue();
-          for (Map.Entry<String, PortStatus> portEntry : os.inputPortStatusList.entrySet()) {
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.inputPortStatusList.entrySet()) {
             result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
           }
         }
@@ -280,9 +271,8 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
-          OperatorStatus os = entry.getValue();
-          for (Map.Entry<String, PortStatus> portEntry : os.outputPortStatusList.entrySet()) {
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+          for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.outputPortStatusList.entrySet()) {
             result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
           }
         }
@@ -846,10 +836,10 @@ public class StramAppMaster extends CompositeService
         }
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
-        for (Map.Entry<Integer, OperatorStatus> entry : containerAgent.operators.entrySet()) {
+        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
           FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
           ev.addData("operatorId", entry.getKey());
-          ev.addData("operatorName", entry.getValue().operator.getName());
+          ev.addData("operatorName", entry.getValue().getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
           ev.addData("reason", "container exited with status " + exitStatus);
           dnmgr.recordEventAsync(ev);

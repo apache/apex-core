@@ -150,10 +150,12 @@ public class PTOperator {
 
  }
 
-  PTOperator(PhysicalPlan plan, int id, String name) {
+  PTOperator(PhysicalPlan plan, int id, String name)
+  {
     this.plan = plan;
     this.name = name;
     this.id = id;
+    this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
   private PTOperator.State state = State.NEW;
@@ -171,6 +173,7 @@ public class PTOperator {
   public int failureCount = 0;
   public int loadIndicator = 0;
   public List<? extends HeartbeatListener> statsListeners;
+  public final OperatorStatus stats;
 
   final Map<Locality, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
 
