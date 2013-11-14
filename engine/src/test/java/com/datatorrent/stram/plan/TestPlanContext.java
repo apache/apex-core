@@ -9,9 +9,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.datatorrent.api.HeartbeatListener;
+import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -83,6 +86,62 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   @Override
   public void recordEventAsync(Event ev)
   {
+  }
+
+  public static class MockOperatorStatus implements HeartbeatListener.BatchedOperatorStats
+  {
+    final PTOperator oper;
+
+    public MockOperatorStatus(PTOperator oper)
+    {
+      this.oper = oper;
+    }
+
+    @Override
+    public List<OperatorStats> getLastWindowedStats()
+    {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public int getOperatorId()
+    {
+      return oper.getId();
+    }
+
+    @Override
+    public long getCurrentWindowId()
+    {
+      return 0;
+    }
+
+    public long tuplesProcessedPSMA = 0;
+
+    @Override
+    public long getTuplesProcessedPSMA()
+    {
+      return tuplesProcessedPSMA;
+    }
+
+    public long tuplesEmittedPSMA;
+
+    @Override
+    public long getTuplesEmittedPSMA()
+    {
+      return this.tuplesEmittedPSMA;
+    }
+
+    @Override
+    public double getCpuPercentageMA()
+    {
+      return 0;
+    }
+
+    @Override
+    public long getLatencyMA()
+    {
+      return 0;
+    }
   }
 
 }

@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.api;
 
 import java.io.*;
 import java.util.*;
@@ -15,11 +15,8 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
-
-import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.engine.Stats;
+import com.datatorrent.api.Stats;
+import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -38,8 +35,6 @@ import com.datatorrent.stram.util.AbstractWritableAdapter;
 @InterfaceStability.Stable
 public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static final long versionID = 201208081755L;
-
-  void log(String containerId, String msg) throws IOException;
 
   /**
    * Initialization parameters for StramChild container. Container
@@ -80,48 +75,31 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   }
 
   /**
-   *
-   * The child obtains its configuration context after container launch.
+   * Stats of deployed operator sent to the application master
    * <p>
-   * <br>
-   * Context will provide all information to initialize or reconfigure the
-   * node(s)<br>
-   *
-   * @param containerId
-   * @throws IOException
-   * <br>
    */
-  StreamingContainerContext getInitContext(String containerId) throws IOException;
-
-  /**
-   *
-   * Stats of the node that is sent to the hadoop container
-   * <p>
-   * <br>
-   * Hadoop container wraps this together with stats from other operators and sends
-   * it to stram <br>
-   */
-  public static class StreamingNodeHeartbeat extends AbstractWritableAdapter {
+  public static class OperatorHeartbeat implements Serializable
+  {
     private static final long serialVersionUID = 201208171625L;
-    public ArrayList<Stats.ContainerStats.OperatorStats> windowStats = new ArrayList<Stats.ContainerStats.OperatorStats>();
+    public ArrayList<ContainerStats.OperatorStats> windowStats = new ArrayList<ContainerStats.OperatorStats>();
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
      * @return ArrayList<OperatorStats>
      */
-    public ArrayList<Stats.ContainerStats.OperatorStats> getOperatorStatsContainer() {
+    public ArrayList<ContainerStats.OperatorStats> getOperatorStatsContainer() {
       return windowStats;
     }
 
-    public static enum DNodeState {
-      NEW, // node instantiated but not processing yet
+    public static enum DeployState {
+      NEW, // instantiated but not processing yet
       ACTIVE,
-      IDLE,// the node stopped processing (no more input etc.)
+      IDLE,// stopped processing (no more input etc.)
       FAILED // problemo!
     }
 
     /**
-     * The originating node. There can be multiple operators in a container.
+     * Operator id.
      */
     public int nodeId;
 
@@ -187,6 +165,30 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
   }
 
+  public static class ContainerStats implements Stats
+  {
+    private static final long serialVersionUID = 201309131904L;
+    public final String id;
+    public ArrayList<OperatorHeartbeat> operators;
+
+    public ContainerStats(String id)
+    {
+      this.id = id;
+      operators = new ArrayList<OperatorHeartbeat>();
+    }
+
+    @Override
+    public String toString()
+    {
+      return "ContainerStats{" + "id=" + id + ", operators=" + operators + '}';
+    }
+
+    public void addNodeStats(OperatorHeartbeat sn)
+    {
+      operators.add(sn);
+    }
+  }
+
   /**
    *
    * Sends stats aggregated by all operators in the this container to the stram
@@ -194,9 +196,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeat extends AbstractWritableAdapter {
+  public static class ContainerHeartbeat extends AbstractWritableAdapter
+  {
     private static final long serialVersionUID = 1L;
-    public String containerId;
 
     /**
      * Buffer server address for this container.
@@ -209,22 +211,18 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int memoryMBFree;
     public boolean restartRequested;
 
-    public String getContainerId() {
-      return containerId;
-    }
+    public ContainerStats stats;
 
-    public void setContainerId(String containerId) {
-      this.containerId = containerId;
-    }
-
-    public Stats.ContainerStats stats;
-
-    public Stats.ContainerStats getContainerStats() {
+    public ContainerStats getContainerStats() {
       return stats;
     }
 
-    public void setContainerStats(Stats.ContainerStats stats) {
+    public void setContainerStats(ContainerStats stats) {
       this.stats = stats;
+    }
+
+    public String getContainerId() {
+      return stats.id;
     }
 
   }
@@ -239,7 +237,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StramToNodeRequest extends AbstractWritableAdapter {
+  public static class StramToNodeRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public int operatorId;
@@ -333,8 +331,21 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   }
 
   /**
-   * To be called periodically by child for heartbeat protocol. Container may
-   * return response for node to shutdown etc.
+   * The child container obtains its configuration context after launch.
+   * <p>
+   * <br>
+   * Context will provide all information to initialize and prepare it for operator deployment<br>
+   *
+   * @param containerId
+   * @throws IOException
+   * <br>
+   */
+  StreamingContainerContext getInitContext(String containerId) throws IOException;
+
+  void log(String containerId, String msg) throws IOException;
+
+  /**
+   * To be called periodically by child for heartbeat protocol.
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
 

@@ -35,18 +35,18 @@ import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeActivationListener;
 import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.RequestFactory;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.PortContext;
-import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
@@ -503,7 +503,9 @@ public class StramChild
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-      msg.setContainerId(this.containerId);
+      ContainerStats stats = new ContainerStats(containerId);
+      msg.setContainerStats(stats);
+
       msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
@@ -514,21 +516,20 @@ public class StramChild
         }
       }
       msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-      ContainerStats stats = new ContainerStats(containerId);
 
       // gather heartbeat info for all operators
       for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
-        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+        OperatorHeartbeat hb = new OperatorHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
         OperatorContext ctx = activeNodes.get(e.getKey());
         if (ctx != null) {
           ctx.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.toString());
+          hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
         }
         else {
-          hb.setState(failedNodes.contains(e.getKey()) ? StreamingNodeHeartbeat.DNodeState.FAILED.toString() : StreamingNodeHeartbeat.DNodeState.IDLE.toString());
+          hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString());
         }
 
         PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
@@ -558,8 +559,6 @@ public class StramChild
       for (ContainerStatsListener csl : statsListener) {
         csl.collected(stats);
       }
-
-      msg.setContainerStats(stats);
 
       // heartbeat call and follow-up processing
       //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
