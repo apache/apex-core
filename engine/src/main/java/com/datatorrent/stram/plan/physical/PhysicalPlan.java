@@ -174,6 +174,7 @@ public class PhysicalPlan {
   final Set<PTOperator> deployOpers = Sets.newHashSet();
   final Set<PTOperator> newOpers = Sets.newHashSet();
   final Set<PTOperator> undeployOpers = Sets.newHashSet();
+  final ConcurrentMap<Integer, PTOperator> allOperators = Maps.newConcurrentMap();
   private final ConcurrentMap<OperatorMeta, OperatorMeta> pendingRepartition = Maps.newConcurrentMap();
 
   private PTContainer getContainer(int index) {
@@ -870,6 +871,7 @@ public class PhysicalPlan {
 
   PTOperator newOperator(OperatorMeta om, String name) {
     PTOperator oper = new PTOperator(this, idSequence.incrementAndGet(), name);
+    allOperators.put(oper.id, oper);
     oper.logicalNode = om;
     oper.inputs = new ArrayList<PTInput>();
     oper.outputs = new ArrayList<PTOutput>();
@@ -877,17 +879,18 @@ public class PhysicalPlan {
   }
 
   private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
-    PTOperator pOperator = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getName());
-    pOperator.logicalNode = mapping.logicalOperator;
-    pOperator.inputs = new ArrayList<PTInput>();
-    pOperator.outputs = new ArrayList<PTOutput>();
-    pOperator.partition = partition;
+    PTOperator oper = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getName());
+    allOperators.put(oper.id, oper);
+    oper.logicalNode = mapping.logicalOperator;
+    oper.inputs = new ArrayList<PTInput>();
+    oper.outputs = new ArrayList<PTOutput>();
+    oper.partition = partition;
 
     // output port objects
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
-      setupOutput(mapping, pOperator, outputEntry);
+      setupOutput(mapping, oper, outputEntry);
     }
-    return pOperator;
+    return oper;
   }
 
   private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype) {
@@ -945,6 +948,7 @@ public class PhysicalPlan {
     cowList.remove(oper);
     oper.container.operators = cowList;
     this.deployOpers.remove(oper);
+    this.allOperators.remove(oper.id);
   }
 
   public LogicalPlan getDAG() {
@@ -953,6 +957,10 @@ public class PhysicalPlan {
 
   public List<PTContainer> getContainers() {
     return this.containers;
+  }
+
+  public Map<Integer, PTOperator> getAllOperators() {
+    return this.allOperators;
   }
 
   /**
@@ -981,14 +989,6 @@ public class PhysicalPlan {
 
   protected List<OperatorMeta> getRootOperators() {
     return dag.getRootOperators();
-  }
-
-  public List<PTOperator> getAllOperators() {
-    List<PTOperator> list = new ArrayList<PTOperator>();
-    for (PTContainer c : this.containers) {
-      list.addAll(c.getOperators());
-    }
-    return list;
   }
 
   private void getDeps(PTOperator operator, Set<PTOperator> visited) {

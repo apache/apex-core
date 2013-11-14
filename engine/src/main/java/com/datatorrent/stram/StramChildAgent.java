@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
@@ -31,7 +30,6 @@ import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -66,7 +64,6 @@ public class StramChildAgent {
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
     this.container = container;
     this.initCtx = initCtx;
-    this.operators = Maps.newHashMapWithExpectedSize(container.getOperators().size());
     this.memoryMBFree = this.container.getAllocatedMemoryMB();
     this.dnmgr = dnmgr;
   }
@@ -75,7 +72,6 @@ public class StramChildAgent {
   long lastHeartbeatMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
-  final Map<Integer, PTOperator> operators;
   final StreamingContainerContext initCtx;
   Runnable onAck = null;
   String jvmName;
@@ -97,37 +93,6 @@ public class StramChildAgent {
       onAck.run();
       onAck = null;
     }
-  }
-
-  protected PTOperator updateOperatorStatus(OperatorHeartbeat shb) {
-    PTOperator oper = this.operators.get(shb.getNodeId());
-    // index the operator for future access
-    if (oper == null) {
-      for (PTOperator operator : container.getOperators()) {
-        if (operator.getId() == shb.getNodeId()) {
-          oper = operator;
-          operators.put(shb.getNodeId(), oper);
-        }
-      }
-    }
-    if (oper != null && !container.getPendingDeploy().isEmpty()) {
-      if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
-        // remove operator from deploy list only if not scheduled of undeploy (or redeploy) again
-        if (!container.getPendingUndeploy().contains(oper) && container.getPendingDeploy().remove(oper)) {
-          LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), oper, shb.getState()});
-          oper.setState(PTOperator.State.ACTIVE);
-
-          // record started
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
-          ev.addData("operatorId", oper.getId());
-          ev.addData("operatorName", oper.getName());
-          ev.addData("containerId", container.getExternalId());
-          dnmgr.recordEventAsync(ev);
-        }
-      }
-      LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
-    }
-    return oper;
   }
 
   public void addOperatorRequest(StramToNodeRequest r) {
@@ -189,19 +154,6 @@ public class StramChildAgent {
     }
 
     return null;
-  }
-
-  boolean isIdle() {
-    if (this.hasPendingWork()) {
-      // container may have no active operators but deploy request pending
-      return false;
-    }
-    for (PTOperator oper : this.operators.values()) {
-      if (!oper.stats.isIdle()) {
-        return false;
-      }
-    }
-    return true;
   }
 
   // this method is only used for testing

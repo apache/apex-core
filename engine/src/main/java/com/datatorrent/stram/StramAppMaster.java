@@ -167,22 +167,16 @@ public class StramAppMaster extends CompositeService
     @Override
     public int getNumOperators()
     {
-      int num = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
-        num += c.getOperators().size();
-      }
-      return num;
+       return dnmgr.getPhysicalPlan().getAllOperators().size();
     }
 
     @Override
     public long getCurrentWindowId()
     {
       long min = Long.MAX_VALUE;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          if (min > entry.getValue().stats.currentWindowId) {
-            min = entry.getValue().stats.currentWindowId;
-          }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        if (min > entry.getValue().stats.currentWindowId) {
+          min = entry.getValue().stats.currentWindowId;
         }
       }
       return min == Long.MAX_VALUE ? 0 : min;
@@ -198,10 +192,8 @@ public class StramAppMaster extends CompositeService
     public long getTuplesProcessedPSMA()
     {
       long result = 0;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().stats.tuplesProcessedPSMA;
-        }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        result += entry.getValue().stats.tuplesProcessedPSMA;
       }
       return result;
     }
@@ -210,10 +202,8 @@ public class StramAppMaster extends CompositeService
     public long getTotalTuplesProcessed()
     {
       long result = 0;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().stats.totalTuplesProcessed;
-        }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        result += entry.getValue().stats.totalTuplesProcessed;
       }
       return result;
     }
@@ -222,10 +212,8 @@ public class StramAppMaster extends CompositeService
     public long getTuplesEmittedPSMA()
     {
       long result = 0;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().stats.tuplesEmittedPSMA;
-        }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        result += entry.getValue().stats.tuplesEmittedPSMA;
       }
       return result;
     }
@@ -234,10 +222,8 @@ public class StramAppMaster extends CompositeService
     public long getTotalTuplesEmitted()
     {
       long result = 0;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          result += entry.getValue().stats.totalTuplesEmitted;
-        }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        result += entry.getValue().stats.totalTuplesEmitted;
       }
       return result;
     }
@@ -256,11 +242,9 @@ public class StramAppMaster extends CompositeService
     public long getTotalBufferServerReadBytesPSMA()
     {
       long result = 0;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.inputPortStatusList.entrySet()) {
-            result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
-          }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.inputPortStatusList.entrySet()) {
+          result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
         }
       }
       return result;
@@ -270,11 +254,9 @@ public class StramAppMaster extends CompositeService
     public long getTotalBufferServerWriteBytesPSMA()
     {
       long result = 0;
-      for (StramChildAgent containerAgent : dnmgr.getContainerAgents()) {
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
-          for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.outputPortStatusList.entrySet()) {
-            result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
-          }
+      for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
+        for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.outputPortStatusList.entrySet()) {
+          result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
         }
       }
       return result;
@@ -836,10 +818,10 @@ public class StramAppMaster extends CompositeService
         }
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
-        for (Map.Entry<Integer, PTOperator> entry : containerAgent.operators.entrySet()) {
+        for (PTOperator oper : containerAgent.container.getOperators()) {
           FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
-          ev.addData("operatorId", entry.getKey());
-          ev.addData("operatorName", entry.getValue().getName());
+          ev.addData("operatorId", oper.getId());
+          ev.addData("operatorName", oper.getName());
           ev.addData("containerId", containerStatus.getContainerId().toString());
           ev.addData("reason", "container exited with status " + exitStatus);
           dnmgr.recordEventAsync(ev);

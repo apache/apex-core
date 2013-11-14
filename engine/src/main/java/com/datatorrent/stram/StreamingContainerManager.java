@@ -296,7 +296,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       Set<Integer> allCurrentOperators = new TreeSet<Integer>();
-      for (PTOperator o: plan.getAllOperators()) {
+      for (PTOperator o: plan.getAllOperators().values()) {
         allCurrentOperators.add(o.getId());
       }
       int numOperators = allCurrentOperators.size();
@@ -597,6 +597,29 @@ public class StreamingContainerManager implements PlanContext
     return this.containers.values();
   }
 
+  private PTOperator updateOperatorStatus(OperatorHeartbeat shb) {
+    PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
+    if (oper != null) {
+      PTContainer container = oper.getContainer();
+      if (!container.getPendingDeploy().isEmpty() && oper.getState() == PTOperator.State.PENDING_DEPLOY) {
+        // remove operator from deploy list only if not scheduled of undeploy (or redeploy) again
+        if (!container.getPendingUndeploy().contains(oper) && container.getPendingDeploy().remove(oper)) {
+          LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), oper, shb.getState()});
+          oper.setState(PTOperator.State.ACTIVE);
+
+          // record started
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
+          ev.addData("operatorId", oper.getId());
+          ev.addData("operatorName", oper.getName());
+          ev.addData("containerId", container.getExternalId());
+          recordEventAsync(ev);
+        }
+      }
+      LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
+    }
+    return oper;
+  }
+
   /**
    * process the heartbeat from each container.
    * called by the RPC thread for each container. (i.e. called by multiple threads)
@@ -640,7 +663,7 @@ public class StreamingContainerManager implements PlanContext
 
     for (OperatorHeartbeat shb: heartbeat.getContainerStats().operators) {
 
-      PTOperator oper = sca.updateOperatorStatus(shb);
+      PTOperator oper = updateOperatorStatus(shb);
       if (oper == null) {
         LOG.error("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
         continue;
@@ -845,9 +868,15 @@ public class StreamingContainerManager implements PlanContext
 
   private boolean isApplicationIdle()
   {
-    for (StramChildAgent csa: this.containers.values()) {
-      if (!csa.isIdle()) {
+    for (StramChildAgent sca: this.containers.values()) {
+      if (sca.hasPendingWork()) {
+        // container may have no active operators but deploy request pending
         return false;
+      }
+      for (PTOperator oper : sca.container.getOperators()) {
+        if (!oper.stats.isIdle()) {
+          return false;
+        }
       }
     }
     return true;
@@ -1288,10 +1317,11 @@ public class StreamingContainerManager implements PlanContext
 
   private StramChildAgent getContainerAgentFromOperatorId(int operatorId)
   {
-    // Thomas, please change it when you get a chance.  -- David
-    for (StramChildAgent container: containers.values()) {
-      if (container.operators.containsKey(operatorId)) {
-        return container;
+    PTOperator oper = plan.getAllOperators().get(operatorId);
+    if (oper != null) {
+      StramChildAgent sca = containers.get(oper.getContainer().getExternalId());
+      if (sca != null) {
+        return sca;
       }
     }
     // throw exception that propagates to web client
@@ -1308,7 +1338,7 @@ public class StreamingContainerManager implements PlanContext
     }
     request.setRequestType(RequestType.START_RECORDING);
     sca.addOperatorRequest(request);
-    PTOperator operator = sca.operators.get(operId);
+    PTOperator operator = plan.getAllOperators().get(operId);
     if (operator != null) {
       // restart on deploy
       updateOnDeployRequests(operator, new RecordingRequestFilter(), request);
@@ -1325,7 +1355,7 @@ public class StreamingContainerManager implements PlanContext
     }
     request.setRequestType(RequestType.STOP_RECORDING);
     sca.addOperatorRequest(request);
-    PTOperator operator = sca.operators.get(operId);
+    PTOperator operator = plan.getAllOperators().get(operId);
     if (operator != null) {
       // no stop on deploy, but remove existing start
       updateOnDeployRequests(operator, new RecordingRequestFilter(), null);
