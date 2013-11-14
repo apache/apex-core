@@ -7,7 +7,6 @@ package com.datatorrent.stram.client;
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -83,4 +82,20 @@ public class FSAgent
     return files;
   }
 
+  public List<LocatedFileStatus> listFilesInfo(String dir) throws IOException
+  {
+    List<LocatedFileStatus> files = new ArrayList<LocatedFileStatus>();
+    Path path = new Path(dir);
+
+    FileStatus fileStatus = fs.getFileStatus(path);
+    if (!fileStatus.isDirectory()) {
+      throw new FileNotFoundException("Cannot read directory " + dir);
+    }
+    RemoteIterator<LocatedFileStatus> it = fs.listFiles(path, false);
+    while (it.hasNext()) {
+      LocatedFileStatus lfs = it.next();
+      files.add(lfs);
+    }
+    return files;
+  }
 }
