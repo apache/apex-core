@@ -18,6 +18,7 @@ package com.datatorrent.api;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 
 /**
@@ -165,7 +166,7 @@ public interface Context
     /**
      * The agent which can be used to checkpoint the windows.
      */
-    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(null, null);
+    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(new Object2String<StorageAgent>());
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
      * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
