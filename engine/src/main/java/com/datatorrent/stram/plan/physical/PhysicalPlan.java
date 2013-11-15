@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,12 +21,14 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.apache.commons.lang.StringUtils;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.HeartbeatListener;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.EventRecorder;
 import com.datatorrent.stram.FSEventRecorder;
@@ -37,6 +40,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
+import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 
@@ -61,36 +65,25 @@ public class PhysicalPlan {
 
   private final static Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
-  public static interface StatsHandler {
-    // TODO: handle stats generically
-    public void onThroughputUpdate(PTOperator operatorInstance, long tps);
-    public void onCpuPercentageUpdate(PTOperator operatorInstance, double percentage);
-  }
-
   /**
-   * Handler for partition load check.
-   * Used when throughput monitoring is configured.
+   * Stats listener for throughput based partitioning.
+   * Used when thresholds are configured on operator through attributes.
    */
-  public static class PartitionLoadWatch implements StatsHandler {
+  public static class PartitionLoadWatch implements HeartbeatListener {
     public long evalIntervalMillis = 30*1000;
     private final long tpsMin;
     private final long tpsMax;
+    private final PMapping operMapping;
     private long lastEvalMillis;
     private long lastTps = 0;
 
-    private final PMapping m;
-
-    private PartitionLoadWatch(PMapping mapping, long min, long max) {
-      this.m = mapping;
+    private PartitionLoadWatch(PMapping operMapping, long min, long max) {
       this.tpsMin = min;
       this.tpsMax = max;
+      this.operMapping = operMapping;
     }
 
-    protected PartitionLoadWatch(PMapping mapping) {
-      this(mapping, 0, 0);
-    }
-
-    protected int getLoadIndicator(PTOperator operator, long tps) {
+    protected int getLoadIndicator(int operatorId, long tps) {
       if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
         lastTps = tps;
         return (tps < tpsMin) ? -1 : 1;
@@ -98,9 +91,9 @@ public class PhysicalPlan {
       lastTps = tps;
       return 0;
     }
-
-    @Override
-    public void onThroughputUpdate(final PTOperator operatorInstance, long tps) {
+/*
+    private void onThroughputUpdate(final PTOperator operatorInstance, long tps)
+    {
       //LOG.debug("onThroughputUpdate {} {}", operatorInstance, tps);
       operatorInstance.loadIndicator = getLoadIndicator(operatorInstance, tps);
       if (operatorInstance.loadIndicator != 0) {
@@ -129,11 +122,27 @@ public class PhysicalPlan {
         }
       }
     }
+*/
 
     @Override
-    public void onCpuPercentageUpdate(final PTOperator operatorInstance, double percentage) {
-      // not implemented yet
+    public Response processStats(BatchedOperatorStats status)
+    {
+      Response rsp = new Response();
+      long tps = status.getTuplesProcessedPSMA();
+      if (operMapping.logicalOperator.getInputStreams().isEmpty()) {
+        tps = status.getTuplesProcessedPSMA();
+      }
+      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      if (rsp.loadIndicator != 0) {
+        if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
+          lastEvalMillis = System.currentTimeMillis();
+          LOG.debug("Requesting repartitioning for {}/{} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator});
+          rsp.repartitionRequired = true;
+        }
+      }
+      return rsp;
     }
+
   }
 
   /**
@@ -166,6 +175,8 @@ public class PhysicalPlan {
   final Set<PTOperator> deployOpers = Sets.newHashSet();
   final Set<PTOperator> newOpers = Sets.newHashSet();
   final Set<PTOperator> undeployOpers = Sets.newHashSet();
+  final ConcurrentMap<Integer, PTOperator> allOperators = Maps.newConcurrentMap();
+  private final ConcurrentMap<OperatorMeta, OperatorMeta> pendingRepartition = Maps.newConcurrentMap();
 
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
@@ -223,8 +234,7 @@ public class PhysicalPlan {
     final private OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
     private Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
-    volatile private boolean shouldRedoPartitions = false;
-    private List<StatsHandler> statsHandlers;
+    private List<HeartbeatListener> statsHandlers;
 
     /**
      * Operators that form a parallel partition
@@ -233,7 +243,7 @@ public class PhysicalPlan {
 
     private void addPartition(PTOperator p) {
       partitions.add(p);
-      p.statsMonitors = this.statsHandlers;
+      p.statsListeners = this.statsHandlers;
     }
 
     private Collection<PTOperator> getAllOperators() {
@@ -374,7 +384,7 @@ public class PhysicalPlan {
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL);
+          Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet();
           if (!inlineSet.isEmpty()) {
             // process inline operators
             for (PTOperator inlineOper : inlineSet) {
@@ -439,35 +449,34 @@ public class PhysicalPlan {
     if (maxTps > minTps) {
       // monitor load
       if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<StatsHandler>(1);
+        m.statsHandlers = new ArrayList<HeartbeatListener>(1);
       }
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    String handlers = m.logicalOperator.getValue(OperatorContext.PARTITION_STATS_HANDLER);
-    if (handlers != null) {
+    Class<? extends HeartbeatListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.HEARTBEAT_LISTENER);
+    if (statsListenerClass != null) {
       if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<StatsHandler>(1);
+        m.statsHandlers = new ArrayList<HeartbeatListener>(1);
       }
-      Class<? extends StatsHandler> shClass = StramUtils.classForName(handlers, StatsHandler.class);
-      final StatsHandler sh;
-      if (PartitionLoadWatch.class.isAssignableFrom(shClass)) {
+      final HeartbeatListener sh;
+      if (PartitionLoadWatch.class.isAssignableFrom(statsListenerClass)) {
         try {
-          sh = shClass.getConstructor(m.getClass()).newInstance(m);
+          sh = statsListenerClass.getConstructor(m.getClass()).newInstance(m);
         }
         catch (Exception e) {
           throw new RuntimeException("Failed to create custom partition load handler.", e);
         }
       }
       else {
-        sh = StramUtils.newInstance(shClass);
+        sh = StramUtils.newInstance(statsListenerClass);
       }
       m.statsHandlers.add(sh);
     }
 
     // create operator instance per partition
     for (Partition<?> p: partitions) {
-      addPTOperator(m, p);
+        addPTOperator(m, p);
     }
     updateStreamMappings(m);
 
@@ -513,7 +522,7 @@ public class PhysicalPlan {
       }
 
       // assume it does not matter which operator instance's port objects are referenced in mapping
-      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
+      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
     }
@@ -699,7 +708,7 @@ public class PhysicalPlan {
 
       PTContainer newContainer = null;
       // check for existing inline set
-      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL)) {
+      for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
@@ -826,16 +835,24 @@ public class PhysicalPlan {
   }
 
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition) {
+    String host = null;
+    if(partition != null){
+     host = partition.getAttributes().get(OperatorContext.LOCALITY_HOST);
+    }
+    if(host == null){
+     host = nodeDecl.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
+    }
+    
     PTOperator oper = createInstance(nodeDecl, partition);
     nodeDecl.addPartition(oper);
     this.newOpers.add(oper);
     this.deployOpers.add(oper);
-
+    
     //
     // update locality
     //
-    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL);
-    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL);
+    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL,host);
+    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL,host);
 
     return oper;
   }
@@ -863,6 +880,7 @@ public class PhysicalPlan {
 
   PTOperator newOperator(OperatorMeta om, String name) {
     PTOperator oper = new PTOperator(this, idSequence.incrementAndGet(), name);
+    allOperators.put(oper.id, oper);
     oper.logicalNode = om;
     oper.inputs = new ArrayList<PTInput>();
     oper.outputs = new ArrayList<PTOutput>();
@@ -870,22 +888,26 @@ public class PhysicalPlan {
   }
 
   private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
-    PTOperator pOperator = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getName());
-    pOperator.logicalNode = mapping.logicalOperator;
-    pOperator.inputs = new ArrayList<PTInput>();
-    pOperator.outputs = new ArrayList<PTOutput>();
-    pOperator.partition = partition;
+    PTOperator oper = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getName());
+    allOperators.put(oper.id, oper);
+    oper.logicalNode = mapping.logicalOperator;
+    oper.inputs = new ArrayList<PTInput>();
+    oper.outputs = new ArrayList<PTOutput>();
+    oper.partition = partition;
 
     // output port objects
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
-      setupOutput(mapping, pOperator, outputEntry);
+      setupOutput(mapping, oper, outputEntry);
     }
-    return pOperator;
+    return oper;
   }
 
-  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype) {
+  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype,String host) {
 
-    Set<PTOperator> s = newOperator.getGrouping(ltype);
+    HostOperatorSet grpObj = newOperator.getGrouping(ltype);
+    if(host!= null)
+      grpObj.setHost(host);
+    Set<PTOperator> s = grpObj.getOperatorSet();
     s.add(newOperator);
     LocalityPref loc = localityPrefs.prefs.get(pnodes);
     if (loc != null) {
@@ -893,16 +915,16 @@ public class PhysicalPlan {
         if (pnodes.parallelPartitions == localPM.parallelPartitions) {
           if (localPM.partitions.size() >= pnodes.partitions.size()) {
             // apply locality setting per partition
-            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype));
+            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype).getOperatorSet());
           }
         } else {
           for (PTOperator otherNode : localPM.partitions) {
-            s.addAll(otherNode.getGrouping(ltype));
+            s.addAll(otherNode.getGrouping(ltype).getOperatorSet());
           }
         }
       }
       for (PTOperator localOper : s) {
-        localOper.groupings.put(ltype, s);
+        localOper.groupings.put(ltype, grpObj);
       }
     }
   }
@@ -938,6 +960,7 @@ public class PhysicalPlan {
     cowList.remove(oper);
     oper.container.operators = cowList;
     this.deployOpers.remove(oper);
+    this.allOperators.remove(oper.id);
   }
 
   public LogicalPlan getDAG() {
@@ -946,6 +969,10 @@ public class PhysicalPlan {
 
   public List<PTContainer> getContainers() {
     return this.containers;
+  }
+
+  public Map<Integer, PTOperator> getAllOperators() {
+    return this.allOperators;
   }
 
   /**
@@ -974,14 +1001,6 @@ public class PhysicalPlan {
 
   protected List<OperatorMeta> getRootOperators() {
     return dag.getRootOperators();
-  }
-
-  public List<PTOperator> getAllOperators() {
-    List<PTOperator> list = new ArrayList<PTOperator>();
-    for (PTContainer c : this.containers) {
-      list.addAll(c.getOperators());
-    }
-    return list;
   }
 
   private void getDeps(PTOperator operator, Set<PTOperator> visited) {
@@ -1029,7 +1048,8 @@ public class PhysicalPlan {
   public void addLogicalOperator(OperatorMeta om)
   {
     PMapping pnodes = new PMapping(om);
-    localityPrefs.add(pnodes, pnodes.logicalOperator.getValue(OperatorContext.LOCALITY_HOST));
+    String host = pnodes.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
+    localityPrefs.add(pnodes, host);
 
     PMapping upstreamPartitioned = null;
 
@@ -1182,6 +1202,32 @@ public class PhysicalPlan {
     LinkedHashMap<OperatorMeta, PMapping> copyMap = Maps.newLinkedHashMap(this.logicalToPTOperator);
     copyMap.remove(om);
     this.logicalToPTOperator = copyMap;
+  }
+
+  public void onStatusUpdate(PTOperator oper)
+  {
+    for (HeartbeatListener l : oper.statsListeners) {
+      HeartbeatListener.Response rsp = l.processStats(oper.stats);
+      if (rsp != null && rsp.repartitionRequired) {
+        oper.loadIndicator = rsp.loadIndicator;
+        final OperatorMeta om = oper.getOperatorMeta();
+        // concurrent heartbeat processing
+        if (this.pendingRepartition.putIfAbsent(om, om) != null) {
+          LOG.debug("Skipping repartitioning for {} load {}", oper, oper.loadIndicator);
+        } else {
+          LOG.debug("Scheduling repartitioning for {} {}", oper, oper.loadIndicator);
+          // hand over to monitor thread
+          Runnable r = new Runnable() {
+            @Override
+            public void run() {
+              pendingRepartition.remove(om);
+              redoPartitions(logicalToPTOperator.get(om));
+            }
+          };
+          ctx.dispatch(r);
+        }
+      }
+    }
   }
 
 }

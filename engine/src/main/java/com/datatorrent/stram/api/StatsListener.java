@@ -4,11 +4,11 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.stram.engine.Stats;
-import com.datatorrent.stram.engine.Stats.ContainerStats;
+import com.datatorrent.api.Stats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 
 /**
- * <p>StatsListener interface.</p>
+ * <p>HeartbeatListener interface.</p>
  *
  * @param <STATS> Type of stats which this stats listener handles.
  * @author Chetan Narsude <chetan@datatorrent.com>

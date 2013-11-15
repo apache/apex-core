@@ -880,7 +880,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   /*
-   * Validates OIO constraints for nodes with more than one input streams
+   * Validates OIO constraints for operators with more than one input streams
    * For a node to be OIO,
    *  1. all its input streams should be OIO
    *  2. all its input streams should have OIO from single source node
@@ -915,7 +915,7 @@ public class LogicalPlan implements Serializable, DAG
       if (oioRoot == null) {
         oioRoot = oioStreamRoot;
       } else if (oioRoot.intValue() != oioStreamRoot.intValue()) {
-        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as they origin from different owner OIO nodes", sm.locality, om);
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as they origin from different owner OIO operators", sm.locality, om);
         throw new ValidationException(msg);
       }
     }
@@ -923,9 +923,9 @@ public class LogicalPlan implements Serializable, DAG
     om.oioRoot = oioRoot;
   }
 
-  /*
+  /**
    * Helper method for validateThreadLocal method, runs recursively
-   * For a given node, visits all upstream nodes in DFS, validates and marks them as visited
+   * For a given operator, visits all upstream operators in DFS, validates and marks them as visited
    * returns hashcode of owner oio node if it exists, else returns -1
    */
   private Integer getOioRoot(OperatorMeta om) {

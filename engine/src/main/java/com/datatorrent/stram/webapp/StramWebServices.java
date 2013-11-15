@@ -426,9 +426,8 @@ public class StramWebServices
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS + "/{containerId}/kill")
-  @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject killContainer(JSONObject request, @PathParam("containerId") String containerId)
+  public JSONObject killContainer(@PathParam("containerId") String containerId)
   {
     JSONObject response = new JSONObject();
     dagManager.stopContainer(containerId);

@@ -18,12 +18,11 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Sink;
+import com.datatorrent.api.Stats;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
-
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.util.FSPartFileCollection;

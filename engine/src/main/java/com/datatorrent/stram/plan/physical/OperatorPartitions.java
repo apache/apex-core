@@ -6,14 +6,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
-
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -35,17 +36,20 @@ public class OperatorPartitions {
     private final PartitionPortMap partitionKeys;
     private final Operator operator;
     private final int loadIndicator;
+    private final AttributeMap attributes = new DefaultAttributeMap();
+    private final BatchedOperatorStats stats;
 
-    public PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator) {
+    public PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator, BatchedOperatorStats stats) {
       this.operator = operator;
       this.partitionKeys = new PartitionPortMap();
       this.partitionKeys.putAll(partitionKeys);
       this.partitionKeys.modified = false;
       this.loadIndicator = loadIndicator;
+      this.stats = stats;
     }
 
     PartitionImpl(Operator operator) {
-      this(operator, new PartitionPortMap(), 0);
+      this(operator, new PartitionPortMap(), 0, null);
     }
 
     @Override
@@ -56,6 +60,12 @@ public class OperatorPartitions {
     @Override
     public int getLoad() {
       return this.loadIndicator;
+    }
+
+    @Override
+    public BatchedOperatorStats getStats()
+    {
+      return this.stats;
     }
 
     @Override
@@ -70,6 +80,12 @@ public class OperatorPartitions {
 
     boolean isModified() {
       return partitionKeys.modified;
+    }
+
+    @Override
+    public AttributeMap getAttributes()
+    {
+      return attributes;
     }
 
   }

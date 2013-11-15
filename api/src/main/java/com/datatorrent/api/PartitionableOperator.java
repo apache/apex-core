@@ -19,6 +19,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
+
 /**
  * <p>PartitionableOperator interface.</p>
  *
@@ -123,6 +125,17 @@ public interface PartitionableOperator extends Operator
     public int getLoad();
 
     /**
+     * Get the latest statistics for this partition. Null when no stats have been collected yet.
+     * <p>
+     * Stats would typically be used to determine utilization and decide whether partitions should be merged or split.
+     * Through {@link Stats.OperatorStats.CustomStats} operator implementation specific stats can be collected and used
+     * to derive optimal partitioning.
+     *
+     * @return
+     */
+    public BatchedOperatorStats getStats();
+
+    /**
      * Get the frozen state of the operator which is currently handling the partition.
      *
      * @return frozen operator instance
@@ -137,5 +150,13 @@ public interface PartitionableOperator extends Operator
      * @return Partition
      */
     public Partition<OPERATOR> getInstance(OPERATOR operator);
+    
+    /**
+     * Get the attributes associated with this partition.
+     * The returned map does not contain any attributes that may have been defined in the parent context of this context.
+     *
+     * @return attributes defined for the current context.
+     */
+    public AttributeMap getAttributes();
   }
 }
