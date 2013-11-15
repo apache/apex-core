@@ -476,9 +476,6 @@ public class PhysicalPlan {
 
     // create operator instance per partition
     for (Partition<?> p: partitions) {
-      if(p.getAttributes().get(OperatorContext.LOCALITY_HOST) == null)
-        addPTOperator(m, p);
-      else
         addPTOperator(m, p);
     }
     updateStreamMappings(m);
