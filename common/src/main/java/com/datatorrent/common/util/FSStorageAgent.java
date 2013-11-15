@@ -1,4 +1,3 @@
-
 /**
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
@@ -20,6 +19,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
+
 public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
@@ -29,6 +29,12 @@ public class FSStorageAgent implements StorageAgent
   FSStorageAgent(Configuration conf, String checkpointFsPath)
   {
     this.conf = conf;
+    this.checkpointFsPath = checkpointFsPath;
+  }
+
+  public FSStorageAgent(String checkpointFsPath)
+  {
+    conf = new Configuration();
     this.checkpointFsPath = checkpointFsPath;
   }
 
@@ -78,7 +84,15 @@ public class FSStorageAgent implements StorageAgent
       }
     }
 
+
+
     return mrWindowId;
+  }
+
+  @Override
+  public String toString()
+  {
+    return checkpointFsPath;
   }
 
   @SuppressWarnings("unused")
