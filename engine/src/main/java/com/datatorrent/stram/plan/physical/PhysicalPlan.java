@@ -1208,23 +1208,26 @@ public class PhysicalPlan {
   {
     for (HeartbeatListener l : oper.statsListeners) {
       HeartbeatListener.Response rsp = l.processStats(oper.stats);
-      if (rsp != null && rsp.repartitionRequired) {
+      if (rsp != null) {
+        // TODO: repartition delay needs to come out of the listener
         oper.loadIndicator = rsp.loadIndicator;
-        final OperatorMeta om = oper.getOperatorMeta();
-        // concurrent heartbeat processing
-        if (this.pendingRepartition.putIfAbsent(om, om) != null) {
-          LOG.debug("Skipping repartitioning for {} load {}", oper, oper.loadIndicator);
-        } else {
-          LOG.debug("Scheduling repartitioning for {} {}", oper, oper.loadIndicator);
-          // hand over to monitor thread
-          Runnable r = new Runnable() {
-            @Override
-            public void run() {
-              pendingRepartition.remove(om);
-              redoPartitions(logicalToPTOperator.get(om));
-            }
-          };
-          ctx.dispatch(r);
+        if (rsp.repartitionRequired) {
+          final OperatorMeta om = oper.getOperatorMeta();
+          // concurrent heartbeat processing
+          if (this.pendingRepartition.putIfAbsent(om, om) != null) {
+            LOG.debug("Skipping repartitioning for {} load {}", oper, oper.loadIndicator);
+          } else {
+            LOG.debug("Scheduling repartitioning for {} {}", oper, oper.loadIndicator);
+            // hand over to monitor thread
+            Runnable r = new Runnable() {
+              @Override
+              public void run() {
+                pendingRepartition.remove(om);
+                redoPartitions(logicalToPTOperator.get(om));
+              }
+            };
+            ctx.dispatch(r);
+          }
         }
       }
     }
