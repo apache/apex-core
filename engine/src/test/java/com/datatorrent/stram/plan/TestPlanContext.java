@@ -13,15 +13,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.HeartbeatListener;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 public class TestPlanContext implements PlanContext, StorageAgent {
   public List<Runnable> events = new ArrayList<Runnable>();
