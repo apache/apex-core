@@ -709,6 +709,7 @@ public class StreamingContainerManager implements PlanContext
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
+        int statCount=0;
         long maxDequeueTimestamp = -1;
         List<ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
 
@@ -807,6 +808,7 @@ public class StreamingContainerManager implements PlanContext
 
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
+          statCount++;
 
           Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
           if (endWindowStatsMap == null) {
@@ -821,7 +823,11 @@ public class StreamingContainerManager implements PlanContext
         if (elapsedMillis > 0) {
           status.tuplesProcessedPSMA = 0;
           status.tuplesEmittedPSMA = 0;
-          status.cpuPercentageMA.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
+          if(statCount != 0){
+            status.cpuPercentageMA.add((double)totalCpuTimeUsed * 100 / (statCount * elapsedMillis * 1000000));
+          }else{
+            status.cpuPercentageMA.add((double)totalCpuTimeUsed * 100 / (1 * elapsedMillis * 1000000));
+          }
           for (PortStatus ps: status.inputPortStatusList.values()) {
             status.tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
           }
