@@ -117,6 +117,7 @@ public class StramChild
   private final MBassador<ContainerEvent> eventBus; // event bus for publishing container events
   HashSet<Component<ContainerContext>> components;
   private RequestFactory requestFactory;
+  private final String eventSubscribersList = "/ContainerEventListeners.properties";
 
   static {
     try {
@@ -175,8 +176,7 @@ public class StramChild
 
     try {
       Properties properties = new Properties();
-      String resource = "/ContainerEventListeners.properties";
-      InputStream propertiesInputStream = StramChild.class.getResourceAsStream(resource);
+      InputStream propertiesInputStream = StramChild.class.getResourceAsStream(eventSubscribersList);
       properties.load(propertiesInputStream);
 
       for (Map.Entry<Object, Object> entry : properties.entrySet()) {

@@ -47,7 +47,6 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
  *
  * @since 0.3.5
  */
-//public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
 public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>
 {
   private int tupleRecordingPartFileSize;
