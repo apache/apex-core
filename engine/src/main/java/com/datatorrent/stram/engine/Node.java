@@ -296,7 +296,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       stats.outputPorts.add(portStats);
     }
 
-    long currentCpuTime = tmb.getCurrentThreadCpuTime();
+    
+    long currentCpuTime = tmb.getCurrentThreadUserTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
     stats.checkpointedWindowId = checkpointedWindowId;
