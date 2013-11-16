@@ -26,14 +26,18 @@ import java.util.concurrent.FutureTask;
 
 import javax.annotation.Nullable;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
@@ -43,6 +47,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
@@ -51,10 +56,10 @@ import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -73,8 +78,6 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Sets;
 
 /**
  *
@@ -751,12 +754,16 @@ public class StreamingContainerManager implements PlanContext
               if (s.endWindowTimestamp > maxDequeueTimestamp) {
                 maxDequeueTimestamp = s.endWindowTimestamp;
               }
+
+              if (elapsedMillis > 0) {
+                Long numBytes = s.bufferServerBytes;
+                ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
+              }
             }
           }
 
           ports = stats.outputPorts;
           if (ports != null) {
-
             for (ContainerStats.OperatorStats.PortStats s: ports) {
               PortStatus ps = status.outputPortStatusList.get(s.id);
               if (ps == null) {
@@ -781,6 +788,11 @@ public class StreamingContainerManager implements PlanContext
                 ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
               }
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
+
+              if (elapsedMillis > 0) {
+                Long numBytes = s.bufferServerBytes;
+                ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
+              }
             }
             if (ports.size() > 0) {
               endWindowStats.emitTimestamp = ports.iterator().next().endWindowTimestamp;
@@ -811,17 +823,9 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesEmittedPSMA = 0;
           status.cpuPercentageMA.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
           for (PortStatus ps: status.inputPortStatusList.values()) {
-            Long numBytes = shb.getBufferServerBytes().get(ps.portName);
-            if (numBytes != null) {
-              ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
-            }
             status.tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
-            Long numBytes = shb.getBufferServerBytes().get(ps.portName);
-            if (numBytes != null) {
-              ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
-            }
             status.tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
           }
 

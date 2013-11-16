@@ -49,6 +49,7 @@ public interface Stats extends Serializable
       public final String id;
       public int tupleCount;
       public long endWindowTimestamp;
+      public long bufferServerBytes;
       /**
        * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
        * INVALID_TIME_MILLIS otherwise.

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import net.engio.mbassy.listener.Handler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,16 +24,18 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
+
 import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.NodeActivationListener;
+import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
 import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
-import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
@@ -44,7 +47,8 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
  *
  * @since 0.3.5
  */
-public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
+//public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
+public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>
 {
   private int tupleRecordingPartFileSize;
   private String gatewayAddress;
@@ -256,9 +260,10 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     }
   }
 
-  @Override
-  public void activated(Node<?> node)
+  @Handler
+  public void activated(NodeActivationEvent nae)
   {
+    Node<?> node = nae.getNode();
     if (node.getContext().getValue(OperatorContext.AUTO_RECORD)) {
       startRecording(node, node.getId(), null);
     }
@@ -276,15 +281,17 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     }
   }
 
-  @Override
-  public void deactivated(Node<?> node)
+  @Handler
+  public void deactivated(NodeDeactivationEvent nde)
   {
+    Node<?> node = nde.getNode();
     stopRecording(node, node.getId(), null);
   }
 
-  @Override
-  public void collected(ContainerStats stats)
+  @Handler
+  public void collected(ContainerStatsEvent cse)
   {
+    ContainerStats stats = cse.getContainerStats();
     for (OperatorHeartbeat node : stats.operators) {
       long recordingStartTime;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));

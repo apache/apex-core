@@ -150,19 +150,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public void setState(String state) {
       this.state = state;
     }
-
-    public final Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
-
-    public Map<String, Long> getBufferServerBytes()
-    {
-      return Collections.unmodifiableMap(bufferServerBytes);
-    }
-
-    public void setBufferServerBytes(String identifier, long bytes)
-    {
-      this.bufferServerBytes.put(identifier, bytes);
-    }
-
   }
 
   public static class ContainerStats implements Stats
