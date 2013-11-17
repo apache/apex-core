@@ -16,7 +16,7 @@ import com.datatorrent.api.HeartbeatListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
-import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.CustomStats;
 import com.datatorrent.stram.StramLocalCluster;
@@ -30,7 +30,7 @@ public class CustomStatsTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(CustomStatsTest.class);
 
-  public static class TestOperator extends TestGeneratorInputOperator implements PartitionableOperator
+  public static class TestOperator extends TestGeneratorInputOperator implements Partitionable<TestOperator>
   {
     static class TestOperatorStats implements CustomStats
     {
@@ -56,9 +56,9 @@ public class CustomStatsTest
     private static CustomStats lastCustomStats = null;
 
     @Override
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperator>> definePartitions(Collection<? extends Partition<TestOperator>> partitions, int incrementalCapacity)
     {
-      List<Partition<?>> newPartitions = Lists.newArrayList();
+      List<Partition<TestOperator>> newPartitions = Lists.newArrayList();
       newPartitions.addAll(partitions);
 
       for (Partition<?> p : partitions) {
@@ -99,6 +99,7 @@ public class CustomStatsTest
    * @throws Exception
    */
   @Test
+  @SuppressWarnings("SleepWhileInLoop")
   public void testCustomStatsPropagation() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
