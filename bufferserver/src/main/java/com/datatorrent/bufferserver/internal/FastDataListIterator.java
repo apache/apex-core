@@ -5,7 +5,7 @@
 package com.datatorrent.bufferserver.internal;
 
 import com.datatorrent.bufferserver.storage.Storage;
-import com.datatorrent.bufferserver.util.SerializedData;
+import com.datatorrent.common.util.SerializedData;
 
 /**
  * <p>FastDataListIterator class.</p>

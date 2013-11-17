@@ -14,23 +14,19 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.datatorrent.api.ActivationListener;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Component;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.api.NodeRequest;
@@ -296,7 +292,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       stats.outputPorts.add(portStats);
     }
 
-    
+
     long currentCpuTime = tmb.getCurrentThreadUserTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;

@@ -37,6 +37,7 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.*;
@@ -71,7 +72,6 @@ import com.datatorrent.stram.stream.InlineStream;
 import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
-import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.

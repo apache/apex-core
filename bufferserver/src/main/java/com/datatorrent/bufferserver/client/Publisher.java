@@ -4,10 +4,12 @@
  */
 package com.datatorrent.bufferserver.client;
 
-import com.datatorrent.bufferserver.packet.PublishRequestTuple;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.PublishRequestTuple;
+import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  * <p>Abstract Publisher class.</p>
@@ -15,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
-public abstract class Publisher extends AbstractClient
+public abstract class Publisher extends AbstractLengthPrependerClient
 {
   private final String id;
 

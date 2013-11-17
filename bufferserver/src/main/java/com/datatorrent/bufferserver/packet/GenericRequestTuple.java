@@ -4,12 +4,11 @@
  */
 package com.datatorrent.bufferserver.packet;
 
+import java.util.Arrays;
+
+import com.datatorrent.common.util.VarInt;
 import static com.datatorrent.bufferserver.packet.Tuple.CLASSIC_VERSION;
 import static com.datatorrent.bufferserver.packet.Tuple.writeString;
-
-import com.datatorrent.bufferserver.util.Codec;
-
-import java.util.Arrays;
 
 /**
  * <p>GenericRequestTuple class.</p>
@@ -141,11 +140,11 @@ public class GenericRequestTuple extends RequestTuple
 
     /* write the baseSeconds */
     int baseSeconds = (int)(startingWindowId >> 32);
-    offset = Codec.writeRawVarint32(baseSeconds, array, offset);
+    offset = VarInt.write(baseSeconds, array, offset);
 
     /* write the windowId */
     int windowId = (int)startingWindowId;
-    offset = Codec.writeRawVarint32(windowId, array, offset);
+    offset = VarInt.write(windowId, array, offset);
 
     return Arrays.copyOfRange(array, 0, offset);
   }

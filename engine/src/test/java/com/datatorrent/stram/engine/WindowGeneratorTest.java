@@ -3,31 +3,29 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.*;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.support.ManualScheduledExecutorService;
-import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
-import com.datatorrent.stram.tuple.ResetWindowTuple;
-import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.bufferserver.packet.MessageType;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import junit.framework.Assert;
-import org.apache.hadoop.conf.Configuration;
+
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Sink;
+
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.ManualScheduledExecutorService;
+import com.datatorrent.stram.tuple.ResetWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 public class WindowGeneratorTest
 {
