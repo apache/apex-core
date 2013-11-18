@@ -3,36 +3,31 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-
-import static java.lang.Thread.sleep;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
 import junit.framework.Assert;
+import static java.lang.Thread.sleep;
 
-import org.apache.hadoop.conf.Configuration;
+import com.google.common.collect.Sets;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.HeartbeatListener;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.engine.Node;
+
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.google.common.collect.Sets;
 
 public class PartitioningTest
 {
@@ -301,7 +296,7 @@ public class PartitioningTest
 
   }
 
-  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, PartitionableOperator
+  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, Partitionable<PartitionableInputOperator>
   {
     String partitionProperty = "partition";
 
@@ -311,20 +306,20 @@ public class PartitioningTest
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCount)
+    public Collection<Partition<PartitionableInputOperator>> definePartitions(Collection<Partition<PartitionableInputOperator>> partitions, int incrementalCapacity)
     {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(3);
-      Iterator<? extends Partition<PartitionableInputOperator>> iterator = (Iterator<? extends Partition<PartitionableInputOperator>>)partitions.iterator();
+      List<Partition<PartitionableInputOperator>> newPartitions = new ArrayList<Partition<PartitionableInputOperator>>(3);
+      Iterator<? extends Partition<PartitionableInputOperator>> iterator = partitions.iterator();
       Partition<PartitionableInputOperator> templatePartition = null;
       for (int i = 0; i < 3; i++) {
         PartitionableInputOperator op = new PartitionableInputOperator();
         if (iterator.hasNext()) {
           templatePartition = iterator.next();
-          op.partitionProperty = templatePartition.getOperator().partitionProperty;
+          op.partitionProperty = templatePartition.getPartitionedInstance().partitionProperty;
         }
         op.partitionProperty += "_" + i;
-        Partition<PartitionableInputOperator> p = templatePartition.getInstance(op);
+        @SuppressWarnings({"null", "ConstantConditions"})
+        Partition<PartitionableInputOperator> p = new DefaultPartition<PartitionableInputOperator>(op);
         newPartitions.add(p);
       }
       return newPartitions;

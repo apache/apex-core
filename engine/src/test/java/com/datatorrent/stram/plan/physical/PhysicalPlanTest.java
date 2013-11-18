@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram.plan;
+package com.datatorrent.stram.plan.physical;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,39 +13,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import junit.framework.Assert;
-
-import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import org.junit.Test;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.PartitionableOperator;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-import com.datatorrent.api.HeartbeatListener;
-import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.Partitionable.Partition;
+import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.physical.OperatorPartitions;
-import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
@@ -56,7 +50,7 @@ public class PhysicalPlanTest {
 
   }
 
-  public static class PartitioningTestOperator extends GenericTestOperator implements PartitionableOperator {
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitionable<PartitioningTestOperator> {
     final public static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     public Integer[] partitionKeys = {0, 1, 2};
@@ -75,12 +69,11 @@ public class PhysicalPlanTest {
     };
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacityIgnored) {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(this.partitionKeys.length);
-      Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
+    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
+    {
+      List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(this.partitionKeys.length);
       for (int i = 0; i < partitionKeys.length; i++) {
-        Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
+        Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getPartitionKeys().put(this.inport1, new PartitionKeys(2, Sets.newHashSet(partitionKeys[i])));
         p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(2, Sets.newHashSet(partitionKeys[i])));
         newPartitions.add(p);
@@ -155,7 +148,7 @@ public class PhysicalPlanTest {
       Assert.assertNotNull("partition keys null: " + partitionInstance, pkeys);
       Assert.assertEquals("partition keys size: " + pkeys, 1, pkeys.size()); // one port partitioned
       // default partitioning does not clone the operator
-      Assert.assertEquals("partition operator: " + pkeys, node2, partitionInstance.getPartition().getOperator());
+      Assert.assertEquals("partition operator: " + pkeys, node2, partitionInstance.getPartition().getPartitionedInstance());
       InputPort<?> expectedPort = node2.inport2;
       Assert.assertEquals("partition port: " + pkeys, expectedPort, pkeys.keySet().iterator().next());
 
@@ -489,23 +482,23 @@ public class PhysicalPlanTest {
     for (PartitionKeys pks: initialPartitionKeys) {
       Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
       p1Keys.put(operator.inport1, pks);
-      partitions.add(new PartitionImpl(operator, p1Keys, 1, null));
+      partitions.add(new DefaultPartition<Operator>(operator, p1Keys, 1, null));
     }
 
     ArrayList<Partition<?>> lowLoadPartitions = new ArrayList<Partition<?>>();
     for (Partition<?> p : partitions) {
-      lowLoadPartitions.add(new PartitionImpl(p.getOperator(), p.getPartitionKeys(), -1, null));
+      lowLoadPartitions.add(new DefaultPartition<Operator>(p.getPartitionedInstance(), p.getPartitionKeys(), -1, null));
     }
     // merge to single partition
     List<Partition<?>> newPartitions = dp.repartition(lowLoadPartitions);
     Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
     Assert.assertEquals("" + newPartitions.get(0).getPartitionKeys(), 0, newPartitions.get(0).getPartitionKeys().values().iterator().next().mask);
 
-    newPartitions = dp.repartition(Collections.singletonList(new PartitionImpl(operator, newPartitions.get(0).getPartitionKeys(), -1, null)));
+    newPartitions = dp.repartition(Collections.singletonList(new DefaultPartition<Operator>(operator, newPartitions.get(0).getPartitionKeys(), -1, null)));
     Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
 
     // split back into two
-    newPartitions = dp.repartition(Collections.singletonList(new PartitionImpl(operator, newPartitions.get(0).getPartitionKeys(), 1, null)));
+    newPartitions = dp.repartition(Collections.singletonList(new DefaultPartition<Operator>(operator, newPartitions.get(0).getPartitionKeys(), 1, null)));
     Assert.assertEquals("" + newPartitions, 2, newPartitions.size());
 
 
@@ -543,7 +536,7 @@ public class PhysicalPlanTest {
         Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
         p1Keys.put(operator.inport1, pks);
         int load = expectedKeys.contains(pks) ? 0 : -1;
-        clonePartitions.add(new PartitionImpl(operator, p1Keys, load, null));
+        clonePartitions.add(new DefaultPartition<Operator>(operator, p1Keys, load, null));
       }
 
       newPartitions = dp.repartition(clonePartitions);
@@ -561,7 +554,7 @@ public class PhysicalPlanTest {
     // merge 2 into single partition
     lowLoadPartitions = Lists.newArrayList();
     for (Partition<?> p : partitions) {
-      lowLoadPartitions.add(new PartitionImpl(operator, p.getPartitionKeys(), -1, null));
+      lowLoadPartitions.add(new DefaultPartition<Operator>(operator, p.getPartitionKeys(), -1, null));
     }
     newPartitions = dp.repartition(lowLoadPartitions);
     Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
@@ -807,6 +800,7 @@ public class PhysicalPlanTest {
    * separate unifier is created container local with each downstream partition.
    */
   @Test
+  @SuppressWarnings("AssignmentToForLoopParameter")
   public void testUnifierPartitioning() {
 
     LogicalPlan dag = new LogicalPlan();

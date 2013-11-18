@@ -17,8 +17,8 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.api.Partitionable.Partition;
+import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.HeartbeatListener;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;

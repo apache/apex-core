@@ -318,7 +318,7 @@ public class StramChildAgent {
       operator = oper.getUnifier();
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     } else if (oper.getPartition() != null) {
-      operator = oper.getPartition().getOperator();
+      operator = oper.getPartition().getPartitionedInstance();
     }
 
     long checkpointWindowId = oper.getRecoveryCheckpoint();

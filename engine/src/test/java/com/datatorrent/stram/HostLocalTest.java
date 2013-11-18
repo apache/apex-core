@@ -9,30 +9,35 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
 import junit.framework.Assert;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
+import org.junit.Test;
 
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
-import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Partitionable;
+import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.plan.PhysicalPlanTest.PartitioningTestStreamCodec;
+import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestStreamCodec;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 public class HostLocalTest {
 
-  public static class PartitioningTestOperator extends GenericTestOperator implements PartitionableOperator {
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitionable<PartitioningTestOperator> {
 
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
@@ -48,16 +53,16 @@ public class HostLocalTest {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity) {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(incrementalCapacity+1);
-      Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
+    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity) {
+      List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(incrementalCapacity+1);
+      Partition<PartitioningTestOperator> templatePartition = partitions.iterator().next();
       for (int i = 0; i < 1; i++) {
-        Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
+        Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
         newPartitions.add(p);
       }
       for (int i = 1; i < 1 +incrementalCapacity; i++) {
-        Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
+        Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
         newPartitions.add(p);
       }

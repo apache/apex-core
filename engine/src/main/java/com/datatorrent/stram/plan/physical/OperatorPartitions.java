@@ -2,19 +2,16 @@ package com.datatorrent.stram.plan.physical;
 
 import java.util.*;
 
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Sets;
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.PartitionableOperator;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.api.Partitionable.Partition;
+import com.datatorrent.api.Partitionable.PartitionKeys;
+
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -32,146 +29,9 @@ public class OperatorPartitions {
     this.operatorWrapper = operator;
   }
 
-  public static class PartitionImpl implements PartitionableOperator.Partition<Operator> {
-    private final PartitionPortMap partitionKeys;
-    private final Operator operator;
-    private final int loadIndicator;
-    private final AttributeMap attributes = new DefaultAttributeMap();
-    private final BatchedOperatorStats stats;
-
-    public PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator, BatchedOperatorStats stats) {
-      this.operator = operator;
-      this.partitionKeys = new PartitionPortMap();
-      this.partitionKeys.putAll(partitionKeys);
-      this.partitionKeys.modified = false;
-      this.loadIndicator = loadIndicator;
-      this.stats = stats;
-    }
-
-    PartitionImpl(Operator operator) {
-      this(operator, new PartitionPortMap(), 0, null);
-    }
-
-    @Override
-    public Map<InputPort<?>, PartitionKeys> getPartitionKeys() {
-      return partitionKeys;
-    }
-
-    @Override
-    public int getLoad() {
-      return this.loadIndicator;
-    }
-
-    @Override
-    public BatchedOperatorStats getStats()
-    {
-      return this.stats;
-    }
-
-    @Override
-    public Operator getOperator() {
-      return operator;
-    }
-
-    @Override
-    public Partition<Operator> getInstance(Operator operator) {
-      return new PartitionImpl(operator);
-    }
-
-    boolean isModified() {
-      return partitionKeys.modified;
-    }
-
-    @Override
-    public AttributeMap getAttributes()
-    {
-      return attributes;
-    }
-
-  }
-
-
-  public static class PartitionPortMap extends HashMap<InputPort<?>, PartitionKeys>
-  {
-    private static final long serialVersionUID = 201212131624L;
-    private boolean modified;
-
-    private boolean validateEqual(PartitionKeys collection1, PartitionKeys collection2)
-    {
-      if (collection1 == null && collection2 == null) {
-        return true;
-      }
-
-      if (collection1 == null || collection2 == null) {
-        return false;
-      }
-
-      if (collection1.mask != collection2.mask) {
-        return false;
-      }
-
-      if (collection1.partitions.size() != collection2.partitions.size()) {
-        return false;
-      }
-
-      for (Integer bb: collection1.partitions) {
-        if (!collection2.partitions.contains(bb)) {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    public boolean isModified()
-    {
-      return modified;
-    }
-
-    @Override
-    public PartitionKeys put(InputPort<?> key, PartitionKeys value)
-    {
-      PartitionKeys prev = super.put(key, value);
-      if (!modified) {
-        modified = !validateEqual(prev, value);
-      }
-
-      return prev;
-    }
-
-    @Override
-    public void putAll(Map<? extends InputPort<?>, ? extends PartitionKeys> m)
-    {
-      for (Map.Entry<? extends InputPort<?>, ? extends PartitionKeys> entry: m.entrySet()) {
-        put(entry.getKey(), entry.getValue());
-      }
-    }
-
-    @Override
-    @SuppressWarnings("element-type-mismatch")
-    public PartitionKeys remove(Object key)
-    {
-      if (containsKey(key)) {
-        modified = true;
-        return super.remove(key);
-      }
-
-      return null;
-    }
-
-    @Override
-    public void clear()
-    {
-      if (!isEmpty()) {
-        modified = true;
-        super.clear();
-      }
-    }
-
-  }
-
   /**
    * The default partitioning applied to operators that do not implement
-   * {@link PartitionableOperator} but are configured for partitioning in the
+   * {@link Partitionable} but are configured for partitioning in the
    * DAG.
    */
   public static class DefaultPartitioner {
@@ -191,7 +51,7 @@ public class OperatorPartitions {
 
       List<Partition<?>> partitions = new ArrayList<Partition<?>>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
-        Partition<?> p = new PartitionImpl(logicalOperator.getOperator());
+        Partition<?> p = new DefaultPartition<Operator>(logicalOperator.getOperator());
         partitions.add(p);
       }
 
@@ -221,7 +81,7 @@ public class OperatorPartitions {
 
     /**
      * Change existing partitioning based on runtime state (load). Unlike
-     * implementations of {@link PartitionableOperator}), decisions are made
+     * implementations of {@link Partitionable}), decisions are made
      * solely based on load indicator and operator state is not
      * considered in the event of partition split or merge.
      *
@@ -277,7 +137,7 @@ public class OperatorPartitions {
           }
 
           for (int key : newKeys) {
-            Partition<?> newPartition = new PartitionImpl(p.getOperator());
+            Partition<?> newPartition = new DefaultPartition<Operator>(p.getPartitionedInstance());
             newPartition.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
             newPartitions.add(newPartition);
           }
@@ -308,8 +168,8 @@ public class OperatorPartitions {
             lowLoadPartitions.add(p);
           }
         } else if (load > 0) {
-          newPartitions.add(new PartitionImpl(p.getOperator()));
-          newPartitions.add(new PartitionImpl(p.getOperator()));
+          newPartitions.add(new DefaultPartition<Operator>(p.getPartitionedInstance()));
+          newPartitions.add(new DefaultPartition<Operator>(p.getPartitionedInstance()));
         } else {
           newPartitions.add(p);
         }

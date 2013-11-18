@@ -150,7 +150,7 @@ public class LogicalPlanTest {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     LogicalPlan.write(dag, bos);
 
-    System.out.println("serialized size: " + bos.toByteArray().length);
+    // System.out.println("serialized size: " + bos.toByteArray().length);
 
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     LogicalPlan dagClone = LogicalPlan.read(bis);
@@ -332,10 +332,10 @@ public class LogicalPlanTest {
   }
 
   @OperatorAnnotation(partitionable = false)
-  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements PartitionableOperator {
+  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitionable<TestOperatorAnnotationOperator2> {
 
     @Override
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int incrementalCapacity)
     {
       return null;
     }
@@ -556,6 +556,7 @@ public class LogicalPlanTest {
 
   public class DuplicatePortOperator extends GenericTestOperator {
     @OutputPortFieldAnnotation(name=OPORT1)
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
   }
 
