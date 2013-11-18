@@ -518,11 +518,11 @@ public class OiOStreamTest
 
     Assert.assertEquals("nonOIO: Number of threads", 2 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
     Assert.assertFalse("nonOIO: Thread Ids of input operator and intermediate operator1",
-                        ThreadIdValidatingInputOperator.threadId == (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
+                        ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
     Assert.assertFalse("nonOIO: Thread Ids of input operator and intermediate operator2",
-                        ThreadIdValidatingInputOperator.threadId == (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
+                        ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertFalse("nonOIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0) == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
-    Assert.assertFalse("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId == outputOperator.threadId);
+    Assert.assertFalse("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
 
     /*
      * This test makes sure that since all operators in diamond are ThreadLocal, they indeed share a thread
@@ -542,7 +542,7 @@ public class OiOStreamTest
     Assert.assertEquals("OIO: Thread Ids of input operator and intermediate operator2",
                         ThreadIdValidatingInputOperator.threadId, (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertEquals("OIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0), ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
-    Assert.assertEquals("OIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, outputOperator.threadId);
+    Assert.assertEquals("OIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
   }
 
   @Test
@@ -561,7 +561,7 @@ public class OiOStreamTest
     StreamMeta stream1 = lp.addStream("OiO1", inputOperator1.output, outputOperatorFromInputOper.input, intermediateOperatorfromInputOper1.input);
     StreamMeta stream2 = lp.addStream("OiO2", intermediateOperatorfromInputOper1.output, intermediateOperatorfromInterOper11.input, intermediateOperatorfromInterOper12.input);
     StreamMeta stream3 = lp.addStream("OiO3", intermediateOperatorfromInterOper11.output, outputOperatorFromInterOper11.input);
-    StreamMeta stream4 = lp.addStream("nonOiO1", intermediateOperatorfromInterOper12.output, outputOperatorFromInterOper21.input, outputOperatorFromInterOper22.input);
+    lp.addStream("nonOiO1", intermediateOperatorfromInterOper12.output, outputOperatorFromInterOper21.input, outputOperatorFromInterOper22.input);
 
     StramLocalCluster slc;
 

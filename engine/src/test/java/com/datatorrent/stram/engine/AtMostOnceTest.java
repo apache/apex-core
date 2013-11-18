@@ -5,6 +5,7 @@
 package com.datatorrent.stram.engine;
 
 import static java.lang.Thread.sleep;
+
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -18,7 +19,6 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -186,5 +186,6 @@ public class AtMostOnceTest extends ProcessingModeTests
     }
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(AtMostOnceTest.class);
 }

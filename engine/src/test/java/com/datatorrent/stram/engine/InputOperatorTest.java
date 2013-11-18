@@ -11,7 +11,6 @@ import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.api.ActivationListener;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;

@@ -5,7 +5,6 @@
 package com.datatorrent.stram.engine;
 
 import com.datatorrent.api.IdleTimeHandler;
-import com.datatorrent.api.Stats;
 
 import java.util.ArrayList;
 
@@ -198,5 +197,6 @@ public class InputNode extends Node<InputOperator>
     }
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
 }

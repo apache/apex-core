@@ -18,31 +18,22 @@ import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.plan.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.plan.PhysicalPlanTest.PartitioningTestStreamCodec;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 public class HostLocalTest {
 
   public static class PartitioningTestOperator extends GenericTestOperator implements PartitionableOperator {
-    
+
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
       public Class<? extends StreamCodec<Object>> getStreamCodec() {
@@ -90,7 +81,7 @@ public class HostLocalTest {
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
-   
+
     ResourceRequestHandler rr = new ResourceRequestHandler();
 
     int containerMem = 1000;
@@ -108,11 +99,11 @@ public class HostLocalTest {
     for (ContainerStartRequest csr : scm.containerStartRequests) {
       String host = rr.getHost(csr, containerMem);
       csr.container.host = host;
-      //Assert.assertEquals("Hosts set to host1" , "host1",host);      
-    }   
+      //Assert.assertEquals("Hosts set to host1" , "host1",host);
+    }
 
   }
-  
+
   @Test
   public void testNodeLocal() {
 
@@ -127,7 +118,7 @@ public class HostLocalTest {
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.NODE_LOCAL);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
-   
+
     ResourceRequestHandler rr = new ResourceRequestHandler();
 
     int containerMem = 1000;
@@ -145,11 +136,11 @@ public class HostLocalTest {
     for (ContainerStartRequest csr : scm.containerStartRequests) {
       String host = rr.getHost(csr, containerMem);
       csr.container.host = host;
-      Assert.assertEquals("Hosts set to host1" , "host1",host);      
-    }   
+      Assert.assertEquals("Hosts set to host1" , "host1",host);
+    }
 
   }
-  
+
   @Test
   public void testContainerLocal() {
 
@@ -165,7 +156,7 @@ public class HostLocalTest {
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
-   
+
     ResourceRequestHandler rr = new ResourceRequestHandler();
 
     int containerMem = 1000;
@@ -183,8 +174,8 @@ public class HostLocalTest {
     for (ContainerStartRequest csr : scm.containerStartRequests) {
       String host = rr.getHost(csr, containerMem);
       csr.container.host = host;
-      Assert.assertEquals("Hosts set to host2" , "host2",host);      
-    }   
+      Assert.assertEquals("Hosts set to host2" , "host2",host);
+    }
 
   }
 
