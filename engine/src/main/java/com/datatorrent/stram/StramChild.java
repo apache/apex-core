@@ -177,7 +177,9 @@ public class StramChild
     try {
       Properties properties = new Properties();
       InputStream propertiesInputStream = StramChild.class.getResourceAsStream(eventSubscribersList);
-      properties.load(propertiesInputStream);
+      if (propertiesInputStream != null) {
+        properties.load(propertiesInputStream);
+      }
 
       for (Map.Entry<Object, Object> entry : properties.entrySet()) {
         String classname = (String)entry.getValue();

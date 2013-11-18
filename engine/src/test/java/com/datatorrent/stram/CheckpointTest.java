@@ -66,13 +66,13 @@ public class CheckpointTest
   @Before
   public void setupEachTest() throws IOException
   {
-    StramChild.eventloop.start();
+    //StramChild.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    //StramChild.eventloop.stop();
   }
 
   /**
