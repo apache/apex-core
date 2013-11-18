@@ -258,11 +258,6 @@ public class PhysicalPlan {
       return c;
     }
 
-    private boolean isPartitionable() {
-      int partitionCnt = logicalOperator.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
-      return (partitionCnt > 0);
-    }
-
     @Override
     public String toString() {
       return logicalOperator.toString();
@@ -419,14 +414,12 @@ public class PhysicalPlan {
     }
   }
 
-  private void initPartitioning(PMapping m)  {
-    /*
-     * partitioning is enabled through initial count attribute.
-     * if the attribute is not present or set to zero, partitioning is off
-     */
+  private void initPartitioning(PMapping m)
+  {
     int partitionCnt = m.logicalOperator.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
     if (partitionCnt == 0) {
-      throw new AssertionError("operator not partitionable " + m.logicalOperator);
+      LOG.warn("Ignoring invalid value 0 for {} {}", m.logicalOperator, OperatorContext.INITIAL_PARTITION_COUNT);
+      partitionCnt = 1;
     }
 
     Operator operator = m.logicalOperator.getOperator();
@@ -441,7 +434,7 @@ public class PhysicalPlan {
     }
 
     if (partitions == null || partitions.isEmpty()) {
-      throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + m.logicalOperator);
+      throw new AssertionError("PartitionableOperator must return at least one partition: " + m.logicalOperator);
     }
 
     int minTps = m.logicalOperator.getValue(OperatorContext.PARTITION_TPS_MIN);
@@ -842,12 +835,12 @@ public class PhysicalPlan {
     if(host == null){
      host = nodeDecl.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
     }
-    
+
     PTOperator oper = createInstance(nodeDecl, partition);
     nodeDecl.addPartition(oper);
     this.newOpers.add(oper);
     this.deployOpers.add(oper);
-    
+
     //
     // update locality
     //
@@ -1080,18 +1073,13 @@ public class PhysicalPlan {
     // create operator instances
     //
     this.logicalToPTOperator.put(om, pnodes);
-    if (pnodes.isPartitionable()) {
-      initPartitioning(pnodes);
-    } else {
-      if (upstreamPartitioned != null) {
-        // parallel partition
-        for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
-          addPTOperator(pnodes, null);
-        }
-      } else {
-        // single instance, no partitions
+    if (upstreamPartitioned != null) {
+      // parallel partition
+      for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
         addPTOperator(pnodes, null);
       }
+    } else {
+      initPartitioning(pnodes);
     }
     updateStreamMappings(pnodes);
   }

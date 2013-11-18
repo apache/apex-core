@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Sets;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
-import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
@@ -174,32 +173,30 @@ public class OperatorPartitions {
    * {@link PartitionableOperator} but are configured for partitioning in the
    * DAG.
    */
-  public static class DefaultPartitioner {
+  public static class DefaultPartitioner
+  {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPartitioner.class);
 
-    public List<Partition<?>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt) {
-
-      //int partitionBits = 0;
-      //if (initialPartitionCnt > 0) {
-      //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
-      //}
-      int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt-1));
-      int partitionMask = 0;
-      if (partitionBits > 0) {
-        partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
-      }
-
+    public List<Partition<?>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt)
+    {
       List<Partition<?>> partitions = new ArrayList<Partition<?>>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
         Partition<?> p = new PartitionImpl(logicalOperator.getOperator());
         partitions.add(p);
       }
 
-      if (!(logicalOperator.getOperator() instanceof InputOperator)) {
-        Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
-        if (inputs.isEmpty()) {
-          throw new AssertionError("Partitioning configured for operator but no input ports connected: " + logicalOperator);
+      Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
+      if (!inputs.isEmpty() && partitions.size() > 1) {
+        //int partitionBits = 0;
+        //if (initialPartitionCnt > 0) {
+        //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
+        //}
+        int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt-1));
+        int partitionMask = 0;
+        if (partitionBits > 0) {
+          partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
         }
+
         InputPortMeta portMeta = inputs.keySet().iterator().next();
 
         for (int i=0; i<=partitionMask; i++) {

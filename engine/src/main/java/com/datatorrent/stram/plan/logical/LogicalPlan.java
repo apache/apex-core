@@ -804,7 +804,7 @@ public class LogicalPlan implements Serializable, DAG
         if (!n.operatorAnnotation.partitionable()) {
           // Check if INITIAL_PARTITION_COUNT is set
           int partitionCount = n.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
-          if (partitionCount > 0) {
+          if (partitionCount > 1) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set" );
           } else {
             // Check if any of the input ports have partition attributes set

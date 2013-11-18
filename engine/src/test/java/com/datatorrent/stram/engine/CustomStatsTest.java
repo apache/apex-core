@@ -107,7 +107,7 @@ public class CustomStatsTest
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     dag.setAttribute(testOper, OperatorContext.HEARTBEAT_LISTENER, TestStatsListener.class);
-    dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
+    //dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(Locality.CONTAINER_LOCAL);

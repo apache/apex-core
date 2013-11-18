@@ -97,20 +97,17 @@ public interface Context
      */
     Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(5);
     /**
-     * Initial partition count for an operator that supports partitioning. The
-     * number is interpreted as follows:
+     * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
-     * Default partitioning (operators that do not implement
-     * {@link PartitionableOperator}):<br>
-     * If the attribute is not present or set to 0 partitioning is off. Else the
-     * number of initial partitions (statically created during initialization).<br>
+     * Default partitioning (operator does not implement {@link PartitionableOperator}):<br>
+     * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
      * Default partitioning does not consider operator state on split or merge.
      * <p>
-     * Operator that implements {@link PartitionableOperator}:<br>
-     * Count 0 disables partitioning. Other values are ignored as number of
-     * initial partitions is determined by operator implementation.
+     * Operator implements {@link PartitionableOperator}:<br>
+     * Value given as initial capacity hint to {@link PartitionableOperator#definePartitions(java.util.Collection, int)
+     * The operator implementation controls instance number and initialization on a per partition basis.
      */
-    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(0);
+    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
 
     /**
      * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning.
