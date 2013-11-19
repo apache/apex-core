@@ -46,7 +46,7 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
@@ -815,8 +815,8 @@ public class LogicalPlan implements Serializable, DAG
               }
             }
           }
-          // Check if partition implements PartitionableOperator
-          if (PartitionableOperator.class.isAssignableFrom(n.getOperator().getClass())) {
+          // Check if partition implements Partitionable
+          if (Partitionable.class.isAssignableFrom(n.getOperator().getClass())) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but implements PartitionableOperator" );
           }
         }

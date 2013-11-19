@@ -25,9 +25,10 @@ import org.apache.commons.lang.StringUtils;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.PartitionableOperator;
-import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.Partitionable;
+import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.HeartbeatListener;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.EventRecorder;
@@ -39,7 +40,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.physical.OperatorPartitions.PartitionImpl;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
@@ -424,10 +424,10 @@ public class PhysicalPlan {
 
     Operator operator = m.logicalOperator.getOperator();
     Collection<Partition<?>> partitions = new ArrayList<Partition<?>>(1);
-    if (operator instanceof PartitionableOperator) {
+    if (operator instanceof Partitionable) {
       // operator to provide initial partitioning
-      partitions.add(new PartitionImpl(operator));
-      partitions = ((PartitionableOperator)operator).definePartitions(partitions, partitionCnt - 1);
+      partitions.add(new DefaultPartition<Operator>(operator));
+      partitions = ((Partitionable)operator).definePartitions(partitions, partitionCnt - 1);
     }
     else {
       partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
@@ -479,7 +479,7 @@ public class PhysicalPlan {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = currentMapping.partitions;
-    List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
+    List<DefaultPartition<Operator>> currentPartitions = new ArrayList<DefaultPartition<Operator>>(operators.size());
     Map<Partition<?>, PTOperator> currentPartitionMap = new HashMap<Partition<?>, PTOperator>(operators.size());
 
     final Collection<Partition<?>> newPartitions;
@@ -494,7 +494,7 @@ public class PhysicalPlan {
       // the partitioning logic will have the opportunity to merge/split state
       // since partitions checkpoint at different windows, processing for new or modified
       // partitions will start from earliest checkpoint found (at least once semantics)
-      Operator partitionedOperator = p.getOperator();
+      Operator partitionedOperator = p.getPartitionedInstance();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
           LOG.debug("Loading state for {}", pOperator);
@@ -515,7 +515,7 @@ public class PhysicalPlan {
       }
 
       // assume it does not matter which operator instance's port objects are referenced in mapping
-      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator, pOperator.stats);
+      DefaultPartition<Operator> partition = new DefaultPartition<Operator>(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
     }
@@ -523,10 +523,10 @@ public class PhysicalPlan {
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
       LOG.debug("partition load: {} {} {}", new Object[] {e.getValue(), e.getKey().getPartitionKeys(), e.getKey().getLoad()});
     }
-    if (currentMapping.logicalOperator.getOperator() instanceof PartitionableOperator) {
+    if (currentMapping.logicalOperator.getOperator() instanceof Partitionable) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
-      newPartitions = ((PartitionableOperator)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
+      newPartitions = ((Partitionable)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
     } else {
       if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
         newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
@@ -547,7 +547,7 @@ public class PhysicalPlan {
         addedPartitions.add(newPartition);
       } else {
         // check whether mapping was changed
-        for (PartitionImpl pi : currentPartitions) {
+        for (DefaultPartition<Operator> pi : currentPartitions) {
           if (pi == newPartition && pi.isModified()) {
             // existing partition changed (operator or partition keys)
             // remove/add to update subscribers and state
@@ -589,7 +589,7 @@ public class PhysicalPlan {
     for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
       PTOperator p = addPTOperator(currentMapping, newPartition);
-      initCheckpoint(p, newPartition.getOperator(), minCheckpoint);
+      initCheckpoint(p, newPartition.getPartitionedInstance(), minCheckpoint);
 
       for (PTOperator mergeOper : p.upstreamMerge.values()) {
         // TODO: remove as unifier is now handled in stream mapping?
@@ -775,7 +775,7 @@ public class PhysicalPlan {
         if (oper.unifier != null) {
           oo = oper.unifier;
         } else if (oper.partition != null) {
-          oo = oper.partition.getOperator();
+          oo = oper.partition.getPartitionedInstance();
         }
         initCheckpoint(oper, oo, activationWindowId);
       }
