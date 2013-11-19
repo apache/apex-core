@@ -35,7 +35,7 @@ public class BufferServerStatsSubscriber
   public void handleStreamActivation(StreamActivationEvent sae){
     ComponentContextPair<Stream, StreamContext> stream = sae.getStream();
     if (stream.component instanceof ByteCounterStream) {
-      streams.put(stream.context.getId(), (ByteCounterStream)stream.component);
+      streams.put(stream.context.getSourceId(), (ByteCounterStream)stream.component);
     }
   }
 
