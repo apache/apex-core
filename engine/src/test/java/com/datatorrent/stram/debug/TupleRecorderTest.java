@@ -31,7 +31,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.FSPartFileCollection;
 
 /**
  *
@@ -121,7 +121,7 @@ public class TupleRecorderTest
       String line;
       BufferedReader br;
 
-      path = new Path(recorder.getStorage().getBasePath(), HdfsPartFileCollection.INDEX_FILE);
+      path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.INDEX_FILE);
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
@@ -129,14 +129,14 @@ public class TupleRecorderTest
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
       Assert.assertTrue("check index", line.matches("F:part0.txt:\\d+-\\d+:4:T:1000-1000:33:\\{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"\\}"));
 
-      path = new Path(recorder.getStorage().getBasePath(), HdfsPartFileCollection.META_FILE);
+      path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.META_FILE);
       //fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
       ObjectMapper mapper = new ObjectMapper();
       line = br.readLine();
-      Assert.assertEquals("check version", "1.1", line);
+      Assert.assertEquals("check version", "1.2", line);
       line = br.readLine(); // RecordInfo
       RecordInfo ri = mapper.readValue(line, RecordInfo.class);
       line = br.readLine();
@@ -164,17 +164,28 @@ public class TupleRecorderTest
       br = new BufferedReader(new InputStreamReader(is));
 
       line = br.readLine();
-      Assert.assertEquals("check part0", "B:1000", line);
+      Assert.assertTrue("check part0", line.startsWith("B:"));
+      Assert.assertTrue("check part0", line.endsWith(":1000"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 1", "T:0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
+      Assert.assertTrue("check part0 1", line.startsWith("T:"));
+      Assert.assertTrue("check part0 1", line.endsWith(":0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 2", "T:2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
+      Assert.assertTrue("check part0 2", line.startsWith("T:"));
+      Assert.assertTrue("check part0 2", line.endsWith(":2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 3", "T:1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
+      Assert.assertTrue("check part0 3", line.startsWith("T:"));
+      Assert.assertTrue("check part0 3", line.endsWith(":1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 4", "T:3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
+      Assert.assertTrue("check part0 4", line.startsWith("T:"));
+      Assert.assertTrue("check part0 4", line.endsWith(":3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 5", "E:1000", line);
+      Assert.assertTrue("check part0 5", line.startsWith("E:"));
+      Assert.assertTrue("check part0 5", line.endsWith(":1000"));
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -190,8 +201,8 @@ public class TupleRecorderTest
   {
     LogicalPlan dag = new LogicalPlan();
 
-    dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set("file://" + testWorkDir.getAbsolutePath());
-    dag.getAttributes().attr(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE).set(1024);  // 1KB per part
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, "file://" + testWorkDir.getAbsolutePath());
+    dag.getAttributes().put(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 1024);  // 1KB per part
 
     TestGeneratorInputOperator op1 = dag.addOperator("op1", TestGeneratorInputOperator.class);
     GenericTestOperator op2 = dag.addOperator("op2", GenericTestOperator.class);
@@ -242,7 +253,7 @@ public class TupleRecorderTest
     Assert.assertTrue("meta file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
     line = br.readLine();
-    Assert.assertEquals("version should be 1.1", line, "1.1");
+    Assert.assertEquals("version should be 1.2", line, "1.2");
     line = br.readLine();
     Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
     for (int i = 0; i < numPorts; i++) {
@@ -316,7 +327,8 @@ public class TupleRecorderTest
           endWindowExists = true;
         }
         else if (line.startsWith("T:")) {
-          tupleCount[Integer.valueOf(line.substring(2, line.indexOf(':', 2)))]++;
+          String[] parts = line.split(":");
+          tupleCount[Integer.valueOf(parts[2])]++;
         }
       }
     }

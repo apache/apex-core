@@ -10,6 +10,7 @@ import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.api.ActivationListener;
 import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
@@ -114,8 +115,8 @@ public class InputOperatorTest
     EvenOddIntegerGeneratorInputOperator generator = dag.addOperator("NumberGenerator", EvenOddIntegerGeneratorInputOperator.class);
     final CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
 
-    dag.addStream("EvenIntegers", generator.even, collector.even).setInline(true);
-    dag.addStream("OddIntegers", generator.odd, collector.odd).setInline(true);
+    dag.addStream("EvenIntegers", generator.even, collector.even).setLocality(Locality.CONTAINER_LOCAL);
+    dag.addStream("OddIntegers", generator.odd, collector.odd).setLocality(Locality.CONTAINER_LOCAL);
 
     final StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);

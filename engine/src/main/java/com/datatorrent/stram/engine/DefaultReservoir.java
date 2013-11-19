@@ -43,7 +43,7 @@ public class DefaultReservoir extends CircularBuffer<Object> implements Sweepabl
   public Tuple sweep()
   {
     final int size = size();
-    for (int i = 1; i <= size; i++) {
+    for (int i = 0; i < size; i++) {
       if (peekUnsafe() instanceof Tuple) {
         count += i;
         return (Tuple)peekUnsafe();

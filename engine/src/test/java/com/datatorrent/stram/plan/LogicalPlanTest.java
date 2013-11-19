@@ -145,7 +145,7 @@ public class LogicalPlanTest {
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
     Assert.assertEquals("root operator id", "validationNode", dag.getRootOperators().get(0).getName());
 
-    dag.getContextAttributes(countGoodNode).attr(OperatorContext.SPIN_MILLIS).set(10);
+    dag.getContextAttributes(countGoodNode).put(OperatorContext.SPIN_MILLIS, 10);
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     LogicalPlan.write(dag, bos);
@@ -161,7 +161,7 @@ public class LogicalPlanTest {
 
 
     Operator countGoodNodeClone = dagClone.getOperatorMeta("countGoodNode").getOperator();
-    Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).attr(OperatorContext.SPIN_MILLIS).get());
+    Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).get(OperatorContext.SPIN_MILLIS));
 
   }
 
@@ -436,7 +436,7 @@ public class LogicalPlanTest {
     dag.validate();
 
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
-    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
+    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.getValue(OperatorContext.PROCESSING_MODE));
 
   }
 
@@ -493,7 +493,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("Exception expected for " + o1);
     } catch (ValidationException ve) {
-      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams"));
+      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams .*"));
     }
 
     s1.setLocality(null);

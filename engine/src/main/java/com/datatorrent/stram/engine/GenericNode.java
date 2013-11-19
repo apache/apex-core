@@ -131,9 +131,10 @@ public class GenericNode extends Node<Operator>
       emitEndWindow();
     }
     else {
-      for (final Sink<Object> output : outputs.values()) {
-        output.put(endWindowTuple);
+      for (int s = sinks.length; s-- > 0;) {
+        sinks[s].put(endWindowTuple);
       }
+      controlTupleCount++;
     }
 
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
@@ -182,7 +183,7 @@ public class GenericNode extends Node<Operator>
     insideWindow = false;
     checkpoint = false;
 
-    long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
+    long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
 
@@ -210,6 +211,8 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
+
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
@@ -285,10 +288,11 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (lastCheckpointedWindowId < currentWindowId && !checkpoint) {
+                long checkPtWinId = t.getWindowId();
+                if (lastCheckpointedWindowId < checkPtWinId && !checkpoint) {
                   if (checkpointWindowCount == 0) {
-                    if (checkpoint(currentWindowId)) {
-                      lastCheckpointedWindowId = currentWindowId;
+                    if (checkpoint(checkPtWinId)) {
+                      lastCheckpointedWindowId = checkPtWinId;
                     }
                   }
                   else {
@@ -297,6 +301,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
                 }
                 break;
 
@@ -346,6 +351,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
 
                   assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
@@ -452,6 +458,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(tuple);
                   }
+                  controlTupleCount++;
                 }
 
                 if (break_activequeue) {
@@ -517,10 +524,25 @@ public class GenericNode extends Node<Operator>
       }
 
       Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
 
+  }
+
+  /**
+   * End window dequeue times may not have been saved for all the input ports during deactivate,
+   * so save them for reporting. SPOI-1324.
+   */
+  private void fixEndWindowDequeueTimesBeforeDeactivate()
+  {
+    long endWindowDequeueTime = System.currentTimeMillis();
+    for (SweepableReservoir sr : inputs.values()) {
+      if (endWindowDequeueTimes.get(sr) == null) {
+        endWindowDequeueTimes.put(sr, endWindowDequeueTime);
+      }
+    }
   }
 
   @Override

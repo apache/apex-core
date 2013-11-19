@@ -7,7 +7,6 @@ package com.datatorrent.stram.api;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeKey;
 import com.datatorrent.api.Context;
 
 /**
@@ -18,7 +17,6 @@ import com.datatorrent.api.Context;
  */
 public class BaseContext extends AbstractWritableAdapter implements Context
 {
-  private static final long serialVersionUID = 201306060103L;
   /*
    * the following 2 need to be public since otherwise they are not serialized.
    */
@@ -38,16 +36,14 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   }
 
   @Override
-  public <T> T attrValue(AttributeKey<T> key, T defaultValue)
+  public <T> T getValue(Attribute<T> key)
   {
-    Attribute<T> attr = attributes.attrOrNull(key);
+    T attr = attributes.get(key);
     if (attr != null) {
-      T get = attr.get();
-      if (get != null) {
-        return get;
-      }
+      return attr;
     }
-    return parentContext == null? defaultValue: parentContext.attrValue(key, defaultValue);
+    return parentContext == null ? key.defaultValue : parentContext.getValue(key);
   }
 
+  private static final long serialVersionUID = 201306060103L;
 }

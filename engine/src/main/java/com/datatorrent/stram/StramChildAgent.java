@@ -4,21 +4,17 @@
  */
 package com.datatorrent.stram;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -50,7 +46,9 @@ import com.datatorrent.stram.webapp.ContainerInfo;
 
 /**
  *
- * Representation of a child container in the master<p>
+ * Representation of child container (execution layer) in the master<p>
+ * Created when resource for container was allocated.
+ * Destroyed after resource is deallocated (container released, killed etc.)
  * <br>
  *
  * @since 0.3.2
@@ -138,13 +136,13 @@ public class StramChildAgent {
     private final long[] values;
     private final long[] timeIntervals;
     private int index = 0;
-    private final long baseTime;
+    private final long baseTimeInterval;
 
-    TimedMovingAverageLong(int periods, long baseTime) {
-      this.periods = periods;
-      this.values = new long[periods];
-      this.timeIntervals = new long[periods];
-      this.baseTime = baseTime;
+    TimedMovingAverageLong(int samples, long baseTimeInterval) {
+      this.periods = samples;
+      this.values = new long[samples];
+      this.timeIntervals = new long[samples];
+      this.baseTimeInterval = baseTimeInterval;
     }
 
     void add(long val, long time) {
@@ -168,7 +166,7 @@ public class StramChildAgent {
         }
         sumValues += values[i];
         sumTimeIntervals += timeIntervals[i];
-        if (sumTimeIntervals >= baseTime) {
+        if (sumTimeIntervals >= baseTimeInterval) {
           break;
         }
       }
@@ -190,24 +188,25 @@ public class StramChildAgent {
     long totalTuplesProcessed;
     long totalTuplesEmitted;
     long currentWindowId;
-    long tuplesProcessedPSMA10;
-    long tuplesEmittedPSMA10;
+    long tuplesProcessedPSMA;
+    long tuplesEmittedPSMA;
     long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
-    MovingAverageLong latencyMA = new MovingAverageLong(10);
-    List<String> recordingNames; // null if recording is not in progress
+    final MovingAverageDouble cpuPercentageMA;
+    final MovingAverageLong latencyMA;
     Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
     Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
 
-    private OperatorStatus(PTOperator operator) {
+    private OperatorStatus(PTOperator operator, int throughputCalculationMaxSamples, int throughputCalculationInterval, int heartbeatInterval) {
       this.operator = operator;
+      cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
+      latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
       for (PTOperator.PTInput ptInput: operator.getInputs()) {
-        PortStatus inputPortStatus = new PortStatus();
+        PortStatus inputPortStatus = new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
         inputPortStatus.portName = ptInput.portName;
         inputPortStatusList.put(ptInput.portName, inputPortStatus);
       }
       for (PTOperator.PTOutput ptOutput: operator.getOutputs()) {
-        PortStatus outputPortStatus = new PortStatus();
+        PortStatus outputPortStatus = new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
         outputPortStatus.portName = ptOutput.portName;
         outputPortStatusList.put(ptOutput.portName, outputPortStatus);
       }
@@ -227,8 +226,13 @@ public class StramChildAgent {
     String portName;
     long totalTuples;
     long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    TimedMovingAverageLong tuplesPSMA10 = new TimedMovingAverageLong(1000, 10000);
-    TimedMovingAverageLong bufferServerBytesPSMA10 = new TimedMovingAverageLong(1000, 10000);  // TBD
+    final TimedMovingAverageLong tuplesPSMA;
+    final TimedMovingAverageLong bufferServerBytesPSMA;
+
+    public PortStatus(int throughputCalculationMaxSamples, int throughputCalculationInterval) {
+      tuplesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+      bufferServerBytesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+    }
   }
 
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
@@ -241,7 +245,6 @@ public class StramChildAgent {
 
   boolean shutdownRequested = false;
   long lastHeartbeatMillis = 0;
-  //long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
   Map<Integer, OperatorStatus> operators;
@@ -273,7 +276,7 @@ public class StramChildAgent {
     if (status == null) {
       for (PTOperator operator : container.getOperators()) {
         if (operator.getId() == shb.getNodeId()) {
-          status = new OperatorStatus(operator);
+          status = new OperatorStatus(operator, dnmgr.getThroughputCalculationMaxSamples(), dnmgr.getThroughputCalculationInterval(), dnmgr.getHeartbeatIntervalMillis());
           operators.put(shb.getNodeId(), status);
         }
       }
@@ -287,7 +290,7 @@ public class StramChildAgent {
           status.operator.setState(PTOperator.State.ACTIVE);
 
           // record started
-          HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-start");
+          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
           ev.addData("operatorId", status.operator.getId());
           ev.addData("operatorName", status.operator.getName());
           ev.addData("containerId", container.getExternalId());
@@ -328,7 +331,7 @@ public class StramChildAgent {
             operator.setState(PTOperator.State.INACTIVE);
 
             // record operator stop event
-            HdfsEventRecorder.Event ev = new HdfsEventRecorder.Event("operator-stop");
+            FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
             ev.addData("operatorId", operator.getId());
             ev.addData("containerId", operator.getContainer().getExternalId());
             ev.addData("reason", "undeploy");
@@ -471,7 +474,7 @@ public class StramChildAgent {
           if (outputInfo == null) {
             throw new AssertionError("No publisher for inline stream " + sourceOutput);
           }
-          if (streamMeta.getLocality() == Locality.THREAD_LOCAL && oper.getInputs().size() == 1) {
+          if (streamMeta.getLocality() == Locality.THREAD_LOCAL) {
             inputInfo.locality = Locality.THREAD_LOCAL;
             ndi.type = OperatorType.OIO;
           } else {
@@ -538,37 +541,33 @@ public class StramChildAgent {
     }
 
     long checkpointWindowId = oper.getRecoveryCheckpoint();
-    ProcessingMode pm = oper.getOperatorMeta().attrValue(OperatorContext.PROCESSING_MODE, null);
+    ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 
     if (checkpointWindowId == 0 || pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
-      StorageAgent agent = oper.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
+      StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
-        String appPath = getInitContext().attrValue(LogicalPlan.APPLICATION_PATH, "app-dfs-path-not-configured");
-        agent = new HdfsStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+        String appPath = getInitContext().getValue(LogicalPlan.APPLICATION_PATH);
+        agent = new FSStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
       }
       // pick the checkpoint most recently written to HDFS
       try {
-        Long mrCheckpoint = agent.getMostRecentWindowId(oper.getId());
-        if (mrCheckpoint == null || 0 == mrCheckpoint) {
-          // StramChild expects initial state to be written as -1
-          OutputStream stream = agent.getSaveStream(oper.getId(), -1);
-          Node.storeOperator(stream, operator);
-          stream.close();
-        } else {
-          checkpointWindowId = mrCheckpoint > 0 ? mrCheckpoint : 0;
-        }
+        checkpointWindowId = agent.getMostRecentWindowId(oper.getId());
       }
       catch (Exception e) {
-        throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
+        try {
+          OutputStream stream = agent.getSaveStream(oper.getId(), OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+          Node.storeOperator(stream, operator);
+          stream.close();
+          checkpointWindowId = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
+        }
+        catch (IOException io) {
+          throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
+        }
       }
     }
 
-    LOG.debug("Operator {} recovery checkpoint {}", oper, checkpointWindowId);
-    if (checkpointWindowId > 0) {
-      LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
-      ndi.checkpointWindowId = checkpointWindowId;
-    }
-
+    LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
+    ndi.checkpointWindowId = checkpointWindowId;
     ndi.declaredId = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes();

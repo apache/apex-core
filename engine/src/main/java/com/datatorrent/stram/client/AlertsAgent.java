@@ -30,7 +30,7 @@ public class AlertsAgent extends StramAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(AlertsAgent.class);
 
-  private static String getAlertTemplatesDirectory()
+  private String getAlertTemplatesDirectory()
   {
     return getDefaultStramRoot() + Path.SEPARATOR + "alertTemplates";
   }
@@ -172,7 +172,7 @@ public class AlertsAgent extends StramAgent
     catch (FileNotFoundException ex) {
       return map;
     }
-    
+
     if (!fileStatus.isDirectory()) {
       return map;
     }

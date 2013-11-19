@@ -4,12 +4,8 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.util.HdfsPartFileCollection;
-import com.datatorrent.stram.util.WebServicesClient;
-import com.datatorrent.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.WebResource;
+import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import org.apache.hadoop.fs.*;
@@ -24,16 +20,15 @@ import org.slf4j.LoggerFactory;
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.4
  */
-public class EventsAgent extends StramAgent
+public final class EventsAgent extends FSPartFileAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(EventsAgent.class);
 
-  private static class IndexLine
+  private static class EventsIndexLine extends IndexLine
   {
     public long startTime;
     public long endTime;
     public long count;
-    public String partFile;
   }
 
   public static class Event
@@ -52,10 +47,15 @@ public class EventsAgent extends StramAgent
     return appPath + Path.SEPARATOR + "events";
   }
 
-  private static IndexLine parseIndexLine(String line) throws JSONException
+  @Override
+  protected EventsIndexLine parseIndexLine(String line) throws JSONException
   {
-    IndexLine info = new IndexLine();
-
+    EventsIndexLine info = new EventsIndexLine();
+    if (line.startsWith("E")) {
+      info.isEndLine = true;
+      return info;
+    }
+    line = line.trim();
     int cursor = 2;
     int cursor2 = line.indexOf(':', cursor);
     info.partFile = line.substring(cursor, cursor2);
@@ -71,7 +71,7 @@ public class EventsAgent extends StramAgent
   }
 
   @SuppressWarnings("unchecked")
-  public List<Event> getEvents(String appId, Long startTime, Long endTime)
+  public List<Event> getEvents(String appId, Long fromTime, Long toTime)
   {
     List<Event> result = new ArrayList<Event>();
     String dir = getEventsDirectory(appId);
@@ -80,23 +80,22 @@ public class EventsAgent extends StramAgent
     }
 
     try {
-      FSDataInputStream in = fs.open(new Path(dir, HdfsPartFileCollection.INDEX_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
-      String line;
+      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
+      IndexFileBufferedReader br = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      EventsIndexLine indexLine;
 
-      while ((line = br.readLine()) != null) {
-        if (!line.startsWith("F:")) {
+      while ((indexLine = (EventsIndexLine)br.readIndexLine()) != null) {
+        if (indexLine.isEndLine) {
           continue;
         }
-        IndexLine indexLine = parseIndexLine(line);
-        if (startTime != null) {
-          if (startTime.longValue() > indexLine.endTime) {
+        if (fromTime != null) {
+          if (fromTime.longValue() > indexLine.endTime) {
             continue;
           }
         }
 
-        if (endTime != null) {
-          if (endTime.longValue() < indexLine.startTime) {
+        if (toTime != null) {
+          if (toTime.longValue() < indexLine.startTime) {
             return result;
           }
         }
@@ -114,7 +113,7 @@ public class EventsAgent extends StramAgent
           cursor2 = partLine.indexOf(':', cursor);
           ev.type = partLine.substring(cursor, cursor2);
           cursor = cursor2 + 1;
-          if ((startTime != null || ev.timestamp >= startTime) && (endTime != null || ev.timestamp <= endTime)) {
+          if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
             ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
             result.add(ev);
           }
@@ -125,18 +124,6 @@ public class EventsAgent extends StramAgent
       LOG.warn("Got exception when reading operators stats", ex);
     }
     return result;
-  }
-
-  public void syncEvents(String appId) throws AppNotFoundException, IOException
-  {
-    WebServicesClient webServicesClient = new WebServicesClient();
-    WebResource wr = getStramWebResource(webServicesClient, appId);
-    if (wr == null) {
-      throw new AppNotFoundException(appId);
-    }
-    webServicesClient.process(wr.path(StramWebServices.PATH_SYNCEVENTS), String.class,
-                              new WebServicesClient.GetWebServicesHandler<String>());
-
   }
 
 }

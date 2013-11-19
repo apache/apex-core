@@ -18,6 +18,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 public class TestPlanContext implements PlanContext, StorageAgent {
   public List<Runnable> events = new ArrayList<Runnable>();
@@ -34,8 +35,8 @@ public class TestPlanContext implements PlanContext, StorageAgent {
 
   @Override
   public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
-    this.undeploy = undeploy;
-    this.deploy = deploy;
+    this.undeploy = Sets.newHashSet(undeploy);
+    this.deploy = Sets.newHashSet(deploy);
     this.releaseContainers = releaseContainers;
   }
 
@@ -75,7 +76,7 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   }
 
   @Override
-  public Long getMostRecentWindowId(int operatorId) throws IOException {
+  public long getMostRecentWindowId(int operatorId) throws IOException {
     throw new UnsupportedOperationException();
   }
 

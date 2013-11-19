@@ -7,7 +7,6 @@
  */
 package com.datatorrent.stram;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -21,13 +20,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
-public class HdfsStorageAgent implements StorageAgent
+public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
   final String checkpointFsPath;
   final Configuration conf;
 
-  HdfsStorageAgent(Configuration conf, String checkpointFsPath)
+  FSStorageAgent(Configuration conf, String checkpointFsPath)
   {
     this.conf = conf;
     this.checkpointFsPath = checkpointFsPath;
@@ -61,22 +60,27 @@ public class HdfsStorageAgent implements StorageAgent
   }
 
   @Override
-  public Long getMostRecentWindowId(int id) throws IOException {
+  public long getMostRecentWindowId(int id) throws IOException
+  {
     Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
-    Long mrWindowId = null;
-    try {
-      FileStatus[] files = fs.listStatus(path);
-      for (FileStatus fst : files) {
-        long windowId = Long.valueOf(fst.getPath().getName());
-        mrWindowId = (mrWindowId == null || windowId > mrWindowId) ? windowId : mrWindowId;
-      }
-    } catch (FileNotFoundException e) {
-      // ignore
+
+    FileStatus[] files = fs.listStatus(path);
+    if (files == null || files.length == 0) {
+      throw new IOException("Storage agent has not saved anything yet!");
     }
+
+    long mrWindowId = Long.valueOf(files[files.length - 1].getPath().getName());
+    for (int i = files.length - 1; i-- > 0;) {
+      long windowId = Long.valueOf(files[i].getPath().getName());
+      if (windowId > mrWindowId) {
+        mrWindowId = windowId;
+      }
+    }
+
     return mrWindowId;
   }
 
   @SuppressWarnings("unused")
-  private static final Logger logger = LoggerFactory.getLogger(HdfsStorageAgent.class);
+  private static final Logger logger = LoggerFactory.getLogger(FSStorageAgent.class);
 }

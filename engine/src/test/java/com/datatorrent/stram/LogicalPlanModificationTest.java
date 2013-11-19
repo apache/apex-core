@@ -110,7 +110,7 @@ public class LogicalPlanModificationTest {
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
-    Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
+    Assert.assertEquals("containers " + plan.getContainers(), 4, plan.getContainers().size());
     Assert.assertEquals("physical operators " + plan.getAllOperators(), 4, plan.getAllOperators().size());
     Assert.assertEquals("sinks s1 " + s1.getSinks(), 2, s1.getSinks().size());
 
@@ -142,7 +142,7 @@ public class LogicalPlanModificationTest {
       Assert.fail("removed from physical plan: " + o2Meta);
     } catch (Exception e) {
     }
-    Assert.assertEquals("containers " + plan.getContainers(), 2, plan.getContainers().size());
+    Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
     Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
     Assert.assertEquals("removed containers " + ctx.releaseContainers, 1, ctx.releaseContainers.size());
 

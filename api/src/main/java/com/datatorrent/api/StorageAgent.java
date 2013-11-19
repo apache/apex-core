@@ -51,16 +51,19 @@ public interface StorageAgent
 
   /**
    * <p>delete.</p>
+   * @param operatorId
+   * @param windowId
+   * @throws IOException
    */
   public void delete(int operatorId, long windowId) throws IOException;
 
   /**
-   * Return the most recent windowId for which state identified by operatorId was saved.
-   * @param operatorId
-   * @return windowId, null when no state was saved for given id.
-   * @throws IOException
+   * Return the most recent windowId for which state identified by operatorId was saved successfully.
+   * @param operatorId - The operator for which the state was saved.
+   * @return windowId - The windowId which was passed to the most recent successful save call.
+   * @throws IOException - throws this exception if the window id could not be determined.
    * @since 0.3.5
    */
-  public Long getMostRecentWindowId(int operatorId) throws IOException;
+  public long getMostRecentWindowId(int operatorId) throws IOException;
 
 }

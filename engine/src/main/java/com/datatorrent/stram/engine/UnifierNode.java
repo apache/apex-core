@@ -5,7 +5,6 @@
 package com.datatorrent.stram.engine;
 
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Sink;

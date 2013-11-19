@@ -2,23 +2,19 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram.cli;
+package com.datatorrent.stram.client;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.lang.reflect.Modifier;
+import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.net.URLConnection;
+import java.util.*;
 import java.util.jar.JarEntry;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -26,12 +22,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.log4j.lf5.util.StreamUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
@@ -52,6 +47,10 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  * @since 0.3.2
  */
 public class StramAppLauncher {
+
+  public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
+  public static final String FILES_CONF_KEY_NAME = "tmpfiles";
+  public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
@@ -98,10 +97,10 @@ public class StramAppLauncher {
       String getName();
   }
 
-  public static class PropertyFileAppConfig implements AppFactory {
+  public static class PropertyFileAppFactory implements AppFactory {
     final File propertyFile;
 
-    public PropertyFileAppConfig(File file) {
+    public PropertyFileAppFactory(File file) {
       this.propertyFile = file;
     }
 
@@ -197,7 +196,7 @@ public class StramAppLauncher {
           } else if (jarEntry.getName().endsWith(".app.properties")) {
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
-            appResourceList.add(new PropertyFileAppConfig(targetFile));
+            appResourceList.add(new PropertyFileAppFactory(targetFile));
           } else if (jarEntry.getName().endsWith(".class")) {
             classFileNames.add(jarEntry.getName());
           }
@@ -212,14 +211,14 @@ public class StramAppLauncher {
         LOG.info("Generating classpath via mvn from " + pomFile);
         LOG.info("java.home: " + System.getProperty("java.home"));
 
-        String malhar_home;
-        if (StramClientUtils.MALHAR_HOME != null && !StramClientUtils.MALHAR_HOME.isEmpty()) {
-          malhar_home = " -Duser.home=" + StramClientUtils.MALHAR_HOME;
+        String dt_home;
+        if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
+          dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
         }
         else {
-          malhar_home = "";
+          dt_home = "";
         }
-        String cmd = "mvn dependency:build-classpath" + malhar_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
+        String cmd = "mvn dependency:build-classpath" + dt_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
 
         Process p = Runtime.getRuntime().exec(cmd);
         ProcessWatcher pw = new ProcessWatcher(p);
@@ -247,8 +246,17 @@ public class StramAppLauncher {
 //      // launch class path takes precedence - add first
 //      clUrls.addAll(Arrays.asList(baseUrls));
 //    }
+    URL mainJarUrl = new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/");
+    URLConnection urlConnection = mainJarUrl.openConnection();
+    if (urlConnection instanceof JarURLConnection) {
+      // JDK6 keeps jar file shared and open as long as the process is running.
+      // we want the jar file to be opened on every launch to pick up latest changes
+      // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
+      // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
+      ((JarURLConnection)urlConnection).getJarFile().close();
+    }
 
-    clUrls.add(new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/"));
+    clUrls.add(mainJarUrl);
     // add the jar dependencies
     if (cp != null) {
       String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");
@@ -278,7 +286,7 @@ public class StramAppLauncher {
       final String className = classFileName.replace('/', '.').substring(0, classFileName.length() - 6);
       try {
         Class<?> clazz = cl.loadClass(className);
-        if (StreamingApplication.class.isAssignableFrom(clazz)) {
+        if (!Modifier.isAbstract(clazz.getModifiers()) && StreamingApplication.class.isAssignableFrom(clazz)) {
           final AppFactory appConfig = new AppFactory() {
 
             @Override
@@ -336,6 +344,11 @@ public class StramAppLauncher {
     return conf;
   }
 
+
+  public Map<String, String> getAppAliases() {
+    return propertiesBuilder.getAppAliases();
+  }
+
   public LogicalPlanConfiguration getLogicalPlanConfiguration() {
     return propertiesBuilder;
   }
@@ -350,7 +363,6 @@ public class StramAppLauncher {
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
-   * @param config
    * @throws Exception
    */
   public void runLocal(AppFactory appConfig) throws Exception {
@@ -380,6 +392,9 @@ public class StramAppLauncher {
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
     LogicalPlan dag = prepareDAG(appConfig);
     StramClient client = new StramClient(dag);
+    client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
+    client.setFiles(conf.get(FILES_CONF_KEY_NAME));
+    client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
     client.startApplication();
     return client.getApplicationReport().getApplicationId();
   }

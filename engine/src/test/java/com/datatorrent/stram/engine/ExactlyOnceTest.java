@@ -5,12 +5,10 @@
 package com.datatorrent.stram.engine;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.datatorrent.api.Operator.ProcessingMode;
 
-import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 
 /**
  // make a determination of the commented out assertTrues below as to what
@@ -26,7 +24,7 @@ public class ExactlyOnceTest extends ProcessingModeTests
     super(ProcessingMode.EXACTLY_ONCE);
   }
 
-  //@Test
+  @Test
   @Override
   public void testLinearInputOperatorRecovery() throws Exception
   {
@@ -39,7 +37,6 @@ public class ExactlyOnceTest extends ProcessingModeTests
     //Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
-  @Ignore // Pramod and Thomas are working on it, they should enable it when it passes.
   @Test
   @Override
   public void testLinearOperatorRecovery() throws Exception

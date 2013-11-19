@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.api.RequestFactory;
-import com.datatorrent.api.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,10 +13,10 @@ import java.net.*;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -27,24 +25,21 @@ import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.log4j.LogManager;
 
+import com.datatorrent.api.*;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
-
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.DefaultEventLoop;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.NodeActivationListener;
 import com.datatorrent.stram.api.NodeRequest;
+import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.engine.ByteCounterStream;
@@ -71,16 +66,13 @@ import com.datatorrent.stram.stream.PartitionAwareSink;
 import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 
 /**
- *
- * The main() for streaming container processes launched by {@link com.datatorrent.stram.StramAppMaster}.<p>
- * <br>
+ * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.
  *
  * @since 0.3.2
  */
 public class StramChild
 {
   public static final int PORT_QUEUE_CAPACITY = 1024;
-  private static final int SPIN_MILLIS = 20;
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
@@ -89,9 +81,11 @@ public class StramChild
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
   /**
-   * It's a simple map which maps the oio node to it's the node which owns the thread.
+   * OIO groups map
+   * key: operator id of oio owning thread node
+   * value: list of nodes which are in oio with oio owning thread node
    */
-  protected final Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
+  protected final Map<Integer, ArrayList<Integer>> oioGroups = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
   protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
@@ -112,9 +106,9 @@ public class StramChild
   private StreamingContainerContext containerContext;
   private List<StramToNodeRequest> nodeRequests;
   // possibly should combine all the guys below into one type of listeners - containereventlistener!
-  private ArrayList<ContainerStatsListener> statsListener;
-  private HashSet<NodeActivationListener> nodeListener;
-  private HashMap<String, Object> singletons;
+  private final ArrayList<ContainerStatsListener> statsListener;
+  private final HashSet<NodeActivationListener> nodeListener;
+  private final HashMap<String, Object> singletons;
   private RequestFactory requestFactory;
 
   static {
@@ -145,15 +139,15 @@ public class StramChild
 
     /* add a request factory local to this container */
     this.requestFactory = new RequestFactory();
-    ctx.attributes.addTransientAttribute(ContainerContext.REQUEST_FACTORY).set(requestFactory);
+    ctx.attributes.put(ContainerContext.REQUEST_FACTORY, requestFactory);
 
-    heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
+    heartbeatIntervalMillis = ctx.getValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.attrValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.attrValue(DAGContext.CHECKPOINT_WINDOW_COUNT, 60);
+    windowWidthMillis = ctx.getValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    checkpointWindowCount = ctx.getValue(DAGContext.CHECKPOINT_WINDOW_COUNT);
 
-    checkpointFsPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured") + "/" + DAGContext.SUBDIR_CHECKPOINTS;
-    fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
+    checkpointFsPath = ctx.getValue(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+    fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
     try {
       if (ctx.deployBufferServer) {
@@ -175,7 +169,6 @@ public class StramChild
     // but this code has to move out of here soon. If you feel like doing it, do it now!!!!
     String classname = "com.datatorrent.stram.debug.TupleRecorderCollection";
     try {
-      @SuppressWarnings("unchecked")
       Class<?> cl = Class.forName(classname);
       Object newInstance = cl.newInstance();
       singletons.put(classname, newInstance);
@@ -218,7 +211,7 @@ public class StramChild
    * distribute through the callback address provided on the command line. Deploys
    * initial modules, then enters the heartbeat loop, which will only terminate
    * once container receives shutdown request from the master. On shutdown,
-   * after exiting heartbeat loop, deactivate all modules and terminate
+   * after exiting heartbeat loop, shutdown all modules and terminate
    * processing threads.
    *
    * @param args
@@ -272,10 +265,10 @@ public class StramChild
     }
     finally {
       RPC.stopProxy(umbilical);
+      //FileSystem.closeAll();
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
-      // This assumes that on return from Task.activate()
-      // there is no more logging done.
+      logger.info("exit status: {}", exitStatus);
       LogManager.shutdown();
     }
 
@@ -298,7 +291,7 @@ public class StramChild
       else {
         activeThreads.add(oc.getThread());
         activeOperators.add(e.getKey());
-        e.getValue().deactivate();
+        e.getValue().shutdown();
       }
     }
 
@@ -340,7 +333,7 @@ public class StramChild
           pair.component.deactivate();
         }
 
-        if (pair.component.isMultiSinkCapable()) {
+        if (pair.component instanceof Stream.MultiSinkCapableStream) {
           String sinks = pair.context.getSinkId();
           if (sinks == null) {
             logger.error("mux sinks found connected at {} with sink id null", sourceIdentifier);
@@ -436,7 +429,7 @@ public class StramChild
       else {
         joinList.add(oc.getThread());
         discoList.add(ndi.id);
-        nodes.get(ndi.id).deactivate();
+        nodes.get(ndi.id).shutdown();
       }
     }
 
@@ -532,10 +525,10 @@ public class StramChild
         OperatorContext ctx = activeNodes.get(e.getKey());
         if (ctx != null) {
           ctx.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(DNodeState.ACTIVE.toString());
+          hb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.toString());
         }
         else {
-          hb.setState(failedNodes.contains(e.getKey()) ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
+          hb.setState(failedNodes.contains(e.getKey()) ? StreamingNodeHeartbeat.DNodeState.FAILED.toString() : StreamingNodeHeartbeat.DNodeState.IDLE.toString());
         }
 
         PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
@@ -629,7 +622,6 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings("unchecked")
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.nodeRequests != null) {
@@ -640,7 +632,12 @@ public class StramChild
       lastCommittedWindowId = rsp.committedWindowId;
       NodeRequest nr = null;
       for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
-        if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
+        Node<?> node = nodes.get(e.getKey());
+        if (node == null) {
+          continue;
+        }
+
+        if (node.getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new NodeRequest()
             {
@@ -698,13 +695,13 @@ public class StramChild
       if (odi.id == sourceOperatorId) {
         for (OperatorDeployInfo.OutputDeployInfo odiodi : odi.outputs) {
           if (odiodi.portName.equals(sourcePortName)) {
-            return odiodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+            return odiodi.getValue(PortContext.QUEUE_CAPACITY);
           }
         }
       }
     }
 
-    return PORT_QUEUE_CAPACITY;
+    return PortContext.QUEUE_CAPACITY.defaultValue;
   }
 
   private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
@@ -732,13 +729,22 @@ public class StramChild
     }
     streams.putAll(newStreams);
 
-    activate(nodeList, newStreams);
+    HashMap<Integer, OperatorDeployInfo> operatorMap = new HashMap<Integer, OperatorDeployInfo>(nodeList.size());
+    for (OperatorDeployInfo o : nodeList) {
+      operatorMap.put(o.id, o);
+    }
+    activate(operatorMap, newStreams);
+  }
+
+  public static String getUnifierInputPortName(String portName, int sourceNodeId, String sourcePortName)
+  {
+    return portName + "(" + sourceNodeId + Component.CONCAT_SEPARATOR + sourcePortName + ")";
   }
 
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
     for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
-      idi.portName += "(" + idi.sourceNodeId + Component.CONCAT_SEPARATOR + idi.sourcePortName + ")";
+      idi.portName = getUnifierInputPortName(idi.portName, idi.sourceNodeId, idi.sourcePortName);
     }
   }
 
@@ -747,13 +753,13 @@ public class StramChild
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent;
       if (ndi.contextAttributes == null) {
-        backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
+        backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
       }
       else {
-        backupAgent = ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).get();
+        backupAgent = ndi.contextAttributes.get(OperatorContext.STORAGE_AGENT);
         if (backupAgent == null) {
-          backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
-          ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).set(backupAgent);
+          backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
+          ndi.contextAttributes.put(OperatorContext.STORAGE_AGENT, backupAgent);
         }
       }
 
@@ -787,8 +793,8 @@ public class StramChild
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(startingWindowId);
-    bssc.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
-    bssc.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
@@ -816,7 +822,7 @@ public class StramChild
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nodi.portName);
-        int queueCapacity = nodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+        int queueCapacity = nodi.getValue(PortContext.QUEUE_CAPACITY);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
@@ -870,7 +876,8 @@ public class StramChild
             else {
               pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
             }
-            pair.component.setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
+
+            ((Stream.MultiSinkCapableStream)pair.component).setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
           }
         }
       }
@@ -905,6 +912,8 @@ public class StramChild
      */
     ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<OperatorDeployInfo>();
     long smallestCheckpointedWindowId = Long.MAX_VALUE;
+    //a simple map which maps the oio node to it's the node which owns the thread.
+    Map<Integer, Integer> oioNodes = new ConcurrentHashMap<Integer, Integer>();
 
     /*
      * Hook up all the downstream ports. There are 2 places where we deal with more than 1
@@ -937,7 +946,7 @@ public class StramChild
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
-          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.getValue(PortContext.QUEUE_CAPACITY);
 
           long finishedWindowId = getFinishedWindowId(ndi);
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
@@ -959,8 +968,8 @@ public class StramChild
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nidi.serDeClassName));
-            context.attr(StreamContext.EVENT_LOOP).set(eventloop);
+            context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
@@ -1011,7 +1020,7 @@ public class StramChild
             node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
             newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
 
-            if (!pair.component.isMultiSinkCapable()) {
+            if (!(pair.component instanceof Stream.MultiSinkCapableStream)) {
               String originalSinkId = pair.context.getSinkId();
 
               /* we come here only if we are trying to augment the dag */
@@ -1031,7 +1040,7 @@ public class StramChild
 
             /* here everything should be multisink capable */
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.setSink(sinkIdentifier, stream);
+              ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, stream);
             }
             else {
               /*
@@ -1039,7 +1048,7 @@ public class StramChild
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, stream);
-              pair.component.setSink(sinkIdentifier, pas);
+              ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
             String streamSinkId = pair.context.getSinkId();
@@ -1053,6 +1062,8 @@ public class StramChild
         }
       }
     }
+
+    setupOiOGroups(oioNodes);
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
@@ -1068,6 +1079,28 @@ public class StramChild
       }
     }
 
+  }
+
+  /**
+   * Populates oioGroups with owner OIO Node as key and list of corresponding OIO nodes which will run in its thread as value
+   * This method assumes that the DAG is valid as per OIO constraints
+   */
+  private void setupOiOGroups(Map<Integer, Integer> oioNodes)
+  {
+    for (Integer child : oioNodes.keySet()) {
+      Integer oioParent = oioNodes.get(child);
+
+      Integer temp;
+      while ((temp = oioNodes.get(oioParent)) != null) {
+        oioParent = temp;
+      }
+
+      ArrayList<Integer> children = oioGroups.get(oioParent);
+      if (children == null) {
+        oioGroups.put(oioParent, children = new ArrayList<Integer>());
+      }
+      children.add(child);
+    }
   }
 
   /**
@@ -1093,9 +1126,60 @@ public class StramChild
     return windowGenerator;
   }
 
-  // take the recording mess out of here into something modular.
-  @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
-  public synchronized void activate(List<OperatorDeployInfo> nodeList, Map<String, ComponentContextPair<Stream, StreamContext>> newStreams)
+  private void setupNode(OperatorDeployInfo ndi, Thread thread)
+  {
+    failedNodes.remove(ndi.id);
+    final Node<?> node = nodes.get(ndi.id);
+
+    OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
+    node.setup(operatorContext);
+    /* setup context for all the input ports */
+    LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
+    LinkedHashMap<String, PortContextPair<InputPort<?>>> newInputPorts = new LinkedHashMap<String, PortContextPair<InputPort<?>>>(inputPorts.size());
+    for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
+      InputPort<?> port = inputPorts.get(idi.portName).component;
+      PortContext context = new PortContext(idi.contextAttributes, operatorContext);
+      newInputPorts.put(idi.portName, new PortContextPair<InputPort<?>>(port, context));
+      port.setup(context);
+    }
+    inputPorts.putAll(newInputPorts);
+    /* setup context for all the output ports */
+    LinkedHashMap<String, PortContextPair<OutputPort<?>>> outputPorts = node.getPortMappingDescriptor().outputPorts;
+    LinkedHashMap<String, PortContextPair<OutputPort<?>>> newOutputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>(outputPorts.size());
+    for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
+      OutputPort<?> port = outputPorts.get(odi.portName).component;
+      PortContext context = new PortContext(odi.contextAttributes, operatorContext);
+      newOutputPorts.put(odi.portName, new PortContextPair<OutputPort<?>>(port, context));
+      port.setup(context);
+    }
+    outputPorts.putAll(newOutputPorts);
+    activeNodes.put(ndi.id, operatorContext);
+    logger.info("activating {} in container {}", node, containerId);
+    processNodeRequests(false);
+    node.activate(operatorContext);
+    for (NodeActivationListener l : nodeListener) {
+      l.activated(node);
+    }
+  }
+
+  private void teardownNode(OperatorDeployInfo ndi)
+  {
+    activeNodes.remove(ndi.id);
+    final Node<?> node = nodes.get(ndi.id);
+    if (node == null) {
+      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.declaredId);
+    }
+    else {
+      node.deactivate();
+      for (NodeActivationListener l : nodeListener) {
+        l.deactivated(node);
+      }
+      node.teardown();
+      logger.info("deactivated {}", node.getId());
+    }
+  }
+
+  public synchronized void activate(final Map<Integer, OperatorDeployInfo> nodeMap, Map<String, ComponentContextPair<Stream, StreamContext>> newStreams)
   {
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
       if (!(pair.component instanceof BufferServerSubscriber)) {
@@ -1104,83 +1188,101 @@ public class StramChild
       }
     }
 
-    final ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo> activatedOrFailed = new ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo>();
-    for (final OperatorDeployInfo ndi : nodeList) {
-      final Node<?> node = nodes.get(ndi.id);
+    final CountDownLatch signal = new CountDownLatch(nodeMap.size());
+    for (final OperatorDeployInfo ndi : nodeMap.values()) {
+      /*
+       * OiO nodes get activated with their primary nodes.
+       */
+      if (ndi.type == OperatorType.OIO) {
+        continue;
+      }
       assert (!activeNodes.containsKey(ndi.id));
 
+      final Node<?> node = nodes.get(ndi.id);
       new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
         @Override
         public void run()
         {
+          HashSet<OperatorDeployInfo> setOperators = new HashSet<OperatorDeployInfo>();
+          OperatorDeployInfo currentdi = ndi;
           try {
-            failedNodes.remove(ndi.id);
-            OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, containerContext);
-            node.setup(operatorContext);
+            /* primary operator initialization */
+            setupNode(currentdi, this);
+            setOperators.add(currentdi);
 
-            /* setup context for all the input ports */
-            LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
-            LinkedHashMap<String, PortContextPair<InputPort<?>>> newInputPorts = new LinkedHashMap<String, PortContextPair<InputPort<?>>>(inputPorts.size());
-            for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
-              InputPort<?> port = inputPorts.get(idi.portName).component;
-              PortContext context = new PortContext(idi.contextAttributes, operatorContext);
-              newInputPorts.put(idi.portName, new PortContextPair<InputPort<?>>(port, context));
-              port.setup(context);
+            /* lets go for OiO operator initialization */
+            List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
+            if (oioNodeIdList != null) {
+              for (Integer oioNodeId : oioNodeIdList) {
+                currentdi = nodeMap.get(oioNodeId);
+                setupNode(currentdi, this);
+                setOperators.add(currentdi);
+              }
             }
-            inputPorts.putAll(newInputPorts);
 
-            /* setup context for all the output ports */
-            LinkedHashMap<String, PortContextPair<OutputPort<?>>> outputPorts = node.getPortMappingDescriptor().outputPorts;
-            LinkedHashMap<String, PortContextPair<OutputPort<?>>> newOutputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>(outputPorts.size());
-            for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
-              OutputPort<?> port = outputPorts.get(odi.portName).component;
-              PortContext context = new PortContext(odi.contextAttributes, operatorContext);
-              newOutputPorts.put(odi.portName, new PortContextPair<OutputPort<?>>(port, context));
-              port.setup(context);
+            currentdi = null;
+
+            for (int i = setOperators.size(); i-- > 0;) {
+              signal.countDown();
             }
-            outputPorts.putAll(newOutputPorts);
 
-            activeNodes.put(ndi.id, operatorContext);
-            activatedOrFailed.put(ndi, ndi);
-
-            logger.info("activating {} in container {}", node, containerId);
-            processNodeRequests(false);
-            for (NodeActivationListener l : nodeListener) {
-              l.activated(node);
-            }
-            node.activate(operatorContext);
+            node.run(); /* this is a blocking call */
           }
           catch (Throwable ex) {
-            logger.error("Node stopped abnormally because of exception", ex);
-            failedNodes.add(ndi.id);
+            if (currentdi == null) {
+              failedNodes.add(ndi.id);
+              logger.error("Operator set {} failed stopped running due to an exception.", setOperators, ex);
+            }
+            else {
+              failedNodes.add(currentdi.id);
+              logger.error("Abandoning deployment of operator {} due setup failure", currentdi, ex);
+            }
           }
           finally {
-            activatedOrFailed.put(ndi, ndi);
-            activeNodes.remove(ndi.id);
-            for (NodeActivationListener l : nodeListener) {
-              l.deactivated(node);
+            if (setOperators.contains(ndi)) {
+              try {
+                teardownNode(ndi);
+              }
+              catch (Throwable ex) {
+                logger.error("Shutdown of operator {} failed due to an exception", ndi, ex);
+              }
             }
-            node.teardown();
-            logger.info("deactivated {}", node.getId());
+            else {
+              signal.countDown();
+            }
+
+            List<Integer> oioNodeIdList = oioGroups.get(ndi.id);
+            if (oioNodeIdList != null) {
+              for (Integer oioNodeId : oioNodeIdList) {
+                OperatorDeployInfo oiodi = nodeMap.get(oioNodeId);
+                if (setOperators.contains(oiodi)) {
+                  try {
+                    teardownNode(oiodi);
+                  }
+                  catch (Throwable ex) {
+                    logger.error("Shutdown of operator {} failed due to an exception", oiodi, ex);
+                  }
+                }
+                else {
+                  signal.countDown();
+                }
+              }
+            }
           }
         }
 
       }.start();
-
     }
 
     /**
      * we need to make sure that before any of the operators gets the first message, it's activate.
      */
     try {
-      do {
-        Thread.sleep(SPIN_MILLIS);
-      }
-      while (activatedOrFailed.size() < nodeList.size());
+      signal.await();
     }
     catch (InterruptedException ex) {
-      logger.debug("Error waiting for activation", ex);
+      logger.debug("Activation of Operators interruped", ex);
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
@@ -1225,8 +1327,7 @@ public class StramChild
   {
     long finishedWindowId;
     if (ndi.contextAttributes != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE) != null
-            && ndi.contextAttributes.attr(OperatorContext.PROCESSING_MODE).get() == ProcessingMode.AT_MOST_ONCE) {
+            && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
       /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
       long currentMillis = System.currentTimeMillis();
       long diff = currentMillis - firstWindowMillis;

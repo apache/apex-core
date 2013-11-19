@@ -8,25 +8,26 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
-import static java.lang.Thread.sleep;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Component;
-
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
-import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
-import com.datatorrent.stram.engine.*;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.TestOutputOperator;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.stream.BufferServerSubscriber;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
 
@@ -74,7 +75,7 @@ public class StramLocalClusterTest
 
     dag.addStream("fromNode1", node1.outport1, outNode.inport);
 
-    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.setHeartbeatMonitoringEnabled(false);
@@ -90,73 +91,23 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  private static class TestBufferServerSubscriber
-  {
-    final BufferServerSubscriber bss;
-    final StreamContext streamContext;
-    final TestSink sink;
-    SweepableReservoir reservoir;
-
-    TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName)
-    {
-      // sink to collect tuples emitted by the input module
-      sink = new TestSink();
-      String streamName = "testSinkStream";
-      String sourceId = Integer.toString(publisherOperator.getId()).concat(Component.CONCAT_SEPARATOR).concat(publisherPortName);
-      streamContext = new StreamContext(streamName);
-      streamContext.setSourceId(sourceId);
-      streamContext.setSinkId(this.getClass().getSimpleName());
-      streamContext.setFinishedWindowId(-1);
-      streamContext.setBufferServerAddress(publisherOperator.getContainer().bufferServerAddress);
-      streamContext.attr(StreamContext.CODEC).set(new DefaultStatefulStreamCodec<Object>());
-      streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
-      bss = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
-      bss.setup(streamContext);
-      reservoir = bss.acquireReservoir("testSink", 1024);
-      reservoir.setSink(sink);
-    }
-
-    @SuppressWarnings("SleepWhileInLoop")
-    List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException
-    {
-      bss.activate(streamContext);
-      for (long l = 0; l < timeoutMillis; l += 20) {
-        if (reservoir.sweep() != null) {
-          reservoir.remove();
-        }
-        if (sink.getResultCount() >= expectedCount) {
-          break;
-        }
-        sleep(20);
-      }
-      //LOG.debug("test sink activated");
-      Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
-      List<Object> result = new ArrayList<Object>(sink.collectedTuples);
-
-      bss.deactivate();
-      sink.collectedTuples.clear();
-      return result;
-    }
-
-  }
-
   @Test
   @SuppressWarnings("SleepWhileInLoop")
   public void testRecovery() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
 
-    TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
+    TestGeneratorInputOperator node1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     // data will be added externally from test
     node1.setMaxTuples(0);
 
-    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("o2", GenericTestOperator.class);
 
-    dag.addStream("n1n2", node1.outport, node2.inport1);
+    dag.addStream("o1o2", node1.outport, node2.inport1);
 
     dag.validate();
 
-    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 2);
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 
@@ -193,51 +144,43 @@ public class StramLocalClusterTest
     Assert.assertNotNull(n2);
 
     // input data
-    String window0Tuple = "window0Tuple";
-    n1.addTuple(window0Tuple);
+    String tuple1 = "tuple1";
+    n1.addTuple(tuple1);
 
     OperatorContext n1Context = c0.getNodeContext(ptNode1.getId());
     Assert.assertEquals("initial window id", -1, n1Context.getLastProcessedWindowId());
-    wclock.tick(1); // begin window 1
-    wclock.tick(1); // begin window 2
-    StramTestSupport.waitForWindowComplete(n1Context, 1);
+    wclock.tick(1); // checkpoint window
+    wclock.tick(1);
+    Assert.assertEquals("current window", 2, wclock.getCurrentTimeMillis());
 
-    wclock.tick(1); // begin window 3
-    StramTestSupport.waitForWindowComplete(n1Context, 2);
+    OperatorContext o2Context = c2.getNodeContext(ptNode2.getId());
+    Assert.assertNotNull("context ", o2Context);
 
-    OperatorContext n2Context = c2.getNodeContext(ptNode2.getId());
-    Assert.assertNotNull("context ", n2Context);
+    StramTestSupport.waitForWindowComplete(o2Context, 1);
+    Assert.assertEquals("o2 received ", tuple1, n2.inport1Tuple);
 
-    wclock.tick(1); // begin window 4
+    wclock.tick(1);
+    Assert.assertEquals("current window", 3, wclock.getCurrentTimeMillis());
+    // checkpoint between window 1 and 2
+    StramTestSupport.waitForWindowComplete(o2Context, 2);
 
-    StramTestSupport.waitForWindowComplete(n2Context, 3);
-    n2.setMyStringProperty("checkpoint3");
-
-    // move window forward, wait until propagated to module,
-    // to ensure backup at previous window end was processed
-    wclock.tick(1); // begin window 5
-    StramTestSupport.waitForWindowComplete(n2Context, 4);
-
-    wclock.tick(1); // begin window 6
     // propagate checkpoints to master
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode1, 3, ptNode1.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode1, 1, ptNode1.getRecentCheckpoint());
     c2.triggerHeartbeat();
     //Thread.yield();
     Thread.sleep(1); // yield without using yield for heartbeat cycle
     c2.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode2, 3, ptNode2.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode2, 1, ptNode2.getRecentCheckpoint());
 
-    // activated test sink, verify tuple stored at buffer server
-    // sink to collect tuples emitted by the input operator
-    //TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
-    //List<Object> tuples = sink.retrieveTuples(1, 3000);
-    //Assert.assertEquals("received " + tuples, 1, tuples.size());
-    //Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {1L}), ptNode1.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {1L}), ptNode2.checkpointWindows);
 
-    // simulate node failure
+    //
+    // simulate container failure (operator o1)
+    //
     localCluster.failContainer(c0);
 
     // replacement container starts empty
@@ -254,41 +197,46 @@ public class StramLocalClusterTest
     StramChildAgent c2Agent = localCluster.getContainerAgent(c2);
 
     // wait for downstream re-deploy to complete
-    while (c2Agent.hasPendingWork()) {
-      Thread.sleep(500);
+    long startTms = System.currentTimeMillis();
+    while (c2Agent.hasPendingWork() && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+      Thread.sleep(200);
       c2.triggerHeartbeat();
       LOG.debug("Waiting for {} to complete pending work.", c2.getContainerId());
     }
 
     Assert.assertEquals(c2.getContainerId() + " operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
-    // verify downstream node was replaced in same container
+    // verify downstream operator re-deployed in existing container
     Assert.assertEquals("active " + ptNode2, c2, StramTestSupport.waitForActivation(localCluster, ptNode2));
-    GenericTestOperator n2Replaced = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
-    Assert.assertNotNull("redeployed " + ptNode2, n2Replaced);
-    Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
-    Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
+    GenericTestOperator o2Recovered = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
+    Assert.assertNotNull("redeployed " + ptNode2, o2Recovered);
+    Assert.assertNotSame("new instance " + ptNode2, n2, o2Recovered);
+    Assert.assertEquals("restored state " + ptNode2, tuple1, o2Recovered.inport1Tuple);
 
-    TestGeneratorInputOperator n1Replaced = (TestGeneratorInputOperator)c0Replaced.getNodes().get(ptNode1.getId()).getOperator();
-    Assert.assertNotNull(n1Replaced);
+    TestGeneratorInputOperator o1Recovered = (TestGeneratorInputOperator)c0Replaced.getNodes().get(ptNode1.getId()).getOperator();
+    Assert.assertNotNull(o1Recovered);
 
-    OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.getId());
-    Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
-    // should node context should reflect last processed window (the backup window)?
-    //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
+    OperatorContext o1RecoveredContext = c0Replaced.getNodeContext(ptNode1.getId());
+    Assert.assertNotNull("active " + ptNode1, o1RecoveredContext);
     wclock.tick(1);
-    StramTestSupport.waitForWindowComplete(n1ReplacedContext, 5);
+    Assert.assertEquals("current window", 4, wclock.getCurrentTimeMillis());
 
-    // refresh n2 context after operator was re-deployed
-    n2Context = c2.getNodeContext(ptNode2.getId());
-    Assert.assertNotNull("node active " + ptNode2, n2Context);
+    // refresh context after operator re-deploy
+    o2Context = c2.getNodeContext(ptNode2.getId());
+    Assert.assertNotNull("active " + ptNode2, o2Context);
 
-    StramTestSupport.waitForWindowComplete(n2Context, 5);
-    //backupNode(c0Replaced, n1ReplacedContext.getId()); // backup window 6
-    //backupNode(c2, n2Context.getId()); // backup window 6
-    wclock.tick(1); // end window 6
+    StramTestSupport.waitForWindowComplete(o1RecoveredContext, 3);
+    StramTestSupport.waitForWindowComplete(o2Context, 3);
 
-    StramTestSupport.waitForWindowComplete(n1ReplacedContext, 6);
-    StramTestSupport.waitForWindowComplete(n2Context, 6);
+    wclock.tick(1); // checkpoint window
+    Assert.assertEquals("current window", 5, wclock.getCurrentTimeMillis());
+
+    String tuple2 = "tuple2";
+    o1Recovered.addTuple(tuple2);
+
+    StramTestSupport.waitForWindowComplete(o1RecoveredContext, 4);
+    StramTestSupport.waitForWindowComplete(o2Context, 4);
+    // check data flow after recovery
+    Assert.assertEquals("retrieved tuple (after recovery) " + ptNode2, tuple2, o2Recovered.inport1Tuple);
 
     // propagate checkpoints to master
     c0Replaced.triggerHeartbeat();
@@ -296,27 +244,11 @@ public class StramLocalClusterTest
     c2.triggerHeartbeat();
     c2.waitForHeartbeat(5000);
 
-    String window6Tuple = "window6Tuple";
-    n1Replaced.addTuple(window6Tuple);
-
-    // reconnect as buffer was replaced
-    //sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
-    // verify tuple sent before publisher checkpoint was removed from buffer during recovery
-    // (publisher to resume from checkpoint id)
-    //tuples = sink.retrieveTuples(1, 3000);
-    //Assert.assertEquals("received " + tuples, 1, tuples.size());
-    //Assert.assertEquals("received " + tuples, window6Tuple, tuples.get(0));
-
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
-    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {5L}), ptNode1.checkpointWindows);
-    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {5L}), ptNode2.checkpointWindows);
-
-    //sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
-    // buffer server data purged
-    //tuples = sink.retrieveTuples(1, 3000);
-    //Assert.assertEquals("received " + tuples, 1, tuples.size());
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {3L}), ptNode1.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {3L}), ptNode2.checkpointWindows);
 
     localCluster.shutdown();
   }

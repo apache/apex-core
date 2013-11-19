@@ -5,6 +5,8 @@
 package com.datatorrent.stram.webapp;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -26,7 +28,7 @@ import javax.xml.bind.annotation.XmlSeeAlso;
 @XmlSeeAlso({OperatorInfo.class})
 public class OperatorsInfo {
 
-  protected ArrayList<OperatorInfo> operators = new ArrayList<OperatorInfo>();
+  protected List<OperatorInfo> operators = new ArrayList<OperatorInfo>();
 
   /**
    *
@@ -38,11 +40,11 @@ public class OperatorsInfo {
 
   /**
    *
-   * @return ArrayList<OperatorInfo>
+   * @return List<OperatorInfo>
    *
    */
-  public ArrayList<OperatorInfo> getOperators() {
-    return operators;
+  public List<OperatorInfo> getOperators() {
+    return Collections.unmodifiableList(operators);
   }
 
 }

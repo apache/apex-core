@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.codec;
 
+import com.datatorrent.api.AttributeMap.Attribute;
 import java.io.IOException;
 import java.util.*;
 
@@ -23,6 +24,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -52,10 +54,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
   public static Map<String, Object> convertToMap(LogicalPlan dag)
   {
     HashMap<String, Object> result = new HashMap<String, Object>();
-    HashMap<String, Object> operatorMap = new HashMap<String, Object>();
-    HashMap<String, Object> streamMap = new HashMap<String, Object>();
+    ArrayList<Object> operatorArray = new ArrayList< Object>();
+    ArrayList<Object> streamMap = new ArrayList<Object>();
     //result.put("applicationName", appConfig.getName());
-    result.put("operators", operatorMap);
+    result.put("operators", operatorArray);
     result.put("streams", streamMap);
     //LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
     //
@@ -66,29 +68,28 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 
     for (OperatorMeta operatorMeta : allOperators) {
       HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
-      HashMap<String, Object> portMap = new HashMap<String, Object>();
+      ArrayList<Map<String, Object>> portList = new ArrayList<Map<String, Object>>();
       HashMap<String, Object> attributeMap = new HashMap<String, Object>();
       HashMap<String, Object> propertyMap = new HashMap<String, Object>();
 
       String operatorName = operatorMeta.getName();
-      operatorMap.put(operatorName, operatorDetailMap);
-      operatorDetailMap.put("ports", portMap);
+      operatorArray.add(operatorDetailMap);
+      operatorDetailMap.put("name", operatorName);
+      operatorDetailMap.put("ports", portList);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
       operatorDetailMap.put("properties", propertyMap);
-      for (Context.OperatorContext.AttributeKey<?> attrKey
-              : new Context.OperatorContext.AttributeKey<?>[] {
+      for (Attribute<?> attrKey : new Attribute<?>[] {
         Context.OperatorContext.APPLICATION_WINDOW_COUNT,
         Context.OperatorContext.INITIAL_PARTITION_COUNT,
-        Context.OperatorContext.MEMORY_MB,
         Context.OperatorContext.PARTITION_TPS_MAX,
         Context.OperatorContext.PARTITION_TPS_MIN,
         Context.OperatorContext.RECOVERY_ATTEMPTS,
         Context.OperatorContext.SPIN_MILLIS,
-        Context.OperatorContext.STATELESS}) {
-        Object attrValue = operatorMeta.getAttributes().attr(attrKey).get();
+        }) {
+        Object attrValue = operatorMeta.getAttributes().get(attrKey);
         if (attrValue != null) {
-          attributeMap.put(attrKey.name(), attrValue);
+          attributeMap.put(attrKey.name, attrValue);
         }
       }
       Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
@@ -105,38 +106,38 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
         InputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
         String portName = portMeta.getPortName();
+        portDetailMap.put("name", portName);
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Context.PortContext.AttributeKey<?> attrKey
-                : new Context.PortContext.AttributeKey<?>[] {
+        for (Attribute<?> attrKey : new Attribute<?>[] {
           Context.PortContext.QUEUE_CAPACITY,
           Context.PortContext.PARTITION_PARALLEL,
           Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().attr(attrKey).get();
+          Object attrValue = portMeta.getAttributes().get(attrKey);
           if (attrValue != null) {
-            portAttributeMap.put(attrKey.name(), attrValue);
+            portAttributeMap.put(attrKey.name, attrValue);
           }
         }
-        portMap.put(portName, portDetailMap);
+        portList.add(portDetailMap);
       }
       for (Entry<String, PortContextPair<OutputPort<?>>> entry : pmd.outputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
         OutputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
         String portName = portMeta.getPortName();
+        portDetailMap.put("name", portName);
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Context.PortContext.AttributeKey<?> attrKey
-                : new Context.PortContext.AttributeKey<?>[] {
+        for (Attribute<?> attrKey : new Attribute<?>[] {
           Context.PortContext.QUEUE_CAPACITY,
           Context.PortContext.PARTITION_PARALLEL,
           Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().attr(attrKey).get();
+          Object attrValue = portMeta.getAttributes().get(attrKey);
           if (attrValue != null) {
-            portAttributeMap.put(attrKey.name(), attrValue);
+            portAttributeMap.put(attrKey.name, attrValue);
           }
         }
-        portMap.put(portName, portDetailMap);
+        portList.add(portDetailMap);
       }
     }
     Collection<StreamMeta> allStreams = dag.getAllStreams();
@@ -144,12 +145,13 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     for (StreamMeta streamMeta : allStreams) {
       HashMap<String, Object> streamDetailMap = new HashMap<String, Object>();
       String streamName = streamMeta.getId();
-      streamMap.put(streamName, streamDetailMap);
+      streamMap.add(streamDetailMap);
       String sourcePortName = streamMeta.getSource().getPortName();
       OperatorMeta operatorMeta = streamMeta.getSource().getOperatorWrapper();
       HashMap<String, Object> sourcePortDetailMap = new HashMap<String, Object>();
       sourcePortDetailMap.put("operatorName", operatorMeta.getName());
       sourcePortDetailMap.put("portName", sourcePortName);
+      streamDetailMap.put("name", streamName);
       streamDetailMap.put("source", sourcePortDetailMap);
       List<InputPortMeta> sinks = streamMeta.getSinks();
       ArrayList<HashMap<String, Object>> sinkPortList = new ArrayList<HashMap<String, Object>>();
@@ -160,7 +162,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         sinkPortList.add(sinkPortDetailMap);
       }
       streamDetailMap.put("sinks", sinkPortList);
-      streamDetailMap.put("isInline", DAG.Locality.CONTAINER_LOCAL == streamMeta.getLocality());
+      if (streamMeta.getLocality() != null) {
+        streamDetailMap.put("locality", streamMeta.getLocality().name());
+      }
     }
     return result;
   }
@@ -171,9 +175,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Collection<OperatorMeta> allOperators = dag.getAllOperators();
 
     for (OperatorMeta operatorMeta : allOperators) {
-      String operatorKey = "stram.operator." + operatorMeta.getName();
+      String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + "." + operatorMeta.getName();
       Operator operator = operatorMeta.getOperator();
-      props.setProperty(operatorKey + ".classname", operator.getClass().getName());
+      props.setProperty(operatorKey + "." + LogicalPlanConfiguration.OPERATOR_CLASSNAME, operator.getClass().getName());
       Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
       for (Map.Entry<String, Object> entry : operatorProperties.entrySet()) {
         if (!entry.getKey().equals("class") && !entry.getKey().equals("name") && entry.getValue() != null) {
@@ -184,10 +188,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Collection<StreamMeta> allStreams = dag.getAllStreams();
 
     for (StreamMeta streamMeta : allStreams) {
-      String streamKey = "stram.stream." + streamMeta.getId();
+      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + "." + streamMeta.getId();
       OutputPortMeta source = streamMeta.getSource();
       List<InputPortMeta> sinks = streamMeta.getSinks();
-      props.setProperty(streamKey + ".source", source.getOperatorWrapper().getName() + "." + source.getPortName());
+      props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SOURCE, source.getOperatorWrapper().getName() + "." + source.getPortName());
       String sinksValue = "";
       for (InputPortMeta sink : sinks) {
         if (!sinksValue.isEmpty()) {
@@ -195,9 +199,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }
         sinksValue += sink.getOperatorWrapper().getName() + "." + sink.getPortName();
       }
-      props.setProperty(streamKey + ".sinks", sinksValue);
-      if (DAG.Locality.CONTAINER_LOCAL == streamMeta.getLocality()) {
-        props.setProperty(streamKey + ".inline", "true");
+      props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SINKS, sinksValue);
+      if (streamMeta.getLocality() != null) {
+        props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_LOCALITY, streamMeta.getLocality().name());
       }
     }
 
@@ -217,7 +221,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     while (operatorIter.hasNext()) {
       String operatorName = operatorIter.next();
       JSONObject operatorDetail = allOperators.getJSONObject(operatorName);
-      String operatorKey = "stram.operator." + operatorName;
+      String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + "." + operatorName;
       props.setProperty(operatorKey + ".classname", operatorDetail.getString("class"));
       JSONObject properties = operatorDetail.optJSONObject("properties");
       if (properties != null) {
@@ -250,11 +254,11 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     while (streamIter.hasNext()) {
       String streamName = streamIter.next();
       JSONObject streamDetail = allStreams.getJSONObject(streamName);
-      String streamKey = "stram.stream." + streamName;
+      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + "." + streamName;
       JSONObject sourceDetail = streamDetail.getJSONObject("source");
       JSONArray sinksList = streamDetail.getJSONArray("sinks");
 
-      props.setProperty(streamKey + ".source", sourceDetail.getString("operatorName") + "." + sourceDetail.getString("portName"));
+      props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SOURCE, sourceDetail.getString("operatorName") + "." + sourceDetail.getString("portName"));
       String sinksValue = "";
       for (int i = 0; i < sinksList.length(); i++) {
         if (!sinksValue.isEmpty()) {
@@ -262,9 +266,10 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }
         sinksValue += sinksList.getJSONObject(i).getString("operatorName") + "." + sinksList.getJSONObject(i).getString("portName");
       }
-      props.setProperty(streamKey + ".sinks", sinksValue);
-      if (streamDetail.optBoolean("isInline")) {
-        props.setProperty(streamKey + ".inline", "true");
+      props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SINKS, sinksValue);
+      String locality = streamDetail.optString("locality");
+      if (locality != null) {
+        props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_LOCALITY, Locality.valueOf(locality));
       }
     }
 

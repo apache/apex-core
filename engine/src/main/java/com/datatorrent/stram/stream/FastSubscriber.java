@@ -4,11 +4,13 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.bufferserver.packet.Tuple;
 import java.net.InetSocketAddress;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.stram.engine.StreamContext;
 
 /**
  * <p>FastSubscriber class.</p>
@@ -27,7 +29,7 @@ public class FastSubscriber extends BufferServerSubscriber
   public void activate(StreamContext context)
   {
     InetSocketAddress address = context.getBufferServerAddress();
-    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});

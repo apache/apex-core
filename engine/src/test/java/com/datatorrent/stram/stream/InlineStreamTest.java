@@ -123,7 +123,7 @@ public class InlineStreamTest
 
     stream.deactivate();
     for (Node<?> node : activeNodes.values()) {
-      node.deactivate();
+      node.shutdown();
     }
 
     for (int i = 0; i < 10; i++) {
@@ -151,10 +151,12 @@ public class InlineStreamTest
       {
         int id = counter.incrementAndGet();
         OperatorContext ctx = new OperatorContext(id, Thread.currentThread(),
-                                                  new AttributeMap.DefaultAttributeMap(Context.OperatorContext.class),
+                                                  new AttributeMap.DefaultAttributeMap(),
                                                   null);
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
+        node.run();
+        node.deactivate();
         activeNodes.remove(ctx.getId());
       }
 

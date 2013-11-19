@@ -21,7 +21,9 @@ import com.datatorrent.api.Sink;
  */
 public interface Stream extends Component<StreamContext>, ActivationListener<StreamContext>, Sink<Object>
 {
-  public boolean isMultiSinkCapable();
+  public interface MultiSinkCapableStream extends Stream
+  {
+    public void setSink(String id, Sink<Object> sink);
+  }
 
-  public void setSink(String id, Sink<Object> sink);
 }

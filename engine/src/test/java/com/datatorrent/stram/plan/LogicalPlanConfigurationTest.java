@@ -24,17 +24,18 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.cli.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.google.common.collect.Sets;
 
 public class LogicalPlanConfigurationTest {
@@ -178,15 +179,19 @@ public class LogicalPlanConfigurationTest {
 
   }
 
+  private static String getSimpleName(Attribute<?> attr) {
+    return attr.name.substring(attr.name.lastIndexOf('.')+1);
+  }
+
   @Test
   public void testAppLevelAttributes() {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put("stram." + DAG.CONTAINER_MEMORY_MB.name(), "123");
-    props.put("stram." + DAG.APPLICATION_PATH.name(), "/defaultdir");
-    props.put("stram.application." + appName + ".attr." + DAG.APPLICATION_PATH.name(), "/otherdir");
-    props.put("stram.application." + appName + ".attr." + DAG.STREAMING_WINDOW_SIZE_MILLIS.name(), "1000");
+    props.put("stram.containerMemoryMB", "123"); // backward compatibility mapping
+    props.put("stram." + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
+    props.put("stram.application." + appName + ".attr." + getSimpleName(DAG.APPLICATION_PATH), "/otherdir");
+    props.put("stram.application." + appName + ".attr." + getSimpleName(DAG.STREAMING_WINDOW_SIZE_MILLIS), "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -194,10 +199,10 @@ public class LogicalPlanConfigurationTest {
     LogicalPlan dag = new LogicalPlan();
     dagBuilder.populateDAG(dag, new Configuration(false));
 
-    dagBuilder.setApplicationLevelAttributes(dag, appName);
-    Assert.assertEquals("", "/otherdir", dag.attrValue(DAG.APPLICATION_PATH, null));
-    Assert.assertEquals("", Integer.valueOf(123), dag.attrValue(DAG.CONTAINER_MEMORY_MB, null));
-    Assert.assertEquals("", Integer.valueOf(1000), dag.attrValue(DAG.STREAMING_WINDOW_SIZE_MILLIS, null));
+    dagBuilder.setApplicationConfiguration(dag, appName);
+    Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
+    Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.CONTAINER_MEMORY_MB));
+    Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
 
   }
 
@@ -208,8 +213,8 @@ public class LogicalPlanConfigurationTest {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
-        Assert.assertEquals("", "hostname:9090", dag.attrValue(DAG.DAEMON_ADDRESS, null));
-        dag.setAttribute(DAG.DAEMON_ADDRESS, "hostname:9091");
+        Assert.assertEquals("", "hostname:9090", dag.getValue(DAG.GATEWAY_ADDRESS));
+        dag.setAttribute(DAG.GATEWAY_ADDRESS, "hostname:9091");
         appInitialized.setValue(true);
       }
     };
@@ -222,7 +227,7 @@ public class LogicalPlanConfigurationTest {
     pb.prepareDAG(dag, app, "testconfig", conf);
 
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
-    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.DAEMON_ADDRESS, null));
+    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.getValue(DAG.GATEWAY_ADDRESS));
   }
 
   @Test
@@ -312,7 +317,7 @@ public class LogicalPlanConfigurationTest {
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
     builder.prepareDAG(dag, app, appPath, conf);
 
-    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().attr(DAGContext.APPLICATION_NAME).get());
+    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
   }
 
 }

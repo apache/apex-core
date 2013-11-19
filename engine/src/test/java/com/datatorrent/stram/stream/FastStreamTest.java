@@ -104,8 +104,8 @@ public class FastStreamTest
     issContext.setSinkId(downstreamNodeId);
     issContext.setFinishedWindowId(-1);
     issContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-    issContext.attr(StreamContext.CODEC).set(serde);
-    issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    issContext.put(StreamContext.CODEC, serde);
+    issContext.put(StreamContext.EVENT_LOOP, eventloop);
 
     FastSubscriber subscriber = new FastSubscriber(downstreamNodeId, 1024);
     subscriber.setup(issContext);
@@ -117,16 +117,16 @@ public class FastStreamTest
     ossContext.setSinkId(downstreamNodeId);
     ossContext.setFinishedWindowId(-1);
     ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-    ossContext.attr(StreamContext.CODEC).set(serde);
-    ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    ossContext.put(StreamContext.CODEC, serde);
+    ossContext.put(StreamContext.EVENT_LOOP, eventloop);
 
     FastPublisher publisher = new FastPublisher(upstreamNodeId, 8);
     StreamContext publisherContext = new StreamContext(streamName);
     publisherContext.setSourceId(upstreamNodeId);
     publisherContext.setSinkId(downstreamNodeId);
     publisherContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-    publisherContext.attr(StreamContext.CODEC).set(serde);
-    publisherContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    publisherContext.put(StreamContext.CODEC, serde);
+    publisherContext.put(StreamContext.EVENT_LOOP, eventloop);
     publisher.setup(publisherContext);
 
     subscriber.activate(issContext);

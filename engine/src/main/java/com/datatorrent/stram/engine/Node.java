@@ -73,13 +73,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
   public long currentWindowId;
-  protected long endWindowEmitTime = 0;
-  protected long lastSampleCpuTime = 0;
+  protected long endWindowEmitTime;
+  protected long lastSampleCpuTime;
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
   protected long checkpointedWindowId;
   public int applicationWindowCount;
   public int checkpointWindowCount;
+  protected int controlTupleCount;
 
   public Node(OPERATOR operator)
   {
@@ -181,7 +182,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  @SuppressWarnings({"unchecked"})
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
     boolean changes = false;
@@ -223,46 +223,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
 
-  @SuppressWarnings({"unchecked"})
-  public void activate(OperatorContext context)
-  {
-    boolean activationListener = operator instanceof ActivationListener;
-
-    activateSinks();
-    alive = true;
-    this.context = context;
-    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
-    PROCESSING_MODE = context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_LEAST_ONCE);
-
-    if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
-      logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
-      CHECKPOINT_WINDOW_COUNT = 1;
-    }
-
-    if (activationListener) {
-      ((ActivationListener)operator).activate(context);
-    }
-
-    /*
-     * If there were any requests which needed to be executed before the operator started
-     * its normal execution, execute those requests now - e.g. Restarting the operator
-     * recording for the operators which failed while recording and being replaced.
-     */
-    handleRequests(currentWindowId);
-
-    run();
-
-    if (activationListener) {
-      ((ActivationListener)operator).deactivate();
-    }
-
-    this.context = null;
-    emitEndStream();
-    deactivateSinks();
-  }
-
-  public void deactivate()
+  public void shutdown()
   {
     alive = false;
   }
@@ -275,7 +236,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void emitEndStream()
   {
-//    logger.debug("{} sending EndOfStream", this);
+    // logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
@@ -283,25 +244,26 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     for (final Sink<Object> output : outputs.values()) {
       output.put(est);
     }
+    controlTupleCount++;
   }
 
   protected void emitEndWindow()
   {
-    // This function currently only gets called upon END_STREAM.
-    // DO NOT assume this will get called to emit an end window tuple
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
-    for (final Sink<Object> output : outputs.values()) {
-      output.put(ewt);
+    for (int s = sinks.length; s-- > 0;) {
+      sinks[s].put(ewt);
     }
+    controlTupleCount++;
   }
 
   public void emitCheckpoint(long windowId)
   {
     CheckpointTuple ct = new CheckpointTuple(windowId);
     ct.setWindowId(currentWindowId);
-    for (final Sink<Object> output : outputs.values()) {
-      output.put(ct);
+    for (int s = sinks.length; s-- > 0;) {
+      sinks[s].put(ct);
     }
+    controlTupleCount++;
   }
 
   protected void handleRequests(long windowId)
@@ -329,7 +291,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
-      portStats.tupleCount = e.getValue().getCount(true);
+      portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
+      controlTupleCount = 0;
       portStats.endWindowTimestamp = endWindowEmitTime;
       stats.outputPorts.add(portStats);
     }
@@ -338,7 +301,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
     stats.checkpointedWindowId = checkpointedWindowId;
-    
+
     context.report(stats, windowId);
   }
 
@@ -367,11 +330,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public boolean isAlive()
   {
     return alive;
-  }
-
-  public long getBackupWindowId()
-  {
-    return checkpointedWindowId;
   }
 
   public boolean isApplicationWindowBoundary()
@@ -414,7 +372,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected boolean checkpoint(long windowId)
   {
-    StorageAgent ba = context.getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
+    StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
     if (ba != null) {
       try {
         OutputStream stream = ba.getSaveStream(id, windowId);
@@ -452,6 +410,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public static Node<?> retrieveNode(InputStream stream, OperatorDeployInfo.OperatorType type)
   {
     OperatorWrapper ow = retrieveOperatorWrapper(stream);
+    logger.debug("type={}, operator class={}", type, ow.operator.getClass());
 
     Node<?> node;
     if (ow.operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
@@ -490,6 +449,49 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     else {
       throw new RuntimeException("Id cannot be changed from " + this.id + " to " + id);
     }
+  }
+
+  public OperatorContext getContext()
+  {
+    return context;
+  }
+
+  @SuppressWarnings("unchecked")
+  public void activate(OperatorContext context)
+  {
+    this.context = context;
+    alive = true;
+    APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
+    CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
+
+    PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
+    if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
+      logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
+      CHECKPOINT_WINDOW_COUNT = 1;
+    }
+
+    activateSinks();
+    if (operator instanceof ActivationListener) {
+      ((ActivationListener)operator).activate(context);
+    }
+
+    /*
+     * If there were any requests which needed to be executed before the operator started
+     * its normal execution, execute those requests now - e.g. Restarting the operator
+     * recording for the operators which failed while recording and being replaced.
+     */
+    handleRequests(currentWindowId);
+  }
+
+  public void deactivate()
+  {
+    if (operator instanceof ActivationListener) {
+      ((ActivationListener<?>)operator).deactivate();
+    }
+    emitEndStream();
+
+    deactivateSinks();
+    this.context = null;
   }
 
   public static class OperatorWrapper

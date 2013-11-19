@@ -16,10 +16,22 @@
 package com.datatorrent.api;
 
 import java.io.Serializable;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.StringCodec.Boolean2String;
+import com.datatorrent.api.StringCodec.Enum2String;
+import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.Long2String;
+import com.datatorrent.api.StringCodec.String2String;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
@@ -29,191 +41,122 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public interface AttributeMap
 {
-  public interface Attribute<T>
-  {
-    T get();
-
-    void set(T value);
-
-    T getAndSet(T value);
-
-    T setIfAbsent(T value);
-
-    boolean compareAndSet(T oldValue, T newValue);
-
-    void remove();
-
-  }
-
   /**
    * Return the attribute value for the given key. If the map does not have an
-   * entry for the key, a default attribute value will be created and returned.
-   * Modifies state of the map of key is not present.
+   * entry for the key, null is returned.
    *
    * @param <T>
    * @param key
-   * @return <T> Attribute<T>
+   * @return <T> AttributeValue<T>
    */
-  <T> Attribute<T> attr(AttributeKey<T> key);
+  <T> T get(Attribute<T> key);
 
   /**
-   * Return the attribute, or null, if the attribute was not set.
-   * This method will not modify the state of the map.
-   * @param key
-   * @param defaultValue
+   * Assign value for a particular attributes.
+   * @param <T> Type of the value
+   * @param key Attribute which is being assigned the value
+   * @param value Value which is being assigned.
+   * @return Previous value against the attribute or null if it was not assigned.
    */
-  <T> Attribute<T> attrOrNull(AttributeKey<T> key);
+  <T> T put(Attribute<T> key, T value);
+
+  Set<Map.Entry<Attribute<?>, Object>> entrySet();
 
   /**
-   * Return the value map
+   * Clone the current map.
    *
-   * @return the value map
+   * @return a shallow copy of this AtrributeMap.
    */
-  Map<String, Object> valueMap();
+  AttributeMap clone();
 
   /**
-   * Add non-durable attribute.
+   * Attribute represents the attribute which can be set on various components in the system.
    *
-   * This attribute will not get serialized across processes. As the process dies, these attributes disappear.
-   * @param <T>
-   * @param key
-   * @return
+   * @param <T> type of the value which can be stored against the attribute.
    */
-  <T> Attribute<T> addTransientAttribute(AttributeKey<T> key);
-
-  /**
-   * Scoped attribute key. Subclasses define scope.
-   *
-   * @param <T>
-   */
-  public static class AttributeKey<T>
+  public static class Attribute<T> implements Serializable
   {
-    private static final ConcurrentMap<String, AttributeKey<?>> keys = new ConcurrentHashMap<String, AttributeKey<?>>();
-    private final Class<?> scope;
-    private final String name;
+    public final T defaultValue;
+    public final String name;
+    public final StringCodec<T> codec;
 
-    @SuppressWarnings("LeakingThisInConstructor")
-    public AttributeKey(Class<?> scope, String name)
+    public Attribute(StringCodec<T> codec)
     {
-      this.scope = scope;
+      this(null, null, codec);
+    }
+
+    public Attribute(T defaultValue)
+    {
+      this(null, defaultValue, null);
+    }
+
+    public Attribute(T defaultValue, StringCodec<T> codec)
+    {
+      this(null, defaultValue, codec);
+    }
+
+    private Attribute(String name, T defaultValue, StringCodec<T> codec)
+    {
       this.name = name;
-      keys.put(stringKey(scope, name), this);
+      this.defaultValue = defaultValue;
+      this.codec = codec;
     }
 
-    public String name()
+    @Override
+    public int hashCode()
     {
-      return name;
+      return name.hashCode();
     }
 
-    private static String stringKey(Class<?> scope, String name)
+    @Override
+    public boolean equals(Object obj)
     {
-      return scope.getName() + "." + name;
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      @SuppressWarnings("unchecked")
+      final Attribute<T> other = (Attribute<T>)obj;
+      if ((this.name == null) ? (other.name != null) : !this.name.equals(other.name)) {
+        return false;
+      }
+      return true;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <T> AttributeKey<T> getKey(Class<?> scope, String key)
+    @Override
+    public String toString()
     {
-      return (AttributeKey)keys.get(stringKey(scope, key));
+      return "Attribute{" + "defaultValue=" + defaultValue + ", name=" + name + ", codec=" + codec + '}';
     }
 
+    private static final long serialVersionUID = 201310111904L;
   }
 
   /**
-   * Attribute map records values against String keys and can therefore be serialized
-   * ({@link AttributeKey} cannot be serialized)
-   *
+   * DefaultAttributeMap is the default implementation of AttributeMap. It's backed by a map internally.
    */
   public class DefaultAttributeMap implements AttributeMap, Serializable
   {
     private static final long serialVersionUID = 201306051022L;
-    private final Map<String, DefaultAttribute<?>> map = new HashMap<String, DefaultAttribute<?>>();
-    // if there is at least one attribute, serialize scope for key object lookup
-    private final Class<?> scope;
-    public DefaultAttributeMap(Class<?> scope)
+    private final HashMap<Attribute<?>, Object> map;
+
+    public DefaultAttributeMap()
     {
-      this.scope = scope;
+      this(new HashMap<Attribute<?>, Object>());
+    }
+
+    private DefaultAttributeMap(HashMap<Attribute<?>, Object> map)
+    {
+      this.map = map;
     }
 
     @Override
-    public <T> Attribute<T> attr(AttributeKey<T> key)
+    @SuppressWarnings("unchecked")
+    public <T> T get(Attribute<T> key)
     {
-      @SuppressWarnings("unchecked")
-      DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
-      if (attr == null && scope == key.scope) {
-        attr = new DefaultAttribute<T>();
-        map.put(key.name(), attr);
-      }
-      return attr;
-    }
-
-    @Override
-    public <T> Attribute<T> attrOrNull(AttributeKey<T> key)
-    {
-      @SuppressWarnings("unchecked")
-      DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
-      return attr;
-    }
-
-    @Override
-    public Map<String, Object> valueMap()
-    {
-      Map<String, Object> valueMap = new HashMap<String, Object>();
-      for (Map.Entry<String, DefaultAttribute<?>> entry : this.map.entrySet()) {
-        valueMap.put(entry.getKey(), entry.getValue().get());
-      }
-      return valueMap;
-    }
-
-    @Override
-    public <T> Attribute<T> addTransientAttribute(AttributeKey<T> key)
-    {
-      @SuppressWarnings("unchecked")
-      DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
-      if (attr == null) {
-        attr = new DefaultAttribute<T>();
-        map.put(key.name(), attr);
-      }
-
-      return attr;
-    }
-
-    private class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T>, Serializable
-    {
-      private static final long serialVersionUID = -2661411462200283011L;
-
-      @Override
-      public T setIfAbsent(T value)
-      {
-        if (compareAndSet(null, value)) {
-          return null;
-        }
-        else {
-          return get();
-        }
-      }
-
-      @Override
-      public void remove()
-      {
-        set(null);
-      }
-
-    }
-
-    /**
-     * Set all values in target map.
-     *
-     * @param target
-     */
-    public void copyTo(AttributeMap target)
-    {
-      for (Map.Entry<String, DefaultAttribute<?>> e : map.entrySet()) {
-        AttributeKey<Object> key = AttributeKey.getKey(this.scope, e.getKey());
-        if (key == null) {
-          throw new IllegalStateException("Unknown key: " + e.getKey());
-        }
-        target.attr(key).set(e.getValue().get());
-      }
+      return (T)map.get(key);
     }
 
     @Override
@@ -222,6 +165,110 @@ public interface AttributeMap
       return this.map.toString();
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public DefaultAttributeMap clone()
+    {
+      return new DefaultAttributeMap((HashMap<Attribute<?>, Object>)map.clone());
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T put(Attribute<T> key, T value)
+    {
+      return (T)map.put(key, value);
+    }
+
+    @Override
+    public Set<Entry<Attribute<?>, Object>> entrySet()
+    {
+      return map.entrySet();
+    }
+
+  }
+
+  /**
+   * This class inspects and initializes the attributes with their field names so that they can be used
+   * from properties files.
+   *
+   * Engine uses it internally to initialize the Interfaces that may have Attributes defined in them.
+   */
+  public static class AttributeInitializer
+  {
+    private static final Logger logger = LoggerFactory.getLogger(AttributeInitializer.class);
+    static final HashMap<Class<?>, Set<AttributeMap.Attribute<Object>>> map = new HashMap<Class<?>, Set<AttributeMap.Attribute<Object>>>();
+
+    public static Set<AttributeMap.Attribute<Object>> getAttributes(Class<?> clazz)
+    {
+      return map.get(clazz);
+    }
+
+    /**
+     * Initialize the static attributes defined in the class.
+     * @param clazz class whose static attributes need to be initialized.
+     * @return 0 if the clazz was already initialized, identity hash code of the clazz otherwise.
+     */
+    @SuppressWarnings( {"unchecked", "rawtypes"}) /* both for Enum2String */
+    public static long initialize(final Class<?> clazz)
+    {
+      if (map.containsKey(clazz)) {
+        return 0;
+      }
+
+      Set<AttributeMap.Attribute<Object>> set = new HashSet<AttributeMap.Attribute<Object>>();
+      try {
+        for (Field f: clazz.getDeclaredFields()) {
+          if (Modifier.isStatic(f.getModifiers()) && AttributeMap.Attribute.class.isAssignableFrom(f.getType())) {
+            @SuppressWarnings(value = "unchecked")
+            AttributeMap.Attribute<Object> attribute = (AttributeMap.Attribute<Object>)f.get(null);
+
+            if (attribute.name == null) {
+              Field nameField = AttributeMap.Attribute.class.getDeclaredField("name");
+              nameField.setAccessible(true);
+              nameField.set(attribute, clazz.getCanonicalName() + '.' + f.getName());
+              nameField.setAccessible(false);
+            }
+            /* Handle trivial cases here even though this may spoil API users. */
+            if (attribute.codec == null) {
+              StringCodec<?> codec = null;
+              if (attribute.defaultValue != null) {
+                Class<?> klass = attribute.defaultValue.getClass();
+                if (klass == String.class) {
+                  codec = new String2String();
+                }
+                else if (klass == Integer.class) {
+                  codec = new Integer2String();
+                }
+                else if (klass == Long.class) {
+                  codec = new Long2String();
+                }
+                else if (klass == Boolean.class) {
+                  codec = new Boolean2String();
+                }
+                else if (Enum.class.isAssignableFrom(klass)) {
+                  codec = new Enum2String(klass);
+                }
+              }
+              if (codec == null) {
+                logger.warn("Attribute {}.{} cannot be specified in the properties file as it does not have a StringCodec defined!", clazz.getSimpleName(), f.getName());
+              }
+              else {
+                Field codecField = AttributeMap.Attribute.class.getDeclaredField("codec");
+                codecField.setAccessible(true);
+                codecField.set(attribute, codec);
+                codecField.setAccessible(false);
+              }
+            }
+            set.add(attribute);
+          }
+        }
+      }
+      catch (Exception ex) {
+        throw new RuntimeException(ex);
+      }
+      map.put(clazz, set);
+      return System.identityHashCode(clazz);
+    }
   }
 
 }

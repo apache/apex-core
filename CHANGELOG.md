@@ -1,5 +1,341 @@
 #Release Notes - Streaming Platform
 
+## Version 0.9.0
+
+## Epic
+* [SPOI-255] - Design internals of stram
+* [SPOI-275] - Design stram components
+* [SPOI-276] - Parent jira for High Availability
+* [SPOI-370] - Discussion for open source tasks
+* [SPOI-465] - Increase unit test coverage to at least 50%
+
+## Improvement
+* [SPOI-437] - Create more granular RESTful API calls in Stram for various entities in an instance 
+* [SPOI-444] - Provide a cascade merge unifier feature.
+* [SPOI-446] - Compute aggregate values for application instance on server side
+* [SPOI-683] - Document Active MQ operatos in library/io/ActiveMQ*
+* [SPOI-1038] - Support more options in launch command
+* [SPOI-1127] - Standardize "subscribe" commands for all models and collections
+* [SPOI-1130] - daemon to log requests and response (like access log in apache)
+* [SPOI-1150] - Create new mrcolor instance on init of topN visualization
+* [SPOI-1152] - CLI: add -v flag for debug logging
+* [SPOI-1154] - Provide physical plan connections via the Daemon API
+* [SPOI-1163] - Refactored pages and routing mechanism
+* [SPOI-1177] - Configure the hadoop super user group on morado cluster
+* [SPOI-1187] - Allow 50% width for adjacent widgets
+* [SPOI-1188] - Put widely used UI components in node_modules/datatorrent
+* [SPOI-1224] - CLI Help enhancement
+* [SPOI-1232] - Allow a way to assign a default value to an attribute while defining the attribute
+* [SPOI-1295] - Make UI compatible with Backbone v1.1.0
+* [SPOI-1333] - Show stream locality in Streams widget 
+
+## New Feature
+* [SPOI-66] - App wide "do not autorecord" parameter
+* [SPOI-90] - Define and implement Apache server adapter node
+* [SPOI-117] - Boolean operator node
+* [SPOI-184] - Dashboard to have a page for one streaming application
+* [SPOI-389] - Parent jira for "alerts" as a product
+* [SPOI-711] - Ads Dimension Time Bucket Missing Key
+* [SPOI-916] - Create upload jar file widget
+* [SPOI-945] - Add ability to specify application properties, DAG, operator and port attributes in stram configuration file.
+* [SPOI-1007] - Run tests with headless browser for CI
+* [SPOI-1148] - Add CPU percentage to Operator List and Operator View
+* [SPOI-1213] - Map Reduce Debugger - AngularJS - WebSocket Integration
+* [SPOI-1227] - Map Reduce Debugger - JSHint 
+* [SPOI-1248] - DAG Visualization - Physical View - Color Coding Containers
+* [SPOI-1323] - Pre-Deployment hook for Operator
+* [SPOI-1332] - Logical Plan Update According to new Daemon API
+* [SPOI-1345] - Add Alert Page - Application Name
+* [SPOI-1377] - Create central package for language items
+* [SPOI-1398] - Update DAG View Tool to Daemon API 0.9
+* [SPOI-1401] - Add AUTO_RECORD attribute on the operator level
+* [SPOI-1402] - Add capability to look up past alerts by timestamp
+
+## Story
+* [SPOI-1235] - Add support for "DB lookup" functionality 
+* [SPOI-1288] - HadoopWorld preparation
+
+## Bug
+* [SPOI-440] - Change throughput calculation to use endWindow time
+* [SPOI-727] - Document demo for charts
+* [SPOI-847] - Introduce Operator in Operator optimization (ThreadLocal)
+* [SPOI-904] - Tupleviewer: jump to valid index greater than total - visible fails
+* [SPOI-992] - Javascript operator scriptBinding not serializable
+* [SPOI-1037] - Daemon is creating a lot of threads that are not doing anything.  Need to investigate and fix.
+* [SPOI-1107] - Send the Recording information as part of appropriate OperatorStats or PortStats
+* [SPOI-1164] - Mark non-partitionable operators on malhar
+* [SPOI-1186] - CSS issue when a page is not using dash manager
+* [SPOI-1189] - Misbehaving Mobile Locator Demo
+* [SPOI-1195] - DAG Explorer POC
+* [SPOI-1219] - Thread-Local streams should be marked as "inline"
+* [SPOI-1220] - Create a certification test for adsdimension demo
+* [SPOI-1221] - CLI should read configuration on app launch, not on start
+* [SPOI-1249] - duplicate sinks in streams in physical plan returned by web service
+* [SPOI-1283] - Fix mobile demo configuration in customer environment
+* [SPOI-1290] - Support hadoop.socks.server setting for dtcli
+* [SPOI-1298] - change product and package name and bump version 
+* [SPOI-1299] - Documment current DT Phone Home data 
+* [SPOI-1307] - Implement TupleRecorderCollection.deactivated method
+* [SPOI-1308] - Document how to configure applications
+* [SPOI-1318] - Logical DAG Display Issue in Firefox
+* [SPOI-1324] - MobileDemo: NullPointerException in StramChild
+* [SPOI-1327] - AtLeastOnceTest.testInlineOperatorsRecovery intermittent failure
+* [SPOI-1328] - Container not released and no operators running in it
+* [SPOI-1343] - Remove recordingNames from heartbeat
+* [SPOI-1349] - support set-pager command in dtcli
+* [SPOI-1351] - Need submit button and hour glass on machine data
+* [SPOI-1368] - Recording never loads in tupleviewer
+* [SPOI-1369] - Tests failing with new Daemon API changes
+* [SPOI-1371] - Add Alert Page fails
+* [SPOI-1374] - Drop twitter demo app from sandbox launch-demo jar
+* [SPOI-1386] - If I click on a "finished" task, the left top nav bar says "widget" instead of "applications"
+* [SPOI-1387] - If I click on a "finished" task, the left top nav bar says "widget" instead of "applications"
+* [SPOI-1391] - CPU percentage for operators are 100x too large
+
+
+## Task
+* [SPOI-634] - Enable unit tests in CI
+* [SPOI-716] - Compare original javascript with new script operators (Python, Bash)
+* [SPOI-720] - Coding conventions for Malhar GitHub
+* [SPOI-817] - Implement Log Input Operator
+* [SPOI-818] - Implement Parser Operator
+* [SPOI-824] - Document Daemon API
+* [SPOI-852] - Add life time per app on main dashboard
+* [SPOI-853] - Create Pie Chart widget based on D3.js
+* [SPOI-854] - Create Bar Chart widget based on D3.js
+* [SPOI-856] - Create Histogram (Real-Time Traffic) widget based on D3.js
+* [SPOI-857] - Site Stats Back-End Front-End Integration
+* [SPOI-861] - Redis Client with Node.js for Site Stats
+* [SPOI-862] - REST API with Node.js for Site Stats
+* [SPOI-907] - Create Application DAG visualization
+* [SPOI-954] - Publish Platform REST API
+* [SPOI-998] - Throughput computations should be controllable via attributes per application
+* [SPOI-999] - Throughput computations should be controllable per operator
+* [SPOI-1002] - List application names instead of class names where available
+* [SPOI-1033] - Implement OiO validations
+* [SPOI-1062] - Build out Google Cloud cluster
+* [SPOI-1066] - Design Versioning Scheme for forward and backward compatiblity
+* [SPOI-1086] - Dynamically scale up and down input Operators
+* [SPOI-1131] - Create Training Sessions
+* [SPOI-1133] - Create Training Session 2
+* [SPOI-1134] - Create Training session 3
+* [SPOI-1139] - Productize DAG visualization
+* [SPOI-1142] - Build a fraud detection poc
+* [SPOI-1143] - Implement new Daemon API
+* [SPOI-1159] - Conform to new Daemon API for REST and WebSocket
+* [SPOI-1160] - Move REST logic from DataSource to classes
+* [SPOI-1165] - Create a certification test for performance demo
+* [SPOI-1166] - Create a certification test for twitter demo
+* [SPOI-1168] - Create a certification test for mobile demo
+* [SPOI-1193] - replace web socket client in tuple recorder with async web socket client
+* [SPOI-1194] - remove "sync" from hdfs part file collection and implement web socket update of the newest part file
+* [SPOI-1197] - DAG View - Application Logical Plan as Standalone Java Application/Maven Plugin
+* [SPOI-1198] - DAG View - DAG Visualization from JSON file
+* [SPOI-1199] - DAG View - DAG Visualization from properties file
+* [SPOI-1207] - Common Apps Template
+* [SPOI-1210] - Map Reduce Debugger - AngularJS Directives
+* [SPOI-1216] - Benchmark performance benchmark with stream locality
+* [SPOI-1222] - CLI enhancements
+* [SPOI-1223] - CLI enhancements
+* [SPOI-1226] - Create list of platform attributes - port, operator, stream, application
+* [SPOI-1239] - Names for deamon and cli
+* [SPOI-1247] - Update UI for change in logicalPlan format
+* [SPOI-1256] - Make Machine Data Demo scalable
+* [SPOI-1262] - Parent JIRA for "face-lift demo apps for Hadoop World"
+* [SPOI-1265] - Web Demos - Common Application
+* [SPOI-1268] - Document all the attributes in Documentation (Guides)
+* [SPOI-1276] - Customer demo build tools
+* [SPOI-1277] - Add performance demo to customer apps
+* [SPOI-1279] - In Stream List view show DataLocality
+* [SPOI-1282] - Update benchmarks
+* [SPOI-1284] - Jump version number to 0.8.5
+* [SPOI-1285] - keys in instanceinfo widget to be shortened
+* [SPOI-1286] - Add GB used to instanceOverview widget
+* [SPOI-1287] - Rename operator names and stream names on AdsCustomerApplication
+* [SPOI-1294] - Bump up the disk space in sandbox
+* [SPOI-1309] - Update Operations and Installation Guide by adding a section on parameter setting
+* [SPOI-1334] - Create data for Scalability White paper
+* [SPOI-1335] - Create Scalability White paper
+* [SPOI-1336] - Create First cut of logstream white paper
+* [SPOI-1337] - Create first cut for Gateway white paper
+* [SPOI-1339] - Productize LogStream white paper
+* [SPOI-1340] - Write Scalalability and Design Pattern white paper
+* [SPOI-1347] - Redis periodic cleanup node8
+* [SPOI-1348] - Add elapsed time to demo throughput widget
+* [SPOI-1352] - Need urls on Machine data demo to suppoer key combos
+* [SPOI-1353] - Machine data demo UI should show which keys are not selected
+* [SPOI-1356] - Make default look back on machine gen demo - 180 minutes
+* [SPOI-1362] - Set up separate Redis instance and application for Machine demo
+* [SPOI-1363] - gateway API recordings retrieval minor parameter name change
+* [SPOI-1366] - Reduce scope of dependency versions in Front
+* [SPOI-1367] - Name and ports not showing up in recording list
+* [SPOI-1372] - On dashboard change "Operations" to "Applications" in the first tab
+* [SPOI-1373] - Sandbox: size should be 8G by default, 4G causes most apps to not work
+* [SPOI-1375] - All sandbox apps must work in 8G VM. Need to test each
+* [SPOI-1381] - Add link to Malhar open source project in Sandbox
+* [SPOI-1382] - Add MachineCustomerApplication to launch-customer jar on node1
+* [SPOI-1399] - Add two new docs to the 0.9 release, to the website
+* [SPOI-1400] - Add timestamp for each tuple in tuple recordings
+
+## Sub-task
+* [SPOI-1109] - Change the frontend code to so that the recording information is received as part of the stats
+* [SPOI-1135] - Beautify "Twitter Top URLs" demo
+* [SPOI-1156] - mocha-phantomjs fails on test
+* [SPOI-1228] - Benchmark Performance with stream locality as thread-local
+* [SPOI-1229] - Benchmark Performance with stream locality as process local
+* [SPOI-1230] - Benchmark Performance with stream locality as node-local
+* [SPOI-1231] - Benchmark Performance with stream locality as rack-local
+* [SPOI-1240] - Create Hadoop 2.2 cluster on GC
+* [SPOI-1241] - Migrate morado cluster to Hadoop 2.1
+* [SPOI-1263] - Beautify "Mobile" demo app
+* [SPOI-1264] - Beautify "Machine Generated" demo app
+* [SPOI-1272] - Investigate Google Cluster Disks, Networking, Firewalls
+* [SPOI-1273] - Install Chef Server for central provisioning
+* [SPOI-1274] - Twitter demo - small changes in backend
+* [SPOI-1275] - Mobile demo - small changes in backend
+* [SPOI-1278] - Configure and install node0
+* [SPOI-1304] - Migrate core to 2.2
+* [SPOI-1316] - Build release 0.8.5
+* [SPOI-1317] - Update sandbox to 0.8.5
+* [SPOI-1322] - Configure and install datanode
+* [SPOI-1379] - Configuration changes to support Hadoop 2.2
+* [SPOI-1380] - Fix customer demos creation for Hadoop 2.2
+* [SPOI-1394] - Enable testing during build for Malhar
+* [SPOI-1395] - Enable build testing for front
+* [SPOI-1396] - Enable build testing from Core
+
+## GitHub - DataTorrent/Malhar
+* [256] - SPOI-1408 added AsyncHttpClient.close() calls
+* [247] - Web Apps Upgrade to Daemon API 0.9. Machine Demo optimizations. Squashed commit of the following:
+* [246] - Documentation had a typo which was repeated. I fixed it and also reorganized imports.
+* [239] - Machine Demo - Negative Values in Random Data
+* [231] - fixed github issue #220
+* [226] - fixed github issue 219
+* [225] - 0.9 migration
+* [224] - Show hourglass on the machine data demo in case of network (internet) being slow
+* [223] - Setting Expiry Date for Redis Keys in RedisOutputOperator
+* [220] - Making Redis Operator partionable
+* [219] - Setting Expiry Date for Redis Keys in RedisOutputOperator
+* [218] - made output port of alert escalation autorecord
+* [216] - Squashed commit of the following:
+* [211] - Fraud App Rename
+* [210] - Web Apps - Fraud 
+* [209] - 0.9 pull
+* [207] - 0.9 migration
+* [205] - Fix PythonOperator
+* [204] - Fix BashOperator
+* [202] - added new output port in JsonByteArrayOperator for emiting flattened map
+* [201] - #198 Machine Data Demo - Dynamic Dimensions. Squashed commit of the following:
+* [200] - added new output port in JsonByteArrayOperator for emiting flattened map
+* [199] - making the attributes configurable from stram-site
+* [197] - Web Apps Machine Demo Update/Multiple FIxes
+* [196] - Mobile Demo corrections
+* [195] - Web Apps Machine Demo Update/Multiple Fixes
+* [193] - reduced the I/O worker thread multiplier to 1 as default in ning AHC
+* [190] - 0.9 migration
+* [188] - Web Apps (Demos) - Squashed commit of the following:
+* [186] - Web Apps - Styling
+* [185] - Web Apps - Readme
+* [184] - made the machine data and ads demo scalable
+* [183] - Web Apps - JSHint
+* [182] - Fixed seeds phone generator and other bugs with MobileDemo #172
+* [180] - suppress warning for stdout in console output operator
+* [178] - Web Apps - License Headers
+* [177] - Twitter demo application is called TwitterDevApplication
+* [176] - Removed phone.html that is not being used. Fixes #175.
+* [175] - Remove phone html that is not being used
+* [174] - Resolving mobile demo bug
+* [173] - bug in phonemovement
+* [169] - Code format changes to KryoSerializableStreamCodec
+* [168] - Web Apps - Demos Descriptions
+* [167] - javascript operator now serializable
+* [165] - Squashed commit of the following:
+* [164] - Operator and stream names of adsdimension application can be clearer
+* [163] - Web Apps - Mobile Locator Demo - Google Maps Marker Labels
+* [162] - Web Apps - Machine Data Demo - CPU/RAM/HDD Gauges
+* [161] - Web Apps - Machine Data Demo - Device ID Dimension
+* [158] - Made Mobile enhancements #157
+* [156] - Web Apps - Index Page
+* [155] - Web Apps - Machine Data Demo
+* [154] - Web Apps - Mobile Locator Demo
+* [151] - change name and jump version
+* [150] - Twitter multiplier variance #148
+* [149] - Checkpoint consumer offset  #146
+* [148] - Twitter demo: change tweet multipler from 100 to Random(90-110)
+* [145] - Web Apps POC
+* [143] - migrated to ning for web socket interface provider
+* [142] - 0.4 migration
+* [141] - upgraded framework version to 0.3.5
+* [140] - method rename in RedisOutputOperator #138
+* [139] - Add partitionable kafka input operator #113
+* [137] - Couch DB Output adapter added #130
+* [136] - Reducing tuple blast size #135
+* [135] - MachineData: reduce the number of tuples generated by the random generator
+* [134] - Mapreduce Pull Request
+* [133] - [logstream] logstream app flow
+* [132] - Bug in UniqueKeyValCounter 
+* [131] - Deleted old unique value count operator #129
+* [128] - Corrections to UniqueValueCount #127
+* [127] - UniqueValueCount improvements
+* [126] - Changed deprecated call to setInline to setLocality.
+* [125] - Changed setInline call to setLocality
+* [123] - Clean up unused libraries
+* [122] - squashed changed to UniqueCount #112
+* [121] - Operator that counts unique value per key #112
+* [120] - add all the locality modes to performance test
+* [119] - Squashed changes and fixed version #99
+* [118] - MachineData integrated operators #99
+* [117] - Adding Redis input operators #43
+* [116] - Logstream merge 43
+* [115] - Adding Redis input operators
+* [114] - Implement the automate partitioned kafka input operator(1:1) #113
+* [113] - Add partitionable kafka input operator (1:1)
+* [103] - move the test residue to maven target directory so that mvn clean can clean all the files
+* [102] - Sqaushed changes for KryoSerializableStreamCodec & Test #95
+* [101] - Pull request for #95
+* [100] - Pull request for  issue #95
+* [98] - Issue 95
+* [97] - Add machinedata demo
+* [96] - Added output port to json byte array operator to emit JSONObjects too
+* [95] - Create an Abstract SteamCodec which can be used for custom partitioning and uses kryo serialization
+* [94] - added two output ports - outputMap, outputJSonObject
+* [93] - Upgrade Kafka to 0.8
+* [73] - Upgrade our kafka operator api to be compatible with mvn released Kafka version 0.8
+* [70] - Clean kafka package in malhar library #53
+* [52] - addCombination doesn't work in DimensionTimeBucketOperator
+* [46] - SiteOps Dashboard Look and Feel
+* [45] - Move SiteOps Demo to Node.js
+* [44] - Sliding window aggregation computations operators
+* [43] - Create Redis Input Operator
+* [42] - Please pull my latest changes
+* [41] - Web Demos - License Headers
+* [40] - Move Ads Dimensions Demo to Node.js
+* [39] - AlertEscalationOperatorTest test failing
+* [38] - Move Mobile Demo to Node.js
+* [37] - Move Twitter Demo to Node.js
+* [36] - Move Twitter, Mobile and Ads Demo to Node.js - fixes #34
+* [35] - Create AMQP Input Operator
+* [34] - Move Twitter, Mobile and Ads Dimensions Demo to Node.js
+* [33] - Ads Dimensions Demo - Common Template
+* [32] - Common Assets for the Demos
+* [31] - Migrate deprecated setInline calls. fixes #16
+* [30] - bump master version to 0.3.5-SNAPSHOT
+* [29] - Javascript operator scriptBinding not serializable
+* [28] - Node.js Ads Dimensions Demo - "Play" mode
+* [27] - Node.js Ads Dimensions Demo - Node.js Daemon
+* [26] - Node.js Ads Dimensions Demo - Dynamic Port
+* [25] - Node.js Ads Dimensions Demo - Readme
+* [24] - Node.js Ads Dimensions Demo Rename
+* [23] - Mrapplication
+* [21] - keyvalpair doing hash on key and value
+* [18] - 404 error in the UI for logicalPlan
+* [17] - Emitted tuples by InputOperator incorrectly shown as zero
+* [16] - Adapt new stream locality API 
+* [11] - Create an alerts demo for testing alerts
+* [4] - Make alert throttle operator window id based instead of wall clock time.
+* [88] - starmcli not taking the jar passed during launching application
+
+
 ## Version 0.3.5
 
 ## Bug

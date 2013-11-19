@@ -5,11 +5,11 @@
 
   <parent>
     <groupId>com.datatorrent</groupId>
-    <artifactId>malhar-framework</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <artifactId>dt-framework</artifactId>
+    <version>0.9.1-SNAPSHOT</version>
   </parent>
 
-  <artifactId>malhar-stram</artifactId>
+  <artifactId>dt-stram</artifactId>
   <packaging>jar</packaging>
 
   <name>Streaming Application Manager</name>
@@ -45,8 +45,8 @@
           </excludes>
           <archive>
             <manifestEntries>
-              <malhar-buildtime>${maven.build.timestamp}</malhar-buildtime>
-              <malhar-buildversion>${project.version}</malhar-buildversion>
+              <dt-buildtime>${maven.build.timestamp}</dt-buildtime>
+              <dt-buildversion>${project.version}</dt-buildversion>
             </manifestEntries>
           </archive>
         </configuration>
@@ -111,7 +111,7 @@
           <verbose>true</verbose>
           <prefix>git</prefix>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>target/classes/malhar-stram-git.properties</generateGitPropertiesFilename>
+          <generateGitPropertiesFilename>target/classes/dt-stram-git.properties</generateGitPropertiesFilename>
         </configuration>
       </plugin>
     </plugins>
@@ -141,13 +141,8 @@
       <version>0.5</version>
     </dependency>
     <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-websocket</artifactId>
-      <version>8.1.10.v20130312</version>
-    </dependency>
-    <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>malhar-bufferserver</artifactId>
+      <artifactId>dt-bufferserver</artifactId>
       <version>${project.version}</version>
     </dependency>
     <!--dependency>
@@ -187,12 +182,12 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>malhar-api</artifactId>
+      <artifactId>dt-api</artifactId>
       <version>${project.version}</version>
     </dependency>
     <!-- dependency> for licensing using native
       <groupId>${project.groupId}</groupId>
-      <artifactId>malhar-license</artifactId>
+      <artifactId>dt-license</artifactId>
       <version>${project.version}</version>
       <type>nar</type>
     </dependency -->
@@ -205,6 +200,11 @@
       <groupId>org.apache.ant</groupId>
       <artifactId>ant</artifactId>
       <version>1.9.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ning</groupId>
+      <artifactId>async-http-client</artifactId>
+      <version>1.7.20</version>
     </dependency>
   </dependencies>
   <profiles>
@@ -224,7 +224,7 @@
             ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418
             (required to use this for all modules from parent project)
           -->
-          <missing>target/classes/malhar-stram-git.properties</missing>
+          <missing>target/classes/dt-stram-git.properties</missing>
         </file>
       </activation>
       <properties>

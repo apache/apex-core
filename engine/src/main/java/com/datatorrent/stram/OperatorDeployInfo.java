@@ -110,14 +110,14 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
-      AttributeMap.Attribute<T> attr = contextAttributes.attrOrNull(key);
-      if (attr == null || attr.get() == null) {
-        return defaultValue;
+      T get = contextAttributes.get(key);
+      if (get == null) {
+        return key.defaultValue;
       }
 
-      return attr.get();
+      return get;
     }
 
 
@@ -177,14 +177,14 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
-      AttributeMap.Attribute<T> attr = contextAttributes.attrOrNull(key);
-      if (attr == null || attr.get() == null) {
-        return defaultValue;
+      T attr = contextAttributes.get(key);
+      if (attr == null) {
+        return key.defaultValue;
       }
 
-      return attr.get();
+      return attr;
     }
   }
 
@@ -235,6 +235,7 @@ public class OperatorDeployInfo implements Serializable
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
             append("declaredId", this.declaredId).
+            append("type", this.type).
             append("checkpoint", this.checkpointWindowId).
             append("inputs", this.inputs).
             append("outputs", this.outputs).

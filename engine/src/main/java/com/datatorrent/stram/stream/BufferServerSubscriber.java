@@ -3,11 +3,6 @@
  */
 package com.datatorrent.stram.stream;
 
-import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.datatorrent.stram.tuple.CheckpointTuple;
-import com.datatorrent.stram.tuple.ResetWindowTuple;
-import com.datatorrent.stram.tuple.EndStreamTuple;
-import com.datatorrent.stram.tuple.Tuple;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -16,18 +11,21 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.codec.StatefulStreamCodec;
-import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
-import com.datatorrent.stram.engine.ByteCounterStream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.bufferserver.client.Subscriber;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.codec.StatefulStreamCodec;
+import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
+import com.datatorrent.stram.engine.*;
+import com.datatorrent.stram.tuple.CheckpointTuple;
+import com.datatorrent.stram.tuple.EndStreamTuple;
+import com.datatorrent.stram.tuple.EndWindowTuple;
+import com.datatorrent.stram.tuple.ResetWindowTuple;
+import com.datatorrent.stram.tuple.Tuple;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
@@ -71,7 +69,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   public void activate(StreamContext context)
   {
     InetSocketAddress address = context.getBufferServerAddress();
-    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
@@ -106,15 +104,9 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   }
 
   @Override
-  public boolean isMultiSinkCapable()
-  {
-    return true;
-  }
-
-  @Override
   public void setup(StreamContext context)
   {
-    serde = context.attr(StreamContext.CODEC).get();
+    serde = context.get(StreamContext.CODEC);
     statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
     baseSeconds = context.getFinishedWindowId() & 0xffffffff00000000L;
   }
@@ -176,12 +168,6 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   }
 
   @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
   public int getCount(boolean reset)
   {
     return 0;
@@ -223,7 +209,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     {
       final int size = size();
       if (size > 0) {
-        for (int i = 1; i <= size; i++) {
+        for (int i = 0; i < size; i++) {
           if (peekUnsafe() instanceof Tuple) {
             count += i;
             return (Tuple)peekUnsafe();

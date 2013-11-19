@@ -11,7 +11,7 @@ import junit.framework.Assert;
 
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
-import org.apache.hadoop.yarn.util.BuilderUtils;
+import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
@@ -33,12 +33,12 @@ public class LocalityTest {
   public void testNodeLocal() {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(DAGContext.APPLICATION_PATH).set(new File("target", LocalityTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", LocalityTest.class.getName()).getAbsolutePath());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
-    dag.getMeta(partitioned).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(partitioned).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
     GenericTestOperator partitionedParallel = dag.addOperator("partitionedParallel", GenericTestOperator.class);
 
@@ -61,10 +61,10 @@ public class LocalityTest {
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-    		NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null);
+    		NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null);
+        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
