@@ -79,6 +79,11 @@ public class StramAgent extends FSAgent
     return trackingUrl == null ? null : wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
   }
 
+  public static void invalidateStramWebResource(String appid)
+  {
+    deleteAppMasterUrl(appid);
+  }
+
   public String getDefaultStramRoot()
   {
     return (defaultStramRoot == null) ? (fs.getHomeDirectory() + "/" + StramClient.DEFAULT_APPNAME) : defaultStramRoot;

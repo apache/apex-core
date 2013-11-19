@@ -4,17 +4,20 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.bufferserver.util.Codec;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.CheckpointListener;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+
+import com.datatorrent.bufferserver.util.Codec;
 
 /**
  *

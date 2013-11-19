@@ -18,6 +18,7 @@ package com.datatorrent.api;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 
 /**
@@ -96,42 +97,36 @@ public interface Context
      */
     Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(5);
     /**
-     * Initial partition count for an operator that supports partitioning. The
-     * number is interpreted as follows:
+     * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
-     * Default partitioning (operators that do not implement
-     * {@link PartitionableOperator}):<br>
-     * If the attribute is not present or set to 0 partitioning is off. Else the
-     * number of initial partitions (statically created during initialization).<br>
+     * Default partitioning (operator does not implement {@link Partitionable}):<br>
+     * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
      * Default partitioning does not consider operator state on split or merge.
      * <p>
-     * Operator that implements {@link PartitionableOperator}:<br>
-     * Count 0 disables partitioning. Other values are ignored as number of
-     * initial partitions is determined by operator implementation.
+     * Operator implements {@link Partitionable}:<br>
+     * Value given as initial capacity hint to {@link PartitionableOperator#definePartitions(java.util.Collection, int)
+     * The operator implementation controls instance number and initialization on a per partition basis.
      */
-    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(0);
+    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
 
     /**
-     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning.
-     * When this attribute is set and partitioning is enabled by setting INITIAL_PARTITION_COUNT if the number of tuples
-     * per second falls below the specified rate the physical operators are consolidated into fewer operators till the rate
-     * goes above the specified minimum.
+     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning. When this
+     * attribute is set and partitioning is enabled if the number of tuples per second falls below the specified rate
+     * the physical operators are consolidated into fewer operators till the rate goes above the specified minimum.
      */
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
 
     /**
-     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning.
-     * When this attribute is set and partitioning is enabled by setting INITIAL_PARTITION_COUNT if the number of tuples
-     * per second goes above the specified rate new physical operators are spawned till the rate again goes below the specified
-     * maximum.
+     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning. When this
+     * attribute is set and partitioning is enabled if the number of tuples per second goes above the specified rate new
+     * physical operators are spawned till the rate again goes below the specified maximum.
      */
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
-
     /**
-     * Internal Attribute (TBD). Specify a custom statistics handler class. The class should implement the StatsHandler
-     * interface. The handler will be called with statistic metric updates for physical operators.
+     * Specify a listener to process and optionally react to operator status updates.
+     * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());
+    Attribute<Class<? extends StatsListener>> STATS_LISTENER = new Attribute<Class<? extends StatsListener>>(null, null);
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
@@ -166,7 +161,7 @@ public interface Context
     /**
      * The agent which can be used to checkpoint the windows.
      */
-    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(null, null);
+    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(new Object2String<StorageAgent>());
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
      * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
@@ -186,6 +181,14 @@ public interface Context
      * @return String
      */
     int getId();
+
+    /**
+     * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
+     * current window, reset at window boundary.
+     *
+     * @param stats
+     */
+    void setCustomStats(Stats.OperatorStats.CustomStats stats);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);

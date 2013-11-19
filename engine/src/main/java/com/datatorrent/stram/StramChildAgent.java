@@ -10,12 +10,12 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.DAG.Locality;
@@ -23,19 +23,15 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -64,181 +60,10 @@ public class StramChildAgent {
     }
   }
 
-  static class MovingAverageLong {
-    private final int periods;
-    private final long[] values;
-    private int index = 0;
-    private boolean filled = false;
-
-    MovingAverageLong(int periods) {
-      this.periods = periods;
-      this.values = new long[periods];
-    }
-
-    void add(long val) {
-      values[index++] = val;
-      if (index == periods) {
-        filled = true;
-      }
-      index %= periods;
-    }
-
-    long getAvg() {
-      long sum = 0;
-      for (int i=0; i<periods; i++) {
-        sum += values[i];
-      }
-
-      if (!filled) {
-        return index == 0 ? 0 : sum/index;
-      } else {
-        return sum/periods;
-      }
-    }
-  }
-
-  // Generics don't work with numbers.  Hence this mess.
-  static class MovingAverageDouble {
-    private final int periods;
-    private final double[] values;
-    private int index = 0;
-    private boolean filled = false;
-
-    MovingAverageDouble(int periods) {
-      this.periods = periods;
-      this.values = new double[periods];
-    }
-
-    void add(double val) {
-      values[index++] = val;
-      if (index == periods) {
-        filled = true;
-      }
-      index %= periods;
-    }
-
-    double getAvg() {
-      double sum = 0;
-      for (int i=0; i<periods; i++) {
-        sum += values[i];
-      }
-
-      if (!filled) {
-        return index == 0 ? 0 : sum/index;
-      } else {
-        return sum/periods;
-      }
-    }
-  }
-
-  static class TimedMovingAverageLong {
-    private final int periods;
-    private final long[] values;
-    private final long[] timeIntervals;
-    private int index = 0;
-    private final long baseTimeInterval;
-
-    TimedMovingAverageLong(int samples, long baseTimeInterval) {
-      this.periods = samples;
-      this.values = new long[samples];
-      this.timeIntervals = new long[samples];
-      this.baseTimeInterval = baseTimeInterval;
-    }
-
-    void add(long val, long time) {
-      values[index] = val;
-      timeIntervals[index] = time;
-      index++;
-      index %= periods;
-    }
-
-    double getAvg() {
-      long sumValues = 0;
-      long sumTimeIntervals = 0;
-      int i = index;
-      while (true) {
-        i--;
-        if (i < 0) {
-          i = periods - 1;
-        }
-        if (i == index) {
-          break;
-        }
-        sumValues += values[i];
-        sumTimeIntervals += timeIntervals[i];
-        if (sumTimeIntervals >= baseTimeInterval) {
-          break;
-        }
-      }
-
-      if (sumTimeIntervals == 0) {
-        return 0;
-      }
-      else {
-        return ((double)sumValues * 1000) / sumTimeIntervals;
-      }
-    }
-  }
-
-
-  protected class OperatorStatus
-  {
-    StreamingNodeHeartbeat lastHeartbeat;
-    final PTOperator operator;
-    long totalTuplesProcessed;
-    long totalTuplesEmitted;
-    long currentWindowId;
-    long tuplesProcessedPSMA;
-    long tuplesEmittedPSMA;
-    long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    final MovingAverageDouble cpuPercentageMA;
-    final MovingAverageLong latencyMA;
-    Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
-    Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
-
-    private OperatorStatus(PTOperator operator, int throughputCalculationMaxSamples, int throughputCalculationInterval, int heartbeatInterval) {
-      this.operator = operator;
-      cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
-      latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
-      for (PTOperator.PTInput ptInput: operator.getInputs()) {
-        PortStatus inputPortStatus = new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
-        inputPortStatus.portName = ptInput.portName;
-        inputPortStatusList.put(ptInput.portName, inputPortStatus);
-      }
-      for (PTOperator.PTOutput ptOutput: operator.getOutputs()) {
-        PortStatus outputPortStatus = new PortStatus(throughputCalculationMaxSamples, throughputCalculationInterval);
-        outputPortStatus.portName = ptOutput.portName;
-        outputPortStatusList.put(ptOutput.portName, outputPortStatus);
-      }
-    }
-
-    public boolean isIdle()
-    {
-      if ((lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()))) {
-        return true;
-      }
-      return false;
-    }
-  }
-
-  public class PortStatus
-  {
-    String portName;
-    long totalTuples;
-    long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    final TimedMovingAverageLong tuplesPSMA;
-    final TimedMovingAverageLong bufferServerBytesPSMA;
-
-    public PortStatus(int throughputCalculationMaxSamples, int throughputCalculationInterval) {
-      tuplesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
-      bufferServerBytesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
-    }
-  }
 
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
     this.container = container;
     this.initCtx = initCtx;
-    this.operators = new HashMap<Integer, OperatorStatus>(container.getOperators().size());
     this.memoryMBFree = this.container.getAllocatedMemoryMB();
     this.dnmgr = dnmgr;
   }
@@ -247,7 +72,6 @@ public class StramChildAgent {
   long lastHeartbeatMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
-  Map<Integer, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
   Runnable onAck = null;
   String jvmName;
@@ -269,37 +93,6 @@ public class StramChildAgent {
       onAck.run();
       onAck = null;
     }
-  }
-
-  protected OperatorStatus updateOperatorStatus(StreamingNodeHeartbeat shb) {
-    OperatorStatus status = this.operators.get(shb.getNodeId());
-    if (status == null) {
-      for (PTOperator operator : container.getOperators()) {
-        if (operator.getId() == shb.getNodeId()) {
-          status = new OperatorStatus(operator, dnmgr.getThroughputCalculationMaxSamples(), dnmgr.getThroughputCalculationInterval(), dnmgr.getHeartbeatIntervalMillis());
-          operators.put(shb.getNodeId(), status);
-        }
-      }
-    }
-
-    if (status != null && !container.getPendingDeploy().isEmpty()) {
-      if (status.operator.getState() == PTOperator.State.PENDING_DEPLOY) {
-        // remove operator from deploy list only if not scheduled of undeploy (or redeploy) again
-        if (!container.getPendingUndeploy().contains(status.operator) && container.getPendingDeploy().remove(status.operator)) {
-          LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), status.operator, shb.getState()});
-          status.operator.setState(PTOperator.State.ACTIVE);
-
-          // record started
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
-          ev.addData("operatorId", status.operator.getId());
-          ev.addData("operatorName", status.operator.getName());
-          ev.addData("containerId", container.getExternalId());
-          dnmgr.recordEventAsync(ev);
-        }
-      }
-      LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
-    }
-    return status;
   }
 
   public void addOperatorRequest(StramToNodeRequest r) {
@@ -363,20 +156,8 @@ public class StramChildAgent {
     return null;
   }
 
-  boolean isIdle() {
-    if (this.hasPendingWork()) {
-      // container may have no active operators but deploy request pending
-      return false;
-    }
-    for (OperatorStatus operatorStatus : this.operators.values()) {
-      if (!operatorStatus.isIdle()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   // this method is only used for testing
+  @VisibleForTesting
   public List<OperatorDeployInfo> getDeployInfo() {
     return getDeployInfoList(container.getPendingDeploy());
   }
@@ -537,7 +318,7 @@ public class StramChildAgent {
       operator = oper.getUnifier();
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     } else if (oper.getPartition() != null) {
-      operator = oper.getPartition().getOperator();
+      operator = oper.getPartition().getPartitionedInstance();
     }
 
     long checkpointWindowId = oper.getRecoveryCheckpoint();

@@ -13,7 +13,6 @@ import javax.security.auth.login.AppConfigurationEntry.LoginModuleControlFlag;
 import javax.security.auth.login.Configuration;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
-import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  * <p>KerberosAuth class.</p>
@@ -35,8 +34,8 @@ public class KerberosAuth
 
   private static class AuthenticationHandler implements CallbackHandler {
 
-    private String principal;
-    private char[] password;
+    private final String principal;
+    private final char[] password;
 
     AuthenticationHandler(String principal, char[] password) {
       this.principal = principal;
@@ -61,7 +60,7 @@ public class KerberosAuth
 
   private static class KerberosConfiguration extends Configuration {
 
-    private String principal;
+    private final String principal;
 
     KerberosConfiguration(String principal) {
       this.principal = principal;

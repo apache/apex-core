@@ -4,20 +4,21 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.bufferserver.packet.Tuple;
-import com.datatorrent.bufferserver.storage.Storage;
-import com.datatorrent.bufferserver.util.BitVector;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.bufferserver.util.SerializedData;
-import com.datatorrent.bufferserver.util.Codec.MutableInt;
-
 import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ScheduledExecutorService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.bufferserver.util.BitVector;
+import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.common.util.VarInt;
+import com.datatorrent.common.util.VarInt.MutableInt;
 
 /**
  * Maintains list of data and manages addition and deletion of the data<p>
@@ -141,7 +142,7 @@ public class DataList
     flush:
     do {
       while (size == 0) {
-        size = Codec.readVarInt(last.data, processingOffset, writeOffset, nextOffset);
+        size = VarInt.read(last.data, processingOffset, writeOffset, nextOffset);
         switch (nextOffset.integer) {
           case -5:
             throw new RuntimeException("problemo!");

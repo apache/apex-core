@@ -165,10 +165,14 @@ public final class RecordingsAgent extends FSPartFileAgent
     info.toTime = Long.valueOf(tmp[1]);
     cursor = cursor2 + 1;
     cursor2 = line.indexOf(':', cursor);
+    if (cursor2 < 0) {
+      info.tupleCount = Long.valueOf(line.substring(cursor));
+      return info;
+    }
     info.tupleCount = Long.valueOf(line.substring(cursor, cursor2));
     cursor = cursor2 + 1;
     if (!line.substring(cursor, cursor + 2).equals("T:")) {
-      return null;
+      return info;
     }
     cursor += 2;
     cursor2 = line.indexOf(':', cursor);

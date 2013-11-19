@@ -2,26 +2,18 @@
 
 ## Version 0.9.0
 
-## Epic
-* [SPOI-255] - Design internals of stram
-* [SPOI-275] - Design stram components
-* [SPOI-276] - Parent jira for High Availability
-* [SPOI-370] - Discussion for open source tasks
-* [SPOI-465] - Increase unit test coverage to at least 50%
-
 ## Improvement
 * [SPOI-437] - Create more granular RESTful API calls in Stram for various entities in an instance 
-* [SPOI-444] - Provide a cascade merge unifier feature.
 * [SPOI-446] - Compute aggregate values for application instance on server side
+* [SPOI-465] - Increase unit test coverage to at least 50%
 * [SPOI-683] - Document Active MQ operatos in library/io/ActiveMQ*
 * [SPOI-1038] - Support more options in launch command
 * [SPOI-1127] - Standardize "subscribe" commands for all models and collections
-* [SPOI-1130] - daemon to log requests and response (like access log in apache)
+* [SPOI-1130] - Gateway to log requests and response (like access log in apache)
 * [SPOI-1150] - Create new mrcolor instance on init of topN visualization
 * [SPOI-1152] - CLI: add -v flag for debug logging
 * [SPOI-1154] - Provide physical plan connections via the Daemon API
 * [SPOI-1163] - Refactored pages and routing mechanism
-* [SPOI-1177] - Configure the hadoop super user group on morado cluster
 * [SPOI-1187] - Allow 50% width for adjacent widgets
 * [SPOI-1188] - Put widely used UI components in node_modules/datatorrent
 * [SPOI-1224] - CLI Help enhancement
@@ -35,7 +27,9 @@
 * [SPOI-117] - Boolean operator node
 * [SPOI-184] - Dashboard to have a page for one streaming application
 * [SPOI-389] - Parent jira for "alerts" as a product
+* [SPOI-444] - Provide a cascade merge unifier feature.
 * [SPOI-711] - Ads Dimension Time Bucket Missing Key
+* [SPOI-847] - Introduce Operator in Operator optimization (ThreadLocal)
 * [SPOI-916] - Create upload jar file widget
 * [SPOI-945] - Add ability to specify application properties, DAG, operator and port attributes in stram configuration file.
 * [SPOI-1007] - Run tests with headless browser for CI
@@ -50,15 +44,11 @@
 * [SPOI-1398] - Update DAG View Tool to Daemon API 0.9
 * [SPOI-1401] - Add AUTO_RECORD attribute on the operator level
 * [SPOI-1402] - Add capability to look up past alerts by timestamp
-
-## Story
 * [SPOI-1235] - Add support for "DB lookup" functionality 
-* [SPOI-1288] - HadoopWorld preparation
 
 ## Bug
 * [SPOI-440] - Change throughput calculation to use endWindow time
 * [SPOI-727] - Document demo for charts
-* [SPOI-847] - Introduce Operator in Operator optimization (ThreadLocal)
 * [SPOI-904] - Tupleviewer: jump to valid index greater than total - visible fails
 * [SPOI-992] - Javascript operator scriptBinding not serializable
 * [SPOI-1037] - Daemon is creating a lot of threads that are not doing anything.  Need to investigate and fix.
@@ -148,7 +138,6 @@
 * [SPOI-1277] - Add performance demo to customer apps
 * [SPOI-1279] - In Stream List view show DataLocality
 * [SPOI-1282] - Update benchmarks
-* [SPOI-1284] - Jump version number to 0.8.5
 * [SPOI-1285] - keys in instanceinfo widget to be shortened
 * [SPOI-1286] - Add GB used to instanceOverview widget
 * [SPOI-1287] - Rename operator names and stream names on AdsCustomerApplication
@@ -194,9 +183,7 @@
 * [SPOI-1274] - Twitter demo - small changes in backend
 * [SPOI-1275] - Mobile demo - small changes in backend
 * [SPOI-1278] - Configure and install node0
-* [SPOI-1304] - Migrate core to 2.2
-* [SPOI-1316] - Build release 0.8.5
-* [SPOI-1317] - Update sandbox to 0.8.5
+* [SPOI-1304] - Migrate core to Hadoop 2.2
 * [SPOI-1322] - Configure and install datanode
 * [SPOI-1379] - Configuration changes to support Hadoop 2.2
 * [SPOI-1380] - Fix customer demos creation for Hadoop 2.2
@@ -205,33 +192,73 @@
 * [SPOI-1396] - Enable build testing from Core
 
 ## GitHub - DataTorrent/Malhar
+* [288] - Machine Demo Circular Keys. Squashed commit of the following:
+* [286] - Ads Dimensions Demo - REST API
+* [285] - Machine Data Demo - No Data Behavior 
+* [281] - Machine Data Demo - Circular Keys Retrieval Unit Test
+* [280] - Machine Data Demo - Retrieving Circular Keys from Redis
+* [276] - Make topic and brokerList configurable properties for kafka input operator
+* [275] - fixed github issue #273
+* [274] - Couch operators 0.9
+* [267] - [logstream] add logstream usecases
+* [263] - Backend support to add a range of mobile numbers 
+* [261] - Github issues #260 and #240
+* [259] - Make benchmarks appear more friendly in application list
+* [258] - Ads Dimensions Demo. Squashed commit of the following:
+* [257] - Machine and Ads Demos Common Styling
 * [256] - SPOI-1408 added AsyncHttpClient.close() calls
+* [255] - Github 240
+* [254] - Ads Dimensions Demo - Redis Unit Test
+* [253] - Port Ads Dimensions Demo to AngularJS
+* [249] - Added support to mobile app for adding range of numbers at a time #242
+* [248] - Remove reload button from MachineData demo
 * [247] - Web Apps Upgrade to Daemon API 0.9. Machine Demo optimizations. Squashed commit of the following:
 * [246] - Documentation had a typo which was repeated. I fixed it and also reorganized imports.
+* [243] - Web Apps - Upgrade to Daemon API 0.9
+* [241] - Add ads demo to common demo UI
+* [240] - Make the keys in Machine Data circular
 * [239] - Machine Demo - Negative Values in Random Data
+* [238] - Machine Demo - Load Indicator on Slow Response
+* [237] - Machine Demo - Instant Reload on Dimensions Change
+* [236] - Machine Demo - Line Chart Options for Empty Chart
+* [235] - Machine Demo - Server Polling Statistics
 * [231] - fixed github issue #220
+* [230] - Machine Demo - Error Handling
+* [228] - Machine Demo - Redis Query Optimization
+* [227] - Machine Demo - Client Cache for Chart Data
 * [226] - fixed github issue 219
 * [225] - 0.9 migration
 * [224] - Show hourglass on the machine data demo in case of network (internet) being slow
 * [223] - Setting Expiry Date for Redis Keys in RedisOutputOperator
+* [222] - Couch Input Output Adaptors
+* [221] - Web Apps - AngularJS Directive for Google Line Chart
 * [220] - Making Redis Operator partionable
 * [219] - Setting Expiry Date for Redis Keys in RedisOutputOperator
 * [218] - made output port of alert escalation autorecord
+* [217] - Add credit card fraud detection demo
 * [216] - Squashed commit of the following:
+* [215] - Machine demo should have 180 minutes as default in UI
 * [211] - Fraud App Rename
 * [210] - Web Apps - Fraud 
 * [209] - 0.9 pull
+* [208] - Web Apps - Elapsed Time
 * [207] - 0.9 migration
+* [206] - SimpleMovingAverage is resetting the second last window state
 * [205] - Fix PythonOperator
 * [204] - Fix BashOperator
+* [203] - Marking operators non-partitionable
 * [202] - added new output port in JsonByteArrayOperator for emiting flattened map
 * [201] - #198 Machine Data Demo - Dynamic Dimensions. Squashed commit of the following:
 * [200] - added new output port in JsonByteArrayOperator for emiting flattened map
 * [199] - making the attributes configurable from stram-site
+* [198] - Machine Data Demo - Dynamic Dimensions
 * [197] - Web Apps Machine Demo Update/Multiple FIxes
 * [196] - Mobile Demo corrections
 * [195] - Web Apps Machine Demo Update/Multiple Fixes
+* [194] - Web Apps - Machine Data Demo - Last Minute Calculations
 * [193] - reduced the I/O worker thread multiplier to 1 as default in ning AHC
+* [192] - Web Apps - Express Version
+* [191] - Web Apps - Browser Dependencies
 * [190] - 0.9 migration
 * [188] - Web Apps (Demos) - Squashed commit of the following:
 * [186] - Web Apps - Styling
@@ -255,6 +282,7 @@
 * [162] - Web Apps - Machine Data Demo - CPU/RAM/HDD Gauges
 * [161] - Web Apps - Machine Data Demo - Device ID Dimension
 * [158] - Made Mobile enhancements #157
+* [157] - Mobile Demo: Minor enhancements 
 * [156] - Web Apps - Index Page
 * [155] - Web Apps - Machine Data Demo
 * [154] - Web Apps - Mobile Locator Demo
@@ -262,12 +290,15 @@
 * [150] - Twitter multiplier variance #148
 * [149] - Checkpoint consumer offset  #146
 * [148] - Twitter demo: change tweet multipler from 100 to Random(90-110)
+* [146] - Commit offset at checkpoint for kafka input operator
 * [145] - Web Apps POC
+* [144] - MachineData: bug in MachineInfoAveragingOperator
 * [143] - migrated to ning for web socket interface provider
 * [142] - 0.4 migration
 * [141] - upgraded framework version to 0.3.5
 * [140] - method rename in RedisOutputOperator #138
 * [139] - Add partitionable kafka input operator #113
+* [138] - Change selectDatabase in RedisOutputOperator to setDatabase
 * [137] - Couch DB Output adapter added #130
 * [136] - Reducing tuple blast size #135
 * [135] - MachineData: reduce the number of tuples generated by the random generator
@@ -275,6 +306,7 @@
 * [133] - [logstream] logstream app flow
 * [132] - Bug in UniqueKeyValCounter 
 * [131] - Deleted old unique value count operator #129
+* [129] - Delete the old UniqueValueKeyVal operator and rename the new UniqueValueCount 
 * [128] - Corrections to UniqueValueCount #127
 * [127] - UniqueValueCount improvements
 * [126] - Changed deprecated call to setInline to setLocality.
@@ -294,12 +326,14 @@
 * [102] - Sqaushed changes for KryoSerializableStreamCodec & Test #95
 * [101] - Pull request for #95
 * [100] - Pull request for  issue #95
+* [99] - Add more statistics calculations to machine data
 * [98] - Issue 95
 * [97] - Add machinedata demo
 * [96] - Added output port to json byte array operator to emit JSONObjects too
 * [95] - Create an Abstract SteamCodec which can be used for custom partitioning and uses kryo serialization
 * [94] - added two output ports - outputMap, outputJSonObject
 * [93] - Upgrade Kafka to 0.8
+* [88] - starmcli not taking the jar passed during launching application
 * [73] - Upgrade our kafka operator api to be compatible with mvn released Kafka version 0.8
 * [70] - Clean kafka package in malhar library #53
 * [52] - addCombination doesn't work in DimensionTimeBucketOperator
@@ -333,7 +367,6 @@
 * [16] - Adapt new stream locality API 
 * [11] - Create an alerts demo for testing alerts
 * [4] - Make alert throttle operator window id based instead of wall clock time.
-* [88] - starmcli not taking the jar passed during launching application
 
 
 ## Version 0.3.5

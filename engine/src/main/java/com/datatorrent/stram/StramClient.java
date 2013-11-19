@@ -268,7 +268,8 @@ public class StramClient
       Kryo.class,
       org.apache.bval.jsr303.ApacheValidationProvider.class,
       org.apache.bval.BeanValidationContext.class,
-      org.apache.commons.lang3.ClassUtils.class
+      org.apache.commons.lang3.ClassUtils.class,
+      net.engio.mbassy.bus.MBassador.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));

@@ -46,7 +46,7 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
@@ -813,7 +813,7 @@ public class LogicalPlan implements Serializable, DAG
         if (!n.operatorAnnotation.partitionable()) {
           // Check if INITIAL_PARTITION_COUNT is set
           int partitionCount = n.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
-          if (partitionCount > 0) {
+          if (partitionCount > 1) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set" );
           } else {
             // Check if any of the input ports have partition attributes set
@@ -824,8 +824,8 @@ public class LogicalPlan implements Serializable, DAG
               }
             }
           }
-          // Check if partition implements PartitionableOperator
-          if (PartitionableOperator.class.isAssignableFrom(n.getOperator().getClass())) {
+          // Check if partition implements Partitionable
+          if (Partitionable.class.isAssignableFrom(n.getOperator().getClass())) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but implements PartitionableOperator" );
           }
         }
@@ -889,7 +889,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   /*
-   * Validates OIO constraints for nodes with more than one input streams
+   * Validates OIO constraints for operators with more than one input streams
    * For a node to be OIO,
    *  1. all its input streams should be OIO
    *  2. all its input streams should have OIO from single source node
@@ -924,7 +924,7 @@ public class LogicalPlan implements Serializable, DAG
       if (oioRoot == null) {
         oioRoot = oioStreamRoot;
       } else if (oioRoot.intValue() != oioStreamRoot.intValue()) {
-        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as they origin from different owner OIO nodes", sm.locality, om);
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as they origin from different owner OIO operators", sm.locality, om);
         throw new ValidationException(msg);
       }
     }
@@ -932,9 +932,9 @@ public class LogicalPlan implements Serializable, DAG
     om.oioRoot = oioRoot;
   }
 
-  /*
+  /**
    * Helper method for validateThreadLocal method, runs recursively
-   * For a given node, visits all upstream nodes in DFS, validates and marks them as visited
+   * For a given operator, visits all upstream operators in DFS, validates and marks them as visited
    * returns hashcode of owner oio node if it exists, else returns -1
    */
   private Integer getOioRoot(OperatorMeta om) {

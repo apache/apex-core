@@ -9,7 +9,6 @@ import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.UnhandledException;
 
 import com.datatorrent.api.IdleTimeHandler;
@@ -17,8 +16,8 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
-
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -148,7 +147,7 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
     }
 
-    Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+    ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
     reportStats(stats, currentWindowId);
     handleRequests(currentWindowId);
   }
@@ -523,7 +522,7 @@ public class GenericNode extends Node<Operator>
         checkpointWindowCount = 0;
       }
 
-      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
@@ -546,12 +545,12 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
+  protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
   {
-    ArrayList<Stats.ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
+    ArrayList<ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
-      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = ar.getCount(true);
       portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
       ipstats.add(portStats);

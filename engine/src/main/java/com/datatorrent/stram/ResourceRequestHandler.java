@@ -23,6 +23,7 @@ import org.apache.hadoop.yarn.util.Records;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 
 /**
  * Handle mapping from physical plan locality groupings to resource allocation requests.
@@ -48,14 +49,16 @@ public class ResourceRequestHandler {
     String[] racks = null;
 
     String host = getHost(csr, memory);
+    Resource capability = Records.newRecord(Resource.class);
+    capability.setMemory(memory);
+    
     if(host != null) {
       nodes = new String[] {host};
       // in order to request a host, we also have to request the rack
       racks = new String[] {this.nodeToRack.get(host)};
+      return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority),false);
     }
     // For now, only memory is supported so we set memory requirements
-    Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(memory);
     return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority));
   }
 
@@ -82,11 +85,29 @@ public class ResourceRequestHandler {
 
   public String getHost(ContainerStartRequest csr, int requiredMemory) {
     PTContainer c = csr.container;
+    String host = null;
     for (PTOperator oper : c.getOperators()) {
-      // TODO: LOCALITY_HOST support: get host name along with the set to match against actual hosts
-      Set<PTOperator> nodeLocalSet = oper.getNodeLocalOperators();
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();
+      host = nodeLocalMapping.get(grpObj.getOperatorSet());
+      if(host == null && grpObj.getHost() != null){
+        host = grpObj.getHost();
+        // using the 1st host value as host for container
+        break;
+      }
+    }
+    if(host != null){
+      for (PTOperator oper : c.getOperators()) {
+        HostOperatorSet grpObj = oper.getNodeLocalOperators();
+        Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
+        nodeLocalMapping.put(nodeLocalSet, host);        
+      }
+      return host;
+    }
+    for (PTOperator oper : c.getOperators()) {
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();      
+      Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
       if (nodeLocalSet.size() > 1) {
-        String host = nodeLocalMapping.get(nodeLocalSet);
+        host = nodeLocalMapping.get(nodeLocalSet);
         if (host != null) {
           LOG.debug("Existing node local mapping {} {}", nodeLocalSet, host);
           return host;
@@ -112,7 +133,7 @@ public class ResourceRequestHandler {
         }
       }
     }
-    return null;
+    return host;
   }
 
 }

@@ -7,25 +7,27 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.util.Map;
 
-import junit.framework.Assert;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
-import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
+
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 public class LocalityTest {
 
@@ -86,9 +88,9 @@ public class LocalityTest {
 
     for (Map.Entry<PTContainer, String> e : requestedHosts.entrySet()) {
       for (PTOperator oper : e.getKey().getOperators()) {
-        if (oper.getNodeLocalOperators().size() > 1) {
+        if (oper.getNodeLocalOperators().getOperatorSet().size() > 1) {
           String expHost = null;
-          for (PTOperator nodeLocalOper : oper.getNodeLocalOperators()) {
+          for (PTOperator nodeLocalOper : oper.getNodeLocalOperators().getOperatorSet()) {
             Assert.assertNotNull("host null "+nodeLocalOper.getContainer(), nodeLocalOper.getContainer().host);
             if (expHost == null) {
               expHost = nodeLocalOper.getContainer().host;

@@ -18,21 +18,19 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.Operator;
-
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -68,13 +66,13 @@ public class CheckpointTest
   @Before
   public void setupEachTest() throws IOException
   {
-    StramChild.eventloop.start();
+    //StramChild.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    //StramChild.eventloop.stop();
   }
 
   /**
@@ -114,15 +112,14 @@ public class CheckpointTest
 
     container.processHeartbeatResponse(rsp);
 
-    StreamingNodeHeartbeat ohb = new StreamingNodeHeartbeat();
+    OperatorHeartbeat ohb = new OperatorHeartbeat();
     ohb.setNodeId(deployInfo.get(0).id);
-    ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
+    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
 
     ContainerStats cstats = new ContainerStats(containerId);
     cstats.addNodeStats(ohb);
 
     ContainerHeartbeat hb = new ContainerHeartbeat();
-    hb.setContainerId(containerId);
     hb.setContainerStats(cstats);
 
     dnm.processHeartbeat(hb); // mark deployed
@@ -149,7 +146,7 @@ public class CheckpointTest
 
     ohb.getOperatorStatsContainer().clear();
     context.drainStats(ohb.getOperatorStatsContainer());
-    List<com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats> stats = ohb.getOperatorStatsContainer();
+    List<com.datatorrent.api.Stats.OperatorStats> stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 3, stats.size());
     Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
     Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpointedWindowId); // lags windowId
@@ -159,7 +156,7 @@ public class CheckpointTest
     File cpFile1 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
-    ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
+    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
 
     container.processHeartbeatResponse(rsp);
     mses.tick(1); // end window 3, begin window 4

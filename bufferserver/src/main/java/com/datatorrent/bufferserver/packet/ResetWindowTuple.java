@@ -4,8 +4,9 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.bufferserver.util.Codec;
+
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.common.util.VarInt;
 
 /**
  * <p>ResetWindowTuple class.</p>
@@ -75,8 +76,8 @@ public class ResetWindowTuple extends Tuple
     size = 0;
 
     buffer[size++] = MessageType.RESET_WINDOW_VALUE;
-    size = Codec.writeRawVarint32(baseSeconds, buffer, size);
-    Codec.writeRawVarint32(windowWidth, buffer, size);
+    size = VarInt.write(baseSeconds, buffer, size);
+    VarInt.write(windowWidth, buffer, size);
 
     return buffer;
   }

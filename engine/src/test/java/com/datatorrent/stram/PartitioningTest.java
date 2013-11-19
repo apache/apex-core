@@ -3,34 +3,31 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import static java.lang.Thread.sleep;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
+import static java.lang.Thread.sleep;
 
-import org.apache.hadoop.conf.Configuration;
+import com.google.common.collect.Sets;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.PartitionableOperator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.engine.Node;
+
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.plan.physical.PhysicalPlan.PMapping;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.google.common.collect.Sets;
 
 public class PartitioningTest
 {
@@ -175,21 +172,20 @@ public class PartitioningTest
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
   }
 
-  public static class PartitionLoadWatch extends PhysicalPlan.PartitionLoadWatch
+  public static class PartitionLoadWatch implements StatsListener
   {
-    final public static Map<PTOperator, Integer> loadIndicators = new ConcurrentHashMap<PTOperator, Integer>();
-
-    public PartitionLoadWatch(PMapping mapping)
-    {
-      super(mapping);
-      super.evalIntervalMillis = 0;
-    }
+    final public static Map<Integer, Integer> loadIndicators = new ConcurrentHashMap<Integer, Integer>();
 
     @Override
-    protected int getLoadIndicator(PTOperator operatorInstance, long tps)
+    public Response processStats(BatchedOperatorStats status)
     {
-      Integer l = loadIndicators.get(operatorInstance);
-      return (l == null) ? 0 : l;
+      Integer l = loadIndicators.get(status.getOperatorId());
+      Response hbr = new Response();
+      if (l != null) {
+        hbr.repartitionRequired = true;
+        hbr.loadIndicator = l.intValue();
+      }
+      return hbr;
     }
 
   }
@@ -226,7 +222,7 @@ public class PartitioningTest
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
     dag.setAttribute(collector, OperatorContext.INITIAL_PARTITION_COUNT, 2);
-    dag.setAttribute(collector, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENER, PartitionLoadWatch.class);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -239,7 +235,7 @@ public class PartitioningTest
     List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getMeta(collector));
 
     PTOperator splitPartition = partitions.get(0);
-    PartitionLoadWatch.loadIndicators.put(splitPartition, 1);
+    PartitionLoadWatch.loadIndicators.put(splitPartition.getId(), 1);
 
     int count = 0;
     long startMillis = System.currentTimeMillis();
@@ -300,7 +296,7 @@ public class PartitioningTest
 
   }
 
-  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, PartitionableOperator
+  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, Partitionable<PartitionableInputOperator>
   {
     String partitionProperty = "partition";
 
@@ -310,21 +306,19 @@ public class PartitioningTest
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCount)
+    public Collection<Partition<PartitionableInputOperator>> definePartitions(Collection<Partition<PartitionableInputOperator>> partitions, int incrementalCapacity)
     {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(3);
-      Iterator<? extends Partition<PartitionableInputOperator>> iterator = (Iterator<? extends Partition<PartitionableInputOperator>>)partitions.iterator();
+      List<Partition<PartitionableInputOperator>> newPartitions = new ArrayList<Partition<PartitionableInputOperator>>(3);
+      Iterator<? extends Partition<PartitionableInputOperator>> iterator = partitions.iterator();
       Partition<PartitionableInputOperator> templatePartition = null;
       for (int i = 0; i < 3; i++) {
         PartitionableInputOperator op = new PartitionableInputOperator();
         if (iterator.hasNext()) {
           templatePartition = iterator.next();
-          op.partitionProperty = templatePartition.getOperator().partitionProperty;
+          op.partitionProperty = templatePartition.getPartitionedInstance().partitionProperty;
         }
         op.partitionProperty += "_" + i;
-        Partition<PartitionableInputOperator> p = templatePartition.getInstance(op);
-        newPartitions.add(p);
+        newPartitions.add(new DefaultPartition<PartitionableInputOperator>(op));
       }
       return newPartitions;
     }
@@ -342,7 +336,7 @@ public class PartitioningTest
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
-      dag.setAttribute(input, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());
+      dag.setAttribute(input, OperatorContext.STATS_LISTENER, PartitionLoadWatch.class);
 
       StramLocalCluster lc = new StramLocalCluster(dag);
       lc.setHeartbeatMonitoringEnabled(false);
@@ -367,7 +361,7 @@ public class PartitioningTest
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
 
-      PartitionLoadWatch.loadIndicators.put(partitions.get(0), 1);
+      PartitionLoadWatch.loadIndicators.put(partitions.get(0).getId(), 1);
       int count = 0;
       long startMillis = System.currentTimeMillis();
       while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS) {

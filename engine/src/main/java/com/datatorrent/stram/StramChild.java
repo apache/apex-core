@@ -15,6 +15,9 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
+import net.engio.mbassy.bus.BusConfiguration;
+import net.engio.mbassy.bus.MBassador;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -30,23 +33,29 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.*;
-import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.NodeActivationListener;
-import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.api.RequestFactory;
-import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
+import com.datatorrent.stram.api.*;
+import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.StreamActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.StreamDeactivationEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.PortContext;
-import com.datatorrent.stram.engine.Stats.ContainerStats;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
@@ -63,7 +72,6 @@ import com.datatorrent.stram.stream.InlineStream;
 import com.datatorrent.stram.stream.MuxStream;
 import com.datatorrent.stram.stream.OiOStream;
 import com.datatorrent.stram.stream.PartitionAwareSink;
-import com.datatorrent.stram.util.ScheduledThreadPoolExecutor;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.
@@ -105,11 +113,11 @@ public class StramChild
   private boolean fastPublisherSubscriber;
   private StreamingContainerContext containerContext;
   private List<StramToNodeRequest> nodeRequests;
-  // possibly should combine all the guys below into one type of listeners - containereventlistener!
-  private final ArrayList<ContainerStatsListener> statsListener;
-  private final HashSet<NodeActivationListener> nodeListener;
   private final HashMap<String, Object> singletons;
+  private final MBassador<ContainerEvent> eventBus; // event bus for publishing container events
+  HashSet<Component<ContainerContext>> components;
   private RequestFactory requestFactory;
+  private final String eventSubscribersList = "/ContainerEventListeners.properties";
 
   static {
     try {
@@ -122,8 +130,8 @@ public class StramChild
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
-    this.nodeListener = new HashSet<NodeActivationListener>();
-    this.statsListener = new ArrayList<ContainerStatsListener>();
+    this.components = new HashSet<Component<ContainerContext>>();
+    this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default());
     this.singletons = new HashMap<String, Object>();
     this.nodeRequests = new ArrayList<StramToNodeRequest>();
 
@@ -133,6 +141,7 @@ public class StramChild
     this.conf = conf;
   }
 
+  @SuppressWarnings("unchecked")
   public void setup(StreamingContainerContext ctx)
   {
     containerContext = ctx;
@@ -165,22 +174,25 @@ public class StramChild
       throw new IllegalStateException("Failed to deploy buffer server", ex);
     }
 
-    // hack: for now seed the TupleRecorder as both NodeListener and ContainerStatsListener
-    // but this code has to move out of here soon. If you feel like doing it, do it now!!!!
-    String classname = "com.datatorrent.stram.debug.TupleRecorderCollection";
     try {
-      Class<?> cl = Class.forName(classname);
-      Object newInstance = cl.newInstance();
-      singletons.put(classname, newInstance);
-      //logger.debug("putting {} in {}", System.identityHashCode(newInstance), this);
-
-      if (newInstance instanceof ContainerStatsListener) {
-        logger.info("adding container stats listener {}", classname);
-        addStatsListener((ContainerStatsListener)newInstance);
+      Properties properties = new Properties();
+      InputStream propertiesInputStream = StramChild.class.getResourceAsStream(eventSubscribersList);
+      if (propertiesInputStream != null) {
+        properties.load(propertiesInputStream);
       }
-      if (newInstance instanceof NodeActivationListener) {
-        logger.info("adding node activation listener {}", classname);
-        addNodeListener((NodeActivationListener)newInstance);
+
+      for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+        String classname = (String)entry.getValue();
+        Class<?> cls;
+        cls = Class.forName(classname);
+        Object newInstance = cls.newInstance();
+        singletons.put(classname, newInstance);
+
+        if (newInstance instanceof Component) {
+          components.add((Component<ContainerContext>)newInstance);
+        }
+
+        eventBus.subscribe(newInstance);
       }
     }
     catch (Exception ex) {
@@ -331,6 +343,7 @@ public class StramChild
       if (pair != null) {
         if (activeStreams.remove(pair.component) != null) {
           pair.component.deactivate();
+          eventBus.publish(new StreamDeactivationEvent(pair));
         }
 
         if (pair.component instanceof Stream.MultiSinkCapableStream) {
@@ -348,6 +361,7 @@ public class StramChild
               else {
                 if (activeStreams.remove(spair.component) != null) {
                   spair.component.deactivate();
+                  eventBus.publish(new StreamDeactivationEvent(spair));
                 }
 
                 spair.component.teardown();
@@ -370,6 +384,7 @@ public class StramChild
       if (pair != null) {
         if (activeStreams.remove(pair.component) != null) {
           pair.component.deactivate();
+          eventBus.publish(new StreamDeactivationEvent(pair));
         }
 
         pair.component.teardown();
@@ -503,7 +518,9 @@ public class StramChild
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-      msg.setContainerId(this.containerId);
+      ContainerStats stats = new ContainerStats(containerId);
+      msg.setContainerStats(stats);
+
       msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
@@ -514,52 +531,30 @@ public class StramChild
         }
       }
       msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-      ContainerStats stats = new ContainerStats(containerId);
 
       // gather heartbeat info for all operators
       for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
-        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+        OperatorHeartbeat hb = new OperatorHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
         OperatorContext ctx = activeNodes.get(e.getKey());
         if (ctx != null) {
           ctx.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.toString());
+          hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
         }
         else {
-          hb.setState(failedNodes.contains(e.getKey()) ? StreamingNodeHeartbeat.DNodeState.FAILED.toString() : StreamingNodeHeartbeat.DNodeState.IDLE.toString());
+          hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString());
         }
 
-        PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
-        for (String portName : portMappingDescriptor.inputPorts.keySet()) {
-          // the following code should belong to stats collections method.
-          if (bufferServerAddress != null) {
-            String streamId = e.getKey().toString().concat(Component.CONCAT_SEPARATOR).concat(portName);
-            ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
-            if (stream != null && (stream.component instanceof ByteCounterStream)) {
-              hb.setBufferServerBytes(portName, ((ByteCounterStream)stream.component).getByteCount(true));
-            }
-          }
-        }
-        for (String portName : portMappingDescriptor.outputPorts.keySet()) {
-          // the following code should belong to stats collections method.
-          if (bufferServerAddress != null) {
-            String streamId = e.getKey().toString().concat(Component.CONCAT_SEPARATOR).concat(portName);
-            ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
-            if (stream != null && (stream.component instanceof ByteCounterStream)) {
-              hb.setBufferServerBytes(portName, ((ByteCounterStream)stream.component).getByteCount(true));
-            }
-          }
-        }
         stats.addNodeStats(hb);
       }
 
-      for (ContainerStatsListener csl : statsListener) {
-        csl.collected(stats);
-      }
-
-      msg.setContainerStats(stats);
+      /**
+       * Container stats published for whoever is interested in listening.
+       * Currently interested candidates are TupleRecorderCollection and BufferServerStatsSubscriber
+       */
+      eventBus.publish(new ContainerStatsEvent(stats));
 
       // heartbeat call and follow-up processing
       //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
@@ -609,7 +604,7 @@ public class StramChild
       }
       else {
         logger.debug("request received: {}", req);
-        NodeRequest requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
+        OperatorCommand requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
         if (requestExecutor != null) {
           oc.request(requestExecutor);
         }
@@ -630,7 +625,7 @@ public class StramChild
 
     if (rsp.committedWindowId != lastCommittedWindowId) {
       lastCommittedWindowId = rsp.committedWindowId;
-      NodeRequest nr = null;
+      OperatorCommand nr = null;
       for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
         Node<?> node = nodes.get(e.getKey());
         if (node == null) {
@@ -639,7 +634,7 @@ public class StramChild
 
         if (node.getOperator() instanceof CheckpointListener) {
           if (nr == null) {
-            nr = new NodeRequest()
+            nr = new OperatorCommand()
             {
               @Override
               public void execute(Operator operator, int id, long windowId) throws IOException
@@ -1157,9 +1152,7 @@ public class StramChild
     logger.info("activating {} in container {}", node, containerId);
     processNodeRequests(false);
     node.activate(operatorContext);
-    for (NodeActivationListener l : nodeListener) {
-      l.activated(node);
-    }
+    eventBus.publish(new NodeActivationEvent(node));
   }
 
   private void teardownNode(OperatorDeployInfo ndi)
@@ -1171,9 +1164,7 @@ public class StramChild
     }
     else {
       node.deactivate();
-      for (NodeActivationListener l : nodeListener) {
-        l.deactivated(node);
-      }
+      eventBus.publish(new NodeDeactivationEvent(node));
       node.teardown();
       logger.info("deactivated {}", node.getId());
     }
@@ -1185,6 +1176,7 @@ public class StramChild
       if (!(pair.component instanceof BufferServerSubscriber)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
+        eventBus.publish(new StreamActivationEvent(pair));
       }
     }
 
@@ -1289,6 +1281,7 @@ public class StramChild
       if (pair.component instanceof BufferServerSubscriber) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
+        eventBus.publish(new StreamActivationEvent(pair));
       }
     }
 
@@ -1344,58 +1337,10 @@ public class StramChild
     return finishedWindowId;
   }
 
-  public synchronized void addNodeListener(NodeActivationListener l)
-  {
-    nodeListener.add(l);
-  }
-
-  public synchronized void removeNodeListeneser(NodeActivationListener l)
-  {
-    nodeListener.remove(l);
-  }
-
-  public void addStatsListener(ContainerStatsListener listener)
-  {
-    if (statsListener.contains(listener)) {
-      throw new IllegalStateException("Listener " + listener + " not present!");
-    }
-    else {
-      statsListener.add(listener);
-    }
-  }
-
-  public void removeStatsListener(ContainerStatsListener listener)
-  {
-    if (statsListener.contains(listener)) {
-      statsListener.remove(listener);
-    }
-    else {
-      throw new IllegalStateException("Listener " + listener + " already present!");
-    }
-  }
-
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
 
-  @SuppressWarnings("unchecked")
   public void operateListeners(StreamingContainerContext ctx, boolean setup)
   {
-    HashSet<Component<ContainerContext>> components = new HashSet<Component<ContainerContext>>();
-    try {
-      for (NodeActivationListener l : nodeListener) {
-        if (l instanceof Component) {
-          components.add((Component<ContainerContext>)l);
-        }
-      }
-      for (ContainerStatsListener l : statsListener) {
-        if (l instanceof Component) {
-          components.add((Component<ContainerContext>)l);
-        }
-      }
-    }
-    catch (Exception ex) {
-      logger.debug("Exception while adding listeners to components", ex);
-    }
-
     if (setup) {
       for (Component<ContainerContext> c : components) {
         c.setup(ctx);
@@ -1407,5 +1352,4 @@ public class StramChild
       }
     }
   }
-
 }

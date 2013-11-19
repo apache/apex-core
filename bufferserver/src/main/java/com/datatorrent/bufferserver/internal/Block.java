@@ -4,16 +4,17 @@
  */
 package com.datatorrent.bufferserver.internal;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.ResetWindowTuple;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.bufferserver.util.SerializedData;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.common.util.VarInt;
 
 /**
  * <p>Block class.</p>
@@ -72,7 +73,7 @@ public class Block
   void getNextData(SerializedData current)
   {
     if (current.offset < writingOffset) {
-      Codec.readRawVarInt32(current);
+      VarInt.read(current);
       if (current.offset + current.size > writingOffset) {
         current.size = 0;
       }
@@ -123,7 +124,7 @@ public class Block
   public void purge(long longWindowId, boolean fast)
   {
 //    logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
-//                 new Object[] {Codec.getStringWindowId(starting_window), Codec.getStringWindowId(longWindowId), Codec.getStringWindowId(ending_window)});
+//                 new Object[] {VarInt.getStringWindowId(starting_window), VarInt.getStringWindowId(longWindowId), VarInt.getStringWindowId(ending_window)});
     boolean found = false;
     long bs = starting_window & 0xffffffff00000000L;
     SerializedData lastReset = null;
@@ -185,14 +186,14 @@ public class Block
 
       // the rest of it is just a copy from beginWindow case here to wipe the data - refactor
       int i = 1;
-      while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
+      while (i < VarInt.getSize(sd.offset - i)) {
         i++;
       }
 
       if (i <= sd.offset) {
         sd.size = sd.offset;
         sd.offset = 0;
-        sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
+        sd.dataOffset = VarInt.write(sd.size - i, sd.bytes, sd.offset, i);
         sd.bytes[sd.dataOffset] = MessageType.NO_MESSAGE_VALUE;
       }
       else {

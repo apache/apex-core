@@ -4,11 +4,13 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.common.util.Slice;
 import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.common.util.VarInt;
 
 /**
  * <p>Abstract Tuple class.</p>
@@ -100,7 +102,7 @@ public abstract class Tuple
 
   public static int writeString(String identifier, byte[] array, int offset)
   {
-    offset = Codec.writeRawVarint32(identifier.getBytes().length, array, offset);
+    offset = VarInt.write(identifier.getBytes().length, array, offset);
     System.arraycopy(identifier.getBytes(), 0, array, offset, identifier.getBytes().length);
     return offset + identifier.getBytes().length;
   }

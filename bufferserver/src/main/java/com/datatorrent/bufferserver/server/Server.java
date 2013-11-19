@@ -4,18 +4,6 @@
  */
 package com.datatorrent.bufferserver.server;
 
-import com.datatorrent.bufferserver.client.AbstractClient;
-import com.datatorrent.bufferserver.internal.DataList;
-import com.datatorrent.bufferserver.internal.FastDataList;
-import com.datatorrent.bufferserver.internal.LogicalNode;
-import com.datatorrent.bufferserver.packet.*;
-import com.datatorrent.bufferserver.storage.Storage;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.bufferserver.util.NameableThreadFactory;
-import com.datatorrent.netlet.DefaultEventLoop;
-import com.datatorrent.netlet.EventLoop;
-import com.datatorrent.netlet.Listener.ServerListener;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -30,8 +18,21 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.internal.DataList;
+import com.datatorrent.bufferserver.internal.FastDataList;
+import com.datatorrent.bufferserver.internal.LogicalNode;
+import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.common.util.NameableThreadFactory;
+import com.datatorrent.common.util.VarInt;
+import com.datatorrent.netlet.AbstractLengthPrependerClient;
+import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.netlet.Listener.ServerListener;
 
 /**
  * The buffer server application<p>
@@ -130,11 +131,11 @@ public class Server implements ServerListener
 
   private final HashMap<String, DataList> publisherBuffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
-  private final ConcurrentHashMap<String, AbstractClient> publisherChannels = new ConcurrentHashMap<String, AbstractClient>();
-  private final ConcurrentHashMap<String, AbstractClient> subscriberChannels = new ConcurrentHashMap<String, AbstractClient>();
+  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
+  private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
   private final int blockSize;
 
-  public void handlePurgeRequest(PurgeRequestTuple request, final AbstractClient ctx) throws IOException
+  public void handlePurgeRequest(PurgeRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBuffers.get(request.getIdentifier());
@@ -162,7 +163,7 @@ public class Server implements ServerListener
     });
   }
 
-  private void handleResetRequest(ResetRequestTuple request, final AbstractClient ctx) throws IOException
+  private void handleResetRequest(ResetRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBuffers.remove(request.getIdentifier());
@@ -172,7 +173,7 @@ public class Server implements ServerListener
       message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
     }
     else {
-      AbstractClient channel = publisherChannels.remove(request.getIdentifier());
+      AbstractLengthPrependerClient channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
         eventloop.disconnect(channel);
       }
@@ -200,7 +201,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, AbstractClient connection)
+  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, AbstractLengthPrependerClient connection)
   {
     String identifier = request.getIdentifier();
     String type = request.getStreamType();
@@ -212,7 +213,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      AbstractClient previous = subscriberChannels.put(identifier, connection);
+      AbstractLengthPrependerClient previous = subscriberChannels.put(identifier, connection);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -262,7 +263,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public DataList handlePublisherRequest(PublishRequestTuple request, AbstractClient connection)
+  public DataList handlePublisherRequest(PublishRequestTuple request, AbstractLengthPrependerClient connection)
   {
     String identifier = request.getIdentifier();
 
@@ -272,7 +273,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      AbstractClient previous = publisherChannels.put(identifier, connection);
+      AbstractLengthPrependerClient previous = publisherChannels.put(identifier, connection);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -310,7 +311,7 @@ public class Server implements ServerListener
     throw new RuntimeException(cce);
   }
 
-  class UnidentifiedClient extends AbstractClient
+  class UnidentifiedClient extends AbstractLengthPrependerClient
   {
     SocketChannel channel;
     boolean ignore;
@@ -383,7 +384,7 @@ public class Server implements ServerListener
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
-          AbstractClient subscriber;
+          AbstractLengthPrependerClient subscriber;
           if (subscriberRequest.getVersion().equals(Tuple.FAST_VERSION)) {
             subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions());
           }
@@ -452,7 +453,7 @@ public class Server implements ServerListener
 
   }
 
-  class Subscriber extends AbstractClient
+  class Subscriber extends AbstractLengthPrependerClient
   {
     private final String type;
     private final int mask;
@@ -488,7 +489,7 @@ public class Server implements ServerListener
       LogicalNode ln = subscriberGroups.get(type);
       if (ln != null) {
         if (subscriberChannels.containsValue(this)) {
-          final Iterator<Entry<String, AbstractClient>> i = subscriberChannels.entrySet().iterator();
+          final Iterator<Entry<String, AbstractLengthPrependerClient>> i = subscriberChannels.entrySet().iterator();
           while (i.hasNext()) {
             if (i.next().getValue() == this) {
               i.remove();
@@ -523,7 +524,7 @@ public class Server implements ServerListener
    *
    * @author Chetan Narsude <chetan@datatorrent.com>
    */
-  class Publisher extends AbstractClient
+  class Publisher extends AbstractLengthPrependerClient
   {
     private final DataList datalist;
     boolean dirty;
@@ -607,7 +608,7 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
-            switchToNewBuffer(buffer, readOffset - Codec.getSizeOfRawVarint32(size));
+            switchToNewBuffer(buffer, readOffset - VarInt.getSize(size));
             size = 0;
           }
           else if (dirty) {
@@ -652,7 +653,7 @@ public class Server implements ServerListener
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
        */
       if (publisherChannels.containsValue(this)) {
-        final Iterator<Entry<String, AbstractClient>> i = publisherChannels.entrySet().iterator();
+        final Iterator<Entry<String, AbstractLengthPrependerClient>> i = publisherChannels.entrySet().iterator();
         while (i.hasNext()) {
           if (i.next().getValue() == this) {
             i.remove();

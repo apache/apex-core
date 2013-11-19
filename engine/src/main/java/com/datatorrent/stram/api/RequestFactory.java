@@ -13,9 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Operator;
-
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.NodeRequest.RequestType;
+import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
@@ -27,20 +26,20 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  */
 public class RequestFactory
 {
-  private EnumMap<RequestType, RequestDelegate> map;
+  private final EnumMap<StramToNodeRequest.RequestType, RequestDelegate> map;
 
   public RequestFactory()
   {
-    this.map = new EnumMap<RequestType, RequestDelegate>(RequestType.class);
+    this.map = new EnumMap<StramToNodeRequest.RequestType, RequestDelegate>(StramToNodeRequest.RequestType.class);
   }
 
   public interface RequestDelegate
   {
-    public NodeRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr);
+    public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr);
 
   }
 
-  public void registerDelegate(NodeRequest.RequestType requestType, RequestDelegate delegate)
+  public void registerDelegate(StramToNodeRequest.RequestType requestType, RequestDelegate delegate)
   {
     RequestDelegate old = map.put(requestType, delegate);
     if (old != null) {
@@ -55,16 +54,16 @@ public class RequestFactory
    * @param snr - The serialized request which contains context for the request.
    * @return - The actual object which will handle the request.
    */
-  public NodeRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
+  public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
   {
     RequestDelegate delegate = map.get(snr.requestType);
     if (delegate == null) {
       /*
-       * Fow now SET_PROPERTY is not delegated but as soon as its home is found, it should be sent there.
+       * For now SET_PROPERTY is not delegated but as soon as its home is found, it should be sent there.
        * No special handling for any fucking thing!
        */
-      if (snr.requestType == RequestType.SET_PROPERTY) {
-        return new NodeRequest()
+      if (snr.requestType == StramToNodeRequest.RequestType.SET_PROPERTY) {
+        return new OperatorCommand()
         {
           @Override
           public void execute(Operator operator, int id, long windowId) throws IOException

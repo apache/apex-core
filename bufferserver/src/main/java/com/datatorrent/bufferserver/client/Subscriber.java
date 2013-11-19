@@ -4,11 +4,13 @@
  */
 package com.datatorrent.bufferserver.client;
 
-import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
-
 import java.util.Collection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
+import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  *
@@ -22,7 +24,7 @@ import org.slf4j.LoggerFactory;
  *
  * @since 0.3.2
  */
-public abstract class Subscriber extends AbstractClient
+public abstract class Subscriber extends AbstractLengthPrependerClient
 {
   private final String id;
 

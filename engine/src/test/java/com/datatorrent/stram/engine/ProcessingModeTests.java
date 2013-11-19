@@ -5,10 +5,10 @@
 package com.datatorrent.stram.engine;
 
 import java.io.IOException;
-import static java.lang.Thread.sleep;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import static java.lang.Thread.sleep;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -20,6 +20,7 @@ import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.ProcessingMode;
+
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.StramChild;

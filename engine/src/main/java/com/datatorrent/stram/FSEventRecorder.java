@@ -4,11 +4,9 @@
  */
 package com.datatorrent.stram;
 
-import com.ning.http.client.websocket.WebSocket;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -18,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
-import com.datatorrent.api.util.PubSubWebSocketClient;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
@@ -37,11 +34,10 @@ public class FSEventRecorder implements EventRecorder
   private FSPartFileCollection storage;
   private String basePath = ".";
   private transient StreamCodec<Object> streamCodec;
-  private URI pubSubUrl = null;
+  private final URI pubSubUrl = null;
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private String pubSubTopic;
-  private String appid;
 
   private class EventRecorderThread extends Thread
   {
@@ -73,7 +69,6 @@ public class FSEventRecorder implements EventRecorder
   public FSEventRecorder(String appid)
   {
     LOG.debug("Event recorder created for {}", appid);
-    this.appid = appid;
   }
 
   public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)

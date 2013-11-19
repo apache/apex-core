@@ -10,7 +10,6 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 
-import org.apache.hadoop.conf.Configuration;
 import org.junit.Ignore;
 import org.junit.Test;
 

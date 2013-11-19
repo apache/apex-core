@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.api;
+package com.datatorrent.stram.engine;
 
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -17,11 +17,14 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.netlet.util.CircularBuffer;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import junit.framework.Assert;
+
 import org.junit.Test;
 
 /**

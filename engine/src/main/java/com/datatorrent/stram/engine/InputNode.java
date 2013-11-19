@@ -5,6 +5,7 @@
 package com.datatorrent.stram.engine;
 
 import com.datatorrent.api.IdleTimeHandler;
+
 import java.util.ArrayList;
 
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -23,7 +25,7 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class InputNode extends Node<InputOperator>
 {
-  private ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
+  private final ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
   protected SweepableReservoir controlTuples;
 
   public InputNode(InputOperator operator)
@@ -123,7 +125,7 @@ public class InputNode extends Node<InputOperator>
                 checkpointWindowCount = 0;
               }
 
-              Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+              ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
               reportStats(stats, currentWindowId);
               handleRequests(currentWindowId);
               break;
@@ -189,11 +191,12 @@ public class InputNode extends Node<InputOperator>
         checkpointWindowCount = 0;
       }
 
-      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
 }

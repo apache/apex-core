@@ -11,16 +11,13 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
-
 import com.datatorrent.netlet.EventLoop;
 
 /**
@@ -196,5 +193,6 @@ public class StreamContext extends DefaultAttributeMap implements Context
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   private static final long serialVersionUID = 201212042146L;
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(StreamContext.class);
 }

@@ -4,13 +4,16 @@
  */
 package com.datatorrent.bufferserver.client;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.PurgeRequestTuple;
 import com.datatorrent.bufferserver.packet.ResetRequestTuple;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.common.util.Slice;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  * <p>Abstract Controller class.</p>
@@ -18,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
  */
-public abstract class Controller extends AbstractClient
+public abstract class Controller extends AbstractLengthPrependerClient
 {
   String id;
 
