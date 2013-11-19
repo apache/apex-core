@@ -26,10 +26,9 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
-
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;
@@ -267,7 +266,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      BlockingQueue<NodeRequest> requests = context.getRequests();
+      BlockingQueue<OperatorCommand> requests = context.getRequests();
       int size;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {

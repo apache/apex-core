@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
 import net.engio.mbassy.listener.Handler;
 
 import org.slf4j.Logger;
@@ -24,18 +25,17 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
-
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
-import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
@@ -77,9 +77,9 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       logger.warn("No request factory defined, recording is disabled!");
     }
     else {
-      rf.registerDelegate(RequestType.START_RECORDING, impl);
-      rf.registerDelegate(RequestType.STOP_RECORDING, impl);
-      rf.registerDelegate(RequestType.SYNC_RECORDING, impl);
+      rf.registerDelegate(StramToNodeRequest.RequestType.START_RECORDING, impl);
+      rf.registerDelegate(StramToNodeRequest.RequestType.STOP_RECORDING, impl);
+      rf.registerDelegate(StramToNodeRequest.RequestType.SYNC_RECORDING, impl);
     }
     if (gatewayAddress != null) {
       try {
@@ -336,11 +336,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private class RequestDelegateImpl implements RequestDelegate
   {
     @Override
-    public NodeRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
+    public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
     {
       switch (snr.getRequestType()) {
         case START_RECORDING:
-          return new NodeRequest()
+          return new OperatorCommand()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
@@ -357,7 +357,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           };
 
         case STOP_RECORDING:
-          return new NodeRequest()
+          return new OperatorCommand()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
@@ -374,7 +374,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           };
 
         case SYNC_RECORDING:
-          return new NodeRequest()
+          return new OperatorCommand()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException

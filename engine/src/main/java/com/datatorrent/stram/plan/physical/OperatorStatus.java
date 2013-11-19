@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.datatorrent.api.Stats;
-import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;

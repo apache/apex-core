@@ -225,10 +225,15 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    *
    */
   public static class StramToNodeRequest implements Serializable {
+    public static enum RequestType
+    {
+      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
+    }
+
     private static final long serialVersionUID = 1L;
 
     public int operatorId;
-    public NodeRequest.RequestType requestType;
+    public StramToNodeRequest.RequestType requestType;
     public long recoveryCheckpoint;
     public String portName;
 
@@ -243,11 +248,11 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.operatorId = id;
     }
 
-    public NodeRequest.RequestType getRequestType() {
+    public StramToNodeRequest.RequestType getRequestType() {
       return requestType;
     }
 
-    public void setRequestType(NodeRequest.RequestType requestType) {
+    public void setRequestType(StramToNodeRequest.RequestType requestType) {
       this.requestType = requestType;
     }
 

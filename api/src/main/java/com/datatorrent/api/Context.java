@@ -126,7 +126,7 @@ public interface Context
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Class<? extends HeartbeatListener>> HEARTBEAT_LISTENER = new Attribute<Class<? extends HeartbeatListener>>(null, null);
+    Attribute<Class<? extends StatsListener>> STATS_LISTENER = new Attribute<Class<? extends StatsListener>>(null, null);
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */

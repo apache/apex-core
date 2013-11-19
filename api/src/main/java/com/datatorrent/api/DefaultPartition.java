@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 

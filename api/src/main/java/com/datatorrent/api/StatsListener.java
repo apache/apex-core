@@ -16,7 +16,6 @@
 package com.datatorrent.api;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.List;
 
 import com.datatorrent.api.Stats.OperatorStats;
@@ -29,13 +28,13 @@ import com.datatorrent.api.Stats.OperatorStats;
  *
  * @since 0.9.1
  */
-public interface HeartbeatListener
+public interface StatsListener
 {
   /**
    * Command to be executed at subsequent end of window on the operator instance that is deployed in the container.
    * Provides the opportunity to define operator specific actions such as method invocation or property set.
    */
-  public interface OperatorCommand extends Serializable
+  public interface OperatorCommand
   {
     /**
      * Execute the command.
@@ -49,10 +48,13 @@ public interface HeartbeatListener
   }
 
   /**
-   * Controller view of operator status with latest windowed OperatorStats and moving averages.
+   * List of recent, per window operator stats and moving averages.
    */
   public interface BatchedOperatorStats
   {
+    /**
+      Stats list will typically contain multiple entries, depending on streaming window size and heartbeat interval.
+     */
     List<OperatorStats> getLastWindowedStats();
     int getOperatorId();
     long getCurrentWindowId();
@@ -83,7 +85,7 @@ public interface HeartbeatListener
   }
 
   /**
-   * Called when new stats become available and status for an operator is updated.
+   * Called when new stats become available and status for operator is updated.
    * @param status
    */
   Response processStats(BatchedOperatorStats status);

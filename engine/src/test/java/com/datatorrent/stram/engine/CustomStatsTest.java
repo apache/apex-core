@@ -12,10 +12,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.HeartbeatListener;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.HeartbeatListener.BatchedOperatorStats;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.CustomStats;
@@ -38,7 +38,7 @@ public class CustomStatsTest
       private String message;
     }
 
-    public static class TestStatsListener implements HeartbeatListener
+    public static class TestStatsListener implements StatsListener
     {
       @Override
       public Response processStats(BatchedOperatorStats stats)
@@ -107,7 +107,7 @@ public class CustomStatsTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
-    dag.setAttribute(testOper, OperatorContext.HEARTBEAT_LISTENER, TestStatsListener.class);
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENER, TestStatsListener.class);
     //dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());

@@ -16,7 +16,7 @@ import java.util.Set;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-import com.datatorrent.api.HeartbeatListener;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
 
@@ -90,7 +90,7 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   {
   }
 
-  public static class MockOperatorStatus implements HeartbeatListener.BatchedOperatorStats
+  public static class MockOperatorStatus implements StatsListener.BatchedOperatorStats
   {
     final PTOperator oper;
 

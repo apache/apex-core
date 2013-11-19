@@ -19,7 +19,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
-import com.datatorrent.api.HeartbeatListener;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -172,7 +172,7 @@ public class PTOperator {
   long recoveryCheckpoint = 0;
   public int failureCount = 0;
   public int loadIndicator = 0;
-  public List<? extends HeartbeatListener> statsListeners;
+  public List<? extends StatsListener> statsListeners;
   public final OperatorStatus stats;
 
   final Map<Locality, HostOperatorSet> groupings = Maps.newHashMapWithExpectedSize(3);

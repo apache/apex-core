@@ -31,7 +31,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -47,18 +46,17 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.NodeRequest.RequestType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -1282,7 +1280,7 @@ public class StreamingContainerManager implements PlanContext
 
   private static class RecordingRequestFilter implements Predicate<StramToNodeRequest>
   {
-    final static Set<RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING, RequestType.SYNC_RECORDING);
+    final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(StramToNodeRequest.RequestType.START_RECORDING, StramToNodeRequest.RequestType.STOP_RECORDING, StramToNodeRequest.RequestType.SYNC_RECORDING);
 
     @Override
     public boolean apply(@Nullable StramToNodeRequest input)
@@ -1304,7 +1302,7 @@ public class StreamingContainerManager implements PlanContext
     @Override
     public boolean apply(@Nullable StramToNodeRequest input)
     {
-      return input.getRequestType() == RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
+      return input.getRequestType() == StramToNodeRequest.RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
     }
 
   }
@@ -1346,7 +1344,7 @@ public class StreamingContainerManager implements PlanContext
     if (!StringUtils.isBlank(portName)) {
       request.setPortName(portName);
     }
-    request.setRequestType(RequestType.START_RECORDING);
+    request.setRequestType(StramToNodeRequest.RequestType.START_RECORDING);
     sca.addOperatorRequest(request);
     PTOperator operator = plan.getAllOperators().get(operId);
     if (operator != null) {
@@ -1363,7 +1361,7 @@ public class StreamingContainerManager implements PlanContext
     if (!StringUtils.isBlank(portName)) {
       request.setPortName(portName);
     }
-    request.setRequestType(RequestType.STOP_RECORDING);
+    request.setRequestType(StramToNodeRequest.RequestType.STOP_RECORDING);
     sca.addOperatorRequest(request);
     PTOperator operator = plan.getAllOperators().get(operId);
     if (operator != null) {
@@ -1417,7 +1415,7 @@ public class StreamingContainerManager implements PlanContext
       request.setOperatorId(o.getId());
       request.setPropertyKey = propertyName;
       request.setPropertyValue = propertyValue;
-      request.setRequestType(RequestType.SET_PROPERTY);
+      request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
       sca.addOperatorRequest(request);
       // restart on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);

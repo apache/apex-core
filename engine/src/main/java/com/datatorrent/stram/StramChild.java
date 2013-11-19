@@ -14,12 +14,12 @@ import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+
 import net.engio.mbassy.bus.BusConfiguration;
 import net.engio.mbassy.bus.MBassador;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -33,7 +33,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
-
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -604,7 +604,7 @@ public class StramChild
       }
       else {
         logger.debug("request received: {}", req);
-        NodeRequest requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
+        OperatorCommand requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
         if (requestExecutor != null) {
           oc.request(requestExecutor);
         }
@@ -625,7 +625,7 @@ public class StramChild
 
     if (rsp.committedWindowId != lastCommittedWindowId) {
       lastCommittedWindowId = rsp.committedWindowId;
-      NodeRequest nr = null;
+      OperatorCommand nr = null;
       for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
         Node<?> node = nodes.get(e.getKey());
         if (node == null) {
@@ -634,7 +634,7 @@ public class StramChild
 
         if (node.getOperator() instanceof CheckpointListener) {
           if (nr == null) {
-            nr = new NodeRequest()
+            nr = new OperatorCommand()
             {
               @Override
               public void execute(Operator operator, int id, long windowId) throws IOException
@@ -1339,7 +1339,6 @@ public class StramChild
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
 
-  @SuppressWarnings("unchecked")
   public void operateListeners(StreamingContainerContext ctx, boolean setup)
   {
     if (setup) {

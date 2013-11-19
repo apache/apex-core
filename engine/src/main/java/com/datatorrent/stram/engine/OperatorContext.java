@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats.OperatorStats.CustomStats;
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.api.NodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 
 /**
@@ -42,7 +42,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private final int id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
-  private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(1024);
+  private final CircularBuffer<OperatorCommand> requests = new CircularBuffer<OperatorCommand>(1024);
   private CustomStats customStats;
 
   /**
@@ -52,7 +52,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private long idleTimeout = 1000L;
 
   @SuppressWarnings("ReturnOfCollectionOrArrayField")
-  public BlockingQueue<NodeRequest> getRequests()
+  public BlockingQueue<OperatorCommand> getRequests()
   {
     return requests;
   }
@@ -130,7 +130,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     }
   }
 
-  public void request(NodeRequest request)
+  public void request(OperatorCommand request)
   {
     //logger.debug("Received request {} for (node={})", request, id);
     requests.add(request);

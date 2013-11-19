@@ -29,7 +29,7 @@ import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.Partitionable.Partition;
-import com.datatorrent.api.HeartbeatListener;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.EventRecorder;
 import com.datatorrent.stram.FSEventRecorder;
@@ -69,7 +69,7 @@ public class PhysicalPlan {
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
    */
-  public static class PartitionLoadWatch implements HeartbeatListener {
+  public static class PartitionLoadWatch implements StatsListener {
     public long evalIntervalMillis = 30*1000;
     private final long tpsMin;
     private final long tpsMax;
@@ -234,7 +234,7 @@ public class PhysicalPlan {
     final private OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
     private Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
-    private List<HeartbeatListener> statsHandlers;
+    private List<StatsListener> statsHandlers;
 
     /**
      * Operators that form a parallel partition
@@ -442,17 +442,17 @@ public class PhysicalPlan {
     if (maxTps > minTps) {
       // monitor load
       if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<HeartbeatListener>(1);
+        m.statsHandlers = new ArrayList<StatsListener>(1);
       }
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    Class<? extends HeartbeatListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.HEARTBEAT_LISTENER);
+    Class<? extends StatsListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.STATS_LISTENER);
     if (statsListenerClass != null) {
       if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<HeartbeatListener>(1);
+        m.statsHandlers = new ArrayList<StatsListener>(1);
       }
-      final HeartbeatListener sh;
+      final StatsListener sh;
       if (PartitionLoadWatch.class.isAssignableFrom(statsListenerClass)) {
         try {
           sh = statsListenerClass.getConstructor(m.getClass()).newInstance(m);
@@ -1194,8 +1194,8 @@ public class PhysicalPlan {
 
   public void onStatusUpdate(PTOperator oper)
   {
-    for (HeartbeatListener l : oper.statsListeners) {
-      HeartbeatListener.Response rsp = l.processStats(oper.stats);
+    for (StatsListener l : oper.statsListeners) {
+      StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
         // TODO: repartition delay needs to come out of the listener
         oper.loadIndicator = rsp.loadIndicator;
