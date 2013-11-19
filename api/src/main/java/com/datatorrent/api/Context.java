@@ -99,29 +99,27 @@ public interface Context
     /**
      * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
-     * Default partitioning (operator does not implement {@link PartitionableOperator}):<br>
+     * Default partitioning (operator does not implement {@link Partitionable}):<br>
      * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
      * Default partitioning does not consider operator state on split or merge.
      * <p>
-     * Operator implements {@link PartitionableOperator}:<br>
+     * Operator implements {@link Partitionable}:<br>
      * Value given as initial capacity hint to {@link PartitionableOperator#definePartitions(java.util.Collection, int)
      * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
 
     /**
-     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning.
-     * When this attribute is set and partitioning is enabled by setting INITIAL_PARTITION_COUNT if the number of tuples
-     * per second falls below the specified rate the physical operators are consolidated into fewer operators till the rate
-     * goes above the specified minimum.
+     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning. When this
+     * attribute is set and partitioning is enabled if the number of tuples per second falls below the specified rate
+     * the physical operators are consolidated into fewer operators till the rate goes above the specified minimum.
      */
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
 
     /**
-     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning.
-     * When this attribute is set and partitioning is enabled by setting INITIAL_PARTITION_COUNT if the number of tuples
-     * per second goes above the specified rate new physical operators are spawned till the rate again goes below the specified
-     * maximum.
+     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning. When this
+     * attribute is set and partitioning is enabled if the number of tuples per second goes above the specified rate new
+     * physical operators are spawned till the rate again goes below the specified maximum.
      */
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
     /**

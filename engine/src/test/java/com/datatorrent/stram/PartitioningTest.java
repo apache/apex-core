@@ -318,9 +318,7 @@ public class PartitioningTest
           op.partitionProperty = templatePartition.getPartitionedInstance().partitionProperty;
         }
         op.partitionProperty += "_" + i;
-        @SuppressWarnings({"null", "ConstantConditions"})
-        Partition<PartitionableInputOperator> p = new DefaultPartition<PartitionableInputOperator>(op);
-        newPartitions.add(p);
+        newPartitions.add(new DefaultPartition<PartitionableInputOperator>(op));
       }
       return newPartitions;
     }
