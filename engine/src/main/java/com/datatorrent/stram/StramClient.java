@@ -106,51 +106,14 @@ public class StramClient
   private String archives;
 
   /**
-   * @param args Command line arguments
-   */
-  public static void main(String[] args)
-  {
-    boolean result = false;
-    try {
-      StramClient client = new StramClient();
-      LOG.info("Initializing StramClient");
-      boolean doRun = client.init(args);
-      if (!doRun) {
-        System.exit(0);
-      }
-      client.startApplication();
-      result = client.monitorApplication();
-    }
-    catch (Throwable t) {
-      LOG.error("Error running CLient", t);
-      System.exit(1);
-    }
-    if (result) {
-      LOG.info("Application finished successfully.");
-      System.exit(0);
-    }
-    LOG.error("Application failed!");
-    System.exit(2);
-  }
-
-  /**
    *
    * @param conf
    * @throws Exception
    */
-  public StramClient(Configuration conf) throws Exception
+  StramClient(Configuration conf) throws Exception
   {
     // Set up the configuration and RPC
     this.conf = conf;
-  }
-
-  /**
-   *
-   * @throws Exception
-   */
-  public StramClient() throws Exception
-  {
-    this(new Configuration());
   }
 
   public StramClient(LogicalPlan dag) throws Exception
@@ -161,23 +124,13 @@ public class StramClient
   }
 
   /**
-   * Helper function to print out usage
-   *
-   * @param opts Parsed command line options
-   */
-  private void printUsage(Options opts)
-  {
-    new HelpFormatter().printHelp("StramClient", opts);
-  }
-
-  /**
    * Parse command line options
    *
    * @param args Parsed command line options
    * @return Whether the init was successful to run the client
    * @throws Exception
    */
-  public boolean init(String[] args) throws Exception
+  boolean init(String[] args) throws Exception
   {
 
     Options opts = new Options();
@@ -192,17 +145,10 @@ public class StramClient
     opts.addOption("num_containers", true, "No. of containers to use for dag");
     opts.addOption("log_properties", true, "log4j.properties file");
     opts.addOption("debug", false, "Dump out debug information");
-    opts.addOption("help", false, "Print usage");
     CommandLine cliParser = new GnuParser().parse(opts, args);
 
     if (args.length == 0) {
-      printUsage(opts);
       throw new IllegalArgumentException("No args specified for client to initialize");
-    }
-
-    if (cliParser.hasOption("help")) {
-      printUsage(opts);
-      return false;
     }
 
     // dag properties
