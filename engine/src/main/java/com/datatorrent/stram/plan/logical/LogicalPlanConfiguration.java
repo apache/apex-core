@@ -95,7 +95,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private enum StramElement {
     APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"),STREAM("stream"), PORT("port"), INPUT_PORT("inputport"),OUTPUT_PORT("outputport"),
-    ATTR("attr"), PROP("prop"),CLASS("class");
+    ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path");
     private String value;
 
     StramElement(String value) {
@@ -190,7 +190,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     public <T extends Conf> List<T> getMatchingChildConf(String name, StramElement childType) {
       List<T> childConfs = new ArrayList<T>();
       @SuppressWarnings("unchecked")
-      Map<String, T> elChildren = (Map<String, T>)children.get(childType);
+      Map<String, T> elChildren = getChildren(childType);
       for (Map.Entry<String, T> entry : elChildren.entrySet()) {
         String key = entry.getKey();
         boolean match = false;
@@ -312,7 +312,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     @Override
     public void parseElement(StramElement element, String[] keys, int index, String propertyValue) {
-      if (element == StramElement.CLASS) {
+      if ((element == StramElement.CLASS) || (element == StramElement.PATH)) {
         StramConf stramConf = (StramConf)getParentConf();
         stramConf.appAliases.put(propertyValue, getId());
       }
@@ -323,7 +323,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     {
       return (childType == StramElement.GATEWAY) || (childType == StramElement.OPERATOR)
               || (childType == StramElement.PORT) || (childType == StramElement.INPUT_PORT) || (childType == StramElement.OUTPUT_PORT)
-              || (childType == StramElement.STREAM) || (childType == StramElement.ATTR) || (childType == StramElement.CLASS);
+              || (childType == StramElement.STREAM) || (childType == StramElement.ATTR) || (childType == StramElement.CLASS) || (childType == StramElement.PATH);
     }
 
   }
@@ -616,7 +616,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * Port configuration
    */
-  private class PortConf extends Conf {
+  private static class PortConf extends Conf {
+
+    public PortConf() {
+    }
 
     @Override
     public StramElement getElement()
@@ -780,6 +783,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appPath.endsWith(CLASS_SUFFIX)) {
       String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
       appAlias = stramConf.appAliases.get(className);
+    } else {
+      appAlias = stramConf.appAliases.get(appPath);
     }
     return appAlias;
   }
@@ -1030,7 +1035,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       pconf.setIfUnset(propertyName, propertyValue);
     }
 
-    AppConf appConf = this.stramConf.getChild(WILDCARD, StramElement.APPLICATION);
+    String appName = dag.getAttributes().get(DAG.APPLICATION_NAME);
+    if (appName == null) {
+      appName = WILDCARD;
+    }
+
+    AppConf appConf = this.stramConf.getChild(appName, StramElement.APPLICATION);
+    if (appConf == null) {
+      throw new IllegalArgumentException(String.format("Specified application '%s' not found", appName));
+    }
+
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);
 
     Map<OperatorConf, Operator> nodeMap = new HashMap<OperatorConf, Operator>(operators.size());
@@ -1091,6 +1105,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
     String appAlias = getAppAlias(name);
 
+    // Set the app alias so that it can be used by populateDAG especially in case where it is being built from properties
+    if (appAlias != null) {
+      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
+    }
+
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
 
     // set application level attributes first to make them available to populateDAG
@@ -1104,9 +1123,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
         dag.getAttributes().put(DAG.APPLICATION_NAME, name);
       }
-      //appAlias = dag.getAttributes().get(DAG.APPLICATION_NAME);
     }
-
     // inject external operator configuration
     setOperatorConfiguration(dag, appConfs, appAlias);
     setStreamConfiguration(dag, appConfs, appAlias);
