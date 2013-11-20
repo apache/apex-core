@@ -479,7 +479,7 @@ public class StreamingContainerManager implements PlanContext
 
     MutableLong ml = new MutableLong();
     for (PTOperator node: cs.container.getOperators()) {
-      // TODO: traverse inline upstream operators
+      // TODO: traverse container local upstream operators
       updateRecoveryCheckpoints(node, checkpoints, ml);
     }
 
@@ -570,6 +570,7 @@ public class StreamingContainerManager implements PlanContext
     container.host = resource.host;
     container.bufferServerAddress = bufferServerAddr;
     container.setAllocatedMemoryMB(resource.memoryMB);
+    container.getPendingUndeploy().clear();
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
     containers.put(resource.containerId, sca);
@@ -603,7 +604,7 @@ public class StreamingContainerManager implements PlanContext
     if (oper != null) {
       PTContainer container = oper.getContainer();
       if (!container.getPendingDeploy().isEmpty() && oper.getState() == PTOperator.State.PENDING_DEPLOY) {
-        // remove operator from deploy list only if not scheduled of undeploy (or redeploy) again
+        // remove operator from deploy list unless it was again scheduled for undeploy (or redeploy)
         if (!container.getPendingUndeploy().contains(oper) && container.getPendingDeploy().remove(oper)) {
           LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), oper, shb.getState()});
           oper.setState(PTOperator.State.ACTIVE);
@@ -615,8 +616,8 @@ public class StreamingContainerManager implements PlanContext
           ev.addData("containerId", container.getExternalId());
           recordEventAsync(ev);
         }
+        LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
       }
-      LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
     }
     return oper;
   }
@@ -1095,10 +1096,12 @@ public class StreamingContainerManager implements PlanContext
     // stop affected operators (exclude new/failed containers)
     // order does not matter, remove all operators in each container in one sweep
     for (Map.Entry<PTContainer, List<PTOperator>> e: undeployGroups.entrySet()) {
-      // TODO: container may already be in failed or pending deploy state,
-      // notified by RM or timed out
-      if (!startContainers.contains(e.getKey()) && !releaseContainers.contains(e.getKey())) {
-        e.getKey().getPendingUndeploy().addAll(e.getValue());
+      // container may already be in failed or pending deploy state, notified by RM or timed out
+      PTContainer c = e.getKey();
+      if (!startContainers.contains(c) && !releaseContainers.contains(c) && c.getState() != PTContainer.State.KILLED) {
+        for (PTOperator oper : e.getValue()) {
+          c.getPendingUndeploy().add(oper);
+        }
       }
     }
 
@@ -1114,7 +1117,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // (re)deploy affected operators
-    // can happen in parallel after buffer server state for recovered publishers is reset
+    // can happen in parallel after buffer server for recovered publishers is reset
     Map<PTContainer, List<PTOperator>> deployGroups = groupByContainer(deploy);
     for (Map.Entry<PTContainer, List<PTOperator>> e: deployGroups.entrySet()) {
       if (!startContainers.contains(e.getKey())) {
@@ -1124,16 +1127,18 @@ public class StreamingContainerManager implements PlanContext
             if (!out.isDownStreamInline()) {
               // following needs to match the concat logic in StramChild
               String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
-              // TODO: find way to mock this when testing rest of logic
-              if (operator.getContainer().bufferServerAddress.getPort() != 0) {
-                BufferServerController bsc = getBufferServerClient(operator);
-                // reset publisher (stale operator may still write data until disconnected)
-                // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
-                try {
-                  bsc.reset(null, sourceIdentifier, 0);
-                }
-                catch (Exception ex) {
-                  LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
+              if (operator.getContainer().getState() == PTContainer.State.ACTIVE) {
+                // TODO: unit test - find way to mock this when testing rest of logic
+                if (operator.getContainer().bufferServerAddress.getPort() != 0) {
+                  BufferServerController bsc = getBufferServerClient(operator);
+                  // reset publisher (stale operator may still write data until disconnected)
+                  // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
+                  try {
+                    bsc.reset(null, sourceIdentifier, 0);
+                  }
+                  catch (Exception ex) {
+                    LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
+                  }
                 }
               }
             }
@@ -1142,6 +1147,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       // add to operators that we expect to deploy
+      // TODO: handle concurrent deployment
       LOG.debug("scheduling deploy {} {}", e.getKey(), e.getValue());
       e.getKey().getPendingDeploy().addAll(e.getValue());
     }
