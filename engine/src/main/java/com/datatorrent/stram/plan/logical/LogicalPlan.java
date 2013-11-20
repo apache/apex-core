@@ -793,7 +793,7 @@ public class LogicalPlan implements Serializable, DAG
         for (ConstraintViolation<Operator> cv: constraintViolations) {
           copySet.add(cv);
         }
-        throw new ConstraintViolationException("Operator " + n.getName() + " violates constraints", copySet);
+        throw new ConstraintViolationException("Operator " + n.getName() + " violates constraints " + copySet, copySet);
       }
 
       OperatorMeta.PortMapping portMapping = n.getPortMapping();
