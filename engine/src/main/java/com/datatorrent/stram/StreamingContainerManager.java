@@ -90,6 +90,7 @@ import com.datatorrent.stram.webapp.StreamInfo;
  */
 public class StreamingContainerManager implements PlanContext
 {
+  private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private final int heartbeatTimeoutMillis;
   private int maxWindowsBehindForStats = 100;
@@ -467,7 +468,7 @@ public class StreamingContainerManager implements PlanContext
       return;
     }
 
-    LOG.info("Initiating recovery for container {}@{}", containerId, cs.container.host);
+    LOG.info("Initiating recovery for {}@{}", containerId, cs.container.host);
 
     cs.container.setState(PTContainer.State.KILLED);
     cs.container.bufferServerAddress = null;
@@ -483,6 +484,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // redeploy cycle for all affected operators
+    LOG.info("Affected operators {}", checkpoints);
     deploy(Collections.<PTContainer>emptySet(), checkpoints, Sets.newHashSet(cs.container), checkpoints);
   }
 
@@ -936,6 +938,8 @@ public class StreamingContainerManager implements PlanContext
     }
     // checkpoint frozen until deployment complete
     if (operator.getState() == PTOperator.State.PENDING_DEPLOY) {
+      // TODO: multiple container failure problemo
+      LOG.debug("Skipping checkpoint update {} {}", operator, operator.getState());
       return;
     }
 
@@ -1098,6 +1102,7 @@ public class StreamingContainerManager implements PlanContext
       // container may already be in failed or pending deploy state, notified by RM or timed out
       PTContainer c = e.getKey();
       if (!startContainers.contains(c) && !releaseContainers.contains(c) && c.getState() != PTContainer.State.KILLED) {
+        LOG.debug("scheduling undeploy {} {}", e.getKey(), e.getValue());
         for (PTOperator oper : e.getValue()) {
           c.getPendingUndeploy().add(oper);
         }
@@ -1544,5 +1549,4 @@ public class StreamingContainerManager implements PlanContext
     return alertsManager;
   }
 
-  private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
 }
