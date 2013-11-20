@@ -392,6 +392,7 @@ public class StramClient
     // set the application name
     appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
     appContext.setApplicationType(YARN_APPLICATION_TYPE);
+    appContext.setMaxAppAttempts(1); // no retries until Stram is HA
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
