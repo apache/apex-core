@@ -242,7 +242,7 @@ public class StramChild
     final InetSocketAddress address = NetUtils.createSocketAddrForHost(host, port);
     final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                                                                        StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
-    int exitStatus = 1;
+    int exitStatus = 1; // interpreted as unrecoverable container failure
 
     final String childId = System.getProperty("stram.cid");
     try {
