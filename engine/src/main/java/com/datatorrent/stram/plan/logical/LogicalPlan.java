@@ -279,7 +279,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public String getId()
+    public String getName()
     {
       return id;
     }
@@ -406,6 +406,7 @@ public class LogicalPlan implements Serializable, DAG
       this.name = name;
     }
 
+    @Override
     public String getName()
     {
       return name;
@@ -867,7 +868,7 @@ public class LogicalPlan implements Serializable, DAG
 
     for (StreamMeta s: streams.values()) {
       if (s.source == null || (s.sinks.isEmpty())) {
-        throw new ValidationException(String.format("stream not connected: %s", s.getId()));
+        throw new ValidationException(String.format("stream not connected: %s", s.getName()));
       }
     }
 

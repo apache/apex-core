@@ -1262,7 +1262,7 @@ public class StreamingContainerManager implements PlanContext
         List<PTOutput> outputs = operator.getOutputs();
         for (PTOutput output : outputs) {
           StreamInfo si = new StreamInfo();
-          si.logicalName = output.logicalStream.getId();
+          si.logicalName = output.logicalStream.getName();
           si.source.operatorId = String.valueOf(operator.getId());
           si.source.portName = output.portName;
           for (PTInput input : output.sinks) {

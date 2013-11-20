@@ -143,7 +143,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 
     for (StreamMeta streamMeta : allStreams) {
       HashMap<String, Object> streamDetailMap = new HashMap<String, Object>();
-      String streamName = streamMeta.getId();
+      String streamName = streamMeta.getName();
       streamMap.add(streamDetailMap);
       String sourcePortName = streamMeta.getSource().getPortName();
       OperatorMeta operatorMeta = streamMeta.getSource().getOperatorWrapper();
@@ -187,7 +187,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Collection<StreamMeta> allStreams = dag.getAllStreams();
 
     for (StreamMeta streamMeta : allStreams) {
-      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + "." + streamMeta.getId();
+      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + "." + streamMeta.getName();
       OutputPortMeta source = streamMeta.getSource();
       List<InputPortMeta> sinks = streamMeta.getSinks();
       props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SOURCE, source.getOperatorWrapper().getName() + "." + source.getPortName());
