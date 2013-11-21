@@ -69,7 +69,8 @@ public class PhysicalPlan {
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
    */
-  public static class PartitionLoadWatch implements StatsListener {
+  public static class PartitionLoadWatch implements StatsListener
+  {
     public long evalIntervalMillis = 30*1000;
     private final long tpsMin;
     private final long tpsMax;
@@ -91,38 +92,6 @@ public class PhysicalPlan {
       lastTps = tps;
       return 0;
     }
-/*
-    private void onThroughputUpdate(final PTOperator operatorInstance, long tps)
-    {
-      //LOG.debug("onThroughputUpdate {} {}", operatorInstance, tps);
-      operatorInstance.loadIndicator = getLoadIndicator(operatorInstance, tps);
-      if (operatorInstance.loadIndicator != 0) {
-        if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
-          lastEvalMillis = System.currentTimeMillis();
-          synchronized (m) {
-            // concurrent heartbeat processing
-            if (m.shouldRedoPartitions) {
-              LOG.debug("Skipping partition update for {} tps: {}", operatorInstance, tps);
-              return;
-            }
-            m.shouldRedoPartitions = true;
-            LOG.debug("Scheduling partitioning update for {} {}", m.logicalOperator, operatorInstance.loadIndicator);
-            // hand over to monitor thread
-            Runnable r = new Runnable() {
-              @Override
-              public void run() {
-                operatorInstance.getPlan().redoPartitions(m);
-                synchronized (m) {
-                  m.shouldRedoPartitions = false;
-                }
-              }
-            };
-            operatorInstance.getPlan().ctx.dispatch(r);
-          }
-        }
-      }
-    }
-*/
 
     @Override
     public Response processStats(BatchedOperatorStats status)
@@ -440,7 +409,6 @@ public class PhysicalPlan {
     int minTps = m.logicalOperator.getValue(OperatorContext.PARTITION_TPS_MIN);
     int maxTps = m.logicalOperator.getValue(OperatorContext.PARTITION_TPS_MAX);
     if (maxTps > minTps) {
-      // monitor load
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<StatsListener>(1);
       }
@@ -458,13 +426,20 @@ public class PhysicalPlan {
           sh = statsListenerClass.getConstructor(m.getClass()).newInstance(m);
         }
         catch (Exception e) {
-          throw new RuntimeException("Failed to create custom partition load handler.", e);
+          throw new RuntimeException("Failed to instantiate stats listener.", e);
         }
       }
       else {
         sh = StramUtils.newInstance(statsListenerClass);
       }
       m.statsHandlers.add(sh);
+    }
+
+    if (m.logicalOperator.getOperator() instanceof StatsListener) {
+      if (m.statsHandlers == null) {
+        m.statsHandlers = new ArrayList<StatsListener>(1);
+      }
+      m.statsHandlers.add((StatsListener)m.logicalOperator.getOperator());
     }
 
     // create operator instance per partition
