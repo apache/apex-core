@@ -397,8 +397,6 @@ public class LogicalPlanConfigurationTest {
     OperatorMeta om3 = dag.getOperatorMeta("operator3");
     Assert.assertEquals("", Integer.valueOf(16 * 1024), om3.getMeta(gt3.inport1).getValue(PortContext.QUEUE_CAPACITY));
     Assert.assertEquals("", Integer.valueOf(32 * 1024), om3.getMeta(gt3.inport2).getValue(PortContext.QUEUE_CAPACITY));
-    //Assert.assertEquals("", Integer.valueOf(16 * 1024), om1.getMeta(gt2.inport2).getValue(PortContext.QUEUE_CAPACITY));
-    //Assert.assertEquals("", Integer.valueOf(32 * 1024), om2.getMeta(gt2.outport1).getValue(PortContext.QUEUE_CAPACITY));
   }
 
 }
