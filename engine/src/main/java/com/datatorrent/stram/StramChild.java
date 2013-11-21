@@ -1154,7 +1154,7 @@ public class StramChild
     activeNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
     if (node == null) {
-      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.declaredId);
+      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.name);
     }
     else {
       node.deactivate();
@@ -1185,7 +1185,7 @@ public class StramChild
       assert (!activeNodes.containsKey(ndi.id));
 
       final Node<?> node = nodes.get(ndi.id);
-      new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
+      new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.name).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
         @Override
         public void run()
@@ -1322,11 +1322,11 @@ public class StramChild
       long baseSeconds = (currentMillis - remainder) / 1000;
       long windowId = remainder / windowWidthMillis;
       finishedWindowId = baseSeconds << 32 | windowId;
-      logger.debug("using at most once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+      logger.debug("using at most once on {} at {}", ndi.name, Codec.getStringWindowId(finishedWindowId));
     }
     else {
       finishedWindowId = ndi.checkpointWindowId;
-      logger.debug("using at least once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+      logger.debug("using at least once on {} at {}", ndi.name, Codec.getStringWindowId(finishedWindowId));
     }
     return finishedWindowId;
   }

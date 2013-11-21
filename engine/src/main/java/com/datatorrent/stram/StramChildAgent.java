@@ -349,7 +349,7 @@ public class StramChildAgent {
 
     LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
     ndi.checkpointWindowId = checkpointWindowId;
-    ndi.declaredId = oper.getOperatorMeta().getName();
+    ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
     return ndi;
