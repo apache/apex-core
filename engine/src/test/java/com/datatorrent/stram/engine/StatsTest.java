@@ -105,9 +105,6 @@ public class StatsTest
             inputPortTupleCount += inputPortStats.tupleCount;
             Assert.assertTrue("Validate input port buffer server bytes", inputPortStats.bufferServerBytes > 0);
           }
-          else {
-            Assert.assertTrue("Validate input port buffer server bytes", inputPortStats.bufferServerBytes == 0);
-          }
         }
       }
 
@@ -116,9 +113,6 @@ public class StatsTest
           if (outputPortStats.tupleCount > 0) {
             outputPortTupleCount += outputPortStats.tupleCount;
             Assert.assertTrue("Validate output port buffer server bytes", outputPortStats.bufferServerBytes > 0);
-          }
-          else {
-            Assert.assertTrue("Validate output port buffer server bytes", outputPortStats.bufferServerBytes == 0);
           }
         }
       }
