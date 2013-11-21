@@ -84,7 +84,7 @@ public class StramClientUtils
               YarnConfiguration.RM_ADDRESS,
               YarnConfiguration.DEFAULT_RM_ADDRESS,
               YarnConfiguration.DEFAULT_RM_PORT);
-      LOG.info("Connecting to ResourceManager at " + rmAddress);
+      LOG.debug("Connecting to ResourceManager at " + rmAddress);
       return ((ApplicationClientProtocol)rpc.getProxy(
           ApplicationClientProtocol.class, rmAddress, conf));
     }
@@ -100,7 +100,7 @@ public class StramClientUtils
               YarnConfiguration.RM_SCHEDULER_ADDRESS,
               YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
               YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
-      LOG.info("Connecting to ResourceManager at " + rmAddress);
+      LOG.debug("Connecting to ResourceManager at " + rmAddress);
       return ((ApplicationMasterProtocol)rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
     }
 
