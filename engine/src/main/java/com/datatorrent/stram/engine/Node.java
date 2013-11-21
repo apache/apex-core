@@ -292,7 +292,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
 
 
-    long currentCpuTime = tmb.getCurrentThreadUserTime();
+    long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
     stats.checkpointedWindowId = checkpointedWindowId;

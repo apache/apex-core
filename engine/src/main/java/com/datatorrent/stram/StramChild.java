@@ -87,6 +87,7 @@ public class StramChild
   protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  private final Map<String, ComponentContextPair<Stream, StreamContext>> disConnectedStreams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
   /**
    * OIO groups map
@@ -242,7 +243,7 @@ public class StramChild
     final InetSocketAddress address = NetUtils.createSocketAddrForHost(host, port);
     final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                                                                        StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
-    int exitStatus = 1;
+    int exitStatus = 1; // interpreted as unrecoverable container failure
 
     final String childId = System.getProperty("stram.cid");
     try {
@@ -355,7 +356,12 @@ public class StramChild
             for (int i = split.length; i-- > 0;) {
               ComponentContextPair<Stream, StreamContext> spair = streams.remove(split[i]);
               if (spair == null) {
-                logger.error("mux is missing the stream for sink {}", split[i]);
+                spair = disConnectedStreams.get(split[i]);
+                if(spair == null){
+                  logger.error("mux is missing the stream for sink {}", split[i]);
+                }else{
+                  logger.debug("already removed {}", split[i]);
+                }
               }
               else {
                 if (activeStreams.remove(spair.component) != null) {
@@ -385,6 +391,7 @@ public class StramChild
           pair.component.deactivate();
           eventBus.publish(new StreamDeactivationEvent(pair));
         }
+        disConnectedStreams.put(sinkIdentifier, pair);
 
         pair.component.teardown();
       }
@@ -472,6 +479,7 @@ public class StramChild
     operateListeners(containerContext, false);
 
     deactivate();
+    disConnectedStreams.clear();
 
     assert (streams.isEmpty());
 
@@ -1154,7 +1162,7 @@ public class StramChild
     activeNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
     if (node == null) {
-      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.declaredId);
+      logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.name);
     }
     else {
       node.deactivate();
@@ -1185,7 +1193,7 @@ public class StramChild
       assert (!activeNodes.containsKey(ndi.id));
 
       final Node<?> node = nodes.get(ndi.id);
-      new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
+      new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.name).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
         @Override
         public void run()
@@ -1322,11 +1330,11 @@ public class StramChild
       long baseSeconds = (currentMillis - remainder) / 1000;
       long windowId = remainder / windowWidthMillis;
       finishedWindowId = baseSeconds << 32 | windowId;
-      logger.debug("using at most once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+      logger.debug("using at most once on {} at {}", ndi.name, Codec.getStringWindowId(finishedWindowId));
     }
     else {
       finishedWindowId = ndi.checkpointWindowId;
-      logger.debug("using at least once on {} at {}", ndi.declaredId, Codec.getStringWindowId(finishedWindowId));
+      logger.debug("using at least once on {} at {}", ndi.name, Codec.getStringWindowId(finishedWindowId));
     }
     return finishedWindowId;
   }

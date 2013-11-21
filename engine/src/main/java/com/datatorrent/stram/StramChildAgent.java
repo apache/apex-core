@@ -192,7 +192,7 @@ public class StramChildAgent {
         final StreamMeta streamMeta = out.logicalStream;
         // buffer server or inline publisher
         OutputDeployInfo portInfo = new OutputDeployInfo();
-        portInfo.declaredStreamId = streamMeta.getId();
+        portInfo.declaredStreamId = streamMeta.getName();
         portInfo.portName = out.portName;
         portInfo.contextAttributes =streamMeta.getSource().getAttributes();
 
@@ -213,7 +213,7 @@ public class StramChildAgent {
         }
 
         ndi.outputs.add(portInfo);
-        publishers.put(oper.getId() + "/" + streamMeta.getId(), portInfo);
+        publishers.put(oper.getId() + "/" + streamMeta.getName(), portInfo);
       }
     }
 
@@ -230,7 +230,7 @@ public class StramChildAgent {
         PTOperator.PTOutput sourceOutput = in.source;
 
         InputDeployInfo inputInfo = new InputDeployInfo();
-        inputInfo.declaredStreamId = streamMeta.getId();
+        inputInfo.declaredStreamId = streamMeta.getName();
         inputInfo.portName = in.portName;
         for (Map.Entry<InputPortMeta, StreamMeta> e : oper.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
@@ -251,7 +251,7 @@ public class StramChildAgent {
 
         if (sourceOutput.source.getContainer() == oper.getContainer()) {
           // both operators in same container
-          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
+          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getName());
           if (outputInfo == null) {
             throw new AssertionError("No publisher for inline stream " + sourceOutput);
           }
@@ -349,7 +349,7 @@ public class StramChildAgent {
 
     LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
     ndi.checkpointWindowId = checkpointWindowId;
-    ndi.declaredId = oper.getOperatorMeta().getName();
+    ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
     return ndi;

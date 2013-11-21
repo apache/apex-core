@@ -202,7 +202,7 @@ public class OperatorDeployInfo implements Serializable
   /**
    * Logical operator name from DAG.
    */
-  public String declaredId;
+  public String name;
 
   /**
    * The checkpoint window identifier.
@@ -234,7 +234,7 @@ public class OperatorDeployInfo implements Serializable
   public String toString()
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
-            append("declaredId", this.declaredId).
+            append("name", this.name).
             append("type", this.type).
             append("checkpoint", this.checkpointWindowId).
             append("inputs", this.inputs).

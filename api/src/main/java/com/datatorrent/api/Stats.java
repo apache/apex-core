@@ -64,7 +64,7 @@ public interface Stats extends Serializable
       @Override
       public String toString()
       {
-        return "PortStats{" + "portname=" + id + ", processedCount=" + tupleCount + ", endWindowTimestamp=" + endWindowTimestamp + '}';
+        return "PortStats{" + "portname=" + id + ", processedCount=" + tupleCount + ", bufferServerBytes = " + bufferServerBytes + ", endWindowTimestamp=" + endWindowTimestamp + '}';
       }
     }
 

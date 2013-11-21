@@ -144,7 +144,7 @@ public class PTOperator {
      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
          append("o", this.source).
          append("port", this.portName).
-         append("stream", this.logicalStream.getId()).
+         append("stream", this.logicalStream.getName()).
          toString();
    }
 

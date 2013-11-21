@@ -83,7 +83,7 @@ public interface DAG extends DAGContext, Serializable
    */
   public interface StreamMeta extends Serializable
   {
-    public String getId();
+    public String getName();
 
     /**
      * Returns the locality for this stream.
@@ -110,6 +110,8 @@ public interface DAG extends DAGContext, Serializable
    */
   public interface OperatorMeta extends Serializable, Context
   {
+    public String getName();
+
     public Operator getOperator();
 
     public InputPortMeta getMeta(Operator.InputPort<?> port);
