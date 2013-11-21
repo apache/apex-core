@@ -295,7 +295,7 @@ public class StramChildAgent {
     for (PTOperator oper : operators) {
       // skip unless active, can only be determined in the heartbeat thread
       if (oper.getState() != PTOperator.State.ACTIVE) {
-        LOG.debug("\n\n\nundeploy for {} {}", oper, oper.getState());
+        LOG.debug("Skipping undeploy request for {} {}", oper, oper.getState());
         continue;
       }
       oper.setState(PTOperator.State.PENDING_UNDEPLOY);
