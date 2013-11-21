@@ -87,6 +87,7 @@ public class StramChild
   protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  private final Map<String, ComponentContextPair<Stream, StreamContext>> disConnectedStreams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
   /**
    * OIO groups map
@@ -355,7 +356,12 @@ public class StramChild
             for (int i = split.length; i-- > 0;) {
               ComponentContextPair<Stream, StreamContext> spair = streams.remove(split[i]);
               if (spair == null) {
-                logger.error("mux is missing the stream for sink {}", split[i]);
+                spair = disConnectedStreams.get(split[i]);
+                if(spair == null){
+                  logger.error("mux is missing the stream for sink {}", split[i]);
+                }else{
+                  logger.debug("already removed {}", split[i]);
+                }
               }
               else {
                 if (activeStreams.remove(spair.component) != null) {
@@ -385,6 +391,7 @@ public class StramChild
           pair.component.deactivate();
           eventBus.publish(new StreamDeactivationEvent(pair));
         }
+        disConnectedStreams.put(sinkIdentifier, pair);
 
         pair.component.teardown();
       }
@@ -472,6 +479,7 @@ public class StramChild
     operateListeners(containerContext, false);
 
     deactivate();
+    disConnectedStreams.clear();
 
     assert (streams.isEmpty());
 
