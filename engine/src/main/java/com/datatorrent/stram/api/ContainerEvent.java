@@ -13,10 +13,16 @@ import com.datatorrent.stram.engine.StreamContext;
 /**
  * Interface for all container events that can be published to and subscribed from an event bus
  * Currently using mbassador event bus
+ *
  * @author Ashwin Chandra Putta <ashwin@datatorrent.com>
  */
 public interface ContainerEvent
 {
+  Class<?> CONTAINER_EVENTS_LISTENERS[] = new Class<?>[] {
+    com.datatorrent.stram.debug.BufferServerStatsSubscriber.class,
+    com.datatorrent.stram.debug.TupleRecorderCollection.class
+  };
+
   /**
    * Node event used for various events associated with nodes.
    */
@@ -33,6 +39,7 @@ public interface ContainerEvent
     {
       return node;
     }
+
   }
 
   /**
@@ -44,6 +51,7 @@ public interface ContainerEvent
     {
       super(node);
     }
+
   }
 
   /**
@@ -55,6 +63,7 @@ public interface ContainerEvent
     {
       super(node);
     }
+
   }
 
   /**
@@ -73,6 +82,7 @@ public interface ContainerEvent
     {
       return containerStats;
     }
+
   }
 
   /**
@@ -91,6 +101,7 @@ public interface ContainerEvent
     {
       return stream;
     }
+
   }
 
   /**
@@ -102,6 +113,7 @@ public interface ContainerEvent
     {
       super(stream);
     }
+
   }
 
   /**
@@ -113,5 +125,7 @@ public interface ContainerEvent
     {
       super(stream);
     }
+
   }
+
 }
