@@ -118,7 +118,6 @@ public class StramChild
   private final MBassador<ContainerEvent> eventBus; // event bus for publishing container events
   HashSet<Component<ContainerContext>> components;
   private RequestFactory requestFactory;
-  private final String eventSubscribersList = "/ContainerEventListeners.properties";
 
   static {
     try {
@@ -175,19 +174,10 @@ public class StramChild
       throw new IllegalStateException("Failed to deploy buffer server", ex);
     }
 
-    try {
-      Properties properties = new Properties();
-      InputStream propertiesInputStream = StramChild.class.getResourceAsStream(eventSubscribersList);
-      if (propertiesInputStream != null) {
-        properties.load(propertiesInputStream);
-      }
-
-      for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-        String classname = (String)entry.getValue();
-        Class<?> cls;
-        cls = Class.forName(classname);
-        Object newInstance = cls.newInstance();
-        singletons.put(classname, newInstance);
+    for (Class<?> clazz : ContainerEvent.CONTAINER_EVENTS_LISTENERS) {
+      try {
+        Object newInstance = clazz.newInstance();
+        singletons.put(clazz.getName(), newInstance);
 
         if (newInstance instanceof Component) {
           components.add((Component<ContainerContext>)newInstance);
@@ -195,9 +185,9 @@ public class StramChild
 
         eventBus.subscribe(newInstance);
       }
-    }
-    catch (Exception ex) {
-      logger.error("Exception while adding listener", ex);
+      catch (Exception ex) {
+        logger.warn("Container Event Listener Instantiation", ex);
+      }
     }
 
     operateListeners(ctx, true);
@@ -357,9 +347,10 @@ public class StramChild
               ComponentContextPair<Stream, StreamContext> spair = streams.remove(split[i]);
               if (spair == null) {
                 spair = disConnectedStreams.get(split[i]);
-                if(spair == null){
+                if (spair == null) {
                   logger.error("mux is missing the stream for sink {}", split[i]);
-                }else{
+                }
+                else {
                   logger.debug("already removed {}", split[i]);
                 }
               }
@@ -670,7 +661,7 @@ public class StramChild
         deploy(rsp.deployRequest);
       }
       catch (Exception e) {
-        logger.error("deploy request failed due to {}", e);
+        logger.error("deploy request failed", e);
         // TODO: report it to stram?
         try {
           umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));

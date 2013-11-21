@@ -604,21 +604,22 @@ public class StreamingContainerManager implements PlanContext
     PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
     if (oper != null) {
       PTContainer container = oper.getContainer();
-      if (!container.getPendingDeploy().isEmpty() && oper.getState() == PTOperator.State.PENDING_DEPLOY) {
+      if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
         // remove operator from deploy list unless it was again scheduled for undeploy (or redeploy)
-        if (!container.getPendingUndeploy().contains(oper) && container.getPendingDeploy().remove(oper)) {
-          LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), oper, shb.getState()});
-          oper.setState(PTOperator.State.ACTIVE);
-          oper.stats.lastHeartbeat = null;
-
-          // record started
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
-          ev.addData("operatorId", oper.getId());
-          ev.addData("operatorName", oper.getName());
-          ev.addData("containerId", container.getExternalId());
-          recordEventAsync(ev);
+        if (!container.getPendingUndeploy().contains(oper)) {
+           container.getPendingDeploy().remove(oper);
         }
-        LOG.debug("{} pendingDeploy {}", container.getExternalId(), container.getPendingDeploy());
+
+        LOG.debug("{} marking deployed: {} remote status {} pendingDeploy {}", new Object[] {container.getExternalId(), oper, shb.getState(), container.getPendingDeploy()});
+        oper.setState(PTOperator.State.ACTIVE);
+        oper.stats.lastHeartbeat = null;
+
+        // record started
+        FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
+        ev.addData("operatorId", oper.getId());
+        ev.addData("operatorName", oper.getName());
+        ev.addData("containerId", container.getExternalId());
+        recordEventAsync(ev);
       }
     }
     return oper;

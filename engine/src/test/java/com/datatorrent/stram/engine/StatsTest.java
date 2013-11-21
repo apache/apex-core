@@ -78,6 +78,9 @@ public class StatsTest
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     dag.setAttribute(testOper, OperatorContext.STATS_LISTENER, TestOutputStatsListener.class);
+    testOper.addTuple("test tuple 1");
+    testOper.addTuple("test tuple 2");
+    testOper.setMaxTuples(0);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
     dag.setAttribute(collector, OperatorContext.STATS_LISTENER, TestInputStatsListener.class);
@@ -87,7 +90,7 @@ public class StatsTest
     lc.runAsync();
 
     long startTms = System.currentTimeMillis();
-    while (TestOperator.inputOperatorStats.isEmpty() && TestOperator.outputOperatorStats.isEmpty() && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+    while (TestOperator.inputOperatorStats.isEmpty() && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
       Thread.sleep(300);
       LOG.debug("Waiting for stats");
     }
@@ -120,7 +123,8 @@ public class StatsTest
         }
       }
 
-      Assert.assertTrue("Tuple Count emitted and processed", inputPortTupleCount == outputPortTupleCount);
+      Assert.assertTrue("Tuple Count emitted", outputPortTupleCount == 2);
+      Assert.assertTrue("Tuple Count processed", inputPortTupleCount == 2);
     }
     finally {
       lc.shutdown();
