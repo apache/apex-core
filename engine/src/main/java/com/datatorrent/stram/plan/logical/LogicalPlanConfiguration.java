@@ -864,14 +864,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       pconf.setIfUnset(propertyName, propertyValue);
     }
 
-    String appName = dag.getAttributes().get(DAG.APPLICATION_NAME);
-    if (appName == null) {
-      appName = WILDCARD;
-    }
-
-    AppConf appConf = this.stramConf.getChild(appName, StramElement.APPLICATION);
+    AppConf appConf = this.stramConf.getChild(WILDCARD, StramElement.APPLICATION);
     if (appConf == null) {
-      throw new IllegalArgumentException(String.format("Specified application '%s' not found", appName));
+      throw new IllegalArgumentException(String.format("Application configuration not found"));
     }
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);
@@ -933,11 +928,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
     String appAlias = getAppAlias(name);
-
-    // Set the app alias so that it can be used by populateDAG especially in case where it is being built from opProps
-    if (appAlias != null) {
-      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
-    }
 
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
 
