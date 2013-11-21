@@ -274,7 +274,9 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should throw ConstraintViolationException");
     } catch (ConstraintViolationException e) {
-      Assert.assertEquals("", constraintViolations, e.getConstraintViolations());
+      Assert.assertEquals("violation details", constraintViolations, e.getConstraintViolations());
+      String expRegex = ".*ValidationTestOperator\\{name=testOperator}, propertyPath='intField1', message='must be greater than or equal to 2',.*value=1}]";
+      Assert.assertThat("exception message", e.getMessage(), RegexMatcher.matches(expRegex));
     }
 
     try {

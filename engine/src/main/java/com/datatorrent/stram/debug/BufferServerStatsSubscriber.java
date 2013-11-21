@@ -20,6 +20,8 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.stream.BufferServerPublisher;
+import com.datatorrent.stram.stream.BufferServerSubscriber;
 
 /**
  * Subscribes to event bus and listens to buffer server events to collect buffer server stats
@@ -34,7 +36,10 @@ public class BufferServerStatsSubscriber
   @Handler
   public void handleStreamActivation(StreamActivationEvent sae){
     ComponentContextPair<Stream, StreamContext> stream = sae.getStream();
-    if (stream.component instanceof ByteCounterStream) {
+    if (stream.component instanceof BufferServerSubscriber) {
+      streams.put(stream.context.getSinkId(), (ByteCounterStream)stream.component);
+    }
+    else if (stream.component instanceof BufferServerPublisher) {
       streams.put(stream.context.getSourceId(), (ByteCounterStream)stream.component);
     }
   }
@@ -42,9 +47,13 @@ public class BufferServerStatsSubscriber
   @Handler
   public void handleStreamDeactivation(StreamDeactivationEvent sde){
     ComponentContextPair<Stream, StreamContext> stream = sde.getStream();
-    if (stream.component instanceof ByteCounterStream) {
-      streams.remove(stream.context.getId());
+    if (stream.component instanceof BufferServerSubscriber) {
+      streams.remove(stream.context.getSinkId());
     }
+    else if (stream.component instanceof BufferServerPublisher) {
+      streams.remove(stream.context.getSourceId());
+    }
+
   }
 
   @Handler

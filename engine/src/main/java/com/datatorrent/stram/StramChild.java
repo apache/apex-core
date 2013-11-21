@@ -242,7 +242,7 @@ public class StramChild
     final InetSocketAddress address = NetUtils.createSocketAddrForHost(host, port);
     final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                                                                        StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
-    int exitStatus = 1;
+    int exitStatus = 1; // interpreted as unrecoverable container failure
 
     final String childId = System.getProperty("stram.cid");
     try {
@@ -253,11 +253,11 @@ public class StramChild
       try {
         /* main thread enters heartbeat loop */
         stramChild.heartbeatLoop();
+        exitStatus = 0;
       }
       finally {
         stramChild.teardown();
       }
-      exitStatus = 0;
     }
     catch (Exception exception) {
       logger.warn("Exception running child : " + exception);
@@ -287,7 +287,6 @@ public class StramChild
     if (exitStatus != 0) {
       System.exit(exitStatus);
     }
-
   }
 
   public synchronized void deactivate()
@@ -500,7 +499,7 @@ public class StramChild
     }
   }
 
-  protected void heartbeatLoop() throws IOException
+  protected void heartbeatLoop() throws Exception
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
@@ -558,31 +557,26 @@ public class StramChild
 
       // heartbeat call and follow-up processing
       //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
-      try {
-        ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
-        if (rsp != null) {
-          processHeartbeatResponse(rsp);
-          // keep polling at smaller interval if work is pending
-          while (rsp != null && rsp.hasPendingRequests) {
-            logger.info("Waiting for pending request.");
-            synchronized (this.heartbeatTrigger) {
-              try {
-                this.heartbeatTrigger.wait(500);
-              }
-              catch (InterruptedException e1) {
-                logger.warn("Interrupted in heartbeat loop, exiting..");
-                break;
-              }
+      ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
+      if (rsp != null) {
+        processHeartbeatResponse(rsp);
+        // keep polling at smaller interval if work is pending
+        while (rsp != null && rsp.hasPendingRequests) {
+          logger.info("Waiting for pending request.");
+          synchronized (this.heartbeatTrigger) {
+            try {
+              this.heartbeatTrigger.wait(500);
             }
-            rsp = umbilical.pollRequest(this.containerId);
-            if (rsp != null) {
-              processHeartbeatResponse(rsp);
+            catch (InterruptedException e1) {
+              logger.warn("Interrupted in heartbeat loop, exiting..");
+              break;
             }
           }
+          rsp = umbilical.pollRequest(this.containerId);
+          if (rsp != null) {
+            processHeartbeatResponse(rsp);
+          }
         }
-      }
-      catch (Exception e) {
-        logger.warn("Exception received (may be during shutdown?)", e);
       }
     }
     logger.debug("Exiting hearbeat loop");
@@ -1352,4 +1346,5 @@ public class StramChild
       }
     }
   }
+
 }

@@ -100,12 +100,9 @@ public class StramAppMaster extends CompositeService
     String containerIdString = envs.get(Environment.CONTAINER_ID.name());
     if (containerIdString == null) {
       // container id should always be set in the env by the framework
-      throw new IllegalArgumentException(
-              "ContainerId not set in the environment");
+      throw new AssertionError("ContainerId not set in the environment");
     }
     System.setProperty("stram.cid", containerIdString);
-    //ContainerId containerId = ConverterUtils.toContainerId(containerIdString);
-    //ApplicationAttemptId appAttemptID = containerId.getApplicationAttemptId();
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
@@ -761,7 +758,6 @@ public class StramAppMaster extends CompositeService
         }
         else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
-          // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, heartbeatListener.getAddress());
           //Thread launchThread = new Thread(runnableLaunchContainer);
           //launchThreads.add(launchThread);

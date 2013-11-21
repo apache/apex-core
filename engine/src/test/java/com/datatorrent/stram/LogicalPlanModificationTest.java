@@ -125,7 +125,7 @@ public class LogicalPlanModificationTest {
     }
 
     // remove output stream required before removing operator
-    pm.removeStream(s2.getId());
+    pm.removeStream(s2.getName());
 
     pm.removeOperator(o2Meta.getName());
     pm.applyChanges(ctx);
@@ -153,7 +153,7 @@ public class LogicalPlanModificationTest {
       Assert.assertTrue("" + ve.getMessage(), ve.getMessage().matches(".*Operator o12 connected to input streams.*"));
     }
 
-    pm.removeStream(s1.getId());
+    pm.removeStream(s1.getName());
     pm.removeOperator(o12Meta.getName());
 
   }

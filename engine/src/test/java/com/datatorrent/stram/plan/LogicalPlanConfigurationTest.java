@@ -94,7 +94,7 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
 
-    assertEquals("stream name", "n1n2", n1n2.getId());
+    assertEquals("stream name", "n1n2", n1n2.getName());
     Assert.assertEquals("n1n2 not inline (default)", null, n1n2.getLocality());
 
     // operator 2 streams to operator 3 and operator 4

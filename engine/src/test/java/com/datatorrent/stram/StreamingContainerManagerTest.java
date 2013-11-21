@@ -250,7 +250,7 @@ public class StreamingContainerManagerTest {
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
 
       InputDeployInfo nidi = ndi.inputs.get(0);
-      Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
+      Assert.assertEquals("stream " + nidi, n1n2.getName(), nidi.declaredStreamId);
       Assert.assertEquals("partition for " + containerId, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), nidi.partitionKeys);
       Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
     }
@@ -267,7 +267,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<Integer> sourceNodeIds = Lists.newArrayList();
     for (InputDeployInfo nidi : mergeNodeDI.inputs) {
-      Assert.assertEquals("streamName " + nidi, n2n3.getId(), nidi.declaredStreamId);
+      Assert.assertEquals("streamName " + nidi, n2n3.getName(), nidi.declaredStreamId);
       String mergePortName = "<merge#" +  dag.getMeta(node2).getMeta(node2.outport1).getPortName() + ">";
       Assert.assertEquals("portName " + nidi, mergePortName, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
@@ -304,7 +304,7 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull(node3.getName() + " assigned", node3DI);
     Assert.assertEquals("inputs " + node3DI, 1, node3DI.inputs.size());
     InputDeployInfo node3In = node3DI.inputs.get(0);
-    Assert.assertEquals("streamName " + node3In, n2n3.getId(), node3In.declaredStreamId);
+    Assert.assertEquals("streamName " + node3In, n2n3.getName(), node3In.declaredStreamId);
     Assert.assertEquals("portName " + node3In, dag.getMeta(node3).getMeta(node3.inport1).getPortName(), node3In.portName);
     Assert.assertNotNull("sourceNodeId " + node3DI, node3In.sourceNodeId);
     Assert.assertEquals("sourcePortName " + node3DI, mergeNodeDI.outputs.get(0).portName, node3In.sourcePortName);
