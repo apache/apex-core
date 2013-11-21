@@ -77,10 +77,7 @@ public class KryoJdkSerializer<T> extends Serializer<T>
       ObjectInputStream ois = new ObjectInputStream(input);
       return (T)ois.readObject();
     }
-    catch (ClassNotFoundException ex) {
-      throw new RuntimeException(ex);
-    }
-    catch (IOException ex) {
+    catch (Exception ex) {
       throw new RuntimeException(ex);
     }
   }
