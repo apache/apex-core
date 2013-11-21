@@ -158,7 +158,7 @@ public class PTOperator {
     this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
-  private PTOperator.State state = State.NEW;
+  private volatile PTOperator.State state = State.NEW;
   private final PhysicalPlan plan;
   PTContainer container;
   LogicalPlan.OperatorMeta logicalNode;

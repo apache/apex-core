@@ -292,9 +292,14 @@ public class StramChildAgent {
    */
   private List<OperatorDeployInfo> getUndeployInfoList(Set<PTOperator> operators) {
     List<OperatorDeployInfo> undeployList = new ArrayList<OperatorDeployInfo>(operators.size());
-    for (PTOperator node : operators) {
-      node.setState(PTOperator.State.PENDING_UNDEPLOY);
-      OperatorDeployInfo ndi = createOperatorDeployInfo(node);
+    for (PTOperator oper : operators) {
+      // skip unless active, can only be determined in the heartbeat thread
+      if (oper.getState() != PTOperator.State.ACTIVE) {
+        LOG.debug("\n\n\nundeploy for {} {}", oper, oper.getState());
+        continue;
+      }
+      oper.setState(PTOperator.State.PENDING_UNDEPLOY);
+      OperatorDeployInfo ndi = createOperatorDeployInfo(oper);
       undeployList.add(ndi);
     }
     return undeployList;

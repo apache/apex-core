@@ -662,7 +662,7 @@ public class StramChild
         deploy(rsp.deployRequest);
       }
       catch (Exception e) {
-        logger.error("deploy request failed due to {}", e);
+        logger.error("deploy request failed", e);
         // TODO: report it to stram?
         try {
           umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));
