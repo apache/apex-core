@@ -787,6 +787,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           attr = getCompleteKey(keys, index + 1);
         } else {
           attr = getCompleteKey(keys, index);
+          LOG.warn("Please specify the attribute {} using the {} keyword as {}", attr, StramElement.ATTR.getValue(),
+                          getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getCompleteKey(keys, index));
         }
         if (conf.getElement() == null) {
           conf = addConf(StramElement.APPLICATION, WILDCARD, conf);
@@ -806,6 +808,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           prop = getCompleteKey(keys, index+1);
         } else {
           prop = getCompleteKey(keys, index);
+          LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
+                        getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
         }
         if (prop != null) {
           conf.setProperty(prop, propertyValue);
@@ -829,10 +833,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return element;
   }
 
-  private String getCompleteKey(String[] keys, int index) {
+  private String getCompleteKey(String[] keys, int start) {
+    return getCompleteKey(keys, start, keys.length);
+  }
+
+  private String getCompleteKey(String[] keys, int start, int end) {
     StringBuilder sb = new StringBuilder();
-    for (int i = index; i < keys.length; ++i) {
-      if (i > index) sb.append(".");
+    for (int i = start; i < end; ++i) {
+      if (i > start) sb.append(".");
       sb.append(keys[i]);
     }
     return sb.toString();
@@ -975,6 +983,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * These can be operator specific settings or settings from matching templates.
    * @param ow
    * @param appName
+   * @return
    */
   public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
@@ -1219,7 +1228,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private void setStreamConfiguration(LogicalPlan dag, List<AppConf> appConfs, String appAlias) {
     for (StreamMeta sm : dag.getAllStreams()) {
-      List<StreamConf> smConfs = getMatchingChildConf(appConfs, sm.getId(), StramElement.STREAM);
+      List<StreamConf> smConfs = getMatchingChildConf(appConfs, sm.getName(), StramElement.STREAM);
       for (StreamConf smConf : smConfs) {
         DAG.Locality locality = smConf.getLocality();
         if (locality != null) {
