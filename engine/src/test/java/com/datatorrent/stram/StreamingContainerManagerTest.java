@@ -56,7 +56,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testDeployInfoSerialization() throws Exception {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
-    ndi.declaredId = "node1";
+    ndi.name = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
     ndi.contextAttributes = new AttributeMap.DefaultAttributeMap();
@@ -92,7 +92,7 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull(clone.deployRequest);
     Assert.assertEquals(1, clone.deployRequest.size());
     OperatorDeployInfo ndiClone = clone.deployRequest.get(0);
-    Assert.assertEquals("declaredId", ndi.declaredId, ndiClone.declaredId);
+    Assert.assertEquals("name", ndi.name, ndiClone.name);
     Assert.assertEquals("type", ndi.type, ndiClone.type);
 
     String nodeToString = ndi.toString();
@@ -144,9 +144,9 @@ public class StreamingContainerManagerTest {
     OperatorDeployInfo o1DI = getNodeDeployInfo(c1, dag.getMeta(o1));
     Assert.assertNotNull(o1.getName() + " assigned to " + sca1.container.getExternalId(), o1DI);
     Assert.assertEquals("type " + o1DI, OperatorDeployInfo.OperatorType.INPUT, o1DI.type);
-    Assert.assertEquals("inputs " + o1DI.declaredId, 0, o1DI.inputs.size());
-    Assert.assertEquals("outputs " + o1DI.declaredId, 1, o1DI.outputs.size());
-    Assert.assertNotNull("contextAttributes " + o1DI.declaredId, o1DI.contextAttributes);
+    Assert.assertEquals("inputs " + o1DI.name, 0, o1DI.inputs.size());
+    Assert.assertEquals("outputs " + o1DI.name, 1, o1DI.outputs.size());
+    Assert.assertNotNull("contextAttributes " + o1DI.name, o1DI.contextAttributes);
 
     OutputDeployInfo c1o1outport = o1DI.outputs.get(0);
     Assert.assertNotNull("stream connection for container1", c1o1outport);
@@ -406,7 +406,7 @@ public class StreamingContainerManagerTest {
 
   private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
     for (OperatorDeployInfo ndi : di) {
-      if (nodeConf.getName().equals(ndi.declaredId)) {
+      if (nodeConf.getName().equals(ndi.name)) {
         return ndi;
       }
     }

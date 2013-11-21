@@ -832,7 +832,8 @@ public class StramAppMaster extends CompositeService
 
       }
 
-      if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0) {
+      if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
+        LOG.debug("Exiting as no more containers are allocated or requested");
         appDone = true;
       }
 
@@ -848,10 +849,7 @@ public class StramAppMaster extends CompositeService
       dnmgr.monitorHeartbeat();
     }
 
-    // When the application completes, it should send a finish application signal
-    // to the RM
     LOG.info("Application completed. Signalling finish to RM");
-
     FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
     if (numFailedContainers.get() == 0) {
       finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);

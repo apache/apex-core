@@ -478,9 +478,9 @@ public class StreamingContainerManager implements PlanContext
     LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
 
     MutableLong ml = new MutableLong();
-    for (PTOperator node: cs.container.getOperators()) {
+    for (PTOperator oper: cs.container.getOperators()) {
       // TODO: traverse container local upstream operators
-      updateRecoveryCheckpoints(node, checkpoints, ml);
+      updateRecoveryCheckpoints(oper, checkpoints, ml);
     }
 
     // redeploy cycle for all affected operators
@@ -609,6 +609,7 @@ public class StreamingContainerManager implements PlanContext
         if (!container.getPendingUndeploy().contains(oper) && container.getPendingDeploy().remove(oper)) {
           LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), oper, shb.getState()});
           oper.setState(PTOperator.State.ACTIVE);
+          oper.stats.lastHeartbeat = null;
 
           // record started
           FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
@@ -663,7 +664,7 @@ public class StreamingContainerManager implements PlanContext
     sca.memoryMBFree = heartbeat.memoryMBFree;
 
     long elapsedMillis = 0;
-    
+
     for (OperatorHeartbeat shb: heartbeat.getContainerStats().operators) {
 
       PTOperator oper = updateOperatorStatus(shb);
@@ -754,7 +755,7 @@ public class StreamingContainerManager implements PlanContext
               }else{
                 elapsedMillis = s.endWindowTimestamp;
               }
-              
+
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
               if (s.endWindowTimestamp > maxDequeueTimestamp) {
@@ -796,7 +797,7 @@ public class StreamingContainerManager implements PlanContext
               }else{
                 elapsedMillis = s.endWindowTimestamp;
               }
-              
+
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
               if (elapsedMillis > 0) {
@@ -946,15 +947,8 @@ public class StreamingContainerManager implements PlanContext
     if (operator.getRecoveryCheckpoint() < committedWindowId.longValue()) {
       committedWindowId.setValue(operator.getRecoveryCheckpoint());
     }
-    // checkpoint frozen until deployment complete
-    if (operator.getState() == PTOperator.State.PENDING_DEPLOY) {
-      // TODO: multiple container failure problemo
-      LOG.debug("Skipping checkpoint update {} {}", operator, operator.getState());
-      return;
-    }
 
     long maxCheckpoint = operator.getRecentCheckpoint();
-
     // find smallest of most recent subscriber checkpoints
     for (PTOperator.PTOutput out: operator.getOutputs()) {
       for (PTOperator.PTInput sink: out.sinks) {
@@ -971,27 +965,33 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    // find commit point for downstream dependency, remove previous checkpoints
-    long c1 = 0;
-    synchronized (operator.checkpointWindows) {
-      if (!operator.checkpointWindows.isEmpty()) {
-        if ((c1 = operator.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
-          long c2 = 0;
-          while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
-            operator.checkpointWindows.removeFirst();
-            //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
-            this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
-            c1 = c2;
+    // checkpoint frozen during deployment
+    if (operator.getState() != PTOperator.State.PENDING_DEPLOY) {
+      // remove previous checkpoints
+      long c1 = 0;
+      synchronized (operator.checkpointWindows) {
+        if (!operator.checkpointWindows.isEmpty()) {
+          if ((c1 = operator.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
+            long c2 = 0;
+            while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
+              operator.checkpointWindows.removeFirst();
+              //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
+              this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
+              c1 = c2;
+            }
+          }
+          else {
+            c1 = 0;
           }
         }
-        else {
-          c1 = 0;
-        }
       }
+      //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpointWindows});
+      operator.setRecoveryCheckpoint(c1);
+    } else {
+      LOG.debug("Skipping checkpoint update {} {}", operator, operator.getState());
     }
+
     visited.add(operator);
-    //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpointWindows});
-    operator.setRecoveryCheckpoint(c1);
   }
 
   /**
