@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.CustomStats;
@@ -30,12 +29,13 @@ public class CustomStatsTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(CustomStatsTest.class);
 
-  public static class TestOperator extends TestGeneratorInputOperator implements Partitionable<TestOperator>
+  public static class TestOperator extends TestGeneratorInputOperator implements Partitionable<TestOperator>, StatsListener
   {
     static class TestOperatorStats implements CustomStats
     {
       private static final long serialVersionUID = -8096838101190642798L;
       private String message;
+      private boolean attributeListenerCalled;
     }
 
     public static class TestStatsListener implements StatsListener
@@ -44,11 +44,10 @@ public class CustomStatsTest
       public Response processStats(BatchedOperatorStats stats)
       {
         for (OperatorStats os : stats.getLastWindowedStats()) {
-          Assert.assertNotNull("custom stats in listener", os.customStats);
+          Assert.assertNotNull("custom stats", os.customStats);
+          ((TestOperatorStats)os.customStats).attributeListenerCalled = true;
         }
-        Response rsp = new Response();
-        rsp.repartitionRequired = true; // trigger definePartitions
-        return rsp;
+        return null;
       }
     }
 
@@ -91,6 +90,18 @@ public class CustomStatsTest
       context.setCustomStats(stats);
       //LOG.debug("set custom stats");
     }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      for (OperatorStats os : stats.getLastWindowedStats()) {
+        Assert.assertNotNull("custom stats in listener", os.customStats);
+      }
+      Response rsp = new Response();
+      rsp.repartitionRequired = true; // trigger definePartitions
+      return rsp;
+    }
+
   }
 
   /**
@@ -126,6 +137,7 @@ public class CustomStatsTest
 
     Assert.assertNotNull("custom stats received", TestOperator.lastCustomStats);
     Assert.assertEquals("custom stats message", "interesting", ((TestOperatorStats)TestOperator.lastCustomStats).message);
+    Assert.assertTrue("attribute defined stats listener called", ((TestOperatorStats)TestOperator.lastCustomStats).attributeListenerCalled);
 
   }
 

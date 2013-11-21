@@ -24,7 +24,9 @@ import com.datatorrent.api.Stats.OperatorStats;
 /**
  * Listener for operator status updates.
  * <p>
- * Can be directly implemented by operator or by separate class defined as operator context attribute.
+ * Can be directly implemented by operator class or defined via operator context attribute. Implementation in the
+ * operator allows the operator developer to define a handler that along with the stats can access the operator
+ * properties and control partitioning.
  *
  * @since 0.9.1
  */
@@ -88,6 +90,6 @@ public interface StatsListener
    * Called when new stats become available and status for operator is updated.
    * @param status
    */
-  Response processStats(BatchedOperatorStats status);
+  Response processStats(BatchedOperatorStats stats);
 
 }
