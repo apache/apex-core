@@ -609,6 +609,7 @@ public class StreamingContainerManager implements PlanContext
         if (!container.getPendingUndeploy().contains(oper) && container.getPendingDeploy().remove(oper)) {
           LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.getExternalId(), oper, shb.getState()});
           oper.setState(PTOperator.State.ACTIVE);
+          oper.stats.lastHeartbeat = null;
 
           // record started
           FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
@@ -663,7 +664,7 @@ public class StreamingContainerManager implements PlanContext
     sca.memoryMBFree = heartbeat.memoryMBFree;
 
     long elapsedMillis = 0;
-    
+
     for (OperatorHeartbeat shb: heartbeat.getContainerStats().operators) {
 
       PTOperator oper = updateOperatorStatus(shb);
@@ -754,7 +755,7 @@ public class StreamingContainerManager implements PlanContext
               }else{
                 elapsedMillis = s.endWindowTimestamp;
               }
-              
+
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
               if (s.endWindowTimestamp > maxDequeueTimestamp) {
@@ -796,7 +797,7 @@ public class StreamingContainerManager implements PlanContext
               }else{
                 elapsedMillis = s.endWindowTimestamp;
               }
-              
+
               lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
 
               if (elapsedMillis > 0) {
