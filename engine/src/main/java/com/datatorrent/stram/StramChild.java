@@ -542,7 +542,9 @@ public class StramChild
           hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
         }
         else {
-          hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString());
+          String state = failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString();
+          logger.debug("Sending {} state for operator {}", state, e.getKey());
+          hb.setState(state);
         }
 
         stats.addNodeStats(hb);
