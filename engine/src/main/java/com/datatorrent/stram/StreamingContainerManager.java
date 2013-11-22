@@ -676,8 +676,7 @@ public class StreamingContainerManager implements PlanContext
 
       oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
-      //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
-      //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });
+      //LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), shb.getState(), oper.getContainer().getExternalId());
 
       OperatorHeartbeat previousHeartbeat = oper.stats.lastHeartbeat;
       oper.stats.lastHeartbeat = shb;
