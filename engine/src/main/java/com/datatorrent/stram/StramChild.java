@@ -1198,10 +1198,10 @@ public class StramChild
       port.setup(context);
     }
     outputPorts.putAll(newOutputPorts);
-    activeNodes.put(ndi.id, operatorContext);
     logger.info("activating {} in container {}", node, containerId);
     processNodeRequests(false);
     node.activate(operatorContext);
+    activeNodes.put(ndi.id, operatorContext);
     eventBus.publish(new NodeActivationEvent(node));
   }
 

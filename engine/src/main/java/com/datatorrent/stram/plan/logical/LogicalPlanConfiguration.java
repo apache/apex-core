@@ -93,6 +93,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final String WILDCARD = "*";
   private static final String WILDCARD_PATTERN = ".*";
 
+  static {
+    /* Initializing attributes */
+    Long serial[] = new Long[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID };
+    LOG.debug("Initializing attributes " + serial);
+  }
+
   private enum StramElement {
     APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"),STREAM("stream"), PORT("port"), INPUT_PORT("inputport"),OUTPUT_PORT("outputport"),
     ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path");
@@ -1146,7 +1152,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
 
-    LOG.debug("Initializing DAGContext!", DAGContext.serialVersionUID); /* make sure that the DAGContext.class is initialized */
     setAttributes(DAGContext.class, appConfs, new AttributeAdapter() {
 
       @Override
