@@ -414,6 +414,11 @@ public class StramChild
       if (sinks.length == 1) {
         muxpair.context.setSinkId(null);
         streams.remove(muxpair.context.getSourceId());
+        if (activeStreams.remove(muxpair.component) != null) {
+          muxpair.component.deactivate();
+          eventBus.publish(new StreamDeactivationEvent(muxpair));
+        }
+        muxpair.component.teardown();
       }
       else {
         StringBuilder builder = new StringBuilder(muxpair.context.getSinkId().length() - MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR.length() - sinkIdentifier.length());
