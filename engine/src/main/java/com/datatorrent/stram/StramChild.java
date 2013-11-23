@@ -645,11 +645,14 @@ public class StramChild
   {
     for (Iterator<StramToNodeRequest> it = nodeRequests.iterator(); it.hasNext();) {
       StramToNodeRequest req = it.next();
+      if(req.isDeleted()){
+        continue;
+      }
       OperatorContext oc = activeNodes.get(req.getOperatorId());
       if (oc == null) {
         if (flagInvalid) {
           logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
-          it.remove();
+          req.setDeleted(true);
         }
       }
       else {
@@ -661,8 +664,7 @@ public class StramChild
         else {
           logger.warn("No executor identified for the request {}", req);
         }
-
-        it.remove();
+        req.setDeleted(true);
       }
     }
   }
@@ -1199,6 +1201,7 @@ public class StramChild
     }
     outputPorts.putAll(newOutputPorts);
     logger.info("activating {} in container {}", node, containerId);
+    /* This introduces need synchronization on processNodeRequest which was solved by adding deleted field in StramToNodeRequest  */
     processNodeRequests(false);
     node.activate(operatorContext);
     activeNodes.put(ndi.id, operatorContext);

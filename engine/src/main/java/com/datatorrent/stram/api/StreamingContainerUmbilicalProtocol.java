@@ -236,9 +236,21 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public StramToNodeRequest.RequestType requestType;
     public long recoveryCheckpoint;
     public String portName;
+    public boolean deleted;
 
     public String setPropertyKey;
     public String setPropertyValue;
+
+    
+    public boolean isDeleted()
+    {
+      return deleted;
+    }
+
+    public void setDeleted(boolean deleted)
+    {
+      this.deleted = deleted;
+    }
 
     public int getOperatorId() {
       return operatorId;
