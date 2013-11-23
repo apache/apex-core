@@ -928,6 +928,7 @@ public class PhysicalPlan {
     cowList.remove(oper);
     oper.container.operators = cowList;
     this.deployOpers.remove(oper);
+    this.undeployOpers.add(oper);
     this.allOperators.remove(oper.id);
   }
 
