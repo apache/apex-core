@@ -243,9 +243,13 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
+    boolean pendingDeployChanges = false;
+
     // monitor currently deployed containers
     for (StramChildAgent sca : containers.values()) {
       PTContainer c = sca.container;
+      pendingDeployChanges |= !(c.getPendingDeploy().isEmpty() && c.getPendingUndeploy().isEmpty());
+
       if (!pendingAllocation.contains(c) && c.getExternalId() != null) {
         if (sca.lastHeartbeatMillis == 0) {
           // container allocated but process was either not launched or is not able to phone home
@@ -265,8 +269,10 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    // events that may modify the plan
-    processEvents();
+    if (!pendingDeployChanges) {
+      // events that may modify the plan
+      processEvents();
+    }
 
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();

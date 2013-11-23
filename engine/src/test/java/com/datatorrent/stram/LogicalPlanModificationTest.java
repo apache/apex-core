@@ -184,7 +184,7 @@ public class LogicalPlanModificationTest {
     List<PTOperator> o2PhysicalOpers = plan.getOperators(o2Meta);
     Assert.assertEquals("instances " + o2Meta, 1, o2PhysicalOpers.size());
     PlanModifier pm = new PlanModifier(plan);
-    pm.removeOperator(o2Meta.getName());
+    pm.removeOperator(o2Meta.getName()); // remove operator w/o removing the stream
     pm.applyChanges(ctx);
 
     Assert.assertEquals("sinks s1 " + s1.getSinks(), 1, s1.getSinks().size());
