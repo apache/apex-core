@@ -438,6 +438,11 @@ public class DTCli
                                                     new Arg[] {new Arg("on/off")},
                                                     null,
                                                     "Set the pager program for output"));
+    globalCommands.put("activate-license", new OptionsCommandSpec(new ActivateLicenseCommand(),
+        null,
+        new Arg[] {new FileArg("license-file")},
+        "Launch the license agent", getCommandLineOptions()));
+
     //
     // Connected command specification starts here
     //
@@ -1428,6 +1433,18 @@ public class DTCli
           //currentDir = "/";
         }
       }
+    }
+
+  }
+
+  private class ActivateLicenseCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      StramClient client = new StramClient(new LogicalPlan());
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
     }
 
   }

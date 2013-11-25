@@ -215,7 +215,7 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
-  public static final String DT_HOME = System.getenv("DT_HOME");
+  public static final String DT_HOME = System.getenv("_DT_HOME"); // get rid of this hack
 
   public static File getSettingsRootDir()
   {
