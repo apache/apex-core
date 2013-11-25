@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
@@ -23,15 +23,15 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.service.CompositeService;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
-import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
-import org.apache.hadoop.yarn.client.api.async.impl.NMClientAsyncImpl;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
@@ -39,12 +39,14 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.license.LicensingAgentProtocolImpl;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
+import com.google.common.collect.Sets;
 
 /**
  * Application master for licensing
@@ -68,19 +70,11 @@ public class LicensingAppMaster extends CompositeService
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
   private AMRMClient<ContainerRequest> amRmClient;
-  private NMClientAsync nmClient;
   private LogicalPlan dag;
-  // Application Attempt Id ( combination of attemptId and fail count )
   private ApplicationAttemptId appAttemptID;
-  // Hostname of the container
-  private final String appMasterHostname = "";
-  // Tracking url to which app master publishes info for clients to monitor
   private final String appMasterTrackingUrl = "";
-  // Simple flag to denote whether all works is done
-  private final boolean appDone = false;
-  // Launch threads
-  // child container callback
-  private StramLocalCluster localCluster = null;
+  private FinalApplicationStatus finalStatus = null;
+  private final String diagnosticsMessage = "";
   private LicensingAgentProtocolImpl rpcListener;
   private StramDelegationTokenManager delegationTokenManager = null;
 
@@ -100,9 +94,7 @@ public class LicensingAppMaster extends CompositeService
     }
     LOG.info("appmaster env:" + sw.toString());
 
-    boolean result = false;
     LicensingAppMaster appMaster = null;
-
     try {
       appMaster = new LicensingAppMaster();
       LOG.info("Initializing ApplicationMaster");
@@ -113,7 +105,8 @@ public class LicensingAppMaster extends CompositeService
       Configuration conf = new YarnConfiguration();
       appMaster.init(conf);
       appMaster.start();
-      result = appMaster.run();
+      appMaster.run();
+      LOG.debug("run complete");
     }
     catch (Throwable t) {
       LOG.error("Error running ApplicationMaster", t);
@@ -125,7 +118,7 @@ public class LicensingAppMaster extends CompositeService
       }
     }
 
-    if (result) {
+    if (appMaster.finalStatus == FinalApplicationStatus.SUCCEEDED) {
       LOG.info("Application Master completed. exiting");
       System.exit(0);
     }
@@ -213,8 +206,6 @@ public class LicensingAppMaster extends CompositeService
       dumpOutDebugInfo();
     }
 
-    this.localCluster = new StramLocalCluster(dag);
-
     if (UserGroupInformation.isSecurityEnabled()) {
       //TODO :- Need to perform token renewal
       delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
@@ -222,8 +213,6 @@ public class LicensingAppMaster extends CompositeService
                                                                DELEGATION_TOKEN_RENEW_INTERVAL,
                                                                DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     }
-    this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
-    addService(nmClient);
     this.amRmClient = AMRMClient.createAMRMClient();
     addService(amRmClient);
 
@@ -252,28 +241,26 @@ public class LicensingAppMaster extends CompositeService
     if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
-    nmClient.stop();
     amRmClient.stop();
   }
 
-  private boolean run() throws YarnException
+  private void run() throws YarnException, IOException
   {
     try {
       StramChild.eventloop.start();
-      execute();
-    }
-    catch (Exception re) {
-      status = false;
-      LOG.error("Caught Exception in execute()", re);
-      if (re.getCause() instanceof YarnException) {
-        throw (YarnException)re.getCause();
+      mainLoop();
+      LOG.info("Application completed with {}. Signalling finish to RM", this.finalStatus);
+      FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
+      finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
+      if (this.finalStatus == FinalApplicationStatus.FAILED) {
+        finishReq.setFinalApplicationStatus(finalStatus);
+        finishReq.setDiagnostics(this.diagnosticsMessage);
+        LOG.info("Diagnostics: " + finishReq.getDiagnostics());
       }
-    }
-    finally {
+      amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
+    } finally {
       StramChild.eventloop.stop();
     }
-
-    return status;
   }
 
   /**
@@ -281,10 +268,8 @@ public class LicensingAppMaster extends CompositeService
    *
    * @throws YarnRemoteException
    */
-  private boolean status = true;
-
   @SuppressWarnings("SleepWhileInLoop")
-  public void execute() throws YarnException, IOException
+  public void mainLoop() throws YarnException, IOException
   {
     LOG.info("Starting ApplicationMaster");
 
@@ -297,35 +282,47 @@ public class LicensingAppMaster extends CompositeService
       LOG.debug("token: " + token);
     }
 
+    LOG.debug("Registering with RM {}", this.appAttemptID);
     // Register self with ResourceManager
-    RegisterApplicationMasterResponse response = amRmClient.registerApplicationMaster(appMasterHostname, 0, appMasterTrackingUrl);
+    amRmClient.registerApplicationMaster("", 0, appMasterTrackingUrl);
+    LOG.debug("Registered with RM");
 
-    // Dump out information about cluster capability as seen by the resource manager
-    int maxMem = response.getMaximumResourceCapability().getMemory();
-    LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
-
-    int containerMemory = dag.getContainerMemoryMB();
-    if (containerMemory > maxMem) {
-      LOG.info("Container memory specified above max threshold of cluster. Using max value."
-              + ", specified=" + containerMemory
-              + ", max=" + maxMem);
-      containerMemory = maxMem;
+    // ensure that we are the only instance for the given license key
+    try {
+      YarnClient clientRMService = YarnClient.createYarnClient();
+      clientRMService.init(getConfig());
+      clientRMService.start();
+      List<ApplicationReport> apps = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE),
+          Sets.newEnumSet(Sets.newHashSet(YarnApplicationState.RUNNING), YarnApplicationState.class));
+      LOG.debug("There are {} license agents registered", apps.size());
+      for (ApplicationReport ar : apps) {
+        ApplicationId otherAppId = ar.getApplicationId();
+        if (otherAppId.compareTo(this.appAttemptID.getApplicationId()) != 0) {
+          LOG.debug("Found another license agent {} {}", ar.getName(), otherAppId);
+          if (otherAppId.getId() < this.appAttemptID.getApplicationId().getId()) {
+            // another agent was started for the same id
+            if (ar.getName().equals(this.dag.getValue(DAG.APPLICATION_NAME))) {
+              String msg = String.format("Licensing agent %s already running as %s", ar.getName(), ar.getApplicationId());
+              LOG.error(msg);
+              this.finalStatus = FinalApplicationStatus.FAILED;
+              clientRMService.stop();
+              return;
+            }
+          }
+        }
+      }
+      clientRMService.stop();
+    }
+    catch (Exception e) {
+      throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
     }
 
-    // Setup ask for containers from RM
-    // Send request for containers to RM
-    // Until we get our fully allocated quota, we keep on polling RM for containers
-    // Keep looping until all containers finished processing
-    // ( regardless of success/failure).
-
-    this.localCluster.runAsync();
     int loopCounter = -1;
-
-    while (!appDone) {
+    while (true) {
       loopCounter++;
       try {
         sleep(1000);
-        if (loopCounter == 30) {
+        if (loopCounter == 60) {
           break;
         }
       }
@@ -334,68 +331,6 @@ public class LicensingAppMaster extends CompositeService
       }
     }
 
-    LOG.info("Application completed. Signalling finish to RM");
-    FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
-    if (true) {
-      finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
-    }
-    else {
-      finishReq.setFinalApplicationStatus(FinalApplicationStatus.FAILED);
-      String diagnostics = "Diagnostics.";
-      finishReq.setDiagnostics(diagnostics);
-      // return true to indicates expected termination of the master process
-      // application status and diagnostics message are set above
-      status = true;
-    }
-    LOG.info("diagnostics: " + finishReq.getDiagnostics());
-    amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
-
-  }
-
-  private class NMCallbackHandler
-    implements NMClientAsync.CallbackHandler {
-
-    NMCallbackHandler() {
-    }
-
-    @Override
-    public void onContainerStopped(ContainerId containerId) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Succeeded to stop Container " + containerId);
-      }
-    }
-
-    @Override
-    public void onContainerStatusReceived(ContainerId containerId,
-        ContainerStatus containerStatus) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Container Status: id=" + containerId + ", status=" +
-            containerStatus);
-      }
-    }
-
-    @Override
-    public void onContainerStarted(ContainerId containerId, Map<String, ByteBuffer> allServiceResponse) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Succeeded to start Container " + containerId);
-      }
-    }
-
-    @Override
-    public void onStartContainerError(ContainerId containerId, Throwable t) {
-      LOG.error("Start container failed for: containerId={}" + containerId, t);
-    }
-
-    @Override
-    public void onGetContainerStatusError(
-        ContainerId containerId, Throwable t) {
-      LOG.error("Failed to query the status of Container " + containerId);
-    }
-
-    @Override
-    public void onStopContainerError(ContainerId containerId, Throwable t) {
-      LOG.warn("Failed to stop container {}", containerId);
-    }
   }
 
 }
