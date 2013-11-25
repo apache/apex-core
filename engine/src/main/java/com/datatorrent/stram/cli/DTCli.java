@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
 import jline.console.ConsoleReader;
 import jline.console.completer.AggregateCompleter;
 import jline.console.completer.ArgumentCompleter;
@@ -73,6 +74,7 @@ import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
 
+import com.datatorrent.api.DAG;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
@@ -1442,7 +1444,9 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      StramClient client = new StramClient(new LogicalPlan());
+      LogicalPlan lp = new LogicalPlan();
+      lp.setAttribute(DAG.APPLICATION_NAME, "LicenseIdPlaceHolder");
+      StramClient client = new StramClient(lp);
       client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
       client.startApplication();
     }
