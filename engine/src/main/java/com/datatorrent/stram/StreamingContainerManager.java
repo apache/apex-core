@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.Nullable;
 
@@ -106,6 +107,7 @@ public class StreamingContainerManager implements PlanContext
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
+  private final AtomicBoolean eventQueueProcessing = new AtomicBoolean();
   private final HashSet<PTContainer> pendingAllocation = Sets.newLinkedHashSet();
   protected String shutdownDiagnosticsMessage = "";
   protected boolean forcedShutdown = false;
@@ -444,6 +446,7 @@ public class StreamingContainerManager implements PlanContext
     int count = 0;
     Runnable command;
     while ((command = this.eventQueue.poll()) != null) {
+      eventQueueProcessing.set(true);
       try {
         command.run();
         count++;
@@ -452,6 +455,7 @@ public class StreamingContainerManager implements PlanContext
         // TODO: handle error
         LOG.error("Failed to execute " + command, e);
       }
+      eventQueueProcessing.set(false);
     }
     return count;
   }
@@ -895,6 +899,9 @@ public class StreamingContainerManager implements PlanContext
 
   private boolean isApplicationIdle()
   {
+    if (eventQueueProcessing.get()) {
+      return false;
+    }
     for (StramChildAgent sca: this.containers.values()) {
       if (sca.hasPendingWork()) {
         // container may have no active operators but deploy request pending
