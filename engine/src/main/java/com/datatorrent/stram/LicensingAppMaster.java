@@ -248,8 +248,23 @@ public class LicensingAppMaster extends CompositeService
   {
     try {
       StramChild.eventloop.start();
+
+      LOG.info("Starting ApplicationMaster");
+      Credentials credentials =
+          UserGroupInformation.getCurrentUser().getCredentials();
+      LOG.info("number of tokens: {}", credentials.getAllTokens().size());
+      Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
+      while (iter.hasNext()) {
+        Token<?> token = iter.next();
+        LOG.debug("token: " + token);
+      }
+      LOG.debug("Registering with RM {}", this.appAttemptID);
+      // Register self with ResourceManager
+      amRmClient.registerApplicationMaster("", 0, appMasterTrackingUrl);
+      LOG.debug("Registered with RM");
+
       mainLoop();
-      LOG.info("Application completed with {}. Signalling finish to RM", this.finalStatus);
+
       FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
       finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
       if (this.finalStatus == FinalApplicationStatus.FAILED) {
@@ -257,6 +272,7 @@ public class LicensingAppMaster extends CompositeService
         finishReq.setDiagnostics(this.diagnosticsMessage);
         LOG.info("Diagnostics: " + finishReq.getDiagnostics());
       }
+      LOG.info("Application completed with {}. Signalling finish to RM", finishReq.getFinalApplicationStatus());
       amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
     } finally {
       StramChild.eventloop.stop();
@@ -271,22 +287,6 @@ public class LicensingAppMaster extends CompositeService
   @SuppressWarnings("SleepWhileInLoop")
   public void mainLoop() throws YarnException, IOException
   {
-    LOG.info("Starting ApplicationMaster");
-
-    Credentials credentials =
-        UserGroupInformation.getCurrentUser().getCredentials();
-    LOG.info("number of tokens: {}", credentials.getAllTokens().size());
-    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
-    while (iter.hasNext()) {
-      Token<?> token = iter.next();
-      LOG.debug("token: " + token);
-    }
-
-    LOG.debug("Registering with RM {}", this.appAttemptID);
-    // Register self with ResourceManager
-    amRmClient.registerApplicationMaster("", 0, appMasterTrackingUrl);
-    LOG.debug("Registered with RM");
-
     // ensure that we are the only instance for the given license key
     try {
       YarnClient clientRMService = YarnClient.createYarnClient();
