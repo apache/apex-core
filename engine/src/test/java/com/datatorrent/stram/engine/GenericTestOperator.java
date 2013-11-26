@@ -24,11 +24,14 @@ public class GenericTestOperator extends BaseOperator {
   public static final String IPORT2 = "input2";
   public static final String OPORT1 = "output1";
 
+  public volatile Object inport1Tuple = null;
+
   @InputPortFieldAnnotation(name=IPORT1, optional=true)
   final public transient InputPort<Object> inport1 = new DefaultInputPort<Object>() {
     @Override
-    final public void process(Object payload) {
-      processInternal(payload);
+    final public void process(Object t) {
+      inport1Tuple = t;
+      processInternal(t);
     }
     @Override
     public String toString() {

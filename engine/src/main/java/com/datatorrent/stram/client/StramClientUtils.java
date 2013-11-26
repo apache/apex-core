@@ -7,27 +7,22 @@ package com.datatorrent.stram.client;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.PrivilegedAction;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.yarn.api.AMRMProtocol;
-import org.apache.hadoop.yarn.api.ClientRMProtocol;
-import org.apache.hadoop.yarn.api.ContainerManager;
+import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
+import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationResponse;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
-import org.apache.hadoop.yarn.security.ContainerTokenIdentifier;
-import org.apache.hadoop.yarn.util.ProtoUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,16 +77,16 @@ public class StramClientUtils
      * @return Handle to communicate with the ASM
      * @throws IOException
      */
-    public ClientRMProtocol connectToASM() throws IOException
+    public ApplicationClientProtocol connectToASM() throws IOException
     {
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(
               YarnConfiguration.RM_ADDRESS,
               YarnConfiguration.DEFAULT_RM_ADDRESS,
               YarnConfiguration.DEFAULT_RM_PORT);
-      LOG.info("Connecting to ResourceManager at " + rmAddress);
-      return ((ClientRMProtocol)rpc.getProxy(
-              ClientRMProtocol.class, rmAddress, conf));
+      LOG.debug("Connecting to ResourceManager at " + rmAddress);
+      return ((ApplicationClientProtocol)rpc.getProxy(
+          ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -99,53 +94,14 @@ public class StramClientUtils
      *
      * @return Handle to communicate with the RM
      */
-    public AMRMProtocol connectToRM()
+    public ApplicationMasterProtocol connectToRM()
     {
       InetSocketAddress rmAddress = conf.getSocketAddr(
               YarnConfiguration.RM_SCHEDULER_ADDRESS,
               YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
               YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
-      LOG.info("Connecting to ResourceManager at " + rmAddress);
-      return ((AMRMProtocol)rpc.getProxy(AMRMProtocol.class, rmAddress, conf));
-    }
-
-    /**
-     * Helper function to connect to CM
-     */
-    public ContainerManager connectToCM(Container container)
-    {
-      LOG.debug("Connecting to ContainerManager for containerid=" + container.getId());
-      String cmIpPortStr = container.getNodeId().getHost() + ":"
-              + container.getNodeId().getPort();
-      InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
-      LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
-      //return ((ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf));
-      return getCM(container, cmAddress);
-    }
-
-    private ContainerManager getCM(Container container, final InetSocketAddress cmAddress)
-    {
-      ContainerManager cm = null;
-
-      if (UserGroupInformation.isSecurityEnabled()) {
-        ContainerId containerId = container.getId();
-        ContainerToken containerToken = container.getContainerToken();
-        Token<ContainerTokenIdentifier> token = ProtoUtils.convertFromProtoFormat(containerToken, cmAddress);
-        UserGroupInformation ugi = UserGroupInformation.createRemoteUser(containerId.toString());
-        ugi.addToken(token);
-        cm = ugi.doAs(new PrivilegedAction<ContainerManager>()
-        {
-          @Override
-          public ContainerManager run()
-          {
-            return (ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf);
-          }
-        });
-      }
-      else {
-        cm = (ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf);
-      }
-      return cm;
+      LOG.debug("Connecting to ResourceManager at " + rmAddress);
+      return ((ApplicationMasterProtocol)rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
     }
 
   }
@@ -158,14 +114,14 @@ public class StramClientUtils
   public static class ClientRMHelper
   {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
-    public final ClientRMProtocol clientRM;
+    public final ApplicationClientProtocol clientRM;
 
     public ClientRMHelper(YarnClientHelper yarnClient) throws IOException
     {
       this.clientRM = yarnClient.connectToASM();
     }
 
-    public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnRemoteException
+    public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnException, IOException
     {
       // Get application report for the appId we are interested in
       GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
@@ -181,7 +137,7 @@ public class StramClientUtils
      * @param appId Application Id to be killed.
      * @throws YarnRemoteException
      */
-    public void killApplication(ApplicationId appId) throws YarnRemoteException
+    public void killApplication(ApplicationId appId) throws YarnException, IOException
     {
       KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);
       // TODO clarify whether multiple jobs with the same app id can be submitted and be running at
@@ -208,7 +164,7 @@ public class StramClientUtils
      * @throws YarnRemoteException
      */
     @SuppressWarnings("SleepWhileInLoop")
-    public boolean waitForCompletion(ApplicationId appId, AppStatusCallback callback, long timeoutMillis) throws YarnRemoteException
+    public boolean waitForCompletion(ApplicationId appId, AppStatusCallback callback, long timeoutMillis) throws YarnException, IOException
     {
       long startMillis = System.currentTimeMillis();
       while (true) {
@@ -259,15 +215,15 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
-  public static final String MALHAR_HOME = System.getenv("MALHAR_HOME");
+  public static final String DT_HOME = System.getenv("DT_HOME");
 
   public static File getSettingsRootDir()
   {
-    if (MALHAR_HOME == null || MALHAR_HOME.isEmpty()) {
+    if (DT_HOME == null || DT_HOME.isEmpty()) {
       return new File(FileUtils.getUserDirectory(), ".stram");
     }
 
-    return new File(MALHAR_HOME, ".stram");
+    return new File(DT_HOME, ".stram");
   }
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";

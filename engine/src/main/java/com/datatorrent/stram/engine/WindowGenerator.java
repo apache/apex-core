@@ -10,11 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.common.util.ScheduledExecutorService;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.stram.util.ScheduledExecutorService;
 
 /**
  *

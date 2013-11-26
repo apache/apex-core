@@ -4,14 +4,15 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.bufferserver.packet.Tuple;
-import com.datatorrent.bufferserver.util.SerializedData;
-
 import java.io.IOException;
 import java.util.Iterator;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.common.util.SerializedData;
 
 /**
  * <p>FastDataList class.</p>

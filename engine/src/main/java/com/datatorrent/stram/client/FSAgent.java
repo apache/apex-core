@@ -7,7 +7,6 @@ package com.datatorrent.stram.client;
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -16,14 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>HdfsAgent class.</p>
+ * <p>FSAgent class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.5
  */
-public class HdfsAgent
+public class FSAgent
 {
-  private static final Logger LOG = LoggerFactory.getLogger(HdfsAgent.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FSAgent.class);
   protected FileSystem fs;
 
   public void setup() throws IOException
@@ -83,4 +82,20 @@ public class HdfsAgent
     return files;
   }
 
+  public List<LocatedFileStatus> listFilesInfo(String dir) throws IOException
+  {
+    List<LocatedFileStatus> files = new ArrayList<LocatedFileStatus>();
+    Path path = new Path(dir);
+
+    FileStatus fileStatus = fs.getFileStatus(path);
+    if (!fileStatus.isDirectory()) {
+      throw new FileNotFoundException("Cannot read directory " + dir);
+    }
+    RemoteIterator<LocatedFileStatus> it = fs.listFiles(path, false);
+    while (it.hasNext()) {
+      LocatedFileStatus lfs = it.next();
+      files.add(lfs);
+    }
+    return files;
+  }
 }

@@ -1,12 +1,12 @@
 package com.datatorrent.stram;
 
+import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -15,9 +15,10 @@ import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
-import org.apache.hadoop.yarn.client.YarnClientImpl;
+import org.apache.hadoop.yarn.client.api.YarnClientApplication;
+import org.apache.hadoop.yarn.client.api.impl.YarnClientImpl;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
+import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.Records;
 
 /**
@@ -28,8 +29,6 @@ import org.apache.hadoop.yarn.util.Records;
  */
 public abstract class InlineAM {
   private static final Log LOG = LogFactory.getLog(InlineAM.class);
-
-  private final Configuration conf;
 
   // Handle to talk to the Resource Manager/Applications Manager
   private final YarnClientImpl rmClient;
@@ -44,8 +43,6 @@ public abstract class InlineAM {
   /**
    */
   public InlineAM(Configuration conf) throws Exception {
-    // Set up RPC
-    this.conf = conf;
 
     appName = "UnmanagedAM";
     amPriority = 0;
@@ -65,8 +62,8 @@ public abstract class InlineAM {
     rmClient.start();
     try {
       // Get a new application id
-      GetNewApplicationResponse newApp = rmClient.getNewApplication();
-      ApplicationId appId = newApp.getApplicationId();
+      YarnClientApplication newApp = rmClient.createApplication();
+      ApplicationId appId = newApp.getNewApplicationResponse().getApplicationId();
 
       // Create launch context for app master
       LOG.info("Setting up application submission context for ASM");
@@ -145,7 +142,7 @@ public abstract class InlineAM {
    * @throws YarnRemoteException
    */
   private ApplicationReport monitorApplication(ApplicationId appId,
-      Set<YarnApplicationState> finalState) throws YarnRemoteException {
+      Set<YarnApplicationState> finalState) throws YarnException, IOException {
 
     while (true) {
 
@@ -162,7 +159,7 @@ public abstract class InlineAM {
       LOG.info("Got application report from ASM for" + ", appId="
           + appId.getId() + ", appAttemptId="
           + report.getCurrentApplicationAttemptId() + ", clientToken="
-          + report.getClientToken() + ", appDiagnostics="
+          + report.getClientToAMToken() + ", appDiagnostics="
           + report.getDiagnostics() + ", appMasterHost=" + report.getHost()
           + ", appQueue=" + report.getQueue() + ", appMasterRpcPort="
           + report.getRpcPort() + ", appStartTime=" + report.getStartTime()

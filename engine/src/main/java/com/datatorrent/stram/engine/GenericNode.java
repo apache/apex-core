@@ -9,7 +9,6 @@ import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.UnhandledException;
 
 import com.datatorrent.api.IdleTimeHandler;
@@ -17,8 +16,8 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
-
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -131,9 +130,10 @@ public class GenericNode extends Node<Operator>
       emitEndWindow();
     }
     else {
-      for (final Sink<Object> output : outputs.values()) {
-        output.put(endWindowTuple);
+      for (int s = sinks.length; s-- > 0;) {
+        sinks[s].put(endWindowTuple);
       }
+      controlTupleCount++;
     }
 
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
@@ -147,7 +147,7 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
     }
 
-    Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+    ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
     reportStats(stats, currentWindowId);
     handleRequests(currentWindowId);
   }
@@ -182,7 +182,7 @@ public class GenericNode extends Node<Operator>
     insideWindow = false;
     checkpoint = false;
 
-    long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
+    long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
 
@@ -210,6 +210,8 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
+
                   if (applicationWindowCount == 0) {
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
@@ -285,10 +287,11 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (lastCheckpointedWindowId < currentWindowId && !checkpoint) {
+                long checkPtWinId = t.getWindowId();
+                if (lastCheckpointedWindowId < checkPtWinId && !checkpoint) {
                   if (checkpointWindowCount == 0) {
-                    if (checkpoint(currentWindowId)) {
-                      lastCheckpointedWindowId = currentWindowId;
+                    if (checkpoint(checkPtWinId)) {
+                      lastCheckpointedWindowId = checkPtWinId;
                     }
                   }
                   else {
@@ -297,6 +300,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
                 }
                 break;
 
@@ -346,6 +350,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
+                  controlTupleCount++;
 
                   assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
@@ -452,6 +457,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(tuple);
                   }
+                  controlTupleCount++;
                 }
 
                 if (break_activequeue) {
@@ -516,20 +522,35 @@ public class GenericNode extends Node<Operator>
         checkpointWindowCount = 0;
       }
 
-      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
+      fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
 
   }
 
-  @Override
-  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
+  /**
+   * End window dequeue times may not have been saved for all the input ports during deactivate,
+   * so save them for reporting. SPOI-1324.
+   */
+  private void fixEndWindowDequeueTimesBeforeDeactivate()
   {
-    ArrayList<Stats.ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
+    long endWindowDequeueTime = System.currentTimeMillis();
+    for (SweepableReservoir sr : inputs.values()) {
+      if (endWindowDequeueTimes.get(sr) == null) {
+        endWindowDequeueTimes.put(sr, endWindowDequeueTime);
+      }
+    }
+  }
+
+  @Override
+  protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
+  {
+    ArrayList<ContainerStats.OperatorStats.PortStats> ipstats = new ArrayList<ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
-      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
+      ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = ar.getCount(true);
       portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
       ipstats.add(portStats);

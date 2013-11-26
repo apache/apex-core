@@ -44,10 +44,9 @@ import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.Clock;
+import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 
 import com.datatorrent.stram.StramAppContext;
@@ -82,16 +81,13 @@ public class StramWebServicesTest extends JerseyTest
     final String appPath = "/testPath";
     final String userId = "testUser";
     final long startTime = System.currentTimeMillis();
-    final String daemonAddress = "localhost:9090";
+    final String gatewayAddress = "localhost:9090";
 
     TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
     {
       super(null, null); // this needs to be done in a proper way - may cause application errors.
-      this.appID = Records.newRecord(ApplicationId.class);
-      this.appID.setId(appid);
-      this.appAttemptID = Records.newRecord(ApplicationAttemptId.class);
-      this.appAttemptID.setApplicationId(this.appID);
-      this.appAttemptID.setAttemptId(numAttempts);
+      this.appID = ApplicationId.newInstance(0, appid);
+      this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
     }
 
     TestAppContext()
@@ -156,9 +152,9 @@ public class StramWebServicesTest extends JerseyTest
     }
 
     @Override
-    public String getDaemonAddress()
+    public String getGatewayAddress()
     {
-      return daemonAddress;
+      return gatewayAddress;
     }
 
   }
@@ -173,7 +169,6 @@ public class StramWebServicesTest extends JerseyTest
     // new instance needs to be created for each test
     public static class DummyStreamingContainerManager extends StreamingContainerManager
     {
-      private static final long serialVersionUID = 1L;
       public static List<LogicalPlanRequest> lastRequests;
 
       DummyStreamingContainerManager()

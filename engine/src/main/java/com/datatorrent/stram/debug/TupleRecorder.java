@@ -18,12 +18,11 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Sink;
+import com.datatorrent.api.Stats;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
-
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.engine.Stats;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.util.FSPartFileCollection;
@@ -38,7 +37,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient.Handler;
  */
 public class TupleRecorder
 {
-  public static final String VERSION = "1.1";
+  public static final String VERSION = "1.2";
   private int totalTupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
@@ -46,7 +45,6 @@ public class TupleRecorder
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
   private String containerId;
-  private String recordingName; // should be retired
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
@@ -137,22 +135,6 @@ public class TupleRecorder
   }
 
   /**
-   * @return the recordingName
-   */
-  public String getRecordingName()
-  {
-    return recordingName;
-  }
-
-  /**
-   * @param recordingName the recordingName to set
-   */
-  public void setRecordingName(String recordingName)
-  {
-    this.recordingName = recordingName;
-  }
-
-  /**
    * @param startTime the startTime to set
    */
   public void setStartTime(long startTime)
@@ -199,7 +181,6 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
-    public String recordingName;
     public String containerId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
@@ -279,7 +260,6 @@ public class TupleRecorder
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
-      recordInfo.recordingName = recordingName;
       recordInfo.containerId = containerId;
 
       if (operator != null) {
@@ -359,7 +339,7 @@ public class TupleRecorder
       this.currentWindowId = windowId;
       endWindowTuplesProcessed = 0;
       try {
-        storage.writeDataItem(("B:" + windowId + "\n").getBytes(), false);
+        storage.writeDataItem(("B:" + System.currentTimeMillis() + ":" + windowId + "\n").getBytes(), false);
       }
       catch (IOException ex) {
         logger.error(ex.toString());
@@ -371,7 +351,7 @@ public class TupleRecorder
   {
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
-        storage.writeDataItem(("E:" + currentWindowId + "\n").getBytes(), false);
+        storage.writeDataItem(("E:" + System.currentTimeMillis() + ":" + currentWindowId + "\n").getBytes(), false);
         logger.debug("Got last end window tuple.  Flushing...");
         if (!storage.flushData() && wsClient != null) {
           wsClient.publish(SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".tuple." + storage.getBasePath(), storage.getLatestIndexLine());
@@ -392,7 +372,7 @@ public class TupleRecorder
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       Slice f = streamCodec.toByteArray(obj);
       PortInfo pi = portMap.get(port);
-      String str = "T:" + pi.id + ":" + f.length + ":";
+      String str = "T:" + System.currentTimeMillis() + ":" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
@@ -420,7 +400,7 @@ public class TupleRecorder
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       PortInfo pi = portMap.get(port);
       Slice f = streamCodec.toByteArray(tuple);
-      String str = "C:" + pi.id + ":" + f.length + ":";
+      String str = "C:" + System.currentTimeMillis() + ":" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());

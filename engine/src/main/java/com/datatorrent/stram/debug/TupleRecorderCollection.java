@@ -9,31 +9,34 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Sink;
-
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.api.Stats;
+import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.api.Stats.OperatorStats.PortStats;
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.NodeActivationListener;
-import com.datatorrent.stram.api.NodeRequest;
-import com.datatorrent.stram.api.NodeRequest.RequestType;
+import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
 import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
-import com.datatorrent.stram.api.StatsListener.ContainerStatsListener;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.Stats;
-import com.datatorrent.stram.engine.Stats.ContainerStats;
-import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats;
-import com.datatorrent.stram.engine.Stats.ContainerStats.OperatorStats.PortStats;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
@@ -44,10 +47,10 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
  *
  * @since 0.3.5
  */
-public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>, NodeActivationListener, ContainerStatsListener
+public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, TupleRecorder> implements Component<Context>
 {
   private int tupleRecordingPartFileSize;
-  private String daemonAddress;
+  private String gatewayAddress;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
   private String containerId; // this should be retired!
@@ -62,25 +65,25 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   @Override
   public void setup(Context ctx)
   {
-    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    containerId = ctx.attrValue(ContainerContext.IDENTIFIER, "unknown_container_id");
-    daemonAddress = ctx.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
-    appPath = ctx.attrValue(LogicalPlan.APPLICATION_PATH, null);
+    tupleRecordingPartFileSize = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE);
+    tupleRecordingPartFileTimeMillis = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS);
+    containerId = ctx.getValue(ContainerContext.IDENTIFIER);
+    gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_ADDRESS);
+    appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
-    RequestFactory rf = ctx.attrValue(ContainerContext.REQUEST_FACTORY, null);
+    RequestFactory rf = ctx.getValue(ContainerContext.REQUEST_FACTORY);
     if (rf == null) {
       logger.warn("No request factory defined, recording is disabled!");
     }
     else {
-      rf.registerDelegate(RequestType.START_RECORDING, impl);
-      rf.registerDelegate(RequestType.STOP_RECORDING, impl);
-      rf.registerDelegate(RequestType.SYNC_RECORDING, impl);
+      rf.registerDelegate(StramToNodeRequest.RequestType.START_RECORDING, impl);
+      rf.registerDelegate(StramToNodeRequest.RequestType.STOP_RECORDING, impl);
+      rf.registerDelegate(StramToNodeRequest.RequestType.SYNC_RECORDING, impl);
     }
-    if (daemonAddress != null) {
+    if (gatewayAddress != null) {
       try {
-        wsClient = new SharedPubSubWebSocketClient("ws://" + daemonAddress + "/pubsub", 500);
+        wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
       }
       catch (Exception ex) {
         logger.warn("Error initializing websocket", ex);
@@ -93,6 +96,10 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   {
     for (TupleRecorder entry : values()) {
       entry.teardown();
+    }
+    if (wsClient != null) {
+      // SPOI-1328: clean up IO threads or else process won't exit
+      wsClient.teardown();
     }
     clear();
   }
@@ -174,14 +181,6 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         tupleRecorder.getStorage().setBytesPerPartFile(tupleRecordingPartFileSize);
         tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
 
-        // this is not needed, and should be deleted when UI upgrades
-        if (portName == null) {
-          tupleRecorder.setRecordingName(containerId.concat("_").concat(String.valueOf(operatorId)).concat("_").concat(String.valueOf(tupleRecorder.getStartTime())));
-        }
-        else {
-          tupleRecorder.setRecordingName(containerId.concat("_").concat(String.valueOf(operatorId)).concat("$").concat(portName).concat("_").concat(String.valueOf(tupleRecorder.getStartTime())));
-        }
-
         node.addSinks(sinkMap);
         tupleRecorder.setup(node.getOperator());
         put(operatorIdPortNamePair, tupleRecorder);
@@ -260,32 +259,39 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     }
   }
 
-  @Override
-  public void activated(Node<?> node)
+  @Handler
+  public void activated(NodeActivationEvent nae)
   {
-    for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
-      if (entry.getValue().context != null && entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
-        startRecording(node, node.getId(), entry.getKey());
-      }
+    Node<?> node = nae.getNode();
+    if (node.getContext().getValue(OperatorContext.AUTO_RECORD)) {
+      startRecording(node, node.getId(), null);
     }
-
-    for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
-      if (entry.getValue().context != null && entry.getValue().context.attrValue(PortContext.AUTO_RECORD, false)) {
-        startRecording(node, node.getId(), entry.getKey());
+    else {
+      for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
+        if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
+          startRecording(node, node.getId(), entry.getKey());
+        }
+      }
+      for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
+        if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
+          startRecording(node, node.getId(), entry.getKey());
+        }
       }
     }
   }
 
-  @Override
-  public void deactivated(Node<?> node)
+  @Handler
+  public void deactivated(NodeDeactivationEvent nde)
   {
-    logger.error("this method should be implemented!");
+    Node<?> node = nde.getNode();
+    stopRecording(node, node.getId(), null);
   }
 
-  @Override
-  public void collected(ContainerStats stats)
+  @Handler
+  public void collected(ContainerStatsEvent cse)
   {
-    for (StreamingNodeHeartbeat node : stats.nodes) {
+    ContainerStats stats = cse.getContainerStats();
+    for (OperatorHeartbeat node : stats.operators) {
       long recordingStartTime;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
       if (tupleRecorder == null) {
@@ -293,20 +299,24 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         for (Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry : this.entrySet()) {
           if (entry.getKey().operatorId == node.nodeId) {
             for (OperatorStats os : node.windowStats) {
-              for (PortStats ps : os.inputPorts) {
-                if (ps.id.equals(entry.getKey().portName)) {
-                  ps.recordingStartTime = entry.getValue().getStartTime();
-                }
-                else {
-                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+              if (os.inputPorts != null) {
+                for (PortStats ps : os.inputPorts) {
+                  if (ps.id.equals(entry.getKey().portName)) {
+                    ps.recordingStartTime = entry.getValue().getStartTime();
+                  }
+                  else {
+                    ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+                  }
                 }
               }
-              for (PortStats ps : os.outputPorts) {
-                if (ps.id.equals(entry.getKey().portName)) {
-                  ps.recordingStartTime = entry.getValue().getStartTime();
-                }
-                else {
-                  ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+              if (os.outputPorts != null) {
+                for (PortStats ps : os.outputPorts) {
+                  if (ps.id.equals(entry.getKey().portName)) {
+                    ps.recordingStartTime = entry.getValue().getStartTime();
+                  }
+                  else {
+                    ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+                  }
                 }
               }
             }
@@ -326,11 +336,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private class RequestDelegateImpl implements RequestDelegate
   {
     @Override
-    public NodeRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
+    public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
     {
       switch (snr.getRequestType()) {
         case START_RECORDING:
-          return new NodeRequest()
+          return new OperatorCommand()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
@@ -347,7 +357,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           };
 
         case STOP_RECORDING:
-          return new NodeRequest()
+          return new OperatorCommand()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
@@ -364,7 +374,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           };
 
         case SYNC_RECORDING:
-          return new NodeRequest()
+          return new OperatorCommand()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException

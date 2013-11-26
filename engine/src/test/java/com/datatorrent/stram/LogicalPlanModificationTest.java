@@ -11,6 +11,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
@@ -110,7 +111,7 @@ public class LogicalPlanModificationTest {
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
-    Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
+    Assert.assertEquals("containers " + plan.getContainers(), 4, plan.getContainers().size());
     Assert.assertEquals("physical operators " + plan.getAllOperators(), 4, plan.getAllOperators().size());
     Assert.assertEquals("sinks s1 " + s1.getSinks(), 2, s1.getSinks().size());
 
@@ -125,7 +126,7 @@ public class LogicalPlanModificationTest {
     }
 
     // remove output stream required before removing operator
-    pm.removeStream(s2.getId());
+    pm.removeStream(s2.getName());
 
     pm.removeOperator(o2Meta.getName());
     pm.applyChanges(ctx);
@@ -142,7 +143,7 @@ public class LogicalPlanModificationTest {
       Assert.fail("removed from physical plan: " + o2Meta);
     } catch (Exception e) {
     }
-    Assert.assertEquals("containers " + plan.getContainers(), 2, plan.getContainers().size());
+    Assert.assertEquals("containers " + plan.getContainers(), 3, plan.getContainers().size());
     Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
     Assert.assertEquals("removed containers " + ctx.releaseContainers, 1, ctx.releaseContainers.size());
 
@@ -153,8 +154,49 @@ public class LogicalPlanModificationTest {
       Assert.assertTrue("" + ve.getMessage(), ve.getMessage().matches(".*Operator o12 connected to input streams.*"));
     }
 
-    pm.removeStream(s1.getId());
+    pm.removeStream(s1.getName());
     pm.removeOperator(o12Meta.getName());
+
+  }
+
+  @Test
+  public void testRemoveOperator2()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    OperatorMeta o2Meta = dag.getMeta(o2);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    OperatorMeta o3Meta = dag.getMeta(o3);
+
+    LogicalPlan.StreamMeta s1 = dag.addStream("o1.outport1", o1.outport1, o2.inport1, o3.inport1).setLocality(Locality.CONTAINER_LOCAL);
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    ctx.deploy.clear();
+    ctx.undeploy.clear();
+    Assert.assertEquals("containers " + plan.getContainers(), 1, plan.getContainers().size());
+    Assert.assertEquals("physical operators " + plan.getAllOperators(), 3, plan.getAllOperators().size());
+    Assert.assertEquals("sinks s1 " + s1.getSinks(), 2, s1.getSinks().size());
+
+    List<PTOperator> o2PhysicalOpers = plan.getOperators(o2Meta);
+    Assert.assertEquals("instances " + o2Meta, 1, o2PhysicalOpers.size());
+    PlanModifier pm = new PlanModifier(plan);
+    pm.removeOperator(o2Meta.getName()); // remove operator w/o removing the stream
+    pm.applyChanges(ctx);
+
+    Assert.assertEquals("sinks s1 " + s1.getSinks(), 1, s1.getSinks().size());
+    Assert.assertTrue("undeploy " + ctx.undeploy, ctx.undeploy.containsAll(o2PhysicalOpers));
+    Set<PTOperator> expDeploy = Sets.newHashSet();
+    // TODO: container local operators should be included in undeploy/deploy
+    //expDeploy.addAll(plan.getOperators(o1Meta));
+    //expDeploy.addAll(plan.getOperators(o3Meta));
+    Assert.assertEquals("deploy " + ctx.deploy, ctx.deploy, expDeploy);
+    Assert.assertEquals("streams " + dag.getAllStreams(), 1, dag.getAllStreams().size());
+    Assert.assertEquals("operators " + dag.getAllOperators(), 2, dag.getAllOperators().size());
+    Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().containsAll(Sets.newHashSet(o1Meta, o3Meta)));
 
   }
 

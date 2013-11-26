@@ -18,7 +18,7 @@ package com.datatorrent.api;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StringCodec.Integer2String;
+import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 
 /**
@@ -42,12 +42,12 @@ public interface Context
    * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
    * the application level. If the attribute is not found, then return the defaultValue.
    *
-   * @param <T> - Type of the attribute.
+   * @param <T> - Type of the value stored against the attribute
    * @param key - Attribute to identify the attribute.
-   * @param defaultValue - Default value if the attribute is not found.
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
-  public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue);
+
+  public <T> T getValue(AttributeMap.Attribute<T> key);
 
   public interface PortContext extends Context
   {
@@ -62,10 +62,9 @@ public interface Context
     /**
      * Input port attribute. Extend partitioning of an upstream operator w/o intermediate merge.
      * Can be used to form parallel partitions that span a group of operators.
-     * Defined on a per input port basis to allow for stream to be shared with non-partitioned sinks.
+     * Defined on input port to allow for stream to be shared with non-partitioned sinks.
      * If multiple ports of an operator have the setting, incoming streams must track back to
      * a common root partition, i.e. the operator join forks of the same origin.
-     * At the moment each partition would be deployed to a single container (inline).
      */
     Attribute<Boolean> PARTITION_PARALLEL = new Attribute<Boolean>(false);
     /**
@@ -92,26 +91,48 @@ public interface Context
 
   public interface OperatorContext extends Context
   {
+    /**
+     * Poll period in milliseconds when there are no tuples available on any of the input ports of the operator.
+     * Default value is 10 milliseconds.
+     */
     Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
+    /**
+     * The maximum number of attempts to restart a failing operator before shutting down the application.
+     * When an operator fails to start it is re-spawned in a new container. If it continues to fail after the number of restart
+     * attempts reaches this limit the application is shutdown. The default value is 5 attempts.
+     */
     Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(5);
     /**
-     * Initial partition count for an operator that supports partitioning. The
-     * number is interpreted as follows:
+     * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
-     * Default partitioning (operators that do not implement
-     * {@link PartitionableOperator}):<br>
-     * If the attribute is not present or set to 0 partitioning is off. Else the
-     * number of initial partitions (statically created during initialization).<br>
+     * Default partitioning (operator does not implement {@link Partitionable}):<br>
+     * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
      * Default partitioning does not consider operator state on split or merge.
      * <p>
-     * Operator that implements {@link PartitionableOperator}:<br>
-     * Count 0 disables partitioning. Other values are ignored as number of
-     * initial partitions is determined by operator implementation.
+     * Operator implements {@link Partitionable}:<br>
+     * Value given as initial capacity hint to {@link PartitionableOperator#definePartitions(java.util.Collection, int)
+     * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
+
+    /**
+     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning. When this
+     * attribute is set and partitioning is enabled if the number of tuples per second falls below the specified rate
+     * the physical operators are consolidated into fewer operators till the rate goes above the specified minimum.
+     */
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
+
+    /**
+     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning. When this
+     * attribute is set and partitioning is enabled if the number of tuples per second goes above the specified rate new
+     * physical operators are spawned till the rate again goes below the specified maximum.
+     */
     Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
-    Attribute<String> PARTITION_STATS_HANDLER = new Attribute<String>(new String2String());
+    /**
+     * Specify a listener to process and optionally react to operator status updates.
+     * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
+     */
+    Attribute<Class<? extends StatsListener>> STATS_LISTENER = new Attribute<Class<? extends StatsListener>>(null, null);
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
@@ -134,17 +155,19 @@ public interface Context
      */
     Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(1);
     /**
-     * Logical name of a host to control locality between operators (even when not connected through stream)
+     * Name of host to directly control locality of an operator. Complementary to stream locality (NODE_LOCAL affinity).
+     * For example, the user may wish to specify a locality constraint for an input operator relative to its data source.
+     * The attribute can then be set to the host name that is specified in the operator specific connect string property.
      */
     Attribute<String> LOCALITY_HOST = new Attribute<String>(new String2String());
     /**
-     * Logical name of a rack to control locality between operators (even when not connected through stream)
+     * Name of rack to directly control locality of an operator. Complementary to stream locality (RACK_LOCAL affinity).
      */
     Attribute<String> LOCALITY_RACK = new Attribute<String>(new String2String());
     /**
      * The agent which can be used to checkpoint the windows.
      */
-    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(null, null);
+    Attribute<StorageAgent> STORAGE_AGENT = new Attribute<StorageAgent>(new Object2String<StorageAgent>());
     /**
      * The payload processing mode for this operator - at most once, exactly once, or default at least once.
      * If the processing mode for an operator is specified as AT_MOST_ONCE and no processing mode is specified for the downstream
@@ -154,13 +177,24 @@ public interface Context
      * should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
     Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<Operator.ProcessingMode>(ProcessingMode.AT_LEAST_ONCE);
-
+    /**
+     * Whether or not to auto record the tuples
+     */
+    Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
     /**
      * Return the operator runtime id.
      *
      * @return The id
      */
     int getId();
+
+    /**
+     * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
+     * current window, reset at window boundary.
+     *
+     * @param stats
+     */
+    void setCustomStats(Stats.OperatorStats.CustomStats stats);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);

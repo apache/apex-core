@@ -5,17 +5,16 @@
 
 package com.datatorrent.stram.webapp;
 
+import java.util.List;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.apache.hadoop.yarn.util.Times;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.util.VersionInfo;
-import java.util.List;
 
 /**
  *
@@ -36,7 +35,6 @@ import java.util.List;
 @XmlRootElement(name = StramWebServices.PATH_INFO)
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AppInfo {
-  private static final Logger LOG = LoggerFactory.getLogger(AppInfo.class);
 
   protected String appId;
   protected String name;
@@ -44,7 +42,7 @@ public class AppInfo {
   protected long startTime;
   protected long elapsedTime;
   protected String appPath;
-  protected String daemonAddress;
+  protected String gatewayAddress;
   public String appMasterTrackingUrl;
   public String version;
   public AppStats stats;
@@ -149,7 +147,6 @@ public class AppInfo {
    * @param context
    */
   public AppInfo(StramAppContext context) {
-    LOG.info("AppInfo called");
     this.appId = context.getApplicationID().toString();
     this.name = context.getApplicationName();
     this.user = context.getUser().toString();
@@ -158,7 +155,7 @@ public class AppInfo {
     this.appPath = context.getApplicationPath();
     this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
     this.stats = context.getStats();
-    this.daemonAddress = context.getDaemonAddress();
+    this.gatewayAddress = context.getGatewayAddress();
     this.version = VersionInfo.getBuildVersion();
   }
 
@@ -206,7 +203,7 @@ public class AppInfo {
     return this.appPath;
   }
 
-  public String getDaemonAddress() {
-    return this.daemonAddress;
+  public String getGatewayAddress() {
+    return this.gatewayAddress;
   }
 }

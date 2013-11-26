@@ -4,13 +4,13 @@
  */
 package com.datatorrent.stram.support;
 
-import com.datatorrent.stram.util.ScheduledExecutorService;
-
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import com.datatorrent.common.util.ScheduledExecutorService;
 
 /**
  *

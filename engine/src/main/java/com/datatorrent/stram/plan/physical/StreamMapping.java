@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
+import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -35,6 +35,8 @@ import com.google.common.collect.Sets;
 /**
  * Encapsulates the mapping of input to output operators, including unifiers. Depending on logical plan setting and
  * number of partitions, unifiers are created as needed and potentially cascaded.
+ *
+ * @since 0.9.0
  */
 public class StreamMapping
 {
@@ -93,7 +95,7 @@ public class StreamMapping
     return pu;
   }
 
-  private List<PTOutput> setupUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level) {
+  private List<PTOutput> setupCascadingUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level) {
     List<PTOutput> nextLevel = Lists.newArrayList();
     PTOperator pu = null;
     for (int i=0; i<upstream.size(); i++) {
@@ -113,7 +115,7 @@ public class StreamMapping
     }
 
     if (nextLevel.size() > limit) {
-      return setupUnifiers(nextLevel, pooledUnifiers, limit, level);
+      return setupCascadingUnifiers(nextLevel, pooledUnifiers, limit, level);
     } else {
       return nextLevel;
     }
@@ -148,7 +150,7 @@ public class StreamMapping
     for (InputPortMeta ipm : streamMeta.getSinks()) {
       // gets called prior to all logical operators mapped
       // skipped for parallel partitions - those are handled elsewhere
-      if (!ipm.attrValue(PortContext.PARTITION_PARALLEL, false) && plan.hasMapping(ipm.getOperatorWrapper())) {
+      if (!ipm.getValue(PortContext.PARTITION_PARALLEL) && plan.hasMapping(ipm.getOperatorWrapper())) {
         List<PTOperator> partitions = plan.getOperators(ipm.getOperatorWrapper());
         for (PTOperator doper : partitions) {
           downstreamOpers.add(new Pair<PTOperator, InputPortMeta>(doper, ipm));
@@ -169,17 +171,22 @@ public class StreamMapping
       this.cascadingUnifiers.clear();
       plan.undeployOpers.addAll(currentUnifiers);
 
-      int limit = streamMeta.getSource().attrValue(PortContext.UNIFIER_LIMIT, 1);
+      int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
       List<PTOutput> unifierSources = this.upstream;
-      if (limit > 1 && this.upstream.size() > 1) {
+      if (limit > 1 && this.upstream.size() > limit) {
         // cascading unifier
-        unifierSources = setupUnifiers(this.upstream, currentUnifiers, limit, 0);
+        unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
       }
 
       // remove remaining unifiers
       for (PTOperator oper : currentUnifiers) {
         plan.removePTOperator(oper);
+      }
+
+      if (finalUnifier != null && upstream.size() == 1) {
+        plan.removePTOperator(finalUnifier);
+        finalUnifier = null;
       }
 
       // link the downstream operators with the unifiers
@@ -262,5 +269,5 @@ public class StreamMapping
     }
     unifier.inputs.clear();
   }
-  
+
 }

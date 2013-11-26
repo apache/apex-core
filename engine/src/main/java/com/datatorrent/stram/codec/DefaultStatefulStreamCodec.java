@@ -34,8 +34,8 @@ import com.datatorrent.common.util.Slice;
  * @since 0.3.2
  */
 @ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class,
-                               org.objenesis.instantiator.ObjectInstantiator.class,
                                com.esotericsoftware.minlog.Log.class,
+                               org.objenesis.instantiator.ObjectInstantiator.class,
                                com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStreamCodec<T>
 {

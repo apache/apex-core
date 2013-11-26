@@ -150,7 +150,7 @@ public class LogicalPlanTest {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     LogicalPlan.write(dag, bos);
 
-    System.out.println("serialized size: " + bos.toByteArray().length);
+    // System.out.println("serialized size: " + bos.toByteArray().length);
 
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     LogicalPlan dagClone = LogicalPlan.read(bis);
@@ -274,7 +274,9 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should throw ConstraintViolationException");
     } catch (ConstraintViolationException e) {
-      Assert.assertEquals("", constraintViolations, e.getConstraintViolations());
+      Assert.assertEquals("violation details", constraintViolations, e.getConstraintViolations());
+      String expRegex = ".*ValidationTestOperator\\{name=testOperator}, propertyPath='intField1', message='must be greater than or equal to 2',.*value=1}]";
+      Assert.assertThat("exception message", e.getMessage(), RegexMatcher.matches(expRegex));
     }
 
     try {
@@ -332,10 +334,10 @@ public class LogicalPlanTest {
   }
 
   @OperatorAnnotation(partitionable = false)
-  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements PartitionableOperator {
+  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitionable<TestOperatorAnnotationOperator2> {
 
     @Override
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int incrementalCapacity)
     {
       return null;
     }
@@ -436,7 +438,7 @@ public class LogicalPlanTest {
     dag.validate();
 
     OperatorMeta outputOperOm = dag.getMeta(outputOper);
-    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.attrValue(OperatorContext.PROCESSING_MODE, null));
+    Assert.assertEquals("" + outputOperOm.getAttributes(), Operator.ProcessingMode.AT_MOST_ONCE, outputOperOm.getValue(OperatorContext.PROCESSING_MODE));
 
   }
 
@@ -493,7 +495,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("Exception expected for " + o1);
     } catch (ValidationException ve) {
-      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams"));
+      Assert.assertThat("", ve.getMessage(), RegexMatcher.matches("Locality THREAD_LOCAL invalid for operator .* with multiple input streams .*"));
     }
 
     s1.setLocality(null);
@@ -556,6 +558,7 @@ public class LogicalPlanTest {
 
   public class DuplicatePortOperator extends GenericTestOperator {
     @OutputPortFieldAnnotation(name=OPORT1)
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
   }
 

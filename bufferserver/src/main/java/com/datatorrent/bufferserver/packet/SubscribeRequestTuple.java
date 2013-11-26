@@ -4,10 +4,10 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.bufferserver.util.Codec;
-
 import java.util.Arrays;
 import java.util.Collection;
+
+import com.datatorrent.common.util.VarInt;
 
 /**
  * <p>SubscribeRequestTuple class.</p>
@@ -247,11 +247,11 @@ public class SubscribeRequestTuple extends RequestTuple
 
     /* write the baseSeconds */
     int baseSeconds = (int)(startingWindowId >> 32);
-    offset = Codec.writeRawVarint32(baseSeconds, array, offset);
+    offset = VarInt.write(baseSeconds, array, offset);
 
     /* write the windowId */
     int windowId = (int)startingWindowId;
-    offset = Codec.writeRawVarint32(windowId, array, offset);
+    offset = VarInt.write(windowId, array, offset);
 
     /* write the type */
     offset = Tuple.writeString(down_type, array, offset);
@@ -261,13 +261,13 @@ public class SubscribeRequestTuple extends RequestTuple
 
     /* write the partitions */
     if (partitions == null || partitions.isEmpty()) {
-      offset = Codec.writeRawVarint32(0, array, offset);
+      offset = VarInt.write(0, array, offset);
     }
     else {
-      offset = Codec.writeRawVarint32(partitions.size(), array, offset);
-      offset = Codec.writeRawVarint32(mask, array, offset);
+      offset = VarInt.write(partitions.size(), array, offset);
+      offset = VarInt.write(mask, array, offset);
       for (int i : partitions) {
-        offset = Codec.writeRawVarint32(i, array, offset);
+        offset = VarInt.write(i, array, offset);
       }
     }
 

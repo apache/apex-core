@@ -5,6 +5,7 @@
 package com.datatorrent.stram.engine;
 
 import com.datatorrent.api.IdleTimeHandler;
+
 import java.util.ArrayList;
 
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -23,7 +25,7 @@ import com.datatorrent.stram.tuple.Tuple;
  */
 public class InputNode extends Node<InputOperator>
 {
-  private ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
+  private final ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
   protected SweepableReservoir controlTuples;
 
   public InputNode(InputOperator operator)
@@ -48,7 +50,7 @@ public class InputNode extends Node<InputOperator>
   @SuppressWarnings(value = "SleepWhileInLoop")
   public final void run()
   {
-    long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
+    long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
 
     boolean insideWindow = false;
@@ -91,6 +93,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
               currentWindowId = t.getWindowId();
               if (applicationWindowCount == 0) {
                 insideWindow = true;
@@ -110,6 +113,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
 
               if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
                 if (checkpoint && checkpoint(currentWindowId)) {
@@ -121,7 +125,7 @@ public class InputNode extends Node<InputOperator>
                 checkpointWindowCount = 0;
               }
 
-              Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+              ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
               reportStats(stats, currentWindowId);
               handleRequests(currentWindowId);
               break;
@@ -136,6 +140,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
               break;
 
             case END_STREAM:
@@ -143,6 +148,7 @@ public class InputNode extends Node<InputOperator>
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].put(t);
                 }
+                controlTupleCount++;
                 alive = false;
               }
               else {
@@ -154,6 +160,7 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
+              controlTupleCount++;
               break;
           }
         }
@@ -184,11 +191,12 @@ public class InputNode extends Node<InputOperator>
         checkpointWindowCount = 0;
       }
 
-      Stats.ContainerStats.OperatorStats stats = new Stats.ContainerStats.OperatorStats(id);
+      ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       reportStats(stats, currentWindowId);
       handleRequests(currentWindowId);
     }
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
 }

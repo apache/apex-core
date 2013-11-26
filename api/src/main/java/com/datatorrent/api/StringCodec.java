@@ -24,6 +24,7 @@ import java.io.Serializable;
  * conversion from and to String for attribute values.
  *
  * @param <T> Type of the object which can be converted to/from String.
+ * @since 0.9.0
  */
 public interface StringCodec<T>
 {
@@ -109,6 +110,76 @@ public interface StringCodec<T>
     }
 
     private static final long serialVersionUID = 201310141159L;
+  }
+
+  /**
+   * The attributes which represent arbitrary objects for which the schema cannot be
+   * standardized, we allow them to be represented as <ClassName>,<String> representation.
+   * This allows us to instantiate the class by invoking its constructor which takes
+   * <String> as argument. <String> itself can contain comma (,) character in it. If
+   * Only the <ClassName> is specified, then just the class is instantiated using default
+   * constructor. If comma is specified then class is instantiated using constructor with
+   * empty string as an argument.
+   *
+   * @param <T> Type of the object which is converted to/from String
+   */
+  public class Object2String<T> implements StringCodec<T>, Serializable
+  {
+    @Override
+    @SuppressWarnings("unchecked")
+    public T fromString(String string)
+    {
+      String[] parts = string.split(string, 2);
+
+      try {
+        Class<?> clazz = Class.forName(parts[0]);
+        if (parts.length == 1) {
+          return (T)clazz.newInstance();
+        }
+
+        return (T)clazz.getConstructor(String.class).newInstance(parts[1]);
+      }
+      catch (Exception cnfe) {
+        throw new RuntimeException(cnfe);
+      }
+    }
+
+    @Override
+    public String toString(T pojo)
+    {
+      String arg = pojo.toString();
+      if (arg == null) {
+        return pojo.getClass().getCanonicalName();
+      }
+
+      return pojo.getClass().getCanonicalName() + ',' + arg;
+    }
+
+    private static final long serialVersionUID = 201311141853L;
+  }
+
+  public class Enum2String<T extends Enum<T>> implements StringCodec<T>, Serializable
+  {
+    private final Class<T> clazz;
+
+    public Enum2String(Class<T> clazz)
+    {
+      this.clazz = clazz;
+    }
+
+    @Override
+    public T fromString(String string)
+    {
+      return Enum.valueOf(clazz, string);
+    }
+
+    @Override
+    public String toString(T pojo)
+    {
+      return pojo.name();
+    }
+
+    private static final long serialVersionUID = 201310181757L;
   }
 
 }

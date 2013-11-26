@@ -5,7 +5,7 @@
 package com.datatorrent.stram;
 
 import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.yarn.Clock;
+import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 
@@ -48,7 +48,7 @@ public interface StramAppContext extends Context
 
   AppInfo.AppStats getStats();
 
-  String getDaemonAddress();
+  String getGatewayAddress();
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);

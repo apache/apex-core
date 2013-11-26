@@ -32,6 +32,12 @@ public class FSStorageAgent implements StorageAgent
     this.checkpointFsPath = checkpointFsPath;
   }
 
+  public FSStorageAgent(String checkpointFsPath)
+  {
+    conf = new Configuration();
+    this.checkpointFsPath = checkpointFsPath;
+  }
+
   @Override
   public OutputStream getSaveStream(int id, long windowId) throws IOException
   {
@@ -78,7 +84,15 @@ public class FSStorageAgent implements StorageAgent
       }
     }
 
+
+
     return mrWindowId;
+  }
+
+  @Override
+  public String toString()
+  {
+    return checkpointFsPath;
   }
 
   @SuppressWarnings("unused")

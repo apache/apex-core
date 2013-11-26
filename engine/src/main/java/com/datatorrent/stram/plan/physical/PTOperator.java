@@ -17,14 +17,14 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.PartitionableOperator.Partition;
-import com.datatorrent.api.PartitionableOperator.PartitionKeys;
-import com.datatorrent.stram.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.api.Partitionable.Partition;
+import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.physical.PhysicalPlan.StatsHandler;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -101,7 +101,6 @@ public class PTOperator {
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator source;
     public final String portName;
-    //final PhysicalPlan plan;
     public final List<PTInput> sinks;
 
     /**
@@ -114,7 +113,6 @@ public class PTOperator {
      */
     protected PTOutput(String portName, StreamMeta logicalStream, PTOperator source)
     {
-      //this.plan = plan;
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
@@ -146,19 +144,21 @@ public class PTOperator {
      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
          append("o", this.source).
          append("port", this.portName).
-         append("stream", this.logicalStream.getId()).
+         append("stream", this.logicalStream.getName()).
          toString();
    }
 
  }
 
-  PTOperator(PhysicalPlan plan, int id, String name) {
+  PTOperator(PhysicalPlan plan, int id, String name)
+  {
     this.plan = plan;
     this.name = name;
     this.id = id;
+    this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
-  private PTOperator.State state = State.NEW;
+  private volatile PTOperator.State state = State.NEW;
   private final PhysicalPlan plan;
   PTContainer container;
   LogicalPlan.OperatorMeta logicalNode;
@@ -171,10 +171,11 @@ public class PTOperator {
   public final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
   long recoveryCheckpoint = 0;
   public int failureCount = 0;
-  int loadIndicator = 0;
-  public List<? extends StatsHandler> statsMonitors;
+  public int loadIndicator = 0;
+  public List<? extends StatsListener> statsListeners;
+  public final OperatorStatus stats;
 
-  final Map<Locality, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
+  final Map<Locality, HostOperatorSet> groupings = Maps.newHashMapWithExpectedSize(3);
 
   public List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
@@ -267,17 +268,42 @@ public class PTOperator {
     return unifier;
   }
 
-  Set<PTOperator> getGrouping(Locality type) {
-    Set<PTOperator> s = this.groupings.get(type);
-    if (s == null) {
-      s = Sets.newHashSet();
-      this.groupings.put(type, s);
+  HostOperatorSet getGrouping(Locality type) {
+    HostOperatorSet grpObj = this.groupings.get(type);
+    if (grpObj == null) {
+      grpObj = new HostOperatorSet();
+      grpObj.operatorSet = Sets.newHashSet();
+      this.groupings.put(type, grpObj);
     }
-    return s;
+    return grpObj;
   }
 
-  public Set<PTOperator> getNodeLocalOperators() {
+  public HostOperatorSet getNodeLocalOperators() {
     return getGrouping(Locality.NODE_LOCAL);
+  }
+
+
+  public class HostOperatorSet{
+    private String host;
+    private Set<PTOperator> operatorSet;
+    public String getHost()
+    {
+      return host;
+    }
+    public void setHost(String host)
+    {
+      this.host = host;
+    }
+    public Set<PTOperator> getOperatorSet()
+    {
+      return operatorSet;
+    }
+    public void setOperatorSet(Set<PTOperator> operatorSet)
+    {
+      this.operatorSet = operatorSet;
+    }
+
+
   }
 
   /**

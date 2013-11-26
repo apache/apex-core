@@ -49,7 +49,6 @@ public final class RecordingsAgent extends FSPartFileAgent
   public static class RecordingInfo
   {
     public long startTime;
-    public String recordingName;
     public String containerId;
     public String appId;
     public String operatorId;
@@ -63,8 +62,8 @@ public final class RecordingsAgent extends FSPartFileAgent
   private static class RecordingsIndexLine extends IndexLine
   {
     public List<TupleRecorder.Range> windowIdRanges;
-    public long startTime;
-    public long endTime;
+    public long fromTime;
+    public long toTime;
     public long tupleCount;
     public Map<String, MutableLong> portTupleCount;
   }
@@ -162,14 +161,18 @@ public final class RecordingsAgent extends FSPartFileAgent
     cursor2 = line.indexOf(':', cursor);
     String timeRange = line.substring(cursor, cursor2);
     String[] tmp = timeRange.split("-");
-    info.startTime = Long.valueOf(tmp[0]);
-    info.endTime = Long.valueOf(tmp[1]);
+    info.fromTime = Long.valueOf(tmp[0]);
+    info.toTime = Long.valueOf(tmp[1]);
     cursor = cursor2 + 1;
     cursor2 = line.indexOf(':', cursor);
+    if (cursor2 < 0) {
+      info.tupleCount = Long.valueOf(line.substring(cursor));
+      return info;
+    }
     info.tupleCount = Long.valueOf(line.substring(cursor, cursor2));
     cursor = cursor2 + 1;
     if (!line.substring(cursor, cursor + 2).equals("T:")) {
-      return null;
+      return info;
     }
     cursor += 2;
     cursor2 = line.indexOf(':', cursor);
@@ -341,14 +344,13 @@ public final class RecordingsAgent extends FSPartFileAgent
       BufferedReader br = new BufferedReader(new InputStreamReader(in));
       String line;
       line = br.readLine();
-      if (!line.equals("1.1")) {
+      if (!line.equals("1.2")) {
         throw new Exception("Unexpected line: " + line);
       }
       line = br.readLine();
       json = new JSONObject(line);
       info.startTime = json.getLong("startTime");
       info.containerId = json.optString("containerId");
-      info.recordingName = json.getString("recordingName");
       info.properties = new HashMap<String, Object>();
 
       if (!StringUtils.isBlank(info.containerId) && !containers.contains(info.containerId)) {
@@ -428,7 +430,27 @@ public final class RecordingsAgent extends FSPartFileAgent
     return info;
   }
 
-  public TuplesInfo getTuplesInfo(String appId, String opId, long startTime, long offset, long limit, String[] ports, boolean treatOffsetAsWindow)
+  private enum QueryType
+  {
+    OFFSET, WINDOW, TIME
+  };
+
+  public TuplesInfo getTuplesInfoByTime(String appId, String opId, long startTime, long fromTime, long toTime, long limit, String[] ports)
+  {
+    return getTuplesInfo(appId, opId, startTime, fromTime, toTime, limit, ports, QueryType.TIME);
+  }
+
+  public TuplesInfo getTuplesInfoByOffset(String appId, String opId, long startTime, long offset, long limit, String[] ports)
+  {
+    return getTuplesInfo(appId, opId, startTime, offset, 0, limit, ports, QueryType.OFFSET);
+  }
+
+  public TuplesInfo getTuplesInfoByWindow(String appId, String opId, long startTime, long startWindow, long limit, String[] ports)
+  {
+    return getTuplesInfo(appId, opId, startTime, startWindow, 0, limit, ports, QueryType.WINDOW);
+  }
+
+  private TuplesInfo getTuplesInfo(String appId, String opId, long startTime, long low, long high, long limit, String[] ports, QueryType queryType)
   {
     TuplesInfo info = new TuplesInfo();
     info.startOffset = -1;
@@ -440,13 +462,13 @@ public final class RecordingsAgent extends FSPartFileAgent
     try {
       FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
       IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
-      String line;
       long currentOffset = 0;
       boolean readPartFile = false;
       if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
         limit = MAX_LIMIT_TUPLES;
       }
       long numRemainingTuples = limit;
+      long currentTimestamp = 0;
       RecordingsIndexLine indexLine;
       while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
@@ -473,16 +495,24 @@ public final class RecordingsAgent extends FSPartFileAgent
         currentWindowHigh = indexLine.windowIdRanges.get(indexLine.windowIdRanges.size() - 1).high;
 
         if (!readPartFile) {
-          if (treatOffsetAsWindow) {
-            if (currentWindowLow > offset) {
+          if (queryType == QueryType.WINDOW) {
+            if (currentWindowLow > low) {
               break;
             }
-            else if (currentWindowLow <= offset && offset <= currentWindowHigh) {
+            else if (currentWindowLow <= low && low <= currentWindowHigh) {
               readPartFile = true;
             }
           }
-          else {
-            if (currentOffset + numTuples > offset) {
+          else if (queryType == QueryType.OFFSET) {
+            if (currentOffset + numTuples > low) {
+              readPartFile = true;
+            }
+          }
+          else { // time
+            if (indexLine.fromTime > low) {
+              break;
+            }
+            else if (indexLine.fromTime <= low && low <= indexLine.toTime) {
               readPartFile = true;
             }
           }
@@ -497,6 +527,9 @@ public final class RecordingsAgent extends FSPartFileAgent
           while ((partLine = partBr.readLine()) != null) {
             int partCursor = 2;
             if (partLine.startsWith("B:")) {
+              int partCursor2 = partLine.indexOf(':', partCursor);
+              currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
+              partCursor = partCursor2 + 1;
               currentWindowLow = Long.valueOf(partLine.substring(partCursor));
               if (limit != numRemainingTuples) {
                 WindowTuplesInfo wtinfo;
@@ -507,12 +540,17 @@ public final class RecordingsAgent extends FSPartFileAgent
             }
             else if (partLine.startsWith("T:")) {
               int partCursor2 = partLine.indexOf(':', partCursor);
+              currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
+              partCursor = partCursor2 + 1;
+              partCursor2 = partLine.indexOf(':', partCursor);
               String port = partLine.substring(partCursor, partCursor2);
               boolean portMatch = (ports == null) || (ports.length == 0) || Arrays.asList(ports).contains(port);
               partCursor = partCursor2 + 1;
 
-              if (portMatch && ((treatOffsetAsWindow && currentWindowLow >= offset)
-                      || (!treatOffsetAsWindow && tmpOffset >= offset))) {
+              if (portMatch
+                      && ((queryType == QueryType.WINDOW && currentWindowLow >= low)
+                      || (queryType == QueryType.OFFSET && tmpOffset >= low)
+                      || (queryType == QueryType.TIME && currentTimestamp >= low))) {
 
                 if (numRemainingTuples > 0) {
                   if (info.startOffset == -1) {
@@ -547,7 +585,7 @@ public final class RecordingsAgent extends FSPartFileAgent
           }
         }
         currentOffset += numTuples;
-        if (numRemainingTuples == 0) {
+        if (numRemainingTuples == 0 || (queryType == QueryType.TIME && currentTimestamp > high)) {
           return info;
         }
       }

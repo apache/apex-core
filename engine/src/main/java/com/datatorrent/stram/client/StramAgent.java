@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.3
  */
-public class StramAgent extends HdfsAgent
+public class StramAgent extends FSAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
   protected static String resourceManagerWebappAddress;
@@ -77,6 +77,11 @@ public class StramAgent extends HdfsAgent
       }
     }
     return trackingUrl == null ? null : wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
+  }
+
+  public static void invalidateStramWebResource(String appid)
+  {
+    deleteAppMasterUrl(appid);
   }
 
   public String getDefaultStramRoot()

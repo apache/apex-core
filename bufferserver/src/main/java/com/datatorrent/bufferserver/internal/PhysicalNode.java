@@ -4,11 +4,12 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-import com.datatorrent.bufferserver.client.AbstractClient;
-import com.datatorrent.bufferserver.util.SerializedData;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  * PhysicalNode represents one physical subscriber.
@@ -20,14 +21,14 @@ public class PhysicalNode
 {
   public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
-  private final AbstractClient client;
+  private final AbstractLengthPrependerClient client;
   private long processedMessageCount;
 
   /**
    *
    * @param client
    */
-  public PhysicalNode(AbstractClient client)
+  public PhysicalNode(AbstractLengthPrependerClient client)
   {
     this.client = client;
     starttime = System.currentTimeMillis();
@@ -137,7 +138,7 @@ public class PhysicalNode
   /**
    * @return the channel
    */
-  public AbstractClient getClient()
+  public AbstractLengthPrependerClient getClient()
   {
     return client;
   }

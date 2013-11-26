@@ -15,32 +15,39 @@
  */
 package com.datatorrent.api.util;
 
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.websocket.WebSocket;
-import com.ning.http.client.websocket.WebSocketTextListener;
-import com.ning.http.client.websocket.WebSocketUpgradeHandler;
-import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import com.ning.http.client.AsyncHttpClient;
+import com.ning.http.client.AsyncHttpClientConfigBean;
+import com.ning.http.client.websocket.WebSocket;
+import com.ning.http.client.websocket.WebSocketTextListener;
+import com.ning.http.client.websocket.WebSocketUpgradeHandler;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
  *
  * @since 0.3.2
  */
-public abstract class PubSubWebSocketClient
+public abstract class PubSubWebSocketClient implements Component<Context>
 {
   private AsyncHttpClient client;
   private WebSocket connection;
-  private ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
-  private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+  private final ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
+  private final PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
   private URI uri;
+  private int ioThreadMultiplier = 1;
 
   private class PubSubWebSocket implements WebSocketTextListener
   {
@@ -49,7 +56,6 @@ public abstract class PubSubWebSocketClient
     {
       LOG.debug("onMessage {}", message);
       try {
-        @SuppressWarnings("unchecked")
         PubSubMessage<Object> pubSubMessage = codec.parseMessage(message);
         PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
       }
@@ -90,7 +96,9 @@ public abstract class PubSubWebSocketClient
   public PubSubWebSocketClient()
   {
     try {
-      client = new AsyncHttpClient();
+      AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
+      config.setIoThreadMultiplier(ioThreadMultiplier);
+      client = new AsyncHttpClient(config);
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
@@ -99,14 +107,25 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>Setter for the field <code>uri</code>.</p>
+   * @param uri
    */
   public void setUri(URI uri)
   {
     this.uri = uri;
   }
 
+  public void setIoThreadMultiplier(int ioThreadMultiplier)
+  {
+    this.ioThreadMultiplier = ioThreadMultiplier;
+  }
+
   /**
    * <p>openConnection.</p>
+   * @param timeoutMillis
+   * @throws IOException
+   * @throws ExecutionException
+   * @throws InterruptedException
+   * @throws TimeoutException
    */
   public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
   {
@@ -145,6 +164,7 @@ public abstract class PubSubWebSocketClient
    * @throws IOException
    * @deprecated
    */
+  @Deprecated
   public static String constructPublishMessage(String topic, Object data, ObjectMapper mapper) throws IOException
   {
     PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
@@ -153,6 +173,12 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructPublishMessage.</p>
+   * @param <T>
+   * @param topic
+   * @param data
+   * @param codec
+   * @return
+   * @throws IOException
    */
   public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
@@ -182,6 +208,7 @@ public abstract class PubSubWebSocketClient
    * @throws IOException
    * @deprecated
    */
+  @Deprecated
   public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
   {
     PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
@@ -190,6 +217,11 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructSubscribeMessage.</p>
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return
+   * @throws IOException
    */
   public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
@@ -218,6 +250,7 @@ public abstract class PubSubWebSocketClient
    * @throws IOException
    * @deprecated
    */
+  @Deprecated
   public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
   {
     PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
@@ -226,6 +259,11 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructUnsubscribeMessage.</p>
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return
+   * @throws IOException
    */
   public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
@@ -253,6 +291,7 @@ public abstract class PubSubWebSocketClient
    * @throws IOException
    * @deprecated
    */
+  @Deprecated
   public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
   {
     PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
@@ -261,6 +300,11 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructSubscribeNumSubscribersMessage.</p>
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return
+   * @throws IOException
    */
   public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
@@ -288,6 +332,7 @@ public abstract class PubSubWebSocketClient
    * @throws IOException
    * @deprecated
    */
+  @Deprecated
   public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
   {
     PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
@@ -296,6 +341,11 @@ public abstract class PubSubWebSocketClient
 
   /**
    * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   * @param <T>
+   * @param topic
+   * @param codec
+   * @return
+   * @throws IOException
    */
   public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
@@ -334,6 +384,19 @@ public abstract class PubSubWebSocketClient
    * @param ws
    */
   public abstract void onClose(WebSocket ws);
+
+  @Override
+  public void setup(Context context)
+  {
+  }
+
+  @Override
+  public void teardown()
+  {
+    if (client != null) {
+      client.close();
+    }
+  }
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);
 

@@ -11,8 +11,10 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
+ * <p>StreamInfo class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.0
  */
 @XmlRootElement(name = "stream")
 @XmlAccessorType(XmlAccessType.FIELD)

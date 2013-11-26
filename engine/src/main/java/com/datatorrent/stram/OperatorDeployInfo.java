@@ -110,11 +110,11 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T get = contextAttributes.get(key);
       if (get == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return get;
@@ -177,11 +177,11 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = contextAttributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -202,7 +202,7 @@ public class OperatorDeployInfo implements Serializable
   /**
    * Logical operator name from DAG.
    */
-  public String declaredId;
+  public String name;
 
   /**
    * The checkpoint window identifier.
@@ -233,7 +233,8 @@ public class OperatorDeployInfo implements Serializable
   public String toString()
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
-            append("declaredId", this.declaredId).
+            append("name", this.name).
+            append("type", this.type).
             append("checkpoint", this.checkpointWindowId).
             append("inputs", this.inputs).
             append("outputs", this.outputs).

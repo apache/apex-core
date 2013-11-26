@@ -23,6 +23,7 @@ import com.datatorrent.stram.engine.StreamContext;
  */
 public class MuxStream implements Stream.MultiSinkCapableStream
 {
+  public static final String MULTI_SINK_ID_CONCAT_SEPARATOR = ", ";
   private HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink<Object>[] sinks = NO_SINKS;

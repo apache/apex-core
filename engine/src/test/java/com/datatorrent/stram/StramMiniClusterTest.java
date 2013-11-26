@@ -36,7 +36,7 @@ import com.sun.jersey.api.client.WebResource;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
-import org.apache.hadoop.yarn.api.AMRMProtocol;
+import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
@@ -51,8 +51,7 @@ import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
-import org.apache.hadoop.yarn.client.AMRMClient;
-import org.apache.hadoop.yarn.client.AMRMClientImpl;
+import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
@@ -69,6 +68,7 @@ import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.webapp.StramWebServices;
+import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -102,7 +102,7 @@ public class StramMiniClusterTest
     conf.setStrings("yarn.scheduler.capacity.root.queues", "default");
     conf.setStrings("yarn.scheduler.capacity.root.default.capacity", "100");
 
-    StringBuilder adminEnv = new StringBuilder();
+    StringBuilder adminEnv = new StringBuilder(1024);
     if (System.getenv("JAVA_HOME") == null) {
       adminEnv.append("JAVA_HOME=").append(System.getProperty(System.getProperty("java.home")));
       adminEnv.append(",");
@@ -382,6 +382,7 @@ public class StramMiniClusterTest
     ApplicationReport ar = client.getApplicationReport();
     Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
     // unable to get the diagnostics message set by the AM here - see YARN-208
+    // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
     //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
   }
 
@@ -432,11 +433,10 @@ public class StramMiniClusterTest
 
 
         YarnClientHelper yarnClient = new YarnClientHelper(conf);
-        AMRMProtocol resourceManager = yarnClient.connectToRM();
+        ApplicationMasterProtocol resourceManager = yarnClient.connectToRM();
 
         // register with the RM (LAUNCHED -> RUNNING)
         RegisterApplicationMasterRequest appMasterRequest = Records.newRecord(RegisterApplicationMasterRequest.class);
-        appMasterRequest.setApplicationAttemptId(attemptId);
         resourceManager.registerApplicationMaster(appMasterRequest);
 
         // AM specific logic
@@ -466,21 +466,19 @@ public class StramMiniClusterTest
         int responseId = 0;
         AllocateRequest req = Records.newRecord(AllocateRequest.class);
         req.setResponseId(responseId++);
-        req.setApplicationAttemptId(attemptId);
 
         List<ResourceRequest> lr = Lists.newArrayList();
         lr.add(setupContainerAskForRM("hdev-vm", 1, 128, 10));
         lr.add(setupContainerAskForRM("/default-rack", 1, 128, 10));
         lr.add(setupContainerAskForRM("*", 1, 128, 10));
 
-        req.addAllAsks(lr);
+        req.setAskList(lr);
 
         LOG.info("Requesting: " + req.getAskList());
         resourceManager.allocate(req);
 
         for (int i=0; i<100; i++) {
           req = Records.newRecord(AllocateRequest.class);
-          req.setApplicationAttemptId(attemptId);
           req.setResponseId(responseId++);
 
           AllocateResponse ar = resourceManager.allocate(req);
@@ -490,8 +488,7 @@ public class StramMiniClusterTest
 
         // unregister from RM
         FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
-        finishReq.setAppAttemptId(attemptId);
-        finishReq.setFinishApplicationStatus(FinalApplicationStatus.SUCCEEDED);
+        finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
         finishReq.setDiagnostics("testUnmanagedAM finished");
         resourceManager.finishApplicationMaster(finishReq);
 
@@ -506,7 +503,7 @@ public class StramMiniClusterTest
         // Refer to apis under org.apache.hadoop.net for more
         // details on how to get figure out rack/host mapping.
         // using * as any host will do for the distributed shell app
-        request.setHostName(resourceName);
+        request.setResourceName(resourceName);
 
         // set no. of containers needed
         request.setNumContainers(numContainers);
@@ -539,11 +536,9 @@ public class StramMiniClusterTest
       @SuppressWarnings("SleepWhileInLoop")
       public void runAM(ApplicationAttemptId attemptId) throws Exception {
         LOG.debug("AM running {}", attemptId);
-
-        AMRMClient amRmClient = new AMRMClientImpl(attemptId);
+        AMRMClient<ContainerRequest> amRmClient = AMRMClient.createAMRMClient();
         amRmClient.init(conf);
         amRmClient.start();
-
 
         // register with the RM (LAUNCHED -> RUNNING)
         amRmClient.registerApplicationMaster("", 0, null);
@@ -559,7 +554,8 @@ public class StramMiniClusterTest
 
         Priority priority = Records.newRecord(Priority.class);
         priority.setPriority(10);
-        AMRMClient.ContainerRequest req = new AMRMClient.ContainerRequest(capability, hosts, racks, priority, 2);
+        AMRMClient.ContainerRequest req = new AMRMClient.ContainerRequest(capability, hosts, racks, priority);
+        amRmClient.addContainerRequest(req);
         amRmClient.addContainerRequest(req);
 
 /*
@@ -574,10 +570,9 @@ public class StramMiniClusterTest
           AllocateResponse ar = amRmClient.allocate(0);
           sleep(1000);
           LOG.debug("allocateResponse: {}" , ar);
-          for (Container c : ar.getAMResponse().getAllocatedContainers()) {
+          for (Container c : ar.getAllocatedContainers()) {
             LOG.debug("*** allocated {}", c.getResource());
             amRmClient.removeContainerRequest(req);
-
           }
           /*
           GetClusterNodesRequest request =

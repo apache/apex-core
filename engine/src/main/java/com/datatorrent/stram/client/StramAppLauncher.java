@@ -6,8 +6,10 @@ package com.datatorrent.stram.client;
 
 import java.io.*;
 import java.lang.reflect.Modifier;
+import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.util.*;
 import java.util.jar.JarEntry;
 
@@ -45,6 +47,10 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  * @since 0.3.2
  */
 public class StramAppLauncher {
+
+  public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
+  public static final String FILES_CONF_KEY_NAME = "tmpfiles";
+  public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
@@ -205,14 +211,14 @@ public class StramAppLauncher {
         LOG.info("Generating classpath via mvn from " + pomFile);
         LOG.info("java.home: " + System.getProperty("java.home"));
 
-        String malhar_home;
-        if (StramClientUtils.MALHAR_HOME != null && !StramClientUtils.MALHAR_HOME.isEmpty()) {
-          malhar_home = " -Duser.home=" + StramClientUtils.MALHAR_HOME;
+        String dt_home;
+        if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
+          dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
         }
         else {
-          malhar_home = "";
+          dt_home = "";
         }
-        String cmd = "mvn dependency:build-classpath" + malhar_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
+        String cmd = "mvn dependency:build-classpath" + dt_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
 
         Process p = Runtime.getRuntime().exec(cmd);
         ProcessWatcher pw = new ProcessWatcher(p);
@@ -240,8 +246,17 @@ public class StramAppLauncher {
 //      // launch class path takes precedence - add first
 //      clUrls.addAll(Arrays.asList(baseUrls));
 //    }
+    URL mainJarUrl = new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/");
+    URLConnection urlConnection = mainJarUrl.openConnection();
+    if (urlConnection instanceof JarURLConnection) {
+      // JDK6 keeps jar file shared and open as long as the process is running.
+      // we want the jar file to be opened on every launch to pick up latest changes
+      // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
+      // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
+      ((JarURLConnection)urlConnection).getJarFile().close();
+    }
 
-    clUrls.add(new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/"));
+    clUrls.add(mainJarUrl);
     // add the jar dependencies
     if (cp != null) {
       String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");
@@ -348,7 +363,6 @@ public class StramAppLauncher {
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
-   * @param config
    * @throws Exception
    */
   public void runLocal(AppFactory appConfig) throws Exception {
@@ -378,6 +392,9 @@ public class StramAppLauncher {
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
     LogicalPlan dag = prepareDAG(appConfig);
     StramClient client = new StramClient(dag);
+    client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
+    client.setFiles(conf.get(FILES_CONF_KEY_NAME));
+    client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
     client.startApplication();
     return client.getApplicationReport().getApplicationId();
   }

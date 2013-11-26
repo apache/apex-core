@@ -30,10 +30,10 @@ import javax.validation.ValidationException;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Sets;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -46,7 +46,7 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
@@ -90,6 +90,17 @@ public class LogicalPlan implements Serializable, DAG
    */
   public static String SUBDIR_EVENTS = "events";
 
+  /**
+   * A flag to specify whether to use the fast publisher or not. This attribute was moved
+   * from DAGContext. This can be here till the fast publisher is fully tested and working as desired.
+   * Then it can be moved back to DAGContext.
+   */
+  public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
+
+  static {
+    AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
+  }
+
   private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
   private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
@@ -104,11 +115,11 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+  public <T> T getValue(AttributeMap.Attribute<T> key)
   {
     T val = attributes.get(key);
     if (val == null) {
-      return defaultValue;
+      return key.defaultValue;
     }
 
     return val;
@@ -184,11 +195,11 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -198,14 +209,14 @@ public class LogicalPlan implements Serializable, DAG
   public final class OutputPortMeta implements DAG.OutputPortMeta, Serializable
   {
     private static final long serialVersionUID = 1L;
-    private OperatorMeta operatorWrapper;
+    private OperatorMeta operatorMeta;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes = new DefaultAttributeMap();
 
     public OperatorMeta getOperatorWrapper()
     {
-      return operatorWrapper;
+      return operatorMeta;
     }
 
     public String getPortName()
@@ -213,8 +224,17 @@ public class LogicalPlan implements Serializable, DAG
       return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
     }
 
+    public OutputPort<?> getPortObject() {
+      for (Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
+        if (e.getValue() == this) {
+          return e.getKey();
+        }
+      }
+      throw new AssertionError("Cannot find the port object for " + this);
+    }
+
     public Operator.Unifier<?> getUnifier() {
-      for (Entry<OutputPort<?>, OutputPortMeta> e : operatorWrapper.getPortMapping().outPortMap.entrySet()) {
+      for (Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey().getUnifier();
         }
@@ -229,11 +249,11 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -243,7 +263,7 @@ public class LogicalPlan implements Serializable, DAG
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("operator", this.operatorWrapper).
+              append("operator", this.operatorMeta).
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
@@ -268,7 +288,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public String getId()
+    public String getName()
     {
       return id;
     }
@@ -379,6 +399,13 @@ public class LogicalPlan implements Serializable, DAG
     private final OperatorAnnotation operatorAnnotation;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
+    /*
+     * Used for  OIO validation,
+     *  value null => node not visited yet
+     *  value -1  => node visited and not oio
+     *  other value => represents the root oio node for this node
+     */
+    private transient Integer oioRoot = null;
 
     private OperatorMeta(String name, Operator operator)
     {
@@ -388,6 +415,7 @@ public class LogicalPlan implements Serializable, DAG
       this.name = name;
     }
 
+    @Override
     public String getName()
     {
       return name;
@@ -400,11 +428,11 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public <T> T attrValue(AttributeMap.Attribute<T> key, T defaultValue)
+    public <T> T getValue(AttributeMap.Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
-        return defaultValue;
+        return key.defaultValue;
       }
 
       return attr;
@@ -444,7 +472,7 @@ public class LogicalPlan implements Serializable, DAG
         if (!OperatorMeta.this.outputStreams.isEmpty()) {
           for (Map.Entry<LogicalPlan.OutputPortMeta, LogicalPlan.StreamMeta> e : OperatorMeta.this.outputStreams.entrySet()) {
             LogicalPlan.OutputPortMeta pm = e.getKey();
-            if (pm.operatorWrapper == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
+            if (pm.operatorMeta == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
               //LOG.debug("Found existing port meta for: " + field);
               outPortMap.put(portObject, pm);
               checkDuplicateName(pm.getPortName(), pm);
@@ -453,7 +481,7 @@ public class LogicalPlan implements Serializable, DAG
           }
         }
         OutputPortMeta metaPort = new OutputPortMeta();
-        metaPort.operatorWrapper = OperatorMeta.this;
+        metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
         outPortMap.put(portObject, metaPort);
@@ -704,22 +732,22 @@ public class LogicalPlan implements Serializable, DAG
 
   public int getMaxContainerCount()
   {
-    return this.attrValue(CONTAINERS_MAX_COUNT, 3);
+    return this.getValue(CONTAINERS_MAX_COUNT);
   }
 
   public boolean isDebug()
   {
-    return this.attrValue(DEBUG, false);
+    return this.getValue(DEBUG);
   }
 
   public int getContainerMemoryMB()
   {
-    return this.attrValue(CONTAINER_MEMORY_MB, 1024);
+    return this.getValue(CONTAINER_MEMORY_MB);
   }
 
   public int getMasterMemoryMB()
   {
-    return this.attrValue(MASTER_MEMORY_MB, 1024);
+    return this.getValue(MASTER_MEMORY_MB);
   }
 
   /**
@@ -756,6 +784,11 @@ public class LogicalPlan implements Serializable, DAG
             Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
 
+    // clear oioRoot values in all operators
+    for (OperatorMeta n: operators.values()) {
+      n.oioRoot = null;
+    }
+
     // clear visited on all operators
     for (OperatorMeta n: operators.values()) {
       n.nindex = null;
@@ -770,7 +803,7 @@ public class LogicalPlan implements Serializable, DAG
         for (ConstraintViolation<Operator> cv: constraintViolations) {
           copySet.add(cv);
         }
-        throw new ConstraintViolationException("Operator " + n.getName() + " violates constraints", copySet);
+        throw new ConstraintViolationException("Operator " + n.getName() + " violates constraints " + copySet, copySet);
       }
 
       OperatorMeta.PortMapping portMapping = n.getPortMapping();
@@ -780,20 +813,20 @@ public class LogicalPlan implements Serializable, DAG
         // Check if partition property of the operator is being honored
         if (!n.operatorAnnotation.partitionable()) {
           // Check if INITIAL_PARTITION_COUNT is set
-          int partitionCount = n.attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
-          if (partitionCount > 0) {
+          int partitionCount = n.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
+          if (partitionCount > 1) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set" );
           } else {
             // Check if any of the input ports have partition attributes set
             for (InputPortMeta pm : portMapping.inPortMap.values()) {
-              Boolean paralellPartition = pm.attrValue(PortContext.PARTITION_PARALLEL, Boolean.FALSE);
+              Boolean paralellPartition = pm.getValue(PortContext.PARTITION_PARALLEL);
               if (paralellPartition) {
                 throw new ValidationException("Operator " + n.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set" );
               }
             }
           }
-          // Check if partition implements PartitionableOperator
-          if (PartitionableOperator.class.isAssignableFrom(n.getOperator().getClass())) {
+          // Check if partition implements Partitionable
+          if (Partitionable.class.isAssignableFrom(n.getOperator().getClass())) {
             throw new ValidationException("Operator " + n.getName() + " is not partitionable but implements PartitionableOperator" );
           }
         }
@@ -811,8 +844,7 @@ public class LogicalPlan implements Serializable, DAG
           DAG.Locality locality = sm.getLocality();
           if (locality == DAG.Locality.THREAD_LOCAL) {
             if (n.inputStreams.size() > 1) {
-              String msg = String.format("Locality %s invalid for operator %s with multiple input streams", locality, n);
-              throw new ValidationException(msg);
+              validateThreadLocal(n);
             }
           }
         }
@@ -845,7 +877,7 @@ public class LogicalPlan implements Serializable, DAG
 
     for (StreamMeta s: streams.values()) {
       if (s.source == null || (s.sinks.isEmpty())) {
-        throw new ValidationException(String.format("stream not connected: %s", s.getId()));
+        throw new ValidationException(String.format("stream not connected: %s", s.getName()));
       }
     }
 
@@ -855,6 +887,85 @@ public class LogicalPlan implements Serializable, DAG
       validateProcessingMode(om, visited);
     }
 
+  }
+
+  /*
+   * Validates OIO constraints for operators with more than one input streams
+   * For a node to be OIO,
+   *  1. all its input streams should be OIO
+   *  2. all its input streams should have OIO from single source node
+   */
+  private void validateThreadLocal(OperatorMeta om) {
+    Integer oioRoot = null;
+
+    // already visited and validated
+    if (om.oioRoot != null) {
+      return;
+    }
+
+    for (StreamMeta sm: om.inputStreams.values()){
+      // validation fail as each input stream should be OIO
+      if (sm.locality != Locality.THREAD_LOCAL){
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not %s",
+                                   Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
+        throw new ValidationException(msg);
+      }
+
+      // gets oio root for input operator for the stream
+      Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
+
+      // validation fail as each input stream should have a common OIO root
+      if (oioStreamRoot == -1){
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not originating from common OIO owner node",
+                                   Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
+        throw new ValidationException(msg);
+      }
+
+      // populate oioRoot with root OIO node id for first stream, then validate for subsequent streams to have same root OIO node
+      if (oioRoot == null) {
+        oioRoot = oioStreamRoot;
+      } else if (oioRoot.intValue() != oioStreamRoot.intValue()) {
+        String msg = String.format("Locality %s invalid for operator %s with multiple input streams as they origin from different owner OIO operators", sm.locality, om);
+        throw new ValidationException(msg);
+      }
+    }
+
+    om.oioRoot = oioRoot;
+  }
+
+  /**
+   * Helper method for validateThreadLocal method, runs recursively
+   * For a given operator, visits all upstream operators in DFS, validates and marks them as visited
+   * returns hashcode of owner oio node if it exists, else returns -1
+   */
+  private Integer getOioRoot(OperatorMeta om) {
+    // operators which were already marked a visited
+    if (om.oioRoot != null){
+      return om.oioRoot;
+    }
+
+    // operators which were not visited before
+    switch (om.inputStreams.size()) {
+      case 1:
+        StreamMeta sm = om.inputStreams.values().iterator().next();
+        if (sm.locality == Locality.THREAD_LOCAL) {
+          Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
+          if (oioStreamRoot == -1)
+            om.oioRoot = sm.source.operatorMeta.hashCode();
+          else
+            om.oioRoot = oioStreamRoot;
+          return om.oioRoot;
+        } else {
+          om.oioRoot = -1;
+          return om.hashCode();
+        }
+      case 0:
+        om.oioRoot = -1;
+        return om.hashCode();
+      default:
+        validateThreadLocal(om);
+        return om.oioRoot;
+    }
   }
 
   /**
@@ -922,11 +1033,11 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     visited.add(om);
-    Operator.ProcessingMode pm = om.attrValue(OperatorContext.PROCESSING_MODE, null);
+    Operator.ProcessingMode pm = om.getValue(OperatorContext.PROCESSING_MODE);
     for (StreamMeta os : om.outputStreams.values()) {
       for (InputPortMeta sink: os.sinks) {
         OperatorMeta sinkOm = sink.getOperatorWrapper();
-        Operator.ProcessingMode sinkPm = sinkOm.attrValue(OperatorContext.PROCESSING_MODE, null);
+        Operator.ProcessingMode sinkPm = sinkOm.attributes == null? null: sinkOm.attributes.get(OperatorContext.PROCESSING_MODE);
         if (sinkPm == null) {
           // If the source processing mode is AT_MOST_ONCE and a processing mode is not specified for the sink then set it to AT_MOST_ONCE as well
           if (Operator.ProcessingMode.AT_MOST_ONCE.equals(pm)) {

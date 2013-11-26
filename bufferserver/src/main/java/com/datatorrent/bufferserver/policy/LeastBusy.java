@@ -4,10 +4,10 @@
  */
 package com.datatorrent.bufferserver.policy;
 
-import com.datatorrent.bufferserver.internal.PhysicalNode;
-import com.datatorrent.bufferserver.util.SerializedData;
-
 import java.util.Set;
+
+import com.datatorrent.bufferserver.internal.PhysicalNode;
+import com.datatorrent.common.util.SerializedData;
 
 /**
  *

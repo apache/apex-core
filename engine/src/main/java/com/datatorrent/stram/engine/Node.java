@@ -14,28 +14,22 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-import com.datatorrent.api.ActivationListener;
-import com.datatorrent.api.CheckpointListener;
-import com.datatorrent.api.Component;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.StorageAgent;
-
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo;
-import com.datatorrent.stram.api.NodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
@@ -80,6 +74,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected long checkpointedWindowId;
   public int applicationWindowCount;
   public int checkpointWindowCount;
+  protected int controlTupleCount;
 
   public Node(OPERATOR operator)
   {
@@ -235,7 +230,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected void emitEndStream()
   {
-//    logger.debug("{} sending EndOfStream", this);
+    // logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
@@ -243,25 +238,26 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     for (final Sink<Object> output : outputs.values()) {
       output.put(est);
     }
+    controlTupleCount++;
   }
 
   protected void emitEndWindow()
   {
-    // This function currently only gets called upon END_STREAM.
-    // DO NOT assume this will get called to emit an end window tuple
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
-    for (final Sink<Object> output : outputs.values()) {
-      output.put(ewt);
+    for (int s = sinks.length; s-- > 0;) {
+      sinks[s].put(ewt);
     }
+    controlTupleCount++;
   }
 
   public void emitCheckpoint(long windowId)
   {
     CheckpointTuple ct = new CheckpointTuple(windowId);
     ct.setWindowId(currentWindowId);
-    for (final Sink<Object> output : outputs.values()) {
-      output.put(ct);
+    for (int s = sinks.length; s-- > 0;) {
+      sinks[s].put(ct);
     }
+    controlTupleCount++;
   }
 
   protected void handleRequests(long windowId)
@@ -270,7 +266,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      BlockingQueue<NodeRequest> requests = context.getRequests();
+      BlockingQueue<OperatorCommand> requests = context.getRequests();
       int size;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {
@@ -284,15 +280,17 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected void reportStats(Stats.ContainerStats.OperatorStats stats, long windowId)
+  protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
   {
-    stats.outputPorts = new ArrayList<Stats.ContainerStats.OperatorStats.PortStats>();
+    stats.outputPorts = new ArrayList<ContainerStats.OperatorStats.PortStats>();
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
-      Stats.ContainerStats.OperatorStats.PortStats portStats = new Stats.ContainerStats.OperatorStats.PortStats(e.getKey());
-      portStats.tupleCount = e.getValue().getCount(true);
+      ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
+      portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
+      controlTupleCount = 0;
       portStats.endWindowTimestamp = endWindowEmitTime;
       stats.outputPorts.add(portStats);
     }
+
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
@@ -407,6 +405,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public static Node<?> retrieveNode(InputStream stream, OperatorDeployInfo.OperatorType type)
   {
     OperatorWrapper ow = retrieveOperatorWrapper(stream);
+    logger.debug("type={}, operator class={}", type, ow.operator.getClass());
 
     Node<?> node;
     if (ow.operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
@@ -447,14 +446,20 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
+  public OperatorContext getContext()
+  {
+    return context;
+  }
+
+  @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
   {
     this.context = context;
     alive = true;
-    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
+    APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
+    CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
 
-    PROCESSING_MODE = context.attrValue(OperatorContext.PROCESSING_MODE, ProcessingMode.AT_LEAST_ONCE);
+    PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
       logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
       CHECKPOINT_WINDOW_COUNT = 1;
@@ -462,7 +467,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     activateSinks();
     if (operator instanceof ActivationListener) {
-      ((ActivationListener)operator).activate(context);
+      ((ActivationListener<OperatorContext>)operator).activate(context);
     }
 
     /*
@@ -476,7 +481,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public void deactivate()
   {
     if (operator instanceof ActivationListener) {
-      ((ActivationListener)operator).deactivate();
+      ((ActivationListener<?>)operator).deactivate();
     }
     emitEndStream();
 

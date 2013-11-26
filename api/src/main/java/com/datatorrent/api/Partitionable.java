@@ -19,12 +19,16 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+import com.datatorrent.api.Operator.InputPort;
+
 /**
- * <p>PartitionableOperator interface.</p>
+ * <p>Partitionable interface.</p>
  *
+ * @param <T> type for which custom partitions need to be defined.
  * @since 0.3.2
  */
-public interface PartitionableOperator extends Operator
+public interface Partitionable<T extends Operator>
 {
   /**
    * Give an opportunity to the operator to decide how it would like to clone
@@ -55,7 +59,7 @@ public interface PartitionableOperator extends Operator
    * @return New partitioning. Partitions from input list which should not be
    *         changed can be returned as they are.
    */
-  public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity);
+  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
 
   public class PartitionKeys
   {
@@ -101,7 +105,7 @@ public interface PartitionableOperator extends Operator
     }
   }
 
-  public interface Partition<OPERATOR extends Operator>
+  public interface Partition<PARTITIONABLE extends Operator>
   {
     /**
      * Return the partition keys for this partition.
@@ -123,19 +127,29 @@ public interface PartitionableOperator extends Operator
     public int getLoad();
 
     /**
+     * Get the latest statistics for this partition. Null when no stats have been collected yet.
+     * <p>
+     * Stats would typically be used to determine utilization and decide whether partitions should be merged or split.
+     * Through {@link Stats.OperatorStats.CustomStats} operator implementation specific stats can be collected and used
+     * to derive optimal partitioning.
+     *
+     * @return
+     */
+    public BatchedOperatorStats getStats();
+
+    /**
      * Get the frozen state of the operator which is currently handling the partition.
      *
      * @return frozen operator instance
      */
-    public OPERATOR getOperator();
+    public PARTITIONABLE getPartitionedInstance();
 
     /**
-     * Create a new partition for the given operator. The returned partition
-     * needs to be further configured with the port to partition key mapping.
+     * Get the attributes associated with this partition.
+     * The returned map does not contain any attributes that may have been defined in the parent context of this context.
      *
-     * @param operator
-     * @return Partition
+     * @return attributes defined for the current context.
      */
-    public Partition<OPERATOR> getInstance(OPERATOR operator);
+    public AttributeMap getAttributes();
   }
 }

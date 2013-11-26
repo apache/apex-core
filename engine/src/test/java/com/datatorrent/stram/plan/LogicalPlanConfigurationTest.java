@@ -25,6 +25,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
@@ -90,7 +92,7 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
 
-    assertEquals("stream name", "n1n2", n1n2.getId());
+    assertEquals("stream name", "n1n2", n1n2.getName());
     Assert.assertEquals("n1n2 not inline (default)", null, n1n2.getLocality());
 
     // operator 2 streams to operator 3 and operator 4
@@ -199,10 +201,10 @@ public class LogicalPlanConfigurationTest {
     LogicalPlan dag = new LogicalPlan();
     dagBuilder.populateDAG(dag, new Configuration(false));
 
-    dagBuilder.setApplicationLevelAttributes(dag, appName);
-    Assert.assertEquals("", "/otherdir", dag.attrValue(DAG.APPLICATION_PATH, null));
-    Assert.assertEquals("", Integer.valueOf(123), dag.attrValue(DAG.CONTAINER_MEMORY_MB, null));
-    Assert.assertEquals("", Integer.valueOf(1000), dag.attrValue(DAG.STREAMING_WINDOW_SIZE_MILLIS, null));
+    dagBuilder.setApplicationConfiguration(dag, appName);
+    Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
+    Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.CONTAINER_MEMORY_MB));
+    Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
 
   }
 
@@ -213,8 +215,8 @@ public class LogicalPlanConfigurationTest {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
-        Assert.assertEquals("", "hostname:9090", dag.attrValue(DAG.DAEMON_ADDRESS, null));
-        dag.setAttribute(DAG.DAEMON_ADDRESS, "hostname:9091");
+        Assert.assertEquals("", "hostname:9090", dag.getValue(DAG.GATEWAY_ADDRESS));
+        dag.setAttribute(DAG.GATEWAY_ADDRESS, "hostname:9091");
         appInitialized.setValue(true);
       }
     };
@@ -227,7 +229,7 @@ public class LogicalPlanConfigurationTest {
     pb.prepareDAG(dag, app, "testconfig", conf);
 
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
-    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.attrValue(DAG.DAEMON_ADDRESS, null));
+    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.getValue(DAG.GATEWAY_ADDRESS));
   }
 
   @Test
@@ -318,6 +320,83 @@ public class LogicalPlanConfigurationTest {
     builder.prepareDAG(dag, app, appPath, conf);
 
     Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+  }
+
+  @Test
+  public void testOperatorLevelAttributes() {
+    String appName = "app1";
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.addOperator("operator1", GenericTestOperator.class);
+        dag.addOperator("operator2", GenericTestOperator.class);
+      }
+    };
+
+    Properties props = new Properties();
+    props.put("stram.application." + appName + ".class", app.getClass().getName());
+    props.put("stram.operator.*.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "2");
+    props.put("stram.application." + appName + ".operator.operator1.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "20");
+
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    dagBuilder.addFromProperties(props);
+
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.prepareDAG(dag, app, appPath, new Configuration(false));
+    //dagBuilder.populateDAG(dag, new Configuration(false));
+
+    //dagBuilder.setApplicationConfiguration(dag, appName);
+    Assert.assertEquals("", Integer.valueOf(20), dag.getOperatorMeta("operator1").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
+    Assert.assertEquals("", Integer.valueOf(2), dag.getOperatorMeta("operator2").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
+  }
+
+    @Test
+  public void testPortLevelAttributes() {
+    String appName = "app1";
+    final GenericTestOperator gt1 = new GenericTestOperator();
+    final GenericTestOperator gt2 = new GenericTestOperator();
+    final GenericTestOperator gt3 = new GenericTestOperator();
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.addOperator("operator1", gt1);
+        dag.addOperator("operator2", gt2);
+        dag.addOperator("operator3", gt3);
+        dag.addStream("s1", gt1.outport1, gt2.inport1);
+        dag.addStream("s2", gt2.outport1, gt3.inport1, gt3.inport2);
+      }
+    };
+
+    Properties props = new Properties();
+    props.put("stram.application." + appName + ".class", app.getClass().getName());
+    props.put("stram.application." + appName + ".operator.operator1.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
+    props.put("stram.application." + appName + ".operator.operator2.inputport.input1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+    props.put("stram.application." + appName + ".operator.operator2.outputport.output1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+    props.put("stram.application." + appName + ".operator.operator3.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
+    props.put("stram.application." + appName + ".operator.operator3.inputport.input2.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    dagBuilder.addFromProperties(props);
+
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.prepareDAG(dag, app, appPath, new Configuration(false));
+    //dagBuilder.populateDAG(dag, new Configuration(false));
+
+    //dagBuilder.setApplicationConfiguration(dag, appName);
+    OperatorMeta om1 = dag.getOperatorMeta("operator1");
+    Assert.assertEquals("", Integer.valueOf(16 * 1024), om1.getMeta(gt1.outport1).getValue(PortContext.QUEUE_CAPACITY));
+    OperatorMeta om2 = dag.getOperatorMeta("operator2");
+    Assert.assertEquals("", Integer.valueOf(32 * 1024), om2.getMeta(gt2.inport1).getValue(PortContext.QUEUE_CAPACITY));
+    Assert.assertEquals("", Integer.valueOf(32 * 1024), om2.getMeta(gt2.outport1).getValue(PortContext.QUEUE_CAPACITY));
+    OperatorMeta om3 = dag.getOperatorMeta("operator3");
+    Assert.assertEquals("", Integer.valueOf(16 * 1024), om3.getMeta(gt3.inport1).getValue(PortContext.QUEUE_CAPACITY));
+    Assert.assertEquals("", Integer.valueOf(32 * 1024), om3.getMeta(gt3.inport2).getValue(PortContext.QUEUE_CAPACITY));
   }
 
 }

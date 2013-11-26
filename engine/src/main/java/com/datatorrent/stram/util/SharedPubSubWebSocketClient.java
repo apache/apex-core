@@ -17,8 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>SharedPubSubWebSocketClient class.</p>
  *
- * @since 0.4.0
+ * @since 0.9.0
  */
 public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 {

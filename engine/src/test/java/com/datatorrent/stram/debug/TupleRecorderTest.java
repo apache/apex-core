@@ -136,7 +136,7 @@ public class TupleRecorderTest
 
       ObjectMapper mapper = new ObjectMapper();
       line = br.readLine();
-      Assert.assertEquals("check version", "1.1", line);
+      Assert.assertEquals("check version", "1.2", line);
       line = br.readLine(); // RecordInfo
       RecordInfo ri = mapper.readValue(line, RecordInfo.class);
       line = br.readLine();
@@ -164,17 +164,28 @@ public class TupleRecorderTest
       br = new BufferedReader(new InputStreamReader(is));
 
       line = br.readLine();
-      Assert.assertEquals("check part0", "B:1000", line);
+      Assert.assertTrue("check part0", line.startsWith("B:"));
+      Assert.assertTrue("check part0", line.endsWith(":1000"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 1", "T:0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
+      Assert.assertTrue("check part0 1", line.startsWith("T:"));
+      Assert.assertTrue("check part0 1", line.endsWith(":0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 2", "T:2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
+      Assert.assertTrue("check part0 2", line.startsWith("T:"));
+      Assert.assertTrue("check part0 2", line.endsWith(":2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 3", "T:1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
+      Assert.assertTrue("check part0 3", line.startsWith("T:"));
+      Assert.assertTrue("check part0 3", line.endsWith(":1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 4", "T:3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
+      Assert.assertTrue("check part0 4", line.startsWith("T:"));
+      Assert.assertTrue("check part0 4", line.endsWith(":3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}"));
+
       line = br.readLine();
-      Assert.assertEquals("check part0 5", "E:1000", line);
+      Assert.assertTrue("check part0 5", line.startsWith("E:"));
+      Assert.assertTrue("check part0 5", line.endsWith(":1000"));
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -242,7 +253,7 @@ public class TupleRecorderTest
     Assert.assertTrue("meta file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
     line = br.readLine();
-    Assert.assertEquals("version should be 1.1", line, "1.1");
+    Assert.assertEquals("version should be 1.2", line, "1.2");
     line = br.readLine();
     Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
     for (int i = 0; i < numPorts; i++) {
@@ -316,7 +327,8 @@ public class TupleRecorderTest
           endWindowExists = true;
         }
         else if (line.startsWith("T:")) {
-          tupleCount[Integer.valueOf(line.substring(2, line.indexOf(':', 2)))]++;
+          String[] parts = line.split(":");
+          tupleCount[Integer.valueOf(parts[2])]++;
         }
       }
     }
