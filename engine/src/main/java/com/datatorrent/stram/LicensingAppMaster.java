@@ -322,9 +322,9 @@ public class LicensingAppMaster extends CompositeService
       loopCounter++;
       try {
         sleep(1000);
-        if (loopCounter == 60) {
-          break;
-        }
+        //if (loopCounter == 60) {
+        //  break;
+        //}
       }
       catch (InterruptedException e) {
         LOG.info("Sleep interrupted " + e.getMessage());
