@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
 import jline.console.ConsoleReader;
 import jline.console.completer.AggregateCompleter;
 import jline.console.completer.ArgumentCompleter;
@@ -73,6 +74,7 @@ import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
 
+import com.datatorrent.api.DAG;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
@@ -438,6 +440,11 @@ public class DTCli
                                                     new Arg[] {new Arg("on/off")},
                                                     null,
                                                     "Set the pager program for output"));
+    globalCommands.put("activate-license", new OptionsCommandSpec(new ActivateLicenseCommand(),
+        null,
+        new Arg[] {new FileArg("license-file")},
+        "Launch the license agent", getCommandLineOptions()));
+
     //
     // Connected command specification starts here
     //
@@ -1428,6 +1435,20 @@ public class DTCli
           //currentDir = "/";
         }
       }
+    }
+
+  }
+
+  private class ActivateLicenseCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      LogicalPlan lp = new LogicalPlan();
+      lp.setAttribute(DAG.APPLICATION_NAME, "LicenseId1");
+      StramClient client = new StramClient(lp);
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
     }
 
   }
