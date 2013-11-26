@@ -604,7 +604,6 @@ public class StramAppMaster extends CompositeService
   {
     try {
       StramChild.eventloop.start();
-      //executeLicensedCode(); for licensing using native
       execute();
     }
     catch (Exception re) {
