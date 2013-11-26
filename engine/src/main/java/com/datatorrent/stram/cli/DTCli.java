@@ -1445,7 +1445,7 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       LogicalPlan lp = new LogicalPlan();
-      lp.setAttribute(DAG.APPLICATION_NAME, "LicenseIdPlaceHolder");
+      lp.setAttribute(DAG.APPLICATION_NAME, "LicenseId1");
       StramClient client = new StramClient(lp);
       client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
       client.startApplication();

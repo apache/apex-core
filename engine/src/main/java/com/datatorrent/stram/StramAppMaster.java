@@ -67,6 +67,7 @@ import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -136,6 +137,7 @@ public class StramAppMaster extends CompositeService
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
   private StramDelegationTokenManager delegationTokenManager = null;
+  private LicensingAgentClient licenseClient;
 
   /**
    * Overrides getters to pull live info.
@@ -544,6 +546,12 @@ public class StramAppMaster extends CompositeService
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 
+    String licenseId = dag.getValue(LogicalPlan.LICENSE_ID);
+    if (licenseId != null) {
+      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), licenseId);
+      addService(this.licenseClient);
+    }
+
     // initialize all services added above
     super.serviceInit(conf);
   }
@@ -687,6 +695,10 @@ public class StramAppMaster extends CompositeService
 
     while (!appDone) {
       loopCounter++;
+
+      if (licenseClient != null) {
+        licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+      }
 
       // log current state
       /*

@@ -216,7 +216,7 @@ public class LicensingAppMaster extends CompositeService
     this.amRmClient = AMRMClient.createAMRMClient();
     addService(amRmClient);
 
-    // start RPC server
+    // RPC server
     int rpcListenerCount = dag.getValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT);
     this.rpcListener = new LicensingAgentProtocolImpl(this.getClass().getName(), delegationTokenManager, rpcListenerCount);
     addService(rpcListener);
@@ -260,7 +260,7 @@ public class LicensingAppMaster extends CompositeService
       }
       LOG.debug("Registering with RM {}", this.appAttemptID);
       // Register self with ResourceManager
-      amRmClient.registerApplicationMaster("", 0, appMasterTrackingUrl);
+      amRmClient.registerApplicationMaster("", rpcListener.getAddress().getPort(), appMasterTrackingUrl);
       LOG.debug("Registered with RM");
 
       mainLoop();
