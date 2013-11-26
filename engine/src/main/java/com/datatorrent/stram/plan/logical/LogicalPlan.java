@@ -34,7 +34,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -48,10 +47,10 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.stram.engine.Node;
 
 /**
@@ -96,7 +95,7 @@ public class LogicalPlan implements Serializable, DAG
    * Then it can be moved back to DAGContext.
    */
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
-  public static Attribute<String> LICENSE_ID = new Attribute<String>((String)null);
+  public static Attribute<String> LICENSE_ID = new Attribute<String>((String)null, new StringCodec.String2String());
 
   static {
     AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
