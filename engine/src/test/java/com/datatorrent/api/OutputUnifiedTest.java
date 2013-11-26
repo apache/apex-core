@@ -6,12 +6,10 @@ package com.datatorrent.api;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.PartitionableOperator.Partition;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
