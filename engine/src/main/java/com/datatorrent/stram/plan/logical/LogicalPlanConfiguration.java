@@ -148,11 +148,24 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       this.parentConf = parentConf;
     }
 
-    public Conf getParentConf() {
-      return parentConf;
+    @SuppressWarnings("unchecked")
+    public <T extends Conf> T getParentConf() {
+      return (T)parentConf;
     }
 
-    public <T extends Conf> T addChild(String id, StramElement childType, Class<T> clazz) {
+    @SuppressWarnings("unchecked")
+    public <T extends Conf> T getAncestorConf(StramElement ancestorElement) {
+      if (getElement() == ancestorElement) {
+        return (T)this;
+      }
+      if (parentConf == null) {
+        return null;
+      } else {
+        return parentConf.getAncestorConf(ancestorElement);
+      }
+    }
+
+    public <T extends Conf> T getOrAddChild(String id, StramElement childType, Class<T> clazz) {
       @SuppressWarnings("unchecked")
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
       if (elChildren == null) {
@@ -307,7 +320,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     @Override
     public void parseElement(StramElement element, String[] keys, int index, String propertyValue) {
       if ((element == StramElement.CLASS) || (element == StramElement.PATH)) {
-        StramConf stramConf = (StramConf)getParentConf();
+        StramConf stramConf = getParentConf();
         stramConf.appAliases.put(propertyValue, getId());
       }
     }
@@ -451,7 +464,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     @Override
     public void setProperty(String name, String value) {
-      AppConf appConf = (AppConf)getParentConf();
+      AppConf appConf = getParentConf();
       if (STREAM_SOURCE.equals(name)) {
         if (sourceNode != null) {
           // multiple sources not allowed
@@ -460,17 +473,17 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         }
         String[] parts = getNodeAndPortId(value);
         //setSource(parts[1], getOrAddOperator(appConf, parts[0]));
-        setSource(parts[1], appConf.addChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
+        setSource(parts[1], appConf.getOrAddChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
       } else if (STREAM_SINKS.equals(name)) {
         String[] targetPorts = value.split(",");
         for (String nodeAndPort : targetPorts) {
           String[] parts = getNodeAndPortId(nodeAndPort.trim());
-          addSink(parts[1], appConf.addChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
+          addSink(parts[1], appConf.getOrAddChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
         }
       } else if (STREAM_TEMPLATE.equals(name)) {
         templateRef = value;
-        StramConf stramConf = (StramConf)getParentConf().getParentConf();
-        TemplateConf templateConf = (TemplateConf)stramConf.addChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
+        StramConf stramConf = getAncestorConf(null);
+        TemplateConf templateConf = (TemplateConf)stramConf.getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
         setDefaultProperties(templateConf.properties);
       } else {
         super.setProperty(name, value);
@@ -563,8 +576,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         templateRef = value;
         // Setting opProps from the template as default opProps as before
         // Revisit this
-        StramConf stramConf = (StramConf)getParentConf().getParentConf();
-        TemplateConf templateConf = (TemplateConf)stramConf.addChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
+        StramConf stramConf = getAncestorConf(null);
+        TemplateConf templateConf = (TemplateConf)stramConf.getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
         setDefaultProperties(templateConf.properties);
       } else {
         super.setProperty(name, value);
@@ -649,14 +662,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
     StramElement parentElement = getAllowedParentElement(element, ancestorConf);
     Conf parentConf = getConf(parentElement, ancestorConf);
-    Conf conf = parentConf.addChild(WILDCARD, element, elementMaps.get(element));
+    Conf conf = parentConf.getOrAddChild(WILDCARD, element, elementMaps.get(element));
     return conf;
   }
 
   private Conf addConf(StramElement element, String name, Conf ancestorConf) {
     StramElement parentElement = getAllowedParentElement(element, ancestorConf);
     Conf parentConf = getConf(parentElement, ancestorConf);
-    Conf conf = parentConf.addChild(name, element, elementMaps.get(element) );
+    Conf conf = parentConf.getOrAddChild(name, element, elementMaps.get(element) );
     return conf;
   }
 
