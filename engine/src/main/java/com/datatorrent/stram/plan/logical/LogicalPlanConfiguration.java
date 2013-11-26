@@ -7,7 +7,9 @@ package com.datatorrent.stram.plan.logical;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.*;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,13 +19,11 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 
-import javax.validation.ValidationException;
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.base.CaseFormat;
-import com.google.common.collect.Maps;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
@@ -41,12 +41,10 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import java.lang.reflect.Constructor;
-import java.util.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  *
@@ -94,9 +92,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final String WILDCARD_PATTERN = ".*";
 
   static {
-    /* Initializing attributes */
-    Long serial[] = new Long[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID };
-    LOG.debug("Initializing attributes " + serial);
+    Object serial[] = new Object[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
+    LOG.debug("Initialized attributes {}", serial);
   }
 
   private enum StramElement {
@@ -209,7 +206,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           }
         } else {
           // Also treat WILDCARD as match any character string when running regular express match
-          if (key.equals(WILDCARD)) key = WILDCARD_PATTERN;
+          if (key.equals(WILDCARD)) {
+            key = WILDCARD_PATTERN;
+          }
           if (name.matches(key)) {
             match = true;
           }
@@ -281,7 +280,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     private final Map<String, String> appAliases = Maps.newHashMap();
 
-    public StramConf() {
+    StramConf() {
 
     }
 
@@ -308,7 +307,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static class AppConf extends Conf {
     //Properties opProps = new Properties(LogicalPlanConfiguration.this.opProps);
 
-    public AppConf() {
+    AppConf() {
     }
 
     @Override
@@ -337,7 +336,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private static class GatewayConf extends Conf {
 
-    public GatewayConf() {
+    GatewayConf() {
     }
 
     @Override
@@ -361,7 +360,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static class TemplateConf extends Conf {
     //private final Properties opProps = new Properties();
 
-    public TemplateConf() {
+    TemplateConf() {
     }
 
     /**
@@ -416,7 +415,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     //private TemplateConf template;
     private String templateRef;
 
-    public StreamConf() {
+    StreamConf() {
     }
 
     private StreamConf(String id) {
@@ -625,7 +624,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   private static class PortConf extends Conf {
 
-    public PortConf() {
+    PortConf() {
     }
 
     @Override
@@ -740,7 +739,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @return The alias name if one is available, null otherwise
    */
   public String getAppAlias(String appPath) {
-    String appAlias = null;
+    String appAlias;
     if (appPath.endsWith(CLASS_SUFFIX)) {
       String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
       appAlias = stramConf.appAliases.get(className);
@@ -784,7 +783,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           parseStramPropertyTokens(keys, index+2, propertyName, propertyValue, elConf);
         } else {
           LOG.warn("Invalid configuration key: {}", propertyName);
-          return;
         }
       } else if (element == StramElement.GATEWAY) {
         Conf elConf = addConf(element, null, conf);
@@ -792,7 +790,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getElement() == null))
                       || ((element == null) && (conf.getElement() == StramElement.GATEWAY))) {
         // Supporting current implementation where attribute can be directly specified under stram
-        String attr = null;
+        String attr;
         // Re-composing complete key for nested keys which are used in templates
         // Implement it better way to not pre-tokenize the property string and parse progressively
         if (element == StramElement.ATTR) {
@@ -809,13 +807,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           conf.setAttribute(attr, propertyValue);
         } else {
           LOG.warn("Invalid attribute specification, no attribute name specified for {}", propertyName);
-          return;
         }
       } else if (((element == StramElement.PROP) || (element == null))
               && ((conf.getElement() == StramElement.OPERATOR) || (conf.getElement() == StramElement.STREAM) || (conf.getElement() == StramElement.TEMPLATE))) {
         // Currently opProps are only supported on operators and streams
         // Supporting current implementation where property can be directly specified under operator
-        String prop = null;
+        String prop;
         if (element == StramElement.PROP) {
           prop = getCompleteKey(keys, index+1);
         } else {
@@ -827,7 +824,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           conf.setProperty(prop, propertyValue);
         } else {
           LOG.warn("Invalid property specification, no property name specified for {}", propertyName);
-          return;
         }
       } else if (element != null) {
         conf.parseElement(element, keys, index, propertyValue);
@@ -853,9 +849,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   private String getCompleteKey(String[] keys, int start, int end) {
-    StringBuilder sb = new StringBuilder();
+    StringBuilder sb = new StringBuilder(1024);
     for (int i = start; i < end; ++i) {
-      if (i > start) sb.append(".");
+      if (i > start) {
+        sb.append(".");
+      }
       sb.append(keys[i]);
     }
     return sb.toString();
@@ -1041,7 +1039,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     List<TemplateConf> refTemplates = new ArrayList<TemplateConf>();
     for (TemplateConf t : templates.values()) {
       for (OperatorConf opConf : opConfs) {
-        if (t.id == opConf.templateRef) {
+        if (t.id.equals(opConf.templateRef)) {
           refTemplates.add(t);
         }
       }
@@ -1082,7 +1080,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * Inject the configuration opProps into the operator instance.
    * @param operator
-   * @param opProps
+   * @param properties
    * @return Operator
    */
   public static Operator setOperatorProperties(Operator operator, Map<String, String> properties)
