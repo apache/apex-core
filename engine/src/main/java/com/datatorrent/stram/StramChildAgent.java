@@ -39,6 +39,8 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.webapp.ContainerInfo;
+import org.apache.hadoop.http.HttpConfig;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 
 /**
  *
@@ -370,6 +372,9 @@ public class StramChildAgent {
     ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
     ci.memoryMBFree = this.memoryMBFree;
+    if (this.container.nodeHttpAddress != null) {
+      ci.containerLogsUrl = HttpConfig.getSchemePrefix() + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+    }
     return ci;
   }
 

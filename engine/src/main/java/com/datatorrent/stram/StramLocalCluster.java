@@ -228,7 +228,7 @@ public class StramLocalCluster implements Runnable, Controller
         wingen = mockComponentFactory.setupWindowGenerator();
       }
       this.child = new LocalStramChild(containerId, umbilical, wingen);
-      ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB());
+      ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB(), null);
       StramChildAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
       if (sca != null) {
         Thread launchThread = new Thread(this, containerId);

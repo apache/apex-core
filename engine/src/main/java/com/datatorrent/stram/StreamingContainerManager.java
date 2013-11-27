@@ -510,13 +510,15 @@ public class StreamingContainerManager implements PlanContext
     public final String host;
     public final int memoryMB;
     public final int priority;
+    public final String nodeHttpAddress;
 
-    public ContainerResource(int priority, String containerId, String host, int memoryMB)
+    public ContainerResource(int priority, String containerId, String host, int memoryMB, String nodeHttpAddress)
     {
       this.containerId = containerId;
       this.host = host;
       this.memoryMB = memoryMB;
       this.priority = priority;
+      this.nodeHttpAddress = nodeHttpAddress;
     }
 
     /**
@@ -580,6 +582,7 @@ public class StreamingContainerManager implements PlanContext
     container.setExternalId(resource.containerId);
     container.host = resource.host;
     container.bufferServerAddress = bufferServerAddr;
+    container.nodeHttpAddress = resource.nodeHttpAddress;
     container.setAllocatedMemoryMB(resource.memoryMB);
     container.getPendingUndeploy().clear();
 
@@ -953,7 +956,6 @@ public class StreamingContainerManager implements PlanContext
    * @param operator Operator instance for which to find recovery checkpoint
    * @param visited Set into which to collect visited dependencies
    * @param committedWindowId
-   * @return Checkpoint that can be used to recover (along with dependencies in visitedCheckpoints).
    */
   public void updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited, MutableLong committedWindowId)
   {
