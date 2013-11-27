@@ -1,3 +1,4 @@
+
 /**
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
@@ -19,7 +20,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
-
 public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
