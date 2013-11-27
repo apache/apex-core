@@ -27,6 +27,7 @@ import com.datatorrent.stram.stream.BufferServerSubscriber;
  * Subscribes to event bus and listens to buffer server events to collect buffer server stats
  *
  * @author Ashwin Chandra Putta <ashwin@datatorrent.com>
+ * @since 0.9.0
  */
 public class BufferServerStatsSubscriber
 {

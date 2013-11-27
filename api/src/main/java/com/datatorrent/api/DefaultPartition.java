@@ -23,6 +23,11 @@ import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 
+/**
+ * <p>DefaultPartition class.</p>
+ *
+ * @since 0.9.0
+ */
 public class DefaultPartition<T extends Operator> implements Partitionable.Partition<T>
 {
   private final PartitionPortMap partitionKeys;
