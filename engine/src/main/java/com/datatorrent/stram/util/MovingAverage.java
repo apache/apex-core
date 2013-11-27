@@ -7,7 +7,7 @@ package com.datatorrent.stram.util;
 /**
  * Moving average calculations.
  *
- * @since 0.9.0
+ * @since 0.9.1
  */
 public class MovingAverage
 {

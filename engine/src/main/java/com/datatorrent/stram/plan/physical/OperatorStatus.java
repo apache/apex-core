@@ -22,7 +22,7 @@ import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
 /**
  * <p>OperatorStatus class.</p>
  *
- * @since 0.9.0
+ * @since 0.9.1
  */
 public class OperatorStatus implements BatchedOperatorStats
 {

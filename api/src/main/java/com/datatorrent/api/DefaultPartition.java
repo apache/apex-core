@@ -26,7 +26,7 @@ import com.datatorrent.api.Partitionable.PartitionKeys;
 /**
  * <p>DefaultPartition class.</p>
  *
- * @since 0.9.0
+ * @since 0.9.1
  */
 public class DefaultPartition<T extends Operator> implements Partitionable.Partition<T>
 {

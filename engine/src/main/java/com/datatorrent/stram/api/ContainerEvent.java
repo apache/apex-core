@@ -15,7 +15,7 @@ import com.datatorrent.stram.engine.StreamContext;
  * Currently using mbassador event bus
  *
  * @author Ashwin Chandra Putta <ashwin@datatorrent.com>
- * @since 0.9.0
+ * @since 0.9.1
  */
 public interface ContainerEvent
 {
