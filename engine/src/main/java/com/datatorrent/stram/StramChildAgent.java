@@ -320,7 +320,7 @@ public class StramChildAgent {
   {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     Operator operator = oper.getOperatorMeta().getOperator();
-    ndi.type = (operator instanceof InputOperator) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
+    ndi.type = (operator instanceof InputOperator && oper.getInputs().isEmpty()) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
     if (oper.getUnifier() != null) {
       operator = oper.getUnifier();
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
