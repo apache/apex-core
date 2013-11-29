@@ -955,6 +955,7 @@ public class DTCli
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
     try {
+      processSourceFile(System.getProperty("user.home") + "/.stram/clirc_system", reader);
       processSourceFile(System.getProperty("user.home") + "/.stram/clirc", reader);
     }
     catch (Exception ex) {

@@ -19,6 +19,11 @@ import com.datatorrent.stram.util.MovingAverage.MovingAverageDouble;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
 
+/**
+ * <p>OperatorStatus class.</p>
+ *
+ * @since 0.9.1
+ */
 public class OperatorStatus implements BatchedOperatorStats
 {
   public class PortStatus

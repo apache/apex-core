@@ -51,6 +51,7 @@ public class PTContainer {
   String containerId; // assigned yarn container id
   public String host;
   public InetSocketAddress bufferServerAddress;
+  public String nodeHttpAddress;
   int restartAttempts;
 
   PTContainer(PhysicalPlan plan) {
