@@ -88,7 +88,6 @@ import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicensingAgentClient;
-import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
@@ -1449,16 +1448,12 @@ public class DTCli
 
   }
 
-  private byte[] getLicense() throws IOException {
-    return Util.getDefaultLicense();
-  }
-
   private class ActivateLicenseCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      byte[] licenseBytes = getLicense();
+      byte[] licenseBytes = StramClientUtils.getLicense(conf);
       String licenseId = License.getLicenseID(licenseBytes);
       // TODO: enable validation once we have proper default license in place
       if (!"dt-1383864532068-mpuczxh00m9v2kgo".equals(licenseId)) {
@@ -1480,7 +1475,7 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      byte[] licenseBytes = getLicense();
+      byte[] licenseBytes = StramClientUtils.getLicense(conf);
       String licenseId = License.getLicenseID(licenseBytes);
       // TODO: enable validation once we have proper default license in place
       if (!"dt-1383864532068-mpuczxh00m9v2kgo".equals(licenseId)) {
