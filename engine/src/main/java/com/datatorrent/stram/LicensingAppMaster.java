@@ -12,12 +12,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetSocketAddress;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
@@ -265,8 +267,9 @@ public class LicensingAppMaster extends CompositeService
       }
       LOG.debug("Registering with RM {}", this.appAttemptID);
       // Register self with ResourceManager
-      amRmClient.registerApplicationMaster("", rpcListener.getAddress().getPort(), appMasterTrackingUrl);
-      LOG.debug("Registered with RM");
+      InetSocketAddress connectAddress = NetUtils.getConnectAddress(rpcListener.getAddress());
+      amRmClient.registerApplicationMaster(connectAddress.getHostName(), connectAddress.getPort(), appMasterTrackingUrl);
+      LOG.debug("Registered with RM as {}", connectAddress);
 
       mainLoop();
 
