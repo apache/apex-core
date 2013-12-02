@@ -95,7 +95,7 @@ public class LogicalPlan implements Serializable, DAG
    * Then it can be moved back to DAGContext.
    */
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
-  public static Attribute<String> LICENSE_ID = new Attribute<String>((String)null, new StringCodec.String2String());
+  public static Attribute<String> LICENSE = new Attribute<String>((String)null, new StringCodec.String2String());
 
   static {
     AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);

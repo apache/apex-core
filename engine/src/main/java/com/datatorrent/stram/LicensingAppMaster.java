@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -205,6 +206,10 @@ public class LicensingAppMaster extends CompositeService
     if (dag.isDebug()) {
       dumpOutDebugInfo();
     }
+
+    String licenseBase64 = dag.getValue(LogicalPlan.LICENSE);
+    byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
+    LOG.info("License:\n{}", new String(licenseBytes));
 
     if (UserGroupInformation.isSecurityEnabled()) {
       //TODO :- Need to perform token renewal

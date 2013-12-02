@@ -59,6 +59,7 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -68,6 +69,7 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
@@ -84,6 +86,9 @@ import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicensingAgentClient;
+import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
@@ -444,6 +449,10 @@ public class DTCli
         null,
         new Arg[] {new FileArg("license-file")},
         "Launch the license agent", getCommandLineOptions()));
+    globalCommands.put("deactivate-license", new OptionsCommandSpec(new DeactivateLicenseCommand(),
+        null,
+        new Arg[] {new FileArg("license-file")},
+        "Stop the license agent", getCommandLineOptions()));
 
     //
     // Connected command specification starts here
@@ -1440,16 +1449,57 @@ public class DTCli
 
   }
 
+  private byte[] getLicense() throws IOException {
+    return Util.getDefaultLicense();
+  }
+
   private class ActivateLicenseCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      byte[] licenseBytes = getLicense();
+      String licenseId = License.getLicenseID(licenseBytes);
+      // TODO: enable validation once we have proper default license in place
+      if (!"dt-1383864532068-mpuczxh00m9v2kgo".equals(licenseId)) {
+        new License().validateLicense(licenseBytes);
+      }
       LogicalPlan lp = new LogicalPlan();
-      lp.setAttribute(DAG.APPLICATION_NAME, "LicenseId1");
+      lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
+      lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
       StramClient client = new StramClient(lp);
       client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
       client.startApplication();
+      System.err.println("Started license agent for " + licenseId);
+    }
+
+  }
+
+  private class DeactivateLicenseCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      byte[] licenseBytes = getLicense();
+      String licenseId = License.getLicenseID(licenseBytes);
+      // TODO: enable validation once we have proper default license in place
+      if (!"dt-1383864532068-mpuczxh00m9v2kgo".equals(licenseId)) {
+        new License().validateLicense(licenseBytes);
+      }
+      // TODO: migrate CLI to use YarnClient and this here won't be needed
+      YarnClient clientRMService = YarnClient.createYarnClient();
+      try {
+        clientRMService.init(conf);
+        clientRMService.start();
+        ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+        if (ar == null) {
+          throw new CliException("License not activated: " + licenseId);
+        }
+        rmClient.killApplication(ar.getApplicationId());
+        System.err.println("Stopped license agent for " + licenseId);
+      } finally {
+        clientRMService.stop();
+      }
     }
 
   }

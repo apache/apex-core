@@ -27,6 +27,7 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
@@ -67,6 +68,7 @@ import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -546,8 +548,11 @@ public class StramAppMaster extends CompositeService
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 
-    String licenseId = dag.getValue(LogicalPlan.LICENSE_ID);
-    if (licenseId != null) {
+    // get license and prepare for license agent interaction
+    String licenseBase64 = dag.getValue(LogicalPlan.LICENSE);
+    if (licenseBase64 != null) {
+      byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
+      String licenseId = License.getLicenseID(licenseBytes);
       this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), licenseId);
       addService(this.licenseClient);
     }

@@ -27,6 +27,8 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.license.util.Util;
+
 /**
  *
  * Collection of utility classes for command line interface package<p>
@@ -239,6 +241,11 @@ public class StramClientUtils
       conf.addResource(new Path(cfgResource.toURI()));
     }
     return conf;
+  }
+
+  public static byte[] getLicense(Configuration conf)
+  {
+    return Util.getDefaultLicense();
   }
 
 }
