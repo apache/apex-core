@@ -26,7 +26,7 @@ public class AlertManagerTest
     LogicalPlan dag = new LogicalPlan();
     dag.addOperator("o", GenericTestOperator.class);
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0)));
+    Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0)));
 
     new Thread()
     {

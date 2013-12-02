@@ -23,4 +23,5 @@ public class ContainerInfo {
   @RecordField(type="stats") public int numOperators;
   @RecordField(type="meta") public int memoryMBAllocated;
   @RecordField(type="stats") public int memoryMBFree;
+  @RecordField(type="meta") public String containerLogsUrl;
 }

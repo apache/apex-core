@@ -450,6 +450,10 @@ public class DTCli
                                                             null,
                                                             new Arg[] {new Arg("pattern")},
                                                             "List operators"));
+    connectedCommands.put("show-physical-plan", new CommandSpec(new ShowPhysicalPlanCommand(),
+                                                                null,
+                                                                null,
+                                                                "Show physical plan"));
     connectedCommands.put("kill-container", new CommandSpec(new KillContainerCommand(),
                                                             new Arg[] {new Arg("container-id")},
                                                             null,
@@ -1843,6 +1847,31 @@ public class DTCli
       }
 
       printJson(json);
+    }
+
+  }
+
+  private class ShowPhysicalPlanCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
+      try {
+        printJson(webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(clazz);
+          }
+
+        }));
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
     }
 
   }

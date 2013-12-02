@@ -130,8 +130,8 @@ public class StreamingContainerManagerTest {
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number containers", 2, dnm.getPhysicalPlan().getContainers().size());
 
-    dnm.assignContainer(new ContainerResource(0, "container1Id", "host1", 1024), InetSocketAddress.createUnresolved("host1", 9001));
-    dnm.assignContainer(new ContainerResource(0, "container2Id", "host2", 1024), InetSocketAddress.createUnresolved("host2", 9002));
+    dnm.assignContainer(new ContainerResource(0, "container1Id", "host1", 1024, null), InetSocketAddress.createUnresolved("host1", 9001));
+    dnm.assignContainer(new ContainerResource(0, "container2Id", "host2", 1024, null), InetSocketAddress.createUnresolved("host2", 9002));
 
     StramChildAgent sca1 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(0).getExternalId());
     StramChildAgent sca2 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(1).getExternalId());
@@ -423,7 +423,7 @@ public class StreamingContainerManagerTest {
   }
 
   private static StramChildAgent assignContainer(StreamingContainerManager scm, String containerId) {
-    return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024), InetSocketAddress.createUnresolved(containerId+"Host", 0));
+    return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
 }

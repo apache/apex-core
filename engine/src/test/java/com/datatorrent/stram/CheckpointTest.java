@@ -94,7 +94,7 @@ public class CheckpointTest
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
 
     String containerId = "container1";
-    StramChildAgent sca = dnm.assignContainer(new ContainerResource(0, containerId, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
+    StramChildAgent sca = dnm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertNotNull(sca);
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
