@@ -14,12 +14,12 @@ import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-
-import net.engio.mbassy.bus.BusConfiguration;
 import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -34,6 +34,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StatsListener.OperatorCommand;
+
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -130,7 +131,7 @@ public class StramChild
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.components = new HashSet<Component<ContainerContext>>();
-    this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default());
+    this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default(1, 1, 1));
     this.singletons = new HashMap<String, Object>();
     this.nodeRequests = new ArrayList<StramToNodeRequest>();
 
@@ -375,7 +376,7 @@ public class StramChild
           pair.component.deactivate();
           eventBus.publish(new StreamDeactivationEvent(pair));
         }
-        
+
         pair.component.teardown();
         /**
          * we should also make sure that if this stream is connected to mux stream,
@@ -526,7 +527,7 @@ public class StramChild
     operateListeners(containerContext, false);
 
     deactivate();
-    
+
     assert (streams.isEmpty());
 
     nodes.clear();
