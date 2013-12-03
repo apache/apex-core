@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram.debug;
+package com.datatorrent.stram.engine;
 
 import java.util.HashMap;
 import net.engio.mbassy.listener.Handler;
