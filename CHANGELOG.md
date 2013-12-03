@@ -1,5 +1,181 @@
 #Release Notes - Streaming Platform
 
+## Version 0.9.1
+
+## New Feature
+* [SPOI-377] - Input adapter for CouchDB
+* [SPOI-378] - Output Adapter for CouchDb
+* [SPOI-410] - Document and test download to work with Cloudera CDH5
+* [SPOI-945] - Add ability to specify application properties, DAG, operator and port attributes in stram configuration file.
+* [SPOI-1088] - Add mouseover for new graphing module
+* [SPOI-1172] - DAG Visualization - Partition Shape
+* [SPOI-1215] - Gauges in Container View
+* [SPOI-1407] - Add Jar File View
+* [SPOI-1415] - De-duplicaton operator
+* [SPOI-1483] - Hadoop management script or service
+* [SPOI-1501] - Widget - logical operators
+* [SPOI-1535] - Memory Gauge Widget
+* [SPOI-1536] - CPU Gauge Widget
+* [SPOI-1550] - Logical DAG - Multiple Metrics
+* [SPOI-1556] - Logical DAG Real-Time Metrics - Tracking Model Changes
+* [SPOI-1561] - Logical DAG - Throughput
+* [SPOI-1562] - Logical DAG - Prev/Next Metric Navigation
+* [SPOI-1600] - Logical DAG - Show Two Metrics
+* [SPOI-1235] - Add support for "DB lookup" functionality 
+* [SPOI-1236] - Provide support for Cassandra NoSQL database
+
+## Bug
+* [SPOI-600] - Twitter demo failed when I did two simulteneouce operator/container kill
+* [SPOI-993] - Plan modification gives NPE when the containers aren't deployed yet
+* [SPOI-1280] - Recording Chart widget shows up with "X"
+* [SPOI-1303] - If the operator is setup sucessfully, ensure that it gets a chance to teardown.
+* [SPOI-1331] - When an operator is undeployed, its input streams should be disconnected from any upstream operators.
+* [SPOI-1388] - Nodes are showing IP instead of hostnames
+* [SPOI-1412] - Buffer Server uses a different version of guava base jar than Malhar
+* [SPOI-1427] - Accessing Demos From clean VM is not working
+* [SPOI-1430] - When uploading jars, meta information should be extracted and return error if jar is not valid
+* [SPOI-1433] - checkboxes in lists intermittently unresponsive
+* [SPOI-1452] - GetApp web service returns 500 for apps killed via UI
+* [SPOI-1457] - Kill container call returns 500 when request payload is not json
+* [SPOI-1458] - After finish uploading jar from the development tab, the jar list does not get updated until browser's "refresh" button is pressed
+* [SPOI-1459] - get recordings REST call returning null values
+* [SPOI-1497] - Change the names of nodes in hadoop to be just hostname with the domain name.
+* [SPOI-1498] - StreamList widget has "Name" for stream id
+* [SPOI-1499] - CPU usage on operatorList widget is routinely over 100%, sometimes 900%?
+* [SPOI-1548] - Logical DAG - Partition Count
+* [SPOI-1555] - Logical DAG: Partition-Count Metric
+* [SPOI-1563] - Moving average should be computed based on endWindow timestamps
+* [SPOI-1570] - Update sandbox to support Hadoop 2.2 and DataTorrent 0.9.x
+* [SPOI-1572] - gateway automatic update via websocket throws errors
+* [SPOI-1590] - Datanode does not successfully connect to cluster after initial startup
+* [SPOI-1614] - Front files not included during builds after migration to Malhar
+
+
+## Improvement
+* [SPOI-1005] - CLI: create a default clirc that is controlled by the installer
+* [SPOI-1099] - Display app master implementation version
+* [SPOI-1110] - BufferServer Stats should be passed as part of the port stats?
+* [SPOI-1305] - Support StringCodec for enums natively in Attributes
+* [SPOI-1306] - Reduce the verbosity of the Context interface by changing the requirement for defaultValue argument for attrValue
+* [SPOI-1421] - Improve default name for widgets
+* [SPOI-1453] - Publish recently ended apps on WebSocket topics along with running app(s)
+* [SPOI-1560] - "ERROR: mux is missing ..." messages emitted during "mvn test" on stram
+* [SPOI-1574] - Document the additions to the config file specification
+* [SPOI-1582] - Color non-empty filter fields for emphasis
+* [SPOI-1583] - Limit default number of rows for physical operators
+* [SPOI-1588] - Create service wrapper for datanode, namenode, nodemanager, resourcemanager, and historyserver
+* [SPOI-1592] - Latency Measure Units
+* [SPOI-1596] - Service wrapper for DTGateway
+* [SPOI-1601] - Create meaningful names to the demos instead of providing entire path as the demo names
+* [SPOI-1605] - Make default dashes into logical and physical for Instance
+* [SPOI-1606] - Remove various metrics from logical operator list
+
+## Task
+* [SPOI-907] - Create Application DAG visualization
+* [SPOI-1002] - List application names instead of class names where available
+* [SPOI-1140] - Annotate dag visualization with stream throughout and other data
+* [SPOI-1237] - Handle multi-container failure
+* [SPOI-1281] - Remove TopN Widget from dashboard
+* [SPOI-1282] - Update benchmarks
+* [SPOI-1297] - Recover from "multiple container" failure
+* [SPOI-1321] - Automate datanode provisioning
+* [SPOI-1354] - Figure out a way to have charts be dramatically different for key combinations
+* [SPOI-1360] - Create an automation framework for DataTorrent cloud provisioning
+* [SPOI-1365] - Add ability to create, delete, and bootstrap multiple nodes with a single command
+* [SPOI-1385] - Reduce memory used for Twitter demo containers
+* [SPOI-1411] - Deprecate old Malhar webdemos once logstream is available
+* [SPOI-1431] - GET /ws/v1/jars should return more meta information
+* [SPOI-1432] - Implement /ws/v1/jars/{jarname}/meta
+* [SPOI-1473] - Show main cluster stats in DT Console
+* [SPOI-1477] - Automate namenode provisioning
+* [SPOI-1478] - Recipe for Google Cloud provisioning
+* [SPOI-1479] - Base configuration and provisioning
+* [SPOI-1480] - Java install recipe
+* [SPOI-1481] - Recipe to install maven
+* [SPOI-1482] - Hadoop install recipe
+* [SPOI-1484] - Open source UI to Malhar
+* [SPOI-1518] - DT Console AngularJS Integration
+* [SPOI-1519] - Logstream - sitestats UI integration
+* [SPOI-1521] - Gateway to return error details upon status code 400s and 500s
+* [SPOI-1523] - Run certification tests on 0.9.0 release build
+* [SPOI-1524] - Automate performance benchmarking for different stream localities and event sizes
+* [SPOI-1526] - Update GC stram-site.xml to reflect new version settings and customizations
+* [SPOI-1527] - Automate stream locality perfromance benchmarking with the same tuple 
+* [SPOI-1541] - Create clirc compatible with demos
+* [SPOI-1545] - Add documentation to chef repository
+* [SPOI-1553] - DataTorrent performance testing on Google Cloud
+* [SPOI-1554] - Create recipe for datatorrent local install
+* [SPOI-1589] - Create cluster creation helper script for gc-nodes
+* [SPOI-1591] - Create automatic installer for webapps
+* [SPOI-1496] - Website framework selection
+* [SPOI-1602] - Documentation index update to include Gateway API and Scalability Doc
+* [SPOI-1607] - Update docs for 0.9.1 release
+
+## Sub-task
+* [SPOI-1447] - Show stream throughput
+* [SPOI-1449] - DAG Visualization - Latency. Show latency per path/compute
+* [SPOI-1450] - Show partitionable operators
+* [SPOI-1464] - Allow operator to request/trigger repartitioning
+* [SPOI-1466] - DB lookup for MongoDB
+* [SPOI-1474] - Support operator specific stats in STRAM decisions
+* [SPOI-1485] - Add license headers to all relevant files
+* [SPOI-1486] - Move custom npm modules to node_modules folder, update npm registry
+* [SPOI-1487] - Update .travis.yml in malhar to also build and test Front
+* [SPOI-1488] - Create widget for displaying cluster info
+* [SPOI-1490] - Expose gateway API calls for getting cluster information
+* [SPOI-1529] - Understand exactly-once semantics. 
+* [SPOI-1530] - Set-up cluster on local VM
+* [SPOI-1531] - Understand existing AdsDimension App
+* [SPOI-1532] - Develop similar app with at-least once semantics as AdsDimension App
+* [SPOI-1534] - Setup on Morado cluster for bench-marking 
+* [SPOI-1593] - Move front folder into Malhar repository
+* [SPOI-1594] - Define code style standards, integrate a hinter
+* [SPOI-1595] - Create tests for more js files
+
+## GitHub - DataTorrent/Malhar
+* [335] - Fix issue316 issue317 pull
+* [331] - fix #330 Logical DAG Metrics
+* [330] - Logical DAG Metrics
+* [327] - Create a cluster stats widget
+* [326] - Refactored DB Lookup operators and Cache Manager
+* [324] - Add UI to repository
+* [321] - Merged malhar dev 0.9.1 to logstream
+* [320] - Squashed commit of the following:
+* [316] - Provide a property to set tuple size in the RandomWord input operator
+* [315] - fixes #314
+* [314] - RedisOutputOperator Exception 
+* [310] - Fixing default redis listen ports to 6379.  Fixes #309
+* [309] - Fix default redis listen port in webapps config.js
+* [308] - fixes #307
+* [307] - Change the format for passing multiple redis instances during partition
+* [305] - Fix github 278 and 283
+* [304] - Added DataCache, JDBCBasedCache Operator and its test case #303
+* [303] - [DB Lookup & Caching] Create an operator which caches database results in memory for specified time
+* [301] - Removing unused dependency and changing default daemon port to 9090.
+* [300] - Update default settings for webapps
+* [299] - A stream app to benchmark kafka partitionable input operator
+* [287] - Use Yammer Metric to tick the kafka consumer throughput
+* [284] - Squashed commit of the following:
+* [283] - Monitor throughput for each kafka consumer 
+* [282] - Github 278 fix the Simple Kafka Consumer performance
+* [278] - A performance bug in Simple kafka consumer
+* [273] - Optimizing Redis Operator for inserting Maps
+* [264] - Added DataCache, JDBCBasedCache Operator and its test case
+* [262] - Marking operators non-partitionable
+* [260] - Figure out a way to have charts be dramatically different for key combinations in Machine Demo
+* [245] - Kafka Benchmark
+* [159] - Squashed commit of the following:
+* [147] - HighLow is not parameterized
+* [130] - CouchDB Output Adaptar
+* [289] - DimensionTimeBucket*Operator Usage and Issues
+* [252] - Web Apps - Karma Unit Tests
+* [251] - Machine Data Demo - Lookback Field Validation
+* [250] - Mobile Locator Demo - Phone Range Support
+* [232] - Show ingestion rate on MachineDemo UI
+* [104] - Map Reduce Monitor Application
+* [20] - Can not serialize Configuration Object
+
+
 ## Version 0.9.0
 
 ## Improvement
