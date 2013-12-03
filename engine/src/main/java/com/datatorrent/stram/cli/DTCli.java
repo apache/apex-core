@@ -86,8 +86,10 @@ import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.GenerateLicenseRequest;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicensingAgentClient;
+import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
@@ -444,6 +446,10 @@ public class DTCli
                                                     new Arg[] {new Arg("on/off")},
                                                     null,
                                                     "Set the pager program for output"));
+    globalCommands.put("generate-license-request", new CommandSpec(new GenerateLicenseRequestCommand(),
+        null,
+        null,
+        "Generate license request"));
     globalCommands.put("activate-license", new OptionsCommandSpec(new ActivateLicenseCommand(),
         null,
         new Arg[] {new FileArg("license-file")},
@@ -1494,7 +1500,18 @@ public class DTCli
         clientRMService.stop();
       }
     }
+  }
 
+  private class GenerateLicenseRequestCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String b64EncodedString = new GenerateLicenseRequest().getLicenceRequest(Util.getDefaultPublicKey());
+      System.out.println("-------------------------- Cut from below ------------------------------");
+      System.out.println(b64EncodedString);
+      System.out.println("------------------------------------------------------------------------");
+    }
   }
 
   private class LaunchCommand implements Command
