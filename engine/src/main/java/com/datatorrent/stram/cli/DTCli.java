@@ -1455,10 +1455,7 @@ public class DTCli
     {
       byte[] licenseBytes = StramClientUtils.getLicense(conf);
       String licenseId = License.getLicenseID(licenseBytes);
-      // TODO: enable validation once we have proper default license in place
-      if (!"dt-1383864532068-mpuczxh00m9v2kgo".equals(licenseId)) {
-        new License().validateLicense(licenseBytes);
-      }
+      License.validateLicense(licenseBytes);
       LogicalPlan lp = new LogicalPlan();
       lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
       lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
@@ -1477,10 +1474,7 @@ public class DTCli
     {
       byte[] licenseBytes = StramClientUtils.getLicense(conf);
       String licenseId = License.getLicenseID(licenseBytes);
-      // TODO: enable validation once we have proper default license in place
-      if (!"dt-1383864532068-mpuczxh00m9v2kgo".equals(licenseId)) {
-        new License().validateLicense(licenseBytes);
-      }
+      License.validateLicense(licenseBytes);
       // TODO: migrate CLI to use YarnClient and this here won't be needed
       YarnClient clientRMService = YarnClient.createYarnClient();
       try {
