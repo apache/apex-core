@@ -60,7 +60,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
   public static final String GATEWAY_ADDRESS = "stram.gateway.address";
-  public static final String GATEWAY_ADDRESS_ATTR = "address";
+  public static final String GATEWAY_ADDRESS_PROP = "address";
 
   public static final String STRAM_PREFIX = "stram.";
 
@@ -342,7 +342,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     @Override
     public boolean isAllowedElement(StramElement childType)
     {
-      return (childType == StramElement.ATTR);
+      return (childType == StramElement.PROP);
     }
 
     @Override
@@ -787,8 +787,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       } else if (element == StramElement.GATEWAY) {
         Conf elConf = addConf(element, null, conf);
         parseStramPropertyTokens(keys, index+1, propertyName, propertyValue, elConf);
-      } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getElement() == null))
-                      || ((element == null) && (conf.getElement() == StramElement.GATEWAY))) {
+      } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getElement() == null))) {
         // Supporting current implementation where attribute can be directly specified under stram
         String attr;
         // Re-composing complete key for nested keys which are used in templates
@@ -825,6 +824,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           LOG.warn("Invalid property specification, no property name specified for {}", propertyName);
         }
+      } else if ((element == null) && (conf.getElement() == StramElement.GATEWAY)) {
+        // Treat gateway as a special case, all gateway properties are specified without any PROP keyword for its configuration parameters
+        String prop = getCompleteKey(keys, index);
+        conf.setProperty(prop, propertyValue);
       } else if (element != null) {
         conf.parseElement(element, keys, index, propertyValue);
       }
@@ -1152,10 +1155,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs) {
 
+    // Make the gateway address available as an application attribute
     for (Conf appConf : appConfs) {
       Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
       if (gwConf != null) {
-        String gatewayAddress = gwConf.attributes.getProperty(GATEWAY_ADDRESS_ATTR);
+        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_ADDRESS_PROP);
         if (gatewayAddress !=  null) {
           dag.setAttribute(DAGContext.GATEWAY_ADDRESS, gatewayAddress);
           break;
