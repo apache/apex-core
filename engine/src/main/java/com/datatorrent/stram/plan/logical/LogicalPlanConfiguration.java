@@ -184,7 +184,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     public <T extends Conf> List<T> getMatchingChildConf(String name, StramElement childType) {
       List<T> childConfs = new ArrayList<T>();
-      @SuppressWarnings("unchecked")
       Map<String, T> elChildren = getChildren(childType);
       for (Map.Entry<String, T> entry : elChildren.entrySet()) {
         String key = entry.getKey();
@@ -307,8 +306,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * App configuration
    */
   private static class AppConf extends Conf {
-    //Properties opProps = new Properties(LogicalPlanConfiguration.this.opProps);
 
+    @SuppressWarnings("unused")
     AppConf() {
     }
 
@@ -344,6 +343,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private static class GatewayConf extends Conf {
 
+    @SuppressWarnings("unused")
     GatewayConf() {
     }
 
@@ -372,17 +372,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * with common settings.
    */
   private static class TemplateConf extends Conf {
-    //private final Properties opProps = new Properties();
 
+    @SuppressWarnings("unused")
     TemplateConf() {
-    }
-
-    /**
-     *
-     * @param id
-     */
-    private TemplateConf(String id) {
-      this.id = id;
     }
 
     @Override
@@ -426,19 +418,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    *
    */
   private static class StreamConf extends Conf {
-    //private final String id;
     private OperatorConf sourceNode;
     private final Set<OperatorConf> targetNodes = new HashSet<OperatorConf>();
 
-    //private final PropertiesWithModifiableDefaults opProps = new PropertiesWithModifiableDefaults();
-    //private TemplateConf template;
-    private String templateRef;
-
+    @SuppressWarnings("unused")
     StreamConf() {
-    }
-
-    private StreamConf(String id) {
-      this.id = id;
     }
 
     @Override
@@ -499,7 +483,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           addSink(parts[1], appConf.getOrAddChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
         }
       } else if (STREAM_TEMPLATE.equals(name)) {
-        templateRef = value;
         StramConf stramConf = getAncestorConf(null);
         TemplateConf templateConf = (TemplateConf)stramConf.getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
         setDefaultProperties(templateConf.properties);
@@ -555,37 +538,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * Operator configuration
    */
   private static class OperatorConf extends Conf {
+    @SuppressWarnings("unused")
     OperatorConf() {
     }
-    OperatorConf(String id) {
-      this.id = id;
-    }
-    //private final String id;
-    /**
-     * The opProps of the node, can be subclass opProps which will be set via reflection.
-     */
-    //private final PropertiesWithModifiableDefaults opProps = new PropertiesWithModifiableDefaults();
-    /**
-     * The inputs for the node
-     */
     private final Map<String, StreamConf> inputs = new HashMap<String, StreamConf>();
-    /**
-     * The outputs for the node
-     */
     private final Map<String, StreamConf> outputs = new HashMap<String, StreamConf>();
-
-    //private TemplateConf template;
     private String templateRef;
-
-    /**
-     *
-     * @return String
-     */
-    /*
-    public String getId() {
-      return id;
-    }
-    */
 
     @Override
     public StramElement getElement()
@@ -655,6 +613,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    */
   private static class PortConf extends Conf {
 
+    @SuppressWarnings("unused")
     PortConf() {
     }
 
@@ -1043,15 +1002,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param opConfs
    * @param appName
    */
-  private Map<String, String> getProperties(OperatorMeta ow, List<OperatorConf> opConfs, String appName) {
-
-    List<TemplateConf> templateConfs = new ArrayList<TemplateConf>();
-
-    // if there are properties set directly, an entry exists
-    // else it will be created so we can evaluate the templates against it
-    //OperatorConf n = getOrAddOperator(ow.getName());
-    //n.opProps.put(OPERATOR_CLASSNAME, ow.getOperator().getClass().getName());
-
+  private Map<String, String> getProperties(OperatorMeta ow, List<OperatorConf> opConfs, String appName)
+  {
     Map<String, String> opProps = new HashMap<String, String>();
     Map<String, TemplateConf> templates = stramConf.getChildren(StramElement.TEMPLATE);
     // list of all templates that match operator, ordered by priority
@@ -1144,11 +1096,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static Map<String, Object> getOperatorProperties(Operator operator)
   {
     return new BeanMap(operator);
-  }
-
-  private void setOperatorProperties(OperatorMeta ow, List<OperatorConf> opConfs, String appName) {
-      Map<String, String> opProps = getProperties(ow, opConfs, appName);
-      setOperatorProperties(ow.getOperator(), opProps);
   }
 
   /**
@@ -1268,10 +1215,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
       attributeMap.put(clazz, m);
     }
-    @SuppressWarnings("rawtypes")
-    Attribute attr = m.get(configKey);
+    Attribute<Object> attr = m.get(configKey);
     if (attr == null && clazz == DAGContext.class) {
-      attr = legacyKeyMap.get(configKey);
+      @SuppressWarnings({ "rawtypes", "unchecked" })
+      Attribute<Object> tmp = (Attribute)legacyKeyMap.get(configKey);
+      attr = tmp;
       if (attr == null) {
         String simpleName = CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, configKey);
         attr = m.get(simpleName);
