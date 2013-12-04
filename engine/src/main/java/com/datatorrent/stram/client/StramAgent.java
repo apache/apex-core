@@ -99,7 +99,7 @@ public class StramAgent extends FSAgent
       String appPath = response.getString("appPath");
       int i = appPath.indexOf("/" + appId);
       if (i <= 0) {
-        LOG.warn("Cannot get the live Stram root for {}", appId);
+        LOG.warn("Cannot get the app path for {} {}", appId, appPath);
         return null;
       }
       return appPath;
@@ -112,14 +112,16 @@ public class StramAgent extends FSAgent
   private static String getAppMasterTrackingUrl(String appId)
   {
     WebServicesClient webServicesClient = new WebServicesClient();
+    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info";
     try {
-      JSONObject response = webServicesClient.process("http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info",
+      JSONObject response = webServicesClient.process(url,
                                                       JSONObject.class,
                                                       new WebServicesClient.GetWebServicesHandler<JSONObject>());
       return response.getString("appMasterTrackingUrl");
     }
     catch (Exception ex) {
-      LOG.warn("Cannot get the live Stram root for {}", appId);
+      LOG.warn("Cannot get the tracking url for {} from {}", appId, url);
+      LOG.warn("Caught exception", ex);
       return null;
     }
   }
