@@ -27,9 +27,6 @@ public class Tuple
 
   public Tuple(MessageType t, long windowId)
   {
-    if (windowId < 0) {
-      throw new AssertionError("Window ID is negative (" + windowId + ")");
-    }
     type = t;
     this.windowId = windowId;
   }
