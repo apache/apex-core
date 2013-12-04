@@ -67,7 +67,9 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -98,7 +100,6 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 /**
  *
@@ -110,7 +111,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
-  private final Configuration conf = new Configuration();
+  private final Configuration conf = new YarnConfiguration();
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
