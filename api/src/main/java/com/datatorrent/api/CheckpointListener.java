@@ -24,12 +24,16 @@ package com.datatorrent.api;
 public interface CheckpointListener
 {
   /**
-   * <p>checkpointed.</p>
+   * Inform the operator that it's checkpointed.
+   *
+   * @param windowId Id of the window after which the operator was checkpointed.
    */
   public void checkpointed(long windowId);
 
   /**
-   * <p>committed.</p>
+   * Inform the operator that a particular windowId is processed successfully by all the operators in the DAG.
+   *
+   * @param windowId Id of the window which is processed by each operator.
    */
   public void committed(long windowId);
 
