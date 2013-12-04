@@ -12,6 +12,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
 
+import javax.validation.ValidationException;
+
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -798,12 +800,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           String attrKey = getCompleteKey(keys, index);
           attr = getAttribute(conf.getAttributeContextClass(), attrKey);
           LOG.warn("Please specify attribute {} as {}", getCompleteKey(keys, 0, index+1),
-              getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleAttributeName(attr));
+              getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleName(attr));
         }
         if (attr != null) {
           conf.setAttribute(attr, propertyValue);
         } else {
-          LOG.warn("Invalid attribute specification, no attribute name specified for {}", propertyName);
+          throw new ValidationException("Invalid attribute reference: " + propertyName);
         }
       } else if (((element == StramElement.PROP) || (element == null))
               && ((conf.getElement() == StramElement.OPERATOR) || (conf.getElement() == StramElement.STREAM) || (conf.getElement() == StramElement.TEMPLATE))) {
@@ -1198,7 +1200,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  private String getSimpleAttributeName(Attribute<?> attribute) {
+  private String getSimpleName(Attribute<?> attribute) {
     return attribute.name.substring(attribute.name.lastIndexOf('.')+1);
   }
 
@@ -1211,7 +1213,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       Set<Attribute<Object>> attributes = AttributeInitializer.getAttributes(clazz);
       m = Maps.newHashMapWithExpectedSize(attributes.size());
       for (Attribute<Object> attr : attributes) {
-        m.put(getSimpleAttributeName(attr), attr);
+        m.put(getSimpleName(attr), attr);
       }
       attributeMap.put(clazz, m);
     }
@@ -1225,7 +1227,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         attr = m.get(simpleName);
       }
       if (attr != null) {
-        LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", configKey, getSimpleAttributeName(attr));
+        LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", configKey, getSimpleName(attr));
       }
     }
     return attr;
@@ -1238,7 +1240,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         for (Map.Entry<Attribute<Object>, String> e : conf.attributes.entrySet()) {
           Attribute<Object> attribute = e.getKey();
           if (attribute.codec == null) {
-            String msg = String.format("Unsupported attribute type: %s (%s)", attribute.codec, attribute.name);
+            String msg = String.format("Attribute does not support property configuration: %s %s", attribute.name, e.getValue());
             throw new UnsupportedOperationException(msg);
           }
           else {
