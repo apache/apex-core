@@ -138,8 +138,7 @@ public class GenericNodeTest
     while (ab.get() == false);
 
 
-    Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW);
-    beginWindow1.setWindowId(0x1L);
+    Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW, 0x1L);
 
     reservoir1.add(beginWindow1);
     Thread.sleep(sleeptime);
@@ -155,8 +154,7 @@ public class GenericNodeTest
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
-    Tuple beginWindow2 = new Tuple(MessageType.BEGIN_WINDOW);
-    beginWindow2.setWindowId(0x2L);
+    Tuple beginWindow2 = new Tuple(MessageType.BEGIN_WINDOW, 0x2L);
 
     reservoir1.add(beginWindow2);
     Thread.sleep(sleeptime);
@@ -186,8 +184,7 @@ public class GenericNodeTest
     Thread.sleep(sleeptime);
     Assert.assertEquals(4, list.size());
 
-    Tuple beginWindow3 = new Tuple(MessageType.BEGIN_WINDOW);
-    beginWindow3.setWindowId(0x3L);
+    Tuple beginWindow3 = new Tuple(MessageType.BEGIN_WINDOW, 0x3L);
 
     reservoir2.add(beginWindow3);
     Thread.sleep(sleeptime);

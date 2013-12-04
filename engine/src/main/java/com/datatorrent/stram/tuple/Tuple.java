@@ -25,13 +25,11 @@ public class Tuple
   protected long windowId;
   private final MessageType type;
 
-  public Tuple(MessageType t)
-  {
-    type = t;
-  }
-
   public Tuple(MessageType t, long windowId)
   {
+    if (windowId < 0) {
+      throw new AssertionError("Window ID is negative (" + windowId + ")");
+    }
     type = t;
     this.windowId = windowId;
   }
@@ -42,14 +40,6 @@ public class Tuple
   public long getWindowId()
   {
     return windowId;
-  }
-
-  /**
-   * @param windowId the windowId to set
-   */
-  public void setWindowId(long windowId)
-  {
-    this.windowId = windowId;
   }
 
   /**
