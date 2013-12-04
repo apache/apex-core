@@ -76,6 +76,7 @@ import org.apache.tools.ant.DirectoryScanner;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
+import com.datatorrent.stram.client.StramAgent;
 import com.datatorrent.stram.client.StramAppLauncher;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils;
@@ -97,6 +98,7 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 /**
  *
@@ -795,8 +797,8 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
-
     StramClientUtils.addStramResources(conf);
+    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS, "localhost:8088"));
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
