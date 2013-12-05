@@ -66,9 +66,13 @@ import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
+import java.net.InetSocketAddress;
+import org.apache.hadoop.yarn.api.protocolrecords.*;
+import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 
 /**
  *
@@ -398,6 +402,7 @@ public class StramClient
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
     // Setup security tokens
+    /*
     if (UserGroupInformation.isSecurityEnabled()) {
       Credentials credentials = new Credentials();
       String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
@@ -419,7 +424,7 @@ public class StramClient
       ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
       amContainer.setTokens(fsTokens);
     }
-    /*
+    */
      // If Kerberos security is enabled get ResourceManager and NameNode delegation tokens.
      // Set these tokens on the container so that they are sent as part of application submission.
      // This also sets them up for renewal by ResourceManager. The NameNode delegation rmToken
@@ -453,7 +458,7 @@ public class StramClient
      ByteBuffer tokensBuf = ByteBuffer.wrap(tokensBytes);
      amContainer.setTokens(tokensBuf);
      }
-     */
+
     String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
     // set local resources for the application master
