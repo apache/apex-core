@@ -822,11 +822,6 @@ public class PhysicalPlan {
     setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL,host);
     setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL,host);
 
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-create");
-    ev.addData("operatorId", oper.getId());
-    ev.addData("operatorName", oper.getName());
-    this.ctx.recordEventAsync(ev);
-
     return oper;
   }
 
