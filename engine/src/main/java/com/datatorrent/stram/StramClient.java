@@ -401,8 +401,8 @@ public class StramClient
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
-    // Setup security tokens
     /*
+    // Setup security tokens
     if (UserGroupInformation.isSecurityEnabled()) {
       Credentials credentials = new Credentials();
       String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
@@ -446,12 +446,20 @@ public class StramClient
 
      // Get the NameNode delegation rmToken
      FileSystem dfs = FileSystem.get(conf);
-     Token<?> hdfsToken = dfs.getDelegationToken(tokenRenewer);
+     //Token<?> hdfsToken = dfs.getDelegationToken(tokenRenewer);
 
      // Setup the credentials to serialize the tokens which can be set on the container.
      Credentials credentials = new Credentials();
+
+      final Token<?> tokens[] = dfs.addDelegationTokens(tokenRenewer, credentials);
+      if (tokens != null) {
+        for (Token<?> token : tokens) {
+          LOG.info("Got dt for " + dfs.getUri() + "; " + token);
+        }
+      }
+
      credentials.addToken(rmToken.getService(), rmToken);
-     credentials.addToken(hdfsToken.getService(), hdfsToken);
+     //credentials.addToken(hdfsToken.getService(), hdfsToken);
      DataOutputBuffer dataOutput = new DataOutputBuffer();
      credentials.writeTokenStorageToStream(dataOutput);
      byte[] tokensBytes = dataOutput.getData();
