@@ -537,27 +537,6 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
-  private PTContainer matchContainer(ContainerResource resource)
-  {
-    PTContainer match = null;
-    // match container waiting for resource
-    for (PTContainer c : pendingAllocation) {
-      if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
-        if (c.getResourceRequestPriority() == resource.priority) {
-          return c;
-        }
-        /*
-         if (container.getRequiredMemoryMB() <= resource.memoryMB) {
-         if (match == null || match.getRequiredMemoryMB() < container.getRequiredMemoryMB()) {
-         match = container;
-         }
-         }
-         */
-      }
-    }
-    return match;
-  }
-
   /**
    * Assign operators to allocated container resource.
    *
@@ -567,16 +546,26 @@ public class StreamingContainerManager implements PlanContext
    */
   public StramChildAgent assignContainer(ContainerResource resource, InetSocketAddress bufferServerAddr)
   {
-    PTContainer container = matchContainer(resource);
+    PTContainer container = null;
+    // match container waiting for resource
+    for (PTContainer c : pendingAllocation) {
+      if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
+        if (c.getResourceRequestPriority() == resource.priority) {
+          container = c;
+        }
+      }
+    }
+
     if (container == null) {
       LOG.debug("No container matching allocated resource {}", resource);
+      LOG.debug("Containers waiting for allocation {}", pendingAllocation);
       return null;
     }
 
     pendingAllocation.remove(container);
     container.setState(PTContainer.State.ALLOCATED);
     if (container.getExternalId() != null) {
-      LOG.info("Removing existing container agent {}", container.getExternalId());
+      LOG.info("Replacing container agent {}", container.getExternalId());
       this.containers.remove(container.getExternalId());
     }
     container.setExternalId(resource.containerId);
@@ -651,7 +640,7 @@ public class StreamingContainerManager implements PlanContext
     long currentTimeMillis = System.currentTimeMillis();
 
     StramChildAgent sca = this.containers.get(heartbeat.getContainerId());
-    if (sca == null) {
+    if (sca == null || sca.container.getState() == PTContainer.State.KILLED) {
       // could be orphaned container that was replaced and needs to terminate
       LOG.error("Unknown container " + heartbeat.getContainerId());
       ContainerHeartbeatResponse response = new ContainerHeartbeatResponse();
@@ -660,7 +649,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     //LOG.debug("{} {} {}", new Object[]{sca.container.containerId, sca.container.bufferServerAddress, sca.container.getState()});
-    if (sca.container.getState() != PTContainer.State.ACTIVE) {
+    if (sca.container.getState() == PTContainer.State.ALLOCATED) {
       // capture dynamically assigned address from container
       if (sca.container.bufferServerAddress == null && heartbeat.bufferServerHost != null) {
         sca.container.bufferServerAddress = InetSocketAddress.createUnresolved(heartbeat.bufferServerHost, heartbeat.bufferServerPort);
@@ -675,7 +664,8 @@ public class StreamingContainerManager implements PlanContext
       containerStopRequests.put(sca.container.getExternalId(), sca.container.getExternalId());
     }
 
-    sca.memoryMBFree = heartbeat.memoryMBFree;
+    // commented out because free memory is misleading because of GC. may want to revisit this.
+    //sca.memoryMBFree = heartbeat.memoryMBFree;
 
     long elapsedMillis = 0;
 
@@ -1127,7 +1117,7 @@ public class StreamingContainerManager implements PlanContext
       // container may already be in failed or pending deploy state, notified by RM or timed out
       PTContainer c = e.getKey();
       if (!startContainers.contains(c) && !releaseContainers.contains(c) && c.getState() != PTContainer.State.KILLED) {
-        LOG.debug("scheduling undeploy {} {}", e.getKey(), e.getValue());
+        LOG.debug("scheduling undeploy {} {}", e.getKey().getExternalId(), e.getValue());
         for (PTOperator oper : e.getValue()) {
           c.getPendingUndeploy().add(oper);
         }
@@ -1177,7 +1167,7 @@ public class StreamingContainerManager implements PlanContext
 
       // add to operators that we expect to deploy
       // TODO: handle concurrent deployment
-      LOG.debug("scheduling deploy {} {}", e.getKey(), e.getValue());
+      LOG.debug("scheduling deploy {} {}", e.getKey().getExternalId(), e.getValue());
       e.getKey().getPendingDeploy().addAll(e.getValue());
     }
 

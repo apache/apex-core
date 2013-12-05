@@ -217,7 +217,11 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
-  public static final String DT_HOME = System.getenv("_DT_HOME"); // get rid of this hack
+  /**
+   * Provides a way to run applications with different .m2 and .stram location for internal use.
+   * The environment variable was renamed as "DT_HOME" is used for other purposes
+   */
+  public static final String DT_HOME = System.getenv("_STRAM_CLIENT_ROOT");
 
   public static File getSettingsRootDir()
   {

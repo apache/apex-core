@@ -250,16 +250,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     controlTupleCount++;
   }
 
-  public void emitCheckpoint(long windowId)
-  {
-    CheckpointTuple ct = new CheckpointTuple(windowId);
-    ct.setWindowId(currentWindowId);
-    for (int s = sinks.length; s-- > 0;) {
-      sinks[s].put(ct);
-    }
-    controlTupleCount++;
-  }
-
   protected void handleRequests(long windowId)
   {
     /*

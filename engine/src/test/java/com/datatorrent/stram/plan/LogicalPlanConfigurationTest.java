@@ -12,6 +12,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +26,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
@@ -38,6 +41,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 import com.google.common.collect.Sets;
 
 public class LogicalPlanConfigurationTest {
@@ -346,9 +350,7 @@ public class LogicalPlanConfigurationTest {
 
     LogicalPlan dag = new LogicalPlan();
     dagBuilder.prepareDAG(dag, app, appPath, new Configuration(false));
-    //dagBuilder.populateDAG(dag, new Configuration(false));
 
-    //dagBuilder.setApplicationConfiguration(dag, appName);
     Assert.assertEquals("", Integer.valueOf(20), dag.getOperatorMeta("operator1").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", Integer.valueOf(2), dag.getOperatorMeta("operator2").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
   }
@@ -398,5 +400,49 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("", Integer.valueOf(16 * 1024), om3.getMeta(gt3.inport1).getValue(PortContext.QUEUE_CAPACITY));
     Assert.assertEquals("", Integer.valueOf(32 * 1024), om3.getMeta(gt3.inport2).getValue(PortContext.QUEUE_CAPACITY));
   }
+
+
+  @Test
+  public void testInvalidAttribute() throws Exception {
+
+    Assert.assertNotSame(0, DAGContext.serialVersionUID);
+    Set<Attribute<Object>> appAttributes = AttributeInitializer.getAttributes(DAGContext.class);
+    Attribute<Object> attribute = new Attribute<Object>("", null);
+
+    Field nameField = AttributeMap.Attribute.class.getDeclaredField("name");
+    nameField.setAccessible(true);
+    nameField.set(attribute, "NOT_CONFIGURABLE");
+    nameField.setAccessible(false);
+
+    appAttributes.add(attribute);
+
+    // attribute that cannot be configured
+
+    Properties props = new Properties();
+    props.put("stram.attr.NOT_CONFIGURABLE", "value");
+
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    dagBuilder.addFromProperties(props);
+
+    try {
+      dagBuilder.prepareDAG(new LogicalPlan(), dagBuilder, "", new Configuration(false));
+      Assert.fail("Exception expected");
+    } catch (Exception e) {
+      Assert.assertThat("Attribute not configurable", e.getMessage(), RegexMatcher.matches("Attribute does not support property configuration: NOT_CONFIGURABLE.*"));
+    }
+
+    // invalid attribute name
+    props = new Properties();
+    props.put("stram.attr.INVALID_NAME", "value");
+
+    try {
+      new LogicalPlanConfiguration().addFromProperties(props);
+      Assert.fail("Exception expected");
+    } catch (Exception e) {
+      Assert.assertThat("Invalid attribute name", e.getMessage(), RegexMatcher.matches("Invalid attribute reference: stram.attr.INVALID_NAME"));
+    }
+
+  }
+
 
 }
