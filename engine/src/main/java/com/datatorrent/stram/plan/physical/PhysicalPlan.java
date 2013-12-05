@@ -892,7 +892,11 @@ public class PhysicalPlan {
         }
       }
       for (PTOperator localOper : s) {
+        if(grpObj.getHost() == null){
+          grpObj.setHost(localOper.groupings.get(ltype).getHost()); 
+         }
         localOper.groupings.put(ltype, grpObj);
+        
       }
     }
   }

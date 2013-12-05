@@ -102,7 +102,7 @@ public class HostLocalTest {
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       //Assert.assertEquals("Hosts set to host1" , "host1",host);
     }
@@ -139,7 +139,7 @@ public class HostLocalTest {
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       Assert.assertEquals("Hosts set to host1" , "host1",host);
     }
@@ -177,7 +177,7 @@ public class HostLocalTest {
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       Assert.assertEquals("Hosts set to host2" , "host2",host);
     }

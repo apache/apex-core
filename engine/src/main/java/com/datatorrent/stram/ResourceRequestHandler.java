@@ -44,21 +44,23 @@ public class ResourceRequestHandler
   /**
    * Setup the request(s) that will be sent to the RM for the container ask.
    */
-  public ContainerRequest createContainerRequest(ContainerStartRequest csr, int memory)
+  public ContainerRequest createContainerRequest(ContainerStartRequest csr, int memory, boolean first)
   {
     int priority = csr.container.getResourceRequestPriority();
     // check for node locality constraint
     String[] nodes = null;
     String[] racks = null;
 
-    String host = getHost(csr, memory);
+    String host = getHost(csr, memory, first);
     Resource capability = Records.newRecord(Resource.class);
     capability.setMemory(memory);
 
     if (host != null) {
       nodes = new String[] { host };
-      // in order to request a host, we also have to request the rack
-      racks = new String[] { this.nodeToRack.get(host) };
+      // in order to request a host, we don't have to set the rack if the locality is false
+      /*
+       * if(this.nodeToRack.get(host) != null){ racks = new String[] { this.nodeToRack.get(host) }; }
+       */
       return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority), false);
     }
     // For now, only memory is supported so we set memory requirements
@@ -68,6 +70,11 @@ public class ResourceRequestHandler
   private final Map<String, NodeReport> nodeReportMap = Maps.newHashMap();
   private final Map<Set<PTOperator>, String> nodeLocalMapping = Maps.newHashMap();
   private final Map<String, String> nodeToRack = Maps.newHashMap();
+
+  public void clearNodeMapping()
+  {
+    nodeLocalMapping.clear();
+  }
 
   /**
    * Tracks update to available resources. Resource availability is used to make decisions about where to request new
@@ -87,68 +94,70 @@ public class ResourceRequestHandler
     }
   }
 
-  public String getHost(ContainerStartRequest csr, int requiredMemory)
+  public String getHost(ContainerStartRequest csr, int requiredMemory, boolean first)
   {
-    PTContainer c = csr.container;
     String host = null;
-    for (PTOperator oper : c.getOperators()) {
-      HostOperatorSet grpObj = oper.getNodeLocalOperators();
-      host = nodeLocalMapping.get(grpObj.getOperatorSet());
-      if (host != null)
-        return host;
-      if (grpObj.getHost() != null) {
-        host = grpObj.getHost();
-        // using the 1st host value as host for container
-        break;
-      }
-    }
-    if (host != null) {
+    PTContainer c = csr.container;
+    if (first) {            
       for (PTOperator oper : c.getOperators()) {
         HostOperatorSet grpObj = oper.getNodeLocalOperators();
-        Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
-        NodeReport report = nodeReportMap.get(host);
-        if (report != null) {
-          int aggrMemory = 0;
-          Set<PTContainer> containers = Sets.newHashSet();
-          for (PTOperator nodeLocalOper : nodeLocalSet) {
-            if (!containers.contains(nodeLocalOper.getContainer())) {
-              aggrMemory += requiredMemory;
-              containers.add(nodeLocalOper.getContainer());
+        host = nodeLocalMapping.get(grpObj.getOperatorSet());
+        if (host != null)
+          return host;
+        if (grpObj.getHost() != null) {
+          host = grpObj.getHost();
+          // using the 1st host value as host for container
+          break;
+        }
+      }
+      if (host != null) {
+        for (PTOperator oper : c.getOperators()) {
+          HostOperatorSet grpObj = oper.getNodeLocalOperators();
+          Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
+          NodeReport report = nodeReportMap.get(host); // report null means the host passed is wrong
+          if (report != null) {
+            int aggrMemory = 0;
+            Set<PTContainer> containers = Sets.newHashSet();
+            for (PTOperator nodeLocalOper : nodeLocalSet) {
+              if (!containers.contains(nodeLocalOper.getContainer())) {
+                aggrMemory += requiredMemory;
+                containers.add(nodeLocalOper.getContainer());
+              }
+            }
+            int memAvailable = report.getCapability().getMemory() - report.getUsed().getMemory();
+            if (memAvailable >= aggrMemory) {
+              nodeLocalMapping.put(nodeLocalSet, host);
+              return host;
             }
           }
-          int memAvailable = report.getCapability().getMemory() - report.getUsed().getMemory();
+        }
+      }
+    }
+    // the host requested didn't have the resources so looking for other hosts
+    host = null;
+    for (PTOperator oper : c.getOperators()) {
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();
+      Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
+      if (nodeLocalSet.size() > 1) {
+        LOG.debug("Finding new host for {}", nodeLocalSet);
+        int aggrMemory = 0;
+        Set<PTContainer> containers = Sets.newHashSet();
+        // aggregate memory required for all containers
+        for (PTOperator nodeLocalOper : nodeLocalSet) {
+          if (!containers.contains(nodeLocalOper.getContainer())) {
+            aggrMemory += requiredMemory;
+            containers.add(nodeLocalOper.getContainer());
+          }
+        }
+        for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
+          int memAvailable = nodeEntry.getValue().getCapability().getMemory() - nodeEntry.getValue().getUsed().getMemory();
           if (memAvailable >= aggrMemory) {
+            host = nodeEntry.getKey();
             nodeLocalMapping.put(nodeLocalSet, host);
             return host;
           }
         }
       }
-    }
-    host = null;
-    for (PTOperator oper : c.getOperators()) {
-      
-      HostOperatorSet grpObj = oper.getNodeLocalOperators();
-      Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
-      if (nodeLocalSet.size() > 1) {        
-          LOG.debug("Finding new host for {}", nodeLocalSet);
-          int aggrMemory = 0;
-          Set<PTContainer> containers = Sets.newHashSet();
-          // aggregate memory required for all containers
-          for (PTOperator nodeLocalOper : nodeLocalSet) {
-            if (!containers.contains(nodeLocalOper.getContainer())) {
-              aggrMemory += requiredMemory;
-              containers.add(nodeLocalOper.getContainer());
-            }
-          }
-          for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
-            int memAvailable = nodeEntry.getValue().getCapability().getMemory() - nodeEntry.getValue().getUsed().getMemory();
-            if (memAvailable >= aggrMemory) {
-              host = nodeEntry.getKey();
-              nodeLocalMapping.put(nodeLocalSet, host);
-              return host;
-            }
-          }
-        }      
     }
     return host;
   }
