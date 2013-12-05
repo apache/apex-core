@@ -26,23 +26,26 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 
 /**
- * Handle mapping from physical plan locality groupings to resource allocation requests.
- * Monitors available resources through node reports.
- *
+ * Handle mapping from physical plan locality groupings to resource allocation requests. Monitors available resources
+ * through node reports.
+ * 
  * @since 0.3.4
  */
-public class ResourceRequestHandler {
+public class ResourceRequestHandler
+{
 
   private final static Logger LOG = LoggerFactory.getLogger(ResourceRequestHandler.class);
 
-  public ResourceRequestHandler() {
+  public ResourceRequestHandler()
+  {
     super();
   }
 
   /**
    * Setup the request(s) that will be sent to the RM for the container ask.
    */
-  public ContainerRequest createContainerRequest(ContainerStartRequest csr, int memory) {
+  public ContainerRequest createContainerRequest(ContainerStartRequest csr, int memory)
+  {
     int priority = csr.container.getResourceRequestPriority();
     // check for node locality constraint
     String[] nodes = null;
@@ -51,12 +54,12 @@ public class ResourceRequestHandler {
     String host = getHost(csr, memory);
     Resource capability = Records.newRecord(Resource.class);
     capability.setMemory(memory);
-    
-    if(host != null) {
-      nodes = new String[] {host};
+
+    if (host != null) {
+      nodes = new String[] { host };
       // in order to request a host, we also have to request the rack
-      racks = new String[] {this.nodeToRack.get(host)};
-      return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority),false);
+      racks = new String[] { this.nodeToRack.get(host) };
+      return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority), false);
     }
     // For now, only memory is supported so we set memory requirements
     return new ContainerRequest(capability, nodes, racks, Priority.newInstance(priority));
@@ -67,13 +70,14 @@ public class ResourceRequestHandler {
   private final Map<String, String> nodeToRack = Maps.newHashMap();
 
   /**
-   * Tracks update to available resources. Resource availability is used to make
-   * decisions about where to request new containers.
-   *
+   * Tracks update to available resources. Resource availability is used to make decisions about where to request new
+   * containers.
+   * 
    * @param nodeReports
    */
-  public void updateNodeReports(List<NodeReport> nodeReports) {
-    //LOG.debug("Got {} updated node reports.", nodeReports.size());
+  public void updateNodeReports(List<NodeReport> nodeReports)
+  {
+    // LOG.debug("Got {} updated node reports.", nodeReports.size());
     for (NodeReport nr : nodeReports) {
       StringBuilder sb = new StringBuilder();
       sb.append("rackName=").append(nr.getRackName()).append(",nodeid=").append(nr.getNodeId()).append(",numContainers=").append(nr.getNumContainers()).append(",capability=").append(nr.getCapability()).append("used=").append(nr.getUsed()).append("state=").append(nr.getNodeState());
@@ -83,35 +87,49 @@ public class ResourceRequestHandler {
     }
   }
 
-  public String getHost(ContainerStartRequest csr, int requiredMemory) {
+  public String getHost(ContainerStartRequest csr, int requiredMemory)
+  {
     PTContainer c = csr.container;
     String host = null;
     for (PTOperator oper : c.getOperators()) {
       HostOperatorSet grpObj = oper.getNodeLocalOperators();
       host = nodeLocalMapping.get(grpObj.getOperatorSet());
-      if(host == null && grpObj.getHost() != null){
+      if (host != null)
+        return host;
+      if (grpObj.getHost() != null) {
         host = grpObj.getHost();
         // using the 1st host value as host for container
         break;
       }
     }
-    if(host != null){
+    if (host != null) {
       for (PTOperator oper : c.getOperators()) {
         HostOperatorSet grpObj = oper.getNodeLocalOperators();
         Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
-        nodeLocalMapping.put(nodeLocalSet, host);        
+        NodeReport report = nodeReportMap.get(host);
+        if (report != null) {
+          int aggrMemory = 0;
+          Set<PTContainer> containers = Sets.newHashSet();
+          for (PTOperator nodeLocalOper : nodeLocalSet) {
+            if (!containers.contains(nodeLocalOper.getContainer())) {
+              aggrMemory += requiredMemory;
+              containers.add(nodeLocalOper.getContainer());
+            }
+          }
+          int memAvailable = report.getCapability().getMemory() - report.getUsed().getMemory();
+          if (memAvailable >= aggrMemory) {
+            nodeLocalMapping.put(nodeLocalSet, host);
+            return host;
+          }
+        }
       }
-      return host;
     }
+    host = null;
     for (PTOperator oper : c.getOperators()) {
-      HostOperatorSet grpObj = oper.getNodeLocalOperators();      
+      
+      HostOperatorSet grpObj = oper.getNodeLocalOperators();
       Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
-      if (nodeLocalSet.size() > 1) {
-        host = nodeLocalMapping.get(nodeLocalSet);
-        if (host != null) {
-          LOG.debug("Existing node local mapping {} {}", nodeLocalSet, host);
-          return host;
-        } else {
+      if (nodeLocalSet.size() > 1) {        
           LOG.debug("Finding new host for {}", nodeLocalSet);
           int aggrMemory = 0;
           Set<PTContainer> containers = Sets.newHashSet();
@@ -130,8 +148,7 @@ public class ResourceRequestHandler {
               return host;
             }
           }
-        }
-      }
+        }      
     }
     return host;
   }
