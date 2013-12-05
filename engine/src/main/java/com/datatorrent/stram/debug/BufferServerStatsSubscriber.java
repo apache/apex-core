@@ -17,11 +17,6 @@ import com.datatorrent.stram.api.ContainerEvent.StreamActivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.StreamDeactivationEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
-import com.datatorrent.stram.engine.ByteCounterStream;
-import com.datatorrent.stram.engine.Stream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.stream.BufferServerPublisher;
-import com.datatorrent.stram.stream.BufferServerSubscriber;
 
 /**
  * Subscribes to event bus and listens to buffer server events to collect buffer server stats
@@ -35,26 +30,35 @@ public class BufferServerStatsSubscriber
   private HashMap<String, ByteCounterStream> streams = new HashMap<String, ByteCounterStream>();
 
   @Handler
-  public void handleStreamActivation(StreamActivationEvent sae){
+  public void handleStreamActivation(StreamActivationEvent sae)
+  {
     ComponentContextPair<Stream, StreamContext> stream = sae.getStream();
-    if (stream.component instanceof BufferServerSubscriber) {
-      streams.put(stream.context.getSinkId(), (ByteCounterStream)stream.component);
-    }
-    else if (stream.component instanceof BufferServerPublisher) {
-      streams.put(stream.context.getSourceId(), (ByteCounterStream)stream.component);
+    String sourceId = stream.context.getSourceId();
+    String sinkId = stream.context.getSinkId();
+    if (stream.component instanceof ByteCounterStream) {
+      if (sinkId.startsWith("tcp:")) {
+        streams.put(sourceId, (ByteCounterStream)stream.component);
+      }
+      else {
+        streams.put(sinkId, (ByteCounterStream)stream.component);
+      }
     }
   }
 
   @Handler
-  public void handleStreamDeactivation(StreamDeactivationEvent sde){
+  public void handleStreamDeactivation(StreamDeactivationEvent sde)
+  {
     ComponentContextPair<Stream, StreamContext> stream = sde.getStream();
-    if (stream.component instanceof BufferServerSubscriber) {
-      streams.remove(stream.context.getSinkId());
+    String sourceId = stream.context.getSourceId();
+    String sinkId = stream.context.getSinkId();
+    if (stream.component instanceof ByteCounterStream) {
+      if (sinkId.startsWith("tcp:")) {
+        streams.remove(sourceId);
+      }
+      else {
+        streams.remove(sinkId);
+      }
     }
-    else if (stream.component instanceof BufferServerPublisher) {
-      streams.remove(stream.context.getSourceId());
-    }
-
   }
 
   @Handler
@@ -86,4 +90,5 @@ public class BufferServerStatsSubscriber
       }
     }
   }
+
 }
