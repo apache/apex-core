@@ -32,7 +32,6 @@ public class PTContainer {
     NEW,
     ALLOCATED,
     ACTIVE,
-    TIMEDOUT,
     KILLED
   }
 
