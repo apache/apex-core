@@ -790,23 +790,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           conf = addConf(StramElement.APPLICATION, WILDCARD, conf);
         }
         // Supporting current implementation where attribute can be directly specified under stram
-        Attribute<Object> attr;
         // Re-composing complete key for nested keys which are used in templates
         // Implement it better way to not pre-tokenize the property string and parse progressively
-        if (element == StramElement.ATTR) {
-          String attrKey = getCompleteKey(keys, index + 1);
-          attr = getAttribute(conf.getAttributeContextClass(), attrKey);
-        } else {
-          String attrKey = getCompleteKey(keys, index);
-          attr = getAttribute(conf.getAttributeContextClass(), attrKey);
-          LOG.warn("Please specify attribute {} as {}", getCompleteKey(keys, 0, index+1),
-              getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleName(attr));
-        }
-        if (attr != null) {
-          conf.setAttribute(attr, propertyValue);
-        } else {
-          throw new ValidationException("Invalid attribute reference: " + propertyName);
-        }
+        parseAttribute(conf, keys, index, element, propertyValue);
       } else if (((element == StramElement.PROP) || (element == null))
               && ((conf.getElement() == StramElement.OPERATOR) || (conf.getElement() == StramElement.STREAM) || (conf.getElement() == StramElement.TEMPLATE))) {
         // Currently opProps are only supported on operators and streams
@@ -1206,8 +1192,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private final Map<Class<? extends Context>, Map<String, Attribute<Object>>> attributeMap = Maps.newHashMap();
 
-  private Attribute<Object> getAttribute(Class<? extends Context> clazz, String configKey)
+  private void parseAttribute(Conf conf, String[] keys, int index, StramElement element, String attrValue)
   {
+    String configKey = (element == StramElement.ATTR) ? getCompleteKey(keys, index + 1) : getCompleteKey(keys, index);
+    boolean isDeprecated = false;
+    Class<? extends Context> clazz = conf.getAttributeContextClass();
     Map<String, Attribute<Object>> m = attributeMap.get(clazz);
     if (!attributeMap.containsKey(clazz)) {
       Set<Attribute<Object>> attributes = AttributeInitializer.getAttributes(clazz);
@@ -1219,6 +1208,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
     Attribute<Object> attr = m.get(configKey);
     if (attr == null && clazz == DAGContext.class) {
+      isDeprecated = true;
       @SuppressWarnings({ "rawtypes", "unchecked" })
       Attribute<Object> tmp = (Attribute)legacyKeyMap.get(configKey);
       attr = tmp;
@@ -1226,11 +1216,18 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         String simpleName = CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, configKey);
         attr = m.get(simpleName);
       }
-      if (attr != null) {
-        LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", configKey, getSimpleName(attr));
-      }
     }
-    return attr;
+
+    if (attr == null) {
+      throw new ValidationException("Invalid attribute reference: " + getCompleteKey(keys, 0));
+    }
+
+    if (element != StramElement.ATTR || isDeprecated) {
+      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleName(attr);
+      LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", getCompleteKey(keys, 0), expName);
+    }
+
+    conf.setAttribute(attr, attrValue);
   }
 
   private void setAttributes(Class<?> clazz, List<? extends Conf> confs, AttributeMap attributeMap) {
