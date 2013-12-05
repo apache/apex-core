@@ -822,6 +822,11 @@ public class PhysicalPlan {
     setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL,host);
     setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL,host);
 
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-create");
+    ev.addData("operatorId", oper.getId());
+    ev.addData("operatorName", oper.getName());
+    this.ctx.recordEventAsync(ev);
+
     return oper;
   }
 
@@ -852,6 +857,12 @@ public class PhysicalPlan {
     oper.logicalNode = om;
     oper.inputs = new ArrayList<PTInput>();
     oper.outputs = new ArrayList<PTOutput>();
+
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-create");
+    ev.addData("operatorId", oper.getId());
+    ev.addData("operatorName", oper.getName());
+    this.ctx.recordEventAsync(ev);
+
     return oper;
   }
 
@@ -867,6 +878,12 @@ public class PhysicalPlan {
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
       setupOutput(mapping, oper, outputEntry);
     }
+
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-create");
+    ev.addData("operatorId", oper.getId());
+    ev.addData("operatorName", oper.getName());
+    this.ctx.recordEventAsync(ev);
+
     return oper;
   }
 
@@ -930,6 +947,11 @@ public class PhysicalPlan {
     this.deployOpers.remove(oper);
     this.undeployOpers.add(oper);
     this.allOperators.remove(oper.id);
+
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-remove");
+    ev.addData("operatorId", oper.getId());
+    ev.addData("operatorName", oper.getName());
+    this.ctx.recordEventAsync(ev);
   }
 
   public LogicalPlan getDAG() {
