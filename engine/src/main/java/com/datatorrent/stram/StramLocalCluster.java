@@ -87,12 +87,7 @@ public class StramLocalCluster implements Runnable, Controller
     @Override
     public void log(String containerId, String msg) throws IOException
     {
-      try {
-        logger.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
-      }
-      catch (AssertionError ae) {
-        logger.info("TBF: assertion gets thrown about unknown container while logging {} with containerId {}", msg, containerId);
-      }
+      logger.info("{} msg: {}", containerId, msg);
     }
 
     @Override
@@ -411,7 +406,7 @@ public class StramLocalCluster implements Runnable, Controller
         dnmgr.containerStopRequests.remove(containerIdStr);
         logger.info("Container {} restart.", containerIdStr);
         dnmgr.scheduleContainerRestart(containerIdStr);
-        dnmgr.removeContainerAgent(containerIdStr);
+        //dnmgr.removeContainerAgent(containerIdStr);
       }
 
       // start containers

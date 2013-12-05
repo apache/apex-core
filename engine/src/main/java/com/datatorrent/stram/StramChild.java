@@ -584,7 +584,8 @@ public class StramChild
           msg.restartRequested = true;
         }
       }
-      msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
+      // commented out because freeMemory() is misleading because of GC, may want to revisit this
+      //msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
 
       // gather heartbeat info for all operators
       for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {

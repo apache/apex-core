@@ -66,7 +66,8 @@ public class StramChildAgent {
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
     this.container = container;
     this.initCtx = initCtx;
-    this.memoryMBFree = this.container.getAllocatedMemoryMB();
+    // commented out because free memory is misleading because of GC. may want to revisit this.
+    //this.memoryMBFree = this.container.getAllocatedMemoryMB();
     this.dnmgr = dnmgr;
   }
 
@@ -77,7 +78,8 @@ public class StramChildAgent {
   final StreamingContainerContext initCtx;
   Runnable onAck = null;
   String jvmName;
-  int memoryMBFree;
+  // commented out because free memory is misleading because of GC. may want to revisit this.
+  //int memoryMBFree;
   final StreamingContainerManager dnmgr;
 
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
@@ -371,7 +373,8 @@ public class StramChildAgent {
     ci.numOperators = container.getOperators().size();
     ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
-    ci.memoryMBFree = this.memoryMBFree;
+    // commented out because free memory is misleading because of GC, may want to revisit this
+    //ci.memoryMBFree = this.memoryMBFree;
     if (this.container.nodeHttpAddress != null) {
       ci.containerLogsUrl = HttpConfig.getSchemePrefix() + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
     }

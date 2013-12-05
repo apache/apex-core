@@ -107,7 +107,7 @@ public class WindowGeneratorTest
   public void testResetWindow()
   {
     ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
-    msse.setCurrentTimeMillis(0xcafebabe * 1000L);
+    msse.setCurrentTimeMillis(0x0afebabe * 1000L);
     WindowGenerator generator = new WindowGenerator(msse, WindowGenerator.MAX_WINDOW_ID + 1024);
 
     final long currentTIme = msse.getCurrentTimeMillis();
@@ -146,14 +146,14 @@ public class WindowGeneratorTest
     Assert.assertNull(reservoir.sweep());
     ResetWindowTuple rwt = (ResetWindowTuple)reservoir.sweep();
     reservoir.remove();
-    assert (rwt.getWindowId() == 0xcafebabe00000000L);
+    assert (rwt.getWindowId() == 0x0afebabe00000000L);
     assert (rwt.getBaseSeconds() * 1000L == currentTIme);
     assert (rwt.getIntervalMillis() == windowWidth);
 
     Tuple t = reservoir.sweep();
     reservoir.remove();
     assert (t.getType() == MessageType.BEGIN_WINDOW);
-    assert (t.getWindowId() == 0xcafebabe00000000L);
+    assert (t.getWindowId() == 0x0afebabe00000000L);
 
     assert (reservoir.sweep() == null);
   }

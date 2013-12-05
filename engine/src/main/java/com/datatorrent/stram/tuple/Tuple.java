@@ -25,11 +25,6 @@ public class Tuple
   protected long windowId;
   private final MessageType type;
 
-  public Tuple(MessageType t)
-  {
-    type = t;
-  }
-
   public Tuple(MessageType t, long windowId)
   {
     type = t;
@@ -42,14 +37,6 @@ public class Tuple
   public long getWindowId()
   {
     return windowId;
-  }
-
-  /**
-   * @param windowId the windowId to set
-   */
-  public void setWindowId(long windowId)
-  {
-    this.windowId = windowId;
   }
 
   /**

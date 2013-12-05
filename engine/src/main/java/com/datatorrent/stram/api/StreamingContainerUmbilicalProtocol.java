@@ -195,7 +195,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int bufferServerPort;
 
     public String jvmName;
-    public int memoryMBFree;
+    // commented out because free memory is misleading because of GC. may want to revisit this.
+    //public int memoryMBFree;
     public boolean restartRequested;
 
     public ContainerStats stats;
@@ -241,7 +242,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public String setPropertyKey;
     public String setPropertyValue;
 
-    
+
     public boolean isDeleted()
     {
       return deleted;

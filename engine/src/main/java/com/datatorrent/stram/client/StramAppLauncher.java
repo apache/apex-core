@@ -17,11 +17,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.log4j.lf5.util.StreamUtils;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
@@ -144,6 +144,15 @@ public class StramAppLauncher {
     init();
   }
 
+  public static class DependencyException extends RuntimeException
+  {
+    private static final long serialVersionUID = 20131204L;
+    public DependencyException(String message)
+    {
+      super(message);
+    }
+  }
+
   @SuppressWarnings("UseOfSystemOutOrSystemErr")
   private void init() throws Exception {
 
@@ -222,11 +231,13 @@ public class StramAppLauncher {
         Process p = Runtime.getRuntime().exec(cmd);
         ProcessWatcher pw = new ProcessWatcher(p);
         InputStream output = p.getInputStream();
+        StringWriter commandOutput = new StringWriter();
         while(!pw.isFinished()) {
-            StreamUtils.copy(output, System.out);
+          IOUtils.copy(output, commandOutput);
         }
+        System.out.append(commandOutput.toString());
         if (pw.rc != 0) {
-          throw new RuntimeException("Failed to run: " + cmd + " (exit code " + pw.rc + ")");
+          throw new DependencyException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + commandOutput.toString());
         }
         cp = FileUtils.readFileToString(cpFile);
       }
