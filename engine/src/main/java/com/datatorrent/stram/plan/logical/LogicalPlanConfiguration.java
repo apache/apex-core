@@ -55,8 +55,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
-  public static final String GATEWAY_ADDRESS = "stram.gateway.address";
+  public static final String GATEWAY_PREFIX = "stram.gateway";
   public static final String GATEWAY_ADDRESS_PROP = "address";
+  public static final String GATEWAY_ADDRESS = GATEWAY_PREFIX + "." + GATEWAY_ADDRESS_PROP;
+
+  public static final String DAEMON_PREFIX = "stram.daemon";
 
   public static final String STRAM_PREFIX = "stram.";
 
@@ -761,8 +764,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       String propertyValue = props.getProperty(propertyName);
       this.properties.setProperty(propertyName, propertyValue);
       if (propertyName.startsWith(STRAM_PREFIX)) {
-        String[] keyComps = propertyName.split("\\.");
-        parseStramPropertyTokens(keyComps, 1, propertyName, propertyValue, stramConf);
+        if (propertyName.startsWith(DAEMON_PREFIX)) {
+          LOG.warn("Use of {} prefix is deprecated, please use the prefix {} instead", DAEMON_PREFIX, GATEWAY_PREFIX);
+        } else {
+          String[] keyComps = propertyName.split("\\.");
+          parseStramPropertyTokens(keyComps, 1, propertyName, propertyValue, stramConf);
+        }
       }
     }
     return this;
