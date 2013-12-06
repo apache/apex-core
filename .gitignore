@@ -6,4 +6,6 @@
 target/
 node_modules/
 malhar
+.idea/
+*.iml
 *~
