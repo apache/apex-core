@@ -6,6 +6,10 @@ package com.datatorrent.stram.webapp;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  * <p>WebServices class.</p>
@@ -20,7 +24,9 @@ public class WebServices
   public static final String PATH = "/ws";
 
   @GET
-  public String getVersion() {
-    return "{\"version\": \"" + VERSION + "\"}";
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getVersion() throws JSONException
+  {
+    return new JSONObject("{\"version\": \"" + VERSION + "\"}");
   }
 }

@@ -134,10 +134,10 @@ public class StramAgent extends FSAgent
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
-      String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/" + WebServices.PATH;
-      JSONObject response = webServicesClient.process(url,
-                                                      JSONObject.class,
-                                                      new WebServicesClient.GetWebServicesHandler<JSONObject>());
+      String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
+      JSONObject response = new JSONObject(webServicesClient.process(url,
+                                                                     String.class,
+                                                                     new WebServicesClient.GetWebServicesHandler<String>()));
       String version = response.getString("version");
       response = webServicesClient.process(url + "/" + version + "/stram/info",
                                            JSONObject.class,
