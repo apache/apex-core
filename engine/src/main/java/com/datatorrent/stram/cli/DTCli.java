@@ -489,11 +489,16 @@ public class DTCli
                                                                      new Arg[] {new Arg("operator-name")},
                                                                      new Arg[] {new Arg("property-name")},
                                                                      "Get properties of an operator"));
+    connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
+                                                                    new Arg[] {new Arg("operator-name")},
+                                                                    new Arg[] {new Arg("property-name")},
+                                                                    "Get properties of an operator"));
+    
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
                                                                    new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
                                                                    null,
                                                                    "Set a property of an operator"));
-    connectedCommands.put("set-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
+    connectedCommands.put("set-physical-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
                                                                   new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
                                                                   null,
                                                                   "Set a property of an operator"));
@@ -2117,6 +2122,38 @@ public class DTCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      if (args.length > 2) {
+        r = r.queryParam("propertyName", args[2]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        printJson(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+
+  }
+  
+  private class GetPhysicalOperatorPropertiesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       if (args.length > 2) {
         r = r.queryParam("propertyName", args[2]);
       }

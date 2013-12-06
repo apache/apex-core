@@ -43,6 +43,7 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
@@ -1460,6 +1461,8 @@ public class StreamingContainerManager implements PlanContext
     for (PTContainer container: this.plan.getContainers()) {
       for (PTOperator o : container.getOperators()) {
         if (operatorId.equals(Integer.toString(o.getId()))) {
+          Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
+          LogicalPlanConfiguration.setOperatorProperties(o.getPartition().getPartitionedInstance(), properties);
           operatorName = o.getName();
           StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
           StramToNodeRequest request = new StramToNodeRequest();
@@ -1477,10 +1480,22 @@ public class StreamingContainerManager implements PlanContext
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests.  so record it here for now.
     FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
-    ev.addData("operatorName", operatorName);
+    ev.addData("operatorName", operatorName+"-"+operatorId);
     ev.addData("propertyName", propertyName);
     ev.addData("propertyValue", propertyValue);
     recordEventAsync(ev);
+  }
+  
+  public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
+    
+    for (PTContainer container: this.plan.getContainers()) {
+      for (PTOperator o : container.getOperators()) {
+        if (operatorId.equals(Integer.toString(o.getId()))) {
+          return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
+        }
+      }
+    }
+    return null;
   }
   
   public AttributeMap getApplicationAttributes()
