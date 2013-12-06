@@ -147,9 +147,9 @@ public class LaunchContainerRunnable implements Runnable
         Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
         Credentials credentials = new Credentials();
         for (Token<? extends TokenIdentifier> token : tokens) {
-          if (token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
+          //if (token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
             credentials.addToken(token.getService(), token);
-          }
+          //}
         }
         credentials.addToken(stramToken.getService(), stramToken);
         DataOutputBuffer dataOutput = new DataOutputBuffer();
