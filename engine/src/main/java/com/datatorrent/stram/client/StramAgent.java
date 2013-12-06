@@ -147,7 +147,7 @@ public class StramAgent extends FSAgent
       return new StramWebServicesInfo(appMasterUrl, version, appPath);
     }
     catch (Exception ex) {
-      LOG.warn("Caught exception", ex);
+      LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
       return null;
     }
   }
