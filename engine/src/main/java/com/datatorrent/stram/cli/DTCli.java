@@ -67,7 +67,9 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -76,6 +78,7 @@ import org.apache.tools.ant.DirectoryScanner;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
+import com.datatorrent.stram.client.StramAgent;
 import com.datatorrent.stram.client.StramAppLauncher;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils;
@@ -108,7 +111,7 @@ import com.datatorrent.stram.webapp.StramWebServices;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
-  private final Configuration conf = new Configuration();
+  private final Configuration conf = new YarnConfiguration();
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
@@ -795,8 +798,8 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
-
     StramClientUtils.addStramResources(conf);
+    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS, "localhost:8088"));
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect

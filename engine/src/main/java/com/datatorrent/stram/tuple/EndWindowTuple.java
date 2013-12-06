@@ -20,7 +20,6 @@ public class EndWindowTuple extends Tuple
 {
   public EndWindowTuple(long windowId)
   {
-    super(MessageType.END_WINDOW);
-    this.windowId = windowId;
+    super(MessageType.END_WINDOW, windowId);
   }
 }

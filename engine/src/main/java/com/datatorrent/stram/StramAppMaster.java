@@ -69,6 +69,7 @@ import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
+import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
@@ -77,19 +78,21 @@ import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
 
 /**
- *
- * Streaming Application Master<p>
+ * 
+ * Streaming Application Master
+ * <p>
  * The engine of the streaming platform. Runs as a YARN application master<br>
  * As part of initialization the following tasks are done<br>
  * The DAG is parsed, and properties are read to create a physical query map<br>
  * ResourceMgr is queried to get the requisite containers<br>
- * Then {@link com.datatorrent.stram.StreamingContainerManager} provisions the DAG into those containers and starts them<br>
+ * Then {@link com.datatorrent.stram.StreamingContainerManager} provisions the DAG into those containers and starts them
+ * <br>
  * Once the dag is starts {@link com.datatorrent.stram.StramAppMaster} runs the dag on a continual basis<br>
  * Stram can be shut down in the following ways<br>
  * cli command shutdown<br>
  * Currently stram high availability (integration with zookeeper) is not available<br>
  * <br>
- *
+ * 
  * @since 0.3.2
  */
 public class StramAppMaster extends CompositeService
@@ -110,6 +113,7 @@ public class StramAppMaster extends CompositeService
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
+  private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
   private LogicalPlan dag;
@@ -128,7 +132,7 @@ public class StramAppMaster extends CompositeService
   // Count of failed containers
   private final AtomicInteger numFailedContainers = new AtomicInteger();
   // Launch threads
-  //private final List<Thread> launchThreads = new ArrayList<Thread>();
+  // private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
   private StreamingContainerParent heartbeatListener;
   private StreamingContainerManager dnmgr;
@@ -164,7 +168,7 @@ public class StramAppMaster extends CompositeService
     @Override
     public int getNumOperators()
     {
-       return dnmgr.getPhysicalPlan().getAllOperators().size();
+      return dnmgr.getPhysicalPlan().getAllOperators().size();
     }
 
     @Override
@@ -352,7 +356,8 @@ public class StramAppMaster extends CompositeService
   }
 
   /**
-   * @param args Command line args
+   * @param args
+   *          Command line args
    * @throws Throwable
    */
   public static void main(final String[] args) throws Throwable
@@ -382,12 +387,10 @@ public class StramAppMaster extends CompositeService
       appMaster.init(conf);
       appMaster.start();
       result = appMaster.run();
-    }
-    catch (Throwable t) {
+    } catch (Throwable t) {
       LOG.error("Error running ApplicationMaster", t);
       System.exit(1);
-    }
-    finally {
+    } finally {
       if (appMaster != null) {
         appMaster.stop();
       }
@@ -396,8 +399,7 @@ public class StramAppMaster extends CompositeService
     if (result) {
       LOG.info("Application Master completed. exiting");
       System.exit(0);
-    }
-    else {
+    } else {
       LOG.info("Application Master failed. exiting");
       System.exit(2);
     }
@@ -432,11 +434,9 @@ public class StramAppMaster extends CompositeService
       }
       LOG.info("Dumping files in local dir: end");
       buf.close();
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       LOG.debug("Exception", e);
-    }
-    catch (InterruptedException e) {
+    } catch (InterruptedException e) {
       LOG.info("Interrupted", e);
     }
 
@@ -445,16 +445,14 @@ public class StramAppMaster extends CompositeService
     try {
       // find a better way of logging this using the logger.
       Configuration.dumpConfiguration(getConfig(), new PrintWriter(System.out));
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       LOG.error("Error dumping configuration.", e);
     }
 
     if (dag != null) {
       try {
         LOG.info("DAG: {}", dag.toString());
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         LOG.error("Error dumping topology.", e);
       }
     }
@@ -467,8 +465,9 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Parse command line options
-   *
-   * @param args Command line args
+   * 
+   * @param args
+   *          Command line args
    * @return Whether init successful and run should be invoked
    * @throws ParseException
    * @throws IOException
@@ -496,12 +495,10 @@ public class StramAppMaster extends CompositeService
       if (cliParser.hasOption("app_attempt_id")) {
         String appIdStr = cliParser.getOptionValue("app_attempt_id", "");
         appAttemptID = ConverterUtils.toApplicationAttemptId(appIdStr);
-      }
-      else {
+      } else {
         throw new IllegalArgumentException("Application Attempt Id not set in the environment");
       }
-    }
-    else {
+    } else {
       ContainerId containerId = ConverterUtils.toContainerId(envs.get(Environment.CONTAINER_ID.name()));
       appAttemptID = containerId.getApplicationAttemptId();
     }
@@ -511,10 +508,7 @@ public class StramAppMaster extends CompositeService
   @Override
   protected void serviceInit(Configuration conf) throws Exception
   {
-    LOG.info("Application master"
-        + ", appId=" + appAttemptID.getApplicationId().getId()
-        + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
-        + ", attemptId=" + appAttemptID.getAttemptId());
+    LOG.info("Application master" + ", appId=" + appAttemptID.getApplicationId().getId() + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp() + ", attemptId=" + appAttemptID.getAttemptId());
 
     FileInputStream fis = new FileInputStream("./" + LogicalPlan.SER_FILE_NAME);
     this.dag = LogicalPlan.read(fis);
@@ -528,11 +522,8 @@ public class StramAppMaster extends CompositeService
     LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
 
     if (UserGroupInformation.isSecurityEnabled()) {
-      //TODO :- Need to perform token renewal
-      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
-                                                               DELEGATION_TOKEN_MAX_LIFETIME,
-                                                               DELEGATION_TOKEN_RENEW_INTERVAL,
-                                                               DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+      // TODO :- Need to perform token renewal
+      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     }
     this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     addService(nmClient);
@@ -560,13 +551,11 @@ public class StramAppMaster extends CompositeService
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
-      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).
-              start(new StramWebApp(this.dnmgr));
+      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       LOG.error("Webapps failed to start. Ignoring for now:", e);
     }
   }
@@ -584,8 +573,9 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Helper function to print usage
-   *
-   * @param opts Parsed command line options
+   * 
+   * @param opts
+   *          Parsed command line options
    */
   private void printUsage(Options opts)
   {
@@ -596,17 +586,15 @@ public class StramAppMaster extends CompositeService
   {
     try {
       StramChild.eventloop.start();
-      //executeLicensedCode(); for licensing using native
+      // executeLicensedCode(); for licensing using native
       execute();
-    }
-    catch (Exception re) {
+    } catch (Exception re) {
       status = false;
       LOG.error("Caught Exception in execute()", re);
       if (re.getCause() instanceof YarnException) {
-        throw (YarnException)re.getCause();
+        throw (YarnException) re.getCause();
       }
-    }
-    finally {
+    } finally {
       StramChild.eventloop.stop();
     }
 
@@ -615,19 +603,18 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Main run function for the application master
-   *
+   * 
    * @throws YarnRemoteException
    */
   private boolean status = true;
 
-  //@Override - for licensing using native
+  // @Override - for licensing using native
   @SuppressWarnings("SleepWhileInLoop")
   public void execute() throws YarnException, IOException
   {
     LOG.info("Starting ApplicationMaster");
 
-    Credentials credentials =
-        UserGroupInformation.getCurrentUser().getCredentials();
+    Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
     LOG.info("number of tokens: {}", credentials.getAllTokens().size());
     Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
     while (iter.hasNext()) {
@@ -644,11 +631,12 @@ public class StramAppMaster extends CompositeService
 
     int containerMemory = dag.getContainerMemoryMB();
     if (containerMemory > maxMem) {
-      LOG.info("Container memory specified above max threshold of cluster. Using max value."
-              + ", specified=" + containerMemory
-              + ", max=" + maxMem);
+      LOG.info("Container memory specified above max threshold of cluster. Using max value." + ", specified=" + containerMemory + ", max=" + maxMem);
       containerMemory = maxMem;
     }
+    
+    // this is used for fall back
+    Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = new HashMap<StramChildAgent.ContainerStartRequest, Integer>();
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -680,8 +668,7 @@ public class StramAppMaster extends CompositeService
       clientRMService.start();
       resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
       clientRMService.stop();
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
     }
 
@@ -690,21 +677,16 @@ public class StramAppMaster extends CompositeService
 
       // log current state
       /*
-       LOG.info("Current application state: loop=" + loopCounter
-       + ", appDone=" + appDone
-       + ", total=" + numTotalContainers
-       + ", requested=" + numRequestedContainers
-       + ", completed=" + numCompletedContainers
-       + ", failed=" + numFailedContainers
-       + ", currentAllocated=" + this.allAllocatedContainers.size());
+       * LOG.info("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" +
+       * numTotalContainers + ", requested=" + numRequestedContainers + ", completed=" + numCompletedContainers +
+       * ", failed=" + numFailedContainers + ", currentAllocated=" + this.allAllocatedContainers.size());
        */
       // Sleep before each loop when asking RM for containers
       // to avoid flooding RM with spurious requests when it
       // need not have any available containers
       try {
         sleep(1000);
-      }
-      catch (InterruptedException e) {
+      } catch (InterruptedException e) {
         LOG.info("Sleep interrupted " + e.getMessage());
       }
 
@@ -715,9 +697,26 @@ public class StramAppMaster extends CompositeService
         StramChildAgent.ContainerStartRequest csr;
         while ((csr = dnmgr.containerStartRequests.poll()) != null) {
           csr.container.setResourceRequestPriority(nextRequestPriority++);
-          containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory));
+          requestedResources.put(csr, loopCounter);
+          containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,true));
           numTotalContainers++;
           numRequestedContainers++;
+        }
+      }
+
+      if (!requestedResources.isEmpty()) {
+        //resourceRequestor.clearNodeMapping();
+        for (Map.Entry<StramChildAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+          if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
+            entry.setValue(loopCounter);
+            StramChildAgent.ContainerStartRequest csr = entry.getKey();
+//            PTContainer c = csr.container;
+//            for (PTOperator oper : c.getOperators()) {
+//              HostOperatorSet grpObj = oper.getNodeLocalOperators();
+//              grpObj.setHost(null);
+//            }
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,false));
+          }
         }
       }
 
@@ -726,22 +725,32 @@ public class StramAppMaster extends CompositeService
 
       // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
-      //LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
+      // LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
       numRequestedContainers -= newAllocatedContainers.size();
       long timestamp = System.currentTimeMillis();
       for (Container allocatedContainer : newAllocatedContainers) {
-        LOG.info("Got new container."
-                + ", containerId=" + allocatedContainer.getId()
-                + ", containerNode=" + allocatedContainer.getNodeId()
-                + ", containerNodeURI=" + allocatedContainer.getNodeHttpAddress()
-                + ", containerResourceMemory" + allocatedContainer.getResource().getMemory()
-                + ", priority" + allocatedContainer.getPriority());
-        //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
+        LOG.info("Got new container." + ", containerId=" + allocatedContainer.getId() + ", containerNode=" + allocatedContainer.getNodeId() + ", containerNodeURI=" + allocatedContainer.getNodeHttpAddress() + ", containerResourceMemory" + allocatedContainer.getResource().getMemory() + ", priority" + allocatedContainer.getPriority());
+        // + ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
+
+        boolean alreadyAllocated = true;
+        StramChildAgent.ContainerStartRequest csr = null;
+        for (Map.Entry<StramChildAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+          if(entry.getKey().container.getResourceRequestPriority() == allocatedContainer.getPriority().getPriority()){
+            alreadyAllocated = false;
+            csr = entry.getKey();
+            break;
+          }
+        }
+        
+        if(alreadyAllocated){
+          releasedContainers.add(allocatedContainer.getId());
+          continue;
+        }
+        if(csr != null)
+          requestedResources.remove(csr);
         // allocate resource to container
-        ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(),
-                                                           allocatedContainer.getNodeId().getHost(), allocatedContainer.getResource().getMemory(),
-                                                           allocatedContainer.getNodeHttpAddress());
+        ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
         StramChildAgent sca = dnmgr.assignContainer(resource, null);
 
         {
@@ -757,13 +766,12 @@ public class StramAppMaster extends CompositeService
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
-        }
-        else {
+        } else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, heartbeatListener.getAddress());
-          //Thread launchThread = new Thread(runnableLaunchContainer);
-          //launchThreads.add(launchThread);
-          //launchThread.start();
+          // Thread launchThread = new Thread(runnableLaunchContainer);
+          // launchThreads.add(launchThread);
+          // launchThread.start();
           launchContainer.run(); // communication with NMs is now async
         }
       }
@@ -773,17 +781,14 @@ public class StramAppMaster extends CompositeService
       resourceRequestor.updateNodeReports(amResp.getUpdatedNodes());
 
       // Check what the current available resources in the cluster are
-      //Resource availableResources = amResp.getAvailableResources();
-      //LOG.debug("Current available resources in the cluster " + availableResources);
+      // Resource availableResources = amResp.getAvailableResources();
+      // LOG.debug("Current available resources in the cluster " + availableResources);
 
       // Check the completed containers
       List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
-      //LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
+      // LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
       for (ContainerStatus containerStatus : completedContainers) {
-        LOG.info("Got container status for containerID= " + containerStatus.getContainerId()
-                + ", state=" + containerStatus.getState()
-                + ", exitStatus=" + containerStatus.getExitStatus()
-                + ", diagnostics=" + containerStatus.getDiagnostics());
+        LOG.info("Got container status for containerID= " + containerStatus.getContainerId() + ", state=" + containerStatus.getState() + ", exitStatus=" + containerStatus.getExitStatus() + ", diagnostics=" + containerStatus.getDiagnostics());
 
         // non complete containers should not be here
         assert (containerStatus.getState() == ContainerState.COMPLETE);
@@ -801,18 +806,15 @@ public class StramAppMaster extends CompositeService
             appDone = true;
             dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
             LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
-          }
-          else {
+          } else {
             // Recoverable failure or process killed (externally or via stop request by AM)
             LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
             dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
           }
-        }
-        else {
+        } else {
           // container completed successfully
           numCompletedContainers.incrementAndGet();
-          LOG.info("Container completed successfully."
-                  + ", containerId=" + containerStatus.getContainerId());
+          LOG.info("Container completed successfully." + ", containerId=" + containerStatus.getContainerId());
         }
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
@@ -839,13 +841,7 @@ public class StramAppMaster extends CompositeService
         appDone = true;
       }
 
-      LOG.debug("Current application state: loop=" + loopCounter
-              + ", appDone=" + appDone
-              + ", total=" + numTotalContainers
-              + ", requested=" + numRequestedContainers
-              + ", completed=" + numCompletedContainers
-              + ", failed=" + numFailedContainers
-              + ", currentAllocated=" + allAllocatedContainers.size());
+      LOG.debug("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" + numTotalContainers + ", requested=" + numRequestedContainers + ", completed=" + numCompletedContainers + ", failed=" + numFailedContainers + ", currentAllocated=" + allAllocatedContainers.size());
 
       // monitor child containers
       dnmgr.monitorHeartbeat();
@@ -855,14 +851,9 @@ public class StramAppMaster extends CompositeService
     FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
     if (numFailedContainers.get() == 0) {
       finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
-    }
-    else {
+    } else {
       finishReq.setFinalApplicationStatus(FinalApplicationStatus.FAILED);
-      String diagnostics = "Diagnostics."
-              + ", total=" + numTotalContainers
-              + ", completed=" + numCompletedContainers.get()
-              + ", allocated=" + allAllocatedContainers.size()
-              + ", failed=" + numFailedContainers.get();
+      String diagnostics = "Diagnostics." + ", total=" + numTotalContainers + ", completed=" + numCompletedContainers.get() + ", allocated=" + allAllocatedContainers.size() + ", failed=" + numFailedContainers.get();
       if (!StringUtils.isEmpty(dnmgr.shutdownDiagnosticsMessage)) {
         diagnostics += "\n";
         diagnostics += dnmgr.shutdownDiagnosticsMessage;
@@ -879,13 +870,13 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Ask RM to allocate given no. of containers to this Application Master
-   *
-   * @param requestedContainers Containers to ask for from RM
+   * 
+   * @param requestedContainers
+   *          Containers to ask for from RM
    * @return Response from RM to AM with allocated containers
    * @throws YarnRemoteException
    */
-  private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerId> releasedContainers)
-          throws YarnException, IOException
+  private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerId> releasedContainers) throws YarnException, IOException
   {
     if (containerRequests.size() > 0) {
       LOG.info("Asking RM for containers: " + containerRequests);
@@ -912,48 +903,52 @@ public class StramAppMaster extends CompositeService
     return amRmClient.allocate(0);
   }
 
-  private class NMCallbackHandler
-    implements NMClientAsync.CallbackHandler {
+  private class NMCallbackHandler implements NMClientAsync.CallbackHandler
+  {
 
-    NMCallbackHandler() {
+    NMCallbackHandler()
+    {
     }
 
     @Override
-    public void onContainerStopped(ContainerId containerId) {
+    public void onContainerStopped(ContainerId containerId)
+    {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Succeeded to stop Container " + containerId);
       }
     }
 
     @Override
-    public void onContainerStatusReceived(ContainerId containerId,
-        ContainerStatus containerStatus) {
+    public void onContainerStatusReceived(ContainerId containerId, ContainerStatus containerStatus)
+    {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Container Status: id=" + containerId + ", status=" +
-            containerStatus);
+        LOG.debug("Container Status: id=" + containerId + ", status=" + containerStatus);
       }
     }
 
     @Override
-    public void onContainerStarted(ContainerId containerId, Map<String, ByteBuffer> allServiceResponse) {
+    public void onContainerStarted(ContainerId containerId, Map<String, ByteBuffer> allServiceResponse)
+    {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Succeeded to start Container " + containerId);
       }
     }
 
     @Override
-    public void onStartContainerError(ContainerId containerId, Throwable t) {
+    public void onStartContainerError(ContainerId containerId, Throwable t)
+    {
       LOG.error("Start container failed for: containerId={}" + containerId, t);
     }
 
     @Override
-    public void onGetContainerStatusError(
-        ContainerId containerId, Throwable t) {
+    public void onGetContainerStatusError(ContainerId containerId, Throwable t)
+    {
       LOG.error("Failed to query the status of Container " + containerId);
     }
 
     @Override
-    public void onStopContainerError(ContainerId containerId, Throwable t) {
+    public void onStopContainerError(ContainerId containerId, Throwable t)
+    {
       LOG.warn("Failed to stop container {}", containerId);
     }
   }

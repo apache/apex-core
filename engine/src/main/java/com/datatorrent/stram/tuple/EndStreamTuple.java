@@ -21,8 +21,7 @@ public class EndStreamTuple extends Tuple
 {
   public EndStreamTuple(long windowId)
   {
-    super(MessageType.END_STREAM);
-    this.windowId = windowId;
+    super(MessageType.END_STREAM, windowId);
   }
 
 }

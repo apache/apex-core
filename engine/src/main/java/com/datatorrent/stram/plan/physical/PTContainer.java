@@ -32,11 +32,10 @@ public class PTContainer {
     NEW,
     ALLOCATED,
     ACTIVE,
-    TIMEDOUT,
     KILLED
   }
 
-  PTContainer.State state = State.NEW;
+  volatile PTContainer.State state = State.NEW;
   private int requiredMemoryMB;
   private int allocatedMemoryMB;
   private int resourceRequestPriority;

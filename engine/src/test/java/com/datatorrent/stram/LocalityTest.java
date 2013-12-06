@@ -74,7 +74,7 @@ public class LocalityTest {
 
     Map<PTContainer, String> requestedHosts = Maps.newHashMap();
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       // update the node report
       if (host != null) {

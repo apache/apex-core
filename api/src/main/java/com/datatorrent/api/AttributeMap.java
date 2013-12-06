@@ -24,9 +24,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.datatorrent.api.StringCodec.Boolean2String;
 import com.datatorrent.api.StringCodec.Enum2String;
 import com.datatorrent.api.StringCodec.Integer2String;
@@ -195,7 +192,6 @@ public interface AttributeMap
    */
   public static class AttributeInitializer
   {
-    private static final Logger logger = LoggerFactory.getLogger(AttributeInitializer.class);
     static final HashMap<Class<?>, Set<AttributeMap.Attribute<Object>>> map = new HashMap<Class<?>, Set<AttributeMap.Attribute<Object>>>();
 
     public static Set<AttributeMap.Attribute<Object>> getAttributes(Class<?> clazz)
@@ -219,7 +215,6 @@ public interface AttributeMap
       try {
         for (Field f: clazz.getDeclaredFields()) {
           if (Modifier.isStatic(f.getModifiers()) && AttributeMap.Attribute.class.isAssignableFrom(f.getType())) {
-            @SuppressWarnings(value = "unchecked")
             AttributeMap.Attribute<Object> attribute = (AttributeMap.Attribute<Object>)f.get(null);
 
             if (attribute.name == null) {
@@ -249,10 +244,7 @@ public interface AttributeMap
                   codec = new Enum2String(klass);
                 }
               }
-              if (codec == null) {
-                logger.warn("Attribute {}.{} cannot be specified in the properties file as it does not have a StringCodec defined!", clazz.getSimpleName(), f.getName());
-              }
-              else {
+              if (codec != null) {
                 Field codecField = AttributeMap.Attribute.class.getDeclaredField("codec");
                 codecField.setAccessible(true);
                 codecField.set(attribute, codec);

@@ -18,8 +18,7 @@ public class CodecStateTuple extends Tuple
 
   public CodecStateTuple(long windowId, byte[] state)
   {
-    super(MessageType.CODEC_STATE);
-    this.windowId = windowId;
+    super(MessageType.CODEC_STATE, windowId);
     this.state = state;
   }
 }
