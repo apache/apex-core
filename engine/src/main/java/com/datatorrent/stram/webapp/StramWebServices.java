@@ -525,7 +525,11 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
   {
-    Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
 
     try {
       if (propertyName == null) {
@@ -547,12 +551,8 @@ public class StramWebServices
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
-  {
-    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
-    if (logicalOperator == null) {
-      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
-    }
-    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
+  {    
+    Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
 
     try {
       if (propertyName == null) {
