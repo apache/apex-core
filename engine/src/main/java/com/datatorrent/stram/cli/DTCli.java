@@ -493,6 +493,10 @@ public class DTCli
                                                                    new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
                                                                    null,
                                                                    "Set a property of an operator"));
+    connectedCommands.put("set-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
+                                                                  new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
+                                                                  null,
+                                                                  "Set a property of an operator"));
     connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(),
                                                                 null,
                                                                 new Arg[] {new Arg("attribute-name")},
@@ -2172,6 +2176,35 @@ public class DTCli
     }
 
   }
+  
+  private class SetPhysicalOperatorPropertyCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      
+        WebServicesClient webServicesClient = new WebServicesClient();
+        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+        final JSONObject request = new JSONObject();
+        request.put(args[2], args[3]);
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+          }
+
+        });
+        printJson(response);
+      
+    }
+
+  }
+  
 
   private class BeginLogicalPlanChangeCommand implements Command
   {

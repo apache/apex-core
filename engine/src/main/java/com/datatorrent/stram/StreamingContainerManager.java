@@ -1454,6 +1454,35 @@ public class StreamingContainerManager implements PlanContext
     recordEventAsync(ev);
   }
 
+  public void setPhysicalOperatorProperty(String operatorId, String propertyName, String propertyValue)
+  {
+    String operatorName = null;
+    for (PTContainer container: this.plan.getContainers()) {
+      for (PTOperator o : container.getOperators()) {
+        if (operatorId.equals(Integer.toString(o.getId()))) {
+          operatorName = o.getName();
+          StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
+          StramToNodeRequest request = new StramToNodeRequest();
+          request.setOperatorId(o.getId());
+          request.setPropertyKey = propertyName;
+          request.setPropertyValue = propertyValue;
+          request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
+          sca.addOperatorRequest(request);
+          updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
+          break;
+        }
+      }
+    }
+    
+    // should probably not record it here because it's better to get confirmation from the operators first.
+    // but right now, the operators do not give confirmation for the requests.  so record it here for now.
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
+    ev.addData("operatorName", operatorName);
+    ev.addData("propertyName", propertyName);
+    ev.addData("propertyValue", propertyValue);
+    recordEventAsync(ev);
+  }
+  
   public AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();

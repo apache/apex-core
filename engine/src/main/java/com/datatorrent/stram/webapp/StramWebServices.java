@@ -456,6 +456,28 @@ public class StramWebServices
     return response;
   }
 
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      @SuppressWarnings("unchecked")
+      Iterator<String> keys = request.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        String val = request.getString(key);
+        dagManager.setPhysicalOperatorProperty(operatorId, key, val);
+      }
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
+    return response;
+  }
+  
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
