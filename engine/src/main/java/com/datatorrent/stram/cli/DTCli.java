@@ -1284,7 +1284,12 @@ public class DTCli
     WebServicesClient wsClient = new WebServicesClient();
     Client client = wsClient.getClient();
     client.setFollowRedirects(true);
-    WebResource r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString()).path(resourcePath);
+    WebResource r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+    if (r == null) {
+      throw new CliException("Application " + appReport.getApplicationId().toString() + " has not started");
+    }
+    r = r.path(resourcePath);
+
     try {
       return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
       {
