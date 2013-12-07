@@ -29,7 +29,7 @@ public class ConfigUtils
     if (UserGroupInformation.isSecurityEnabled()) {
       principal = conf.get(YarnConfiguration.RM_PRINCIPAL);
       int sindex = -1;
-      if ((principal != null) && ((sindex =principal.indexOf('/')) != -1)) {
+      if ((principal != null) && ((sindex = principal.indexOf('/')) != -1)) {
         principal = principal.substring(0,sindex);
       }
     }

@@ -401,8 +401,12 @@ public class StramClient
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
-    /*
     // Setup security tokens
+    // If security is enabled get ResourceManager and NameNode delegation tokens.
+    // Set these tokens on the container so that they are sent as part of application submission.
+    // This also sets them up for renewal by ResourceManager. The NameNode delegation rmToken
+    // is also used by ResourceManager to fetch the jars from HDFS and set them up for the
+    // application master launch.
     if (UserGroupInformation.isSecurityEnabled()) {
       Credentials credentials = new Credentials();
       String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
@@ -419,53 +423,24 @@ public class StramClient
           LOG.info("Got dt for " + fs.getUri() + "; " + token);
         }
       }
+
+      InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_PORT);
+
+      // Get the ResourceManager delegation rmToken
+      GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
+      gdtr.setRenewer(tokenRenewer);
+      GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
+      org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
+      Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
+      credentials.addToken(rmToken.getService(), rmToken);
+
       DataOutputBuffer dob = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dob);
       ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
       amContainer.setTokens(fsTokens);
     }
-    */
-     // If Kerberos security is enabled get ResourceManager and NameNode delegation tokens.
-     // Set these tokens on the container so that they are sent as part of application submission.
-     // This also sets them up for renewal by ResourceManager. The NameNode delegation rmToken
-     // is also used by ResourceManager to fetch the jars from HDFS and set them up for the
-     // application master launch.
-     if (UserGroupInformation.isSecurityEnabled()) {
-
-     YarnConfiguration yarnConf = new YarnConfiguration(conf);
-     InetSocketAddress rmAddress = ConfigUtils.getRMAddress(yarnConf);
-     //String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
-     String tokenRenewer = ConfigUtils.getRMUsername(yarnConf);
-
-     // Get the ResourceManager delegation rmToken
-     GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
-     gdtr.setRenewer(tokenRenewer);
-     GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
-     org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
-     Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
-
-     // Get the NameNode delegation rmToken
-     FileSystem dfs = FileSystem.get(conf);
-     //Token<?> hdfsToken = dfs.getDelegationToken(tokenRenewer);
-
-     // Setup the credentials to serialize the tokens which can be set on the container.
-     Credentials credentials = new Credentials();
-
-      final Token<?> tokens[] = dfs.addDelegationTokens(tokenRenewer, credentials);
-      if (tokens != null) {
-        for (Token<?> token : tokens) {
-          LOG.info("Got dt for " + dfs.getUri() + "; " + token);
-        }
-      }
-
-     credentials.addToken(rmToken.getService(), rmToken);
-     //credentials.addToken(hdfsToken.getService(), hdfsToken);
-     DataOutputBuffer dataOutput = new DataOutputBuffer();
-     credentials.writeTokenStorageToStream(dataOutput);
-     byte[] tokensBytes = dataOutput.getData();
-     ByteBuffer tokensBuf = ByteBuffer.wrap(tokensBytes);
-     amContainer.setTokens(tokensBuf);
-     }
 
     String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
