@@ -43,6 +43,7 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
@@ -838,7 +839,7 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesProcessedPSMA = 0;
           status.tuplesEmittedPSMA = 0;
           if(statCount != 0){
-            status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 1000000));
+            status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 10000));
           }else{
             status.cpuPercentageMA.add(0.0);
           }
@@ -1454,6 +1455,51 @@ public class StreamingContainerManager implements PlanContext
     recordEventAsync(ev);
   }
 
+  public void setPhysicalOperatorProperty(String operatorId, String propertyName, String propertyValue)
+  {
+    String operatorName = null;
+    int id = Integer.valueOf(operatorId);
+    PTOperator o = this.plan.getAllOperators().get(id);
+    if (o == null)
+      return;
+
+    // Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
+    // LogicalPlanConfiguration.setOperatorProperties(o.getPartition().getPartitionedInstance(), properties);
+    operatorName = o.getName();
+    StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(id);
+    request.setPropertyKey = propertyName;
+    request.setPropertyValue = propertyValue;
+    request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
+    sca.addOperatorRequest(request);
+    updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
+
+    // should probably not record it here because it's better to get confirmation from the operators first.
+    // but right now, the operators do not give confirmation for the requests. so record it here for now.
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
+    ev.addData("operatorName", operatorName + "-" + operatorId);
+    ev.addData("propertyName", propertyName);
+    ev.addData("propertyValue", propertyValue);
+    recordEventAsync(ev);
+
+  }
+  
+  public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
+    int id = Integer.valueOf(operatorId);
+    PTOperator o = this.plan.getAllOperators().get(id);
+    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
+    Map<String, Object> new_m = new HashMap<String, Object>();
+    new_m.putAll(m);
+    for (StramToNodeRequest existingRequest : o.deployRequests) {
+      if (id == existingRequest.operatorId){
+        new_m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
+      }
+    }
+    return new_m;
+
+  }
+  
   public AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
