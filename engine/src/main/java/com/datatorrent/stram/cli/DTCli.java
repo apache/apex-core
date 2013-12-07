@@ -2154,7 +2154,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       if (args.length > 2) {
         r = r.queryParam("propertyName", args[2]);
       }
@@ -2225,7 +2225,7 @@ public class DTCli
       }
       
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
