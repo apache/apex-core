@@ -317,8 +317,8 @@ public class StreamingContainerManagerTest {
     LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    
-    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);    
+
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
@@ -328,24 +328,24 @@ public class StreamingContainerManagerTest {
     for (int i=0; i < plan.getContainers().size(); i++) {
       containerAgents.add(assignContainer(dnm, "container"+(i+1)));
     }
-    
+
     Assert.assertEquals("number of partitions", 3,o1Partitions.size());
     PTOperator o = o1Partitions.get(0);
     Map<String,Object> m = dnm.getPhysicalOperatorProperty(o.getId()+"");
     int origionalValue = ((Integer)m.get("maxTuples")).intValue();
-    
+
     dnm.setPhysicalOperatorProperty(o.getId()+"", "maxTuples","2" );
     m = dnm.getPhysicalOperatorProperty(o.getId()+"");
-    int newVal = Integer.parseInt((String)m.get("maxTuples"));
+    int newVal = (Integer)m.get("maxTuples");
     Assert.assertEquals(2,newVal);
     for(int i = 1; i< 3;i++){
       o = o1Partitions.get(i);
       m = dnm.getPhysicalOperatorProperty(o.getId()+"");
       Assert.assertEquals(origionalValue,((Integer)m.get("maxTuples")).intValue());
     }
-    
+
   }
-  
+
   @Test
   public void testRecoveryOrder() throws Exception
   {

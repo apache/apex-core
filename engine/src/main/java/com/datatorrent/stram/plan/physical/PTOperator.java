@@ -282,7 +282,6 @@ public class PTOperator {
     return getGrouping(Locality.NODE_LOCAL);
   }
 
-
   public class HostOperatorSet{
     private String host;
     private Set<PTOperator> operatorSet;
@@ -302,7 +301,6 @@ public class PTOperator {
     {
       this.operatorSet = operatorSet;
     }
-
 
   }
 

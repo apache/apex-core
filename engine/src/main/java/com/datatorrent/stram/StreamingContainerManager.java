@@ -43,7 +43,6 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
@@ -1427,7 +1426,7 @@ public class StreamingContainerManager implements PlanContext
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
-      throw new IllegalArgumentException("Invalid operatorId " + operatorName);
+      throw new IllegalArgumentException("Unknown operator " + operatorName);
     }
 
     Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
@@ -1443,7 +1442,8 @@ public class StreamingContainerManager implements PlanContext
       request.setPropertyValue = propertyValue;
       request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
       sca.addOperatorRequest(request);
-      // restart on deploy
+      plan.setProperties(o, properties);
+      // re-apply to checkpointed state on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
     // should probably not record it here because it's better to get confirmation from the operators first.
@@ -1463,8 +1463,7 @@ public class StreamingContainerManager implements PlanContext
     if (o == null)
       return;
 
-    // Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
-    // LogicalPlanConfiguration.setOperatorProperties(o.getPartition().getPartitionedInstance(), properties);
+    plan.setProperties(o, Collections.singletonMap(propertyName, propertyValue));
     operatorName = o.getName();
     StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
     StramToNodeRequest request = new StramToNodeRequest();
@@ -1478,28 +1477,20 @@ public class StreamingContainerManager implements PlanContext
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests. so record it here for now.
     FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
-    ev.addData("operatorName", operatorName + "-" + operatorId);
+    ev.addData("operatorName", operatorName);
+    ev.addData("operatorId", operatorId);
     ev.addData("propertyName", propertyName);
     ev.addData("propertyValue", propertyValue);
     recordEventAsync(ev);
 
   }
-  
+
   public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
     int id = Integer.valueOf(operatorId);
     PTOperator o = this.plan.getAllOperators().get(id);
-    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
-    Map<String, Object> new_m = new HashMap<String, Object>();
-    new_m.putAll(m);
-    for (StramToNodeRequest existingRequest : o.deployRequests) {
-      if (id == existingRequest.operatorId){
-        new_m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
-      }
-    }
-    return new_m;
-
+    return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
   }
-  
+
   public AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
