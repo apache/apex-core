@@ -839,7 +839,7 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesProcessedPSMA = 0;
           status.tuplesEmittedPSMA = 0;
           if(statCount != 0){
-            status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 1000000));
+            status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 10000));
           }else{
             status.cpuPercentageMA.add(0.0);
           }
