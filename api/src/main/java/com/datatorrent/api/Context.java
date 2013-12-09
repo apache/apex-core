@@ -104,7 +104,7 @@ public interface Context
      * Default partitioning does not consider operator state on split or merge.
      * <p>
      * Operator implements {@link Partitionable}:<br>
-     * Value given as initial capacity hint to {@link PartitionableOperator#definePartitions(java.util.Collection, int)
+     * Value given as initial capacity hint to {@link Partitionable#definePartitions(java.util.Collection, int)}
      * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
@@ -126,7 +126,7 @@ public interface Context
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Class<? extends StatsListener>> STATS_LISTENER = new Attribute<Class<? extends StatsListener>>(null, null);
+    Attribute<Class<? extends StatsListener>> STATS_LISTENER = new Attribute<Class<? extends StatsListener>>(new StringCodec.Class2String<StatsListener>());
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
