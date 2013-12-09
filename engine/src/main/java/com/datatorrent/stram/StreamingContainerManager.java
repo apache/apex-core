@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
@@ -1488,7 +1489,18 @@ public class StreamingContainerManager implements PlanContext
   public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
     int id = Integer.valueOf(operatorId);
     PTOperator o = this.plan.getAllOperators().get(id);
-    return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
+    if (o.getPartition() != null) {
+      return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
+    } else {
+      Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
+      m = Maps.newHashMap(m); // clone as map returned is linked to object
+      for (StramToNodeRequest existingRequest : o.deployRequests) {
+        if (id == existingRequest.operatorId){
+          m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
+        }
+      }
+      return m;
+    }
   }
 
   public AttributeMap getApplicationAttributes()
