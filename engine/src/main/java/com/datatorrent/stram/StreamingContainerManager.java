@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
@@ -838,7 +839,7 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesProcessedPSMA = 0;
           status.tuplesEmittedPSMA = 0;
           if(statCount != 0){
-            status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 1000000));
+            status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 10000));
           }else{
             status.cpuPercentageMA.add(0.0);
           }
@@ -1426,7 +1427,7 @@ public class StreamingContainerManager implements PlanContext
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
-      throw new IllegalArgumentException("Invalid operatorId " + operatorName);
+      throw new IllegalArgumentException("Unknown operator " + operatorName);
     }
 
     Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
@@ -1442,7 +1443,8 @@ public class StreamingContainerManager implements PlanContext
       request.setPropertyValue = propertyValue;
       request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
       sca.addOperatorRequest(request);
-      // restart on deploy
+      plan.setProperties(o, properties);
+      // re-apply to checkpointed state on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
     // should probably not record it here because it's better to get confirmation from the operators first.
@@ -1452,6 +1454,53 @@ public class StreamingContainerManager implements PlanContext
     ev.addData("propertyName", propertyName);
     ev.addData("propertyValue", propertyValue);
     recordEventAsync(ev);
+  }
+
+  public void setPhysicalOperatorProperty(String operatorId, String propertyName, String propertyValue)
+  {
+    String operatorName = null;
+    int id = Integer.valueOf(operatorId);
+    PTOperator o = this.plan.getAllOperators().get(id);
+    if (o == null)
+      return;
+
+    plan.setProperties(o, Collections.singletonMap(propertyName, propertyValue));
+    operatorName = o.getName();
+    StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(id);
+    request.setPropertyKey = propertyName;
+    request.setPropertyValue = propertyValue;
+    request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
+    sca.addOperatorRequest(request);
+    updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
+
+    // should probably not record it here because it's better to get confirmation from the operators first.
+    // but right now, the operators do not give confirmation for the requests. so record it here for now.
+    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
+    ev.addData("operatorName", operatorName);
+    ev.addData("operatorId", operatorId);
+    ev.addData("propertyName", propertyName);
+    ev.addData("propertyValue", propertyValue);
+    recordEventAsync(ev);
+
+  }
+
+  public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
+    int id = Integer.valueOf(operatorId);
+    PTOperator o = this.plan.getAllOperators().get(id);
+    if (o.getPartition() != null) {
+      return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
+    } else {
+      Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
+      m = Maps.newHashMap(m); // clone as map returned is linked to object
+      for (StramToNodeRequest existingRequest : o.deployRequests) {
+        if (id == existingRequest.operatorId){
+          m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
+        }
+      }
+      return m;
+    }
   }
 
   public AttributeMap getApplicationAttributes()
