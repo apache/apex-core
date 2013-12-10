@@ -330,6 +330,7 @@ public class LicensingAppMaster extends CompositeService
       loopCounter++;
       try {
         sleep(1000);
+        amRmClient.allocate(0);
         //if (loopCounter == 60) {
         //  break;
         //}
