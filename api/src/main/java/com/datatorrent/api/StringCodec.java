@@ -188,7 +188,7 @@ public interface StringCodec<T>
     public Class<? extends T> fromString(String string)
     {
       try {
-        @SuppressWarnings({ "rawtypes", "unchecked" })
+        @SuppressWarnings({"rawtypes", "unchecked"})
         Class<? extends T> clazz = (Class)Thread.currentThread().getContextClassLoader().loadClass(string);
         return clazz;
       }
@@ -203,7 +203,7 @@ public interface StringCodec<T>
       return clazz.getCanonicalName();
     }
 
-    private static final long serialVersionUID = 201310181757L;
+    private static final long serialVersionUID = 201312082053L;
   }
 
 }
