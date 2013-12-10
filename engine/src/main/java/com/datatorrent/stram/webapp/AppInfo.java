@@ -43,6 +43,10 @@ public class AppInfo {
   protected long elapsedTime;
   protected String appPath;
   protected String gatewayAddress;
+  protected String licenseId;
+  protected long remainingLicensedMB;
+  protected long allocatedMB;
+  protected long licenseInfoLastUpdate;
   public String appMasterTrackingUrl;
   public String version;
   public AppStats stats;
@@ -157,6 +161,10 @@ public class AppInfo {
     this.stats = context.getStats();
     this.gatewayAddress = context.getGatewayAddress();
     this.version = VersionInfo.getBuildVersion();
+    this.licenseId = context.getLicenseId();
+    this.remainingLicensedMB = context.getRemainingLicensedMB();
+    this.allocatedMB = context.getAllocatedMB();
+    this.licenseInfoLastUpdate = context.getLicenseInfoLastUpdate();
   }
 
   /**
@@ -205,5 +213,15 @@ public class AppInfo {
 
   public String getGatewayAddress() {
     return this.gatewayAddress;
+  }
+
+  public String getLicenseId()
+  {
+    return this.licenseId;
+  }
+
+  public long getLicenseInfoLastUpdate()
+  {
+    return this.licenseInfoLastUpdate;
   }
 }
