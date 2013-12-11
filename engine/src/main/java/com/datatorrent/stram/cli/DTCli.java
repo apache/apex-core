@@ -450,17 +450,17 @@ public class DTCli
                                                     null,
                                                     "Set the pager program for output"));
     globalCommands.put("generate-license-request", new CommandSpec(new GenerateLicenseRequestCommand(),
-        null,
-        null,
-        "Generate license request"));
-    globalCommands.put("activate-license", new OptionsCommandSpec(new ActivateLicenseCommand(),
-        null,
-        new Arg[] {new FileArg("license-file")},
-        "Launch the license agent", getCommandLineOptions()));
-    globalCommands.put("deactivate-license", new OptionsCommandSpec(new DeactivateLicenseCommand(),
-        null,
-        new Arg[] {new FileArg("license-file")},
-        "Stop the license agent", getCommandLineOptions()));
+                                                                   null,
+                                                                   null,
+                                                                   "Generate license request"));
+    globalCommands.put("activate-license", new CommandSpec(new ActivateLicenseCommand(),
+                                                           null,
+                                                           new Arg[] {new FileArg("license-file")},
+                                                           "Launch the license agent"));
+    globalCommands.put("deactivate-license", new CommandSpec(new DeactivateLicenseCommand(),
+                                                             null,
+                                                             new Arg[] {new FileArg("license-file")},
+                                                             "Stop the license agent"));
 
     //
     // Connected command specification starts here
@@ -511,18 +511,18 @@ public class DTCli
                                                                      new Arg[] {new Arg("property-name")},
                                                                      "Get properties of an operator"));
     connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
-                                                                    new Arg[] {new Arg("operator-name")},
-                                                                    new Arg[] {new Arg("property-name")},
-                                                                    "Get properties of an operator"));
-    
+                                                                              new Arg[] {new Arg("operator-name")},
+                                                                              new Arg[] {new Arg("property-name")},
+                                                                              "Get properties of an operator"));
+
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
                                                                    new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
                                                                    null,
                                                                    "Set a property of an operator"));
     connectedCommands.put("set-physical-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
-                                                                  new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
-                                                                  null,
-                                                                  "Set a property of an operator"));
+                                                                            new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
+                                                                            null,
+                                                                            "Set a property of an operator"));
     connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(),
                                                                 null,
                                                                 new Arg[] {new Arg("attribute-name")},
@@ -1509,10 +1509,12 @@ public class DTCli
         }
         rmClient.killApplication(ar.getApplicationId());
         System.err.println("Stopped license agent for " + licenseId);
-      } finally {
+      }
+      finally {
         clientRMService.stop();
       }
     }
+
   }
 
   private class GenerateLicenseRequestCommand implements Command
@@ -1525,6 +1527,7 @@ public class DTCli
       System.out.println(b64EncodedString);
       System.out.println("------------------------------------------------------------------------");
     }
+
   }
 
   private class LaunchCommand implements Command
@@ -2221,7 +2224,7 @@ public class DTCli
     }
 
   }
-  
+
   private class GetPhysicalOperatorPropertiesCommand implements Command
   {
     @Override
@@ -2291,7 +2294,7 @@ public class DTCli
     }
 
   }
-  
+
   private class SetPhysicalOperatorPropertyCommand implements Command
   {
     @Override
@@ -2300,26 +2303,25 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
-        final JSONObject request = new JSONObject();
-        request.put(args[2], args[3]);
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
-          }
 
-        });
-        printJson(response);
-      
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      final JSONObject request = new JSONObject();
+      request.put(args[2], args[3]);
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+        }
+
+      });
+      printJson(response);
+
     }
 
   }
-  
 
   private class BeginLogicalPlanChangeCommand implements Command
   {
