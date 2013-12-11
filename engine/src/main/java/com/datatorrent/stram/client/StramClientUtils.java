@@ -28,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.license.util.Util;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  *
@@ -42,6 +44,8 @@ import com.datatorrent.stram.license.util.Util;
  */
 public class StramClientUtils
 {
+  public static final String STRAM_LICENSE_FILE = "stram.license_file";
+
   /**
    *
    * TBD<p>
@@ -88,7 +92,7 @@ public class StramClientUtils
               YarnConfiguration.DEFAULT_RM_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
       return ((ApplicationClientProtocol)rpc.getProxy(
-          ApplicationClientProtocol.class, rmAddress, conf));
+              ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -247,9 +251,21 @@ public class StramClientUtils
     return conf;
   }
 
-  public static byte[] getLicense(Configuration conf)
+  public static byte[] getLicense(Configuration conf) throws IOException
   {
-    return Util.getDefaultLicense();
+    String stramLicenseFile = conf.get(STRAM_LICENSE_FILE);
+    if (stramLicenseFile == null) {
+      return Util.getDefaultLicense();
+    }
+    else {
+      return getLicense(stramLicenseFile);
+    }
+  }
+
+  public static byte[] getLicense(String filePath) throws IOException
+  {
+    java.nio.file.Path path = Paths.get(filePath);
+    return Files.readAllBytes(path);
   }
 
 }

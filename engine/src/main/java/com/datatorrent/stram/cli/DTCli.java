@@ -1476,7 +1476,12 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      byte[] licenseBytes = StramClientUtils.getLicense(conf);
+      byte[] licenseBytes;
+      if (args.length > 1) {
+        licenseBytes = StramClientUtils.getLicense(args[1]);
+      } else {
+        licenseBytes = StramClientUtils.getLicense(conf);
+      }
       String licenseId = License.getLicenseID(licenseBytes);
       License.validateLicense(licenseBytes);
       LogicalPlan lp = new LogicalPlan();
@@ -1495,7 +1500,12 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      byte[] licenseBytes = StramClientUtils.getLicense(conf);
+      byte[] licenseBytes;
+      if (args.length > 1) {
+        licenseBytes = StramClientUtils.getLicense(args[1]);
+      } else {
+        licenseBytes = StramClientUtils.getLicense(conf);
+      }
       String licenseId = License.getLicenseID(licenseBytes);
       License.validateLicense(licenseBytes);
       // TODO: migrate CLI to use YarnClient and this here won't be needed
