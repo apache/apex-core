@@ -615,7 +615,7 @@ public class StreamingContainerManager implements PlanContext
 
         LOG.debug("{} marking deployed: {} remote status {} pendingDeploy {}", new Object[] {container.getExternalId(), oper, shb.getState(), container.getPendingDeploy()});
         oper.setState(PTOperator.State.ACTIVE);
-        oper.stats.lastHeartbeat = null;
+        oper.stats.lastHeartbeat = null; // reset on redeploy
 
         // record started
         FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
@@ -637,7 +637,6 @@ public class StreamingContainerManager implements PlanContext
    */
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
-    boolean containerIdle = true;
     long currentTimeMillis = System.currentTimeMillis();
 
     StramChildAgent sca = this.containers.get(heartbeat.getContainerId());
@@ -668,6 +667,7 @@ public class StreamingContainerManager implements PlanContext
     // commented out because free memory is misleading because of GC. may want to revisit this.
     //sca.memoryMBFree = heartbeat.memoryMBFree;
 
+    boolean containerIdle = true;
     long elapsedMillis = 0;
 
     for (OperatorHeartbeat shb: heartbeat.getContainerStats().operators) {
