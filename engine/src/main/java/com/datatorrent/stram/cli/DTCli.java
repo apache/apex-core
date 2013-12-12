@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,6 +63,8 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -294,6 +297,22 @@ public class DTCli
 
   }
 
+  private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config) throws Exception
+  {
+    URI uri = new URI(jarfileUri);
+    String scheme = uri.getScheme();
+    if (scheme == null || scheme.equals("file")) {
+      File jf = new File(uri.getPath());
+      return new StramAppLauncher(jf, config);
+    }
+    else if (scheme.equals("hdfs")) {
+      FileSystem fs = FileSystem.get(uri, conf);
+      Path path = new Path(uri.getPath());
+      return new StramAppLauncher(fs, path, config);
+    }
+    throw new CliException("Scheme " + scheme + " not supported.");
+  }
+
   private static class CommandSpec
   {
     Command command;
@@ -490,18 +509,18 @@ public class DTCli
                                                                      new Arg[] {new Arg("property-name")},
                                                                      "Get properties of an operator"));
     connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
-                                                                    new Arg[] {new Arg("operator-name")},
-                                                                    new Arg[] {new Arg("property-name")},
-                                                                    "Get properties of an operator"));
-    
+                                                                              new Arg[] {new Arg("operator-name")},
+                                                                              new Arg[] {new Arg("property-name")},
+                                                                              "Get properties of an operator"));
+
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
                                                                    new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
                                                                    null,
                                                                    "Set a property of an operator"));
     connectedCommands.put("set-physical-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
-                                                                  new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
-                                                                  null,
-                                                                  "Set a property of an operator"));
+                                                                            new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
+                                                                            null,
+                                                                            "Set a property of an operator"));
     connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(),
                                                                 null,
                                                                 new Arg[] {new Arg("attribute-name")},
@@ -664,7 +683,12 @@ public class DTCli
 
   private static String expandFileName(String fileName, boolean expandWildCard) throws IOException
   {
-    // TODO: need to work with other users
+    if (fileName.matches("^[a-zA-Z]+:.*")) {
+      // it's a URL
+      return fileName;
+    }
+
+    // TODO: need to work with other users' home directory
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
@@ -1476,8 +1500,7 @@ public class DTCli
         config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
-      File jf = new File(fileName);
-      StramAppLauncher submitApp = new StramAppLauncher(jf, config);
+      StramAppLauncher submitApp = getStramAppLauncher(fileName, config);
       submitApp.loadDependencies();
       AppFactory appFactory = null;
       if (commandLineInfo.args.length >= 2) {
@@ -2144,7 +2167,7 @@ public class DTCli
     }
 
   }
-  
+
   private class GetPhysicalOperatorPropertiesCommand implements Command
   {
     @Override
@@ -2214,7 +2237,7 @@ public class DTCli
     }
 
   }
-  
+
   private class SetPhysicalOperatorPropertyCommand implements Command
   {
     @Override
@@ -2223,26 +2246,25 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
-        final JSONObject request = new JSONObject();
-        request.put(args[2], args[3]);
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
-          }
 
-        });
-        printJson(response);
-      
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      final JSONObject request = new JSONObject();
+      request.put(args[2], args[3]);
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+        }
+
+      });
+      printJson(response);
+
     }
 
   }
-  
 
   private class BeginLogicalPlanChangeCommand implements Command
   {
@@ -2263,8 +2285,7 @@ public class DTCli
       if (args.length > 2) {
         String jarfile = expandFileName(args[1], true);
         String appName = args[2];
-        File jf = new File(jarfile);
-        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -2284,8 +2305,7 @@ public class DTCli
       }
       else if (args.length == 2) {
         String jarfile = expandFileName(args[1], true);
-        File jf = new File(jarfile);
-        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
         submitApp.loadDependencies();
         List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
         List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
@@ -2328,8 +2348,7 @@ public class DTCli
       if (args.length > 3) {
         String jarfile = args[2];
         String appName = args[3];
-        File jf = new File(jarfile);
-        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
