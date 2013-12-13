@@ -98,7 +98,7 @@ public class CLIProxy
     errorGobbler.start();
     outputGobbler.start();
     int exitValue = p.waitFor();
-    LOG.debug("Executed: {}", shellCommand);
+    LOG.debug("Executed: {} ; exit code: {}", shellCommand, exitValue);
     LOG.debug("Output: {}", outputGobbler.getContent());
     LOG.debug("Error: {}", errorGobbler.getContent());
     if (exitValue == 0) {
