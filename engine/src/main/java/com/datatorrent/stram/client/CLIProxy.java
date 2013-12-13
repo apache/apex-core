@@ -4,9 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Map;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
@@ -28,6 +26,40 @@ public class CLIProxy
     {
       super(message);
     }
+
+  }
+
+  private static class StreamGobbler extends Thread
+  {
+    InputStream is;
+    StringBuilder content = new StringBuilder();
+
+    StreamGobbler(InputStream is)
+    {
+      this.is = is;
+    }
+
+    String getContent()
+    {
+      return content.toString();
+    }
+
+    @Override
+    public void run()
+    {
+      try {
+        InputStreamReader isr = new InputStreamReader(is);
+        BufferedReader br = new BufferedReader(isr);
+        String line;
+        while ((line = br.readLine()) != null) {
+          content.append(line);
+        }
+      }
+      catch (IOException ex) {
+        LOG.error("Caught exception", ex);
+      }
+    }
+
   }
 
   public static JSONObject getLogicalPlan(String jarUri, String appName) throws Exception
@@ -60,18 +92,21 @@ public class CLIProxy
   private static JSONObject issueCommand(String command) throws Exception
   {
     String shellCommand = "dtcli -r -e '" + command + "'";
-    Process p = Runtime.getRuntime().exec(new String[] { "sh", "-c", shellCommand } );
-    String error = IOUtils.toString(p.getErrorStream());
-    String result = IOUtils.toString(p.getInputStream());
-    p.waitFor();
-    int exitValue = p.exitValue();
+    Process p = Runtime.getRuntime().exec(new String[] {"sh", "-c", shellCommand});
+    StreamGobbler errorGobbler = new StreamGobbler(p.getErrorStream());
+    StreamGobbler outputGobbler = new StreamGobbler(p.getInputStream());
+    errorGobbler.start();
+    outputGobbler.start();
+    int exitValue = p.waitFor();
     LOG.debug("Executed: {}", shellCommand);
-    LOG.debug("Output: {}", result);
-    LOG.debug("Error: {}", error);
+    LOG.debug("Output: {}", outputGobbler.getContent());
+    LOG.debug("Error: {}", errorGobbler.getContent());
     if (exitValue == 0) {
-      return new JSONObject(result);
-    } else {
-      throw new CommandException(error);
+      return new JSONObject(outputGobbler.getContent());
+    }
+    else {
+      throw new CommandException(errorGobbler.getContent());
     }
   }
+
 }
