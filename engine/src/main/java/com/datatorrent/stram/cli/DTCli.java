@@ -129,10 +129,12 @@ public class DTCli
   private FileHistory topLevelHistory;
   private FileHistory changingLogicalPlanHistory;
   private String jsonp;
+  private boolean raw = false;
   private RecordingsAgent recordingsAgent;
   private final ObjectMapper mapper = new ObjectMapper();
   private String pagerCommand;
   private Process pagerProcess;
+  private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
   {
@@ -635,7 +637,7 @@ public class DTCli
 
   private void printJson(JSONObject json) throws JSONException, IOException
   {
-    printJson(json.toString(2));
+    printJson(raw ? json.toString() : json.toString(2));
   }
 
   private void printJson(JSONArray jsonArray, String name) throws JSONException, IOException
@@ -786,6 +788,7 @@ public class DTCli
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
     options.addOption("v", false, "Verbose mode");
+    options.addOption("r", false, "JSON Raw mode");
     options.addOption("p", true, "JSONP padding function");
     options.addOption("h", false, "Print this help");
     CommandLineParser parser = new BasicParser();
@@ -793,6 +796,9 @@ public class DTCli
       CommandLine cmd = parser.parse(options, args);
       if (cmd.hasOption("v")) {
         verbose = true;
+      }
+      if (cmd.hasOption("r")) {
+        raw = true;
       }
       if (cmd.hasOption("e")) {
         commandsToExecute = cmd.getOptionValues("e");
@@ -1138,16 +1144,19 @@ public class DTCli
             throw ex;
           }
           cs.command.execute(args, reader);
+          lastCommandError = false;
         }
       }
     }
     catch (CliException e) {
       System.err.println(e.getMessage());
       LOG.debug("Error processing line: " + line, e);
+      lastCommandError = true;
     }
     catch (Exception e) {
       System.err.println("Unexpected error: " + e);
       LOG.error("Error processing line: {}", line, e);
+      lastCommandError = true;
     }
   }
 
@@ -2314,7 +2323,7 @@ public class DTCli
           m.put("name", appFactory.getName());
           appList.add(m);
         }
-        printJson(appList, "apps");
+        printJson(appList, "applications");
       }
       else {
         if (currentApp == null) {
@@ -2812,6 +2821,9 @@ public class DTCli
     DTCli shell = new DTCli();
     shell.init(args);
     shell.run();
+    if (lastCommandError) {
+      System.exit(1);
+    }
   }
 
 }
