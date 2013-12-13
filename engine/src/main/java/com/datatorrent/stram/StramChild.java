@@ -530,6 +530,8 @@ public class StramChild
 
     assert (streams.isEmpty());
 
+    eventBus.shutdown();
+
     nodes.clear();
 
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
