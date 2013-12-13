@@ -85,7 +85,7 @@ public class StramAgent extends FSAgent
     return webServicesInfoMap.get(appid);
   }
 
-  private static StramWebServicesInfo getWebServicesInfo(String appid)
+  private static synchronized StramWebServicesInfo getWebServicesInfo(String appid)
   {
     StramWebServicesInfo info = getCachedSebServicesInfo(appid);
     if (info == null) {
