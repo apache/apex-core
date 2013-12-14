@@ -59,6 +59,7 @@ public class StramAppLauncher {
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
+  private StringWriter buildClasspathOutput = new StringWriter();
 
   /**
    *
@@ -144,7 +145,7 @@ public class StramAppLauncher {
     this.conf = conf;
     init();
   }
-  
+
   public static class DependencyException extends RuntimeException
   {
     private static final long serialVersionUID = 20131204L;
@@ -154,7 +155,11 @@ public class StramAppLauncher {
     }
   }
 
-  @SuppressWarnings("UseOfSystemOutOrSystemErr")
+  public String getBuildClasspathOutput()
+  {
+    return buildClasspathOutput.toString();
+  }
+
   private void init() throws Exception {
 
     if (conf == null) {
@@ -232,13 +237,11 @@ public class StramAppLauncher {
         Process p = Runtime.getRuntime().exec(cmd);
         ProcessWatcher pw = new ProcessWatcher(p);
         InputStream output = p.getInputStream();
-        StringWriter commandOutput = new StringWriter();
         while(!pw.isFinished()) {
-          IOUtils.copy(output, commandOutput);
+          IOUtils.copy(output, buildClasspathOutput);
         }
-        System.out.append(commandOutput.toString());
         if (pw.rc != 0) {
-          throw new DependencyException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + commandOutput.toString());
+          throw new DependencyException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + buildClasspathOutput.toString());
         }
         cp = FileUtils.readFileToString(cpFile);
       }

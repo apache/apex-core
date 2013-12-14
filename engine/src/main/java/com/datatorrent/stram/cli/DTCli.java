@@ -134,6 +134,7 @@ public class DTCli
   private final ObjectMapper mapper = new ObjectMapper();
   private String pagerCommand;
   private Process pagerProcess;
+  boolean verbose = false;
   private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
@@ -303,16 +304,25 @@ public class DTCli
   {
     URI uri = new URI(jarfileUri);
     String scheme = uri.getScheme();
+    StramAppLauncher appLauncher = null;
     if (scheme == null || scheme.equals("file")) {
       File jf = new File(uri.getPath());
-      return new StramAppLauncher(jf, config);
+      appLauncher = new StramAppLauncher(jf, config);
     }
     else if (scheme.equals("hdfs")) {
       FileSystem fs = FileSystem.get(uri, conf);
       Path path = new Path(uri.getPath());
-      return new StramAppLauncher(fs, path, config);
+      appLauncher = new StramAppLauncher(fs, path, config);
     }
-    throw new CliException("Scheme " + scheme + " not supported.");
+    if (appLauncher != null) {
+      if (verbose) {
+        System.err.print(appLauncher.getBuildClasspathOutput());
+      }
+      return appLauncher;
+    }
+    else {
+      throw new CliException("Scheme " + scheme + " not supported.");
+    }
   }
 
   private static class CommandSpec
@@ -783,7 +793,6 @@ public class DTCli
 
   public void init(String[] args) throws IOException
   {
-    boolean verbose = false;
     consolePresent = (System.console() != null);
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
