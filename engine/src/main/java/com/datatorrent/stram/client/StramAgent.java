@@ -11,6 +11,9 @@ import com.datatorrent.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import java.util.Map;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,18 +114,37 @@ public class StramAgent extends FSAgent
 
   private static String getAppMasterTrackingUrl(String appId)
   {
-    WebServicesClient webServicesClient = new WebServicesClient();
-    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info";
-    try {
-      JSONObject response = webServicesClient.process(url,
-                                                      JSONObject.class,
-                                                      new WebServicesClient.GetWebServicesHandler<JSONObject>());
-      return response.getString("appMasterTrackingUrl");
-    }
-    catch (Exception ex) {
-      LOG.warn("Cannot get the tracking url for {} from {}", appId, url);
-      LOG.warn("Caught exception", ex);
-      return null;
+    // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
+    if (!UserGroupInformation.isSecurityEnabled()) {
+      WebServicesClient webServicesClient = new WebServicesClient();
+      String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info";
+      try {
+        JSONObject response = webServicesClient.process(url,
+                                                        JSONObject.class,
+                                                        new WebServicesClient.GetWebServicesHandler<JSONObject>());
+        return response.getString("appMasterTrackingUrl");
+      }
+      catch (Exception ex) {
+        LOG.warn("Cannot get the tracking url for {} from {}", appId, url);
+        LOG.warn("Caught exception", ex);
+        return null;
+      }
+    } else {
+      StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
+      try {
+        StramClientUtils.ClientRMHelper clientRM = new StramClientUtils.ClientRMHelper(yarnClient);
+        ApplicationReport report = clientRM.getApplicationReport(appId);
+        if (report != null) {
+          return report.getOriginalTrackingUrl();
+        } else {
+          LOG.warn("No matching application found for {} in yarn", appId);
+          return null;
+        }
+      } catch (Exception ex) {
+        LOG.warn("Cannot get the tracking url for {} from yarn", appId);
+        LOG.warn("Caught exception", ex);
+        return null;
+      }
     }
   }
 
