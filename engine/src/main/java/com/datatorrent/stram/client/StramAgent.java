@@ -7,7 +7,7 @@ package com.datatorrent.stram.client;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.util.LRUCache;
 import com.datatorrent.stram.util.WebServicesClient;
-import com.datatorrent.stram.webapp.StramWebServices;
+import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import java.util.Map;
@@ -26,21 +26,41 @@ import org.slf4j.LoggerFactory;
  */
 public class StramAgent extends FSAgent
 {
+  private static class StramWebServicesInfo
+  {
+    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath)
+    {
+      this.appMasterTrackingUrl = appMasterTrackingUrl;
+      this.version = version;
+      this.appPath = appPath;
+    }
+
+    String appMasterTrackingUrl;
+    String version;
+    String appPath;
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
   protected static String resourceManagerWebappAddress;
-  private static Map<String, String> appMasterTrackingUrls = new LRUCache<String, String>(100);
+  private static Map<String, StramWebServicesInfo> webServicesInfoMap = new LRUCache<String, StramWebServicesInfo>(100);
   protected static String defaultStramRoot = null;
 
-  public class AppNotFoundException extends Exception {
+  public class AppNotFoundException extends Exception
+  {
     private static final long serialVersionUID = 1L;
     private String appId;
-    public AppNotFoundException(String appId) {
+
+    public AppNotFoundException(String appId)
+    {
       this.appId = appId;
     }
+
     @Override
-    public String toString() {
+    public String toString()
+    {
       return "App id " + appId + " is not found";
     }
+
   }
 
   public static void setResourceManagerWebappAddress(String addr)
@@ -53,38 +73,49 @@ public class StramAgent extends FSAgent
     defaultStramRoot = dir;
   }
 
-  private static synchronized void deleteAppMasterUrl(String appid)
+  private static synchronized void deleteCachedWebServicesInfo(String appid)
   {
-    appMasterTrackingUrls.remove(appid);
+    webServicesInfoMap.remove(appid);
   }
 
-  private static synchronized void setAppMasterTrackingUrl(String appid, String trackingUrl)
+  private static synchronized void setCachedWebServicesInfo(String appid, StramWebServicesInfo info)
   {
-    appMasterTrackingUrls.put(appid, trackingUrl);
+    webServicesInfoMap.put(appid, info);
   }
 
-  private static synchronized String getAppMasterUrl(String appid)
+  private static synchronized StramWebServicesInfo getCachedSebServicesInfo(String appid)
   {
-    return appMasterTrackingUrls.get(appid);
+    return webServicesInfoMap.get(appid);
+  }
+
+  private static synchronized StramWebServicesInfo getWebServicesInfo(String appid)
+  {
+    StramWebServicesInfo info = getCachedSebServicesInfo(appid);
+    if (info == null) {
+      info = retrieveWebServicesInfo(appid);
+      if (info != null) {
+        setCachedWebServicesInfo(appid, info);
+      }
+    }
+    return info;
+  }
+
+  public static String getWebServicesVersion(String appid)
+  {
+    return getWebServicesInfo(appid).version;
   }
 
   public static WebResource getStramWebResource(WebServicesClient webServicesClient, String appid)
   {
     Client wsClient = webServicesClient.getClient();
     wsClient.setFollowRedirects(true);
-    String trackingUrl = getAppMasterUrl(appid);
-    if (trackingUrl == null) {
-      trackingUrl = getAppMasterTrackingUrl(appid);
-      if (trackingUrl != null) {
-        setAppMasterTrackingUrl(appid, trackingUrl);
-      }
-    }
-    return trackingUrl == null ? null : wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
   }
 
   public static void invalidateStramWebResource(String appid)
   {
-    deleteAppMasterUrl(appid);
+    deleteCachedWebServicesInfo(appid);
   }
 
   public String getDefaultStramRoot()
@@ -94,48 +125,25 @@ public class StramAgent extends FSAgent
 
   public String getAppPath(String appId)
   {
-    WebServicesClient webServicesClient = new WebServicesClient();
     try {
-      JSONObject response = webServicesClient.process("http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info",
-                                                      JSONObject.class,
-                                                      new WebServicesClient.GetWebServicesHandler<JSONObject>());
-      String appPath = response.getString("appPath");
-      int i = appPath.indexOf("/" + appId);
-      if (i <= 0) {
-        LOG.warn("Cannot get the app path for {} {}", appId, appPath);
-        return null;
-      }
-      return appPath;
+      return getWebServicesInfo(appId).appPath;
     }
     catch (Exception ex) {
       return getDefaultStramRoot() + "/" + appId;
     }
   }
 
-  private static String getAppMasterTrackingUrl(String appId)
+  private static StramWebServicesInfo retrieveWebServicesInfo(String appId)
   {
+    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
     // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
-    if (!UserGroupInformation.isSecurityEnabled()) {
-      WebServicesClient webServicesClient = new WebServicesClient();
-      String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/info";
-      try {
-        JSONObject response = webServicesClient.process(url,
-                                                        JSONObject.class,
-                                                        new WebServicesClient.GetWebServicesHandler<JSONObject>());
-        return response.getString("appMasterTrackingUrl");
-      }
-      catch (Exception ex) {
-        LOG.warn("Cannot get the tracking url for {} from {}", appId, url);
-        LOG.warn("Caught exception", ex);
-        return null;
-      }
-    } else {
+    if (UserGroupInformation.isSecurityEnabled()) {
       StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
       try {
         StramClientUtils.ClientRMHelper clientRM = new StramClientUtils.ClientRMHelper(yarnClient);
         ApplicationReport report = clientRM.getApplicationReport(appId);
         if (report != null) {
-          return report.getOriginalTrackingUrl();
+          url = "http://" + report.getOriginalTrackingUrl() + WebServices.PATH;
         } else {
           LOG.warn("No matching application found for {} in yarn", appId);
           return null;
@@ -145,6 +153,23 @@ public class StramAgent extends FSAgent
         LOG.warn("Caught exception", ex);
         return null;
       }
+    }
+    WebServicesClient webServicesClient = new WebServicesClient();
+    try {
+      JSONObject response = new JSONObject(webServicesClient.process(url,
+                                                                     String.class,
+                                                                     new WebServicesClient.GetWebServicesHandler<String>()));
+      String version = response.getString("version");
+      response = webServicesClient.process(url + "/" + version + "/stram/info",
+                                           JSONObject.class,
+                                           new WebServicesClient.GetWebServicesHandler<JSONObject>());
+      String appMasterUrl = response.getString("appMasterTrackingUrl");
+      String appPath = response.getString("appPath");
+      return new StramWebServicesInfo(appMasterUrl, version, appPath);
+    }
+    catch (Exception ex) {
+      //LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
+      return null;
     }
   }
 

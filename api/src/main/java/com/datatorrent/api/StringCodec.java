@@ -182,4 +182,28 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201310181757L;
   }
 
+  public class Class2String<T> implements StringCodec<Class<? extends T>>, Serializable
+  {
+    @Override
+    public Class<? extends T> fromString(String string)
+    {
+      try {
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        Class<? extends T> clazz = (Class)Thread.currentThread().getContextClassLoader().loadClass(string);
+        return clazz;
+      }
+      catch (Exception cnfe) {
+        throw new RuntimeException(cnfe);
+      }
+    }
+
+    @Override
+    public String toString(Class<? extends T> clazz)
+    {
+      return clazz.getCanonicalName();
+    }
+
+    private static final long serialVersionUID = 201312082053L;
+  }
+
 }

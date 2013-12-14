@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import junit.framework.Assert;
 
@@ -308,6 +309,40 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("portName " + node3In, dag.getMeta(node3).getMeta(node3.inport1).getPortName(), node3In.portName);
     Assert.assertNotNull("sourceNodeId " + node3DI, node3In.sourceNodeId);
     Assert.assertEquals("sourcePortName " + node3DI, mergeNodeDI.outputs.get(0).portName, node3In.sourcePortName);
+
+  }
+
+  @Test
+  public void testPhysicalPropertyUpdate() {
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.addStream("o1.outport", o1.outport, o2.inport1);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+    List<PTOperator> o1Partitions = plan.getOperators(dag.getMeta(o1));
+    List<StramChildAgent> containerAgents = Lists.newArrayList();
+    for (int i=0; i < plan.getContainers().size(); i++) {
+      containerAgents.add(assignContainer(dnm, "container"+(i+1)));
+    }
+
+    Assert.assertEquals("number of partitions", 3,o1Partitions.size());
+    PTOperator o = o1Partitions.get(0);
+    Map<String,Object> m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+    int origionalValue = ((Integer)m.get("maxTuples")).intValue();
+
+    dnm.setPhysicalOperatorProperty(o.getId()+"", "maxTuples","2" );
+    m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+    int newVal = (Integer)m.get("maxTuples");
+    Assert.assertEquals(2,newVal);
+    for(int i = 1; i< 3;i++){
+      o = o1Partitions.get(i);
+      m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+      Assert.assertEquals(origionalValue,((Integer)m.get("maxTuples")).intValue());
+    }
 
   }
 

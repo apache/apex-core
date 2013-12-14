@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,6 +63,8 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -126,10 +129,12 @@ public class DTCli
   private FileHistory topLevelHistory;
   private FileHistory changingLogicalPlanHistory;
   private String jsonp;
+  private boolean raw = false;
   private RecordingsAgent recordingsAgent;
   private final ObjectMapper mapper = new ObjectMapper();
   private String pagerCommand;
   private Process pagerProcess;
+  private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
   {
@@ -292,6 +297,22 @@ public class DTCli
       super(name);
     }
 
+  }
+
+  private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config) throws Exception
+  {
+    URI uri = new URI(jarfileUri);
+    String scheme = uri.getScheme();
+    if (scheme == null || scheme.equals("file")) {
+      File jf = new File(uri.getPath());
+      return new StramAppLauncher(jf, config);
+    }
+    else if (scheme.equals("hdfs")) {
+      FileSystem fs = FileSystem.get(uri, conf);
+      Path path = new Path(uri.getPath());
+      return new StramAppLauncher(fs, path, config);
+    }
+    throw new CliException("Scheme " + scheme + " not supported.");
   }
 
   private static class CommandSpec
@@ -489,10 +510,19 @@ public class DTCli
                                                                      new Arg[] {new Arg("operator-name")},
                                                                      new Arg[] {new Arg("property-name")},
                                                                      "Get properties of an operator"));
+    connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
+                                                                              new Arg[] {new Arg("operator-name")},
+                                                                              new Arg[] {new Arg("property-name")},
+                                                                              "Get properties of an operator"));
+
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
                                                                    new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
                                                                    null,
                                                                    "Set a property of an operator"));
+    connectedCommands.put("set-physical-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
+                                                                            new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
+                                                                            null,
+                                                                            "Set a property of an operator"));
     connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(),
                                                                 null,
                                                                 new Arg[] {new Arg("attribute-name")},
@@ -607,7 +637,7 @@ public class DTCli
 
   private void printJson(JSONObject json) throws JSONException, IOException
   {
-    printJson(json.toString(2));
+    printJson(raw ? json.toString() : json.toString(2));
   }
 
   private void printJson(JSONArray jsonArray, String name) throws JSONException, IOException
@@ -655,7 +685,12 @@ public class DTCli
 
   private static String expandFileName(String fileName, boolean expandWildCard) throws IOException
   {
-    // TODO: need to work with other users
+    if (fileName.matches("^[a-zA-Z]+:.*")) {
+      // it's a URL
+      return fileName;
+    }
+
+    // TODO: need to work with other users' home directory
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
@@ -753,6 +788,7 @@ public class DTCli
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
     options.addOption("v", false, "Verbose mode");
+    options.addOption("r", false, "JSON Raw mode");
     options.addOption("p", true, "JSONP padding function");
     options.addOption("h", false, "Print this help");
     CommandLineParser parser = new BasicParser();
@@ -760,6 +796,9 @@ public class DTCli
       CommandLine cmd = parser.parse(options, args);
       if (cmd.hasOption("v")) {
         verbose = true;
+      }
+      if (cmd.hasOption("r")) {
+        raw = true;
       }
       if (cmd.hasOption("e")) {
         commandsToExecute = cmd.getOptionValues("e");
@@ -1105,16 +1144,19 @@ public class DTCli
             throw ex;
           }
           cs.command.execute(args, reader);
+          lastCommandError = false;
         }
       }
     }
     catch (CliException e) {
       System.err.println(e.getMessage());
       LOG.debug("Error processing line: " + line, e);
+      lastCommandError = true;
     }
     catch (Exception e) {
       System.err.println("Unexpected error: " + e);
       LOG.error("Error processing line: {}", line, e);
+      lastCommandError = true;
     }
   }
 
@@ -1284,7 +1326,12 @@ public class DTCli
     WebServicesClient wsClient = new WebServicesClient();
     Client client = wsClient.getClient();
     client.setFollowRedirects(true);
-    WebResource r = client.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
+    WebResource r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+    if (r == null) {
+      throw new CliException("Application " + appReport.getApplicationId().toString() + " has not started");
+    }
+    r = r.path(resourcePath);
+
     try {
       return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
       {
@@ -1309,18 +1356,14 @@ public class DTCli
     }
   }
 
-  private WebResource getPostResource(WebServicesClient webServicesClient, ApplicationReport appReport)
+  private WebResource getStramWebResource(WebServicesClient webServicesClient, ApplicationReport appReport)
   {
     if (appReport == null) {
       throw new CliException("No application selected");
     }
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
-    String trackingUrl = appReport.getOriginalTrackingUrl();
-
-    Client wsClient = webServicesClient.getClient();
-    wsClient.setFollowRedirects(true);
-    return wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
+    return StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
   }
 
   private List<AppFactory> getMatchingAppFactories(StramAppLauncher submitApp, String matchString)
@@ -1466,8 +1509,7 @@ public class DTCli
         config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
-      File jf = new File(fileName);
-      StramAppLauncher submitApp = new StramAppLauncher(jf, config);
+      StramAppLauncher submitApp = getStramAppLauncher(fileName, config);
       submitApp.loadDependencies();
       AppFactory appFactory = null;
       if (commandLineInfo.args.length >= 2) {
@@ -1579,7 +1621,7 @@ public class DTCli
       }
 
       for (ApplicationReport app : apps) {
-        WebResource r = getPostResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
+        WebResource r = getStramWebResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
         try {
           JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
           {
@@ -1860,7 +1902,7 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
       try {
         printJson(webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -1889,7 +1931,7 @@ public class DTCli
         throw new CliException("Container " + args[1] + " not found");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(containerLongId).path("kill");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(containerLongId).path("kill");
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -2016,7 +2058,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN).path("attributes");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN).path("attributes");
       if (args.length > 1) {
         r = r.queryParam("attributeName", args[1]);
       }
@@ -2048,7 +2090,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("attributes");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("attributes");
       if (args.length > 2) {
         r = r.queryParam("attributeName", args[2]);
       }
@@ -2080,7 +2122,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("attributes");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("attributes");
       if (args.length > 3) {
         r = r.queryParam("attributeName", args[3]);
       }
@@ -2112,7 +2154,39 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      if (args.length > 2) {
+        r = r.queryParam("propertyName", args[2]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        printJson(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+
+  }
+
+  private class GetPhysicalOperatorPropertiesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       if (args.length > 2) {
         r = r.queryParam("propertyName", args[2]);
       }
@@ -2155,7 +2229,7 @@ public class DTCli
       }
       else {
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -2169,6 +2243,34 @@ public class DTCli
         });
         printJson(response);
       }
+    }
+
+  }
+
+  private class SetPhysicalOperatorPropertyCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      final JSONObject request = new JSONObject();
+      request.put(args[2], args[3]);
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+        }
+
+      });
+      printJson(response);
+
     }
 
   }
@@ -2192,8 +2294,7 @@ public class DTCli
       if (args.length > 2) {
         String jarfile = expandFileName(args[1], true);
         String appName = args[2];
-        File jf = new File(jarfile);
-        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -2213,8 +2314,7 @@ public class DTCli
       }
       else if (args.length == 2) {
         String jarfile = expandFileName(args[1], true);
-        File jf = new File(jarfile);
-        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
         submitApp.loadDependencies();
         List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
         List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
@@ -2223,14 +2323,14 @@ public class DTCli
           m.put("name", appFactory.getName());
           appList.add(m);
         }
-        printJson(appList, "apps");
+        printJson(appList, "applications");
       }
       else {
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
+        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -2257,8 +2357,7 @@ public class DTCli
       if (args.length > 3) {
         String jarfile = args[2];
         String appName = args[3];
-        File jf = new File(jarfile);
-        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -2282,7 +2381,7 @@ public class DTCli
           throw new CliException("No application selected");
         }
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
+        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -2455,7 +2554,7 @@ public class DTCli
         throw new CliException("Nothing to submit. Type \"abort\" to abort change");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
       try {
         final Map<String, Object> m = new HashMap<String, Object>();
         ObjectMapper mapper = new ObjectMapper();
@@ -2568,7 +2667,7 @@ public class DTCli
         appReport = currentApp;
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
+      WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
 
       JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
@@ -2602,7 +2701,7 @@ public class DTCli
       dis.close();
 
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -2628,7 +2727,7 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -2722,6 +2821,9 @@ public class DTCli
     DTCli shell = new DTCli();
     shell.init(args);
     shell.run();
+    if (lastCommandError) {
+      System.exit(1);
+    }
   }
 
 }

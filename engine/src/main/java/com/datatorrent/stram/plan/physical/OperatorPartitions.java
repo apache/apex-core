@@ -53,30 +53,10 @@ public class OperatorPartitions {
 
       Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
       if (!inputs.isEmpty() && partitions.size() > 1) {
-        //int partitionBits = 0;
-        //if (initialPartitionCnt > 0) {
-        //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
-        //}
-        int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt-1));
-        int partitionMask = 0;
-        if (partitionBits > 0) {
-          partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
-        }
-
+        // partition the stream that was first connected in the DAG and send full data to remaining input ports
+        // this gives control over which stream to partition under default partitioning to the DAG writer
         InputPortMeta portMeta = inputs.keySet().iterator().next();
-
-        for (int i=0; i<=partitionMask; i++) {
-          // partition the stream that was first connected in the DAG and send full data to remaining input ports
-          // this gives control over which stream to partition under default partitioning to the DAG writer
-          Partition<?> p = partitions.get(i % partitions.size());
-          PartitionKeys pks = p.getPartitionKeys().get(portMeta.getPortObject());
-          if (pks == null) {
-            // TODO: work with the port meta object instead as this is what we will be using during plan processing anyways
-            p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-          } else {
-            pks.partitions.add(i);
-          }
-        }
+        DefaultPartition.assignPartitionKeys(partitions, portMeta.getPortObject());
       }
 
       return partitions;

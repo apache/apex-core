@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,6 +38,7 @@ import com.datatorrent.stram.FSEventRecorder;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
@@ -905,10 +908,10 @@ public class PhysicalPlan {
       }
       for (PTOperator localOper : s) {
         if(grpObj.getHost() == null){
-          grpObj.setHost(localOper.groupings.get(ltype).getHost()); 
+          grpObj.setHost(localOper.groupings.get(ltype).getHost());
          }
         localOper.groupings.put(ltype, grpObj);
-        
+
       }
     }
   }
@@ -1213,6 +1216,24 @@ public class PhysicalPlan {
             };
             ctx.dispatch(r);
           }
+        }
+      }
+    }
+  }
+
+  public void setProperties(PTOperator oper, Map<String, String> properties)
+  {
+    if (oper.partition != null) {
+      if (oper.partition.getPartitionedInstance() == oper.getOperatorMeta().getOperator()) {
+        // clone on write as default partitioning won't create copy for each partition
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+          Node.storeOperator(bos, oper.getOperatorMeta().getOperator());
+          Operator clonedOper = Node.retrieveOperator(new ByteArrayInputStream(bos.toByteArray()));
+          LogicalPlanConfiguration.setOperatorProperties(clonedOper, properties);
+          oper.partition = new DefaultPartition<Operator>(clonedOper, oper.partition.getPartitionKeys(), oper.loadIndicator, oper.stats);
+        } catch (Exception e) {
+          LOG.error("Failed to set operator properties", e);
         }
       }
     }
