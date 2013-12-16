@@ -15,8 +15,10 @@ import java.util.Set;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
+import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
@@ -24,6 +26,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorProxy;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -35,7 +38,9 @@ import com.google.common.collect.Sets;
  *
  * @since 0.3.5
  */
-public class PTOperator {
+public class PTOperator implements java.io.Serializable
+{
+  private static final long serialVersionUID = 201312112033L;
 
   public enum State {
     NEW,
@@ -52,8 +57,10 @@ public class PTOperator {
    * <p>
    * <br>
    */
-  public static class PTInput
+  public static class PTInput implements java.io.Serializable
   {
+    private static final long serialVersionUID = 201312112033L;
+
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator target;
     public final PartitionKeys partitions;
@@ -96,8 +103,10 @@ public class PTOperator {
    * <p>
    * <br>
    */
-  public static class PTOutput
+  public static class PTOutput implements java.io.Serializable
   {
+    private static final long serialVersionUID = 201312112033L;
+
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator source;
     public final String portName;
@@ -158,14 +167,62 @@ public class PTOperator {
     this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
+  /**
+   * Serializable partitionHolder object.
+   * TODO: Optimize by reading operator from the checkpoint, instead of keeping reference in memory.
+   */
+  private class PartitionHolder implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
+    transient Partition<?> partition;
+    private Map<InputPortMeta, PartitionKeys> portKeys;
+    private OperatorProxy operatorProxy;
+
+    public void set(Partition<?> p)
+    {
+      this.partition = p;
+      PTOperator oper = PTOperator.this;
+      // TODO: won't be needed if the initial state is checkpointed during initialization
+      if (p.getPartitionedInstance() != oper.getOperatorMeta().getOperator()) {
+        // checkpoint so we can retrieve it back
+        operatorProxy = new OperatorProxy(p.getPartitionedInstance());
+      }
+      this.portKeys = StreamMapping.getPartitionKeys(oper);
+    }
+
+    public Partition<?> get()
+    {
+      if (partition == null) {
+        Map<InputPort<?>,PartitionKeys> pkeys = Maps.newHashMapWithExpectedSize(portKeys.size());
+        for (Map.Entry<InputPortMeta, PartitionKeys> e : portKeys.entrySet()) {
+          pkeys.put(e.getKey().getPortObject(), e.getValue());
+        }
+        PTOperator oper = PTOperator.this;
+        Operator partitionedInstance = oper.logicalNode.getOperator();
+        // load operator from checkpointed state
+        if (oper.recoveryCheckpoint != 0) {
+          partitionedInstance = oper.getPlan().loadOperator(oper);
+          operatorProxy = new OperatorProxy(partitionedInstance);
+        } else {
+          if (operatorProxy != null) {
+            partitionedInstance = operatorProxy.get();
+          }
+        }
+        partition = new DefaultPartition<Operator>(partitionedInstance, pkeys, 0, PTOperator.this.stats);
+      }
+      return partition;
+    }
+
+  }
+
   private volatile PTOperator.State state = State.NEW;
   private final PhysicalPlan plan;
   PTContainer container;
   LogicalPlan.OperatorMeta logicalNode;
   final int id;
   private final String name;
-  Partition<?> partition;
-  Operator unifier;
+  private PartitionHolder partitionHolder;
+  LogicalPlan.OperatorProxy unifier;
   List<PTInput> inputs;
   List<PTOutput> outputs;
   public final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
@@ -260,12 +317,17 @@ public class PTOperator {
   }
 
   public Partition<?> getPartition() {
-    return partition;
+    return partitionHolder != null ? partitionHolder.get() : null;
+  }
+
+  public void setPartition(Partition<?> partition) {
+    this.partitionHolder = new PartitionHolder();
+    this.partitionHolder.set(partition);
   }
 
   public Operator getUnifier()
   {
-    return unifier;
+    return unifier != null ? unifier.get() : null;
   }
 
   HostOperatorSet getGrouping(Locality type) {
@@ -282,7 +344,10 @@ public class PTOperator {
     return getGrouping(Locality.NODE_LOCAL);
   }
 
-  public class HostOperatorSet{
+  public class HostOperatorSet implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
+
     private String host;
     private Set<PTOperator> operatorSet;
     public String getHost()

@@ -93,7 +93,7 @@ import com.datatorrent.stram.webapp.StreamInfo;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  private long windowStartMillis = System.currentTimeMillis();
+  private final long windowStartMillis;
   private final int heartbeatTimeoutMillis;
   private int maxWindowsBehindForStats = 100;
   private int recordStatsInterval = 0;
@@ -152,10 +152,11 @@ public class StreamingContainerManager implements PlanContext
       attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
     }
     /* try to align to it to please eyes. */
-    windowStartMillis -= (windowStartMillis % 1000);
+    long tms = System.currentTimeMillis();
+    windowStartMillis = tms - (tms % 1000);
 
     if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
-      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + System.currentTimeMillis());
+      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + tms);
     }
 
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);

@@ -17,11 +17,13 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorProxy;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
@@ -38,8 +40,10 @@ import com.google.common.collect.Sets;
  *
  * @since 0.9.0
  */
-public class StreamMapping
+public class StreamMapping implements java.io.Serializable
 {
+  private static final long serialVersionUID = 8572852828117485193L;
+
   private final static Logger LOG = LoggerFactory.getLogger(StreamMapping.class);
 
   private final StreamMeta streamMeta;
@@ -89,7 +93,7 @@ public class StreamMapping
     if (mergeDesc.outputPorts.size() != 1) {
       throw new AssertionError("Unifier should have single output port, found: " + mergeDesc.outputPorts);
     }
-    pu.unifier = unifier;
+    pu.unifier = new OperatorProxy(unifier);
     pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
     plan.newOpers.add(pu);
     return pu;
@@ -121,13 +125,14 @@ public class StreamMapping
     }
   }
 
-  private Map<LogicalPlan.InputPortMeta, PartitionKeys> getPartitionKeys(PTOperator oper) {
+  static Map<LogicalPlan.InputPortMeta, PartitionKeys> getPartitionKeys(PTOperator oper) {
 
-    if (oper.partition == null) {
+    Partition<?> p = oper.getPartition();
+    if (p == null) {
       return Collections.emptyMap();
     }
-    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(oper.partition.getPartitionKeys().size());
-    Map<InputPort<?>, PartitionKeys> partKeys = oper.partition.getPartitionKeys();
+    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(p.getPartitionKeys().size());
+    Map<InputPort<?>, PartitionKeys> partKeys = p.getPartitionKeys();
     for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
       LogicalPlan.InputPortMeta pportMeta = oper.logicalNode.getMeta(portEntry.getKey());
       if (pportMeta == null) {

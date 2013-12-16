@@ -24,7 +24,7 @@ import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
  *
  * @since 0.9.1
  */
-public class OperatorStatus implements BatchedOperatorStats
+public class OperatorStatus implements BatchedOperatorStats, java.io.Serializable
 {
   public class PortStatus
   {

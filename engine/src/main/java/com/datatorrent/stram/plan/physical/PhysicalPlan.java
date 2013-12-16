@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -64,9 +65,10 @@ import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
  *
  * @since 0.3.2
  */
-public class PhysicalPlan {
-
-  private final static Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
+public class PhysicalPlan implements Serializable
+{
+  private static final long serialVersionUID = 201312112033L;
+  private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
   /**
    * Stats listener for throughput based partitioning.
@@ -139,7 +141,7 @@ public class PhysicalPlan {
   private LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new CopyOnWriteArrayList<PTContainer>();
   private final LogicalPlan dag;
-  private final PlanContext ctx;
+  private transient final PlanContext ctx;
   private int maxContainers = 1;
   private final LocalityPrefs localityPrefs = new LocalityPrefs();
   private final LocalityPrefs inlinePrefs = new LocalityPrefs();
@@ -198,10 +200,9 @@ public class PhysicalPlan {
   /**
    * The logical operator with physical plan info tagged on.
    */
-  public static class PMapping {
-    private PMapping(OperatorMeta om) {
-      this.logicalOperator = om;
-    }
+  public static class PMapping implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
 
     final private OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
@@ -212,6 +213,10 @@ public class PhysicalPlan {
      * Operators that form a parallel partition
      */
     private Set<OperatorMeta> parallelPartitions = Sets.newHashSet();
+
+    private PMapping(OperatorMeta om) {
+      this.logicalOperator = om;
+    }
 
     private void addPartition(PTOperator p) {
       partitions.add(p);
@@ -236,7 +241,9 @@ public class PhysicalPlan {
     }
   }
 
-  private class LocalityPref {
+  private class LocalityPref implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
     String host;
     Set<PMapping> operators = Sets.newHashSet();
   }
@@ -246,7 +253,9 @@ public class PhysicalPlan {
    * groupings for physical operators, which are used when assigning containers
    * and requesting resources from the scheduler.
    */
-  private class LocalityPrefs {
+  private class LocalityPrefs implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
     private final Map<PMapping, LocalityPref> prefs = Maps.newHashMap();
     private final AtomicInteger groupSeq = new AtomicInteger();
 
@@ -464,35 +473,30 @@ public class PhysicalPlan {
     long minCheckpoint = -1;
 
     for (PTOperator pOperator : operators) {
-      Partition<?> p = pOperator.partition;
+      Partition<?> p = pOperator.getPartition();
       if (p == null) {
         throw new AssertionError("Null partition: " + pOperator);
       }
       // load operator state
       // the partitioning logic will have the opportunity to merge/split state
-      // since partitions checkpoint at different windows, processing for new or modified
-      // partitions will start from earliest checkpoint found (at least once semantics)
       Operator partitionedOperator = p.getPartitionedInstance();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
-          LOG.debug("Loading state for {}", pOperator);
-          InputStream is = ctx.getStorageAgent().getLoadStream(pOperator.id, pOperator.recoveryCheckpoint);
-          if (is != null) {
-            partitionedOperator = Node.retrieveOperatorWrapper(is).operator;
-          }
-        } catch (IOException e) {
-          LOG.warn("Failed to read partition state for " + pOperator, e);
-          return; // TODO: emit to event log
+          partitionedOperator = loadOperator(pOperator);
+        } catch (Exception e) {
+          LOG.warn("Failed to load operator", e);
         }
       }
 
+      // if partitions checkpoint at different windows, processing for new or modified
+      // partitions will start from earliest checkpoint found (at least once semantics)
       if (minCheckpoint < 0) {
         minCheckpoint = pOperator.recoveryCheckpoint;
       } else {
         minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
       }
 
-      // assume it does not matter which operator instance's port objects are referenced in mapping
+      // mapping always references port objects of operator from logical plan
       DefaultPartition<Operator> partition = new DefaultPartition<Operator>(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
@@ -573,7 +577,7 @@ public class PhysicalPlan {
         // TODO: remove as unifier is now handled in stream mapping?
         this.undeployOpers.add(mergeOper);
         this.deployOpers.add(mergeOper);
-        initCheckpoint(mergeOper, mergeOper.unifier, minCheckpoint);
+        initCheckpoint(mergeOper, mergeOper.unifier.get(), minCheckpoint);
       }
 
       // handle parallel partition
@@ -731,6 +735,23 @@ public class PhysicalPlan {
     }
   }
 
+  Operator loadOperator(PTOperator oper) {
+    try {
+      LOG.debug("Loading state for {}", oper);
+      InputStream is = ctx.getStorageAgent().getLoadStream(oper.id, oper.recoveryCheckpoint);
+      if (is == null) {
+        throw new AssertionError(String.format("Cannot read state for %s %s", oper.id, oper.recoveryCheckpoint));
+      }
+      try {
+        return Node.retrieveOperatorWrapper(is).operator;
+      } finally {
+        is.close();
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read partition state for " + oper, e);
+    }
+  }
+
   /**
    * Initialize the activation checkpoint for the given operator.
    * Recursively traverses inputs until an existing checkpoint or root operator is found.
@@ -751,9 +772,9 @@ public class PhysicalPlan {
       if (activationWindowId > 0) {
         Operator oo = oper.logicalNode.getOperator();
         if (oper.unifier != null) {
-          oo = oper.unifier;
-        } else if (oper.partition != null) {
-          oo = oper.partition.getPartitionedInstance();
+          oo = oper.unifier.get();
+        } else if (oper.getPartition() != null) {
+          oo = oper.getPartition().getPartitionedInstance();
         }
         initCheckpoint(oper, oo, activationWindowId);
       }
@@ -870,7 +891,9 @@ public class PhysicalPlan {
     oper.logicalNode = mapping.logicalOperator;
     oper.inputs = new ArrayList<PTInput>();
     oper.outputs = new ArrayList<PTOutput>();
-    oper.partition = partition;
+    if (partition != null) {
+      oper.setPartition(partition);
+    }
 
     // output port objects
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
@@ -1223,15 +1246,15 @@ public class PhysicalPlan {
 
   public void setProperties(PTOperator oper, Map<String, String> properties)
   {
-    if (oper.partition != null) {
-      if (oper.partition.getPartitionedInstance() == oper.getOperatorMeta().getOperator()) {
+    if (oper.getPartition() != null) {
+      if (oper.getPartition().getPartitionedInstance() == oper.getOperatorMeta().getOperator()) {
         // clone on write as default partitioning won't create copy for each partition
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try {
           Node.storeOperator(bos, oper.getOperatorMeta().getOperator());
           Operator clonedOper = Node.retrieveOperator(new ByteArrayInputStream(bos.toByteArray()));
           LogicalPlanConfiguration.setOperatorProperties(clonedOper, properties);
-          oper.partition = new DefaultPartition<Operator>(clonedOper, oper.partition.getPartitionKeys(), oper.loadIndicator, oper.stats);
+          oper.setPartition(new DefaultPartition<Operator>(clonedOper, oper.getPartition().getPartitionKeys(), oper.loadIndicator, oper.stats));
         } catch (Exception e) {
           LOG.error("Failed to set operator properties", e);
         }
