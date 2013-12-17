@@ -131,9 +131,9 @@ public class StramAppLauncher {
     init();
   }
 
-    public StramAppLauncher(FileSystem fs, Path path) throws Exception {
-      this(fs, path, null);
-    }
+  public StramAppLauncher(FileSystem fs, Path path) throws Exception {
+    this(fs, path, null);
+  }
 
   public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception {
     File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
@@ -144,7 +144,7 @@ public class StramAppLauncher {
     this.conf = conf;
     init();
   }
-
+  
   public static class DependencyException extends RuntimeException
   {
     private static final long serialVersionUID = 20131204L;

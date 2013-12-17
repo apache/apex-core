@@ -11,6 +11,9 @@ import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import java.util.Map;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +88,7 @@ public class StramAgent extends FSAgent
     return webServicesInfoMap.get(appid);
   }
 
-  private static StramWebServicesInfo getWebServicesInfo(String appid)
+  private static synchronized StramWebServicesInfo getWebServicesInfo(String appid)
   {
     StramWebServicesInfo info = getCachedSebServicesInfo(appid);
     if (info == null) {
@@ -132,9 +135,27 @@ public class StramAgent extends FSAgent
 
   private static StramWebServicesInfo retrieveWebServicesInfo(String appId)
   {
+    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
+    // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
+    if (UserGroupInformation.isSecurityEnabled()) {
+      StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
+      try {
+        StramClientUtils.ClientRMHelper clientRM = new StramClientUtils.ClientRMHelper(yarnClient);
+        ApplicationReport report = clientRM.getApplicationReport(appId);
+        if (report != null) {
+          url = "http://" + report.getOriginalTrackingUrl() + WebServices.PATH;
+        } else {
+          LOG.warn("No matching application found for {} in yarn", appId);
+          return null;
+        }
+      } catch (Exception ex) {
+        LOG.warn("Cannot get the tracking url for {} from yarn", appId);
+        LOG.warn("Caught exception", ex);
+        return null;
+      }
+    }
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
-      String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
       JSONObject response = new JSONObject(webServicesClient.process(url,
                                                                      String.class,
                                                                      new WebServicesClient.GetWebServicesHandler<String>()));

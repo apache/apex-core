@@ -552,6 +552,7 @@ public class StramAppMaster extends CompositeService
     try {
       org.mortbay.log.Log.setLog(null);
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).start(new StramWebApp(this.dnmgr));
+      //WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).withHttpSpnegoPrincipalKey("stram.spnego.principal").withHttpSpnegoKeytabKey("stram.spnego.keytab").start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);

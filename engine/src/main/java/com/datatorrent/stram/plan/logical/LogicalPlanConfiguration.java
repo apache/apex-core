@@ -18,6 +18,7 @@ import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import org.apache.http.client.params.AuthPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.beanutils.BeanMap;
@@ -97,7 +98,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private enum StramElement {
     APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"),STREAM("stream"), PORT("port"), INPUT_PORT("inputport"),OUTPUT_PORT("outputport"),
-    ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path");
+    ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path"), AUTHENTICATION("authentication");
     private String value;
 
     StramElement(String value) {
@@ -296,7 +297,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return (childType == StramElement.APPLICATION) || (childType == StramElement.GATEWAY) || (childType == StramElement.TEMPLATE)
                    || (childType == StramElement.OPERATOR) || (childType == StramElement.PORT) || (childType == StramElement.INPUT_PORT)
                    || (childType == StramElement.OUTPUT_PORT) || (childType == StramElement.STREAM) || (childType == StramElement.TEMPLATE)
-                   || (childType == StramElement.ATTR);
+                   || (childType == StramElement.ATTR) || (childType == StramElement.AUTHENTICATION);
     }
 
     @Override
@@ -333,9 +334,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     @Override
     public boolean isAllowedElement(StramElement childType)
     {
-      return (childType == StramElement.GATEWAY) || (childType == StramElement.OPERATOR)
+      return (childType == StramElement.GATEWAY) || (childType == StramElement.AUTHENTICATION) || (childType == StramElement.OPERATOR)
               || (childType == StramElement.PORT) || (childType == StramElement.INPUT_PORT) || (childType == StramElement.OUTPUT_PORT)
-              || (childType == StramElement.STREAM) || (childType == StramElement.ATTR) || (childType == StramElement.CLASS) || (childType == StramElement.PATH);
+              || (childType == StramElement.STREAM) || (childType == StramElement.ATTR) || (childType == StramElement.CLASS)
+              || (childType == StramElement.PATH);
     }
 
     @Override
@@ -344,6 +346,31 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return DAGContext.class;
     }
 
+  }
+
+  private static class AuthenticationConf extends Conf {
+
+    @SuppressWarnings("unused")
+    AuthenticationConf() {
+    }
+
+    @Override
+    public boolean isAllowedElement(StramElement childType)
+    {
+      return (childType == StramElement.PROP);
+    }
+
+    @Override
+    public StramElement getElement()
+    {
+      return StramElement.AUTHENTICATION;
+    }
+
+    @Override
+    public Class<? extends Context> getAttributeContextClass()
+    {
+      return null;
+    }
   }
 
   private static class GatewayConf extends Conf {
@@ -355,7 +382,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     @Override
     public boolean isAllowedElement(StramElement childType)
     {
-      return (childType == StramElement.PROP);
+      return ((childType == StramElement.PROP) || (childType == StramElement.AUTHENTICATION));
     }
 
     @Override
@@ -654,6 +681,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     elementMaps.put(StramElement.PORT, PortConf.class);
     elementMaps.put(StramElement.INPUT_PORT, PortConf.class);
     elementMaps.put(StramElement.OUTPUT_PORT, PortConf.class);
+    elementMaps.put(StramElement.AUTHENTICATION, AuthenticationConf.class);
   }
 
   private Conf getConf(StramElement element, Conf ancestorConf) {
@@ -675,7 +703,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private StramElement getAllowedParentElement(StramElement element, Conf ancestorConf) {
     StramElement parentElement = null;
-    if (element == StramElement.APPLICATION) {
+    if ((element == StramElement.APPLICATION) || (element == StramElement.AUTHENTICATION)) {
       parentElement = null;
     } else if ((element == StramElement.GATEWAY) || (element == StramElement.OPERATOR) || (element == StramElement.STREAM)) {
       parentElement = StramElement.APPLICATION;
@@ -781,7 +809,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       StramElement element = getElement(key, conf);
       if ((element == StramElement.APPLICATION) || (element == StramElement.OPERATOR) || (element == StramElement.STREAM)
               || (element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)
-              || ((element == StramElement.TEMPLATE))) {
+              || (element == StramElement.TEMPLATE)) {
         if ((index + 1) < keys.length) {
           String name = keys[index+1];
           Conf elConf = addConf(element, name, conf);
@@ -789,7 +817,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           LOG.warn("Invalid configuration key: {}", propertyName);
         }
-      } else if (element == StramElement.GATEWAY) {
+      } else if ((element == StramElement.GATEWAY) || (element == StramElement.AUTHENTICATION)) {
         Conf elConf = addConf(element, null, conf);
         parseStramPropertyTokens(keys, index+1, propertyName, propertyValue, elConf);
       } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getElement() == null))) {
@@ -801,7 +829,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         // Implement it better way to not pre-tokenize the property string and parse progressively
         parseAttribute(conf, keys, index, element, propertyValue);
       } else if (((element == StramElement.PROP) || (element == null))
-              && ((conf.getElement() == StramElement.OPERATOR) || (conf.getElement() == StramElement.STREAM) || (conf.getElement() == StramElement.TEMPLATE))) {
+              && ((conf.getElement() == StramElement.OPERATOR) || (conf.getElement() == StramElement.STREAM)
+              || (conf.getElement() == StramElement.TEMPLATE) || (conf.getElement() == StramElement.GATEWAY)
+              || (conf.getElement() == StramElement.AUTHENTICATION))) {
         // Currently opProps are only supported on operators and streams
         // Supporting current implementation where property can be directly specified under operator
         String prop;
@@ -809,19 +839,21 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           prop = getCompleteKey(keys, index+1);
         } else {
           prop = getCompleteKey(keys, index);
-          LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
+          if (conf.getAttributeContextClass() != null) {
+            LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
                         getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
+          }
         }
         if (prop != null) {
           conf.setProperty(prop, propertyValue);
         } else {
           LOG.warn("Invalid property specification, no property name specified for {}", propertyName);
         }
-      } else if ((element == null) && (conf.getElement() == StramElement.GATEWAY)) {
+      } /*else if ((element == null) && (conf.getElement() == StramElement.GATEWAY)) {
         // Treat gateway as a special case, all gateway properties are specified without any PROP keyword for its configuration parameters
         String prop = getCompleteKey(keys, index);
         conf.setProperty(prop, propertyValue);
-      } else if (element != null) {
+      }*/ else if (element != null) {
         conf.parseElement(element, keys, index, propertyValue);
       }
     }
