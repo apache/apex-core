@@ -59,7 +59,37 @@ public class StramAppLauncher {
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
-  private StringWriter buildClasspathOutput = new StringWriter();
+  private StringWriter mvnBuildClasspathOutput = new StringWriter();
+
+  private String generateClassPathFromPom(File pomFile, File cpFile) throws IOException
+  {
+    String cp;
+    LOG.info("Generating classpath via mvn from " + pomFile);
+    LOG.info("java.home: " + System.getProperty("java.home"));
+
+    String dt_home;
+    if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
+      dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
+    }
+    else {
+      dt_home = "";
+    }
+    String cmd = "mvn dependency:build-classpath" + dt_home + " -q -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
+    LOG.debug("Executing: {}", cmd);
+    Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", cmd});
+    ProcessWatcher pw = new ProcessWatcher(p);
+    InputStream output = p.getInputStream();
+    while (!pw.isFinished()) {
+      IOUtils.copy(output, mvnBuildClasspathOutput);
+    }
+    if (pw.rc != 0) {
+      // fall through
+      LOG.warn("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + mvnBuildClasspathOutput.toString());
+      return null;
+    }
+    cp = FileUtils.readFileToString(cpFile);
+    return cp;
+  }
 
   /**
    *
@@ -146,18 +176,9 @@ public class StramAppLauncher {
     init();
   }
 
-  public static class DependencyException extends RuntimeException
+  public String getMvnBuildClasspathOutput()
   {
-    private static final long serialVersionUID = 20131204L;
-    public DependencyException(String message)
-    {
-      super(message);
-    }
-  }
-
-  public String getBuildClasspathOutput()
-  {
-    return buildClasspathOutput.toString();
+    return mvnBuildClasspathOutput.toString();
   }
 
   private void init() throws Exception {
@@ -197,24 +218,26 @@ public class StramAppLauncher {
 
     java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
     while (entriesEnum.hasMoreElements()) {
-        java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-        if (!jarEntry.isDirectory()) {
-          if (jarEntry.getName().endsWith("pom.xml")) {
-            File pomDst = new File(baseDir, "pom.xml");
-            FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
-            if (pomCrc != jarEntry.getCrc()) {
-              LOG.info("CRC of " + jarEntry.getName() + " changed, invalidating cached classpath.");
-              cp = null;
-              pomCrc = jarEntry.getCrc();
-            }
-          } else if (jarEntry.getName().endsWith(".app.properties")) {
-            File targetFile = new File(baseDir, jarEntry.getName());
-            FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
-            appResourceList.add(new PropertyFileAppFactory(targetFile));
-          } else if (jarEntry.getName().endsWith(".class")) {
-            classFileNames.add(jarEntry.getName());
+      java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+      if (!jarEntry.isDirectory()) {
+        if (jarEntry.getName().endsWith("pom.xml")) {
+          File pomDst = new File(baseDir, "pom.xml");
+          FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
+          if (pomCrc != jarEntry.getCrc()) {
+            LOG.info("CRC of " + jarEntry.getName() + " changed, invalidating cached classpath.");
+            cp = null;
+            pomCrc = jarEntry.getCrc();
           }
         }
+        else if (jarEntry.getName().endsWith(".app.properties")) {
+          File targetFile = new File(baseDir, jarEntry.getName());
+          FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
+          appResourceList.add(new PropertyFileAppFactory(targetFile));
+        }
+        else if (jarEntry.getName().endsWith(".class")) {
+          classFileNames.add(jarEntry.getName());
+        }
+      }
     }
     jar.close();
 
@@ -222,44 +245,28 @@ public class StramAppLauncher {
     if (pomFile.exists()) {
       if (cp == null) {
         // try to generate dependency classpath
-        LOG.info("Generating classpath via mvn from " + pomFile);
-        LOG.info("java.home: " + System.getProperty("java.home"));
-
-        String dt_home;
-        if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
-          dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
-        }
-        else {
-          dt_home = "";
-        }
-        String cmd = "mvn dependency:build-classpath" + dt_home + " -q -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile + " | head -1; test ${PIPESTATUS[0]} -eq 0";
-        LOG.debug("Executing: {}", cmd);
-        Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", cmd});
-        ProcessWatcher pw = new ProcessWatcher(p);
-        InputStream output = p.getInputStream();
-        while(!pw.isFinished()) {
-          IOUtils.copy(output, buildClasspathOutput);
-        }
-        if (pw.rc != 0) {
-          throw new DependencyException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + buildClasspathOutput.toString());
-        }
-        cp = FileUtils.readFileToString(cpFile);
+        cp = generateClassPathFromPom(pomFile, cpFile);
       }
-      DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
-      dos.writeLong(pomCrc);
-      dos.close();
-      FileUtils.writeStringToFile(cpFile, cp, false);
+      if (cp != null) {
+        DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
+        dos.writeLong(pomCrc);
+        dos.close();
+        FileUtils.writeStringToFile(cpFile, cp, false);
+      }
     }
 
     LinkedHashSet<URL> clUrls = new LinkedHashSet<URL>();
 
-//    // dependencies from parent loader
-//    ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
-//    if (baseCl instanceof URLClassLoader) {
-//      URL[] baseUrls = ((URLClassLoader)baseCl).getURLs();
-//      // launch class path takes precedence - add first
-//      clUrls.addAll(Arrays.asList(baseUrls));
-//    }
+    // dependencies from parent loader, if classpath can't be found from pom
+    if (cp == null) {
+      ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
+      if (baseCl instanceof URLClassLoader) {
+        URL[] baseUrls = ((URLClassLoader)baseCl).getURLs();
+        // launch class path takes precedence - add first
+        clUrls.addAll(Arrays.asList(baseUrls));
+      }
+    }
+
     URL mainJarUrl = new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/");
     URLConnection urlConnection = mainJarUrl.openConnection();
     if (urlConnection instanceof JarURLConnection) {

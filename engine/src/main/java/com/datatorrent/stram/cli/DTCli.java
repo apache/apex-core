@@ -316,7 +316,7 @@ public class DTCli
     }
     if (appLauncher != null) {
       if (verboseLevel > 0) {
-        System.err.print(appLauncher.getBuildClasspathOutput());
+        System.err.print(appLauncher.getMvnBuildClasspathOutput());
       }
       return appLauncher;
     }
