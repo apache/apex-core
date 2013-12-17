@@ -134,7 +134,7 @@ public class DTCli
   private final ObjectMapper mapper = new ObjectMapper();
   private String pagerCommand;
   private Process pagerProcess;
-  boolean verbose = false;
+  private int verboseLevel = 0;
   private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
@@ -315,7 +315,7 @@ public class DTCli
       appLauncher = new StramAppLauncher(fs, path, config);
     }
     if (appLauncher != null) {
-      if (verbose) {
+      if (verboseLevel > 0) {
         System.err.print(appLauncher.getBuildClasspathOutput());
       }
       return appLauncher;
@@ -796,7 +796,10 @@ public class DTCli
     consolePresent = (System.console() != null);
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
-    options.addOption("v", false, "Verbose mode");
+    options.addOption("v", false, "Verbose mode level 1");
+    options.addOption("vv", false, "Verbose mode level 2");
+    options.addOption("vvv", false, "Verbose mode level 3");
+    options.addOption("vvvv", false, "Verbose mode level 4");
     options.addOption("r", false, "JSON Raw mode");
     options.addOption("p", true, "JSONP padding function");
     options.addOption("h", false, "Print this help");
@@ -804,7 +807,16 @@ public class DTCli
     try {
       CommandLine cmd = parser.parse(options, args);
       if (cmd.hasOption("v")) {
-        verbose = true;
+        verboseLevel = 1;
+      }
+      if (cmd.hasOption("vv")) {
+        verboseLevel = 2;
+      }
+      if (cmd.hasOption("vvv")) {
+        verboseLevel = 3;
+      }
+      if (cmd.hasOption("vvvv")) {
+        verboseLevel = 4;
       }
       if (cmd.hasOption("r")) {
         raw = true;
@@ -827,16 +839,31 @@ public class DTCli
       System.exit(1);
     }
 
-    if (!verbose) {
-      for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
-                                                                           org.apache.log4j.Logger.getLogger(DTCli.class)}) {
-        @SuppressWarnings("unchecked")
-        Enumeration<Appender> allAppenders = logger.getAllAppenders();
-        while (allAppenders.hasMoreElements()) {
-          Appender appender = allAppenders.nextElement();
-          if (appender instanceof ConsoleAppender) {
-            ((ConsoleAppender)appender).setThreshold(Level.WARN);
-          }
+    Level logLevel;
+    if (verboseLevel == 0) {
+      logLevel = Level.OFF;
+    }
+    else if (verboseLevel == 1) {
+      logLevel = Level.ERROR;
+    }
+    else if (verboseLevel == 2) {
+      logLevel = Level.WARN;
+    }
+    else if (verboseLevel == 3) {
+      logLevel = Level.INFO;
+    }
+    else {
+      logLevel = Level.DEBUG;
+    }
+
+    for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
+                                                                         org.apache.log4j.Logger.getLogger(DTCli.class)}) {
+      @SuppressWarnings("unchecked")
+      Enumeration<Appender> allAppenders = logger.getAllAppenders();
+      while (allAppenders.hasMoreElements()) {
+        Appender appender = allAppenders.nextElement();
+        if (appender instanceof ConsoleAppender) {
+          ((ConsoleAppender)appender).setThreshold(logLevel);
         }
       }
     }

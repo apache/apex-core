@@ -6,8 +6,6 @@ package com.datatorrent.stram.client;
 
 import java.io.*;
 import java.util.Map;
-import org.apache.commons.io.IOUtils;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +50,10 @@ public class CLIProxy
         BufferedReader br = new BufferedReader(isr);
         String line;
         while ((line = br.readLine()) != null) {
-          content.append(line);
+          if (!line.contains(" DEBUG ")) {
+            content.append(line);
+            content.append("\n");
+          }
         }
       }
       catch (IOException ex) {
@@ -92,7 +93,7 @@ public class CLIProxy
   private static JSONObject issueCommand(String command) throws Exception
   {
     String shellCommand = "dtcli -r -e '" + command + "'";
-    Process p = Runtime.getRuntime().exec(new String[] {"sh", "-c", shellCommand});
+    Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", shellCommand});
     StreamGobbler errorGobbler = new StreamGobbler(p.getErrorStream());
     StreamGobbler outputGobbler = new StreamGobbler(p.getInputStream());
     errorGobbler.start();

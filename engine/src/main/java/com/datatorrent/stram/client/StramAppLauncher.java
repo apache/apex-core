@@ -232,9 +232,9 @@ public class StramAppLauncher {
         else {
           dt_home = "";
         }
-        String cmd = "mvn dependency:build-classpath" + dt_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
-
-        Process p = Runtime.getRuntime().exec(cmd);
+        String cmd = "mvn dependency:build-classpath" + dt_home + " -q -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile + " | head -1; test ${PIPESTATUS[0]} -eq 0";
+        LOG.debug("Executing: {}", cmd);
+        Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", cmd});
         ProcessWatcher pw = new ProcessWatcher(p);
         InputStream output = p.getInputStream();
         while(!pw.isFinished()) {
