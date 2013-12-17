@@ -8,6 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.util.List;
 
 import junit.framework.Assert;
@@ -42,7 +43,8 @@ public class SerializationTest
     dag.getMeta(o2).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 3);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
-    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     ByteArrayOutputStream  bos = new ByteArrayOutputStream();
     LogicalPlan.write(dag, bos);
@@ -57,16 +59,21 @@ public class SerializationTest
     plan = (PhysicalPlan)new ObjectInputStream(bis).readObject();
 
     dag = plan.getDAG();
-    OperatorMeta o2Meta = dag.getOperatorMeta("o2");
 
+    Field f = PhysicalPlan.class.getDeclaredField("ctx");
+    f.setAccessible(true);
+    f.set(plan, ctx);
+    f.setAccessible(false);
+
+    OperatorMeta o2Meta = dag.getOperatorMeta("o2");
     List<PTOperator> o2Partitions = plan.getOperators(o2Meta);
     Assert.assertEquals(3, o2Partitions.size());
     for (PTOperator o : o2Partitions) {
-      Assert.assertNotNull("partition null " + o, o.getPartition());
-      Assert.assertEquals("partition keys " + o + " " + o.getPartition().getPartitionKeys(), 2, o.getPartition().getPartitionKeys().size());
-      Assert.assertNotNull("partition operator " + o, o.getPartition().getPartitionedInstance());
-      Assert.assertNotSame("instance per partition", o2Meta.getOperator(), o.getPartition().getPartitionedInstance());
-      LOG.debug("operator: " + o.getPartition().getPartitionedInstance() + " " + System.identityHashCode(o.getPartition().getPartitionedInstance()));
+      Assert.assertNotNull("partition null " + o, o.getPartitionKeys());
+      Assert.assertEquals("partition keys " + o + " " + o.getPartitionKeys(), 2, o.getPartitionKeys().size());
+      plan.loadOperator(o);
+      PartitioningTestOperator partitionedInstance = (PartitioningTestOperator)plan.loadOperator(o);
+      Assert.assertEquals("instance per partition", o.getPartitionKeys().values().toString(), partitionedInstance.pks);
     }
 
   }
