@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -30,7 +28,6 @@ import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -324,16 +321,13 @@ public class StramChildAgent {
     Operator operator = oper.getOperatorMeta().getOperator();
     ndi.type = (operator instanceof InputOperator && oper.getInputs().isEmpty()) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
     if (oper.getUnifier() != null) {
-      operator = oper.getUnifier();
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
-    } else if (oper.getPartition() != null) {
-      operator = oper.getPartition().getPartitionedInstance();
     }
-
+      
     long checkpointWindowId = oper.getRecoveryCheckpoint();
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 
-    if (checkpointWindowId == 0 || pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
+    if (pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
       StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
         String appPath = getInitContext().getValue(LogicalPlan.APPLICATION_PATH);
@@ -344,19 +338,11 @@ public class StramChildAgent {
         checkpointWindowId = agent.getMostRecentWindowId(oper.getId());
       }
       catch (Exception e) {
-        try {
-          OutputStream stream = agent.getSaveStream(oper.getId(), OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
-          Node.storeOperator(stream, operator);
-          stream.close();
-          checkpointWindowId = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
-        }
-        catch (IOException io) {
-          throw new RuntimeException("Failed to access checkpoint state " + operator + "(" + operator.getClass() + ")", e);
-        }
+          throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
       }
     }
 
-    LOG.debug("Operator {} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
+    LOG.debug("{} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
     ndi.checkpointWindowId = checkpointWindowId;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();

@@ -34,7 +34,6 @@ import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.datatorrent.stram.tuple.CheckpointTuple;
 import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 
@@ -71,7 +70,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected long lastSampleCpuTime;
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
-  protected long checkpointedWindowId;
+  protected long checkpointedWindowId = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
   public int applicationWindowCount;
   public int checkpointWindowCount;
   protected int controlTupleCount;

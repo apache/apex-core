@@ -130,9 +130,12 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 201305221606L;
     private Operator operator;
 
-    private void set(Operator operator)
-    {
+    public OperatorProxy(Operator operator) {
       this.operator = operator;
+    }
+
+    public Operator get() {
+      return this.operator;
     }
 
     private void writeObject(ObjectOutputStream out) throws IOException
@@ -411,8 +414,7 @@ public class LogicalPlan implements Serializable, DAG
     {
       LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
-      this.operatorProxy = new OperatorProxy();
-      this.operatorProxy.set(operator);
+      this.operatorProxy = new OperatorProxy(operator);
       this.name = name;
     }
 

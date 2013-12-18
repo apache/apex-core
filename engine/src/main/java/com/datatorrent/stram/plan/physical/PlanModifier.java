@@ -232,7 +232,7 @@ public class PlanModifier {
     if (physicalPlan != null)
     {
       for (PTOperator oper : physicalPlan.getOperators(om)) {
-        if (!physicalPlan.newOpers.contains(oper)) {
+        if (!physicalPlan.newOpers.containsKey(oper)) {
           throw new ValidationException("Properties can only be set on new operators: " + om + " " + propertyName + " " + propertyValue);
         }
       }

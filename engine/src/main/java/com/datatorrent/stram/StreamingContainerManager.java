@@ -93,7 +93,7 @@ import com.datatorrent.stram.webapp.StreamInfo;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  private long windowStartMillis = System.currentTimeMillis();
+  private final long windowStartMillis;
   private final int heartbeatTimeoutMillis;
   private int maxWindowsBehindForStats = 100;
   private int recordStatsInterval = 0;
@@ -152,10 +152,11 @@ public class StreamingContainerManager implements PlanContext
       attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
     }
     /* try to align to it to please eyes. */
-    windowStartMillis -= (windowStartMillis % 1000);
+    long tms = System.currentTimeMillis();
+    windowStartMillis = tms - (tms % 1000);
 
     if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
-      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + System.currentTimeMillis());
+      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + tms);
     }
 
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
@@ -974,11 +975,11 @@ public class StreamingContainerManager implements PlanContext
     // checkpoint frozen during deployment
     if (operator.getState() != PTOperator.State.PENDING_DEPLOY) {
       // remove previous checkpoints
-      long c1 = 0;
+      long c1 = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
       synchronized (operator.checkpointWindows) {
         if (!operator.checkpointWindows.isEmpty()) {
           if ((c1 = operator.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
-            long c2 = 0;
+            long c2 = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
             while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
               operator.checkpointWindows.removeFirst();
               //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
@@ -987,7 +988,7 @@ public class StreamingContainerManager implements PlanContext
             }
           }
           else {
-            c1 = 0;
+            c1 = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
           }
         }
       }
@@ -1224,6 +1225,11 @@ public class StreamingContainerManager implements PlanContext
     return infoList;
   }
 
+  public static long toWsWindowId(long windowId) {
+    // until console handles -1
+    return windowId < 0 ? 0 : windowId;
+  }
+
   private OperatorInfo fillOperatorInfo(PTOperator operator)
   {
     OperatorInfo ni = new OperatorInfo();
@@ -1246,8 +1252,8 @@ public class StreamingContainerManager implements PlanContext
       ni.cpuPercentageMA = os.cpuPercentageMA.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = operator.failureCount;
-      ni.recoveryWindowId = operator.getRecoveryCheckpoint();
-      ni.currentWindowId = os.currentWindowId;
+      ni.recoveryWindowId = toWsWindowId(operator.getRecoveryCheckpoint());
+      ni.currentWindowId = toWsWindowId(os.currentWindowId);
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
@@ -1443,7 +1449,6 @@ public class StreamingContainerManager implements PlanContext
       request.setPropertyValue = propertyValue;
       request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
       sca.addOperatorRequest(request);
-      plan.setProperties(o, properties);
       // re-apply to checkpointed state on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
@@ -1456,6 +1461,12 @@ public class StreamingContainerManager implements PlanContext
     recordEventAsync(ev);
   }
 
+  /**
+   * Set property on a physical operator. The property change is applied asynchronously on the deployed operator.
+   * @param operatorId
+   * @param propertyName
+   * @param propertyValue
+   */
   public void setPhysicalOperatorProperty(String operatorId, String propertyName, String propertyValue)
   {
     String operatorName = null;
@@ -1464,7 +1475,6 @@ public class StreamingContainerManager implements PlanContext
     if (o == null)
       return;
 
-    plan.setProperties(o, Collections.singletonMap(propertyName, propertyValue));
     operatorName = o.getName();
     StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
     StramToNodeRequest request = new StramToNodeRequest();
@@ -1489,18 +1499,14 @@ public class StreamingContainerManager implements PlanContext
   public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
     int id = Integer.valueOf(operatorId);
     PTOperator o = this.plan.getAllOperators().get(id);
-    if (o.getPartition() != null) {
-      return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
-    } else {
-      Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
-      m = Maps.newHashMap(m); // clone as map returned is linked to object
-      for (StramToNodeRequest existingRequest : o.deployRequests) {
-        if (id == existingRequest.operatorId){
-          m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
-        }
+    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
+    m = Maps.newHashMap(m); // clone as map returned is linked to object
+    for (StramToNodeRequest existingRequest : o.deployRequests) {
+      if (id == existingRequest.operatorId){
+        m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
       }
-      return m;
     }
+    return m;
   }
 
   public AttributeMap getApplicationAttributes()

@@ -54,6 +54,7 @@ public class PhysicalPlanTest {
     final public static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     public Integer[] partitionKeys = {0, 1, 2};
+    public String pks;
 
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
@@ -74,8 +75,10 @@ public class PhysicalPlanTest {
       List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(this.partitionKeys.length);
       for (int i = 0; i < partitionKeys.length; i++) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
-        p.getPartitionKeys().put(this.inport1, new PartitionKeys(2, Sets.newHashSet(partitionKeys[i])));
-        p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(2, Sets.newHashSet(partitionKeys[i])));
+        PartitionKeys pks = new PartitionKeys(2, Sets.newHashSet(partitionKeys[i]));
+        p.getPartitionKeys().put(this.inport1, pks);
+        p.getPartitionKeys().put(this.inportWithCodec, pks);
+        p.getPartitionedInstance().pks = p.getPartitionKeys().values().toString();
         newPartitions.add(p);
       }
       return newPartitions;
@@ -141,14 +144,10 @@ public class PhysicalPlanTest {
     List<Integer> assignedPartitionKeys = Lists.newArrayList();
 
     for (int i = 0; i < n2Instances.size(); i++) {
-      PTOperator partitionInstance = n2Instances.get(i);
-      Partition<?> p = partitionInstance.getPartition();
-      Assert.assertNotNull("partition null: " + partitionInstance, p);
-      Map<InputPort<?>, PartitionKeys> pkeys = p.getPartitionKeys();
-      Assert.assertNotNull("partition keys null: " + partitionInstance, pkeys);
+      PTOperator n2Partition = n2Instances.get(i);
+      Assert.assertNotNull("partition keys null: " + n2Partition, n2Partition.getPartitionKeys());
+      Map<InputPort<?>, PartitionKeys> pkeys = n2Partition.getPartitionKeys();
       Assert.assertEquals("partition keys size: " + pkeys, 1, pkeys.size()); // one port partitioned
-      // default partitioning does not clone the operator
-      Assert.assertEquals("partition operator: " + pkeys, node2, partitionInstance.getPartition().getPartitionedInstance());
       InputPort<?> expectedPort = node2.inport2;
       Assert.assertEquals("partition port: " + pkeys, expectedPort, pkeys.keySet().iterator().next());
 
@@ -188,6 +187,8 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+    Assert.assertEquals("number of operators", 5, plan.getAllOperators().size());
+    Assert.assertEquals("number of save requests", 5, ctx.backupRequests);
 
     List<PTOperator> n2Instances = plan.getOperators(node2Meta);
     Assert.assertEquals("partition instances " + n2Instances, 2, n2Instances.size());
@@ -215,6 +216,7 @@ public class PhysicalPlanTest {
     plan.onStatusUpdate(po);
     Assert.assertEquals("load exceeds max", 1, ctx.events.size());
 
+    ctx.backupRequests = 0;
     ctx.events.remove(0).run();
 
     Assert.assertEquals("new partitions", 3, plan.getOperators(node2Meta).size());
@@ -233,7 +235,7 @@ public class PhysicalPlanTest {
     expDeploy.addAll(plan.getMergeOperators(node2Meta));
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
-    Assert.assertEquals("Count of storage requests", 0, ctx.backupRequests);
+    Assert.assertEquals("Count of storage requests", 2, ctx.backupRequests);
   }
 
   /**
@@ -277,7 +279,8 @@ public class PhysicalPlanTest {
     ((PhysicalPlan.PartitionLoadWatch)l).evalIntervalMillis = -1; // no delay
     Assert.assertEquals("operators after scale up", 3, plan.getOperators(o1Meta).size());
     for (PTOperator p : plan.getOperators(o1Meta)) {
-      Assert.assertTrue(p.checkpointWindows.isEmpty());
+      Assert.assertEquals("activation window id " + p, -1, p.recoveryCheckpoint);
+      Assert.assertEquals("checkpoints " + p + " " + p.checkpointWindows, Lists.newArrayList(), p.checkpointWindows);
       p.stats.tuplesProcessedPSMA = -1;
       plan.onStatusUpdate(p);
     }
@@ -326,6 +329,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+    Assert.assertEquals("Count of storage requests", plan.getAllOperators().size(), ctx.backupRequests);
 
     List<PTOperator> n2Instances = plan.getOperators(node2Meta);
     Assert.assertEquals("partition instances " + n2Instances, 8, n2Instances.size());
@@ -363,8 +367,8 @@ public class PhysicalPlanTest {
     plan.onStatusUpdate(po);
     Assert.assertEquals("load below min", 1, ctx.events.size());
 
-    Runnable r = ctx.events.remove(0);
-    r.run();
+    ctx.backupRequests = 0;
+    ctx.events.remove(0).run();
 
     // expect operators unchanged
     Assert.assertEquals("partitions unchanged", Sets.newHashSet(n2Instances), Sets.newHashSet(plan.getOperators(node2Meta)));
@@ -383,7 +387,7 @@ public class PhysicalPlanTest {
     }
 
     for (PTOperator p : plan.getOperators(node2Meta)) {
-      PartitionKeys pks = p.getPartition().getPartitionKeys().values().iterator().next();
+      PartitionKeys pks = p.getPartitionKeys().values().iterator().next();
       Assert.assertEquals("partition mask " + p, 3, pks.mask);
       Assert.assertEquals("inputs " + p, 2, p.getInputs().size());
       boolean portConnected = false;
@@ -407,7 +411,7 @@ public class PhysicalPlanTest {
     for (PTOperator oper : ctx.deploy) {
       Assert.assertNotNull("container " + oper , oper.getContainer());
     }
-    Assert.assertEquals("Count of storage requests", 0, ctx.backupRequests);
+    Assert.assertEquals("Count of storage requests", 8, ctx.backupRequests);
   }
 
   /**

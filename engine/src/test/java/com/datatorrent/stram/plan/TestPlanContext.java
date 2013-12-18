@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram.plan;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -11,15 +13,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -31,6 +33,7 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   public Collection<PTOperator> deploy;
   public Set<PTContainer> releaseContainers;
   public List<Integer> checkpointDeletes = Lists.newArrayList();
+  public Map<Integer, Map<Long, byte[]>> checkpoints = Maps.newHashMap();
   public int backupRequests;
 
   @Override
@@ -51,33 +54,37 @@ public class TestPlanContext implements PlanContext, StorageAgent {
   }
 
   @Override
-  public OutputStream getSaveStream(int operatorId, long windowId) throws IOException
+  public OutputStream getSaveStream(final int operatorId, final long windowId) throws IOException
   {
-    return new OutputStream()
+    return new ByteArrayOutputStream()
     {
-      @Override
-      public void write(int b) throws IOException
-      {
-      }
-
       @Override
       public void close() throws IOException
       {
         super.close();
         backupRequests++;
+        Map<Long, byte[]> m = checkpoints.get(operatorId);
+        if (m == null) {
+          m = Maps.newHashMap();
+          checkpoints.put(operatorId, m);
+        }
+        m.put(windowId, this.toByteArray());
       }
-
     };
   }
 
   @Override
   public InputStream getLoadStream(int operatorId, long windowId) throws IOException {
-    throw new UnsupportedOperationException();
+    Map<Long, byte[]> m = checkpoints.get(operatorId);
+    if (m == null || !m.containsKey(windowId)) {
+      throw new IOException("checkpoint not found operatorId=" + operatorId + " windowId=" + windowId);
+    }
+    return new ByteArrayInputStream(m.get(windowId));
   }
 
   @Override
   public void delete(int operatorId, long windowId) throws IOException {
-    throw new UnsupportedOperationException();
+    checkpointDeletes.add(operatorId);
   }
 
   @Override

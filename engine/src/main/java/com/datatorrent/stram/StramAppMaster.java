@@ -69,7 +69,6 @@ import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
-import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
@@ -78,7 +77,7 @@ import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
 
 /**
- * 
+ *
  * Streaming Application Master
  * <p>
  * The engine of the streaming platform. Runs as a YARN application master<br>
@@ -92,7 +91,7 @@ import com.datatorrent.stram.webapp.StramWebApp;
  * cli command shutdown<br>
  * Currently stram high availability (integration with zookeeper) is not available<br>
  * <br>
- * 
+ *
  * @since 0.3.2
  */
 public class StramAppMaster extends CompositeService
@@ -180,13 +179,13 @@ public class StramAppMaster extends CompositeService
           min = entry.getValue().stats.currentWindowId;
         }
       }
-      return min == Long.MAX_VALUE ? 0 : min;
+      return StreamingContainerManager.toWsWindowId(min == Long.MAX_VALUE ? 0 : min);
     }
 
     @Override
     public long getRecoveryWindowId()
     {
-      return dnmgr.getCommittedWindowId();
+      return StreamingContainerManager.toWsWindowId(dnmgr.getCommittedWindowId());
     }
 
     @Override
@@ -465,7 +464,7 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Parse command line options
-   * 
+   *
    * @param args
    *          Command line args
    * @return Whether init successful and run should be invoked
@@ -574,7 +573,7 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Helper function to print usage
-   * 
+   *
    * @param opts
    *          Parsed command line options
    */
@@ -604,7 +603,7 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Main run function for the application master
-   * 
+   *
    * @throws YarnRemoteException
    */
   private boolean status = true;
@@ -635,7 +634,7 @@ public class StramAppMaster extends CompositeService
       LOG.info("Container memory specified above max threshold of cluster. Using max value." + ", specified=" + containerMemory + ", max=" + maxMem);
       containerMemory = maxMem;
     }
-    
+
     // this is used for fall back
     Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = new HashMap<StramChildAgent.ContainerStartRequest, Integer>();
 
@@ -743,7 +742,7 @@ public class StramAppMaster extends CompositeService
             break;
           }
         }
-        
+
         if(alreadyAllocated){
           releasedContainers.add(allocatedContainer.getId());
           continue;
@@ -871,7 +870,7 @@ public class StramAppMaster extends CompositeService
 
   /**
    * Ask RM to allocate given no. of containers to this Application Master
-   * 
+   *
    * @param requestedContainers
    *          Containers to ask for from RM
    * @return Response from RM to AM with allocated containers
