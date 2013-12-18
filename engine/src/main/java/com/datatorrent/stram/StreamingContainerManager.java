@@ -1292,6 +1292,7 @@ public class StreamingContainerManager implements PlanContext
           si.logicalName = output.logicalStream.getName();
           si.source.operatorId = String.valueOf(operator.getId());
           si.source.portName = output.portName;
+          si.locality = output.logicalStream.getLocality();
           for (PTInput input : output.sinks) {
             StreamInfo.Port p = new StreamInfo.Port();
             p.operatorId = String.valueOf(input.target.getId());
