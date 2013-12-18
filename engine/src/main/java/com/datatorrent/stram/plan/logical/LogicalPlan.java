@@ -53,7 +53,6 @@ import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 import com.datatorrent.stram.engine.Node;
-import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
 /**
  * DAG contains the logical declarations of operators and streams.

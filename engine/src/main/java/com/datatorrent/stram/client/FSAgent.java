@@ -7,6 +7,7 @@ package com.datatorrent.stram.client;
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -62,7 +63,13 @@ public class FSAgent
     DataInputStream is = new DataInputStream(fs.open(path));
     byte[] bytes = new byte[is.available()];
     is.readFully(bytes);
+    is.close();
     return bytes;
+  }
+
+  public InputStreamReader openInputStreamReader(Path path) throws IOException
+  {
+    return new InputStreamReader(fs.open(path));
   }
 
   public List<String> listFiles(String dir) throws IOException

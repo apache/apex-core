@@ -5,7 +5,9 @@
 package com.datatorrent.stram.client;
 
 import java.io.*;
+import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang.StringUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +70,7 @@ public class CLIProxy
     return issueCommand("show-logical-plan \"" + jarUri + "\" \"" + appName + "\"");
   }
 
-  public static JSONObject launchApp(String jarUri, String appName, Map<String, String> properties) throws Exception
+  public static JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars) throws Exception
   {
     StringBuilder sb = new StringBuilder("launch ");
     for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -77,6 +79,10 @@ public class CLIProxy
       sb.append("=\"");
       sb.append(entry.getValue());
       sb.append("\" ");
+    }
+    if (!libjars.isEmpty()) {
+      sb.append("-libjars ");
+      sb.append(StringUtils.join(libjars, ','));
     }
     sb.append(jarUri);
     sb.append(" \"");
