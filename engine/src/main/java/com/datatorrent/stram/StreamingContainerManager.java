@@ -1225,6 +1225,11 @@ public class StreamingContainerManager implements PlanContext
     return infoList;
   }
 
+  public static long toWsWindowId(long windowId) {
+    // until console handles -1
+    return windowId < 0 ? 0 : windowId;
+  }
+
   private OperatorInfo fillOperatorInfo(PTOperator operator)
   {
     OperatorInfo ni = new OperatorInfo();
@@ -1247,8 +1252,8 @@ public class StreamingContainerManager implements PlanContext
       ni.cpuPercentageMA = os.cpuPercentageMA.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = operator.failureCount;
-      ni.recoveryWindowId = operator.getRecoveryCheckpoint();
-      ni.currentWindowId = os.currentWindowId;
+      ni.recoveryWindowId = toWsWindowId(operator.getRecoveryCheckpoint());
+      ni.currentWindowId = toWsWindowId(os.currentWindowId);
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
