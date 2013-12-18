@@ -286,6 +286,13 @@ public class StramAppLauncher {
       }
     }
 
+    String libjars = conf.get(LIBJARS_CONF_KEY_NAME);
+    if (libjars != null) {
+      for (String libjar : libjars.split(",")) {
+        clUrls.add(new URL("file:" + libjar));
+      }
+    }
+
     for (URL baseURL : clUrls) {
       LOG.debug("Dependency: {}", baseURL);
     }
