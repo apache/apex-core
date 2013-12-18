@@ -34,6 +34,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import java.net.*;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -325,7 +326,8 @@ public class StramAppLauncher
             File localJarFile = new File(dependencyJarsDir, path.getName());
             fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
             clUrls.add(new URL("file:" + localJarFile.getAbsolutePath()));
-          } else {
+          }
+          else {
             throw new NotImplementedException("Jar file needs to be from HDFS also in order for the dependency jars to be in HDFS");
           }
         }

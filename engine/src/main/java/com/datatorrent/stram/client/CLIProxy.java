@@ -65,9 +65,19 @@ public class CLIProxy
 
   }
 
-  public static JSONObject getLogicalPlan(String jarUri, String appName) throws Exception
+  public static JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars) throws Exception
   {
-    return issueCommand("show-logical-plan \"" + jarUri + "\" \"" + appName + "\"");
+    StringBuilder sb = new StringBuilder("show-logical-plan ");
+    if (!libjars.isEmpty()) {
+      sb.append("-libjars ");
+      sb.append(StringUtils.join(libjars, ','));
+      sb.append(" ");
+    }
+    sb.append(jarUri);
+    sb.append(" \"");
+    sb.append(appName);
+    sb.append("\"");
+    return issueCommand(sb.toString());
   }
 
   public static JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars) throws Exception
@@ -83,6 +93,7 @@ public class CLIProxy
     if (!libjars.isEmpty()) {
       sb.append("-libjars ");
       sb.append(StringUtils.join(libjars, ','));
+      sb.append(" ");
     }
     sb.append(jarUri);
     sb.append(" \"");

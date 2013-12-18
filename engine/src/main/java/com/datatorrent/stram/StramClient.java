@@ -71,6 +71,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import java.net.InetSocketAddress;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 
@@ -299,8 +300,14 @@ public class StramClient
       Path src = new Path(localFile);
       String filename = src.getName();
       Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + filename);
-      LOG.info("Copy {} from local filesystem to {}", localFile, dst);
-      fs.copyFromLocalFile(false, true, src, dst);
+      if (localFile.startsWith("hdfs:")) {
+        LOG.info("Copy {} from HDFS to {}", localFile, dst);
+        FileUtil.copy(fs, src, fs, dst, false, true, conf);
+      }
+      else {
+        LOG.info("Copy {} from local filesystem to {}", localFile, dst);
+        fs.copyFromLocalFile(false, true, src, dst);
+      }
       if (csv.length() > 0) {
         csv.append(",");
       }
@@ -425,8 +432,8 @@ public class StramClient
       }
 
       InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_PORT);
+                                                       YarnConfiguration.DEFAULT_RM_ADDRESS,
+                                                       YarnConfiguration.DEFAULT_RM_PORT);
 
       // Get the ResourceManager delegation rmToken
       GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);

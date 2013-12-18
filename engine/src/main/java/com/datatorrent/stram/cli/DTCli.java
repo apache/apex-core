@@ -730,6 +730,10 @@ public class DTCli
   private static String[] expandFileNames(String fileName) throws IOException
   {
     // TODO: need to work with other users
+     if (fileName.matches("^[a-zA-Z]+:.*")) {
+      // it's a URL
+      return new String[]{fileName};
+    }
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
