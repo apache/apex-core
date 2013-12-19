@@ -208,6 +208,5 @@ public class StramAgent extends FSAgent
     String secToken = info.secToken;
     return false;
   }
-}
 
 }
