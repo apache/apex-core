@@ -28,7 +28,11 @@ public class StramDelegationTokenManager extends AbstractDelegationTokenSecretMa
 
   public byte[] addIdentifier(StramDelegationTokenIdentifier identifier) throws InvalidToken
   {
-    byte[] password = retrievePassword(identifier);
+    byte[] password = null;
+    try {
+      password = retrievePassword(identifier);
+    } catch (InvalidToken iv) {
+    }
     if (password == null) {
       password = createPassword(identifier);
     }
