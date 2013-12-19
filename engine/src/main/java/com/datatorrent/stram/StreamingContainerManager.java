@@ -103,8 +103,6 @@ public class StreamingContainerManager implements PlanContext
   private FSEventRecorder eventRecorder;
   private final String appPath;
   private final String checkpointFsPath;
-  private String statsFsPath = null;
-  private String eventsFsPath = null;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
@@ -118,7 +116,6 @@ public class StreamingContainerManager implements PlanContext
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
-
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -148,9 +145,6 @@ public class StreamingContainerManager implements PlanContext
   {
     AttributeMap attributes = dag.getAttributes();
 
-    if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
-      attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
-    }
     /* try to align to it to please eyes. */
     long tms = System.currentTimeMillis();
     windowStartMillis = tms - (tms % 1000);
@@ -161,8 +155,10 @@ public class StreamingContainerManager implements PlanContext
 
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
-    this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
+    if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
+      attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
+    }
     if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
       attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
     }
@@ -182,14 +178,13 @@ public class StreamingContainerManager implements PlanContext
       setupWsClient(attributes);
       if (this.recordStatsInterval > 0) {
         statsRecorder = new FSStatsRecorder();
-        statsRecorder.setBasePath(this.statsFsPath);
+        statsRecorder.setBasePath(this.appPath + "/" + LogicalPlan.SUBDIR_STATS);
         statsRecorder.setWebSocketClient(wsClient);
         statsRecorder.setup();
       }
       if (enableEventRecording) {
-        this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
         eventRecorder = new FSEventRecorder(attributes.get(LogicalPlan.APPLICATION_ID));
-        eventRecorder.setBasePath(this.eventsFsPath);
+        eventRecorder.setBasePath(this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
         eventRecorder.setWebSocketClient(wsClient);
         eventRecorder.setup();
       }
