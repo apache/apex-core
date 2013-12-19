@@ -103,9 +103,18 @@ public class StramWSFilter implements Filter
     String requestURI = httpReq.getRequestURI();
     LOG.info("REQ path " + requestURI);
     boolean authenticate = true;
+    String user = null;
     if(getProxyAddresses().contains(httpReq.getRemoteAddr())) {
-      if (requestURI.equals(WebServices.PATH)) {
-        String token = createClientToken(httpReq.getLocalAddr());
+      if (httpReq.getCookies() != null) {
+        for(Cookie c: httpReq.getCookies()) {
+          if(WEBAPP_PROXY_USER.equals(c.getName())){
+            user = c.getValue();
+            break;
+          }
+        }
+      }
+      if (requestURI.equals(WebServices.PATH) && (user != null)) {
+        String token = createClientToken(user, httpReq.getLocalAddr());
         LOG.info("Create token " + token);
         Cookie cookie = new Cookie(CLIENT_COOKIE, token);
         httpResp.addCookie(cookie);
@@ -121,22 +130,17 @@ public class StramWSFilter implements Filter
           break;
         }
       }
-      if ((clcookie == null) || !verifyClientToken(clcookie.getValue())) {
+      boolean valid = false;
+      if (clcookie != null) {
+        user = verifyClientToken(clcookie.getValue());
+        valid = true;
+      }
+      if (!valid) {
         httpResp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         return;
       }
     }
 
-    String user = null;
-
-    if (httpReq.getCookies() != null) {
-      for(Cookie c: httpReq.getCookies()) {
-        if(WEBAPP_PROXY_USER.equals(c.getName())){
-          user = c.getValue();
-          break;
-        }
-      }
-    }
     if(user == null) {
       LOG.warn("Could not find "+WEBAPP_PROXY_USER
               +" cookie, so user will not be set");
@@ -148,10 +152,8 @@ public class StramWSFilter implements Filter
     }
   }
 
-  private String createClientToken(String service) throws IOException
+  private String createClientToken(String username, String service) throws IOException
   {
-    UserGroupInformation ugi = UserGroupInformation.getLoginUser();
-    String username = ugi.getUserName();
     StramDelegationTokenIdentifier tokenIdentifier = new StramDelegationTokenIdentifier(new Text(username), new Text(username), new Text());
     tokenIdentifier.setSequenceNumber(sequenceNumber.getAndAdd(1));
     byte[] password = tokenManager.addIdentifier(tokenIdentifier);
@@ -159,7 +161,7 @@ public class StramWSFilter implements Filter
     return token.encodeToUrlString();
   }
 
-  private boolean verifyClientToken(String tokenstr) throws IOException
+  private String verifyClientToken(String tokenstr) throws IOException
   {
     LOG.info("Verifying token " + tokenstr);
     boolean match = false;
@@ -170,13 +172,7 @@ public class StramWSFilter implements Filter
     StramDelegationTokenIdentifier tokenIdentifier = new StramDelegationTokenIdentifier();
     DataInputStream input = new DataInputStream(new ByteArrayInputStream(identifier));
     tokenIdentifier.readFields(input);
-    try {
-      tokenManager.verifyToken(tokenIdentifier, password);
-      match = true;
-    } catch (SecretManager.InvalidToken iv) {
-      LOG.error("Invalid token ", iv);
-    }
-    LOG.info("Verified " + match);
-    return match;
+    tokenManager.verifyToken(tokenIdentifier, password);
+    return tokenIdentifier.getOwner().toString();
   }
 }
