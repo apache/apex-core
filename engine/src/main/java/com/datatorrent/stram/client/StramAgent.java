@@ -5,10 +5,12 @@
 package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.security.StramWSFilter;
 import com.datatorrent.stram.util.LRUCache;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
@@ -17,6 +19,9 @@ import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.NewCookie;
 
 /**
  * <p>Abstract StramAgent class.</p>
@@ -28,16 +33,18 @@ public class StramAgent extends FSAgent
 {
   private static class StramWebServicesInfo
   {
-    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath)
+    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath, String secToken)
     {
       this.appMasterTrackingUrl = appMasterTrackingUrl;
       this.version = version;
       this.appPath = appPath;
+      this.secToken = secToken;
     }
 
     String appMasterTrackingUrl;
     String version;
     String appPath;
+    String secToken;
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
@@ -91,7 +98,7 @@ public class StramAgent extends FSAgent
   private static synchronized StramWebServicesInfo getWebServicesInfo(String appid)
   {
     StramWebServicesInfo info = getCachedSebServicesInfo(appid);
-    if (info == null) {
+    if ((info == null) || isExpiredToken(info)) {
       info = retrieveWebServicesInfo(appid);
       if (info != null) {
         setCachedWebServicesInfo(appid, info);
@@ -110,7 +117,14 @@ public class StramAgent extends FSAgent
     Client wsClient = webServicesClient.getClient();
     wsClient.setFollowRedirects(true);
     StramWebServicesInfo info = getWebServicesInfo(appid);
-    return info == null ? null : wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
+    WebResource ws = null;
+    if (info != null) {
+      ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
+      if (info.secToken != null) {
+        ws.cookie(new Cookie(StramWSFilter.CLIENT_COOKIE, info.secToken));
+      }
+    }
+    return ws;
   }
 
   public static void invalidateStramWebResource(String appid)
@@ -136,6 +150,7 @@ public class StramAgent extends FSAgent
   private static StramWebServicesInfo retrieveWebServicesInfo(String appId)
   {
     String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
+    /*
     // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
     if (UserGroupInformation.isSecurityEnabled()) {
       StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
@@ -154,23 +169,45 @@ public class StramAgent extends FSAgent
         return null;
       }
     }
+    */
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
+      /*
       JSONObject response = new JSONObject(webServicesClient.process(url,
                                                                      String.class,
                                                                      new WebServicesClient.GetWebServicesHandler<String>()));
+      */
+      String secToken = null;
+      ClientResponse clientResponse = webServicesClient.process(url,
+                                                                ClientResponse.class,
+                                                                new WebServicesClient.GetWebServicesHandler<ClientResponse>());
+      if (UserGroupInformation.isSecurityEnabled()) {
+        for (NewCookie nc : clientResponse.getCookies()) {
+          LOG.info("Cookie " + nc.getName() + " " + nc.getValue());
+          if (nc.getName().equals(StramWSFilter.CLIENT_COOKIE)) {
+            secToken = nc.getValue();
+          }
+        }
+      }
+      JSONObject response = new JSONObject(clientResponse.getEntity(String.class));
       String version = response.getString("version");
       response = webServicesClient.process(url + "/" + version + "/stram/info",
                                            JSONObject.class,
                                            new WebServicesClient.GetWebServicesHandler<JSONObject>());
       String appMasterUrl = response.getString("appMasterTrackingUrl");
       String appPath = response.getString("appPath");
-      return new StramWebServicesInfo(appMasterUrl, version, appPath);
+      return new StramWebServicesInfo(appMasterUrl, version, appPath, secToken);
     }
     catch (Exception ex) {
       //LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
       return null;
     }
   }
+
+  private static boolean isExpiredToken(StramWebServicesInfo info) {
+    String secToken = info.secToken;
+    return false;
+  }
+}
 
 }

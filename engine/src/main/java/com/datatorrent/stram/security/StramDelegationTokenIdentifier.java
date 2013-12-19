@@ -19,7 +19,6 @@ public class StramDelegationTokenIdentifier extends AbstractDelegationTokenIdent
   public static final Text IDENTIFIER_KIND = new Text("STRAM_DELEGATION_TOKEN");
 
   public StramDelegationTokenIdentifier() {
-
   }
 
   public StramDelegationTokenIdentifier(Text owner, Text renewer, Text realUser) {

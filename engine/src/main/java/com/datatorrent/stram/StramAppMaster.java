@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.datatorrent.stram.security.StramWSFilterInitializer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -109,10 +110,6 @@ public class StramAppMaster extends CompositeService
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
-  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
@@ -523,7 +520,7 @@ public class StramAppMaster extends CompositeService
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // TODO :- Need to perform token renewal
-      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
+      delegationTokenManager = new StramDelegationTokenManager();
     }
     this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     addService(nmClient);
@@ -551,8 +548,12 @@ public class StramAppMaster extends CompositeService
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
-      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).start(new StramWebApp(this.dnmgr));
-      //WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).withHttpSpnegoPrincipalKey("stram.spnego.principal").withHttpSpnegoKeytabKey("stram.spnego.keytab").start(new StramWebApp(this.dnmgr));
+      Configuration config = getConfig();
+      if (UserGroupInformation.isSecurityEnabled()) {
+        config = new Configuration(config);
+        config.set("hadoop.http.filter.initializers", StramWSFilterInitializer.class.getCanonicalName());
+      }
+      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);

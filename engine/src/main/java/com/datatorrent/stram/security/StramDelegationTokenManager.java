@@ -17,13 +17,22 @@ import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecret
 public class StramDelegationTokenManager extends AbstractDelegationTokenSecretManager<StramDelegationTokenIdentifier>
 {
 
-  public StramDelegationTokenManager(long delegationKeyUpdateInterval, long delegationTokenMaxLifetime, long delegationTokenRenewInterval,
-                                                                  long delegationTokenRemoverScanInterval) {
-    super(delegationKeyUpdateInterval,delegationTokenMaxLifetime,delegationTokenRenewInterval,delegationTokenRemoverScanInterval);
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
+
+  public StramDelegationTokenManager() {
+    super(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
   }
 
-  public void addIdentifier(StramDelegationTokenIdentifier identifier) {
-    createPassword(identifier);
+  public byte[] addIdentifier(StramDelegationTokenIdentifier identifier) throws InvalidToken
+  {
+    byte[] password = retrievePassword(identifier);
+    if (password == null) {
+      password = createPassword(identifier);
+    }
+    return password;
   }
 
   @Override
