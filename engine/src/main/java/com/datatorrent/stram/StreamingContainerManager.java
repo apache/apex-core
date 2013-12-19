@@ -49,9 +49,9 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.ContainerContext;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -77,6 +77,8 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 /**
  *
@@ -95,7 +97,7 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private final long windowStartMillis;
   private final int heartbeatTimeoutMillis;
-  private int maxWindowsBehindForStats = 100;
+  private int maxWindowsBehindForStats;
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
@@ -119,6 +121,7 @@ public class StreamingContainerManager implements PlanContext
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
 
+  private final MBassador<StramEvent> eventBus; // event bus for publishing stram events
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -162,6 +165,7 @@ public class StreamingContainerManager implements PlanContext
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
+    this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
 
     if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
       attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
@@ -192,6 +196,7 @@ public class StreamingContainerManager implements PlanContext
         eventRecorder.setBasePath(this.eventsFsPath);
         eventRecorder.setWebSocketClient(wsClient);
         eventRecorder.setup();
+        eventBus.subscribe(eventRecorder);
       }
     }
     this.plan = new PhysicalPlan(dag, this);
@@ -618,12 +623,7 @@ public class StreamingContainerManager implements PlanContext
         oper.setState(PTOperator.State.ACTIVE);
         oper.stats.lastHeartbeat = null; // reset on redeploy
 
-        // record started
-        FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
-        ev.addData("operatorId", oper.getId());
-        ev.addData("operatorName", oper.getName());
-        ev.addData("containerId", container.getExternalId());
-        recordEventAsync(ev);
+        recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
       }
     }
     return oper;
@@ -1188,11 +1188,9 @@ public class StreamingContainerManager implements PlanContext
   }
 
   @Override
-  public void recordEventAsync(Event ev)
+  public void recordEventAsync(StramEvent ev)
   {
-    if (eventRecorder != null) {
-      eventRecorder.recordEventAsync(ev);
-    }
+    eventBus.publishAsync(ev);
   }
 
   @Override
@@ -1455,11 +1453,7 @@ public class StreamingContainerManager implements PlanContext
     }
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests.  so record it here for now.
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
-    ev.addData("operatorName", operatorName);
-    ev.addData("propertyName", propertyName);
-    ev.addData("propertyValue", propertyValue);
-    recordEventAsync(ev);
+    recordEventAsync(new StramEvent.SetOperatorPropertyEvent(operatorName, propertyName, propertyValue));
   }
 
   /**
@@ -1488,12 +1482,7 @@ public class StreamingContainerManager implements PlanContext
 
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests. so record it here for now.
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
-    ev.addData("operatorName", operatorName);
-    ev.addData("operatorId", operatorId);
-    ev.addData("propertyName", propertyName);
-    ev.addData("propertyValue", propertyValue);
-    recordEventAsync(ev);
+    recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, id, propertyName, propertyValue));
 
   }
 
@@ -1600,9 +1589,7 @@ public class StreamingContainerManager implements PlanContext
         request.execute(pm);
 
         // record an event for the request.  however, we should probably record these when we get a confirmation.
-        FSEventRecorder.Event ev = new FSEventRecorder.Event("logical-plan-change");
-        ev.populateData(request);
-        recordEventAsync(ev);
+        recordEventAsync(new StramEvent.ChangeLogicalPlanEvent(request));
       }
       pm.applyChanges(StreamingContainerManager.this);
       LOG.info("Plan changes applied: {}", requests);

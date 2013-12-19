@@ -66,6 +66,7 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -755,9 +756,7 @@ public class StramAppMaster extends CompositeService
 
         {
           // record container start event
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("container-start");
-          ev.addData("containerId", allocatedContainer.getId().toString());
-          ev.addData("containerNode", allocatedContainer.getNodeId().toString());
+          StramEvent ev = new StramEvent.StartContainerEvent(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString());
           ev.setTimestamp(timestamp);
           dnmgr.recordEventAsync(ev);
         }
@@ -819,17 +818,12 @@ public class StramAppMaster extends CompositeService
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
         for (PTOperator oper : containerAgent.container.getOperators()) {
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
-          ev.addData("operatorId", oper.getId());
-          ev.addData("operatorName", oper.getName());
-          ev.addData("containerId", containerStatus.getContainerId().toString());
-          ev.addData("reason", "container exited with status " + exitStatus);
+          StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerStatus.getContainerId().toString());
+          ev.setReason("container exited with status " + exitStatus);
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
-        FSEventRecorder.Event ev = new FSEventRecorder.Event("container-stop");
-        ev.addData("containerId", containerStatus.getContainerId().toString());
-        ev.addData("exitStatus", containerStatus.getExitStatus());
+        StramEvent ev = new StramEvent.StopContainerEvent(containerStatus.getContainerId().toString(), containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
 
         dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
