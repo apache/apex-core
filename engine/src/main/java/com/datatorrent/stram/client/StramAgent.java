@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.bufferserver.util.*;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.security.StramWSFilter;
 import com.datatorrent.stram.util.HeaderClientFilter;
@@ -12,6 +13,7 @@ import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.*;
 
+import java.lang.System;
 import java.util.Map;
 
 import com.sun.jersey.api.client.filter.ClientFilter;
@@ -40,18 +42,35 @@ public class StramAgent extends FSAgent
       this.appMasterTrackingUrl = appMasterTrackingUrl;
       this.version = version;
       this.appPath = appPath;
-      this.secToken = secToken;
       if (secToken != null) {
-        secClientFilter = new HeaderClientFilter();
-        secClientFilter.addCookie(new Cookie(StramWSFilter.CLIENT_COOKIE, secToken));
+        securityInfo = new SecurityInfo(secToken);
       }
     }
 
     String appMasterTrackingUrl;
     String version;
     String appPath;
+    SecurityInfo securityInfo;
+  }
+
+  private static class SecurityInfo {
+    public static final long DEFAULT_EXPIRY_INTERVAL = 60 * 60 * 1000;
+
     String secToken;
     HeaderClientFilter secClientFilter;
+    long expiryInterval = DEFAULT_EXPIRY_INTERVAL;
+    long issueTime;
+
+    SecurityInfo(String secToken) {
+      this.secToken = secToken;
+      issueTime = System.currentTimeMillis();
+      secClientFilter = new HeaderClientFilter();
+      secClientFilter.addCookie(new Cookie(StramWSFilter.CLIENT_COOKIE, secToken));
+    }
+
+    boolean isExpiredToken() {
+      return ((System.currentTimeMillis() - issueTime) >= expiryInterval);
+    }
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
@@ -105,7 +124,7 @@ public class StramAgent extends FSAgent
   private static synchronized StramWebServicesInfo getWebServicesInfo(String appid)
   {
     StramWebServicesInfo info = getCachedSebServicesInfo(appid);
-    if ((info == null) || isExpiredToken(info)) {
+    if ((info == null) || checkSecExpiredToken(appid, info)) {
       info = retrieveWebServicesInfo(appid);
       if (info != null) {
         setCachedWebServicesInfo(appid, info);
@@ -127,9 +146,9 @@ public class StramAgent extends FSAgent
     WebResource ws = null;
     if (info != null) {
       ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
-      if (info.secClientFilter != null) {
-        if (!wsClient.isFilterPreset(info.secClientFilter)) {
-          wsClient.addFilter(info.secClientFilter);
+      if (info.securityInfo != null) {
+        if (!wsClient.isFilterPreset(info.securityInfo.secClientFilter)) {
+          wsClient.addFilter(info.securityInfo.secClientFilter);
         }
       }
     }
@@ -213,9 +232,15 @@ public class StramAgent extends FSAgent
     }
   }
 
-  private static boolean isExpiredToken(StramWebServicesInfo info) {
-    String secToken = info.secToken;
-    return false;
+  private static boolean checkSecExpiredToken(String appId, StramWebServicesInfo info) {
+    boolean expired = false;
+    if (info.securityInfo != null) {
+      if (info.securityInfo.isExpiredToken()) {
+        invalidateStramWebResource(appId);
+        expired = true;
+      }
+    }
+    return expired;
   }
 
 }
