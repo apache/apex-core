@@ -110,6 +110,10 @@ public class StramAppMaster extends CompositeService
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 7 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
@@ -520,7 +524,7 @@ public class StramAppMaster extends CompositeService
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // TODO :- Need to perform token renewal
-      delegationTokenManager = new StramDelegationTokenManager();
+      delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     }
     this.nmClient = new NMClientAsyncImpl(new NMCallbackHandler());
     addService(nmClient);

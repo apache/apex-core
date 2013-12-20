@@ -37,6 +37,11 @@ public class StramWSFilter implements Filter
 
   public static final String CLIENT_COOKIE = "stram-client";
 
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 90 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 90 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 30 * 60 * 1000;
+
   // This will not be needed once all requests can go through the proxy
   private static final String WEBAPP_PROXY_USER = "proxy-user";
 
@@ -48,13 +53,19 @@ public class StramWSFilter implements Filter
   private StramDelegationTokenManager tokenManager;
   private AtomicInteger sequenceNumber;
 
+  private String loginUser;
+
   @Override
   public void init(FilterConfig conf) throws ServletException {
     proxyHost = conf.getInitParameter(PROXY_HOST);
     proxyUriBase = conf.getInitParameter(PROXY_URI_BASE);
-    tokenManager = new StramDelegationTokenManager();
+    tokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     sequenceNumber = new AtomicInteger(0);
     try {
+      UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+      if (ugi != null) {
+        loginUser = ugi.getUserName();
+      }
       tokenManager.startThreads();
     } catch (IOException e) {
       throw new ServletException(e);
@@ -154,7 +165,7 @@ public class StramWSFilter implements Filter
 
   private String createClientToken(String username, String service) throws IOException
   {
-    StramDelegationTokenIdentifier tokenIdentifier = new StramDelegationTokenIdentifier(new Text(username), new Text(username), new Text());
+    StramDelegationTokenIdentifier tokenIdentifier = new StramDelegationTokenIdentifier(new Text(username), new Text(loginUser), new Text());
     tokenIdentifier.setSequenceNumber(sequenceNumber.getAndAdd(1));
     byte[] password = tokenManager.addIdentifier(tokenIdentifier);
     Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>(tokenIdentifier.getBytes(), password, tokenIdentifier.getKind(), new Text(service));
