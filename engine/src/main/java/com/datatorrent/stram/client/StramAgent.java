@@ -200,24 +200,28 @@ public class StramAgent extends FSAgent
     */
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
-      /*
-      JSONObject response = new JSONObject(webServicesClient.process(url,
-                                                                     String.class,
-                                                                     new WebServicesClient.GetWebServicesHandler<String>()));
-      */
+      JSONObject response;
       String secToken = null;
-      ClientResponse clientResponse = webServicesClient.process(url,
-                                                                ClientResponse.class,
-                                                                new WebServicesClient.GetWebServicesHandler<ClientResponse>());
-      if (UserGroupInformation.isSecurityEnabled()) {
-        for (NewCookie nc : clientResponse.getCookies()) {
-          LOG.info("Cookie " + nc.getName() + " " + nc.getValue());
-          if (nc.getName().equals(StramWSFilter.CLIENT_COOKIE)) {
-            secToken = nc.getValue();
+      if (!UserGroupInformation.isSecurityEnabled()) {
+        response = new JSONObject(webServicesClient.process(url,
+                                                             String.class,
+                                                             new WebServicesClient.GetWebServicesHandler<String>()));
+      } else {
+        ClientResponse clientResponse = webServicesClient.process(url,
+                                                                  ClientResponse.class,
+                                                                  new WebServicesClient.GetWebServicesHandler<ClientResponse>());
+        if (UserGroupInformation.isSecurityEnabled()) {
+          for (NewCookie nc : clientResponse.getCookies()) {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Cookie " + nc.getName() + " " + nc.getValue());
+            }
+            if (nc.getName().equals(StramWSFilter.CLIENT_COOKIE)) {
+              secToken = nc.getValue();
+            }
           }
         }
+        response = new JSONObject(clientResponse.getEntity(String.class));
       }
-      JSONObject response = new JSONObject(clientResponse.getEntity(String.class));
       String version = response.getString("version");
       response = webServicesClient.process(url + "/" + version + "/stram/info",
                                            JSONObject.class,

@@ -112,7 +112,9 @@ public class StramWSFilter implements Filter
       LOG.debug("Remote address for request is: " + httpReq.getRemoteAddr());
     }
     String requestURI = httpReq.getRequestURI();
-    LOG.info("REQ path " + requestURI);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Request path " + requestURI);
+    }
     boolean authenticate = true;
     String user = null;
     if(getProxyAddresses().contains(httpReq.getRemoteAddr())) {
@@ -126,7 +128,9 @@ public class StramWSFilter implements Filter
       }
       if (requestURI.equals(WebServices.PATH) && (user != null)) {
         String token = createClientToken(user, httpReq.getLocalAddr());
-        LOG.info("Create token " + token);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Create token " + token);
+        }
         Cookie cookie = new Cookie(CLIENT_COOKIE, token);
         httpResp.addCookie(cookie);
       }
@@ -144,8 +148,14 @@ public class StramWSFilter implements Filter
       }
       boolean valid = false;
       if (cookie != null) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Verifying token " + cookie.getValue());
+        }
         user = verifyClientToken(cookie.getValue());
         valid = true;
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Token valid");
+        }
       }
       if (!valid) {
         httpResp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -175,7 +185,6 @@ public class StramWSFilter implements Filter
 
   private String verifyClientToken(String tokenstr) throws IOException
   {
-    LOG.info("Verifying token " + tokenstr);
     boolean match = false;
     Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>();
     token.decodeFromUrlString(tokenstr);
