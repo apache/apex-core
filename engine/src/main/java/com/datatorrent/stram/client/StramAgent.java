@@ -6,13 +6,15 @@ package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.security.StramWSFilter;
+import com.datatorrent.stram.util.HeaderClientFilter;
 import com.datatorrent.stram.util.LRUCache;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.WebServices;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.*;
+
 import java.util.Map;
+
+import com.sun.jersey.api.client.filter.ClientFilter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
@@ -39,12 +41,17 @@ public class StramAgent extends FSAgent
       this.version = version;
       this.appPath = appPath;
       this.secToken = secToken;
+      if (secToken != null) {
+        secClientFilter = new HeaderClientFilter();
+        secClientFilter.addCookie(new Cookie(StramWSFilter.CLIENT_COOKIE, secToken));
+      }
     }
 
     String appMasterTrackingUrl;
     String version;
     String appPath;
     String secToken;
+    HeaderClientFilter secClientFilter;
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
@@ -120,8 +127,10 @@ public class StramAgent extends FSAgent
     WebResource ws = null;
     if (info != null) {
       ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
-      if (info.secToken != null) {
-        ws.cookie(new Cookie(StramWSFilter.CLIENT_COOKIE, info.secToken));
+      if (info.secClientFilter != null) {
+        if (!wsClient.isFilterPreset(info.secClientFilter)) {
+          wsClient.addFilter(info.secClientFilter);
+        }
       }
     }
     return ws;
