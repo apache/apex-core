@@ -15,20 +15,24 @@
  */
 package com.datatorrent.api;
 
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
-import com.google.common.collect.Sets;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 
 /**
- * <p>DefaultPartition class.</p>
+ * <p>
+ * DefaultPartition class.</p>
  *
+ * @param <T>
  * @since 0.9.1
  */
 public class DefaultPartition<T extends Operator> implements Partitionable.Partition<T>
@@ -179,19 +183,34 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
    * @param partitions
    * @param inputPort
    */
-  public static void assignPartitionKeys(List<Partition<?>> partitions, InputPort<?> inputPort) {
-    int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(partitions.size()-1));
+  public static void assignPartitionKeys(Collection<Partition<?>> partitions, InputPort<?> inputPort)
+  {
+    if (partitions.isEmpty()) {
+      throw new IllegalArgumentException("partitions collection cannot be empty");
+    }
+
+    int partitionBits = (Integer.numberOfLeadingZeros(0) - Integer.numberOfLeadingZeros(partitions.size() - 1));
     int partitionMask = 0;
     if (partitionBits > 0) {
       partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
     }
+    
+    Iterator<Partition<?>> iterator = partitions.iterator();
+    for (int i = 0; i <= partitionMask; i++) {
+      Partition<?> p;
+      if (iterator.hasNext()) {
+        p = iterator.next();
+      }
+      else {
+        iterator = partitions.iterator();
+        p = iterator.next();
+      }
 
-    for (int i=0; i<=partitionMask; i++) {
-      Partition<?> p = partitions.get(i % partitions.size());
       PartitionKeys pks = p.getPartitionKeys().get(inputPort);
       if (pks == null) {
         p.getPartitionKeys().put(inputPort, new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-      } else {
+      }
+      else {
         pks.partitions.add(i);
       }
     }

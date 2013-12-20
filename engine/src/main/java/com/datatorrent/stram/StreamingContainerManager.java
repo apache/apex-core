@@ -49,9 +49,9 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.EventRecorder.Event;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.ContainerContext;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -77,6 +77,8 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 /**
  *
@@ -93,9 +95,9 @@ import com.datatorrent.stram.webapp.StreamInfo;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  private long windowStartMillis = System.currentTimeMillis();
+  private final long windowStartMillis;
   private final int heartbeatTimeoutMillis;
-  private int maxWindowsBehindForStats = 100;
+  private int maxWindowsBehindForStats;
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
@@ -119,6 +121,7 @@ public class StreamingContainerManager implements PlanContext
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
 
+  private final MBassador<StramEvent> eventBus; // event bus for publishing stram events
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -152,15 +155,17 @@ public class StreamingContainerManager implements PlanContext
       attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
     }
     /* try to align to it to please eyes. */
-    windowStartMillis -= (windowStartMillis % 1000);
+    long tms = System.currentTimeMillis();
+    windowStartMillis = tms - (tms % 1000);
 
     if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
-      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + System.currentTimeMillis());
+      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + tms);
     }
 
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
+    this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
 
     if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
       attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
@@ -191,6 +196,7 @@ public class StreamingContainerManager implements PlanContext
         eventRecorder.setBasePath(this.eventsFsPath);
         eventRecorder.setWebSocketClient(wsClient);
         eventRecorder.setup();
+        eventBus.subscribe(eventRecorder);
       }
     }
     this.plan = new PhysicalPlan(dag, this);
@@ -617,12 +623,7 @@ public class StreamingContainerManager implements PlanContext
         oper.setState(PTOperator.State.ACTIVE);
         oper.stats.lastHeartbeat = null; // reset on redeploy
 
-        // record started
-        FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-start");
-        ev.addData("operatorId", oper.getId());
-        ev.addData("operatorName", oper.getName());
-        ev.addData("containerId", container.getExternalId());
-        recordEventAsync(ev);
+        recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
       }
     }
     return oper;
@@ -974,11 +975,11 @@ public class StreamingContainerManager implements PlanContext
     // checkpoint frozen during deployment
     if (operator.getState() != PTOperator.State.PENDING_DEPLOY) {
       // remove previous checkpoints
-      long c1 = 0;
+      long c1 = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
       synchronized (operator.checkpointWindows) {
         if (!operator.checkpointWindows.isEmpty()) {
           if ((c1 = operator.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
-            long c2 = 0;
+            long c2 = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
             while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
               operator.checkpointWindows.removeFirst();
               //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
@@ -987,7 +988,7 @@ public class StreamingContainerManager implements PlanContext
             }
           }
           else {
-            c1 = 0;
+            c1 = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
           }
         }
       }
@@ -1187,11 +1188,9 @@ public class StreamingContainerManager implements PlanContext
   }
 
   @Override
-  public void recordEventAsync(Event ev)
+  public void recordEventAsync(StramEvent ev)
   {
-    if (eventRecorder != null) {
-      eventRecorder.recordEventAsync(ev);
-    }
+    eventBus.publishAsync(ev);
   }
 
   @Override
@@ -1224,6 +1223,11 @@ public class StreamingContainerManager implements PlanContext
     return infoList;
   }
 
+  public static long toWsWindowId(long windowId) {
+    // until console handles -1
+    return windowId < 0 ? 0 : windowId;
+  }
+
   private OperatorInfo fillOperatorInfo(PTOperator operator)
   {
     OperatorInfo ni = new OperatorInfo();
@@ -1246,8 +1250,8 @@ public class StreamingContainerManager implements PlanContext
       ni.cpuPercentageMA = os.cpuPercentageMA.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = operator.failureCount;
-      ni.recoveryWindowId = operator.getRecoveryCheckpoint();
-      ni.currentWindowId = os.currentWindowId;
+      ni.recoveryWindowId = toWsWindowId(operator.getRecoveryCheckpoint());
+      ni.currentWindowId = toWsWindowId(os.currentWindowId);
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
@@ -1286,6 +1290,7 @@ public class StreamingContainerManager implements PlanContext
           si.logicalName = output.logicalStream.getName();
           si.source.operatorId = String.valueOf(operator.getId());
           si.source.portName = output.portName;
+          si.locality = output.logicalStream.getLocality();
           for (PTInput input : output.sinks) {
             StreamInfo.Port p = new StreamInfo.Port();
             p.operatorId = String.valueOf(input.target.getId());
@@ -1443,19 +1448,20 @@ public class StreamingContainerManager implements PlanContext
       request.setPropertyValue = propertyValue;
       request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
       sca.addOperatorRequest(request);
-      plan.setProperties(o, properties);
       // re-apply to checkpointed state on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests.  so record it here for now.
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
-    ev.addData("operatorName", operatorName);
-    ev.addData("propertyName", propertyName);
-    ev.addData("propertyValue", propertyValue);
-    recordEventAsync(ev);
+    recordEventAsync(new StramEvent.SetOperatorPropertyEvent(operatorName, propertyName, propertyValue));
   }
 
+  /**
+   * Set property on a physical operator. The property change is applied asynchronously on the deployed operator.
+   * @param operatorId
+   * @param propertyName
+   * @param propertyValue
+   */
   public void setPhysicalOperatorProperty(String operatorId, String propertyName, String propertyValue)
   {
     String operatorName = null;
@@ -1464,7 +1470,6 @@ public class StreamingContainerManager implements PlanContext
     if (o == null)
       return;
 
-    plan.setProperties(o, Collections.singletonMap(propertyName, propertyValue));
     operatorName = o.getName();
     StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
     StramToNodeRequest request = new StramToNodeRequest();
@@ -1477,30 +1482,21 @@ public class StreamingContainerManager implements PlanContext
 
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests. so record it here for now.
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-property-set");
-    ev.addData("operatorName", operatorName);
-    ev.addData("operatorId", operatorId);
-    ev.addData("propertyName", propertyName);
-    ev.addData("propertyValue", propertyValue);
-    recordEventAsync(ev);
+    recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, id, propertyName, propertyValue));
 
   }
 
   public Map<String, Object> getPhysicalOperatorProperty(String operatorId){
     int id = Integer.valueOf(operatorId);
     PTOperator o = this.plan.getAllOperators().get(id);
-    if (o.getPartition() != null) {
-      return LogicalPlanConfiguration.getOperatorProperties(o.getPartition().getPartitionedInstance());
-    } else {
-      Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
-      m = Maps.newHashMap(m); // clone as map returned is linked to object
-      for (StramToNodeRequest existingRequest : o.deployRequests) {
-        if (id == existingRequest.operatorId){
-          m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
-        }
+    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
+    m = Maps.newHashMap(m); // clone as map returned is linked to object
+    for (StramToNodeRequest existingRequest : o.deployRequests) {
+      if (id == existingRequest.operatorId){
+        m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
       }
-      return m;
     }
+    return m;
   }
 
   public AttributeMap getApplicationAttributes()
@@ -1593,9 +1589,7 @@ public class StreamingContainerManager implements PlanContext
         request.execute(pm);
 
         // record an event for the request.  however, we should probably record these when we get a confirmation.
-        FSEventRecorder.Event ev = new FSEventRecorder.Event("logical-plan-change");
-        ev.populateData(request);
-        recordEventAsync(ev);
+        recordEventAsync(new StramEvent.ChangeLogicalPlanEvent(request));
       }
       pm.applyChanges(StreamingContainerManager.this);
       LOG.info("Plan changes applied: {}", requests);

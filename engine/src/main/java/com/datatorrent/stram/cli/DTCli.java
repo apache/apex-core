@@ -134,6 +134,7 @@ public class DTCli
   private final ObjectMapper mapper = new ObjectMapper();
   private String pagerCommand;
   private Process pagerProcess;
+  private int verboseLevel = 0;
   private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
@@ -303,16 +304,25 @@ public class DTCli
   {
     URI uri = new URI(jarfileUri);
     String scheme = uri.getScheme();
+    StramAppLauncher appLauncher = null;
     if (scheme == null || scheme.equals("file")) {
       File jf = new File(uri.getPath());
-      return new StramAppLauncher(jf, config);
+      appLauncher = new StramAppLauncher(jf, config);
     }
     else if (scheme.equals("hdfs")) {
       FileSystem fs = FileSystem.get(uri, conf);
       Path path = new Path(uri.getPath());
-      return new StramAppLauncher(fs, path, config);
+      appLauncher = new StramAppLauncher(fs, path, config);
     }
-    throw new CliException("Scheme " + scheme + " not supported.");
+    if (appLauncher != null) {
+      if (verboseLevel > 0) {
+        System.err.print(appLauncher.getMvnBuildClasspathOutput());
+      }
+      return appLauncher;
+    }
+    else {
+      throw new CliException("Scheme " + scheme + " not supported.");
+    }
   }
 
   private static class CommandSpec
@@ -417,7 +427,7 @@ public class DTCli
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
                                                         new Arg[] {new FileArg("jar-file")},
                                                         new Arg[] {new Arg("class-name/property-file")},
-                                                        "Launch an app", getCommandLineOptions()));
+                                                        "Launch an app", getLaunchCommandLineOptions()));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
                                                        new Arg[] {new Arg("app-id")},
                                                        null,
@@ -430,10 +440,11 @@ public class DTCli
                                                    new Arg[] {new Arg("app-id")},
                                                    null,
                                                    "Kill an app"));
-    globalCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(),
-                                                            new Arg[] {new FileArg("jar-file")},
-                                                            new Arg[] {new Arg("class-name")},
-                                                            "List apps in a jar or show logical plan of an app class"));
+    globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
+                                                                   new Arg[] {new FileArg("jar-file")},
+                                                                   new Arg[] {new Arg("class-name")},
+                                                                   "List apps in a jar or show logical plan of an app class",
+                                                                   getShowLogicalPlanCommandLineOptions()));
     globalCommands.put("alias", new CommandSpec(new AliasCommand(),
                                                 new Arg[] {new Arg("alias-name"), new CommandArg("command")},
                                                 null,
@@ -535,10 +546,11 @@ public class DTCli
                                                                        null,
                                                                        null,
                                                                        "Begin Logical Plan Change"));
-    connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(),
-                                                               null,
-                                                               new Arg[] {new FileArg("jar-file"), new Arg("class-name")},
-                                                               "Show logical plan of an app class"));
+    connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
+                                                                      null,
+                                                                      new Arg[] {new FileArg("jar-file"), new Arg("class-name")},
+                                                                      "Show logical plan of an app class",
+                                                                      getShowLogicalPlanCommandLineOptions()));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
                                                                   new Arg[] {new FileArg("out-file")},
                                                                   new Arg[] {new FileArg("jar-file"), new Arg("class-name")},
@@ -718,6 +730,10 @@ public class DTCli
   private static String[] expandFileNames(String fileName) throws IOException
   {
     // TODO: need to work with other users
+     if (fileName.matches("^[a-zA-Z]+:.*")) {
+      // it's a URL
+      return new String[]{fileName};
+    }
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
@@ -783,11 +799,13 @@ public class DTCli
 
   public void init(String[] args) throws IOException
   {
-    boolean verbose = false;
     consolePresent = (System.console() != null);
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
-    options.addOption("v", false, "Verbose mode");
+    options.addOption("v", false, "Verbose mode level 1");
+    options.addOption("vv", false, "Verbose mode level 2");
+    options.addOption("vvv", false, "Verbose mode level 3");
+    options.addOption("vvvv", false, "Verbose mode level 4");
     options.addOption("r", false, "JSON Raw mode");
     options.addOption("p", true, "JSONP padding function");
     options.addOption("h", false, "Print this help");
@@ -795,7 +813,16 @@ public class DTCli
     try {
       CommandLine cmd = parser.parse(options, args);
       if (cmd.hasOption("v")) {
-        verbose = true;
+        verboseLevel = 1;
+      }
+      if (cmd.hasOption("vv")) {
+        verboseLevel = 2;
+      }
+      if (cmd.hasOption("vvv")) {
+        verboseLevel = 3;
+      }
+      if (cmd.hasOption("vvvv")) {
+        verboseLevel = 4;
       }
       if (cmd.hasOption("r")) {
         raw = true;
@@ -818,16 +845,31 @@ public class DTCli
       System.exit(1);
     }
 
-    if (!verbose) {
-      for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
-                                                                           org.apache.log4j.Logger.getLogger(DTCli.class)}) {
-        @SuppressWarnings("unchecked")
-        Enumeration<Appender> allAppenders = logger.getAllAppenders();
-        while (allAppenders.hasMoreElements()) {
-          Appender appender = allAppenders.nextElement();
-          if (appender instanceof ConsoleAppender) {
-            ((ConsoleAppender)appender).setThreshold(Level.WARN);
-          }
+    Level logLevel;
+    if (verboseLevel == 0) {
+      logLevel = Level.OFF;
+    }
+    else if (verboseLevel == 1) {
+      logLevel = Level.ERROR;
+    }
+    else if (verboseLevel == 2) {
+      logLevel = Level.WARN;
+    }
+    else if (verboseLevel == 3) {
+      logLevel = Level.INFO;
+    }
+    else {
+      logLevel = Level.DEBUG;
+    }
+
+    for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
+                                                                         org.apache.log4j.Logger.getLogger(DTCli.class)}) {
+      @SuppressWarnings("unchecked")
+      Enumeration<Appender> allAppenders = logger.getAllAppenders();
+      while (allAppenders.hasMoreElements()) {
+        Appender appender = allAppenders.nextElement();
+        if (appender instanceof ConsoleAppender) {
+          ((ConsoleAppender)appender).setThreshold(logLevel);
         }
       }
     }
@@ -1490,7 +1532,7 @@ public class DTCli
     {
       String[] newArgs = new String[args.length - 1];
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
-      CommandLineInfo commandLineInfo = getCommandLineInfo(newArgs);
+      LaunchCommandLineInfo commandLineInfo = getLaunchCommandLineInfo(newArgs);
 
       if (commandLineInfo.configFile != null) {
         commandLineInfo.configFile = expandFileName(commandLineInfo.configFile, true);
@@ -2291,10 +2333,19 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (args.length > 2) {
-        String jarfile = expandFileName(args[1], true);
-        String appName = args[2];
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      ShowLogicalPlanCommandLineInfo commandLineInfo = getShowLogicalPlanCommandLineInfo(newArgs);
+      Configuration config = StramAppLauncher.getConfig(null, null);
+      if (commandLineInfo.libjars != null) {
+        commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
+        config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+      }
+
+      if (commandLineInfo.args.length >= 2) {
+        String jarfile = expandFileName(commandLineInfo.args[0], true);
+        String appName = commandLineInfo.args[1];
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -2312,9 +2363,9 @@ public class DTCli
           printJson(map);
         }
       }
-      else if (args.length == 2) {
-        String jarfile = expandFileName(args[1], true);
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
+      else if (commandLineInfo.args.length == 1) {
+        String jarfile = expandFileName(commandLineInfo.args[0], true);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config);
         submitApp.loadDependencies();
         List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
         List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
@@ -2760,7 +2811,7 @@ public class DTCli
   }
 
   @SuppressWarnings("static-access")
-  public static Options getCommandLineOptions()
+  public static Options getLaunchCommandLineOptions()
   {
     Options options = new Options();
     Option local = new Option("local", "Run application in local mode.");
@@ -2778,11 +2829,11 @@ public class DTCli
     return options;
   }
 
-  private static CommandLineInfo getCommandLineInfo(String[] args) throws ParseException
+  private static LaunchCommandLineInfo getLaunchCommandLineInfo(String[] args) throws ParseException
   {
     CommandLineParser parser = new PosixParser();
-    CommandLineInfo result = new CommandLineInfo();
-    CommandLine line = parser.parse(getCommandLineOptions(), args);
+    LaunchCommandLineInfo result = new LaunchCommandLineInfo();
+    CommandLine line = parser.parse(getLaunchCommandLineOptions(), args);
     result.localMode = line.hasOption("local");
     result.configFile = line.getOptionValue("conf");
     String[] defs = line.getOptionValues("D");
@@ -2805,7 +2856,7 @@ public class DTCli
     return result;
   }
 
-  private static class CommandLineInfo
+  private static class LaunchCommandLineInfo
   {
     boolean localMode;
     String configFile;
@@ -2813,6 +2864,31 @@ public class DTCli
     String libjars;
     String files;
     String archives;
+    String[] args;
+  }
+
+  @SuppressWarnings("static-access")
+  public static Options getShowLogicalPlanCommandLineOptions()
+  {
+    Options options = new Options();
+    Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
+    options.addOption(libjars);
+    return options;
+  }
+
+  private static ShowLogicalPlanCommandLineInfo getShowLogicalPlanCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    ShowLogicalPlanCommandLineInfo result = new ShowLogicalPlanCommandLineInfo();
+    CommandLine line = parser.parse(getShowLogicalPlanCommandLineOptions(), args);
+    result.libjars = line.getOptionValue("libjars");
+    result.args = line.getArgs();
+    return result;
+  }
+
+  private static class ShowLogicalPlanCommandLineInfo
+  {
+    String libjars;
     String[] args;
   }
 

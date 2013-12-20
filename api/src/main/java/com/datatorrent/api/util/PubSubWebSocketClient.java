@@ -17,9 +17,7 @@ package com.datatorrent.api.util;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfigBean;
@@ -88,6 +86,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     {
       LOG.error("WebSocket connection has an error", t);
     }
+
   }
 
   /**
@@ -98,6 +97,19 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     try {
       AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
       config.setIoThreadMultiplier(ioThreadMultiplier);
+      config.setApplicationThreadPool(Executors.newCachedThreadPool(new ThreadFactory()
+      {
+        private long count = 0;
+
+        @Override
+        public Thread newThread(Runnable r)
+        {
+          Thread t = new Thread(r);
+          t.setName("AsyncHttpClient-" + count++);
+          return t;
+        }
+
+      }));
       client = new AsyncHttpClient(config);
     }
     catch (Exception ex) {
@@ -106,7 +118,9 @@ public abstract class PubSubWebSocketClient implements Component<Context>
   }
 
   /**
-   * <p>Setter for the field <code>uri</code>.</p>
+   * <p>Setter for the field
+   * <code>uri</code>.</p>
+   *
    * @param uri
    */
   public void setUri(URI uri)
@@ -121,6 +135,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>openConnection.</p>
+   *
    * @param timeoutMillis
    * @throws IOException
    * @throws ExecutionException
@@ -134,8 +149,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   public void openConnectionAsync() throws IOException
   {
-    client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket() {
-
+    client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()
+    {
       @Override
       public void onOpen(WebSocket ws)
       {
@@ -148,6 +163,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>isConnectionOpen.</p>
+   *
    * @return
    */
   public boolean isConnectionOpen()
@@ -157,6 +173,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructPublishMessage.</p>
+   *
    * @param topic
    * @param mapper
    * @param data
@@ -173,6 +190,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructPublishMessage.</p>
+   *
    * @param <T>
    * @param topic
    * @param data
@@ -180,7 +198,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @return
    * @throws IOException
    */
-  public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException {
+  public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException
+  {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.PUBLISH);
     pubSubMessage.setTopic(topic);
@@ -191,6 +210,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>publish.</p>
+   *
    * @param topic
    * @param data
    * @throws IOException
@@ -202,6 +222,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructSubscribeMessage.</p>
+   *
    * @param topic
    * @param mapper
    * @return
@@ -217,13 +238,15 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructSubscribeMessage.</p>
+   *
    * @param <T>
    * @param topic
    * @param codec
    * @return
    * @throws IOException
    */
-  public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+  public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.SUBSCRIBE);
     pubSubMessage.setTopic(topic);
@@ -233,6 +256,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>subscribe.</p>
+   *
    * @param topic
    * @throws IOException
    */
@@ -243,7 +267,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructUnsubscribeMessage.</p>
-
+   *
    * @param topic
    * @param mapper
    * @return
@@ -259,13 +283,15 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructUnsubscribeMessage.</p>
+   *
    * @param <T>
    * @param topic
    * @param codec
    * @return
    * @throws IOException
    */
-  public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+  public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE);
     pubSubMessage.setTopic(topic);
@@ -275,6 +301,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>unsubscribe.</p>
+   *
    * @param topic
    * @throws IOException
    */
@@ -285,6 +312,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructSubscribeNumSubscribersMessage.</p>
+   *
    * @param topic
    * @param mapper
    * @return
@@ -300,13 +328,15 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructSubscribeNumSubscribersMessage.</p>
+   *
    * @param <T>
    * @param topic
    * @param codec
    * @return
    * @throws IOException
    */
-  public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+  public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.SUBSCRIBE_NUM_SUBSCRIBERS);
     pubSubMessage.setTopic(topic);
@@ -316,6 +346,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>subscribeNumSubscribers.</p>
+   *
    * @param topic
    * @throws IOException
    */
@@ -326,6 +357,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   *
    * @param topic
    * @param mapper
    * @return
@@ -341,13 +373,15 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>constructUnsubscribeNumSubscribersMessage.</p>
+   *
    * @param <T>
    * @param topic
    * @param codec
    * @return
    * @throws IOException
    */
-  public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException {
+  public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
+  {
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
     pubSubMessage.setType(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS);
     pubSubMessage.setTopic(topic);
@@ -357,6 +391,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>unsubscribeNumSubscribers.</p>
+   *
    * @param topic
    * @throws IOException
    */
@@ -367,12 +402,14 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>onOpen.</p>
+   *
    * @param ws
    */
   public abstract void onOpen(WebSocket ws);
 
   /**
    * <p>onMessage.</p>
+   *
    * @param type
    * @param topic
    * @param data
@@ -381,6 +418,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   /**
    * <p>onClose.</p>
+   *
    * @param ws
    */
   public abstract void onClose(WebSocket ws);
@@ -399,5 +437,4 @@ public abstract class PubSubWebSocketClient implements Component<Context>
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);
-
 }

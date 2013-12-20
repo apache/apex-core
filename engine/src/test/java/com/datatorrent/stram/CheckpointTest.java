@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -197,6 +198,12 @@ public class CheckpointTest
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      Assert.assertEquals("activation windowId " + oper, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, oper.getRecoveryCheckpoint());
+      Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpointWindows);
+    }
+
     List<PTOperator> nodes1 = plan.getOperators(dag.getMeta(node1));
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
@@ -208,19 +215,19 @@ public class CheckpointTest
     PTOperator pnode2 = nodes2.get(0);
 
     dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode2, 0, pnode2.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode2, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode2.getRecoveryCheckpoint());
 
     HashSet<PTOperator> s = new HashSet<PTOperator>();
     dnm.updateRecoveryCheckpoints(pnode1, s, new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode1, 0, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("number dependencies " + s, 2, s.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
     pnode1.checkpointWindows.add(5L);
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode1, 0L, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, 0, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());

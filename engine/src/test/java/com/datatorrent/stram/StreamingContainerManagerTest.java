@@ -336,7 +336,7 @@ public class StreamingContainerManagerTest {
 
     dnm.setPhysicalOperatorProperty(o.getId()+"", "maxTuples","2" );
     m = dnm.getPhysicalOperatorProperty(o.getId()+"");
-    int newVal = (Integer)m.get("maxTuples");
+    int newVal = Integer.valueOf(m.get("maxTuples").toString());
     Assert.assertEquals(2,newVal);
     for(int i = 1; i< 3;i++){
       o = o1Partitions.get(i);

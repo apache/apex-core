@@ -5,9 +5,9 @@
 package com.datatorrent.stram.client;
 
 import java.io.*;
+import java.util.List;
 import java.util.Map;
-import org.apache.commons.io.IOUtils;
-import org.codehaus.jettison.json.JSONException;
+import org.apache.commons.lang.StringUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +52,10 @@ public class CLIProxy
         BufferedReader br = new BufferedReader(isr);
         String line;
         while ((line = br.readLine()) != null) {
-          content.append(line);
+          if (!line.contains(" DEBUG ")) {
+            content.append(line);
+            content.append("\n");
+          }
         }
       }
       catch (IOException ex) {
@@ -62,12 +65,22 @@ public class CLIProxy
 
   }
 
-  public static JSONObject getLogicalPlan(String jarUri, String appName) throws Exception
+  public static JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars) throws Exception
   {
-    return issueCommand("show-logical-plan \"" + jarUri + "\" \"" + appName + "\"");
+    StringBuilder sb = new StringBuilder("show-logical-plan ");
+    if (!libjars.isEmpty()) {
+      sb.append("-libjars ");
+      sb.append(StringUtils.join(libjars, ','));
+      sb.append(" ");
+    }
+    sb.append(jarUri);
+    sb.append(" \"");
+    sb.append(appName);
+    sb.append("\"");
+    return issueCommand(sb.toString());
   }
 
-  public static JSONObject launchApp(String jarUri, String appName, Map<String, String> properties) throws Exception
+  public static JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars) throws Exception
   {
     StringBuilder sb = new StringBuilder("launch ");
     for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -76,6 +89,11 @@ public class CLIProxy
       sb.append("=\"");
       sb.append(entry.getValue());
       sb.append("\" ");
+    }
+    if (!libjars.isEmpty()) {
+      sb.append("-libjars ");
+      sb.append(StringUtils.join(libjars, ','));
+      sb.append(" ");
     }
     sb.append(jarUri);
     sb.append(" \"");
@@ -92,7 +110,7 @@ public class CLIProxy
   private static JSONObject issueCommand(String command) throws Exception
   {
     String shellCommand = "dtcli -r -e '" + command + "'";
-    Process p = Runtime.getRuntime().exec(new String[] {"sh", "-c", shellCommand});
+    Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", shellCommand});
     StreamGobbler errorGobbler = new StreamGobbler(p.getErrorStream());
     StreamGobbler outputGobbler = new StreamGobbler(p.getInputStream());
     errorGobbler.start();
