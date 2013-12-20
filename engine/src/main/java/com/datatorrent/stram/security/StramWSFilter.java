@@ -133,17 +133,18 @@ public class StramWSFilter implements Filter
       authenticate = false;
     }
     if (authenticate) {
-      Cookie clcookie = null;
-      Cookie[] cookies = httpReq.getCookies();
-      for (Cookie cookie : cookies) {
-        if (cookie.getName().equals(CLIENT_COOKIE)) {
-          clcookie = cookie;
-          break;
+      Cookie cookie = null;
+      if (httpReq.getCookies() != null) {
+        for (Cookie c : httpReq.getCookies()) {
+          if (c.getName().equals(CLIENT_COOKIE)) {
+            cookie = c;
+            break;
+          }
         }
       }
       boolean valid = false;
-      if (clcookie != null) {
-        user = verifyClientToken(clcookie.getValue());
+      if (cookie != null) {
+        user = verifyClientToken(cookie.getValue());
         valid = true;
       }
       if (!valid) {
