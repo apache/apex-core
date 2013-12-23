@@ -3,7 +3,9 @@
 .project
 .settings/
 .metadata/
+.idea/
 target/
 node_modules/
 malhar
 *~
+*.iml
