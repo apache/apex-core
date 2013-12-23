@@ -6,6 +6,7 @@ package com.datatorrent.stram.client;
 
 import com.datatorrent.bufferserver.util.*;
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
 import com.datatorrent.stram.security.StramWSFilter;
 import com.datatorrent.stram.util.HeaderClientFilter;
@@ -139,7 +140,7 @@ public class StramAgent extends FSAgent
     return getWebServicesInfo(appid).version;
   }
 
-  public static WebResource getStramWebResource(WebServicesClient webServicesClient, String appid)
+  public static WebResource getStramWebResource(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
   {
     Client wsClient = webServicesClient.getClient();
     wsClient.setFollowRedirects(true);
