@@ -263,13 +263,13 @@ public class PartitioningTest
     ArrayList<Integer> inputTuples = new ArrayList<Integer>();
     for (PTOperator p: partitions) {
       // default partitioning has one port mapping with a single partition key
-      inputTuples.add(p.getPartition().getPartitionKeys().values().iterator().next().partitions.iterator().next());
+      inputTuples.add(p.getPartitionKeys().values().iterator().next().partitions.iterator().next());
     }
     inputDeployed.testTuples = Collections.synchronizedList(new ArrayList<List<Integer>>());
     inputDeployed.testTuples.add(inputTuples);
 
     for (PTOperator p: partitions) {
-      Integer expectedTuple = p.getPartition().getPartitionKeys().values().iterator().next().partitions.iterator().next();
+      Integer expectedTuple = p.getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
       int i = 0;
       while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null || receivedTuples.isEmpty()) {

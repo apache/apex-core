@@ -46,6 +46,7 @@
     <module>api</module>
     <module>netlet</module>
     <module>bufferserver</module>
+    <module>jarpath</module>
     <module>stram</module>
     <module>engine</module>
     <module>gateway</module>

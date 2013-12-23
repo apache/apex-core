@@ -27,7 +27,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  *
  * @since 0.3.5
  */
-public class PTContainer {
+public class PTContainer implements java.io.Serializable {
   public enum State {
     NEW,
     ALLOCATED,

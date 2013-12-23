@@ -2,6 +2,7 @@ package com.datatorrent.stram.plan.physical;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -27,12 +29,6 @@ import com.google.common.collect.Sets;
  * @since 0.3.2
  */
 public class OperatorPartitions {
-
-  final LogicalPlan.OperatorMeta operatorWrapper;
-
-  public OperatorPartitions(LogicalPlan.OperatorMeta operator) {
-    this.operatorWrapper = operator;
-  }
 
   /**
    * The default partitioning applied to operators that do not implement
@@ -161,6 +157,22 @@ public class OperatorPartitions {
       return newPartitions;
     }
 
+  }
+
+  public static Map<LogicalPlan.InputPortMeta, PartitionKeys> convertPartitionKeys(PTOperator oper, Map<InputPort<?>, PartitionKeys> portKeys)
+  {
+    if (portKeys == null) {
+      return Collections.emptyMap();
+    }
+    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(portKeys.size());
+    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : portKeys.entrySet()) {
+      LogicalPlan.InputPortMeta pportMeta = oper.logicalNode.getMeta(portEntry.getKey());
+      if (pportMeta == null) {
+        throw new AssertionError("Invalid port reference " + portEntry);
+      }
+      partitionKeys.put(pportMeta, portEntry.getValue());
+    }
+    return partitionKeys;
   }
 
 }

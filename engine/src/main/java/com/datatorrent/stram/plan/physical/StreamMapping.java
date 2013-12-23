@@ -5,8 +5,6 @@
 package com.datatorrent.stram.plan.physical;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,13 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorProxy;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
@@ -29,7 +27,6 @@ import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -38,8 +35,10 @@ import com.google.common.collect.Sets;
  *
  * @since 0.9.0
  */
-public class StreamMapping
+public class StreamMapping implements java.io.Serializable
 {
+  private static final long serialVersionUID = 8572852828117485193L;
+
   private final static Logger LOG = LoggerFactory.getLogger(StreamMapping.class);
 
   private final StreamMeta streamMeta;
@@ -74,10 +73,8 @@ public class StreamMapping
     redoMapping();
   }
 
-  private PTOperator createUnifier() {
-    OperatorMeta om = streamMeta.getSource().getOperatorWrapper();
-    PTOperator pu = plan.newOperator(om, om.getName() + "#merge#" + streamMeta.getSource().getPortName());
-
+  private PTOperator createUnifier()
+  {
     // create the merge operator
     Unifier<?> unifier = streamMeta.getSource().getUnifier();
     if (unifier == null) {
@@ -89,9 +86,13 @@ public class StreamMapping
     if (mergeDesc.outputPorts.size() != 1) {
       throw new AssertionError("Unifier should have single output port, found: " + mergeDesc.outputPorts);
     }
-    pu.unifier = unifier;
+
+    OperatorMeta om = streamMeta.getSource().getOperatorWrapper();
+    PTOperator pu = plan.newOperator(om, om.getName() + "#merge#" + streamMeta.getSource().getPortName());
+
+    pu.unifier = new OperatorProxy(unifier);
     pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
-    plan.newOpers.add(pu);
+    plan.newOpers.put(pu, pu.unifier.get());
     return pu;
   }
 
@@ -119,23 +120,6 @@ public class StreamMapping
     } else {
       return nextLevel;
     }
-  }
-
-  private Map<LogicalPlan.InputPortMeta, PartitionKeys> getPartitionKeys(PTOperator oper) {
-
-    if (oper.partition == null) {
-      return Collections.emptyMap();
-    }
-    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(oper.partition.getPartitionKeys().size());
-    Map<InputPort<?>, PartitionKeys> partKeys = oper.partition.getPartitionKeys();
-    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-      LogicalPlan.InputPortMeta pportMeta = oper.logicalNode.getMeta(portEntry.getKey());
-      if (pportMeta == null) {
-        throw new AssertionError("Invalid port reference " + portEntry);
-      }
-      partitionKeys.put(pportMeta, portEntry.getValue());
-    }
-    return partitionKeys;
   }
 
   /**
@@ -192,8 +176,8 @@ public class StreamMapping
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
 
-        Map<LogicalPlan.InputPortMeta, PartitionKeys> partKeys = getPartitionKeys(doperEntry.first);
-        PartitionKeys pks = partKeys.get(doperEntry.second);
+        Map<LogicalPlan.InputPortMeta, PartitionKeys> partKeys = doperEntry.first.partitionKeys;
+        PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
 
         if (upstream.size() > 1) {
           if (pks == null) {

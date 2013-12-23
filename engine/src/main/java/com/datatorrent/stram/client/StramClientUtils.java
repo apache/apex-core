@@ -15,9 +15,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
@@ -135,6 +133,20 @@ public class StramClientUtils
       GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
       ApplicationReport report = reportResponse.getApplicationReport();
       return report;
+    }
+
+    public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
+    {
+      // Till we figure out a good way to map the string application id to an ApplicationId
+      // Get all the application reports and match them with the application id
+      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
+      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
+      for (ApplicationReport report : applicationsResponse.getApplicationList()) {
+        if (report.getApplicationId().toString().equals(appId)) {
+          return report;
+        }
+      }
+      return null;
     }
 
     /**

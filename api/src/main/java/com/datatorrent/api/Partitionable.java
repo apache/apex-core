@@ -61,7 +61,7 @@ public interface Partitionable<T extends Operator>
    */
   public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
 
-  public class PartitionKeys
+  public class PartitionKeys implements java.io.Serializable
   {
     final public int mask;
     final public Set<Integer> partitions;

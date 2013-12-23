@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.datatorrent.stram.security.StramWSFilterInitializer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -67,12 +68,12 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
-import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
@@ -114,8 +115,8 @@ public class StramAppMaster extends CompositeService
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 7 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
   private NMClientAsync nmClient;
@@ -184,13 +185,13 @@ public class StramAppMaster extends CompositeService
           min = entry.getValue().stats.currentWindowId;
         }
       }
-      return min == Long.MAX_VALUE ? 0 : min;
+      return StreamingContainerManager.toWsWindowId(min == Long.MAX_VALUE ? 0 : min);
     }
 
     @Override
     public long getRecoveryWindowId()
     {
-      return dnmgr.getCommittedWindowId();
+      return StreamingContainerManager.toWsWindowId(dnmgr.getCommittedWindowId());
     }
 
     @Override
@@ -588,7 +589,12 @@ public class StramAppMaster extends CompositeService
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
-      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(getConfig()).start(new StramWebApp(this.dnmgr));
+      Configuration config = getConfig();
+      if (UserGroupInformation.isSecurityEnabled()) {
+        config = new Configuration(config);
+        config.set("hadoop.http.filter.initializers", StramWSFilterInitializer.class.getCanonicalName());
+      }
+      WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(config).start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(webApp.getListenerAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
@@ -795,9 +801,7 @@ public class StramAppMaster extends CompositeService
 
         {
           // record container start event
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("container-start");
-          ev.addData("containerId", allocatedContainer.getId().toString());
-          ev.addData("containerNode", allocatedContainer.getNodeId().toString());
+          StramEvent ev = new StramEvent.StartContainerEvent(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString());
           ev.setTimestamp(timestamp);
           dnmgr.recordEventAsync(ev);
         }
@@ -859,17 +863,12 @@ public class StramAppMaster extends CompositeService
         // record operator stop for this container
         StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
         for (PTOperator oper : containerAgent.container.getOperators()) {
-          FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
-          ev.addData("operatorId", oper.getId());
-          ev.addData("operatorName", oper.getName());
-          ev.addData("containerId", containerStatus.getContainerId().toString());
-          ev.addData("reason", "container exited with status " + exitStatus);
+          StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerStatus.getContainerId().toString());
+          ev.setReason("container exited with status " + exitStatus);
           dnmgr.recordEventAsync(ev);
         }
         // record container stop event
-        FSEventRecorder.Event ev = new FSEventRecorder.Event("container-stop");
-        ev.addData("containerId", containerStatus.getContainerId().toString());
-        ev.addData("exitStatus", containerStatus.getExitStatus());
+        StramEvent ev = new StramEvent.StopContainerEvent(containerStatus.getContainerId().toString(), containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
 
         dnmgr.removeContainerAgent(containerAgent.container.getExternalId());

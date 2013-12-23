@@ -139,16 +139,16 @@ public class LaunchContainerRunnable implements Runnable
       try {
         UserGroupInformation ugi = UserGroupInformation.getLoginUser();
         StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
-        delegationTokenManager.addIdentifier(identifier);
-        byte[] password = delegationTokenManager.retrievePassword(identifier);
+        byte[] password = delegationTokenManager.addIdentifier(identifier);
         String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
         stramToken = new Token<StramDelegationTokenIdentifier>(identifier.getBytes(), password, identifier.getKind(), new Text(service));
 
         Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
         Credentials credentials = new Credentials();
-        for (Token<? extends TokenIdentifier> token : tokens) {
-          if (token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
+        for (Token<? extends TokenIdentifier> token : tokens) { 
+          if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
             credentials.addToken(token.getService(), token);
+            LOG.info("Passing container token {}", token);
           }
         }
         credentials.addToken(stramToken.getService(), stramToken);
