@@ -6,6 +6,7 @@ package com.datatorrent.stram.client;
 
 import com.datatorrent.bufferserver.util.*;
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
 import com.datatorrent.stram.security.StramWSFilter;
 import com.datatorrent.stram.util.HeaderClientFilter;
 import com.datatorrent.stram.util.LRUCache;
@@ -145,7 +146,16 @@ public class StramAgent extends FSAgent
     StramWebServicesInfo info = getWebServicesInfo(appid);
     WebResource ws = null;
     if (info != null) {
-      ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
+      //ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
+      // the filter should convert to the right version
+      ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(WebServices.VERSION).path("stram");
+      WebServicesVersionConversion.Converter versionConverter = WebServicesVersionConversion.getConverter(info.version);
+      if (versionConverter != null) {
+        VersionConversionFilter versionConversionFilter = new VersionConversionFilter(versionConverter);
+        if (!wsClient.isFilterPreset(versionConversionFilter)) {
+          wsClient.addFilter(versionConversionFilter);
+        }
+      }
       if (info.securityInfo != null) {
         if (!wsClient.isFilterPreset(info.securityInfo.secClientFilter)) {
           wsClient.addFilter(info.securityInfo.secClientFilter);

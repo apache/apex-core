@@ -87,6 +87,7 @@ import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
@@ -730,9 +731,9 @@ public class DTCli
   private static String[] expandFileNames(String fileName) throws IOException
   {
     // TODO: need to work with other users
-     if (fileName.matches("^[a-zA-Z]+:.*")) {
+    if (fileName.matches("^[a-zA-Z]+:.*")) {
       // it's a URL
-      return new String[]{fileName};
+      return new String[] {fileName};
     }
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
@@ -1368,7 +1369,14 @@ public class DTCli
     WebServicesClient wsClient = new WebServicesClient();
     Client client = wsClient.getClient();
     client.setFollowRedirects(true);
-    WebResource r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+    WebResource r;
+
+    try {
+      r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+    }
+    catch (IncompatibleVersionException ex) {
+      throw new CliException("Incompatible stram version", ex);
+    }
     if (r == null) {
       throw new CliException("Application " + appReport.getApplicationId().toString() + " has not started");
     }
@@ -1405,7 +1413,12 @@ public class DTCli
     }
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
-    return StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+    try {
+      return StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+    }
+    catch (IncompatibleVersionException ex) {
+      throw new CliException("Incompatible Stram version", ex);
+    }
   }
 
   private List<AppFactory> getMatchingAppFactories(StramAppLauncher submitApp, String matchString)
