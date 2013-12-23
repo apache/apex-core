@@ -5,10 +5,12 @@
 package com.datatorrent.stram.client;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
@@ -28,8 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.license.util.Util;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 /**
  *
@@ -264,8 +264,7 @@ public class StramClientUtils
 
   public static byte[] getLicense(String filePath) throws IOException
   {
-    java.nio.file.Path path = Paths.get(filePath);
-    return Files.readAllBytes(path);
+    return IOUtils.toByteArray(new FileInputStream(filePath));
   }
 
 }
