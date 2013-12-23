@@ -225,7 +225,7 @@ public class LicensingAppMaster extends CompositeService
 
     // RPC server
     int rpcListenerCount = dag.getValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT);
-    this.rpcListener = new LicensingAgentProtocolImpl(this.getClass().getName(), delegationTokenManager, rpcListenerCount);
+    this.rpcListener = new LicensingAgentProtocolImpl(this.getClass().getName(), delegationTokenManager, rpcListenerCount, licenseBytes);
     addService(rpcListener);
 
     // initialize all services added above
