@@ -180,7 +180,7 @@ public class StreamMapping implements java.io.Serializable
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
 
         if (upstream.size() > 1) {
-          if (pks == null) {
+          if (pks == null || pks.mask == 0) {
             if (finalUnifier == null) {
               finalUnifier = createUnifier();
             }
