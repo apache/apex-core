@@ -36,6 +36,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.webapp.ContainerInfo;
+
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 
@@ -323,7 +324,7 @@ public class StramChildAgent {
     if (oper.getUnifier() != null) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
-      
+
     long checkpointWindowId = oper.getRecoveryCheckpoint();
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 
@@ -346,7 +347,8 @@ public class StramChildAgent {
     ndi.checkpointWindowId = checkpointWindowId;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
-    ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
+    // clone the map as StramChild assumes ownership and may add non-serializable attributes
+    ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
     return ndi;
   }
 

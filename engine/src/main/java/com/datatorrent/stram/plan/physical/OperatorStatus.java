@@ -26,8 +26,11 @@ import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
  */
 public class OperatorStatus implements BatchedOperatorStats, java.io.Serializable
 {
-  public class PortStatus
+  private static final long serialVersionUID = 201312231552L;
+
+  public class PortStatus implements java.io.Serializable
   {
+    private static final long serialVersionUID = 201312231635L;
     public String portName;
     public long totalTuples;
     public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
@@ -67,19 +70,6 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
     cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
-// TODO: assuming that these are initialized during heartbeat processing
-/*
-    for (PTOperator.PTInput ptInput: operator.getInputs()) {
-      PortStatus inputPortStatus = new PortStatus();
-      inputPortStatus.portName = ptInput.portName;
-      inputPortStatusList.put(ptInput.portName, inputPortStatus);
-    }
-    for (PTOperator.PTOutput ptOutput: operator.getOutputs()) {
-      PortStatus outputPortStatus = new PortStatus();
-      outputPortStatus.portName = ptOutput.portName;
-      outputPortStatusList.put(ptOutput.portName, outputPortStatus);
-    }
-*/
   }
 
   public boolean isIdle()

@@ -165,6 +165,12 @@ public class PTOperator implements java.io.Serializable
     this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
+  //private Object readResolve()
+  //{
+  //  this.stats = new OperatorStatus(this.id, plan.getDAG());
+  //  return this;
+  //}
+
   private volatile PTOperator.State state = State.NEW;
   private final PhysicalPlan plan;
   PTContainer container;

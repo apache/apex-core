@@ -74,8 +74,9 @@ public class PhysicalPlan implements Serializable
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
    */
-  public static class PartitionLoadWatch implements StatsListener
+  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
+    private static final long serialVersionUID = 201312231633L;
     public long evalIntervalMillis = 30*1000;
     private final long tpsMin;
     private final long tpsMax;
