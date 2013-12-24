@@ -847,20 +847,22 @@ public class DTCli
     }
 
     Level logLevel;
-    if (verboseLevel == 0) {
-      logLevel = Level.OFF;
-    }
-    else if (verboseLevel == 1) {
-      logLevel = Level.ERROR;
-    }
-    else if (verboseLevel == 2) {
-      logLevel = Level.WARN;
-    }
-    else if (verboseLevel == 3) {
-      logLevel = Level.INFO;
-    }
-    else {
-      logLevel = Level.DEBUG;
+    switch (verboseLevel) {
+      case 0:
+        logLevel = Level.OFF;
+        break;
+      case 1:
+        logLevel = Level.ERROR;
+        break;
+      case 2:
+        logLevel = Level.WARN;
+        break;
+      case 3:
+        logLevel = Level.INFO;
+        break;
+      default:
+        logLevel = Level.DEBUG;
+        break;
     }
 
     for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
