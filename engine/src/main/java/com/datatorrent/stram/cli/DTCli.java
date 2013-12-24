@@ -1778,6 +1778,8 @@ public class DTCli
           }
           String licenseId = License.getLicenseID(licenseBytes);
           YarnClient clientRMService = YarnClient.createYarnClient();
+          clientRMService.init(conf);
+          clientRMService.start();
           ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
           if (ar == null) {
             throw new CliException("License not activated. Please run activate-license first before launching any streaming application");
