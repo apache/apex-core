@@ -1694,6 +1694,9 @@ public class DTCli
         commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
         config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
       }
+      if (commandLineInfo.licenseFile != null) {
+        commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
+      }
       String fileName = expandFileName(commandLineInfo.args[0], true);
       StramAppLauncher submitApp = getStramAppLauncher(fileName, config);
       submitApp.loadDependencies();
@@ -1766,7 +1769,19 @@ public class DTCli
       if (appFactory != null) {
         if (!commandLineInfo.localMode) {
 
-
+          byte[] licenseBytes;
+          if (commandLineInfo.licenseFile != null) {
+            licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile);
+          }
+          else {
+            licenseBytes = StramClientUtils.getLicense(conf);
+          }
+          String licenseId = License.getLicenseID(licenseBytes);
+          YarnClient clientRMService = YarnClient.createYarnClient();
+          ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+          if (ar == null) {
+            throw new CliException("License not activated. Please run activate-license first before launching any streaming application");
+          }
           ApplicationId appId = submitApp.launchApp(appFactory);
           currentApp = rmClient.getApplicationReport(appId);
           printJson("{\"appId\": \"" + appId + "\"}");
@@ -2966,12 +2981,14 @@ public class DTCli
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
     Option archives = OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives");
+    Option license = OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
     options.addOption(libjars);
     options.addOption(files);
     options.addOption(archives);
+    options.addOption(license);
     return options;
   }
 
@@ -2998,6 +3015,7 @@ public class DTCli
     result.libjars = line.getOptionValue("libjars");
     result.files = line.getOptionValue("files");
     result.archives = line.getOptionValue("archives");
+    result.licenseFile = line.getOptionValue("license");
     result.args = line.getArgs();
     return result;
   }
@@ -3010,6 +3028,7 @@ public class DTCli
     String libjars;
     String files;
     String archives;
+    String licenseFile;
     String[] args;
   }
 
