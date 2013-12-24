@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.WebResource;
@@ -35,7 +36,7 @@ public class AlertsAgent extends StramAgent
     return getDefaultStramRoot() + Path.SEPARATOR + "alertTemplates";
   }
 
-  public void createAlert(String appId, String name, String streamName, String templateName, Map<String, String> parameters) throws AppNotFoundException, IOException, JSONException
+  public void createAlert(String appId, String name, String streamName, String templateName, Map<String, String> parameters) throws AppNotFoundException, IncompatibleVersionException, IOException, JSONException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = StramAgent.getStramWebResource(webServicesClient, appId);
@@ -113,7 +114,7 @@ public class AlertsAgent extends StramAgent
     }
   }
 
-  public void deleteAlert(String appId, String name) throws AppNotFoundException, IOException
+  public void deleteAlert(String appId, String name) throws AppNotFoundException, IncompatibleVersionException, IOException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = StramAgent.getStramWebResource(webServicesClient, appId);

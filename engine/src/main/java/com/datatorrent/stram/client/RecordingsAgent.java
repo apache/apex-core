@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 
 import com.datatorrent.api.util.ObjectMapperString;
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 
 import com.datatorrent.stram.debug.TupleRecorder;
 import com.datatorrent.stram.util.FSPartFileCollection;
@@ -598,7 +599,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     return info;
   }
 
-  public String startRecording(String appId, String opId, String portName)
+  public String startRecording(String appId, String opId, String portName) throws IncompatibleVersionException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = getStramWebResource(webServicesClient, appId);
@@ -630,7 +631,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
   }
 
-  public String stopRecording(String appId, String opId, String portName)
+  public String stopRecording(String appId, String opId, String portName) throws IncompatibleVersionException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = getStramWebResource(webServicesClient, appId);
