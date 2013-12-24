@@ -14,18 +14,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 import jline.console.ConsoleReader;
 import jline.console.completer.AggregateCompleter;
@@ -494,6 +483,10 @@ public class DTCli
                                                              null,
                                                              new Arg[] {new FileArg("license-file")},
                                                              "Stop the license agent"));
+    globalCommands.put("list-licenses", new CommandSpec(new ListLicensesCommand(),
+                                                        null,
+                                                        null,
+                                                        "Show all IDs of all licenses"));
 
     //
     // Connected command specification starts here
@@ -1322,6 +1315,19 @@ public class DTCli
     }
   }
 
+  private List<ApplicationReport> getLicenseList()
+  {
+    try {
+      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE));
+      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
+      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+    }
+    catch (Exception e) {
+      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+    }
+  }
+
   private String getContainerLongId(String containerId)
   {
     ClientResponse rsp = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS, currentApp);
@@ -1567,7 +1573,8 @@ public class DTCli
       byte[] licenseBytes;
       if (args.length > 1) {
         licenseBytes = StramClientUtils.getLicense(args[1]);
-      } else {
+      }
+      else {
         licenseBytes = StramClientUtils.getLicense(conf);
       }
       String licenseId = License.getLicenseID(licenseBytes);
@@ -1591,7 +1598,8 @@ public class DTCli
       byte[] licenseBytes;
       if (args.length > 1) {
         licenseBytes = StramClientUtils.getLicense(args[1]);
-      } else {
+      }
+      else {
         licenseBytes = StramClientUtils.getLicense(conf);
       }
       String licenseId = License.getLicenseID(licenseBytes);
@@ -1610,6 +1618,39 @@ public class DTCli
       }
       finally {
         clientRMService.stop();
+      }
+    }
+
+  }
+
+  private class ListLicensesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      try {
+        JSONArray jsonArray = new JSONArray();
+        List<ApplicationReport> licList = getLicenseList();
+        Collections.sort(licList, new Comparator<ApplicationReport>()
+        {
+          @Override
+          public int compare(ApplicationReport o1, ApplicationReport o2)
+          {
+            return o1.getApplicationId().getId() - o2.getApplicationId().getId();
+          }
+
+        });
+
+        for (ApplicationReport ar : licList) {
+          JSONObject jsonObj = new JSONObject();
+          jsonObj.put("id", ar.getName());
+          jsonObj.put("applicationId", ar.getApplicationId().getId());
+          jsonArray.put(jsonObj);
+        }
+        printJson(jsonArray, "licenses");
+      }
+      catch (Exception ex) {
+        throw new CliException("Failed to retrieve license list", ex);
       }
     }
 
@@ -1724,6 +1765,8 @@ public class DTCli
 
       if (appFactory != null) {
         if (!commandLineInfo.localMode) {
+
+
           ApplicationId appId = submitApp.launchApp(appFactory);
           currentApp = rmClient.getApplicationReport(appId);
           printJson("{\"appId\": \"" + appId + "\"}");
