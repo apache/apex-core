@@ -878,8 +878,9 @@ public class PhysicalPlan implements Serializable
   private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype,String host) {
 
     HostOperatorSet grpObj = newOperator.getGrouping(ltype);
-    if(host!= null)
+    if(host!= null) {
       grpObj.setHost(host);
+    }
     Set<PTOperator> s = grpObj.getOperatorSet();
     s.add(newOperator);
     LocalityPref loc = localityPrefs.prefs.get(pnodes);
@@ -1024,7 +1025,7 @@ public class PhysicalPlan implements Serializable
    * Add logical operator to the plan. Assumes that upstream operators have been added before.
    * @param om
    */
-  public void addLogicalOperator(OperatorMeta om)
+  public final void addLogicalOperator(OperatorMeta om)
   {
     PMapping pnodes = new PMapping(om);
     String host = pnodes.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
