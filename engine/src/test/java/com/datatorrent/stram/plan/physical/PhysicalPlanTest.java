@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import junit.framework.Assert;
 
 import com.google.common.collect.Lists;
@@ -29,7 +30,6 @@ import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
@@ -119,8 +119,8 @@ public class PhysicalPlanTest {
       Assert.assertEquals("number inputs " + inputsMap, Sets.newHashSet(PartitioningTestOperator.IPORT1, PartitioningTestOperator.INPORT_WITH_CODEC), inputsMap.keySet());
     }
 
-    Collection<PTOperator> unifiers = plan.getMergeOperators(dag.getMeta(node2));
-    Assert.assertEquals("number unifiers", 1, unifiers.size());
+    Collection<PTOperator> unifiers = plan.getMergeOperators(node2Decl);
+    Assert.assertEquals("number unifiers " + node2Decl, 1, unifiers.size());
     Assert.assertNotNull("unifier container " + unifiers, unifiers.iterator().next().getContainer());
   }
 
@@ -179,7 +179,7 @@ public class PhysicalPlanTest {
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
-    node2Meta.getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    node2Meta.getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 1);
     node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MIN, 0);
     node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
@@ -187,8 +187,23 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
-    Assert.assertEquals("number of operators", 5, plan.getAllOperators().size());
-    Assert.assertEquals("number of save requests", 5, ctx.backupRequests);
+    Assert.assertEquals("number of operators", 3, plan.getAllOperators().size());
+    Assert.assertEquals("number of save requests", 3, ctx.backupRequests);
+
+    List<PTOperator> o2Partitions = plan.getOperators(node2Meta);
+    Assert.assertEquals("number operators " + node2Meta, 1, o2Partitions.size());
+
+    PTOperator o2p1 = o2Partitions.get(0);
+    Assert.assertEquals("stats handlers " + o2p1, 1, o2p1.statsListeners.size());
+    StatsListener sl = o2p1.statsListeners.get(0);
+    Assert.assertTrue("stats handlers " + o2p1.statsListeners, sl instanceof PhysicalPlan.PartitionLoadWatch);
+    ((PhysicalPlan.PartitionLoadWatch)sl).evalIntervalMillis = -1; // no delay
+
+    o2p1.stats.tuplesProcessedPSMA = 10;
+    plan.onStatusUpdate(o2p1);
+    Assert.assertEquals("load exceeds max", 1, ctx.events.size());
+    ctx.backupRequests = 0;
+    ctx.events.remove(0).run();
 
     List<PTOperator> n2Instances = plan.getOperators(node2Meta);
     Assert.assertEquals("partition instances " + n2Instances, 2, n2Instances.size());
@@ -200,9 +215,6 @@ public class PhysicalPlanTest {
     expUndeploy.addAll(plan.getMergeOperators(node2Meta));
 
     // verify load update generates expected events per configuration
-    Assert.assertEquals("stats handlers " + po, 1, po.statsListeners.size());
-    StatsListener sl = po.statsListeners.get(0);
-    Assert.assertTrue("stats handlers " + po.statsListeners, sl instanceof PhysicalPlan.PartitionLoadWatch);
 
     po.stats.tuplesProcessedPSMA = 0;
     plan.onStatusUpdate(po);
@@ -467,7 +479,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testDefaultRepartitioning() {
+  public void testDefaultRepartitioning()
+  {
 
     List<PartitionKeys> twoBitPartitionKeys = Arrays.asList(
             newPartitionKeys("11", "00"),
