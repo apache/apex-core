@@ -412,6 +412,7 @@ public class LogicalPlan implements Serializable, DAG
 
     private OperatorMeta(String name, Operator operator)
     {
+      LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
       this.operatorProxy = new OperatorProxy(operator);
       this.name = name;

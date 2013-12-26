@@ -25,6 +25,7 @@ import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
@@ -121,17 +122,11 @@ public class StramChildAgent {
         public void run() {
           // remove operators from undeploy list to not request it again
           container.getPendingUndeploy().removeAll(toUndeploy);
-          long timestamp = System.currentTimeMillis();
           for (PTOperator operator : toUndeploy) {
             operator.setState(PTOperator.State.INACTIVE);
 
             // record operator stop event
-            FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-stop");
-            ev.addData("operatorId", operator.getId());
-            ev.addData("containerId", operator.getContainer().getExternalId());
-            ev.addData("reason", "undeploy");
-            ev.setTimestamp(timestamp);
-            StramChildAgent.this.dnmgr.recordEventAsync(ev);
+            StramChildAgent.this.dnmgr.recordEventAsync(new StramEvent.StopOperatorEvent(operator.getName(), operator.getId(), operator.getContainer().getExternalId()));
           }
           LOG.debug("{} undeploy complete: {} deploy: {}", new Object[] {container.getExternalId(), toUndeploy, container.getPendingDeploy()});
         }

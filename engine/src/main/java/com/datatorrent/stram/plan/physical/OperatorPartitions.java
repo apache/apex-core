@@ -48,7 +48,7 @@ public class OperatorPartitions {
       }
 
       Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
-      if (!inputs.isEmpty() && partitions.size() > 1) {
+      if (!inputs.isEmpty()) {
         // partition the stream that was first connected in the DAG and send full data to remaining input ports
         // this gives control over which stream to partition under default partitioning to the DAG writer
         InputPortMeta portMeta = inputs.keySet().iterator().next();

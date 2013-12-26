@@ -34,10 +34,9 @@ import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-import com.datatorrent.stram.EventRecorder;
-import com.datatorrent.stram.FSEventRecorder;
 import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -182,7 +181,7 @@ public class PhysicalPlan implements Serializable
      * @param ev The event
      *
      */
-    public void recordEventAsync(EventRecorder.Event ev);
+    public void recordEventAsync(StramEvent ev);
 
     /**
      * Request deployment change as sequence of undeploy, container start and deploy groups with dependency.
@@ -601,13 +600,7 @@ public class PhysicalPlan implements Serializable
     }
 
     deployChanges();
-
-    EventRecorder.Event ev = new FSEventRecorder.Event("partition");
-    ev.addData("operatorName", currentMapping.logicalOperator.getName());
-    ev.addData("currentNumPartitions", currentPartitions.size());
-    ev.addData("newNumPartitions", newPartitions.size());
-    this.ctx.recordEventAsync(ev);
-
+    this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
   }
 
   private void updateStreamMappings(PMapping m) {
@@ -878,10 +871,7 @@ public class PhysicalPlan implements Serializable
     oper.inputs = new ArrayList<PTInput>();
     oper.outputs = new ArrayList<PTOutput>();
 
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-create");
-    ev.addData("operatorId", oper.getId());
-    ev.addData("operatorName", oper.getName());
-    this.ctx.recordEventAsync(ev);
+    this.ctx.recordEventAsync(new StramEvent.CreateOperatorEvent(oper.getName(), oper.getId()));
 
     return oper;
   }
@@ -950,11 +940,7 @@ public class PhysicalPlan implements Serializable
     this.deployOpers.remove(oper);
     this.undeployOpers.add(oper);
     this.allOperators.remove(oper.id);
-
-    FSEventRecorder.Event ev = new FSEventRecorder.Event("operator-remove");
-    ev.addData("operatorId", oper.getId());
-    ev.addData("operatorName", oper.getName());
-    this.ctx.recordEventAsync(ev);
+    this.ctx.recordEventAsync(new StramEvent.RemoveOperatorEvent(oper.getName(), oper.getId()));
   }
 
   public LogicalPlan getDAG() {

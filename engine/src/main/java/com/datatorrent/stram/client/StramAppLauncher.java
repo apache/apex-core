@@ -32,7 +32,9 @@ import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-
+import java.net.*;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -46,19 +48,49 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  *
  * @since 0.3.2
  */
-public class StramAppLauncher {
-
+public class StramAppLauncher
+{
   public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
-
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
-
-  final File jarFile;
+  private final File jarFile;
+  private FileSystem fs;
   private Configuration conf;
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
+  private StringWriter mvnBuildClasspathOutput = new StringWriter();
+
+  private String generateClassPathFromPom(File pomFile, File cpFile) throws IOException
+  {
+    String cp;
+    LOG.info("Generating classpath via mvn from " + pomFile);
+    LOG.info("java.home: " + System.getProperty("java.home"));
+
+    String dt_home;
+    if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
+      dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
+    }
+    else {
+      dt_home = "";
+    }
+    String cmd = "mvn dependency:build-classpath" + dt_home + " -q -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
+    LOG.debug("Executing: {}", cmd);
+    Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", cmd});
+    ProcessWatcher pw = new ProcessWatcher(p);
+    InputStream output = p.getInputStream();
+    while (!pw.isFinished()) {
+      IOUtils.copy(output, mvnBuildClasspathOutput);
+    }
+    if (pw.rc != 0) {
+      // fall through
+      LOG.warn("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + mvnBuildClasspathOutput.toString());
+      return null;
+    }
+    cp = FileUtils.readFileToString(cpFile);
+    return cp;
+  }
 
   /**
    *
@@ -66,103 +98,116 @@ public class StramAppLauncher {
    * <br>
    *
    */
-  public static class ProcessWatcher implements Runnable {
-
+  public static class ProcessWatcher implements Runnable
+  {
     private final Process p;
     private volatile boolean finished = false;
     private volatile int rc;
 
     @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
-    public ProcessWatcher(Process p) {
-        this.p = p;
-        new Thread(this).start();
+    public ProcessWatcher(Process p)
+    {
+      this.p = p;
+      new Thread(this).start();
     }
 
-    public boolean isFinished() {
-        return finished;
+    public boolean isFinished()
+    {
+      return finished;
     }
 
     @Override
-    public void run() {
-        try {
-            rc = p.waitFor();
-        } catch (Exception e) {}
-        finished = true;
+    public void run()
+    {
+      try {
+        rc = p.waitFor();
+      }
+      catch (Exception e) {
+      }
+      finished = true;
     }
+
   }
 
+  public static interface AppFactory
+  {
+    StreamingApplication createApp(Configuration conf);
 
-  public static interface AppFactory {
-      StreamingApplication createApp(Configuration conf);
-      String getName();
+    String getName();
+
   }
 
-  public static class PropertyFileAppFactory implements AppFactory {
+  public static class PropertyFileAppFactory implements AppFactory
+  {
     final File propertyFile;
 
-    public PropertyFileAppFactory(File file) {
+    public PropertyFileAppFactory(File file)
+    {
       this.propertyFile = file;
     }
 
     @Override
-    public StreamingApplication createApp(Configuration conf) {
+    public StreamingApplication createApp(Configuration conf)
+    {
       try {
         return LogicalPlanConfiguration.create(conf, propertyFile.getAbsolutePath());
-      } catch (IOException e) {
+      }
+      catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
       }
     }
 
     @Override
-    public String getName() {
+    public String getName()
+    {
       return propertyFile.getName();
     }
 
   }
 
-
-  public StramAppLauncher(File appJarFile) throws Exception {
+  public StramAppLauncher(File appJarFile) throws Exception
+  {
     this(appJarFile, null);
   }
 
-  public StramAppLauncher(File appJarFile, Configuration conf) throws Exception {
+  public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
+  {
     this.jarFile = appJarFile;
     this.conf = conf;
     init();
   }
 
-  public StramAppLauncher(FileSystem fs, Path path) throws Exception {
+  public StramAppLauncher(FileSystem fs, Path path) throws Exception
+  {
     this(fs, path, null);
   }
 
-  public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception {
+  public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception
+  {
     File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
     jarsDir.mkdirs();
     File localJarFile = new File(jarsDir, path.getName());
+    this.fs = fs;
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
     this.conf = conf;
     init();
   }
-  
-  public static class DependencyException extends RuntimeException
+
+  public String getMvnBuildClasspathOutput()
   {
-    private static final long serialVersionUID = 20131204L;
-    public DependencyException(String message)
-    {
-      super(message);
-    }
+    return mvnBuildClasspathOutput.toString();
   }
 
-  @SuppressWarnings("UseOfSystemOutOrSystemErr")
-  private void init() throws Exception {
+  private void init() throws Exception
+  {
 
     if (conf == null) {
       conf = getConfig(null, null);
     }
     propertiesBuilder.addFromConfiguration(conf);
 
-    File baseDir =  StramClientUtils.getSettingsRootDir();
+    File baseDir = StramClientUtils.getSettingsRootDir();
     baseDir = new File(baseDir, jarFile.getName());
     baseDir.mkdirs();
 
@@ -175,16 +220,17 @@ public class StramAppLauncher {
     // (we won't run mvn again if pom didn't change)
     if (cpFile.exists()) {
       try {
-       DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
-       pomCrc = dis.readLong();
-       dis.close();
-       cp = FileUtils.readFileToString(cpFile, "UTF-8");
-      } catch (Exception e) {
+        DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
+        pomCrc = dis.readLong();
+        dis.close();
+        cp = FileUtils.readFileToString(cpFile, "UTF-8");
+      }
+      catch (Exception e) {
         LOG.error("Cannot read CRC from {}", pomCrcFile);
       }
     }
 
- // TODO: cache based on application jar checksum
+    // TODO: cache based on application jar checksum
     FileUtils.deleteDirectory(baseDir);
 
     java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
@@ -192,24 +238,26 @@ public class StramAppLauncher {
 
     java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
     while (entriesEnum.hasMoreElements()) {
-        java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-        if (!jarEntry.isDirectory()) {
-          if (jarEntry.getName().endsWith("pom.xml")) {
-            File pomDst = new File(baseDir, "pom.xml");
-            FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
-            if (pomCrc != jarEntry.getCrc()) {
-              LOG.info("CRC of " + jarEntry.getName() + " changed, invalidating cached classpath.");
-              cp = null;
-              pomCrc = jarEntry.getCrc();
-            }
-          } else if (jarEntry.getName().endsWith(".app.properties")) {
-            File targetFile = new File(baseDir, jarEntry.getName());
-            FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
-            appResourceList.add(new PropertyFileAppFactory(targetFile));
-          } else if (jarEntry.getName().endsWith(".class")) {
-            classFileNames.add(jarEntry.getName());
+      java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+      if (!jarEntry.isDirectory()) {
+        if (jarEntry.getName().endsWith("pom.xml")) {
+          File pomDst = new File(baseDir, "pom.xml");
+          FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
+          if (pomCrc != jarEntry.getCrc()) {
+            LOG.info("CRC of " + jarEntry.getName() + " changed, invalidating cached classpath.");
+            cp = null;
+            pomCrc = jarEntry.getCrc();
           }
         }
+        else if (jarEntry.getName().endsWith(".app.properties")) {
+          File targetFile = new File(baseDir, jarEntry.getName());
+          FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
+          appResourceList.add(new PropertyFileAppFactory(targetFile));
+        }
+        else if (jarEntry.getName().endsWith(".class")) {
+          classFileNames.add(jarEntry.getName());
+        }
+      }
     }
     jar.close();
 
@@ -217,47 +265,29 @@ public class StramAppLauncher {
     if (pomFile.exists()) {
       if (cp == null) {
         // try to generate dependency classpath
-        LOG.info("Generating classpath via mvn from " + pomFile);
-        LOG.info("java.home: " + System.getProperty("java.home"));
-
-        String dt_home;
-        if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
-          dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
-        }
-        else {
-          dt_home = "";
-        }
-        String cmd = "mvn dependency:build-classpath" + dt_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
-
-        Process p = Runtime.getRuntime().exec(cmd);
-        ProcessWatcher pw = new ProcessWatcher(p);
-        InputStream output = p.getInputStream();
-        StringWriter commandOutput = new StringWriter();
-        while(!pw.isFinished()) {
-          IOUtils.copy(output, commandOutput);
-        }
-        System.out.append(commandOutput.toString());
-        if (pw.rc != 0) {
-          throw new DependencyException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + commandOutput.toString());
-        }
-        cp = FileUtils.readFileToString(cpFile);
+        cp = generateClassPathFromPom(pomFile, cpFile);
       }
-      DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
-      dos.writeLong(pomCrc);
-      dos.close();
-      FileUtils.writeStringToFile(cpFile, cp, false);
+      if (cp != null) {
+        DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
+        dos.writeLong(pomCrc);
+        dos.close();
+        FileUtils.writeStringToFile(cpFile, cp, false);
+      }
     }
 
     LinkedHashSet<URL> clUrls = new LinkedHashSet<URL>();
 
-//    // dependencies from parent loader
-//    ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
-//    if (baseCl instanceof URLClassLoader) {
-//      URL[] baseUrls = ((URLClassLoader)baseCl).getURLs();
-//      // launch class path takes precedence - add first
-//      clUrls.addAll(Arrays.asList(baseUrls));
-//    }
-    URL mainJarUrl = new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/");
+    // dependencies from parent loader, if classpath can't be found from pom
+    if (cp == null) {
+      ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
+      if (baseCl instanceof URLClassLoader) {
+        URL[] baseUrls = ((URLClassLoader)baseCl).getURLs();
+        // launch class path takes precedence - add first
+        clUrls.addAll(Arrays.asList(baseUrls));
+      }
+    }
+
+    URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
     URLConnection urlConnection = mainJarUrl.openConnection();
     if (urlConnection instanceof JarURLConnection) {
       // JDK6 keeps jar file shared and open as long as the process is running.
@@ -276,6 +306,37 @@ public class StramAppLauncher {
       }
     }
 
+    String libjars = conf.get(LIBJARS_CONF_KEY_NAME);
+    if (libjars != null) {
+      for (String libjar : libjars.split(",")) {
+        // if hdfs, copy from hdfs to local
+        URI uri = new URI(libjar);
+        String scheme = uri.getScheme();
+        if (scheme == null) {
+          clUrls.add(new URL("file:" + libjar));
+        }
+        else if (scheme.equals("file")) {
+          clUrls.add(new URL(libjar));
+        }
+        else if (scheme.equals("hdfs")) {
+          if (fs != null) {
+            Path path = new Path(libjar);
+            File dependencyJarsDir = new File(StramClientUtils.getSettingsRootDir(), "dependencyJars");
+            dependencyJarsDir.mkdirs();
+            File localJarFile = new File(dependencyJarsDir, path.getName());
+            fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
+            clUrls.add(new URL("file:" + localJarFile.getAbsolutePath()));
+          }
+          else {
+            throw new NotImplementedException("Jar file needs to be from HDFS also in order for the dependency jars to be in HDFS");
+          }
+        }
+        else {
+          throw new NotImplementedException("Scheme {} in libjars not supported");
+        }
+      }
+    }
+
     for (URL baseURL : clUrls) {
       LOG.debug("Dependency: {}", baseURL);
     }
@@ -291,30 +352,35 @@ public class StramAppLauncher {
    * Scan the application jar file entries for configuration classes.
    * This needs to occur in a class loader with access to the application dependencies.
    */
-  private void findAppConfigClasses(List<String> classFileNames) {
+  private void findAppConfigClasses(List<String> classFileNames)
+  {
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     for (final String classFileName : classFileNames) {
       final String className = classFileName.replace('/', '.').substring(0, classFileName.length() - 6);
       try {
         Class<?> clazz = cl.loadClass(className);
         if (!Modifier.isAbstract(clazz.getModifiers()) && StreamingApplication.class.isAssignableFrom(clazz)) {
-          final AppFactory appConfig = new AppFactory() {
-
+          final AppFactory appConfig = new AppFactory()
+          {
             @Override
-            public String getName() {
+            public String getName()
+            {
               return classFileName;
             }
 
             @Override
-            public StreamingApplication createApp(Configuration conf) {
+            public StreamingApplication createApp(Configuration conf)
+            {
               // load class from current context class loader
               Class<? extends StreamingApplication> c = StramUtils.classForName(className, StreamingApplication.class);
               return StramUtils.newInstance(c);
             }
+
           };
           appResourceList.add(appConfig);
         }
-      } catch (Throwable e) { // java.lang.NoClassDefFoundError
+      }
+      catch (Throwable e) { // java.lang.NoClassDefFoundError
         LOG.error("Unable to load class: " + className + " " + e);
       }
     }
@@ -325,13 +391,13 @@ public class StramAppLauncher {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
     /*
-    // user settings
-    File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
-    if (cfgResource.exists()) {
-      LOG.info("Loading settings: " + cfgResource.toURI());
-      conf.addResource(new Path(cfgResource.toURI()));
-    }
-    */
+     // user settings
+     File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
+     if (cfgResource.exists()) {
+     LOG.info("Loading settings: " + cfgResource.toURI());
+     conf.addResource(new Path(cfgResource.toURI()));
+     }
+     */
     //File appDir = new File(StramClientUtils.getSettingsRootDir(), jarFile.getName());
     //cfgResource = new File(appDir, StramClientUtils.STRAM_SITE_XML_FILE);
     //if (cfgResource.exists()) {
@@ -343,7 +409,8 @@ public class StramAppLauncher {
       if (overrideConfFile.exists()) {
         LOG.info("Loading settings: " + overrideConfFile.toURI());
         conf.addResource(new Path(overrideConfFile.toURI()));
-      } else {
+      }
+      else {
         throw new IOException("Problem opening file " + overrideConfFile);
       }
     }
@@ -355,16 +422,18 @@ public class StramAppLauncher {
     return conf;
   }
 
-
-  public Map<String, String> getAppAliases() {
+  public Map<String, String> getAppAliases()
+  {
     return propertiesBuilder.getAppAliases();
   }
 
-  public LogicalPlanConfiguration getLogicalPlanConfiguration() {
+  public LogicalPlanConfiguration getLogicalPlanConfiguration()
+  {
     return propertiesBuilder;
   }
 
-  public LogicalPlan prepareDAG(AppFactory appConfig) {
+  public LogicalPlan prepareDAG(AppFactory appConfig)
+  {
     LogicalPlan dag = new LogicalPlan();
     StreamingApplication app = appConfig.createApp(conf);
     propertiesBuilder.prepareDAG(dag, app, appConfig.getName(), conf);
@@ -373,10 +442,12 @@ public class StramAppLauncher {
 
   /**
    * Run application in-process. Returns only once application completes.
+   *
    * @param appConfig
    * @throws Exception
    */
-  public void runLocal(AppFactory appConfig) throws Exception {
+  public void runLocal(AppFactory appConfig) throws Exception
+  {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
@@ -384,7 +455,8 @@ public class StramAppLauncher {
     lc.run();
   }
 
-  public URLClassLoader loadDependencies() {
+  public URLClassLoader loadDependencies()
+  {
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     Thread.currentThread().setContextClassLoader(cl);
     return cl;
@@ -393,11 +465,13 @@ public class StramAppLauncher {
   /**
    * Submit application to the cluster and return the app id.
    * Sets the context class loader for application dependencies.
+   *
    * @param appConfig
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppFactory appConfig) throws Exception {
+  public ApplicationId launchApp(AppFactory appConfig) throws Exception
+  {
 
     loadDependencies();
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
@@ -410,7 +484,8 @@ public class StramAppLauncher {
     return client.getApplicationReport().getApplicationId();
   }
 
-  public List<AppFactory> getBundledTopologies() {
+  public List<AppFactory> getBundledTopologies()
+  {
     return Collections.unmodifiableList(this.appResourceList);
   }
 

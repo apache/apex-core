@@ -6,7 +6,7 @@ BUILD_DIR="$( dirname "$0" )/../../../target"
 MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
-  echoerr "Setting classpath from: $MVN_GENERATED_PATH"
+  #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
   STRAM_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -v tests`
   if [ ! -f "$STRAM_CORE_JAR" ]; then
     echoerr "Error: Cannot find $STRAM_CORE_JAR";

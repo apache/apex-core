@@ -21,6 +21,7 @@ import org.apache.http.impl.auth.SPNegoSchemeFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +36,15 @@ public class WebServicesClient
 
   private static final Logger LOG = LoggerFactory.getLogger(WebServicesClient.class);
 
+  private static final PoolingClientConnectionManager connectionManager;
   private static final CredentialsProvider credentialsProvider;
 
   private Client client;
 
   static {
+    connectionManager = new PoolingClientConnectionManager();
+    connectionManager.setMaxTotal(200);
+    connectionManager.setDefaultMaxPerRoute(5);
     credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(AuthScope.ANY, new Credentials() {
 
@@ -60,7 +65,7 @@ public class WebServicesClient
 
   public WebServicesClient() {
     if (UserGroupInformation.isSecurityEnabled()) {
-      DefaultHttpClient httpClient = new DefaultHttpClient();
+      DefaultHttpClient httpClient = new DefaultHttpClient(connectionManager);
       httpClient.setCredentialsProvider(credentialsProvider);
       httpClient.getAuthSchemes().register(AuthPolicy.SPNEGO, new SPNegoSchemeFactory(true));
       ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClient, new BasicCookieStore(), false);
