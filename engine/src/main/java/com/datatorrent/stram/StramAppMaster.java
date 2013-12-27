@@ -575,6 +575,7 @@ public class StramAppMaster extends CompositeService
     }
     nmClient.stop();
     amRmClient.stop();
+    dnmgr.teardown();
   }
 
   /**

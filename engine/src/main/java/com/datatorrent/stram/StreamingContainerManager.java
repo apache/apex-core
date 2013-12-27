@@ -121,7 +121,7 @@ public class StreamingContainerManager implements PlanContext
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
 
-  private final MBassador<StramEvent> eventBus; // event bus for publishing stram events
+  private MBassador<StramEvent> eventBus; // event bus for publishing stram events
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -165,7 +165,10 @@ public class StreamingContainerManager implements PlanContext
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
-    this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+
+    if (enableEventRecording) {
+      this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+    }
 
     if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
       attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
@@ -212,6 +215,20 @@ public class StreamingContainerManager implements PlanContext
       catch (Exception ex) {
         LOG.warn("Cannot establish websocket connection to {}", gatewayAddress);
       }
+    }
+  }
+
+  public void teardown()
+  {
+    if (eventBus != null) {
+      eventBus.shutdown();
+    }
+  }
+
+  public void subscribeToEvents(Object listener)
+  {
+    if (eventBus != null) {
+      eventBus.subscribe(listener);
     }
   }
 
