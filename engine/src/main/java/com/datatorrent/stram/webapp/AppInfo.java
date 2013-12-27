@@ -224,4 +224,15 @@ public class AppInfo {
   {
     return this.licenseInfoLastUpdate;
   }
+
+  public long getRemainingLicensedMB()
+  {
+    return remainingLicensedMB;
+  }
+
+  public long getAllocatedMB()
+  {
+    return allocatedMB;
+  }
+
 }
