@@ -1671,7 +1671,7 @@ public class DTCli
         }
         long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
         String licenseId = response.getString("licenseId");
-        int remainingLicensedMB = Integer.valueOf(response.getString("licenseInfoMap"));
+        int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
         LicenseInfo licenseInfo;
 
         if (licenseInfoMap.containsKey(licenseId)) {
