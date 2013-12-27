@@ -1317,6 +1317,19 @@ public class DTCli
     }
   }
 
+  private List<ApplicationReport> getRunningApplicationList()
+  {
+    try {
+      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
+      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
+      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+    }
+    catch (Exception e) {
+      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+    }
+  }
+
   private List<ApplicationReport> getLicenseList()
   {
     try {
@@ -1625,11 +1638,56 @@ public class DTCli
 
   }
 
+  private static class LicenseInfo
+  {
+    int remainingLicensedMB;
+    long lastUpdate;
+    // add expiration date range here
+  }
+
   private class ListLicensesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      List<ApplicationReport> runningApplicationList = getRunningApplicationList();
+      WebServicesClient webServicesClient = new WebServicesClient();
+      Map<String, LicenseInfo> licenseInfoMap = new HashMap<String, LicenseInfo>();
+
+      for (ApplicationReport ar : runningApplicationList) {
+        WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
+
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+
+        long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
+        String licenseId = response.getString("licenseId");
+        int remainingLicensedMB = Integer.valueOf(response.getString("licenseInfoMap"));
+        LicenseInfo licenseInfo;
+
+        if (licenseInfoMap.containsKey(licenseId)) {
+          licenseInfo = licenseInfoMap.get(licenseId);
+          if (licenseInfo.lastUpdate < lastUpdate) {
+            licenseInfo.remainingLicensedMB = remainingLicensedMB;
+            licenseInfo.lastUpdate = lastUpdate;
+          }
+        }
+        else {
+          licenseInfo = new LicenseInfo();
+          licenseInfo.remainingLicensedMB = remainingLicensedMB;
+          licenseInfo.lastUpdate = lastUpdate;
+          licenseInfoMap.put(licenseId, licenseInfo);
+        }
+
+      }
+
       try {
         JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> licList = getLicenseList();
@@ -1647,6 +1705,9 @@ public class DTCli
           JSONObject jsonObj = new JSONObject();
           jsonObj.put("id", ar.getName());
           jsonObj.put("applicationId", ar.getApplicationId().getId());
+          if (licenseInfoMap.containsKey(ar.getName())) {
+            jsonObj.put("remainingLicensedMB", licenseInfoMap.get(ar.getName()).remainingLicensedMB);
+          }
           jsonArray.put(jsonObj);
         }
         printJson(jsonArray, "licenses");
