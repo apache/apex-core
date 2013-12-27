@@ -1666,7 +1666,9 @@ public class DTCli
           }
 
         });
-
+        if (!response.has("licenseInfoLastUpdate")) {
+          continue;
+        }
         long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
         String licenseId = response.getString("licenseId");
         int remainingLicensedMB = Integer.valueOf(response.getString("licenseInfoMap"));
