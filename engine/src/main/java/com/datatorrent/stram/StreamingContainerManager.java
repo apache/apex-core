@@ -1609,7 +1609,6 @@ public class StreamingContainerManager implements PlanContext
 
   private void checkpoint()
   {
-    // checkpoint state
     CheckpointState cs = new CheckpointState();
     cs.finals = this.vars;
     cs.physicalPlan = this.plan;

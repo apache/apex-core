@@ -6,28 +6,32 @@ package com.datatorrent.stram.plan.physical;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 
 import junit.framework.Assert;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.stram.CheckpointTest;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.StramJournal;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.StramJournal.SetOperatorState;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -38,7 +42,6 @@ import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.google.common.collect.Lists;
@@ -108,7 +111,7 @@ public class SerializationTest
     FileUtils.deleteDirectory(testWorkDir); // clean any state from previous run
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
+    //dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testWorkDir.getPath());
 
@@ -176,4 +179,43 @@ public class SerializationTest
     Assert.assertEquals("number operators after restore", 2, scm.getLogicalPlan().getAllOperators().size());
 
   }
+
+  @Test
+  public void testWriteAheadLog() throws Exception
+  {
+    final MutableInt flushCount = new MutableInt();
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = scm.getPhysicalPlan();
+
+    PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
+    Assert.assertEquals(PTOperator.State.INACTIVE, o1p1.getState());
+
+    ByteArrayOutputStream bos = new ByteArrayOutputStream() {
+      @Override
+      public void flush() throws IOException {
+        super.flush();
+        flushCount.increment();
+      }
+    };
+    StramJournal j = new StramJournal(new DataOutputStream(bos));
+    SetOperatorState op1 = new SetOperatorState(scm);
+    j.register(1, op1);
+
+    op1 = new SetOperatorState(scm);
+    op1.operatorId = o1p1.getId();
+    op1.state = PTOperator.State.ACTIVE;
+    j.writeLog(op1);
+    Assert.assertEquals("flush count", 1, flushCount.intValue());
+
+    Assert.assertEquals(PTOperator.State.INACTIVE, o1p1.getState());
+    bos.close();
+
+    ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+    j.replay(new DataInputStream(bis));
+    Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+
+  }
+
 }
