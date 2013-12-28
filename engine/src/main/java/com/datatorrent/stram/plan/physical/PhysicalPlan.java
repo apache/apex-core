@@ -406,11 +406,13 @@ public class PhysicalPlan implements Serializable
     }
 
     Operator operator = m.logicalOperator.getOperator();
-    Collection<Partition<?>> partitions = new ArrayList<Partition<?>>(1);
+    Collection<Partition<Operator>> partitions = new ArrayList<Partition<Operator>>(1);
     if (operator instanceof Partitionable) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable<Operator> partitionable = (Partitionable)operator;
       // operator to provide initial partitioning
       partitions.add(new DefaultPartition<Operator>(operator));
-      partitions = ((Partitionable)operator).definePartitions(partitions, partitionCnt - 1);
+      partitions = partitionable.definePartitions(partitions, partitionCnt - 1);
     }
     else {
       partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
@@ -457,21 +459,31 @@ public class PhysicalPlan implements Serializable
     }
 
     // create operator instance per partition
-    for (Partition<?> p: partitions) {
-      addPTOperator(m, p, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+    Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
+    for (Partition<Operator> partition : partitions) {
+      PTOperator p = addPTOperator(m, partition, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+      operatorIdToPartition.put(p.getId(), partition);
     }
     updateStreamMappings(m);
 
+    if (operator instanceof Partitionable.PartitionAware) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable.PartitionAware<Operator> partitionable = (Partitionable.PartitionAware)operator;
+      partitionable.partitioned(operatorIdToPartition);
+    }
+
   }
 
-  private void redoPartitions(PMapping currentMapping) {
+  private void redoPartitions(PMapping currentMapping)
+  {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = currentMapping.partitions;
     List<DefaultPartition<Operator>> currentPartitions = new ArrayList<DefaultPartition<Operator>>(operators.size());
-    Map<Partition<?>, PTOperator> currentPartitionMap = new HashMap<Partition<?>, PTOperator>(operators.size());
+    Map<Partition<?>, PTOperator> currentPartitionMap = Maps.newHashMapWithExpectedSize(operators.size());
+    Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(operators.size());
 
-    final Collection<Partition<?>> newPartitions;
+    final Collection<Partition<Operator>> newPartitions;
     long minCheckpoint = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
 
     for (PTOperator pOperator : operators) {
@@ -492,6 +504,7 @@ public class PhysicalPlan implements Serializable
       DefaultPartition<Operator> partition = new DefaultPartition<Operator>(partitionedOperator, pks, pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
+      operatorIdToPartition.put(pOperator.getId(), partition);
     }
 
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
@@ -500,7 +513,9 @@ public class PhysicalPlan implements Serializable
     if (currentMapping.logicalOperator.getOperator() instanceof Partitionable) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
-      newPartitions = ((Partitionable)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable<Operator> partitionable = (Partitionable)currentMapping.logicalOperator.getOperator();
+      newPartitions = partitionable.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), incrementalCapacity);
     } else {
       if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
         newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
@@ -513,9 +528,9 @@ public class PhysicalPlan implements Serializable
       LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
     }
 
-    List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
+    List<Partition<Operator>> addedPartitions = new ArrayList<Partition<Operator>>();
     // determine modifications of partition set, identify affected operator instance(s)
-    for (Partition<?> newPartition : newPartitions) {
+    for (Partition<Operator> newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition);
       if (op == null) {
         addedPartitions.add(newPartition);
@@ -548,33 +563,35 @@ public class PhysicalPlan implements Serializable
     for (PTOperator p : currentPartitionMap.values()) {
       copyPartitions.remove(p);
       removePartition(p, currentMapping.parallelPartitions);
+      operatorIdToPartition.remove(p.getId());
     }
     currentMapping.partitions = copyPartitions;
 
     // add new operators after cleanup complete
 
-    for (Partition<?> newPartition : addedPartitions) {
+    for (Partition<Operator> newPartition : addedPartitions) {
       // new partition, add to plan
       PTOperator p = addPTOperator(currentMapping, newPartition, minCheckpoint);
+      operatorIdToPartition.put(p.getId(), newPartition);
 
       // handle parallel partition
       Stack<OperatorMeta> pending = new Stack<LogicalPlan.OperatorMeta>();
       pending.addAll(currentMapping.parallelPartitions);
       pendingLoop:
       while (!pending.isEmpty()) {
-        OperatorMeta pp = pending.pop();
-        for (StreamMeta s : pp.getInputStreams().values()) {
+        OperatorMeta ppMeta = pending.pop();
+        for (StreamMeta s : ppMeta.getInputStreams().values()) {
           if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorWrapper()) && pending.contains(s.getSource().getOperatorWrapper())) {
-            pending.push(pp);
+            pending.push(ppMeta);
             pending.remove(s.getSource().getOperatorWrapper());
             pending.push(s.getSource().getOperatorWrapper());
             continue pendingLoop;
           }
         }
-        LOG.debug("Adding to parallel partition {}", pp);
+        LOG.debug("Adding to parallel partition {}", ppMeta);
         // even though we don't track state for parallel partitions
         // set activation windowId to confirm to upstream checkpoints
-        addPTOperator(this.logicalToPTOperator.get(pp), null, minCheckpoint);
+        addPTOperator(this.logicalToPTOperator.get(ppMeta), null, minCheckpoint);
       }
     }
 
@@ -585,6 +602,13 @@ public class PhysicalPlan implements Serializable
 
     deployChanges();
     this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
+
+    if (currentMapping.logicalOperator.getOperator() instanceof Partitionable.PartitionAware) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable.PartitionAware<Operator> partitionable = (Partitionable.PartitionAware)currentMapping.logicalOperator.getOperator();
+      partitionable.partitioned(operatorIdToPartition);
+    }
+
   }
 
   private void updateStreamMappings(PMapping m) {
