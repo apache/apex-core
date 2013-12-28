@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -46,6 +45,7 @@ import com.datatorrent.api.Component;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
@@ -77,6 +77,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
@@ -97,7 +98,7 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private final long windowStartMillis;
   private final int heartbeatTimeoutMillis;
-  private int maxWindowsBehindForStats;
+  private final int maxWindowsBehindForStats;
   private int recordStatsInterval = 0;
   private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
@@ -311,10 +312,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
 
-      Set<Integer> allCurrentOperators = new TreeSet<Integer>();
-      for (PTOperator o: plan.getAllOperators().values()) {
-        allCurrentOperators.add(o.getId());
-      }
+      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
       int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
@@ -450,6 +448,13 @@ public class StreamingContainerManager implements PlanContext
 
   public int processEvents()
   {
+    for (PTOperator o: plan.getAllOperators().values()) {
+      List<OperatorStats> stats;
+      if ((stats = o.stats.statsListenerReport.get()) != null) {
+        plan.onStatusUpdate(o);
+        o.stats.statsListenerReport.compareAndSet(stats, null);
+      }
+    }
     int count = 0;
     Runnable command;
     while ((command = this.eventQueue.poll()) != null) {
@@ -853,7 +858,7 @@ public class StreamingContainerManager implements PlanContext
 
           status.lastWindowedStats = statsList;
           if (oper.statsListeners != null) {
-            plan.onStatusUpdate(oper);
+            status.statsListenerReport.set(statsList);
           }
         }
       }

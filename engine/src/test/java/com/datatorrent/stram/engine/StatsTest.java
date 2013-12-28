@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
-import com.datatorrent.api.StatsListener.Response;
 
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.StatsTest.TestCollector.TestOutputStatsListener;

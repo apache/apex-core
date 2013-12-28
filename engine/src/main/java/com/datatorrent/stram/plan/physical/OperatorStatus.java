@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
@@ -26,6 +27,8 @@ import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
  */
 public class OperatorStatus implements BatchedOperatorStats, java.io.Serializable
 {
+  private static final long serialVersionUID = 201312271835L;
+
   public class PortStatus
   {
     public String portName;
@@ -53,6 +56,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
   public Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
+  public AtomicReference<List<OperatorStats>> statsListenerReport = new AtomicReference<List<OperatorStats>>();
 
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
