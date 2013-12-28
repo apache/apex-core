@@ -205,7 +205,7 @@ public class PhysicalPlan implements Serializable
 
     final private OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
-    private Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
+    private final Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
     private List<StatsListener> statsHandlers;
 
     /**
@@ -489,7 +489,6 @@ public class PhysicalPlan implements Serializable
       }
 
       Operator partitionedOperator = loadOperator(pOperator);
-      // mapping always references port objects of operator from logical plan
       DefaultPartition<Operator> partition = new DefaultPartition<Operator>(partitionedOperator, pks, pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
@@ -538,7 +537,7 @@ public class PhysicalPlan implements Serializable
     // downstream dependencies require redeploy, resolve prior to modifying plan
     Set<PTOperator> deps = this.getDependents(currentPartitionMap.values());
     this.undeployOpers.addAll(deps);
-    // dependencies need redeploy, except operators that excluded from the set in remove
+    // dependencies need redeploy, except operators excluded in remove
     this.deployOpers.addAll(deps);
 
     // plan updates start here, after all changes were identified
@@ -546,8 +545,8 @@ public class PhysicalPlan implements Serializable
     // can subsequently be used for new/modified partitions
     PMapping newMapping = new PMapping(currentMapping.logicalOperator);
     newMapping.partitions.addAll(currentMapping.partitions);
-    newMapping.outputStreams.putAll(currentMapping.outputStreams);
-    newMapping.statsHandlers = currentMapping.statsHandlers;
+    //newMapping.outputStreams.putAll(currentMapping.outputStreams);
+    //newMapping.statsHandlers = currentMapping.statsHandlers;
 
     // remove deprecated partitions from plan
     for (PTOperator p : currentPartitionMap.values()) {
@@ -555,8 +554,8 @@ public class PhysicalPlan implements Serializable
       removePartition(p, currentMapping.parallelPartitions);
     }
 
-    // keep mapping reference as that's where stats monitors point to
-    currentMapping.outputStreams = newMapping.outputStreams;
+    // keep mapping reference, internal stats listeners refer to it
+    //currentMapping.outputStreams = newMapping.outputStreams;
     currentMapping.partitions = newMapping.partitions;
 
     // add new operators after cleanup complete
@@ -565,12 +564,11 @@ public class PhysicalPlan implements Serializable
       // new partition, add operator instance
       PTOperator p = addPTOperator(currentMapping, newPartition, minCheckpoint);
 
-      for (PTOperator mergeOper : p.upstreamMerge.values()) {
-        // TODO: remove as unifier is now handled in stream mapping?
-        this.undeployOpers.add(mergeOper);
-        this.deployOpers.add(mergeOper);
-        //initCheckpoint(mergeOper, mergeOper.unifier.get(), minCheckpoint);
-      }
+      //for (PTOperator mergeOper : p.upstreamMerge.values()) {
+      //  // TODO: remove as unifier is now handled in stream mapping?
+      //  this.undeployOpers.add(mergeOper);
+      //  this.deployOpers.add(mergeOper);
+      //}
 
       // handle parallel partition
       Stack<OperatorMeta> pending = new Stack<LogicalPlan.OperatorMeta>();
@@ -588,7 +586,7 @@ public class PhysicalPlan implements Serializable
         }
         LOG.debug("Adding to parallel partition {}", pp);
         // even though we don't track state for parallel partitions
-        // set recovery windowId to confirm with upstream checkpoints
+        // set activation windowId to confirm to upstream checkpoints
         addPTOperator(this.logicalToPTOperator.get(pp), null, minCheckpoint);
       }
     }
