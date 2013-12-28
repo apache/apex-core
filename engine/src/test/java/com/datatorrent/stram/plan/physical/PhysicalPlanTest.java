@@ -56,7 +56,7 @@ public class PhysicalPlanTest {
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     public Integer[] partitionKeys = {0, 1, 2};
     public String pks;
-    public Map<Integer, Partition<PartitioningTestOperator>> partitions;
+    public transient Map<Integer, Partition<PartitioningTestOperator>> partitions;
 
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
