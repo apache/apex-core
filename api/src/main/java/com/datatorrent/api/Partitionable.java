@@ -61,8 +61,22 @@ public interface Partitionable<T extends Operator>
    */
   public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
 
+  /**
+   * Interface to be implemented by operator that wants to be notified about its effective partitioning.
+   * Called by the engine after requested partitioning is applied to the physical plan.
+   * Allows the operator to track stats of individual partitions by id.
+   * @see {@link StatsListener}
+   * @see {@link Partitionable#definePartitions}
+   * @param <T>
+   */
+  interface PartitionAware<T extends Operator>
+  {
+    void partitioned(Map<Integer, Partition<T>> partitions);
+  }
+
   public class PartitionKeys implements java.io.Serializable
   {
+    private static final long serialVersionUID = 201312271835L;
     final public int mask;
     final public Set<Integer> partitions;
 

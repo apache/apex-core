@@ -39,11 +39,11 @@ public class OperatorPartitions {
   {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPartitioner.class);
 
-    public List<Partition<?>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt)
+    public List<Partition<Operator>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt)
     {
-      List<Partition<?>> partitions = new ArrayList<Partition<?>>(initialPartitionCnt);
+      List<Partition<Operator>> partitions = new ArrayList<Partition<Operator>>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
-        Partition<?> p = new DefaultPartition<Operator>(logicalOperator.getOperator());
+        Partition<Operator> p = new DefaultPartition<Operator>(logicalOperator.getOperator());
         partitions.add(p);
       }
 
@@ -68,10 +68,10 @@ public class OperatorPartitions {
      *          List of new partitions
      * @return
      */
-    public List<Partition<?>> repartition(Collection<? extends Partition<?>> partitions) {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>();
-      HashMap<Integer, Partition<?>> lowLoadPartitions = new HashMap<Integer, Partition<?>>();
-      for (Partition<?> p : partitions) {
+    public List<Partition<Operator>> repartition(Collection<? extends Partition<Operator>> partitions) {
+      List<Partition<Operator>> newPartitions = new ArrayList<Partition<Operator>>();
+      HashMap<Integer, Partition<Operator>> lowLoadPartitions = new HashMap<Integer, Partition<Operator>>();
+      for (Partition<Operator> p : partitions) {
         int load = p.getLoad();
         if (load < 0) {
           // combine neighboring underutilized partitions
@@ -81,7 +81,7 @@ public class OperatorPartitions {
             int reducedMask = pks.mask >>> 1;
             String lookupKey = Integer.valueOf(reducedMask) + "-" + Integer.valueOf(partitionKey & reducedMask);
             LOG.debug("pks {} lookupKey {}", pks, lookupKey);
-            Partition<?> siblingPartition = lowLoadPartitions.remove(partitionKey & reducedMask);
+            Partition<Operator> siblingPartition = lowLoadPartitions.remove(partitionKey & reducedMask);
             if (siblingPartition == null) {
               lowLoadPartitions.put(partitionKey & reducedMask, p);
             } else {
@@ -116,7 +116,7 @@ public class OperatorPartitions {
           }
 
           for (int key : newKeys) {
-            Partition<?> newPartition = new DefaultPartition<Operator>(p.getPartitionedInstance());
+            Partition<Operator> newPartition = new DefaultPartition<Operator>(p.getPartitionedInstance());
             newPartition.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
             newPartitions.add(newPartition);
           }
@@ -135,10 +135,10 @@ public class OperatorPartitions {
      * @param partitions
      * @return
      */
-    public static List<Partition<?>> repartitionInputOperator(Collection<? extends Partition<?>> partitions) {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>();
-      List<Partition<?>> lowLoadPartitions = new ArrayList<Partition<?>>();
-      for (Partition<?> p : partitions) {
+    public static List<Partition<Operator>> repartitionInputOperator(Collection<? extends Partition<Operator>> partitions) {
+      List<Partition<Operator>> newPartitions = new ArrayList<Partition<Operator>>();
+      List<Partition<Operator>> lowLoadPartitions = new ArrayList<Partition<Operator>>();
+      for (Partition<Operator> p : partitions) {
         int load = p.getLoad();
         if (load < 0) {
           if (!lowLoadPartitions.isEmpty()) {
