@@ -1212,7 +1212,9 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void recordEventAsync(StramEvent ev)
   {
-    eventBus.publishAsync(ev);
+    if (eventBus != null) {
+      eventBus.publishAsync(ev);
+    }
   }
 
   @Override
