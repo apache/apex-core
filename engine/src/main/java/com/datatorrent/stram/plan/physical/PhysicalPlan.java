@@ -543,32 +543,19 @@ public class PhysicalPlan implements Serializable
     // plan updates start here, after all changes were identified
     // remove obsolete operators first, any freed resources
     // can subsequently be used for new/modified partitions
-    PMapping newMapping = new PMapping(currentMapping.logicalOperator);
-    newMapping.partitions.addAll(currentMapping.partitions);
-    //newMapping.outputStreams.putAll(currentMapping.outputStreams);
-    //newMapping.statsHandlers = currentMapping.statsHandlers;
-
+    List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
     // remove deprecated partitions from plan
     for (PTOperator p : currentPartitionMap.values()) {
-      newMapping.partitions.remove(p);
+      copyPartitions.remove(p);
       removePartition(p, currentMapping.parallelPartitions);
     }
-
-    // keep mapping reference, internal stats listeners refer to it
-    //currentMapping.outputStreams = newMapping.outputStreams;
-    currentMapping.partitions = newMapping.partitions;
+    currentMapping.partitions = copyPartitions;
 
     // add new operators after cleanup complete
 
     for (Partition<?> newPartition : addedPartitions) {
-      // new partition, add operator instance
+      // new partition, add to plan
       PTOperator p = addPTOperator(currentMapping, newPartition, minCheckpoint);
-
-      //for (PTOperator mergeOper : p.upstreamMerge.values()) {
-      //  // TODO: remove as unifier is now handled in stream mapping?
-      //  this.undeployOpers.add(mergeOper);
-      //  this.deployOpers.add(mergeOper);
-      //}
 
       // handle parallel partition
       Stack<OperatorMeta> pending = new Stack<LogicalPlan.OperatorMeta>();
