@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,7 +46,6 @@ import com.datatorrent.api.Component;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
@@ -121,6 +121,7 @@ public class StreamingContainerManager implements PlanContext
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
+  private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
 
   private MBassador<StramEvent> eventBus; // event bus for publishing stram events
 
@@ -465,12 +466,8 @@ public class StreamingContainerManager implements PlanContext
 
   public int processEvents()
   {
-    for (PTOperator o: plan.getAllOperators().values()) {
-      List<OperatorStats> stats;
-      if ((stats = o.stats.statsListenerReport.get()) != null) {
-        plan.onStatusUpdate(o);
-        o.stats.statsListenerReport.compareAndSet(stats, null);
-      }
+    for (PTOperator o: reportStats.keySet()) {
+      plan.onStatusUpdate(o);
     }
     int count = 0;
     Runnable command;
@@ -875,7 +872,7 @@ public class StreamingContainerManager implements PlanContext
 
           status.lastWindowedStats = statsList;
           if (oper.statsListeners != null) {
-            status.statsListenerReport.set(statsList);
+            this.reportStats.put(oper, oper);
           }
         }
       }
