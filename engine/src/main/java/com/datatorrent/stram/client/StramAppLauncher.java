@@ -34,7 +34,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import java.net.*;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -60,7 +59,7 @@ public class StramAppLauncher
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
-  private StringWriter mvnBuildClasspathOutput = new StringWriter();
+  private final StringWriter mvnBuildClasspathOutput = new StringWriter();
 
   private String generateClassPathFromPom(File pomFile, File cpFile) throws IOException
   {

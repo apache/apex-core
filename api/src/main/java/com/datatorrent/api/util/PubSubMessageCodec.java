@@ -18,7 +18,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class PubSubMessageCodec<T>
 {
 
-  private ObjectMapper mapper;
+  private final ObjectMapper mapper;
 
   public PubSubMessageCodec(ObjectMapper mapper) {
     this.mapper = mapper;
@@ -42,7 +42,7 @@ public class PubSubMessageCodec<T>
    * @return
    * @throws IOException
    */
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({"unchecked"})
   public PubSubMessage<T> parseMessage(String message) throws IOException {
     HashMap<String, Object> map = mapper.readValue(message, HashMap.class);
     PubSubMessage<T> pubSubMessage = new PubSubMessage<T>();
