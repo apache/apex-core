@@ -16,6 +16,7 @@ import java.util.Map;
 
 import junit.framework.Assert;
 
+import org.junit.Rule;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
@@ -50,9 +51,11 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
 
 public class StreamingContainerManagerTest {
+  @Rule public TestMeta testMeta = new TestMeta();
 
   @Test
   public void testDeployInfoSerialization() throws Exception {
@@ -108,7 +111,7 @@ public class StreamingContainerManagerTest {
   public void testGenerateDeployInfo() {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -206,7 +209,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
@@ -315,6 +318,8 @@ public class StreamingContainerManagerTest {
   @Test
   public void testPhysicalPropertyUpdate() {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
@@ -350,6 +355,7 @@ public class StreamingContainerManagerTest {
   public void testRecoveryOrder() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -397,7 +403,7 @@ public class StreamingContainerManagerTest {
 
   @Test
   public void testGetMostRecetCheckpointWindowId() throws Exception {
-    File path =  new File("target", StreamingContainerManagerTest.class.getName() + ".testGetMostRecetCheckpointWindowId");
+    File path =  new File(testMeta.dir);
     FileUtils.deleteDirectory(path.getAbsoluteFile());
 
     FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getAbsolutePath());

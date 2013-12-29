@@ -9,8 +9,10 @@ import javax.validation.ValidationException;
 
 import junit.framework.Assert;
 
+import org.junit.Rule;
 import org.junit.Test;
 
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -23,9 +25,12 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PlanModifier;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.google.common.collect.Sets;
 
-public class LogicalPlanModificationTest {
+public class LogicalPlanModificationTest
+{
+  @Rule public TestMeta testMeta = new TestMeta();
 
   @Test
   public void testAddOperator()
@@ -267,6 +272,8 @@ public class LogicalPlanModificationTest {
   public void testExecutionManager() throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals(""+dnm.containerStartRequests, dnm.containerStartRequests.size(), 0);
 

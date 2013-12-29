@@ -15,7 +15,7 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +39,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 /**
  *
@@ -46,19 +47,7 @@ import com.datatorrent.stram.support.StramTestSupport;
 public class CheckpointTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(CheckpointTest.class);
-  private static File testWorkDir = new File("target", CheckpointTest.class.getName());
-
-  @BeforeClass
-  public static void setup()
-  {
-    try {
-      FileContext.getLocalFSFileContext().delete(
-              new Path(testWorkDir.getAbsolutePath()), true);
-    }
-    catch (Exception e) {
-      throw new RuntimeException("could not cleanup test dir", e);
-    }
-  }
+  @Rule public TestMeta testMeta = new TestMeta();
 
   /**
    *
@@ -67,6 +56,13 @@ public class CheckpointTest
   @Before
   public void setupEachTest() throws IOException
   {
+    try {
+      FileContext.getLocalFSFileContext().delete(
+              new Path(new File(testMeta.dir).getAbsolutePath()), true);
+    }
+    catch (Exception e) {
+      throw new RuntimeException("could not cleanup test dir", e);
+    }
     //StramChild.eventloop.start();
   }
 
@@ -85,11 +81,11 @@ public class CheckpointTest
   public void testBackup() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
     // node with no inputs will be connected to window generator
     TestGeneratorInputOperator m1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     m1.setMaxTuples(2);
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
@@ -154,7 +150,7 @@ public class CheckpointTest
     dnm.processHeartbeat(hb); // propagate checkpoint
 
     Thread.sleep(20); // file close delay?
-    File cpFile1 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
+    File cpFile1 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
@@ -165,7 +161,7 @@ public class CheckpointTest
     Assert.assertEquals("window 3", 3, context.getLastProcessedWindowId());
 
     Thread.sleep(20); // file close delay?
-    File cpFile2 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
+    File cpFile2 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     ohb.getOperatorStatsContainer().clear();
@@ -190,6 +186,7 @@ public class CheckpointTest
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);

@@ -160,7 +160,7 @@ public class StreamingContainerManager implements PlanContext
     windowStartMillis = tms - (tms % 1000);
 
     if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
-      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + tms);
+      throw new IllegalArgumentException("Not set: " + LogicalPlan.APPLICATION_PATH);
     }
 
     this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
