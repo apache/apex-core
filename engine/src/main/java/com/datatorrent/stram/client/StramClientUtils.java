@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -133,6 +134,13 @@ public class StramClientUtils
       GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
       ApplicationReport report = reportResponse.getApplicationReport();
       return report;
+    }
+
+    public List<ApplicationReport> getAllApplicationReports() throws IOException, YarnException
+    {
+      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
+      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
+      return applicationsResponse.getApplicationList();
     }
 
     public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
