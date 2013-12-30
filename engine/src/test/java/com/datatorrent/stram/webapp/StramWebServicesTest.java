@@ -28,6 +28,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -171,9 +172,9 @@ public class StramWebServicesTest extends JerseyTest
     {
       public static List<LogicalPlanRequest> lastRequests;
 
-      DummyStreamingContainerManager()
+      DummyStreamingContainerManager(LogicalPlan dag)
       {
-        super(new LogicalPlan());
+        super(dag);
       }
 
       @Override
@@ -198,12 +199,14 @@ public class StramWebServicesTest extends JerseyTest
 
     }
 
-    private static DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager();
     private final Injector injector = Guice.createInjector(new ServletModule()
     {
       @Override
       protected void configureServlets()
       {
+        LogicalPlan dag = new LogicalPlan();
+        dag.setAttribute(LogicalPlan.APPLICATION_PATH, StramWebServicesTest.class.getName());
+        final DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager(dag);
 
         appContext = new TestAppContext();
         bind(JAXBContextResolver.class);

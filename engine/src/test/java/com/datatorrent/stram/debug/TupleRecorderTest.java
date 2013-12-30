@@ -138,7 +138,7 @@ public class TupleRecorderTest
       line = br.readLine();
       Assert.assertEquals("check version", "1.2", line);
       line = br.readLine(); // RecordInfo
-      RecordInfo ri = mapper.readValue(line, RecordInfo.class);
+      //RecordInfo ri = mapper.readValue(line, RecordInfo.class);
       line = br.readLine();
       PortInfo pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).id, pi.id);

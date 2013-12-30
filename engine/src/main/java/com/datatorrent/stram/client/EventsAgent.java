@@ -28,7 +28,6 @@ public final class EventsAgent extends FSPartFileAgent
   {
     public long startTime;
     public long endTime;
-    public long count;
   }
 
   public static class Event
@@ -66,7 +65,6 @@ public final class EventsAgent extends FSPartFileAgent
     info.startTime = Long.valueOf(tmp[0]);
     info.endTime = Long.valueOf(tmp[1]);
     cursor = cursor2 + 1;
-    info.count = Long.valueOf(line.substring(cursor));
     return info;
   }
 
@@ -119,6 +117,7 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
       }
+      br.close();
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading operators stats", ex);

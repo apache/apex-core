@@ -50,11 +50,13 @@ public class PhysicalPlanTest {
 
   }
 
-  public static class PartitioningTestOperator extends GenericTestOperator implements Partitionable<PartitioningTestOperator> {
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitionable<PartitioningTestOperator>, Partitionable.PartitionAware<PartitioningTestOperator>
+  {
     final public static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     public Integer[] partitionKeys = {0, 1, 2};
     public String pks;
+    public transient Map<Integer, Partition<PartitioningTestOperator>> partitions;
 
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
@@ -84,6 +86,11 @@ public class PhysicalPlanTest {
       return newPartitions;
     }
 
+    @Override
+    public void partitioned(Map<Integer, Partition<PartitioningTestOperator>> partitions)
+    {
+      this.partitions = partitions;
+    }
   }
 
   @Test
@@ -105,6 +112,8 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+    Assert.assertNotNull("partition map", node2.partitions);
+    Assert.assertEquals("partition map " + node2.partitions, 3, node2.partitions.size());
 
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
     Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
@@ -495,19 +504,19 @@ public class PhysicalPlanTest {
             newPartitionKeys("1", "0"),
             newPartitionKeys("1", "1"));
 
-    final ArrayList<Partition<?>> partitions = new ArrayList<Partition<?>>();
+    final ArrayList<Partition<Operator>> partitions = new ArrayList<Partition<Operator>>();
     for (PartitionKeys pks: initialPartitionKeys) {
       Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
       p1Keys.put(operator.inport1, pks);
       partitions.add(new DefaultPartition<Operator>(operator, p1Keys, 1, null));
     }
 
-    ArrayList<Partition<?>> lowLoadPartitions = new ArrayList<Partition<?>>();
+    ArrayList<Partition<Operator>> lowLoadPartitions = new ArrayList<Partition<Operator>>();
     for (Partition<?> p : partitions) {
       lowLoadPartitions.add(new DefaultPartition<Operator>(p.getPartitionedInstance(), p.getPartitionKeys(), -1, null));
     }
     // merge to single partition
-    List<Partition<?>> newPartitions = dp.repartition(lowLoadPartitions);
+    List<Partition<Operator>> newPartitions = dp.repartition(lowLoadPartitions);
     Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
     Assert.assertEquals("" + newPartitions.get(0).getPartitionKeys(), 0, newPartitions.get(0).getPartitionKeys().values().iterator().next().mask);
 
@@ -548,7 +557,7 @@ public class PhysicalPlanTest {
     );
 
     for (Set<PartitionKeys> expectedKeys: expectedKeysSets) {
-      List<Partition<?>> clonePartitions = Lists.newArrayList();
+      List<Partition<Operator>> clonePartitions = Lists.newArrayList();
       for (PartitionKeys pks: twoBitPartitionKeys) {
         Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
         p1Keys.put(operator.inport1, pks);
@@ -909,6 +918,7 @@ public class PhysicalPlanTest {
 
     List<PTOperator> o1Partitions = plan.getOperators(o1Meta);
     Assert.assertEquals("partitions " + o1Meta, 4, o1Partitions.size());
+    Assert.assertEquals("partitioned map " + o1.partitions, 4, o1.partitions.size());
     List<PTOperator> o2Partitions = plan.getOperators(o2Meta);
     Assert.assertEquals("partitions " + o1Meta, 3, o2Partitions.size());
 
@@ -968,6 +978,7 @@ public class PhysicalPlanTest {
 
     o1Partitions = plan.getOperators(o1Meta);
     Assert.assertEquals("partitions " + o1Meta, 5, o1Partitions.size());
+    Assert.assertEquals("partitioned map " + o1.partitions, 5, o1.partitions.size());
 
     o1Unifiers = plan.getMergeOperators(o1Meta);
     Assert.assertEquals("o1Unifiers " + o1Meta, 5, o1Unifiers.size()); // 3(l1)x2(l2)

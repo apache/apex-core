@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.bufferserver.util.*;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
@@ -18,10 +17,7 @@ import com.sun.jersey.api.client.*;
 import java.lang.System;
 import java.util.Map;
 
-import com.sun.jersey.api.client.filter.ClientFilter;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,13 +54,11 @@ public class StramAgent extends FSAgent
   private static class SecurityInfo {
     public static final long DEFAULT_EXPIRY_INTERVAL = 60 * 60 * 1000;
 
-    String secToken;
     HeaderClientFilter secClientFilter;
     long expiryInterval = DEFAULT_EXPIRY_INTERVAL;
     long issueTime;
 
     SecurityInfo(String secToken) {
-      this.secToken = secToken;
       issueTime = System.currentTimeMillis();
       secClientFilter = new HeaderClientFilter();
       secClientFilter.addCookie(new Cookie(StramWSFilter.CLIENT_COOKIE, secToken));
@@ -83,7 +77,7 @@ public class StramAgent extends FSAgent
   public class AppNotFoundException extends Exception
   {
     private static final long serialVersionUID = 1L;
-    private String appId;
+    private final String appId;
 
     public AppNotFoundException(String appId)
     {

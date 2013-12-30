@@ -183,7 +183,7 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
    * @param partitions
    * @param inputPort
    */
-  public static void assignPartitionKeys(Collection<Partition<?>> partitions, InputPort<?> inputPort)
+  public static <T extends Operator> void assignPartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
   {
     if (partitions.isEmpty()) {
       throw new IllegalArgumentException("partitions collection cannot be empty");
@@ -194,8 +194,8 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
     if (partitionBits > 0) {
       partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
     }
-    
-    Iterator<Partition<?>> iterator = partitions.iterator();
+
+    Iterator<Partition<T>> iterator = partitions.iterator();
     for (int i = 0; i <= partitionMask; i++) {
       Partition<?> p;
       if (iterator.hasNext()) {

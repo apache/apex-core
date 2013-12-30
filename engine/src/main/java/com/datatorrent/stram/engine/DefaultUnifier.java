@@ -26,5 +26,6 @@ public class DefaultUnifier extends BaseOperator implements Unifier<Object>
     outputPort.emit(tuple);
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(DefaultUnifier.class);
 }

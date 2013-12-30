@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -83,6 +83,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
@@ -120,8 +121,9 @@ public class StreamingContainerManager implements PlanContext
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
+  private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
 
-  private final MBassador<StramEvent> eventBus; // event bus for publishing stram events
+  private MBassador<StramEvent> eventBus; // event bus for publishing stram events
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -152,7 +154,9 @@ public class StreamingContainerManager implements PlanContext
     AttributeMap attributes = dag.getAttributes();
     this.vars = new FinalVars(attributes);
     // setup prior to plan creation for event recording
-    this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+    if (enableEventRecording) {
+      this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+    }
     setupRecording(attributes, enableEventRecording);
     this.plan = new PhysicalPlan(dag, this);
   }
@@ -202,6 +206,20 @@ public class StreamingContainerManager implements PlanContext
       catch (Exception ex) {
         LOG.warn("Cannot establish websocket connection to {}", gatewayAddress);
       }
+    }
+  }
+
+  public void teardown()
+  {
+    if (eventBus != null) {
+      eventBus.shutdown();
+    }
+  }
+
+  public void subscribeToEvents(Object listener)
+  {
+    if (eventBus != null) {
+      eventBus.subscribe(listener);
     }
   }
 
@@ -300,10 +318,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
 
-      Set<Integer> allCurrentOperators = new TreeSet<Integer>();
-      for (PTOperator o: plan.getAllOperators().values()) {
-        allCurrentOperators.add(o.getId());
-      }
+      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
       int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
@@ -439,6 +454,9 @@ public class StreamingContainerManager implements PlanContext
 
   public int processEvents()
   {
+    for (PTOperator o: reportStats.keySet()) {
+      plan.onStatusUpdate(o);
+    }
     int count = 0;
     Runnable command;
     while ((command = this.eventQueue.poll()) != null) {
@@ -844,7 +862,7 @@ public class StreamingContainerManager implements PlanContext
 
           status.lastWindowedStats = statsList;
           if (oper.statsListeners != null) {
-            plan.onStatusUpdate(oper);
+            this.reportStats.put(oper, oper);
           }
         }
       }
@@ -1181,7 +1199,9 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void recordEventAsync(StramEvent ev)
   {
-    eventBus.publishAsync(ev);
+    if (eventBus != null) {
+      eventBus.publishAsync(ev);
+    }
   }
 
   @Override
@@ -1674,7 +1694,7 @@ public class StreamingContainerManager implements PlanContext
       windowStartMillis = tms - (tms % 1000);
 
       if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
-        attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + tms);
+        throw new IllegalArgumentException("Not set: " + LogicalPlan.APPLICATION_PATH);
       }
 
       this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);

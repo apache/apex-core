@@ -5,11 +5,6 @@
 package com.datatorrent.stram;
 
 import com.datatorrent.stram.api.StramEvent;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.commons.beanutils.BeanUtils;
 
 /**
  * <p>EventRecorder interface.</p>
