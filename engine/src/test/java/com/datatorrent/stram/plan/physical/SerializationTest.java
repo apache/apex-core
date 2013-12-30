@@ -21,6 +21,7 @@ import junit.framework.Assert;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +45,13 @@ import com.datatorrent.stram.plan.logical.CreateStreamRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.google.common.collect.Lists;
 
 public class SerializationTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(SerializationTest.class);
+  @Rule public final TestMeta testMeta = new TestMeta();
 
   @Test
   public void testPhysicalPlan() throws Exception
@@ -107,13 +110,12 @@ public class SerializationTest
   @Test
   public void testContainerManager() throws Exception
   {
-    File testWorkDir = new File("target", SerializationTest.class.getName());
-    FileUtils.deleteDirectory(testWorkDir); // clean any state from previous run
+    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
 
     LogicalPlan dag = new LogicalPlan();
-    //dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testWorkDir.getPath());
 
     StreamingContainerManager scm = StreamingContainerManager.getInstance(dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();
@@ -173,7 +175,7 @@ public class SerializationTest
 
     // test plan restore
     dag = new LogicalPlan();
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testWorkDir.getPath());
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     scm = StreamingContainerManager.getInstance(dag, false);
     Assert.assertNotSame("dag references", dag, scm.getLogicalPlan());
     Assert.assertEquals("number operators after restore", 2, scm.getLogicalPlan().getAllOperators().size());
@@ -185,6 +187,7 @@ public class SerializationTest
   {
     final MutableInt flushCount = new MutableInt();
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();
