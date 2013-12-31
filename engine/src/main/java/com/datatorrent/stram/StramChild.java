@@ -14,12 +14,12 @@ import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -34,7 +34,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StatsListener.OperatorCommand;
-
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -82,6 +81,7 @@ import com.datatorrent.stram.stream.PartitionAwareSink;
 public class StramChild
 {
   public static final int PORT_QUEUE_CAPACITY = 1024;
+  public static final String ENV_APP_PATH = "DT_APP_PATH";
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
@@ -228,9 +228,17 @@ public class StramChild
 
     final Configuration defaultConf = new Configuration();
 
-    String host = args[0];
-    int port = Integer.parseInt(args[1]);
-    final InetSocketAddress address = NetUtils.createSocketAddrForHost(host, port);
+    //String host = args[0];
+    //int port = Integer.parseInt(args[1]);
+    String appPath = System.getenv(ENV_APP_PATH);
+    if (appPath == null) {
+      logger.error("{} not set in container environment.", ENV_APP_PATH);
+      System.exit(1);
+    }
+    FSRecoveryHandler fsrh = new FSRecoveryHandler(appPath, defaultConf);
+    URI heartbeatUri = URI.create(fsrh.readConnectUri());
+
+    final InetSocketAddress address = NetUtils.createSocketAddrForHost(heartbeatUri.getHost(), heartbeatUri.getPort());
     final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                                                                        StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
     int exitStatus = 1; // interpreted as unrecoverable container failure

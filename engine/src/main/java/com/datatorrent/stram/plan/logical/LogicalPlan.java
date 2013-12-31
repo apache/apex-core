@@ -34,7 +34,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -51,7 +50,6 @@ import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.stram.engine.Node;
 
 /**
@@ -751,6 +749,15 @@ public class LogicalPlan implements Serializable, DAG
   public int getMasterMemoryMB()
   {
     return this.getValue(MASTER_MEMORY_MB);
+  }
+
+  public String assertAppPath()
+  {
+    String path = getAttributes().get(LogicalPlan.APPLICATION_PATH);
+    if (path == null) {
+      throw new IllegalArgumentException("Missing " + LogicalPlan.APPLICATION_PATH);
+    }
+    return path;
   }
 
   /**

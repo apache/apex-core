@@ -14,6 +14,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 
@@ -21,6 +22,7 @@ import junit.framework.Assert;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -34,7 +36,6 @@ import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.Journal;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.Journal.SetOperatorState;
-import com.datatorrent.stram.StreamingContainerManager.RecoveryHandler;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -122,8 +123,8 @@ public class StramRecoveryTest
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
 
-    RecoveryHandler hah = new FSRecoveryHandler(FSRecoveryHandler.getCheckpointPath(dag));
-    StreamingContainerManager scm = StreamingContainerManager.getInstance(hah, dag, false);
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
+    StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, plan.getContainers().size());
 
@@ -185,7 +186,7 @@ public class StramRecoveryTest
     // test restore
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(FSRecoveryHandler.getCheckpointPath(dag)), dag, false);
+    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
 
     Assert.assertNotSame("dag references", dag, scm.getLogicalPlan());
     Assert.assertEquals("number operators after restore", 2, scm.getLogicalPlan().getAllOperators().size());
@@ -195,6 +196,12 @@ public class StramRecoveryTest
 
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     Assert.assertEquals("post restore state " + o1p1, PTOperator.State.INACTIVE, o1p1.getState());
+
+
+    URI connectUri = new URI("stram", null, "127.0.0.1", 9999, null, null, null);
+    recoveryHandler.writeConnectUri(connectUri.toString());
+
+    connectUri = URI.create(recoveryHandler.readConnectUri());
 
   }
 

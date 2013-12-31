@@ -26,8 +26,6 @@ import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-
 /**
  *
  */
@@ -35,21 +33,15 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 {
   private final static Logger LOG = LoggerFactory.getLogger(FSRecoveryHandler.class);
   private final String dir;
+  private final Configuration conf;
 
   private static final String FILE_LOG = "log";
   private static final String FILE_LOG_BACKUP = "log0";
 
-  public FSRecoveryHandler(String dir) {
-    this.dir = dir;
-  }
-
-  public static String getCheckpointPath(LogicalPlan dag)
+  public FSRecoveryHandler(String appDir, Configuration conf)
   {
-    String path = dag.getAttributes().get(LogicalPlan.APPLICATION_PATH);
-    if (path == null) {
-      throw new IllegalArgumentException("Missing " + LogicalPlan.APPLICATION_PATH);
-    }
-    return path + "/recovery";
+    this.dir = appDir + "/recovery";
+    this.conf = conf;
   }
 
   @Override
@@ -58,7 +50,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     final Path logPath = new Path(dir + Path.SEPARATOR + FILE_LOG);
     final Path logBackupPath = new Path(dir + Path.SEPARATOR + FILE_LOG_BACKUP);
 
-    FileSystem fs = FileSystem.get(logPath.toUri(), new Configuration());
+    FileSystem fs = FileSystem.get(logPath.toUri(), conf);
 
     if (fs.exists(logBackupPath)) {
       // log backup is purged on snapshot/restore
@@ -76,7 +68,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     if (fs.getScheme().equals("file")) {
       // local FS does not support hflush and does not flush native stream
       fs.mkdirs(logPath.getParent());
-      fsOutputStream = new FSDataOutputStream(new FileOutputStream(logPath.toString()), null);
+      fsOutputStream = new FSDataOutputStream(new FileOutputStream(Path.getPathWithoutSchemeAndAuthority(logPath).toString()), null);
     } else {
       fsOutputStream = fs.create(logPath);
     }
@@ -105,7 +97,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     final Path logPath = new Path(dir + Path.SEPARATOR + FILE_LOG);
     final Path logBackupPath = new Path(dir + Path.SEPARATOR + FILE_LOG_BACKUP);
 
-    FileSystem fs = FileSystem.get(logPath.toUri(), new Configuration());
+    FileSystem fs = FileSystem.get(logPath.toUri(), conf);
 
     if (fs.exists(logBackupPath)) {
       // restore state prior to log replay
@@ -127,7 +119,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   {
     Path backupPath = new Path(dir + "/snapshot0");
     Path path = new Path(dir + "/snapshot");
-    FileSystem fs = FileSystem.get(path.toUri(), new Configuration());
+    FileSystem fs = FileSystem.get(path.toUri(), conf);
 
     if (fs.exists(backupPath)) {
       throw new IllegalStateException("Found previous backup " + backupPath);
@@ -167,7 +159,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     Path logBackupPath = new Path(dir + Path.SEPARATOR + FILE_LOG_BACKUP);
     Path logPath = new Path(dir + Path.SEPARATOR + FILE_LOG);
 
-    FileContext fc = FileContext.getFileContext(FileSystem.get(path.toUri(), new Configuration()).getUri());
+    FileContext fc = FileContext.getFileContext(FileSystem.get(path.toUri(), conf).getUri());
 
     if (fc.util().exists(backupPath)) {
       LOG.warn("Incomplete checkpoint, reverting to {}", backupPath);
@@ -202,6 +194,28 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     } catch (ClassNotFoundException cnfe) {
       throw new IOException("Failed to read checkpointed state", cnfe);
     }
+  }
+
+  public void writeConnectUri(String uri) throws IOException
+  {
+    Path path = new Path(dir + "/heartbeatUri");
+    FileSystem fs = FileSystem.get(path.toUri(), conf);
+    DataOutputStream out = fs.create(path, true);
+    out.write(uri.getBytes());
+    out.close();
+    LOG.info("Connect address: {} written to {} ", uri, path);
+  }
+
+  public String readConnectUri() throws IOException
+  {
+    Path path = new Path(dir + "/heartbeatUri");
+    FileSystem fs = FileSystem.get(path.toUri(), conf);
+    DataInputStream in = fs.open(path);
+    byte[] bytes = IOUtils.toByteArray(in);
+    in.close();
+    String uri = new String(bytes);
+    LOG.info("Connect address: {} from {} ", uri, path);
+    return uri;
   }
 
 }
