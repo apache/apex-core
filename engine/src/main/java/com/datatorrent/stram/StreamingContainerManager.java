@@ -1638,6 +1638,7 @@ public class StreamingContainerManager implements PlanContext
   private void checkpoint() throws IOException
   {
     if (recoveryHandler != null) {
+      LOG.debug("Checkpointing state");
       synchronized (journal) {
         journal.getOutputStream().close();
         DataOutputStream dos = recoveryHandler.rotateLog();
