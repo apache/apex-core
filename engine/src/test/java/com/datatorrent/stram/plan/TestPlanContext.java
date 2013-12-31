@@ -22,6 +22,7 @@ import com.google.common.collect.Sets;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -94,6 +95,11 @@ public class TestPlanContext implements PlanContext, StorageAgent {
 
   @Override
   public void recordEventAsync(StramEvent ev)
+  {
+  }
+
+  @Override
+  public void writeJournal(RecoverableOperation op)
   {
   }
 

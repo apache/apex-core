@@ -35,6 +35,7 @@ import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.engine.Node;
@@ -194,6 +195,12 @@ public class PhysicalPlan implements Serializable
      * @param r
      */
     public void dispatch(Runnable r);
+
+    /**
+     * Write the recoverable operation to the log.
+     * @param op
+     */
+    public void writeJournal(RecoverableOperation op);
 
   }
 
@@ -736,7 +743,7 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  Operator loadOperator(PTOperator oper) {
+  public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
       InputStream is = ctx.getStorageAgent().getLoadStream(oper.id, oper.recoveryCheckpoint);
@@ -950,6 +957,10 @@ public class PhysicalPlan implements Serializable
     this.undeployOpers.add(oper);
     this.allOperators.remove(oper.id);
     this.ctx.recordEventAsync(new StramEvent.RemoveOperatorEvent(oper.getName(), oper.getId()));
+  }
+
+  public PlanContext getContext() {
+    return ctx;
   }
 
   public LogicalPlan getDAG() {

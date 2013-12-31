@@ -20,9 +20,9 @@ import com.google.common.collect.Maps;
  * Operations need to be registered with the journal instance before writing.
  * Registered prototype instances will be used to apply changes on read.
  */
-public class StramJournal
+public class Journal
 {
-  interface RecoverableOperation
+  public interface RecoverableOperation
   {
     void read(DataInput in) throws IOException;
     void write(DataOutput out) throws IOException;
@@ -30,14 +30,26 @@ public class StramJournal
 
   private final ConcurrentMap<Integer, RecoverableOperation> operations = Maps.newConcurrentMap();
   private final ConcurrentMap<Class<?>, Integer> classToId = Maps.newConcurrentMap();
-  private final DataOutputStream out;
+  private DataOutputStream out;
 
-  public StramJournal(DataOutputStream out)
+  public Journal()
   {
+  }
+
+  public DataOutputStream getOutputStream()
+  {
+    return this.out;
+  }
+
+  public synchronized void setOutputStream(DataOutputStream out) throws IOException
+  {
+    if (this.out != null) {
+      this.out.close();
+    }
     this.out = out;
   }
 
-  public void register(int opId, RecoverableOperation op)
+  public synchronized void register(int opId, RecoverableOperation op)
   {
     if (operations.put(opId, op) != null) {
       throw new IllegalStateException(String.format("Prior mapping for %s %s", opId));
@@ -45,7 +57,7 @@ public class StramJournal
     classToId.put(op.getClass(), opId);
   }
 
-  public void writeLog(RecoverableOperation op) throws IOException
+  public synchronized void write(RecoverableOperation op) throws IOException
   {
     Integer classId = classToId.get(op.getClass());
     if (classId == null) {
@@ -82,6 +94,14 @@ public class StramJournal
     public SetOperatorState(StreamingContainerManager scm)
     {
       this.scm = scm;
+    }
+
+    public static RecoverableOperation newInstance(int operatorId, PTOperator.State state)
+    {
+      SetOperatorState op = new SetOperatorState(null);
+      op.operatorId = operatorId;
+      op.state = state;
+      return op;
     }
 
     @Override

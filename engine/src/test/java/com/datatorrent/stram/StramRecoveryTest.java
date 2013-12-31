@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
  */
-package com.datatorrent.stram.plan.physical;
+package com.datatorrent.stram;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -28,11 +28,13 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.stram.FSRecoveryHandler;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.StramJournal;
+import com.datatorrent.stram.Journal;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
-import com.datatorrent.stram.StramJournal.SetOperatorState;
+import com.datatorrent.stram.Journal.SetOperatorState;
+import com.datatorrent.stram.StreamingContainerManager.RecoveryHandler;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -44,17 +46,20 @@ import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.google.common.collect.Lists;
 
-public class SerializationTest
+public class StramRecoveryTest
 {
-  private static final Logger LOG = LoggerFactory.getLogger(SerializationTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramRecoveryTest.class);
   @Rule public final TestMeta testMeta = new TestMeta();
 
   @Test
-  public void testPhysicalPlan() throws Exception
+  public void testPhysicalPlanSerialization() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
 
@@ -117,7 +122,8 @@ public class SerializationTest
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
 
-    StreamingContainerManager scm = StreamingContainerManager.getInstance(dag, false);
+    RecoveryHandler hah = new FSRecoveryHandler(FSRecoveryHandler.getCheckpointPath(dag));
+    StreamingContainerManager scm = StreamingContainerManager.getInstance(hah, dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, plan.getContainers().size());
 
@@ -155,7 +161,7 @@ public class SerializationTest
     Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
 
-    // logical plan modification that requires checkpointing
+    // logical plan modification triggers snapshot
     CreateOperatorRequest cor = new CreateOperatorRequest();
     cor.setOperatorFQCN(GenericTestOperator.class.getName());
     cor.setOperatorName("o2");
@@ -173,12 +179,22 @@ public class SerializationTest
     Assert.assertSame("dag references", dag, scm.getLogicalPlan());
     Assert.assertEquals("number operators after plan modification", 2, dag.getAllOperators().size());
 
-    // test plan restore
+    // set operator state triggers journal write
+    o1p1.setState(PTOperator.State.INACTIVE);
+
+    // test restore
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-    scm = StreamingContainerManager.getInstance(dag, false);
+    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(FSRecoveryHandler.getCheckpointPath(dag)), dag, false);
+
     Assert.assertNotSame("dag references", dag, scm.getLogicalPlan());
     Assert.assertEquals("number operators after restore", 2, scm.getLogicalPlan().getAllOperators().size());
+
+    dag = scm.getLogicalPlan();
+    plan = scm.getPhysicalPlan();
+
+    o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
+    Assert.assertEquals("post restore state " + o1p1, PTOperator.State.INACTIVE, o1p1.getState());
 
   }
 
@@ -202,14 +218,15 @@ public class SerializationTest
         flushCount.increment();
       }
     };
-    StramJournal j = new StramJournal(new DataOutputStream(bos));
+    Journal j = new Journal();
+    j.setOutputStream(new DataOutputStream(bos));
     SetOperatorState op1 = new SetOperatorState(scm);
     j.register(1, op1);
 
     op1 = new SetOperatorState(scm);
     op1.operatorId = o1p1.getId();
     op1.state = PTOperator.State.ACTIVE;
-    j.writeLog(op1);
+    j.write(op1);
     Assert.assertEquals("flush count", 1, flushCount.intValue());
 
     Assert.assertEquals(PTOperator.State.INACTIVE, o1p1.getState());

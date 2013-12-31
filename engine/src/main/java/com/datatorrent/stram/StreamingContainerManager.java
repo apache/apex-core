@@ -6,12 +6,11 @@ package com.datatorrent.stram;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -56,6 +55,7 @@ import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -124,6 +124,8 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
 
   private MBassador<StramEvent> eventBus; // event bus for publishing stram events
+  final private Journal journal;
+  private RecoveryHandler recoveryHandler;
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -153,6 +155,7 @@ public class StreamingContainerManager implements PlanContext
   {
     AttributeMap attributes = dag.getAttributes();
     this.vars = new FinalVars(attributes);
+    this.journal = setupJournal();
     // setup prior to plan creation for event recording
     if (enableEventRecording) {
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
@@ -164,6 +167,7 @@ public class StreamingContainerManager implements PlanContext
   StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
   {
     this.vars = checkpointedState.finals;
+    this.journal = setupJournal();
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupRecording(this.plan.getDAG().getAttributes(), enableEventRecording);
@@ -176,6 +180,14 @@ public class StreamingContainerManager implements PlanContext
         containers.put(c.getExternalId(), sca);
       }
     }
+  }
+
+  private Journal setupJournal()
+  {
+    Journal journal = new Journal();
+    journal.register(1, new Journal.SetOperatorState(this));
+    journal.register(2, new Journal.SetContainerResourcePriority(this));
+    return journal;
   }
 
   private void setupRecording(AttributeMap attributes, boolean enableEventRecording)
@@ -473,7 +485,11 @@ public class StreamingContainerManager implements PlanContext
     }
 
     if (count > 0) {
-      checkpoint();
+      try {
+        checkpoint();
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to checkpoint state.", e);
+      }
     }
 
     return count;
@@ -1618,31 +1634,31 @@ public class StreamingContainerManager implements PlanContext
     return alertsManager;
   }
 
-  private static String getCheckpointPath(LogicalPlan dag)
+  private void checkpoint() throws IOException
   {
-    String path = dag.getAttributes().get(LogicalPlan.APPLICATION_PATH);
-    if (path == null) {
-      throw new IllegalArgumentException("Missing " + LogicalPlan.APPLICATION_PATH);
+    if (recoveryHandler != null) {
+
+      DataOutputStream dos = recoveryHandler.rotateLog();
+      journal.setOutputStream(dos);
+
+      // checkpoint the state
+      CheckpointState cs = new CheckpointState();
+      cs.finals = this.vars;
+      cs.physicalPlan = this.plan;
+      recoveryHandler.save(cs);
+
     }
-    return path + "/dag-checkpoints";
   }
 
-  private void checkpoint()
+  @Override
+  public void writeJournal(RecoverableOperation op)
   {
-    CheckpointState cs = new CheckpointState();
-    cs.finals = this.vars;
-    cs.physicalPlan = this.plan;
-
-    // TODO: write to separate location and swap
-    FSStorageAgent storageAgent = new FSStorageAgent(getCheckpointPath(this.plan.getDAG()));
     try {
-      LOG.debug("Writing checkpoint...");
-      OutputStream os = storageAgent.getSaveStream(0, 0);
-      ObjectOutputStream oos = new ObjectOutputStream(os);
-      oos.writeObject(cs);
-      oos.close();
+      if (journal.getOutputStream() != null) {
+        journal.write(op);
+      }
     } catch (Exception e) {
-      throw new IllegalStateException("Failed to checkpoint state.", e);
+      throw new IllegalStateException("Failed to write to journal "+ op, e);
     }
   }
 
@@ -1651,29 +1667,37 @@ public class StreamingContainerManager implements PlanContext
    * @param dag
    * @return
    */
-  public static StreamingContainerManager getInstance(LogicalPlan dag, boolean enableEventRecording)
+  public static StreamingContainerManager getInstance(RecoveryHandler rh, LogicalPlan dag, boolean enableEventRecording)
   {
-    FSStorageAgent storageAgent = new FSStorageAgent(getCheckpointPath(dag));
-    long cpid = -1;
     try {
-      cpid = storageAgent.getMostRecentWindowId(0);
-      LOG.info("Found checkpoint {} in {}", cpid, storageAgent.checkpointFsPath);
-    } catch (IOException e) {
-      LOG.debug("No checkpoint state in {}, creating new instance", storageAgent.checkpointFsPath);
-    }
-
-    if (cpid == -1) {
-      return new StreamingContainerManager(dag, enableEventRecording);
-    } else {
-      try {
-        InputStream is = storageAgent.getLoadStream(0, cpid);
-        ObjectInputStream ois = new ObjectInputStream(is);
-        CheckpointState checkpointedState = (CheckpointState)ois.readObject();
-        // TODO: redo log
-        return new StreamingContainerManager(checkpointedState, enableEventRecording);
-      } catch (Exception e) {
-        throw new IllegalStateException("Failed to read checkpointed state", e);
+      CheckpointState checkpointedState = (CheckpointState)rh.restore();
+      StreamingContainerManager scm;
+      if (checkpointedState == null) {
+        scm = new StreamingContainerManager(dag, enableEventRecording);
+      } else {
+        scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
+        // find better way to support final transient members
+        PhysicalPlan plan = checkpointedState.physicalPlan;
+        for (Field f : plan.getClass().getDeclaredFields()) {
+          if (f.getType() == PlanContext.class) {
+            f.setAccessible(true);
+            try {
+              f.set(plan, scm);
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to set " + f, e);
+            }
+            f.setAccessible(false);
+          }
+        }
+        DataInputStream logStream = rh.getLog();
+        scm.journal.replay(logStream);
+        logStream.close();
       }
+      scm.recoveryHandler = rh;
+      scm.journal.setOutputStream(rh.rotateLog());
+      return scm;
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to read checkpointed state", e);
     }
   }
 
@@ -1733,6 +1757,34 @@ public class StreamingContainerManager implements PlanContext
     private static final long serialVersionUID = 3827310557521807024L;
     private FinalVars finals;
     private PhysicalPlan physicalPlan;
+  }
+
+  public interface RecoveryHandler
+  {
+    /**
+     * Save snapshot.
+     * @param state
+     * @throws IOException
+     */
+    void save(Object state) throws IOException;
+    /**
+     * Restore snapshot. Must get/apply log after restore.
+     * @return
+     * @throws IOException
+     */
+    Object restore() throws IOException;
+    /**
+     * Backup log. Call before save.
+     * @return
+     * @throws IOException
+     */
+    DataOutputStream rotateLog() throws IOException;
+    /**
+     * Get input stream for log. Call after restore.
+     * @return
+     * @throws IOException
+     */
+    DataInputStream getLog() throws IOException;
   }
 
 }

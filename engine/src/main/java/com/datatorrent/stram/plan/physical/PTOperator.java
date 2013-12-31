@@ -21,6 +21,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -207,6 +208,7 @@ public class PTOperator implements java.io.Serializable
   }
 
   public void setState(PTOperator.State state) {
+    this.getPlan().getContext().writeJournal(SetOperatorState.newInstance(this.getId(), state));
     this.state = state;
   }
 
