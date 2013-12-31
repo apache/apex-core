@@ -862,20 +862,21 @@ public class StreamingContainerManager implements PlanContext
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
         if (elapsedMillis > 0) {
-          status.tuplesProcessedPSMA = 0;
-          status.tuplesEmittedPSMA = 0;
-          if(statCount != 0){
+          long tuplesProcessedPSMA = 0;
+          long tuplesEmittedPSMA = 0;
+          if (statCount != 0) {
             status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 10000));
-          }else{
+          } else {
             status.cpuPercentageMA.add(0.0);
           }
           for (PortStatus ps: status.inputPortStatusList.values()) {
-            status.tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
+            tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
-            status.tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
+            tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
           }
-
+          status.tuplesProcessedPSMA = tuplesProcessedPSMA;
+          status.tuplesEmittedPSMA = tuplesEmittedPSMA;
           status.lastWindowedStats = statsList;
           if (oper.statsListeners != null) {
             this.reportStats.put(oper, oper);

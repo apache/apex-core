@@ -111,7 +111,7 @@ public class PhysicalPlan implements Serializable
       if (rsp.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
           lastEvalMillis = System.currentTimeMillis();
-          LOG.debug("Requesting repartitioning for {}/{} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator});
+          LOG.debug("Requesting repartitioning for {}/{} {} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator, tps});
           rsp.repartitionRequired = true;
         }
       }

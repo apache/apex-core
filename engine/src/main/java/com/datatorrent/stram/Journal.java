@@ -43,9 +43,6 @@ public class Journal
 
   public synchronized void setOutputStream(DataOutputStream out) throws IOException
   {
-    if (this.out != null) {
-      this.out.close();
-    }
     this.out = out;
   }
 
