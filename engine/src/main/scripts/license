@@ -5,7 +5,7 @@ if [ $# -eq 1 ]
 then
    echo "$@"
 else
-   echo "usage is defalutLicense <default_license_file> <path_to_public_key> <path_to_private_key> <constraint> <date_range> <url> <comment>"
+   echo "usage is License <path_to_properties_file>"
    exit;
 fi
 
@@ -46,5 +46,5 @@ fi
 export HADOOP_CLIENT_OPTS="$STRAM_CLIENT_OPTS"
 
 export CLASSPATH=$STRAM_CLASSPATH
-java $STRAM_CLIENT_OPTS com.datatorrent.stram.license.DefaultLicense "$@"
+java $STRAM_CLIENT_OPTS com.datatorrent.stram.license.License "$@"
 

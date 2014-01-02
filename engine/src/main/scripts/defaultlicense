@@ -5,7 +5,7 @@ if [ $# -eq 1 ]
 then
    echo "$@"
 else
-   echo "usage is defalutLicense <default_license_file> <path_to_public_key> <path_to_private_key> <constraint> <date_range> <url> <comment>"
+   echo "usage is defalutLicense <path_to_properties_file>"
    exit;
 fi
 
