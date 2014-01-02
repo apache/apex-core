@@ -28,7 +28,7 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.MuxSink;
 import com.datatorrent.stram.plan.logical.Operators;

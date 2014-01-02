@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.xml.bind.annotation.XmlElement;
 
 import com.datatorrent.stram.security.StramWSFilterInitializer;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -547,8 +550,11 @@ public class StramAppMaster extends CompositeService
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new StreamingContainerManager(dag, true);
-    LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), conf);
+    this.dnmgr = StreamingContainerManager.getInstance(recoveryHandler, dag, true);
+    dag = this.dnmgr.getLogicalPlan();
+
+    LOG.info("Starting application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // TODO :- Need to perform token renewal
@@ -585,6 +591,12 @@ public class StramAppMaster extends CompositeService
       delegationTokenManager.startThreads();
     }
 
+    // write the connect address for containers to DFS
+    InetSocketAddress connectAddress = NetUtils.getConnectAddress(this.heartbeatListener.getAddress());
+    URI connectUri = new URI("stram", null, connectAddress.getHostName(), connectAddress.getPort(), null, null, null);
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), getConfig());
+    recoveryHandler.writeConnectUri(connectUri.toString());
+
     // start web service
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
@@ -612,6 +624,7 @@ public class StramAppMaster extends CompositeService
     }
     nmClient.stop();
     amRmClient.stop();
+    dnmgr.teardown();
   }
 
   /**
@@ -812,7 +825,8 @@ public class StramAppMaster extends CompositeService
           releasedContainers.add(allocatedContainer.getId());
         } else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
-          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, delegationTokenManager, heartbeatListener.getAddress());
+          ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
+          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
           // launchThreads.add(launchThread);
           // launchThread.start();

@@ -172,8 +172,9 @@ public class PartitioningTest
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
   }
 
-  public static class PartitionLoadWatch implements StatsListener
+  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
+    private static final long serialVersionUID = 1L;
     final public static Map<Integer, Integer> loadIndicators = new ConcurrentHashMap<Integer, Integer>();
 
     @Override

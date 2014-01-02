@@ -98,6 +98,10 @@ public class PTContainer implements java.io.Serializable {
     return operators;
   }
 
+  public int getId() {
+    return this.seq;
+  }
+
   public String getExternalId() {
     return this.containerId;
   }

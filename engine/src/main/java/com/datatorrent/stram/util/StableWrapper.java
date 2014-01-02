@@ -11,16 +11,15 @@ import java.util.Comparator;
  * <br>
  * Needed to ensure that windowId wrap around safely<br>
  * {@see StablePriorityQueue}<br>
- * <br> 
+ * <br>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
- * @since 0.3.2 
+ * @since 0.3.2
  */
 
 
 class StableWrapper<E>
 {
-  private static final long serialVersionUID = 201207091936L;
   public final int id;
   public final E object;
 
@@ -36,7 +35,7 @@ class StableWrapperNaturalComparator<E> implements Comparator<StableWrapper<E>>
   @Override
   public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
   {
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     int ret = ((Comparable) o1.object).compareTo(o2.object);
 
     if (ret == 0) {

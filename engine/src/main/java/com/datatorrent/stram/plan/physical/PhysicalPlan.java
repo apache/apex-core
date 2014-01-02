@@ -34,8 +34,9 @@ import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -73,8 +74,9 @@ public class PhysicalPlan implements Serializable
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
    */
-  public static class PartitionLoadWatch implements StatsListener
+  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
+    private static final long serialVersionUID = 201312231633L;
     public long evalIntervalMillis = 30*1000;
     private final long tpsMin;
     private final long tpsMax;
@@ -109,7 +111,7 @@ public class PhysicalPlan implements Serializable
       if (rsp.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
           lastEvalMillis = System.currentTimeMillis();
-          LOG.debug("Requesting repartitioning for {}/{} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator});
+          LOG.debug("Requesting repartitioning for {}/{} {} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator, tps});
           rsp.repartitionRequired = true;
         }
       }
@@ -194,6 +196,12 @@ public class PhysicalPlan implements Serializable
      */
     public void dispatch(Runnable r);
 
+    /**
+     * Write the recoverable operation to the log.
+     * @param op
+     */
+    public void writeJournal(RecoverableOperation op);
+
   }
 
   /**
@@ -205,7 +213,7 @@ public class PhysicalPlan implements Serializable
 
     final private OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
-    private Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
+    private final Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
     private List<StatsListener> statsHandlers;
 
     /**
@@ -406,11 +414,13 @@ public class PhysicalPlan implements Serializable
     }
 
     Operator operator = m.logicalOperator.getOperator();
-    Collection<Partition<?>> partitions = new ArrayList<Partition<?>>(1);
+    Collection<Partition<Operator>> partitions = new ArrayList<Partition<Operator>>(1);
     if (operator instanceof Partitionable) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable<Operator> partitionable = (Partitionable)operator;
       // operator to provide initial partitioning
       partitions.add(new DefaultPartition<Operator>(operator));
-      partitions = ((Partitionable)operator).definePartitions(partitions, partitionCnt - 1);
+      partitions = partitionable.definePartitions(partitions, partitionCnt - 1);
     }
     else {
       partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
@@ -457,21 +467,31 @@ public class PhysicalPlan implements Serializable
     }
 
     // create operator instance per partition
-    for (Partition<?> p: partitions) {
-      addPTOperator(m, p, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+    Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
+    for (Partition<Operator> partition : partitions) {
+      PTOperator p = addPTOperator(m, partition, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+      operatorIdToPartition.put(p.getId(), partition);
     }
     updateStreamMappings(m);
 
+    if (operator instanceof Partitionable.PartitionAware) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable.PartitionAware<Operator> partitionable = (Partitionable.PartitionAware)operator;
+      partitionable.partitioned(operatorIdToPartition);
+    }
+
   }
 
-  private void redoPartitions(PMapping currentMapping) {
+  private void redoPartitions(PMapping currentMapping)
+  {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = currentMapping.partitions;
     List<DefaultPartition<Operator>> currentPartitions = new ArrayList<DefaultPartition<Operator>>(operators.size());
-    Map<Partition<?>, PTOperator> currentPartitionMap = new HashMap<Partition<?>, PTOperator>(operators.size());
+    Map<Partition<?>, PTOperator> currentPartitionMap = Maps.newHashMapWithExpectedSize(operators.size());
+    Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(operators.size());
 
-    final Collection<Partition<?>> newPartitions;
+    final Collection<Partition<Operator>> newPartitions;
     long minCheckpoint = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
 
     for (PTOperator pOperator : operators) {
@@ -489,10 +509,10 @@ public class PhysicalPlan implements Serializable
       }
 
       Operator partitionedOperator = loadOperator(pOperator);
-      // mapping always references port objects of operator from logical plan
       DefaultPartition<Operator> partition = new DefaultPartition<Operator>(partitionedOperator, pks, pOperator.loadIndicator, pOperator.stats);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
+      operatorIdToPartition.put(pOperator.getId(), partition);
     }
 
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
@@ -501,7 +521,9 @@ public class PhysicalPlan implements Serializable
     if (currentMapping.logicalOperator.getOperator() instanceof Partitionable) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
-      newPartitions = ((Partitionable)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable<Operator> partitionable = (Partitionable)currentMapping.logicalOperator.getOperator();
+      newPartitions = partitionable.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), incrementalCapacity);
     } else {
       if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
         newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
@@ -514,9 +536,9 @@ public class PhysicalPlan implements Serializable
       LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
     }
 
-    List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
+    List<Partition<Operator>> addedPartitions = new ArrayList<Partition<Operator>>();
     // determine modifications of partition set, identify affected operator instance(s)
-    for (Partition<?> newPartition : newPartitions) {
+    for (Partition<Operator> newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition);
       if (op == null) {
         addedPartitions.add(newPartition);
@@ -538,58 +560,46 @@ public class PhysicalPlan implements Serializable
     // downstream dependencies require redeploy, resolve prior to modifying plan
     Set<PTOperator> deps = this.getDependents(currentPartitionMap.values());
     this.undeployOpers.addAll(deps);
-    // dependencies need redeploy, except operators that excluded from the set in remove
+    // dependencies need redeploy, except operators excluded in remove
     this.deployOpers.addAll(deps);
 
     // plan updates start here, after all changes were identified
     // remove obsolete operators first, any freed resources
     // can subsequently be used for new/modified partitions
-    PMapping newMapping = new PMapping(currentMapping.logicalOperator);
-    newMapping.partitions.addAll(currentMapping.partitions);
-    newMapping.outputStreams.putAll(currentMapping.outputStreams);
-    newMapping.statsHandlers = currentMapping.statsHandlers;
-
+    List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
     // remove deprecated partitions from plan
     for (PTOperator p : currentPartitionMap.values()) {
-      newMapping.partitions.remove(p);
+      copyPartitions.remove(p);
       removePartition(p, currentMapping.parallelPartitions);
+      operatorIdToPartition.remove(p.getId());
     }
-
-    // keep mapping reference as that's where stats monitors point to
-    currentMapping.outputStreams = newMapping.outputStreams;
-    currentMapping.partitions = newMapping.partitions;
+    currentMapping.partitions = copyPartitions;
 
     // add new operators after cleanup complete
 
-    for (Partition<?> newPartition : addedPartitions) {
-      // new partition, add operator instance
+    for (Partition<Operator> newPartition : addedPartitions) {
+      // new partition, add to plan
       PTOperator p = addPTOperator(currentMapping, newPartition, minCheckpoint);
-
-      for (PTOperator mergeOper : p.upstreamMerge.values()) {
-        // TODO: remove as unifier is now handled in stream mapping?
-        this.undeployOpers.add(mergeOper);
-        this.deployOpers.add(mergeOper);
-        //initCheckpoint(mergeOper, mergeOper.unifier.get(), minCheckpoint);
-      }
+      operatorIdToPartition.put(p.getId(), newPartition);
 
       // handle parallel partition
       Stack<OperatorMeta> pending = new Stack<LogicalPlan.OperatorMeta>();
       pending.addAll(currentMapping.parallelPartitions);
       pendingLoop:
       while (!pending.isEmpty()) {
-        OperatorMeta pp = pending.pop();
-        for (StreamMeta s : pp.getInputStreams().values()) {
+        OperatorMeta ppMeta = pending.pop();
+        for (StreamMeta s : ppMeta.getInputStreams().values()) {
           if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorWrapper()) && pending.contains(s.getSource().getOperatorWrapper())) {
-            pending.push(pp);
+            pending.push(ppMeta);
             pending.remove(s.getSource().getOperatorWrapper());
             pending.push(s.getSource().getOperatorWrapper());
             continue pendingLoop;
           }
         }
-        LOG.debug("Adding to parallel partition {}", pp);
+        LOG.debug("Adding to parallel partition {}", ppMeta);
         // even though we don't track state for parallel partitions
-        // set recovery windowId to confirm with upstream checkpoints
-        addPTOperator(this.logicalToPTOperator.get(pp), null, minCheckpoint);
+        // set activation windowId to confirm to upstream checkpoints
+        addPTOperator(this.logicalToPTOperator.get(ppMeta), null, minCheckpoint);
       }
     }
 
@@ -600,6 +610,13 @@ public class PhysicalPlan implements Serializable
 
     deployChanges();
     this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
+
+    if (currentMapping.logicalOperator.getOperator() instanceof Partitionable.PartitionAware) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      Partitionable.PartitionAware<Operator> partitionable = (Partitionable.PartitionAware)currentMapping.logicalOperator.getOperator();
+      partitionable.partitioned(operatorIdToPartition);
+    }
+
   }
 
   private void updateStreamMappings(PMapping m) {
@@ -726,7 +743,7 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  Operator loadOperator(PTOperator oper) {
+  public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
       InputStream is = ctx.getStorageAgent().getLoadStream(oper.id, oper.recoveryCheckpoint);
@@ -940,6 +957,10 @@ public class PhysicalPlan implements Serializable
     this.undeployOpers.add(oper);
     this.allOperators.remove(oper.id);
     this.ctx.recordEventAsync(new StramEvent.RemoveOperatorEvent(oper.getName(), oper.getId()));
+  }
+
+  public PlanContext getContext() {
+    return ctx;
   }
 
   public LogicalPlan getDAG() {

@@ -39,21 +39,21 @@ public class TupleRecorder
 {
   public static final String VERSION = "1.2";
   private int totalTupleCount = 0;
-  private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
-  private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
+  private final HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
+  private final HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
   private String containerId;
   private int nextPortIndex = 0;
-  private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
+  private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private transient StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
   private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private String recordingNameTopic;
-  private FSPartFileCollection storage = new FSPartFileCollection()
+  private final FSPartFileCollection storage = new FSPartFileCollection()
   {
     @Override
     protected String getIndexExtraInfo()
@@ -247,7 +247,6 @@ public class TupleRecorder
     this.storage.teardown();
   }
 
-  @SuppressWarnings("unchecked")
   public void setup(Operator operator)
   {
     try {

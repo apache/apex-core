@@ -753,6 +753,15 @@ public class LogicalPlan implements Serializable, DAG
     return this.getValue(MASTER_MEMORY_MB);
   }
 
+  public String assertAppPath()
+  {
+    String path = getAttributes().get(LogicalPlan.APPLICATION_PATH);
+    if (path == null) {
+      throw new AssertionError("Missing " + LogicalPlan.APPLICATION_PATH);
+    }
+    return path;
+  }
+
   /**
    * Class dependencies for the topology. Used to determine jar file dependencies.
    *

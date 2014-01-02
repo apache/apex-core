@@ -7,7 +7,6 @@ import java.security.Principal;
  * Borrowed from org.apache.hadoop.yarn.server.webproxy.amfilter.AmIPPrincipal
  * See https://issues.apache.org/jira/browse/YARN-1516
  */
-import java.security.Principal;
 
 public class StramWSPrincipal implements Principal {
   private final String name;

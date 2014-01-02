@@ -69,7 +69,7 @@ public class SocketStreamTest
    * @throws Exception
    */
   @Test
-  @SuppressWarnings({"rawtypes", "unchecked", "SleepWhileInLoop"})
+  @SuppressWarnings({"SleepWhileInLoop"})
   public void testBufferServerStream() throws Exception
   {
     final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
