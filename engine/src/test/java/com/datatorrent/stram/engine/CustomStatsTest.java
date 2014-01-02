@@ -53,6 +53,8 @@ public class CustomStatsTest
 
     private transient OperatorContext context;
     private static CustomStats lastCustomStats = null;
+    private static Thread processStatsThread = null;
+    private static Thread definePartitionsThread = null;
 
     @Override
     public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, int incrementalCapacity)
@@ -63,6 +65,7 @@ public class CustomStatsTest
       for (Partition<?> p : partitions) {
         BatchedOperatorStats stats = p.getStats();
         if (stats != null) {
+          definePartitionsThread = Thread.currentThread();
           for (OperatorStats os : stats.getLastWindowedStats()) {
             if (os.customStats != null) {
               //LOG.debug("Custom stats: {}", os.customStats);
@@ -94,6 +97,7 @@ public class CustomStatsTest
     @Override
     public Response processStats(BatchedOperatorStats stats)
     {
+      processStatsThread = Thread.currentThread();
       for (OperatorStats os : stats.getLastWindowedStats()) {
         Assert.assertNotNull("custom stats in listener", os.customStats);
       }
@@ -138,6 +142,7 @@ public class CustomStatsTest
     Assert.assertNotNull("custom stats received", TestOperator.lastCustomStats);
     Assert.assertEquals("custom stats message", "interesting", ((TestOperatorStats)TestOperator.lastCustomStats).message);
     Assert.assertTrue("attribute defined stats listener called", ((TestOperatorStats)TestOperator.lastCustomStats).attributeListenerCalled);
+    Assert.assertSame("single thread", TestOperator.definePartitionsThread, TestOperator.processStatsThread);
 
   }
 

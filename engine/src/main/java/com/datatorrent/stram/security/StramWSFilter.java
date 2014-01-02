@@ -5,7 +5,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.Token;
 
 import javax.servlet.*;
@@ -48,7 +47,6 @@ public class StramWSFilter implements Filter
   private String proxyHost;
   private Set<String> proxyAddresses = null;
   private long lastUpdate;
-  private String proxyUriBase;
 
   private StramDelegationTokenManager tokenManager;
   private AtomicInteger sequenceNumber;
@@ -58,7 +56,6 @@ public class StramWSFilter implements Filter
   @Override
   public void init(FilterConfig conf) throws ServletException {
     proxyHost = conf.getInitParameter(PROXY_HOST);
-    proxyUriBase = conf.getInitParameter(PROXY_URI_BASE);
     tokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL, DELEGATION_TOKEN_MAX_LIFETIME, DELEGATION_TOKEN_RENEW_INTERVAL, DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
     sequenceNumber = new AtomicInteger(0);
     try {
@@ -185,7 +182,6 @@ public class StramWSFilter implements Filter
 
   private String verifyClientToken(String tokenstr) throws IOException
   {
-    boolean match = false;
     Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>();
     token.decodeFromUrlString(tokenstr);
     byte[] identifier = token.getIdentifier();

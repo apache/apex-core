@@ -22,10 +22,11 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
-import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
-import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
+import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
+import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
@@ -37,6 +38,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.webapp.ContainerInfo;
+
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 
@@ -307,7 +309,7 @@ public class StramChildAgent {
    *
    * @param dnodeId
    * @param nodeDecl
-   * @return {@link com.datatorrent.stram.OperatorDeployInfo}
+   * @return {@link com.datatorrent.stram.api.OperatorDeployInfo}
    *
    */
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator oper)
@@ -341,7 +343,8 @@ public class StramChildAgent {
     ndi.checkpointWindowId = checkpointWindowId;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
-    ndi.contextAttributes = oper.getOperatorMeta().getAttributes();
+    // clone the map as StramChild assumes ownership and may add non-serializable attributes
+    ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
     return ndi;
   }
 

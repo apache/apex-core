@@ -7,11 +7,15 @@ package com.datatorrent.stram;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+
 import java.net.InetSocketAddress;
+
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
 
 /**
@@ -20,10 +24,14 @@ import org.junit.Test;
  */
 public class AlertManagerTest
 {
+  @Rule public TestMeta testMeta = new TestMeta();
+
   @Test
   public void testAlertManager() throws JSONException
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+
     dag.addOperator("o", GenericTestOperator.class);
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0)));

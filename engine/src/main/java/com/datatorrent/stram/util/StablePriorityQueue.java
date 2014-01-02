@@ -19,11 +19,10 @@ public class StablePriorityQueue<E> implements Queue<E>
 {
 
   private final PriorityQueue<StableWrapper<E>> queue;
-  private static final long serialVersionUID = 201207091837L;
   private int counter = 0;
 
   /**
-   * 
+   *
    * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class<p>
    * <br>
    * @param initialCapacity The size of the queue to be set up
@@ -35,7 +34,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   }
 
   /**
-   * 
+   *
    * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class by absorbing all objects from a {@link java.util.Collection} object<p>
    * <br>
    * @param c a {@link java.util.Collection} object
@@ -50,7 +49,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   }
 
   /**
-   * 
+   *
    * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class with provided capacity<p>
    * <br>
    * @param initialCapacity Size of the queue to be set up
@@ -98,7 +97,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     if (sw == null) {
       return null;
     }
-    
+
     return sw.object;
   }
 
@@ -121,11 +120,11 @@ public class StablePriorityQueue<E> implements Queue<E>
     if (sw == null) {
       return null;
     }
-    
+
     return sw.object;
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public Comparator<? super E> comparator()
   {
     Comparator<? super StableWrapper<E>> comparator = queue.comparator();
@@ -327,7 +326,7 @@ public class StablePriorityQueue<E> implements Queue<E>
           modified = true;
         }
       }
-      
+
       if (modified && isEmpty()) {
         counter = 0;
       }
@@ -349,7 +348,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     if (removeThese.isEmpty()) {
       return false;
     }
-    
+
     if (queue.size() == removeThese.size()) {
       counter = 0;
     }

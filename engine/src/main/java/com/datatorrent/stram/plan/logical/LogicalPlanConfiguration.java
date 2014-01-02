@@ -18,7 +18,6 @@ import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import org.apache.http.client.params.AuthPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.beanutils.BeanMap;

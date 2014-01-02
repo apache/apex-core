@@ -6,6 +6,11 @@ package com.datatorrent.stram;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,9 +23,9 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -50,7 +55,9 @@ import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.ContainerContext;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -77,6 +84,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
@@ -95,33 +103,30 @@ import net.engio.mbassy.bus.config.BusConfiguration;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  private final long windowStartMillis;
-  private final int heartbeatTimeoutMillis;
-  private int maxWindowsBehindForStats;
-  private int recordStatsInterval = 0;
+
+  private final FinalVars vars;
+  private final PhysicalPlan plan;
+
   private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
   private FSStatsRecorder statsRecorder;
   private FSEventRecorder eventRecorder;
-  private final String appPath;
-  private final String checkpointFsPath;
-  private String statsFsPath = null;
-  private String eventsFsPath = null;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
   private final AtomicBoolean eventQueueProcessing = new AtomicBoolean();
   private final HashSet<PTContainer> pendingAllocation = Sets.newLinkedHashSet();
   protected String shutdownDiagnosticsMessage = "";
-  protected boolean forcedShutdown = false;
   private long lastResourceRequest = 0;
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
-  private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
+  private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
 
-  private final MBassador<StramEvent> eventBus; // event bus for publishing stram events
+  private MBassador<StramEvent> eventBus; // event bus for publishing stram events
+  final private Journal journal;
+  private RecoveryHandler recoveryHandler;
 
   // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
@@ -150,56 +155,58 @@ public class StreamingContainerManager implements PlanContext
   public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
   {
     AttributeMap attributes = dag.getAttributes();
-
-    if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
-      attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
+    this.vars = new FinalVars(attributes);
+    this.journal = setupJournal();
+    // setup prior to plan creation for event recording
+    if (enableEventRecording) {
+      this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     }
-    /* try to align to it to please eyes. */
-    long tms = System.currentTimeMillis();
-    windowStartMillis = tms - (tms % 1000);
+    setupRecording(attributes, enableEventRecording);
+    this.plan = new PhysicalPlan(dag, this);
+  }
 
-    if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
-      attributes.put(LogicalPlan.APPLICATION_PATH, "stram/" + tms);
-    }
-
-    this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
-    this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
-    this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
+  StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
+  {
+    this.vars = checkpointedState.finals;
+    this.journal = setupJournal();
+    this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+    setupRecording(this.plan.getDAG().getAttributes(), enableEventRecording);
 
-    if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
-      attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+    // populate container agents for existing containers
+    for (PTContainer c : this.plan.getContainers()) {
+      if (c.getExternalId() != null) {
+        LOG.debug("Restore container agent {} for {}", c.getExternalId(), c);
+        StramChildAgent sca = new StramChildAgent(c, newStreamingContainerContext(c.getExternalId()), this);
+        containers.put(c.getExternalId(), sca);
+      }
     }
-    this.heartbeatTimeoutMillis = dag.getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
+  }
 
-    if (attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG) == null) {
-      attributes.put(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 1000);
-    }
-    this.maxWindowsBehindForStats = attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
+  private Journal setupJournal()
+  {
+    Journal journal = new Journal();
+    journal.register(1, new Journal.SetOperatorState(this));
+    journal.register(2, new Journal.SetContainerResourcePriority(this));
+    return journal;
+  }
 
-    if (attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS) == null) {
-      attributes.put(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS, 0);
-    }
-    this.recordStatsInterval = attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
-
-    if (this.recordStatsInterval > 0 || enableEventRecording) {
+  private void setupRecording(AttributeMap attributes, boolean enableEventRecording)
+  {
+    if (this.vars.recordStatsInterval > 0 || enableEventRecording) {
       setupWsClient(attributes);
-      if (this.recordStatsInterval > 0) {
+      if (this.vars.recordStatsInterval > 0) {
         statsRecorder = new FSStatsRecorder();
-        statsRecorder.setBasePath(this.statsFsPath);
+        statsRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_STATS);
         statsRecorder.setWebSocketClient(wsClient);
         statsRecorder.setup();
       }
-      if (enableEventRecording) {
-        this.eventsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_EVENTS;
-        eventRecorder = new FSEventRecorder(attributes.get(LogicalPlan.APPLICATION_ID));
-        eventRecorder.setBasePath(this.eventsFsPath);
-        eventRecorder.setWebSocketClient(wsClient);
-        eventRecorder.setup();
-        eventBus.subscribe(eventRecorder);
-      }
+      eventRecorder = new FSEventRecorder(attributes.get(LogicalPlan.APPLICATION_ID));
+      eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
+      eventRecorder.setWebSocketClient(wsClient);
+      eventRecorder.setup();
+      eventBus.subscribe(eventRecorder);
     }
-    this.plan = new PhysicalPlan(dag, this);
   }
 
   private void setupWsClient(AttributeMap attributes)
@@ -215,7 +222,21 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  protected PhysicalPlan getPhysicalPlan()
+  public void teardown()
+  {
+    if (eventBus != null) {
+      eventBus.shutdown();
+    }
+  }
+
+  public void subscribeToEvents(Object listener)
+  {
+    if (eventBus != null) {
+      eventBus.subscribe(listener);
+    }
+  }
+
+  public PhysicalPlan getPhysicalPlan()
   {
     return plan;
   }
@@ -242,7 +263,6 @@ public class StreamingContainerManager implements PlanContext
         for (PTContainer c : pendingAllocation) {
           LOG.warn("Waiting for resource: {}m priority: {} {}", c.getRequiredMemoryMB(), c.getResourceRequestPriority(), c);
         }
-        forcedShutdown = true;
         shutdownAllContainers(msg);
       }
       else {
@@ -262,12 +282,12 @@ public class StreamingContainerManager implements PlanContext
       if (!pendingAllocation.contains(c) && c.getExternalId() != null) {
         if (sca.lastHeartbeatMillis == 0) {
           // container allocated but process was either not launched or is not able to phone home
-          if (currentTms - sca.createdMillis > 2 * heartbeatTimeoutMillis) {
+          if (currentTms - sca.createdMillis > 2 * this.vars.heartbeatTimeoutMillis) {
             LOG.info("Container {}@{} startup timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.createdMillis});
             containerStopRequests.put(c.getExternalId(), c.getExternalId());
           }
         } else {
-          if (currentTms - sca.lastHeartbeatMillis > heartbeatTimeoutMillis) {
+          if (currentTms - sca.lastHeartbeatMillis > this.vars.heartbeatTimeoutMillis) {
             if (!isApplicationIdle()) {
               // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
               LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.lastHeartbeatMillis});
@@ -285,7 +305,7 @@ public class StreamingContainerManager implements PlanContext
 
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
-    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= currentTms)) {
+    if (this.vars.recordStatsInterval > 0 && (lastRecordStatsTime + this.vars.recordStatsInterval <= currentTms)) {
       recordStats(currentTms);
     }
   }
@@ -304,17 +324,14 @@ public class StreamingContainerManager implements PlanContext
   private void calculateEndWindowStats()
   {
     if (!endWindowStatsOperatorMap.isEmpty()) {
-      if (endWindowStatsOperatorMap.size() > maxWindowsBehindForStats) {
-        LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", maxWindowsBehindForStats);
-        while (endWindowStatsOperatorMap.size() > maxWindowsBehindForStats) {
+      if (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
+        LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", this.vars.maxWindowsBehindForStats);
+        while (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
 
-      Set<Integer> allCurrentOperators = new TreeSet<Integer>();
-      for (PTOperator o: plan.getAllOperators().values()) {
-        allCurrentOperators.add(o.getId());
-      }
+      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
       int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
@@ -450,6 +467,10 @@ public class StreamingContainerManager implements PlanContext
 
   public int processEvents()
   {
+    for (PTOperator o: reportStats.keySet()) {
+      plan.onStatusUpdate(o);
+      reportStats.remove(o);
+    }
     int count = 0;
     Runnable command;
     while ((command = this.eventQueue.poll()) != null) {
@@ -464,6 +485,15 @@ public class StreamingContainerManager implements PlanContext
       }
       eventQueueProcessing.set(false);
     }
+
+    if (count > 0) {
+      try {
+        checkpoint();
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to checkpoint state.", e);
+      }
+    }
+
     return count;
   }
 
@@ -490,10 +520,8 @@ public class StreamingContainerManager implements PlanContext
     cs.container.setState(PTContainer.State.KILLED);
     cs.container.bufferServerAddress = null;
 
-    // building the checkpoint dependency,
-    // downstream operators will appear first in map
+    // resolve dependencies
     LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
-
     MutableLong ml = new MutableLong();
     for (PTOperator oper: cs.container.getOperators()) {
       // TODO: traverse container local upstream operators
@@ -591,7 +619,7 @@ public class StreamingContainerManager implements PlanContext
   {
     StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getDAG());
     scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
-    scc.startWindowMillis = this.windowStartMillis;
+    scc.startWindowMillis = this.vars.windowStartMillis;
     return scc;
   }
 
@@ -703,7 +731,6 @@ public class StreamingContainerManager implements PlanContext
           else {
             String msg = String.format("Shutdown after reaching failure threshold for %s", oper);
             LOG.warn(msg);
-            forcedShutdown = true;
             shutdownAllContainers(msg);
           }
         }
@@ -837,23 +864,24 @@ public class StreamingContainerManager implements PlanContext
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
         if (elapsedMillis > 0) {
-          status.tuplesProcessedPSMA = 0;
-          status.tuplesEmittedPSMA = 0;
-          if(statCount != 0){
+          long tuplesProcessedPSMA = 0;
+          long tuplesEmittedPSMA = 0;
+          if (statCount != 0) {
             status.cpuPercentageMA.add((double)totalCpuTimeUsed  / (totalElapsedMillis * 10000));
-          }else{
+          } else {
             status.cpuPercentageMA.add(0.0);
           }
           for (PortStatus ps: status.inputPortStatusList.values()) {
-            status.tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
+            tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
-            status.tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
+            tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
           }
-
+          status.tuplesProcessedPSMA = tuplesProcessedPSMA;
+          status.tuplesEmittedPSMA = tuplesEmittedPSMA;
           status.lastWindowedStats = statsList;
           if (oper.statsListeners != null) {
-            plan.onStatusUpdate(oper);
+            this.reportStats.put(oper, oper);
           }
         }
       }
@@ -1034,7 +1062,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    StorageAgent ba = new FSStorageAgent(new Configuration(), checkpointFsPath);
+    StorageAgent ba = new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
@@ -1090,7 +1118,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public StorageAgent getStorageAgent()
   {
-    return new FSStorageAgent(new Configuration(), this.checkpointFsPath);
+    return new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)
@@ -1180,8 +1208,8 @@ public class StreamingContainerManager implements PlanContext
       StramChildAgent sca = containers.get(c.getExternalId());
       if (sca != null) {
         LOG.debug("Container marked for shutdown: {}", c);
-        // TODO: set deactivated state and monitor soft shutdown
-        //sca.container.setState(PTContainer.State.KILLED);
+        // container already removed from plan
+        // TODO: monitor soft shutdown
         sca.shutdownRequested = true;
       }
     }
@@ -1190,7 +1218,9 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void recordEventAsync(StramEvent ev)
   {
-    eventBus.publishAsync(ev);
+    if (eventBus != null) {
+      eventBus.publishAsync(ev);
+    }
   }
 
   @Override
@@ -1605,6 +1635,161 @@ public class StreamingContainerManager implements PlanContext
   public AlertsManager getAlertsManager()
   {
     return alertsManager;
+  }
+
+  private void checkpoint() throws IOException
+  {
+    if (recoveryHandler != null) {
+      LOG.debug("Checkpointing state");
+      synchronized (journal) {
+        journal.getOutputStream().close();
+        DataOutputStream dos = recoveryHandler.rotateLog();
+        journal.setOutputStream(dos);
+      }
+      // checkpoint the state
+      CheckpointState cs = new CheckpointState();
+      cs.finals = this.vars;
+      cs.physicalPlan = this.plan;
+      recoveryHandler.save(cs);
+
+    }
+  }
+
+  @Override
+  public void writeJournal(RecoverableOperation op)
+  {
+    try {
+      if (journal.getOutputStream() != null) {
+        journal.write(op);
+      }
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to write to journal "+ op, e);
+    }
+  }
+
+  /**
+   * Get the instance for the given application. If the application directory contains a checkpoint, the state will be restored.
+   * @param dag
+   * @return
+   */
+  public static StreamingContainerManager getInstance(RecoveryHandler rh, LogicalPlan dag, boolean enableEventRecording)
+  {
+    try {
+      CheckpointState checkpointedState = (CheckpointState)rh.restore();
+      StreamingContainerManager scm;
+      if (checkpointedState == null) {
+        scm = new StreamingContainerManager(dag, enableEventRecording);
+      } else {
+        scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
+        // find better way to support final transient members
+        PhysicalPlan plan = checkpointedState.physicalPlan;
+        for (Field f : plan.getClass().getDeclaredFields()) {
+          if (f.getType() == PlanContext.class) {
+            f.setAccessible(true);
+            try {
+              f.set(plan, scm);
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to set " + f, e);
+            }
+            f.setAccessible(false);
+          }
+        }
+        DataInputStream logStream = rh.getLog();
+        scm.journal.replay(logStream);
+        logStream.close();
+      }
+      scm.recoveryHandler = rh;
+      scm.journal.setOutputStream(rh.rotateLog());
+      return scm;
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to read checkpointed state", e);
+    }
+  }
+
+  private static class FinalVars implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 3827310557521807024L;
+    private final long windowStartMillis;
+    private final int heartbeatTimeoutMillis;
+    private final String appPath;
+    private final String checkpointFsPath;
+    private final int maxWindowsBehindForStats;
+    private final int recordStatsInterval;
+
+    private FinalVars(AttributeMap attributes)
+    {
+      /* try to align to it to please eyes. */
+      long tms = System.currentTimeMillis();
+      windowStartMillis = tms - (tms % 1000);
+
+      if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
+        throw new IllegalArgumentException("Not set: " + LogicalPlan.APPLICATION_PATH);
+      }
+
+      this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
+      this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+
+      if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
+        attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
+      }
+      if (attributes.get(LogicalPlan.CHECKPOINT_WINDOW_COUNT) == null) {
+        attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+      }
+
+      if (attributes.get(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS) != null) {
+        this.heartbeatTimeoutMillis = attributes.get(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
+      } else {
+        this.heartbeatTimeoutMillis = LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS.defaultValue;
+      }
+
+      if (attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG) == null) {
+        attributes.put(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 1000);
+      }
+      this.maxWindowsBehindForStats = attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
+
+      if (attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS) == null) {
+        attributes.put(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS, 0);
+      }
+      this.recordStatsInterval = attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
+    }
+  }
+
+  /**
+   * The state the can be saved and used to recover the manager.
+   */
+  private static class CheckpointState implements Serializable
+  {
+    private static final long serialVersionUID = 3827310557521807024L;
+    private FinalVars finals;
+    private PhysicalPlan physicalPlan;
+  }
+
+  public interface RecoveryHandler
+  {
+    /**
+     * Save snapshot.
+     * @param state
+     * @throws IOException
+     */
+    void save(Object state) throws IOException;
+    /**
+     * Restore snapshot. Must get/apply log after restore.
+     * @return
+     * @throws IOException
+     */
+    Object restore() throws IOException;
+    /**
+     * Backup log. Call before save.
+     * @return
+     * @throws IOException
+     */
+    DataOutputStream rotateLog() throws IOException;
+    /**
+     * Get input stream for log. Call after restore.
+     * @return
+     * @throws IOException
+     */
+    DataInputStream getLog() throws IOException;
   }
 
 }
