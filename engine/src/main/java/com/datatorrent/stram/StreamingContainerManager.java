@@ -57,6 +57,7 @@ import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.ContainerContext;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -468,6 +469,7 @@ public class StreamingContainerManager implements PlanContext
   {
     for (PTOperator o: reportStats.keySet()) {
       plan.onStatusUpdate(o);
+      reportStats.remove(o);
     }
     int count = 0;
     Runnable command;

@@ -755,7 +755,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     String path = getAttributes().get(LogicalPlan.APPLICATION_PATH);
     if (path == null) {
-      throw new IllegalArgumentException("Missing " + LogicalPlan.APPLICATION_PATH);
+      throw new AssertionError("Missing " + LogicalPlan.APPLICATION_PATH);
     }
     return path;
   }

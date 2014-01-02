@@ -22,10 +22,11 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
-import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
-import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
+import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
+import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
@@ -308,7 +309,7 @@ public class StramChildAgent {
    *
    * @param dnodeId
    * @param nodeDecl
-   * @return {@link com.datatorrent.stram.OperatorDeployInfo}
+   * @return {@link com.datatorrent.stram.api.OperatorDeployInfo}
    *
    */
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator oper)
