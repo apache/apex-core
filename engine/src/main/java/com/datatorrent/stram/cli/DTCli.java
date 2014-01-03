@@ -1234,8 +1234,7 @@ public class DTCli
   {
     try {
       JSONObject licenseStatus = getLicenseStatus(null);
-      String agentAppId = licenseStatus.optString("agentAppId");
-      if (agentAppId == null) {
+      if (!licenseStatus.has("agentAppId")) {
         System.out.println("License agent is not running. Please run the license agent first by typing \"activate-license\"");
         return;
       }
