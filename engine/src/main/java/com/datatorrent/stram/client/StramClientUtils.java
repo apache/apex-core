@@ -216,7 +216,7 @@ public class StramClientUtils
             return true;
           }
           else {
-            LOG.info("Application did finished unsuccessfully."
+            LOG.info("Application finished unsuccessfully."
                     + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
                     + ". Breaking monitoring loop");
             return false;
