@@ -85,6 +85,7 @@ import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.license.GenerateLicenseRequest;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicensingAgentClient;
+import com.datatorrent.stram.license.SubLicense;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
@@ -487,6 +488,10 @@ public class DTCli
                                                         null,
                                                         null,
                                                         "Show all IDs of all licenses"));
+    globalCommands.put("show-license-status", new CommandSpec(new ShowLicenseStatusCommand(),
+                                                              null,
+                                                              new Arg[] {new FileArg("license-file")},
+                                                              "Show the status of the license"));
 
     //
     // Connected command specification starts here
@@ -1061,6 +1066,7 @@ public class DTCli
     }
     if (consolePresent) {
       printWelcomeMessage();
+      printLicenseStatus();
       setupCompleter(reader);
       setupHistory(reader);
     }
@@ -1222,6 +1228,31 @@ public class DTCli
   private void printWelcomeMessage()
   {
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
+  }
+
+  private void printLicenseStatus()
+  {
+    try {
+      JSONObject licenseStatus = getLicenseStatus(null);
+      String agentAppId = licenseStatus.optString("agentAppId");
+      if (agentAppId == null) {
+        System.out.println("License agent is not running. Please run the license agent first by typing \"activate-license\"");
+        return;
+      }
+      if (licenseStatus.has("remainingLicensedMB")) {
+        int remainingLicensedMB = licenseStatus.getInt("remainingLicensedMB");
+        if (remainingLicensedMB > 0) {
+          System.out.println("You have " + remainingLicensedMB + "MB remaining for the current license.");
+        }
+        else {
+          System.out.println("You do not have any memory allowance left for the current license. Please contact DataTorrent, Inc. <support@datatorrent.com> for help.");
+        }
+      }
+    }
+    catch (Exception ex) {
+      LOG.error("Caught exception when getting license info", ex);
+      System.out.println("Error getting license status. Please contact DataTorrent, Inc. <support@datatorrent.com> for help.");
+    }
   }
 
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
@@ -1645,50 +1676,57 @@ public class DTCli
     // add expiration date range here
   }
 
+  private Map<String, LicenseInfo> getLicenseInfoMap() throws JSONException, IOException
+  {
+    List<ApplicationReport> runningApplicationList = getRunningApplicationList();
+    WebServicesClient webServicesClient = new WebServicesClient();
+
+    Map<String, LicenseInfo> licenseInfoMap = new HashMap<String, LicenseInfo>();
+
+    for (ApplicationReport ar : runningApplicationList) {
+      WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
+
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+        }
+
+      });
+      if (!response.has("licenseInfoLastUpdate")) {
+        continue;
+      }
+      long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
+      String licenseId = response.getString("licenseId");
+      int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
+      LicenseInfo licenseInfo;
+
+      if (licenseInfoMap.containsKey(licenseId)) {
+        licenseInfo = licenseInfoMap.get(licenseId);
+        if (licenseInfo.lastUpdate < lastUpdate) {
+          licenseInfo.remainingLicensedMB = remainingLicensedMB;
+          licenseInfo.lastUpdate = lastUpdate;
+        }
+      }
+      else {
+        licenseInfo = new LicenseInfo();
+        licenseInfo.remainingLicensedMB = remainingLicensedMB;
+        licenseInfo.lastUpdate = lastUpdate;
+        licenseInfoMap.put(licenseId, licenseInfo);
+      }
+
+    }
+    return licenseInfoMap;
+  }
+
   private class ListLicensesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      List<ApplicationReport> runningApplicationList = getRunningApplicationList();
-      WebServicesClient webServicesClient = new WebServicesClient();
-      Map<String, LicenseInfo> licenseInfoMap = new HashMap<String, LicenseInfo>();
-
-      for (ApplicationReport ar : runningApplicationList) {
-        WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
-
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
-        if (!response.has("licenseInfoLastUpdate")) {
-          continue;
-        }
-        long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
-        String licenseId = response.getString("licenseId");
-        int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
-        LicenseInfo licenseInfo;
-
-        if (licenseInfoMap.containsKey(licenseId)) {
-          licenseInfo = licenseInfoMap.get(licenseId);
-          if (licenseInfo.lastUpdate < lastUpdate) {
-            licenseInfo.remainingLicensedMB = remainingLicensedMB;
-            licenseInfo.lastUpdate = lastUpdate;
-          }
-        }
-        else {
-          licenseInfo = new LicenseInfo();
-          licenseInfo.remainingLicensedMB = remainingLicensedMB;
-          licenseInfo.lastUpdate = lastUpdate;
-          licenseInfoMap.put(licenseId, licenseInfo);
-        }
-
-      }
+      Map<String, LicenseInfo> licenseInfoMap = getLicenseInfoMap();
 
       try {
         JSONArray jsonArray = new JSONArray();
@@ -1706,7 +1744,7 @@ public class DTCli
         for (ApplicationReport ar : licList) {
           JSONObject jsonObj = new JSONObject();
           jsonObj.put("id", ar.getName());
-          jsonObj.put("applicationId", ar.getApplicationId().getId());
+          jsonObj.put("agentAppId", ar.getApplicationId().getId());
           if (licenseInfoMap.containsKey(ar.getName())) {
             jsonObj.put("remainingLicensedMB", licenseInfoMap.get(ar.getName()).remainingLicensedMB);
           }
@@ -1717,6 +1755,59 @@ public class DTCli
       catch (Exception ex) {
         throw new CliException("Failed to retrieve license list", ex);
       }
+    }
+
+  }
+
+  private JSONObject getLicenseStatus(String licenseFile) throws Exception
+  {
+    byte[] licenseBytes;
+    if (licenseFile != null) {
+      licenseBytes = StramClientUtils.getLicense(licenseFile);
+    }
+    else {
+      licenseBytes = StramClientUtils.getLicense(conf);
+    }
+    String licenseID = License.getLicenseID(licenseBytes);
+    SubLicense[] subLicenses = License.validateGetSubLicenses(licenseBytes);
+    JSONObject licenseObj = new JSONObject();
+    licenseObj.put("id", licenseID);
+
+    JSONArray sublicArray = new JSONArray();
+
+    SimpleDateFormat sdf = new SimpleDateFormat(SubLicense.DATE_FORMAT);
+    for (SubLicense sublic : subLicenses) {
+      JSONObject sublicObj = new JSONObject();
+      sublicObj.put("startDate", sdf.format(sublic.getStartDate()));
+      sublicObj.put("endDate", sdf.format(sublic.getEndDate()));
+      sublicObj.put("comment", sublic.getComment());
+      sublicObj.put("processorList", sublic.getProcessorListAsJSONArray());
+      sublicObj.put("constraint", sublic.getConstraint());
+      sublicObj.put("url", sublic.getUrl());
+      sublicArray.put(sublicObj);
+    }
+    licenseObj.put("sublicenses", sublicArray);
+    List<ApplicationReport> licList = getLicenseList();
+    for (ApplicationReport ar : licList) {
+      if (ar.getName().equals(licenseID)) {
+        licenseObj.put("agentAppId", ar.getApplicationId().toString());
+        break;
+      }
+    }
+    Map<String, LicenseInfo> licenseInfoMap = getLicenseInfoMap();
+    if (licenseInfoMap.containsKey(licenseID)) {
+      licenseObj.put("remainingLicensedMB", licenseInfoMap.get(licenseID).remainingLicensedMB);
+    }
+    return licenseObj;
+  }
+
+  private class ShowLicenseStatusCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      JSONObject licenseObj = getLicenseStatus(args.length > 1 ? args[1] : null);
+      printJson(licenseObj);
     }
 
   }
