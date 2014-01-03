@@ -43,7 +43,7 @@ import com.datatorrent.stram.license.util.Util;
  */
 public class StramClientUtils
 {
-  public static final String STRAM_LICENSE_FILE = "stram.license_file";
+  public static final String STRAM_LICENSE_FILE = "stram.license.file";
 
   /**
    *
