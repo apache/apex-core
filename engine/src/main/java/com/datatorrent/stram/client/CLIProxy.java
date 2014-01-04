@@ -115,6 +115,9 @@ public class CLIProxy
 
   private JSONObject issueCommand(String command) throws Exception
   {
+    // we can optimize this by launching dtcli only once so subsequent issueCommand() calls won't take so long, and use stdin to issue commands to cli,
+    // but we need to make sure the stdout and stderr from dtcli are in sync with the commands.
+    // that probably means the streamglobber needs to go.
     String dtCliCommand = (dtHome == null) ? "dtcli" : (dtHome + "/bin/dtcli");
     String shellCommand = dtCliCommand + " -r -e '" + command + "'";
     Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", shellCommand});
