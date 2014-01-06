@@ -73,16 +73,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
-  public static final String TEMPLATE_PREFIX = "stram.template";
-
   public static final String TEMPLATE_idRegExp = "matchIdRegExp";
   public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
   public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
-  public static final String APPLICATION_PREFIX = "stram.application";
-
-  public static final String ATTR = "attr";
-  public static final String PROP = "prop";
   public static final String CLASS = "class";
 
   private static final String CLASS_SUFFIX = "." + CLASS;
@@ -272,7 +266,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return null;
     }
 
-    public boolean isAllowedElement(StramElement childType) {
+    public boolean isAllowedChild(StramElement childType) {
       StramElement[] childElements = getChildElements();
       if (childElements != null) {
         for (StramElement childElement : childElements) {
@@ -282,6 +276,13 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         }
       }
       return false;
+    }
+
+    public StramElement getDefaultChildElement() {
+      if ((getAttributeContextClass() == null) && isAllowedChild(StramElement.PROP)) {
+        return StramElement.PROP;
+      }
+      return null;
     }
 
     public abstract StramElement[] getChildElements();
@@ -312,6 +313,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     public StramElement[] getChildElements()
     {
       return CHILD_ELEMENTS;
+    }
+
+    @Override
+    public StramElement getDefaultChildElement() {
+      return StramElement.ATTR;
     }
 
   }
@@ -643,6 +649,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     @Override
+    public StramElement getDefaultChildElement() {
+      return StramElement.PROP;
+    }
+
+    @Override
     public Class<? extends Context> getAttributeContextClass()
     {
       return OperatorContext.class;
@@ -712,7 +723,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (element == ancestorConf.getElement()) {
       return ancestorConf;
     }
-    // If top most element is reached and didnt match ancestory conf
+    // If top most element is reached and didnt match ancestor conf
     // then terminate search
     if (element == null) {
       return null;
@@ -866,7 +877,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           LOG.error("Invalid configuration key: {}", propertyName);
         }
-      } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getElement() == null))) {
+      } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getDefaultChildElement() == StramElement.ATTR))) {
         if (conf.getElement() == null) {
           conf = addConf(StramElement.APPLICATION, WILDCARD, conf);
         }
@@ -878,10 +889,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           LOG.error("Invalid configuration key: {}", propertyName);
         }
-      } else if (((element == StramElement.PROP) || (element == null))
-              && ((conf.getElement() == StramElement.OPERATOR) || (conf.getElement() == StramElement.STREAM)
-              || (conf.getElement() == StramElement.TEMPLATE) || (conf.getElement() == StramElement.GATEWAY)
-              || (conf.getElement() == StramElement.AUTHENTICATION) || (conf.getElement() == StramElement.LICENSE))) {
+      } else if ((element == StramElement.PROP) || ((element == null) && (conf.getDefaultChildElement() == StramElement.PROP))) {
         // Currently opProps are only supported on operators and streams
         // Supporting current implementation where property can be directly specified under operator
         String prop;
@@ -899,11 +907,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         } else {
           LOG.warn("Invalid property specification, no property name specified for {}", propertyName);
         }
-      } /*else if ((element == null) && (conf.getElement() == StramElement.GATEWAY)) {
-        // Treat gateway as a special case, all gateway properties are specified without any PROP keyword for its configuration parameters
-        String prop = getCompleteKey(keys, index);
-        conf.setProperty(prop, propertyValue);
-      }*/ else if (element != null) {
+      } else if (element != null) {
         conf.parseElement(element, keys, index, propertyValue);
       }
     }
@@ -916,7 +920,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     } catch (IllegalArgumentException ie) {
     }
     // If element is not allowed treat it as text
-    if ((element != null) && !conf.isAllowedElement(element)) {
+    if ((element != null) && !conf.isAllowedChild(element)) {
       element = null;
     }
     return element;
