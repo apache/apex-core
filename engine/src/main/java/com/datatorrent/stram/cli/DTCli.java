@@ -1780,7 +1780,7 @@ public class DTCli
       sublicObj.put("startDate", sdf.format(sublic.getStartDate()));
       sublicObj.put("endDate", sdf.format(sublic.getEndDate()));
       sublicObj.put("comment", sublic.getComment());
-      sublicObj.put("processorList", sublic.getProcessorListAsJSONArray());
+      sublicObj.put("processorList", sublic.getModuleInfoAsJSONObj());
       sublicObj.put("constraint", sublic.getConstraint());
       sublicObj.put("url", sublic.getUrl());
       sublicArray.put(sublicObj);
