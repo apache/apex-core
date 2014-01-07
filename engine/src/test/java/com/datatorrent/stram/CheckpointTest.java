@@ -101,7 +101,7 @@ public class CheckpointTest
 
     container.setup(sca.getInitContext());
     // push deploy
-    List<OperatorDeployInfo> deployInfo = sca.getDeployInfo();
+    List<OperatorDeployInfo> deployInfo = sca.getDeployInfoList(sca.container.getOperators());
     Assert.assertEquals("size " + deployInfo, 1, deployInfo.size());
 
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
@@ -210,6 +210,11 @@ public class CheckpointTest
     Assert.assertNotNull(nodes2);
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);
+
+    // set all operators as active to enable recovery window id update
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      oper.setState(PTOperator.State.ACTIVE);
+    }
 
     dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>(), new MutableLong());
     Assert.assertEquals("no checkpoints " + pnode2, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode2.getRecoveryCheckpoint());

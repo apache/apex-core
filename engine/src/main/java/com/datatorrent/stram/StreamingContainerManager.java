@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -76,6 +77,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 import com.datatorrent.stram.plan.physical.PlanModifier;
@@ -122,6 +124,8 @@ public class StreamingContainerManager implements PlanContext
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
+  final AtomicBoolean deployChangeInProgress = new AtomicBoolean();
+  int deployChangeCnt;
 
   private MBassador<StramEvent> eventBus; // event bus for publishing stram events
   final private Journal journal;
@@ -271,12 +275,9 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    boolean pendingDeployChanges = false;
-
     // monitor currently deployed containers
     for (StramChildAgent sca : containers.values()) {
       PTContainer c = sca.container;
-      pendingDeployChanges |= !(c.getPendingDeploy().isEmpty() && c.getPendingUndeploy().isEmpty());
 
       if (!pendingAllocation.contains(c) && c.getExternalId() != null) {
         if (sca.lastHeartbeatMillis == 0) {
@@ -297,10 +298,8 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    if (!pendingDeployChanges) {
-      // events that may modify the plan
-      processEvents();
-    }
+    // events that may modify the plan
+    processEvents();
 
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
@@ -469,6 +468,16 @@ public class StreamingContainerManager implements PlanContext
     for (PTOperator o: reportStats.keySet()) {
       plan.onStatusUpdate(o);
     }
+
+    if (!eventQueue.isEmpty()) {
+      for (PTOperator oper : plan.getAllOperators().values()) {
+        if (oper.getState() != PTOperator.State.ACTIVE) {
+          LOG.debug("Skipping plan updates due to inactive operator {} {}", oper, oper.getState());
+          return 0;
+        }
+      }
+    }
+
     int count = 0;
     Runnable command;
     while ((command = this.eventQueue.poll()) != null) {
@@ -606,7 +615,6 @@ public class StreamingContainerManager implements PlanContext
     container.bufferServerAddress = bufferServerAddr;
     container.nodeHttpAddress = resource.nodeHttpAddress;
     container.setAllocatedMemoryMB(resource.memoryMB);
-    container.getPendingUndeploy().clear();
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
     containers.put(resource.containerId, sca);
@@ -635,24 +643,99 @@ public class StreamingContainerManager implements PlanContext
     return this.containers.values();
   }
 
-  private PTOperator updateOperatorStatus(OperatorHeartbeat shb) {
-    PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
-    if (oper != null) {
-      PTContainer container = oper.getContainer();
-      if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
-        // remove operator from deploy list unless it was again scheduled for undeploy (or redeploy)
-        if (!container.getPendingUndeploy().contains(oper)) {
-           container.getPendingDeploy().remove(oper);
-        }
+  private void processOperatorDeployStatus(PTOperator oper, OperatorHeartbeat ohb, StramChildAgent sca)
+  {
+    OperatorHeartbeat.DeployState ds = null;
+    if (ohb != null) {
+      ds = OperatorHeartbeat.DeployState.valueOf(ohb.getState());
+    }
 
-        LOG.debug("{} marking deployed: {} remote status {} pendingDeploy {}", new Object[] {container.getExternalId(), oper, shb.getState(), container.getPendingDeploy()});
+    LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), ds, oper.getContainer().getExternalId());
+
+    switch (oper.getState()) {
+    case ACTIVE:
+      LOG.warn("status out of sync {} expected {} remote {}", oper, oper.getState(), ds);
+      // operator expected active, check remote status
+      if (ds == null) {
+        sca.deployOpers.add(oper);
+      } else {
+        switch (ds) {
+        case IDLE:
+          // remove the operator from the plan
+          LOG.warn("TBD: Remove IDLE operator from plan {}", oper);
+          sca.undeployOpers.add(oper.getId());
+          // record operator stop event
+          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+          break;
+        case FAILED:
+          processOperatorFailure(oper);
+          sca.undeployOpers.add(oper.getId());
+          recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+          break;
+        case ACTIVE:
+          break;
+        }
+      }
+      break;
+    case PENDING_UNDEPLOY:
+      if (ds == null) {
+        // operator no longer deployed in container
+        recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+        oper.setState(State.PENDING_DEPLOY);
+        sca.deployOpers.add(oper);
+      } else {
+        // operator is currently deployed, request undeploy
+        sca.undeployOpers.add(oper.getId());
+      }
+      break;
+    case PENDING_DEPLOY:
+      if (ds == null) {
+        // operator to be deployed
+        sca.deployOpers.add(oper);
+      } else {
+        // operator was deployed in container
+        PTContainer container = oper.getContainer();
+        LOG.debug("{} marking deployed: {} remote status {}", container.getExternalId(), oper, ds);
         oper.setState(PTOperator.State.ACTIVE);
         oper.stats.lastHeartbeat = null; // reset on redeploy
-
         recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
       }
+      break;
+    default:
+      //LOG.warn("Unhandled operator state {} {} remote {}", oper, oper.getState(), ds);
+      if (ds != null) {
+        // operator was removed and needs to be undeployed from container
+        sca.undeployOpers.add(oper.getId());
+        recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
+      }
     }
-    return oper;
+  }
+
+  private void processOperatorFailure(PTOperator oper)
+  {
+    // count failure transitions *->FAILED, applies to initialization as well as intermittent failures
+    if (oper.getState() == PTOperator.State.ACTIVE) {
+      oper.setState(PTOperator.State.INACTIVE);
+      oper.failureCount++;
+      LOG.warn("Operator failure: {} count: {}", oper, oper.failureCount);
+      Integer maxAttempts = oper.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
+      if (oper.failureCount <= maxAttempts) {
+        // restart entire container in attempt to recover operator
+        // in the future a more sophisticated recovery strategy could
+        // involve initial redeploy attempt(s) of affected operator in
+        // existing container or sandbox container for just the operator
+        LOG.error("Initiating container restart after operator failure {}", oper);
+        containerStopRequests.put(oper.getContainer().getExternalId(), oper.getContainer().getExternalId());
+      }
+      else {
+        String msg = String.format("Shutdown after reaching failure threshold for %s", oper);
+        LOG.warn(msg);
+        shutdownAllContainers(msg);
+      }
+    } else {
+      // should not get here
+      LOG.warn("Failed operator {} {} {} to be undeployed by container", oper, oper.getState());
+    }
   }
 
   /**
@@ -694,45 +777,36 @@ public class StreamingContainerManager implements PlanContext
     // commented out because free memory is misleading because of GC. may want to revisit this.
     //sca.memoryMBFree = heartbeat.memoryMBFree;
 
+    sca.undeployOpers.clear();
+    sca.deployOpers.clear();
+    if (!this.deployChangeInProgress.get()) {
+      sca.deployCnt = this.deployChangeCnt;
+    }
+    Set<Integer> reportedOperators = Sets.newHashSetWithExpectedSize(sca.container.getOperators().size());
+
     boolean containerIdle = true;
     long elapsedMillis = 0;
 
     for (OperatorHeartbeat shb: heartbeat.getContainerStats().operators) {
 
-      PTOperator oper = updateOperatorStatus(shb);
+      reportedOperators.add(shb.nodeId);
+      PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
+
       if (oper == null) {
+        // TODO: send undeploy
         LOG.error("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
+        sca.undeployOpers.add(shb.nodeId);
         continue;
       }
 
-      oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
-
       //LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), shb.getState(), oper.getContainer().getExternalId());
-
-      OperatorHeartbeat previousHeartbeat = oper.stats.lastHeartbeat;
-      oper.stats.lastHeartbeat = shb;
-
-      if (shb.getState().compareTo(DeployState.FAILED.name()) == 0) {
-        // count failure transitions *->FAILED, applies to initialization as well as intermittent failures
-        if (previousHeartbeat == null || DeployState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
-          oper.failureCount++;
-          LOG.warn("Operator failure: {} count: {}", oper, oper.failureCount);
-          Integer maxAttempts = oper.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
-          if (oper.failureCount <= maxAttempts) {
-            // restart entire container in attempt to recover operator
-            // in the future a more sophisticated recovery strategy could
-            // involve initial redeploy attempt(s) of affected operator in
-            // existing container or sandbox container for just the operator
-            LOG.error("Issuing container stop to restart after operator failure {}", oper);
-            containerStopRequests.put(sca.container.getExternalId(), sca.container.getExternalId());
-          }
-          else {
-            String msg = String.format("Shutdown after reaching failure threshold for %s", oper);
-            LOG.warn(msg);
-            shutdownAllContainers(msg);
-          }
-        }
+      if (!(oper.getState() == PTOperator.State.ACTIVE && shb.getState().compareTo(DeployState.ACTIVE.name()) == 0)) {
+        // deploy state may require synchronization
+        processOperatorDeployStatus(oper, shb, sca);
       }
+
+      oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+      oper.stats.lastHeartbeat = shb;
 
       if (!oper.stats.isIdle()) {
         containerIdle = false;
@@ -887,12 +961,14 @@ public class StreamingContainerManager implements PlanContext
 
     sca.lastHeartbeatMillis = currentTimeMillis;
 
-    ContainerHeartbeatResponse rsp = sca.pollRequest();
-    if (rsp == null) {
-      rsp = new ContainerHeartbeatResponse();
+    for (PTOperator oper : sca.container.getOperators()) {
+      if (!reportedOperators.contains(oper.getId())) {
+        processOperatorDeployStatus(oper, null, sca);
+      }
     }
 
-    // below should be merged into pollRequest
+    ContainerHeartbeatResponse rsp = getHeartbeatResponse(sca);
+
     if (containerIdle && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
       rsp.shutdown = true;
@@ -915,6 +991,54 @@ public class StreamingContainerManager implements PlanContext
     }
     rsp.nodeRequests = requests;
     rsp.committedWindowId = committedWindowId;
+    return rsp;
+  }
+
+  private ContainerHeartbeatResponse getHeartbeatResponse(StramChildAgent sca)
+  {
+    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    if (this.deployChangeInProgress.get() || sca.deployCnt != this.deployChangeCnt) {
+      LOG.debug("{} deferred requests due to concurrent plan change.", sca.container.toIdStateString());
+      rsp.hasPendingRequests = true;
+      return rsp;
+    }
+
+    if (!sca.undeployOpers.isEmpty()) {
+      rsp.undeployRequest = Lists.newArrayList(sca.undeployOpers);
+      rsp.hasPendingRequests = (!sca.deployOpers.isEmpty());
+      return rsp;
+    }
+
+    Set<PTOperator> deployOperators = sca.deployOpers;
+    if (!deployOperators.isEmpty()) {
+      // deploy once all containers are running and no undeploy operations are pending.
+      for (PTContainer c : getPhysicalPlan().getContainers()) {
+        if (c.getState() != PTContainer.State.ACTIVE) {
+          LOG.debug("{} waiting for container activation {}", sca.container.toIdStateString(), c.toIdStateString());
+          rsp.hasPendingRequests = true;
+          return rsp;
+        }
+        for (PTOperator oper : c.getOperators()) {
+          if (oper.getState() == PTOperator.State.PENDING_UNDEPLOY) {
+            LOG.debug("{} waiting for undeploy {} {}", sca.container.toIdStateString(), c.toIdStateString(), oper);
+            rsp.hasPendingRequests = true;
+            return rsp;
+          }
+        }
+      }
+
+      LOG.debug("{} deployable operators: {}", sca.container.toIdStateString(), deployOperators);
+      List<OperatorDeployInfo> deployList = sca.getDeployInfoList(deployOperators);
+      if (deployList != null && !deployList.isEmpty()) {
+        rsp.deployRequest = deployList;
+        rsp.nodeRequests = Lists.newArrayList();
+        for (PTOperator o : deployOperators) {
+          rsp.nodeRequests.addAll(o.deployRequests);
+        }
+      }
+      rsp.hasPendingRequests = false;
+      return rsp;
+    }
     return rsp;
   }
 
@@ -1136,6 +1260,8 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy)
   {
+    try {
+      this.deployChangeInProgress.set(true);
 
     Map<PTContainer, List<PTOperator>> undeployGroups = groupByContainer(undeploy);
 
@@ -1147,7 +1273,7 @@ public class StreamingContainerManager implements PlanContext
       if (!startContainers.contains(c) && !releaseContainers.contains(c) && c.getState() != PTContainer.State.KILLED) {
         LOG.debug("scheduling undeploy {} {}", e.getKey().getExternalId(), e.getValue());
         for (PTOperator oper : e.getValue()) {
-          c.getPendingUndeploy().add(oper);
+          oper.setState(PTOperator.State.PENDING_UNDEPLOY);
         }
       }
     }
@@ -1194,9 +1320,13 @@ public class StreamingContainerManager implements PlanContext
       }
 
       // add to operators that we expect to deploy
-      // TODO: handle concurrent deployment
       LOG.debug("scheduling deploy {} {}", e.getKey().getExternalId(), e.getValue());
-      e.getKey().getPendingDeploy().addAll(e.getValue());
+      for (PTOperator oper : e.getValue()) {
+        // operator will be deployed after it has been undeployed, if still referenced by the container
+        if (oper.getState() != PTOperator.State.PENDING_UNDEPLOY) {
+          oper.setState(PTOperator.State.PENDING_DEPLOY);
+        }
+      }
     }
 
     // stop containers that are no longer used
@@ -1210,6 +1340,11 @@ public class StreamingContainerManager implements PlanContext
         // TODO: monitor soft shutdown
         sca.shutdownRequested = true;
       }
+    }
+
+    } finally {
+      this.deployChangeCnt++;
+      this.deployChangeInProgress.set(false);
     }
   }
 

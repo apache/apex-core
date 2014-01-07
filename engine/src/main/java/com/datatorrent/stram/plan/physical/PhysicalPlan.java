@@ -120,23 +120,6 @@ public class PhysicalPlan implements Serializable
 
   }
 
-  /**
-   * Determine operators that should be deployed into the execution environment.
-   * Operators can be deployed once all containers are running and any pending
-   * undeploy operations are complete.
-   * @param c
-   * @return
-   */
-  public Set<PTOperator> getOperatorsForDeploy(PTContainer c) {
-    for (PTContainer otherContainer : this.containers) {
-      if (otherContainer != c && (otherContainer.state != PTContainer.State.ACTIVE || !otherContainer.pendingUndeploy.isEmpty())) {
-        LOG.debug("{}({}) unsatisfied dependency: {}({}) undeploy: {}", new Object[] {c.containerId, c.state, otherContainer.containerId, otherContainer.state, otherContainer.pendingUndeploy.size()});
-        return Collections.emptySet();
-      }
-    }
-    return c.pendingDeploy;
-  }
-
   private final AtomicInteger idSequence = new AtomicInteger();
   final AtomicInteger containerSeq = new AtomicInteger();
   private LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
@@ -704,7 +687,7 @@ public class PhysicalPlan implements Serializable
         c = findContainer(oper);
         if (c == null) {
           // get new container
-          LOG.debug("New container for partition: " + oper);
+          LOG.debug("New container for: " + oper);
           c = new PTContainer(this);
           containers.add(c);
           newContainers.add(c);

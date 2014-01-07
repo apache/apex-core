@@ -46,8 +46,7 @@ public class PTOperator implements java.io.Serializable
     PENDING_DEPLOY,
     ACTIVE,
     PENDING_UNDEPLOY,
-    INACTIVE,
-    REMOVED
+    INACTIVE
   }
 
   /**

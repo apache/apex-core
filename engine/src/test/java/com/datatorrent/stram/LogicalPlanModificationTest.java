@@ -293,7 +293,13 @@ public class LogicalPlanModificationTest
     PTContainer c = dnm.containerStartRequests.poll().container;
     Assert.assertEquals("operators "+c, 1, c.getOperators().size());
 
-    Assert.assertEquals("deploy requests " + c, 1, c.getPendingDeploy().size());
+    int deployStatusCnt = 0;
+    for (PTOperator oper : c.getOperators()) {
+      if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
+        deployStatusCnt++;
+      }
+    }
+    Assert.assertEquals("deploy requests " + c, 1, deployStatusCnt);
 
     PTOperator oper = c.getOperators().get(0);
     Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getName());
