@@ -103,7 +103,7 @@
             <id>create-git-version-info</id>
             <phase>${create-git-version-info-phase}</phase>
             <goals>
-               <goal>revision</goal>
+              <goal>revision</goal>
             </goals>
           </execution>
         </executions>
@@ -122,6 +122,12 @@
       <groupId>javax.jms</groupId>
       <artifactId>jms-api</artifactId>
       <version>1.1-rev-1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.esotericsoftware.kryo</groupId>
+      <artifactId>kryo</artifactId>
+      <version>2.21</version>
+      <!-- scope>provided</scope would like the kryo version to be determined by what the user has -->
     </dependency>
     <dependency>
       <groupId>com.esotericsoftware.reflectasm</groupId>

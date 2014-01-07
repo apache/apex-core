@@ -18,6 +18,7 @@ package com.datatorrent.api.codec;
 import java.io.Serializable;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 
 /**
  * KryoJdkContainer wraps a Java serializable object and sets up a Kryo Serializer.
@@ -33,7 +34,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
  * @param <T> - Type of the object which you would like to serialize using KryoJdkSerializer.
  * @since 0.3.2
  */
-@DefaultSerializer(KryoJdkSerializer.class)
+@DefaultSerializer(JavaSerializer.class)
 public class KryoJdkContainer<T> implements Serializable
 {
   private static final long serialVersionUID = 201306031549L;
