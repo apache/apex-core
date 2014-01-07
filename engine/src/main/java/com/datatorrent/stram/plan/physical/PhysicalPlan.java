@@ -399,6 +399,7 @@ public class PhysicalPlan implements Serializable
     container.operators.add(pOperator);
     if (!pOperator.upstreamMerge.isEmpty()) {
       for (Map.Entry<InputPortMeta, PTOperator> mEntry : pOperator.upstreamMerge.entrySet()) {
+        assert (mEntry.getValue().container == null) : "Container already assigned for " + mEntry.getValue();
         mEntry.getValue().container = container;
         container.operators.add(mEntry.getValue());
       }
