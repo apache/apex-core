@@ -85,6 +85,9 @@ import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
+  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
+  public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
+  public static final String DEFAULT_APPNAME = "Stram";
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
@@ -102,11 +105,10 @@ public class StramClient
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
-  public static final String DEFAULT_APPNAME = "Stram";
   private String libjars;
   private String files;
   private String archives;
+  private String applicationType = YARN_APPLICATION_TYPE;
 
   /**
    *
@@ -400,8 +402,12 @@ public class StramClient
     appContext.setApplicationId(appId);
     // set the application name
     appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
-    appContext.setApplicationType(YARN_APPLICATION_TYPE);
-    appContext.setMaxAppAttempts(1); // no retries until Stram is HA
+    appContext.setApplicationType(this.applicationType);
+    if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
+      appContext.setMaxAppAttempts(1); // no retries until Stram is HA
+    } else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
+      LOG.debug("Attempts capped at {} ({})", conf.get(YarnConfiguration.RM_AM_MAX_ATTEMPTS), YarnConfiguration.RM_AM_MAX_ATTEMPTS);
+    }
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
@@ -552,7 +558,11 @@ public class StramClient
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
-    vargs.add(StramAppMaster.class.getName());
+    if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
+      vargs.add(LicensingAppMaster.class.getName());
+    } else {
+      vargs.add(StramAppMaster.class.getName());
+    }
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
@@ -568,10 +578,6 @@ public class StramClient
     commands.add(command.toString());
     amContainer.setCommands(commands);
 
-    // For launching an AM Container, setting user here is not needed
-    // Set user in ApplicationSubmissionContext
-    // amContainer.setUser(amUser);
-
     // Set up resource type requirements
     // For now, only memory is supported so we set memory requirements
     Resource capability = Records.newRecord(Resource.class);
@@ -582,14 +588,10 @@ public class StramClient
     // Not needed in this scenario
     // amContainer.setServiceData(serviceData);
 
-    // The following are not required for launching an application master
-    // amContainer.setContainerId(containerId);
-
     appContext.setAMContainerSpec(amContainer);
 
     // Set the priority for the application master
     Priority pri = Records.newRecord(Priority.class);
-    // TODO - what is the range for priority? how to decide?
     pri.setPriority(amPriority);
     appContext.setPriority(pri);
     // Set the queue to which this application is to be submitted in the RM
@@ -692,6 +694,11 @@ public class StramClient
   public void setArchives(String archives)
   {
     this.archives = archives;
+  }
+
+  public void setApplicationType(String type)
+  {
+    this.applicationType = type;
   }
 
 }

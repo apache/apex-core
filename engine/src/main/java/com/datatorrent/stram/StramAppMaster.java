@@ -31,6 +31,7 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
@@ -72,6 +73,8 @@ import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -144,6 +147,7 @@ public class StramAppMaster extends CompositeService
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
   private StramDelegationTokenManager delegationTokenManager = null;
+  private LicensingAgentClient licenseClient;
 
   /**
    * Overrides getters to pull live info.
@@ -355,6 +359,30 @@ public class StramAppMaster extends CompositeService
       return getValue(LogicalPlan.GATEWAY_ADDRESS);
     }
 
+    @Override
+    public String getLicenseId()
+    {
+      return StramAppMaster.this.licenseClient.getLicenseId();
+    }
+
+    @Override
+    public long getRemainingLicensedMB()
+    {
+      return StramAppMaster.this.licenseClient.getRemainingLicensedMB();
+    }
+
+    @Override
+    public long getAllocatedMB()
+    {
+      return StramAppMaster.this.licenseClient.getAllocatedMB();
+    }
+
+    @Override
+    public long getLicenseInfoLastUpdate()
+    {
+      return StramAppMaster.this.licenseClient.getLicenseInfoLastUpdate();
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201309112304L;
   }
@@ -542,6 +570,15 @@ public class StramAppMaster extends CompositeService
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 
+    // get license and prepare for license agent interaction
+    String licenseBase64 = dag.getValue(LogicalPlan.LICENSE);
+    if (licenseBase64 != null) {
+      byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
+      String licenseId = License.getLicenseID(licenseBytes);
+      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), licenseId);
+      addService(this.licenseClient);
+    }
+
     // initialize all services added above
     super.serviceInit(conf);
   }
@@ -605,7 +642,6 @@ public class StramAppMaster extends CompositeService
   {
     try {
       StramChild.eventloop.start();
-      // executeLicensedCode(); for licensing using native
       execute();
     } catch (Exception re) {
       status = false;
@@ -693,6 +729,10 @@ public class StramAppMaster extends CompositeService
 
     while (!appDone) {
       loopCounter++;
+
+      if (licenseClient != null) {
+        licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+      }
 
       // log current state
       /*

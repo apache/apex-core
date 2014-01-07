@@ -47,6 +47,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
@@ -94,6 +95,7 @@ public class LogicalPlan implements Serializable, DAG
    * Then it can be moved back to DAGContext.
    */
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
+  public static Attribute<String> LICENSE = new Attribute<String>((String)null, new StringCodec.String2String());
 
   static {
     AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
@@ -755,7 +757,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     String path = getAttributes().get(LogicalPlan.APPLICATION_PATH);
     if (path == null) {
-      throw new IllegalArgumentException("Missing " + LogicalPlan.APPLICATION_PATH);
+      throw new AssertionError("Missing " + LogicalPlan.APPLICATION_PATH);
     }
     return path;
   }

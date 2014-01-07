@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;

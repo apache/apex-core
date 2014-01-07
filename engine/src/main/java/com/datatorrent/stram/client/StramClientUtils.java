@@ -5,10 +5,13 @@
 package com.datatorrent.stram.client;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
@@ -25,6 +28,8 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.license.util.Util;
+
 /**
  *
  * Collection of utility classes for command line interface package<p>
@@ -38,6 +43,8 @@ import org.slf4j.LoggerFactory;
  */
 public class StramClientUtils
 {
+  public static final String STRAM_LICENSE_FILE = "stram.license.file";
+
   /**
    *
    * TBD<p>
@@ -84,7 +91,7 @@ public class StramClientUtils
               YarnConfiguration.DEFAULT_RM_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
       return ((ApplicationClientProtocol)rpc.getProxy(
-          ApplicationClientProtocol.class, rmAddress, conf));
+              ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -127,6 +134,13 @@ public class StramClientUtils
       GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
       ApplicationReport report = reportResponse.getApplicationReport();
       return report;
+    }
+
+    public List<ApplicationReport> getAllApplicationReports() throws IOException, YarnException
+    {
+      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
+      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
+      return applicationsResponse.getApplicationList();
     }
 
     public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
@@ -202,7 +216,7 @@ public class StramClientUtils
             return true;
           }
           else {
-            LOG.info("Application did finished unsuccessfully."
+            LOG.info("Application finished unsuccessfully."
                     + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
                     + ". Breaking monitoring loop");
             return false;
@@ -255,6 +269,22 @@ public class StramClientUtils
       conf.addResource(new Path(cfgResource.toURI()));
     }
     return conf;
+  }
+
+  public static byte[] getLicense(Configuration conf) throws IOException
+  {
+    String stramLicenseFile = conf.get(STRAM_LICENSE_FILE);
+    if (stramLicenseFile == null) {
+      return Util.getDefaultLicense();
+    }
+    else {
+      return getLicense(stramLicenseFile);
+    }
+  }
+
+  public static byte[] getLicense(String filePath) throws IOException
+  {
+    return IOUtils.toByteArray(new FileInputStream(filePath));
   }
 
 }

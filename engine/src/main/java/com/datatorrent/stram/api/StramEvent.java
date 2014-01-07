@@ -15,6 +15,8 @@ public abstract class StramEvent
   private long timestamp = System.currentTimeMillis();
   private String reason;
 
+  public abstract String getType();
+
   public long getTimestamp()
   {
     return timestamp;
@@ -68,6 +70,12 @@ public abstract class StramEvent
       this.propertyValue = propertyValue;
     }
 
+    @Override
+    public String getType()
+    {
+      return "SetOperatorProperty";
+    }
+
     public String getPropertyName()
     {
       return propertyName;
@@ -100,6 +108,12 @@ public abstract class StramEvent
       super(operatorName);
       this.oldNumPartitions = oldNumPartitions;
       this.newNumPartitions = newNumPartitions;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "Partition";
     }
 
     public int getOldNumPartitions()
@@ -148,6 +162,12 @@ public abstract class StramEvent
       super(operatorName, operatorId);
     }
 
+    @Override
+    public String getType()
+    {
+      return "CreateOperator";
+    }
+
   }
 
   public static class RemoveOperatorEvent extends PhysicalOperatorEvent
@@ -155,6 +175,12 @@ public abstract class StramEvent
     public RemoveOperatorEvent(String operatorName, int operatorId)
     {
       super(operatorName, operatorId);
+    }
+
+    @Override
+    public String getType()
+    {
+      return "RemoveOperator";
     }
 
   }
@@ -167,6 +193,12 @@ public abstract class StramEvent
     {
       super(operatorName, operatorId);
       this.containerId = containerId;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "StartOperator";
     }
 
     public String getContainerId()
@@ -191,6 +223,12 @@ public abstract class StramEvent
       this.containerId = containerId;
     }
 
+    @Override
+    public String getType()
+    {
+      return "StopOperator";
+    }
+
     public String getContainerId()
     {
       return containerId;
@@ -213,6 +251,12 @@ public abstract class StramEvent
       super(operatorName, operatorId);
       this.propertyName = propertyName;
       this.propertyValue = propertyValue;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "SetPhysicalOperatorProperty";
     }
 
     public String getPropertyName()
@@ -248,6 +292,12 @@ public abstract class StramEvent
       this.containerNodeId = containerNodeId;
     }
 
+    @Override
+    public String getType()
+    {
+      return "StartContainer";
+    }
+
     public String getContainerId()
     {
       return containerId;
@@ -281,6 +331,12 @@ public abstract class StramEvent
       this.exitStatus = exitStatus;
     }
 
+    @Override
+    public String getType()
+    {
+      return "StopContainer";
+    }
+
     public String getContainerId()
     {
       return containerId;
@@ -310,6 +366,12 @@ public abstract class StramEvent
     public ChangeLogicalPlanEvent(LogicalPlanRequest request)
     {
       this.request = request;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "ChangeLogicalPlan";
     }
 
     public LogicalPlanRequest getRequest()

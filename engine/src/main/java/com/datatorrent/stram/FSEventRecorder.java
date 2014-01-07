@@ -120,14 +120,15 @@ public class FSEventRecorder implements EventRecorder
 
   public void writeEvent(StramEvent event) throws Exception
   {
-    LOG.debug("Writing event {} to the queue", event.getClass().getSimpleName());
+    LOG.debug("Writing event {} to the queue", event.getType());
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     bos.write((event.getTimestamp() + ":").getBytes());
-    bos.write((event.getClass().getSimpleName() + ":").getBytes());
+    bos.write((event.getType() + ":").getBytes());
     @SuppressWarnings("unchecked")
     Map<String, Object> data = BeanUtils.describe(event);
     data.remove("timestamp");
     data.remove("class");
+    data.remove("type");
     Slice f = streamCodec.toByteArray(data);
     bos.write(f.buffer, f.offset, f.length);
     bos.write("\n".getBytes());

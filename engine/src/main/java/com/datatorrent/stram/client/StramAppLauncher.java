@@ -15,7 +15,7 @@ import java.util.jar.JarEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -26,7 +26,6 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
-
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
@@ -475,6 +474,8 @@ public class StramAppLauncher
     loadDependencies();
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
     LogicalPlan dag = prepareDAG(appConfig);
+    byte[] licenseBytes = StramClientUtils.getLicense(conf);
+    dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(dag);
     client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
     client.setFiles(conf.get(FILES_CONF_KEY_NAME));

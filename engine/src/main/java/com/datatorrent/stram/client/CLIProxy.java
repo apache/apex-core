@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 public class CLIProxy
 {
   private static final Logger LOG = LoggerFactory.getLogger(CLIProxy.class);
+  private String dtHome = null;
 
   public static class CommandException extends Exception
   {
@@ -65,7 +66,12 @@ public class CLIProxy
 
   }
 
-  public static JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars) throws Exception
+  public CLIProxy(String dtHome)
+  {
+    this.dtHome = dtHome;
+  }
+
+  public JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars) throws Exception
   {
     StringBuilder sb = new StringBuilder("show-logical-plan ");
     if (!libjars.isEmpty()) {
@@ -80,7 +86,7 @@ public class CLIProxy
     return issueCommand(sb.toString());
   }
 
-  public static JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars) throws Exception
+  public JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars) throws Exception
   {
     StringBuilder sb = new StringBuilder("launch ");
     for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -102,14 +108,18 @@ public class CLIProxy
     return issueCommand(sb.toString());
   }
 
-  public static JSONObject getApplications(String jarUri) throws Exception
+  public JSONObject getApplications(String jarUri) throws Exception
   {
     return issueCommand("show-logical-plan \"" + jarUri + "\"");
   }
 
-  private static JSONObject issueCommand(String command) throws Exception
+  private JSONObject issueCommand(String command) throws Exception
   {
-    String shellCommand = "dtcli -r -e '" + command + "'";
+    // we can optimize this by launching dtcli only once so subsequent issueCommand() calls won't take so long, and use stdin to issue commands to cli,
+    // but we need to make sure the stdout and stderr from dtcli are in sync with the commands.
+    // that probably means the streamglobber needs to go.
+    String dtCliCommand = (dtHome == null) ? "dtcli" : (dtHome + "/bin/dtcli");
+    String shellCommand = dtCliCommand + " -r -e '" + command + "'";
     Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", shellCommand});
     StreamGobbler errorGobbler = new StreamGobbler(p.getErrorStream());
     StreamGobbler outputGobbler = new StreamGobbler(p.getInputStream());

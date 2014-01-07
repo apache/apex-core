@@ -14,18 +14,8 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
+
 import jline.console.ConsoleReader;
 import jline.console.completer.AggregateCompleter;
 import jline.console.completer.ArgumentCompleter;
@@ -59,6 +49,7 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -70,6 +61,7 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 
@@ -78,6 +70,7 @@ import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
 
+import com.datatorrent.api.DAG;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
@@ -89,6 +82,11 @@ import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.GenerateLicenseRequest;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicensingAgentClient;
+import com.datatorrent.stram.license.SubLicense;
+import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
@@ -474,6 +472,27 @@ public class DTCli
                                                     new Arg[] {new Arg("on/off")},
                                                     null,
                                                     "Set the pager program for output"));
+    globalCommands.put("generate-license-request", new CommandSpec(new GenerateLicenseRequestCommand(),
+                                                                   null,
+                                                                   null,
+                                                                   "Generate license request"));
+    globalCommands.put("activate-license", new CommandSpec(new ActivateLicenseCommand(),
+                                                           null,
+                                                           new Arg[] {new FileArg("license-file")},
+                                                           "Launch the license agent"));
+    globalCommands.put("deactivate-license", new CommandSpec(new DeactivateLicenseCommand(),
+                                                             null,
+                                                             new Arg[] {new FileArg("license-file")},
+                                                             "Stop the license agent"));
+    globalCommands.put("list-licenses", new CommandSpec(new ListLicensesCommand(),
+                                                        null,
+                                                        null,
+                                                        "Show all IDs of all licenses"));
+    globalCommands.put("show-license-status", new CommandSpec(new ShowLicenseStatusCommand(),
+                                                              null,
+                                                              new Arg[] {new FileArg("license-file")},
+                                                              "Show the status of the license"));
+
     //
     // Connected command specification starts here
     //
@@ -1047,6 +1066,7 @@ public class DTCli
     }
     if (consolePresent) {
       printWelcomeMessage();
+      printLicenseStatus();
       setupCompleter(reader);
       setupHistory(reader);
     }
@@ -1210,6 +1230,30 @@ public class DTCli
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
   }
 
+  private void printLicenseStatus()
+  {
+    try {
+      JSONObject licenseStatus = getLicenseStatus(null);
+      if (!licenseStatus.has("agentAppId")) {
+        System.out.println("License agent is not running. Please run the license agent first by typing \"activate-license\"");
+        return;
+      }
+      if (licenseStatus.has("remainingLicensedMB")) {
+        int remainingLicensedMB = licenseStatus.getInt("remainingLicensedMB");
+        if (remainingLicensedMB > 0) {
+          System.out.println("You have " + remainingLicensedMB + "MB remaining for the current license.");
+        }
+        else {
+          System.out.println("You do not have any memory allowance left for the current license. Please contact DataTorrent, Inc. <support@datatorrent.com> for help.");
+        }
+      }
+    }
+    catch (Exception ex) {
+      LOG.error("Caught exception when getting license info", ex);
+      System.out.println("Error getting license status. Please contact DataTorrent, Inc. <support@datatorrent.com> for help.");
+    }
+  }
+
   private void printHelp(String command, CommandSpec commandSpec, PrintStream os)
   {
     if (consolePresent) {
@@ -1296,6 +1340,32 @@ public class DTCli
     try {
       GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
       appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
+      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+    }
+    catch (Exception e) {
+      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+    }
+  }
+
+  private List<ApplicationReport> getRunningApplicationList()
+  {
+    try {
+      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
+      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
+      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+    }
+    catch (Exception e) {
+      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+    }
+  }
+
+  private List<ApplicationReport> getLicenseList()
+  {
+    try {
+      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE));
+      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
       return rmClient.clientRM.getApplications(appsReq).getApplicationList();
     }
     catch (Exception e) {
@@ -1540,6 +1610,220 @@ public class DTCli
 
   }
 
+  private class ActivateLicenseCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      byte[] licenseBytes;
+      if (args.length > 1) {
+        licenseBytes = StramClientUtils.getLicense(args[1]);
+      }
+      else {
+        licenseBytes = StramClientUtils.getLicense(conf);
+      }
+      String licenseId = License.getLicenseID(licenseBytes);
+      License.validateLicense(licenseBytes);
+      LogicalPlan lp = new LogicalPlan();
+      lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
+      lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
+      StramClient client = new StramClient(lp);
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
+      System.err.println("Started license agent for " + licenseId);
+    }
+
+  }
+
+  private class DeactivateLicenseCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      byte[] licenseBytes;
+      if (args.length > 1) {
+        licenseBytes = StramClientUtils.getLicense(args[1]);
+      }
+      else {
+        licenseBytes = StramClientUtils.getLicense(conf);
+      }
+      String licenseId = License.getLicenseID(licenseBytes);
+      License.validateLicense(licenseBytes);
+      // TODO: migrate CLI to use YarnClient and this here won't be needed
+      YarnClient clientRMService = YarnClient.createYarnClient();
+      try {
+        clientRMService.init(conf);
+        clientRMService.start();
+        ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+        if (ar == null) {
+          throw new CliException("License not activated: " + licenseId);
+        }
+        rmClient.killApplication(ar.getApplicationId());
+        System.err.println("Stopped license agent for " + licenseId);
+      }
+      finally {
+        clientRMService.stop();
+      }
+    }
+
+  }
+
+  private static class LicenseInfo
+  {
+    int remainingLicensedMB;
+    long lastUpdate;
+    // add expiration date range here
+  }
+
+  private Map<String, LicenseInfo> getLicenseInfoMap() throws JSONException, IOException
+  {
+    List<ApplicationReport> runningApplicationList = getRunningApplicationList();
+    WebServicesClient webServicesClient = new WebServicesClient();
+
+    Map<String, LicenseInfo> licenseInfoMap = new HashMap<String, LicenseInfo>();
+
+    for (ApplicationReport ar : runningApplicationList) {
+      WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
+
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+        }
+
+      });
+      if (!response.has("licenseInfoLastUpdate")) {
+        continue;
+      }
+      long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
+      String licenseId = response.getString("licenseId");
+      int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
+      LicenseInfo licenseInfo;
+
+      if (licenseInfoMap.containsKey(licenseId)) {
+        licenseInfo = licenseInfoMap.get(licenseId);
+        if (licenseInfo.lastUpdate < lastUpdate) {
+          licenseInfo.remainingLicensedMB = remainingLicensedMB;
+          licenseInfo.lastUpdate = lastUpdate;
+        }
+      }
+      else {
+        licenseInfo = new LicenseInfo();
+        licenseInfo.remainingLicensedMB = remainingLicensedMB;
+        licenseInfo.lastUpdate = lastUpdate;
+        licenseInfoMap.put(licenseId, licenseInfo);
+      }
+
+    }
+    return licenseInfoMap;
+  }
+
+  private class ListLicensesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      Map<String, LicenseInfo> licenseInfoMap = getLicenseInfoMap();
+
+      try {
+        JSONArray jsonArray = new JSONArray();
+        List<ApplicationReport> licList = getLicenseList();
+        Collections.sort(licList, new Comparator<ApplicationReport>()
+        {
+          @Override
+          public int compare(ApplicationReport o1, ApplicationReport o2)
+          {
+            return o1.getApplicationId().getId() - o2.getApplicationId().getId();
+          }
+
+        });
+
+        for (ApplicationReport ar : licList) {
+          JSONObject jsonObj = new JSONObject();
+          jsonObj.put("id", ar.getName());
+          jsonObj.put("agentAppId", ar.getApplicationId().getId());
+          if (licenseInfoMap.containsKey(ar.getName())) {
+            jsonObj.put("remainingLicensedMB", licenseInfoMap.get(ar.getName()).remainingLicensedMB);
+          }
+          jsonArray.put(jsonObj);
+        }
+        printJson(jsonArray, "licenses");
+      }
+      catch (Exception ex) {
+        throw new CliException("Failed to retrieve license list", ex);
+      }
+    }
+
+  }
+
+  private JSONObject getLicenseStatus(String licenseFile) throws Exception
+  {
+    byte[] licenseBytes;
+    if (licenseFile != null) {
+      licenseBytes = StramClientUtils.getLicense(licenseFile);
+    }
+    else {
+      licenseBytes = StramClientUtils.getLicense(conf);
+    }
+    String licenseID = License.getLicenseID(licenseBytes);
+    SubLicense[] subLicenses = License.validateGetSubLicenses(licenseBytes);
+    JSONObject licenseObj = new JSONObject();
+    licenseObj.put("id", licenseID);
+
+    JSONArray sublicArray = new JSONArray();
+
+    SimpleDateFormat sdf = new SimpleDateFormat(SubLicense.DATE_FORMAT);
+    for (SubLicense sublic : subLicenses) {
+      JSONObject sublicObj = new JSONObject();
+      sublicObj.put("startDate", sdf.format(sublic.getStartDate()));
+      sublicObj.put("endDate", sdf.format(sublic.getEndDate()));
+      sublicObj.put("comment", sublic.getComment());
+      sublicObj.put("processorList", sublic.getProcessorListAsJSONArray());
+      sublicObj.put("constraint", sublic.getConstraint());
+      sublicObj.put("url", sublic.getUrl());
+      sublicArray.put(sublicObj);
+    }
+    licenseObj.put("sublicenses", sublicArray);
+    List<ApplicationReport> licList = getLicenseList();
+    for (ApplicationReport ar : licList) {
+      if (ar.getName().equals(licenseID)) {
+        licenseObj.put("agentAppId", ar.getApplicationId().toString());
+        break;
+      }
+    }
+    Map<String, LicenseInfo> licenseInfoMap = getLicenseInfoMap();
+    if (licenseInfoMap.containsKey(licenseID)) {
+      licenseObj.put("remainingLicensedMB", licenseInfoMap.get(licenseID).remainingLicensedMB);
+    }
+    return licenseObj;
+  }
+
+  private class ShowLicenseStatusCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      JSONObject licenseObj = getLicenseStatus(args.length > 1 ? args[1] : null);
+      printJson(licenseObj);
+    }
+
+  }
+
+  private class GenerateLicenseRequestCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String b64EncodedString = new GenerateLicenseRequest().getLicenseRequest(Util.getDefaultPublicKey());
+      System.out.println("-------------------------- Cut from below ------------------------------");
+      System.out.println(b64EncodedString);
+      System.out.println("------------------------------------------------------------------------");
+    }
+
+  }
+
   private class LaunchCommand implements Command
   {
     @Override
@@ -1564,6 +1848,9 @@ public class DTCli
       if (commandLineInfo.archives != null) {
         commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
         config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
+      }
+      if (commandLineInfo.licenseFile != null) {
+        commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
       StramAppLauncher submitApp = getStramAppLauncher(fileName, config);
@@ -1636,6 +1923,22 @@ public class DTCli
 
       if (appFactory != null) {
         if (!commandLineInfo.localMode) {
+
+          byte[] licenseBytes;
+          if (commandLineInfo.licenseFile != null) {
+            licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile);
+          }
+          else {
+            licenseBytes = StramClientUtils.getLicense(conf);
+          }
+          String licenseId = License.getLicenseID(licenseBytes);
+          YarnClient clientRMService = YarnClient.createYarnClient();
+          clientRMService.init(conf);
+          clientRMService.start();
+          ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+          if (ar == null) {
+            throw new CliException("License not activated. Please run activate-license first before launching any streaming application");
+          }
           ApplicationId appId = submitApp.launchApp(appFactory);
           currentApp = rmClient.getApplicationReport(appId);
           printJson("{\"appId\": \"" + appId + "\"}");
@@ -2835,12 +3138,14 @@ public class DTCli
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
     Option archives = OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives");
+    Option license = OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
     options.addOption(libjars);
     options.addOption(files);
     options.addOption(archives);
+    options.addOption(license);
     return options;
   }
 
@@ -2867,6 +3172,7 @@ public class DTCli
     result.libjars = line.getOptionValue("libjars");
     result.files = line.getOptionValue("files");
     result.archives = line.getOptionValue("archives");
+    result.licenseFile = line.getOptionValue("license");
     result.args = line.getArgs();
     return result;
   }
@@ -2879,6 +3185,7 @@ public class DTCli
     String libjars;
     String files;
     String archives;
+    String licenseFile;
     String[] args;
   }
 
