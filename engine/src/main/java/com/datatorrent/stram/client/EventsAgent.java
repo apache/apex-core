@@ -6,6 +6,7 @@ package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import org.apache.hadoop.fs.*;
@@ -76,13 +77,12 @@ public final class EventsAgent extends FSPartFileAgent
     if (dir == null) {
       return null;
     }
-
+    IndexFileBufferedReader ifbr = null;
     try {
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader br = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       EventsIndexLine indexLine;
 
-      while ((indexLine = (EventsIndexLine)br.readIndexLine()) != null) {
+      while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           continue;
         }
@@ -98,29 +98,41 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
 
-        FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
-        String partLine;
-        while ((partLine = partBr.readLine()) != null) {
-          Event ev = new Event();
-          int cursor = 0;
-          int cursor2;
-          cursor2 = partLine.indexOf(':', cursor);
-          ev.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-          cursor = cursor2 + 1;
-          cursor2 = partLine.indexOf(':', cursor);
-          ev.type = partLine.substring(cursor, cursor2);
-          cursor = cursor2 + 1;
-          if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
-            ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
-            result.add(ev);
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+        try {
+          String partLine;
+          while ((partLine = partBr.readLine()) != null) {
+            Event ev = new Event();
+            int cursor = 0;
+            int cursor2;
+            cursor2 = partLine.indexOf(':', cursor);
+            ev.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+            cursor = cursor2 + 1;
+            cursor2 = partLine.indexOf(':', cursor);
+            ev.type = partLine.substring(cursor, cursor2);
+            cursor = cursor2 + 1;
+            if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
+              ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
+              result.add(ev);
+            }
           }
         }
+        finally {
+          partBr.close();
+        }
       }
-      br.close();
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading operators stats", ex);
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
     return result;
   }
