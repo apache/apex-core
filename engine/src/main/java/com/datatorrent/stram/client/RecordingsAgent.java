@@ -325,6 +325,9 @@ public final class RecordingsAgent extends FSPartFileAgent
     RecordingInfo info = new RecordingInfo();
     info.appId = appId;
     info.operatorId = opId;
+
+    BufferedReader br = null;
+    IndexFileBufferedReader ifbr = null;
     try {
       String dir = getRecordingDirectory(appId, opId, startTime);
       if (dir == null) {
@@ -341,8 +344,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
       // META file processing
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.META_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.2")) {
@@ -382,8 +384,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
       long prevHiWindowId = -1;
       RecordingsIndexLine indexLine;
@@ -417,7 +418,6 @@ public final class RecordingsAgent extends FSPartFileAgent
           }
         }
       }
-      in.close();
       if (!info.windowIdRanges.isEmpty()) {
         TupleRecorder.Range range = info.windowIdRanges.get(info.windowIdRanges.size() - 1);
         range.high = prevHiWindowId;
@@ -426,6 +426,18 @@ public final class RecordingsAgent extends FSPartFileAgent
     catch (Exception ex) {
       LOG.warn("Got exception when getting recording info", ex);
       return null;
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+        if (br != null) {
+          br.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
 
     return info;
