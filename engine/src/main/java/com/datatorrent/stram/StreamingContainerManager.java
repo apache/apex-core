@@ -808,10 +808,10 @@ public class StreamingContainerManager implements PlanContext
 
       oper.stats.lastHeartbeat = shb;
       List<ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
-
-      if (!oper.stats.isIdle() && !statsList.isEmpty()) {
+      if (!oper.stats.isIdle()) {
         containerIdle = false;
-
+      }
+      if (!oper.stats.isIdle() && !statsList.isEmpty()) {
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
