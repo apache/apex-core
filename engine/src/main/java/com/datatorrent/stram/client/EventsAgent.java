@@ -78,7 +78,6 @@ public final class EventsAgent extends FSPartFileAgent
       return null;
     }
     IndexFileBufferedReader ifbr = null;
-    BufferedReader partBr = null;
     try {
       ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       EventsIndexLine indexLine;
@@ -99,22 +98,27 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
 
-        partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
-        String partLine;
-        while ((partLine = partBr.readLine()) != null) {
-          Event ev = new Event();
-          int cursor = 0;
-          int cursor2;
-          cursor2 = partLine.indexOf(':', cursor);
-          ev.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-          cursor = cursor2 + 1;
-          cursor2 = partLine.indexOf(':', cursor);
-          ev.type = partLine.substring(cursor, cursor2);
-          cursor = cursor2 + 1;
-          if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
-            ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
-            result.add(ev);
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+        try {
+          String partLine;
+          while ((partLine = partBr.readLine()) != null) {
+            Event ev = new Event();
+            int cursor = 0;
+            int cursor2;
+            cursor2 = partLine.indexOf(':', cursor);
+            ev.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+            cursor = cursor2 + 1;
+            cursor2 = partLine.indexOf(':', cursor);
+            ev.type = partLine.substring(cursor, cursor2);
+            cursor = cursor2 + 1;
+            if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
+              ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
+              result.add(ev);
+            }
           }
+        }
+        finally {
+          partBr.close();
         }
       }
     }
@@ -125,9 +129,6 @@ public final class EventsAgent extends FSPartFileAgent
       try {
         if (ifbr != null) {
           ifbr.close();
-        }
-        if (partBr != null) {
-          partBr.close();
         }
       }
       catch (IOException ex) {

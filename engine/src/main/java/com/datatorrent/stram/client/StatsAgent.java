@@ -277,13 +277,11 @@ public final class StatsAgent extends FSPartFileAgent
       return null;
     }
 
-    FSDataInputStream in = null;
     IndexFileBufferedReader ifbr = null;
-    try {
-      in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
-      StatsIndexLine indexLine;
 
+    try {
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           continue;
@@ -302,24 +300,28 @@ public final class StatsAgent extends FSPartFileAgent
             }
           }
 
-          FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
-          String partLine;
-          // advance until offset is reached
-          while ((partLine = partBr.readLine()) != null) {
-            OperatorStats os = new OperatorStats();
-            int cursor = 0;
-            int cursor2;
-            cursor2 = partLine.indexOf(':', cursor);
-            os.operatorId = Integer.valueOf(partLine.substring(cursor, cursor2));
-            cursor = cursor2 + 1;
-            cursor2 = partLine.indexOf(':', cursor);
-            os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-            cursor = cursor2 + 1;
-            os.stats = new ObjectMapperString(partLine.substring(cursor));
-            if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
-              result.add(os);
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+          try {
+            String partLine;
+            // advance until offset is reached
+            while ((partLine = partBr.readLine()) != null) {
+              OperatorStats os = new OperatorStats();
+              int cursor = 0;
+              int cursor2;
+              cursor2 = partLine.indexOf(':', cursor);
+              os.operatorId = Integer.valueOf(partLine.substring(cursor, cursor2));
+              cursor = cursor2 + 1;
+              cursor2 = partLine.indexOf(':', cursor);
+              os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+              cursor = cursor2 + 1;
+              os.stats = new ObjectMapperString(partLine.substring(cursor));
+              if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
+                result.add(os);
+              }
             }
+          }
+          finally {
+            partBr.close();
           }
         }
       }
@@ -331,9 +333,6 @@ public final class StatsAgent extends FSPartFileAgent
       try {
         if (ifbr != null) {
           ifbr.close();
-        }
-        if (in != null) {
-          in.close();
         }
       }
       catch (IOException ex) {
@@ -350,7 +349,6 @@ public final class StatsAgent extends FSPartFileAgent
       return null;
     }
     BufferedReader br = null;
-    BufferedReader partBr = null;
 
     try {
       br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
@@ -373,22 +371,27 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
 
-        partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
-        String partLine;
-        while ((partLine = partBr.readLine()) != null) {
-          ContainerStats cs = new ContainerStats();
-          int cursor = 0;
-          int cursor2;
-          cursor2 = partLine.indexOf(':', cursor);
-          cs.containerId = Integer.valueOf(partLine.substring(cursor, cursor2));
-          cursor = cursor2 + 1;
-          cursor2 = partLine.indexOf(':', cursor);
-          cs.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-          cursor = cursor2 + 1;
-          cs.stats = new ObjectMapperString(partLine.substring(cursor));
-          if ((startTime == null || cs.timestamp >= startTime) && (endTime == null || cs.timestamp <= endTime)) {
-            result.add(cs);
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+        try {
+          String partLine;
+          while ((partLine = partBr.readLine()) != null) {
+            ContainerStats cs = new ContainerStats();
+            int cursor = 0;
+            int cursor2;
+            cursor2 = partLine.indexOf(':', cursor);
+            cs.containerId = Integer.valueOf(partLine.substring(cursor, cursor2));
+            cursor = cursor2 + 1;
+            cursor2 = partLine.indexOf(':', cursor);
+            cs.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+            cursor = cursor2 + 1;
+            cs.stats = new ObjectMapperString(partLine.substring(cursor));
+            if ((startTime == null || cs.timestamp >= startTime) && (endTime == null || cs.timestamp <= endTime)) {
+              result.add(cs);
+            }
           }
+        }
+        finally {
+          partBr.close();
         }
       }
     }
@@ -399,9 +402,6 @@ public final class StatsAgent extends FSPartFileAgent
       try {
         if (br != null) {
           br.close();
-        }
-        if (partBr != null) {
-          partBr.close();
         }
       }
       catch (IOException ex) {
