@@ -362,8 +362,6 @@ public final class RecordingsAgent extends FSPartFileAgent
 
       if (!StringUtils.isBlank(info.containerId) && !containers.contains(info.containerId)) {
         info.ended = true;
-        LOG.debug("this container is {}", info.containerId);
-        LOG.debug("running containers {}", StringUtils.join(containers, ","));
       }
 
       json = json.optJSONObject("properties");
@@ -396,7 +394,6 @@ public final class RecordingsAgent extends FSPartFileAgent
       RecordingsIndexLine indexLine;
       while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
-          LOG.debug("found ended line");
           info.ended = true;
         }
         else {
