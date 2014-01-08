@@ -53,6 +53,8 @@ import com.google.common.collect.Sets;
 
 /**
  * Application master for licensing
+ *
+ * @since 0.9.2
  */
 public class LicensingAppMaster extends CompositeService
 {

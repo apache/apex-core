@@ -15,8 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>WebServicesVersionConversion class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.2
  */
 public class WebServicesVersionConversion
 {

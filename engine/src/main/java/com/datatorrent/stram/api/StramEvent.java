@@ -7,8 +7,10 @@ package com.datatorrent.stram.api;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 
 /**
+ * <p>Abstract StramEvent class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.2
  */
 public abstract class StramEvent
 {

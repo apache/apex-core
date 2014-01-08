@@ -19,6 +19,8 @@ import com.google.common.collect.Maps;
  * Write ahead log for DAG changes.
  * Operations need to be registered with the journal instance before writing.
  * Registered prototype instances will be used to apply changes on read.
+ *
+ * @since 0.9.2
  */
 public class Journal
 {

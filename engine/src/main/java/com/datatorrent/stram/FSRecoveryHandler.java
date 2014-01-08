@@ -27,7 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>FSRecoveryHandler class.</p>
  *
+ * @since 0.9.2
  */
 public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHandler
 {
