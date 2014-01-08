@@ -14,7 +14,6 @@ import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.*;
 
-import java.lang.System;
 import java.util.Map;
 
 import org.apache.hadoop.security.UserGroupInformation;
