@@ -807,19 +807,19 @@ public class StreamingContainerManager implements PlanContext
         processOperatorDeployStatus(oper, shb, sca);
       }
 
-      oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
       oper.stats.lastHeartbeat = shb;
+      List<ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
 
-      if (!oper.stats.isIdle()) {
+      if (!oper.stats.isIdle() && !statsList.isEmpty()) {
         containerIdle = false;
 
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
         long totalElapsedMillis = 0;
-        int statCount=0;
+        int statCount = 0;
         long maxDequeueTimestamp = -1;
-        List<ContainerStats.OperatorStats> statsList = shb.getOperatorStatsContainer();
+        oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
         final OperatorStatus status = oper.stats;
         for (ContainerStats.OperatorStats stats: statsList) {
@@ -858,7 +858,7 @@ public class StreamingContainerManager implements PlanContext
               if (lastEndWindowTimestamps.containsKey(operatorPortName) && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
                 ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
                 elapsedMillis = s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName);
-              }else{
+              } else {
                 elapsedMillis = s.endWindowTimestamp;
               }
 
@@ -900,7 +900,7 @@ public class StreamingContainerManager implements PlanContext
                       (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
                 ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
                 elapsedMillis = s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName);
-              }else{
+              } else {
                 elapsedMillis = s.endWindowTimestamp;
               }
 
