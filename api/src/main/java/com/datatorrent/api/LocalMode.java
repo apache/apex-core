@@ -25,14 +25,23 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @since 0.3.2
  */
-public abstract class LocalMode {
+public abstract class LocalMode
+{
 
   /**
-   * <p>getDAG.</p>
+   * <p>
+   * getDAG.</p>
+   *
+   * @return
    */
   abstract public DAG getDAG();
+
   /**
-   * <p>cloneDAG.</p>
+   * <p>
+   * cloneDAG.</p>
+   *
+   * @return
+   * @throws java.lang.Exception
    */
   abstract public DAG cloneDAG() throws Exception;
 
@@ -55,22 +64,35 @@ public abstract class LocalMode {
   abstract public DAG prepareDAG(StreamingApplication app, Configuration conf) throws Exception;
 
   /**
-   * <p>getController.</p>
+   * <p>
+   * getController.</p>
+   *
+   * @return
    */
   abstract public Controller getController();
 
-  public interface Controller {
+  public interface Controller
+  {
     public void run();
+
     public void run(long runMillis);
+
     public void runAsync();
+
     public void shutdown();
+
     public void setHeartbeatMonitoringEnabled(boolean enabled);
+
   }
 
   /**
-   * <p>newInstance.</p>
+   * <p>
+   * newInstance.</p>
+   *
+   * @return
    */
-  public static LocalMode newInstance() {
+  public static LocalMode newInstance()
+  {
     ServiceLoader<LocalMode> loader = ServiceLoader.load(LocalMode.class);
     Iterator<LocalMode> impl = loader.iterator();
     if (!impl.hasNext()) {
@@ -85,9 +107,22 @@ public abstract class LocalMode {
    * @param app
    * @param runMillis
    */
-  public static void runApp(StreamingApplication app, int runMillis) {
+  public static void runApp(StreamingApplication app, int runMillis)
+  {
+    runApp(app, null, runMillis);
+  }
+
+  /**
+   * Shortcut to run an application with the modified configuration.
+   *
+   * @param app           - Application to be run
+   * @param configuration - Configuration
+   * @param runMillis     - The time after which the application will be shutdown; pass 0 to run indefinitely.
+   */
+  public static void runApp(StreamingApplication app, Configuration configuration, int runMillis)
+  {
     LocalMode lma = newInstance();
-    app.populateDAG(lma.getDAG(), new Configuration(false));
+    app.populateDAG(lma.getDAG(), configuration == null ? new Configuration(false) : configuration);
     LocalMode.Controller lc = lma.getController();
     lc.run(runMillis);
   }
