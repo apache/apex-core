@@ -6,6 +6,7 @@ package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import org.apache.hadoop.fs.*;
@@ -76,13 +77,13 @@ public final class EventsAgent extends FSPartFileAgent
     if (dir == null) {
       return null;
     }
-
+    IndexFileBufferedReader ifbr = null;
+    BufferedReader partBr = null;
     try {
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader br = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       EventsIndexLine indexLine;
 
-      while ((indexLine = (EventsIndexLine)br.readIndexLine()) != null) {
+      while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           continue;
         }
@@ -98,8 +99,7 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
 
-        FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
+        partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
         String partLine;
         while ((partLine = partBr.readLine()) != null) {
           Event ev = new Event();
@@ -117,10 +117,21 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
       }
-      br.close();
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading operators stats", ex);
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+        if (partBr != null) {
+          partBr.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
     return result;
   }

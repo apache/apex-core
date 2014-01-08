@@ -459,10 +459,10 @@ public final class RecordingsAgent extends FSPartFileAgent
     if (dir == null) {
       return null;
     }
-
+    IndexFileBufferedReader ifbr = null;
+    BufferedReader partBr = null;
     try {
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       long currentOffset = 0;
       boolean readPartFile = false;
       if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
@@ -520,8 +520,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         }
 
         if (readPartFile) {
-          FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
+          partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
           String partLine;
           long tmpOffset = currentOffset;
           // advance until offset is reached
@@ -594,6 +593,18 @@ public final class RecordingsAgent extends FSPartFileAgent
     catch (Exception ex) {
       LOG.warn("Got exception when getting tuples info", ex);
       return null;
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+        if (partBr != null) {
+          partBr.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
 
     return info;
