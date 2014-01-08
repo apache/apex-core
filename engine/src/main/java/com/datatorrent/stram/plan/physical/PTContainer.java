@@ -24,7 +24,10 @@ import org.apache.commons.lang.builder.ToStringStyle;
  *
  * @since 0.3.5
  */
-public class PTContainer implements java.io.Serializable {
+public class PTContainer implements java.io.Serializable
+{
+  private static final long serialVersionUID = 201312112033L;
+
   public enum State {
     NEW,
     ALLOCATED,

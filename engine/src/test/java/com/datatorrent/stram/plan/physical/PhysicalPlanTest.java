@@ -821,13 +821,13 @@ public class PhysicalPlanTest {
 
   }
 
+
   /**
    * MxN partitioning. When source and sink of a stream are partitioned, a
    * separate unifier is created container local with each downstream partition.
    */
   @Test
-  @SuppressWarnings("AssignmentToForLoopParameter")
-  public void testUnifierPartitioning() {
+  public void testMxNPartitioning() {
 
     LogicalPlan dag = new LogicalPlan();
 
@@ -837,6 +837,7 @@ public class PhysicalPlanTest {
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(o2, OperatorContext.STATS_LISTENER, PartitioningTest.PartitionLoadWatch.class);
     OperatorMeta o2Meta = dag.getMeta(o2);
 
     dag.addStream("o1.outport1", o1.outport, o2.inport1);
@@ -844,7 +845,8 @@ public class PhysicalPlanTest {
     int maxContainers = 10;
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
-    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
 
     List<PTOperator> inputOperators = new ArrayList<PTOperator>();
@@ -887,7 +889,31 @@ public class PhysicalPlanTest {
       Assert.assertEquals("input partition keys " + p.getInputs(), null, p.getInputs().get(0).partitions);
       Assert.assertTrue("partitioned unifier container local " + p.getInputs().get(0).source, p.getInputs().get(0).source.isDownStreamInline());
     }
+
+    // Test Dynamic change
+    PTOperator o2p1 = plan.getOperators(o2Meta).get(0);
+    Assert.assertEquals("stats handlers " + o2p1, 1, o2p1.statsListeners.size());
+    StatsListener sl = o2p1.statsListeners.get(0);
+    Assert.assertTrue("stats handlers " + o2p1.statsListeners, sl instanceof PartitioningTest.PartitionLoadWatch);
+    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o2p1.getId(), 1);
+
+    plan.onStatusUpdate(o2p1);
+    Assert.assertEquals("repartition event", 1, ctx.events.size());
+    ctx.backupRequests = 0;
+    ctx.events.remove(0).run();
+
+    Assert.assertEquals("partitions after scale up " + o2Meta, 4, plan.getOperators(o2Meta).size());
+    for (PTOperator o : plan.getOperators(o2Meta)) {
+      Assert.assertNotNull(o.container);
+      PTOperator unifier = o.upstreamMerge.values().iterator().next();
+      Assert.assertNotNull(unifier.container);
+      Assert.assertSame("unifier in same container", o.container, unifier.container);
+      Assert.assertEquals("container operators " + o.container, Sets.newHashSet(o.container.getOperators()), Sets.newHashSet(o, unifier));
+    }
+    Assert.assertEquals("number of containers", 6, plan.getContainers().size());
+
   }
+
 
   @Test
   public void testCascadingUnifier() {

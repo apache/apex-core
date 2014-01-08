@@ -795,7 +795,6 @@ public class StreamingContainerManager implements PlanContext
       PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
 
       if (oper == null) {
-        // TODO: send undeploy
         LOG.error("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
         sca.undeployOpers.add(shb.nodeId);
         continue;
