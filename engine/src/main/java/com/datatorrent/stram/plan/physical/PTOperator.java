@@ -42,7 +42,6 @@ public class PTOperator implements java.io.Serializable
   private static final long serialVersionUID = 201312112033L;
 
   public enum State {
-    NEW,
     PENDING_DEPLOY,
     ACTIVE,
     PENDING_UNDEPLOY,
@@ -165,13 +164,7 @@ public class PTOperator implements java.io.Serializable
     this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
-  //private Object readResolve()
-  //{
-  //  this.stats = new OperatorStatus(this.id, plan.getDAG());
-  //  return this;
-  //}
-
-  private volatile PTOperator.State state = State.NEW;
+  private volatile PTOperator.State state = State.INACTIVE;
   private final PhysicalPlan plan;
   PTContainer container;
   LogicalPlan.OperatorMeta logicalNode;

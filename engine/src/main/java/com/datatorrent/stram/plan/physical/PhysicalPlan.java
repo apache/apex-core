@@ -382,6 +382,7 @@ public class PhysicalPlan implements Serializable
     container.operators.add(pOperator);
     if (!pOperator.upstreamMerge.isEmpty()) {
       for (Map.Entry<InputPortMeta, PTOperator> mEntry : pOperator.upstreamMerge.entrySet()) {
+        assert (mEntry.getValue().container == null) : "Container already assigned for " + mEntry.getValue();
         mEntry.getValue().container = container;
         container.operators.add(mEntry.getValue());
       }
@@ -659,13 +660,23 @@ public class PhysicalPlan implements Serializable
     this.undeployOpers.clear();
   }
 
-  private void assignContainers(Set<PTContainer> newContainers, Set<PTContainer> releaseContainers) {
-    // assign containers to new operators
+  private void assignContainers(Set<PTContainer> newContainers, Set<PTContainer> releaseContainers)
+  {
+    Set<PTOperator> mxnUnifiers = Sets.newHashSet();
+    for (PTOperator o  : this.newOpers.keySet()) {
+      mxnUnifiers.addAll(o.upstreamMerge.values());
+    }
+
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
 
       PTOperator oper = operEntry.getKey();
       long activationWindowId = getActivationWindowId(operEntry.getKey());
       initCheckpoint(oper, operEntry.getValue(), activationWindowId);
+
+      if (mxnUnifiers.contains(operEntry.getKey())) {
+        // MxN unifiers are assigned with the downstream operator
+        continue;
+      }
 
       PTContainer newContainer = null;
       // check for existing inline set
@@ -676,24 +687,19 @@ public class PhysicalPlan implements Serializable
         }
       }
 
-      if (newContainer != null) {
-        setContainer(oper, newContainer);
-        continue;
-      }
-
-      // find container
-      PTContainer c = null;
-      if (c == null) {
-        c = findContainer(oper);
-        if (c == null) {
+      if (newContainer == null) {
+        // find container
+        newContainer = findContainer(oper);
+        if (newContainer == null) {
           // get new container
           LOG.debug("New container for: " + oper);
-          c = new PTContainer(this);
-          containers.add(c);
-          newContainers.add(c);
+          newContainer = new PTContainer(this);
+          containers.add(newContainer);
+          newContainers.add(newContainer);
         }
       }
-      setContainer(oper, c);
+
+      setContainer(oper, newContainer);
     }
 
     // release containers that are no longer used
