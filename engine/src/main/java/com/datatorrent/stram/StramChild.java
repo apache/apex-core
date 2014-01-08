@@ -476,37 +476,37 @@ public class StramChild
     }
   }
 
-  private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
+  private synchronized void undeploy(List<Integer> nodeList)
   {
     logger.info("got undeploy request {}", nodeList);
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<Integer, Node<?>> toUndeploy = new HashMap<Integer, Node<?>>();
-    for (OperatorDeployInfo ndi : nodeList) {
-      Node<?> node = nodes.get(ndi.id);
+    for (Integer operatorId : nodeList) {
+      Node<?> node = nodes.get(operatorId);
       if (node == null) {
-        throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
+        throw new IllegalArgumentException("Node " + operatorId + " is not hosted in this container!");
       }
-      else if (toUndeploy.containsKey(ndi.id)) {
-        throw new IllegalArgumentException("Node " + ndi.id + " is requested to be undeployed more than once");
+      else if (toUndeploy.containsKey(operatorId)) {
+        throw new IllegalArgumentException("Node " + operatorId + " is requested to be undeployed more than once");
       }
       else {
-        toUndeploy.put(ndi.id, node);
+        toUndeploy.put(operatorId, node);
       }
     }
 
     ArrayList<Thread> joinList = new ArrayList<Thread>();
     ArrayList<Integer> discoList = new ArrayList<Integer>();
-    for (OperatorDeployInfo ndi : nodeList) {
-      OperatorContext oc = activeNodes.get(ndi.id);
+    for (Integer operatorId : nodeList) {
+      OperatorContext oc = activeNodes.get(operatorId);
       if (oc == null) {
-        disconnectNode(ndi.id);
+        disconnectNode(operatorId);
       }
       else {
         joinList.add(oc.getThread());
-        discoList.add(ndi.id);
-        nodes.get(ndi.id).shutdown();
+        discoList.add(operatorId);
+        nodes.get(operatorId).shutdown();
       }
     }
 
@@ -525,8 +525,8 @@ public class StramChild
       logger.warn("Aborted waiting for the deactivate to finish!");
     }
 
-    for (OperatorDeployInfo ndi : nodeList) {
-      nodes.remove(ndi.id);
+    for (Integer operatorId : nodeList) {
+      nodes.remove(operatorId);
     }
   }
 
@@ -582,8 +582,6 @@ public class StramChild
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-      ContainerStats stats = new ContainerStats(containerId);
-      msg.setContainerStats(stats);
 
       msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
@@ -597,39 +595,42 @@ public class StramChild
       // commented out because freeMemory() is misleading because of GC, may want to revisit this
       //msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
 
-      // gather heartbeat info for all operators
-      for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
-        OperatorHeartbeat hb = new OperatorHeartbeat();
-        hb.setNodeId(e.getKey());
-        hb.setGeneratedTms(currentTime);
-        hb.setIntervalMs(heartbeatIntervalMillis);
-        OperatorContext ctx = activeNodes.get(e.getKey());
-        if (ctx != null) {
-          ctx.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
+
+      ContainerHeartbeatResponse rsp;
+      do {
+        ContainerStats stats = new ContainerStats(containerId);
+        // gather heartbeat info for all operators
+        for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
+          OperatorHeartbeat hb = new OperatorHeartbeat();
+          hb.setNodeId(e.getKey());
+          hb.setGeneratedTms(currentTime);
+          hb.setIntervalMs(heartbeatIntervalMillis);
+          OperatorContext ctx = activeNodes.get(e.getKey());
+          if (ctx != null) {
+            ctx.drainStats(hb.getOperatorStatsContainer());
+            hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
+          }
+          else {
+            String state = failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString();
+            logger.debug("Sending {} state for operator {}", state, e.getKey());
+            hb.setState(state);
+          }
+          stats.addNodeStats(hb);
         }
-        else {
-          String state = failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString();
-          logger.debug("Sending {} state for operator {}", state, e.getKey());
-          hb.setState(state);
-        }
 
-        stats.addNodeStats(hb);
-      }
+        /**
+         * Container stats published for whoever is interested in listening.
+         * Currently interested candidates are TupleRecorderCollection and BufferServerStatsSubscriber
+         */
+        eventBus.publish(new ContainerStatsEvent(stats));
 
-      /**
-       * Container stats published for whoever is interested in listening.
-       * Currently interested candidates are TupleRecorderCollection and BufferServerStatsSubscriber
-       */
-      eventBus.publish(new ContainerStatsEvent(stats));
+        msg.setContainerStats(stats);
 
-      // heartbeat call and follow-up processing
-      //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
-      ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
-      if (rsp != null) {
+        // heartbeat call and follow-up processing
+        //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
+        rsp = umbilical.processHeartbeat(msg);
         processHeartbeatResponse(rsp);
-        // keep polling at smaller interval if work is pending
-        while (rsp != null && rsp.hasPendingRequests) {
+        if (rsp.hasPendingRequests) {
           logger.info("Waiting for pending request.");
           synchronized (this.heartbeatTrigger) {
             try {
@@ -640,12 +641,9 @@ public class StramChild
               break;
             }
           }
-          rsp = umbilical.pollRequest(this.containerId);
-          if (rsp != null) {
-            processHeartbeatResponse(rsp);
-          }
         }
-      }
+      } while (rsp.hasPendingRequests);
+
     }
     logger.debug("Exiting hearbeat loop");
     umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");

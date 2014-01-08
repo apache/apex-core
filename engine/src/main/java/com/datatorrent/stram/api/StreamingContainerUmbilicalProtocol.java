@@ -91,7 +91,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     public static enum DeployState {
-      NEW, // instantiated but not processing yet
       ACTIVE,
       IDLE,// stopped processing (no more input etc.)
       FAILED // problemo!
@@ -321,7 +320,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * Set when operators need to be removed.
      */
-    public List<OperatorDeployInfo> undeployRequest;
+    public List<Integer> undeployRequest;
 
     /**
      * Set when new operators need to be deployed.
@@ -352,13 +351,5 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * To be called periodically by child for heartbeat protocol.
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
-
-  /**
-   * Called to fetch pending request.
-   *
-   * @param containerId
-   * @return {com.datatorrent.stram.ContainerHeartbeatResponse}
-   */
-  ContainerHeartbeatResponse pollRequest(String containerId);
 
 }

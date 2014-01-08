@@ -143,7 +143,7 @@ public class StreamingContainerManagerTest {
 
     Assert.assertEquals("", dnm.getPhysicalPlan().getContainers().get(0), sca1.container);
     Assert.assertEquals("", PTContainer.State.ALLOCATED, sca1.container.getState());
-    List<OperatorDeployInfo> c1 = sca1.getDeployInfo();
+    List<OperatorDeployInfo> c1 = sca1.getDeployInfoList(sca1.container.getOperators());
 
     Assert.assertEquals("number operators assigned to c1", 1, c1.size());
     OperatorDeployInfo o1DI = getNodeDeployInfo(c1, dag.getMeta(o1));
@@ -161,7 +161,7 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull("contextAttributes " + c1o1outport, c1o1outport.contextAttributes);
     Assert.assertEquals("contextAttributes " + c1o1outport,  Integer.valueOf(99), c1o1outport.contextAttributes.get(PortContext.SPIN_MILLIS));
 
-    List<OperatorDeployInfo> c2 = sca2.getDeployInfo();
+    List<OperatorDeployInfo> c2 = sca2.getDeployInfoList(sca2.container.getOperators());
     Assert.assertEquals("number operators assigned to container", 3, c2.size());
     OperatorDeployInfo o2DI = getNodeDeployInfo(c2, dag.getMeta(o2));
     OperatorDeployInfo o3DI = getNodeDeployInfo(c2, dag.getMeta(o3));
@@ -235,7 +235,7 @@ public class StreamingContainerManagerTest {
 
     PTContainer c = plan.getOperators(dag.getMeta(node1)).get(0).getContainer();
     StramChildAgent sca1 = dnm.getContainerAgent(c.getExternalId());
-    List<OperatorDeployInfo> c1 = sca1.getDeployInfo();
+    List<OperatorDeployInfo> c1 = getDeployInfo(sca1);
     Assert.assertEquals("number operators assigned to container", 1, c1.size());
     Assert.assertTrue(node2.getName() + " assigned to " + sca1.container.getExternalId(), containsNodeContext(c1, dag.getMeta(node1)));
 
@@ -244,7 +244,7 @@ public class StreamingContainerManagerTest {
 
     for (int i=0; i<o2Partitions.size(); i++) {
       String containerId = o2Partitions.get(i).getContainer().getExternalId();
-      List<OperatorDeployInfo> cc = dnm.getContainerAgent(containerId).getDeployInfo();
+      List<OperatorDeployInfo> cc = getDeployInfo(dnm.getContainerAgent(containerId));
       Assert.assertEquals("number operators assigned to container", 1, cc.size());
       Assert.assertTrue(node2.getName() + " assigned to " + containerId, containsNodeContext(cc, dag.getMeta(node2)));
 
@@ -263,7 +263,7 @@ public class StreamingContainerManagerTest {
     // unifier
     List<PTOperator> o2Unifiers = plan.getMergeOperators(dag.getMeta(node2));
     Assert.assertEquals("number unifiers", 1, o2Unifiers.size());
-    List<OperatorDeployInfo> cUnifier = dnm.getContainerAgent(o2Unifiers.get(0).getContainer().getExternalId()).getDeployInfo();
+    List<OperatorDeployInfo> cUnifier = getDeployInfo(dnm.getContainerAgent(o2Unifiers.get(0).getContainer().getExternalId()));
     Assert.assertEquals("number operators " + cUnifier, 1, cUnifier.size());
 
     OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier,  dag.getMeta(node2));
@@ -302,7 +302,7 @@ public class StreamingContainerManagerTest {
 
     // node3 container
     c = plan.getOperators(dag.getMeta(node3)).get(0).getContainer();
-    List<OperatorDeployInfo> cmerge = dnm.getContainerAgent(c.getExternalId()).getDeployInfo();
+    List<OperatorDeployInfo> cmerge = getDeployInfo(dnm.getContainerAgent(c.getExternalId()));
     Assert.assertEquals("number operators " + cmerge, 1, cmerge.size());
 
     OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getMeta(node3));
@@ -387,18 +387,18 @@ public class StreamingContainerManagerTest {
 
     StramChildAgent sca1 = scm.getContainerAgent(c1.getExternalId());
     StramChildAgent sca2 = scm.getContainerAgent(c2.getExternalId());
-    Assert.assertEquals("", 0, sca1.container.getPendingUndeploy().size());
-    Assert.assertEquals("", 2, sca1.container.getPendingDeploy().size());
+    Assert.assertEquals("", 0, countState(sca1.container, PTOperator.State.PENDING_UNDEPLOY));
+    Assert.assertEquals("", 2, countState(sca1.container, PTOperator.State.PENDING_DEPLOY));
 
     scm.scheduleContainerRestart(c1.getExternalId());
-    Assert.assertEquals("", 0, sca1.container.getPendingUndeploy().size());
-    Assert.assertEquals("", 2, sca1.container.getPendingDeploy().size());
+    Assert.assertEquals("", 0, countState(sca1.container, PTOperator.State.PENDING_UNDEPLOY));
+    Assert.assertEquals("", 2, countState(sca1.container, PTOperator.State.PENDING_DEPLOY));
     Assert.assertEquals(""+scm.containerStartRequests, 1, scm.containerStartRequests.size());
     ContainerStartRequest dr = scm.containerStartRequests.peek();
     Assert.assertNotNull(dr);
 
-    Assert.assertEquals(""+sca2.container.getPendingUndeploy(), 1, sca2.container.getPendingUndeploy().size());
-    Assert.assertEquals(""+sca2.container.getPendingDeploy(), 1, sca2.container.getPendingDeploy().size());
+    Assert.assertEquals(""+sca2.container, 1, countState(sca2.container, PTOperator.State.PENDING_UNDEPLOY));
+    Assert.assertEquals(""+sca2.container, 0, countState(sca2.container, PTOperator.State.PENDING_DEPLOY));
 
   }
 
@@ -442,8 +442,22 @@ public class StreamingContainerManagerTest {
 
   }
 
+  private int countState(PTContainer c, PTOperator.State state) {
+    int count = 0;
+    for (PTOperator o : c.getOperators()) {
+      if (o.getState() == state) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   private boolean containsNodeContext(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
     return getNodeDeployInfo(di, nodeConf) != null;
+  }
+
+  private static List<OperatorDeployInfo> getDeployInfo(StramChildAgent sca) {
+    return sca.getDeployInfoList(sca.container.getOperators());
   }
 
   private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {

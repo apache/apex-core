@@ -121,13 +121,6 @@ public class StramLocalCluster implements Runnable, Controller
       }
     }
 
-    @Override
-    public ContainerHeartbeatResponse pollRequest(String containerId)
-    {
-      StramChildAgent sca = dnmgr.getContainerAgent(containerId);
-      return sca.pollRequest();
-    }
-
   }
 
   public static class LocalStramChild extends StramChild
