@@ -209,10 +209,14 @@ public final class RecordingsAgent extends FSPartFileAgent
   private Set<String> getRunningContainerIds(String appId)
   {
     Set<String> result = new HashSet<String>();
-    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/containers";
     try {
       WebServicesClient webServicesClient = new WebServicesClient();
-      JSONObject response = webServicesClient.process(url, JSONObject.class, new WebServicesClient.GetWebServicesHandler<JSONObject>());
+      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appId);
+      if (wr == null) {
+        return result;
+      }
+      WebResource path = wr.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
+      JSONObject response = new JSONObject(webServicesClient.process(path, String.class, new WebServicesClient.GetWebServicesHandler<String>()));
       Object containersObj = response.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
@@ -231,7 +235,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
     }
     catch (Exception ex) {
-      LOG.warn("Error getting running containers for {}. Assuming no containers are running.", appId);
+      LOG.warn("Error {} getting running containers for {}. Assuming no containers are running.", ex.getMessage(), appId);
     }
     return result;
   }
@@ -358,6 +362,8 @@ public final class RecordingsAgent extends FSPartFileAgent
 
       if (!StringUtils.isBlank(info.containerId) && !containers.contains(info.containerId)) {
         info.ended = true;
+        LOG.debug("this container is {}", info.containerId);
+        LOG.debug("running containers {}", StringUtils.join(containers, ","));
       }
 
       json = json.optJSONObject("properties");
@@ -390,6 +396,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       RecordingsIndexLine indexLine;
       while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
+          LOG.debug("found ended line");
           info.ended = true;
         }
         else {
