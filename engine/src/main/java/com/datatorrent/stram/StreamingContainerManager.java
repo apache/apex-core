@@ -821,6 +821,14 @@ public class StreamingContainerManager implements PlanContext
         oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
         final OperatorStatus status = oper.stats;
+
+        for (Map.Entry<String, PortStatus> entry : status.inputPortStatusList.entrySet()) {
+          entry.getValue().recordingStartTime = Stats.INVALID_TIME_MILLIS;
+        }
+        for (Map.Entry<String, PortStatus> entry : status.outputPortStatusList.entrySet()) {
+          entry.getValue().recordingStartTime = Stats.INVALID_TIME_MILLIS;
+        }
+
         for (ContainerStats.OperatorStats stats: statsList) {
           /* report checkpointedWindowId status of the operator */
           if (oper.getRecentCheckpoint() < stats.checkpointedWindowId) {
@@ -884,7 +892,6 @@ public class StreamingContainerManager implements PlanContext
                 status.outputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
-
               if (s.recordingStartTime > ps.recordingStartTime) {
                 ps.recordingStartTime = s.recordingStartTime;
               }
@@ -1426,8 +1433,8 @@ public class StreamingContainerManager implements PlanContext
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA = (long)ps.tuplesPSMA.getAvg();
         pinfo.bufferServerBytesPSMA = (long)ps.bufferServerBytesPSMA.getAvg();
-        ni.addPort(pinfo);
         pinfo.recordingStartTime = ps.recordingStartTime;
+        ni.addPort(pinfo);
       }
       for (PortStatus ps: os.outputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
@@ -1436,6 +1443,7 @@ public class StreamingContainerManager implements PlanContext
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA = (long)ps.tuplesPSMA.getAvg();
         pinfo.bufferServerBytesPSMA = (long)ps.bufferServerBytesPSMA.getAvg();
+        pinfo.recordingStartTime = ps.recordingStartTime;
         ni.addPort(pinfo);
       }
     }
