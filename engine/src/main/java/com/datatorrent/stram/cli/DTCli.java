@@ -923,15 +923,15 @@ public class DTCli
   {
     boolean consolePresentSaved = consolePresent;
     consolePresent = false;
+    FileLineReader fr = new FileLineReader(fileName);
+    String line;
     try {
-      FileLineReader fr = new FileLineReader(fileName);
-      String line;
       while ((line = fr.readLine("")) != null) {
         processLine(line, fr, true);
       }
-      fr.close();
     }
     finally {
+      fr.close();
       consolePresent = consolePresentSaved;
     }
   }
