@@ -2242,12 +2242,20 @@ public class DTCli
         }
         for (int i = 0; i < arr.length(); i++) {
           JSONObject oper = arr.getJSONObject(i);
-          @SuppressWarnings("unchecked")
-          Iterator<String> keys = oper.keys();
-          while (keys.hasNext()) {
-            if (oper.get(keys.next()).toString().matches("(?i).*" + args[1] + ".*")) {
+          if (StringUtils.isNumeric(args[1])) {
+            if (oper.getString("id").equals(args[1])) {
               matches.put(oper);
               break;
+            }
+          }
+          else {
+            @SuppressWarnings("unchecked")
+            Iterator<String> keys = oper.keys();
+            while (keys.hasNext()) {
+              if (oper.get(keys.next()).toString().matches("(?i).*" + args[1] + ".*")) {
+                matches.put(oper);
+                break;
+              }
             }
           }
         }
