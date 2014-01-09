@@ -4,14 +4,19 @@
  */
 package com.datatorrent.stram.util;
 
+import java.io.IOException;
+import java.security.Principal;
+import java.util.concurrent.Future;
+
 import com.sun.jersey.api.client.AsyncWebResource;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.async.ITypeListener;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
-import java.io.IOException;
-import java.security.Principal;
-import java.util.concurrent.Future;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
@@ -22,8 +27,6 @@ import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>WebServicesClient class.</p>
@@ -39,7 +42,7 @@ public class WebServicesClient
   private static final PoolingClientConnectionManager connectionManager;
   private static final CredentialsProvider credentialsProvider;
 
-  private Client client;
+  private final Client client;
 
   static {
     connectionManager = new PoolingClientConnectionManager();
