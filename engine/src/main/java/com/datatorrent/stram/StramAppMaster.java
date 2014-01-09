@@ -461,11 +461,15 @@ public class StramAppMaster extends CompositeService
       BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
       String line;
       LOG.info("\nDumping files in local dir: begin");
-      while ((line = buf.readLine()) != null) {
-        LOG.info("System CWD content: " + line);
+      try {
+        while ((line = buf.readLine()) != null) {
+          LOG.info("System CWD content: " + line);
+        }
+        LOG.info("Dumping files in local dir: end");
       }
-      LOG.info("Dumping files in local dir: end");
-      buf.close();
+      finally {
+        buf.close();
+      }
     } catch (IOException e) {
       LOG.debug("Exception", e);
     } catch (InterruptedException e) {
@@ -543,8 +547,12 @@ public class StramAppMaster extends CompositeService
     LOG.info("Application master" + ", appId=" + appAttemptID.getApplicationId().getId() + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp() + ", attemptId=" + appAttemptID.getAttemptId());
 
     FileInputStream fis = new FileInputStream("./" + LogicalPlan.SER_FILE_NAME);
-    this.dag = LogicalPlan.read(fis);
-    fis.close();
+    try {
+      this.dag = LogicalPlan.read(fis);
+    }
+    finally {
+      fis.close();
+    }
     // "debug" simply dumps all data using LOG.info
     if (dag.isDebug()) {
       dumpOutDebugInfo();
