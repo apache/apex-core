@@ -4,23 +4,19 @@
  */
 package com.datatorrent.stram.stream;
 
+import com.datatorrent.api.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
- * 
+ *
  * @author Gaurav Gupta <gaurav@datatorrent.com>
  */
 public class OiOEndWindowTest
@@ -36,7 +32,7 @@ public class OiOEndWindowTest
     @Override
     public void emitTuples()
     {
-      throw new RuntimeException(new InterruptedException());
+      Operator.Util.shutdown();
     }
 
   }
@@ -89,7 +85,7 @@ public class OiOEndWindowTest
     TestInputOperator io = lp.addOperator("Input Operator", new TestInputOperator());
     FirstGenericOperator go = lp.addOperator("First Generic Operator", new FirstGenericOperator());
     SecondGenericOperator out = lp.addOperator("Second Generic Operator", new SecondGenericOperator());
-  
+
     /*
      * This tests make sure that even if the application_window_count is different the endWindow() is called for
      * end_stream

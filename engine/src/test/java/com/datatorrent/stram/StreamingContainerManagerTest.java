@@ -143,7 +143,7 @@ public class StreamingContainerManagerTest {
 
     Assert.assertEquals("number operators assigned to c1", 1, c1.size());
     OperatorDeployInfo o1DI = getNodeDeployInfo(c1, dag.getMeta(o1));
-    Assert.assertNotNull(o1.getName() + " assigned to " + sca1.container.getExternalId(), o1DI);
+    Assert.assertNotNull(o1 + " assigned to " + sca1.container.getExternalId(), o1DI);
     Assert.assertEquals("type " + o1DI, OperatorDeployInfo.OperatorType.INPUT, o1DI.type);
     Assert.assertEquals("inputs " + o1DI.name, 0, o1DI.inputs.size());
     Assert.assertEquals("outputs " + o1DI.name, 1, o1DI.outputs.size());

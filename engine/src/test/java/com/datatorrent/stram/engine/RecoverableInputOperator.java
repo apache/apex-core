@@ -16,6 +16,7 @@ import com.datatorrent.api.CheckpointListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 
 import com.datatorrent.bufferserver.util.Codec;
 
@@ -33,7 +34,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   int maximumTuples = 20;
   boolean simulateFailure;
 
-  private static Map<Long,Long> idMap = new HashMap<Long, Long>();
+  private static final Map<Long,Long> idMap = new HashMap<Long, Long>();
   private static long tuple = 0;
   public static List<Long> emittedTuples = new ArrayList<Long>();
 
@@ -62,7 +63,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
       emittedTuples.add(etuple);
       first = false;
       if (--maximumTuples == 0) {
-        throw new RuntimeException(new InterruptedException("Done!"));
+        Operator.Util.shutdown();
       }
     }
   }

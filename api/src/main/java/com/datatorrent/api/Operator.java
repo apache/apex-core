@@ -19,7 +19,8 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 
 /**
- * <p>Operator interface.</p>
+ * <p>
+ * Operator interface.</p>
  *
  * @since 0.3.2
  */
@@ -41,7 +42,7 @@ public interface Operator extends Component<OperatorContext>
    * completely, none of the tuples in that window will be processed again.
    *
    */
-  public enum ProcessingMode
+  enum ProcessingMode
   {
     AT_LEAST_ONCE("AT_LEAST_ONCE"),
     AT_MOST_ONCE("AT_MOST_ONCE"),
@@ -63,6 +64,7 @@ public interface Operator extends Component<OperatorContext>
     {
       return mode;
     }
+
   }
 
   /**
@@ -70,12 +72,12 @@ public interface Operator extends Component<OperatorContext>
    *
    * @param windowId identifier for the window that is unique for this run of the application.
    */
-  public void beginWindow(long windowId);
+  void beginWindow(long windowId);
 
   /**
    * This method gets called at the end of each window.
    */
-  public void endWindow();
+  void endWindow();
 
   /**
    * If the Operator can be partitioned, then Unifier is used to merge
@@ -87,9 +89,9 @@ public interface Operator extends Component<OperatorContext>
    *
    * @param <T> Type of the tuple emitted by the output port which is being unified
    */
-  public interface Unifier<T> extends Operator
+  interface Unifier<T> extends Operator
   {
-    public void process(T tuple);
+    void process(T tuple);
 
   }
 
@@ -98,7 +100,7 @@ public interface Operator extends Component<OperatorContext>
    * Concrete ports implement derived interfaces.
    */
   @SuppressWarnings("MarkerInterface")
-  public interface Port extends Component<PortContext>
+  interface Port extends Component<PortContext>
   {
   }
 
@@ -111,7 +113,7 @@ public interface Operator extends Component<OperatorContext>
    *
    * @param <T>
    */
-  public interface InputPort<T> extends Port
+  interface InputPort<T> extends Port
   {
     /**
      * Provide the sink that will process incoming data. Sink would typically be
@@ -120,14 +122,14 @@ public interface Operator extends Component<OperatorContext>
      *
      * @return Sink<T>
      */
-    public Sink<T> getSink();
+    Sink<T> getSink();
 
     /**
      * Informs the port that it is active, i.e. connected to an incoming stream.
      *
      * @param connected
      */
-    public void setConnected(boolean connected);
+    void setConnected(boolean connected);
 
     /**
      * Provide the codec which can be used to serialize or deserialize the data
@@ -136,7 +138,7 @@ public interface Operator extends Component<OperatorContext>
      *
      * @return codec if special implementation, null otherwise.
      */
-    public Class<? extends StreamCodec<T>> getStreamCodec();
+    Class<? extends StreamCodec<T>> getStreamCodec();
 
   }
 
@@ -148,7 +150,7 @@ public interface Operator extends Component<OperatorContext>
    *
    * @param <T>
    */
-  public interface OutputPort<T> extends Port
+  interface OutputPort<T> extends Port
   {
     /**
      * Set the sink for the output port.
@@ -156,7 +158,7 @@ public interface Operator extends Component<OperatorContext>
      *
      * @param s
      */
-    public void setSink(Sink<Object> s);
+    void setSink(Sink<Object> s);
 
     /**
      * Merge tuples emitted by multiple upstream instances of the enclosing
@@ -164,7 +166,29 @@ public interface Operator extends Component<OperatorContext>
      *
      * @return unifier object which can merge partitioned streams together into a single stream.
      */
-    public Unifier<T> getUnifier();
+    Unifier<T> getUnifier();
+
+  }
+
+  static class Util
+  {
+    public static void shutdown()
+    {
+      throw new ShutdownException();
+    }
+
+  }
+
+  /**
+   * The operator should throw the following exception if it wants to gracefully conclude its operation.
+   * This exception is not treated as an error by the engine. It's considered a request by the operator
+   * to deactivate itself. Upon receiving this, the engine would let the operator finish its in progress
+   * window and then call deactivate method on it if present.
+   *
+   */
+  static class ShutdownException extends RuntimeException
+  {
+    private static final long serialVersionUID = 201401081529L;
 
   }
 

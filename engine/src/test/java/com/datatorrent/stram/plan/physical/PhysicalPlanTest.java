@@ -56,7 +56,7 @@ public class PhysicalPlanTest {
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     public Integer[] partitionKeys = {0, 1, 2};
     public String pks;
-    public Map<Integer, Partition<PartitioningTestOperator>> partitions;
+    public transient Map<Integer, Partition<PartitioningTestOperator>> partitions;
 
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
@@ -75,9 +75,9 @@ public class PhysicalPlanTest {
     public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
     {
       List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(this.partitionKeys.length);
-      for (int i = 0; i < partitionKeys.length; i++) {
+      for (Integer partitionKey: partitionKeys) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
-        PartitionKeys pks = new PartitionKeys(2, Sets.newHashSet(partitionKeys[i]));
+        PartitionKeys pks = new PartitionKeys(2, Sets.newHashSet(partitionKey));
         p.getPartitionKeys().put(this.inport1, pks);
         p.getPartitionKeys().put(this.inportWithCodec, pks);
         p.getPartitionedInstance().pks = p.getPartitionKeys().values().toString();

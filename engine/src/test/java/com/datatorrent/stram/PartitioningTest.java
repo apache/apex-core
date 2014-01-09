@@ -107,7 +107,7 @@ public class PartitioningTest
         if (blockEndStream) {
           return;
         }
-        throw new RuntimeException(new InterruptedException("No more tuples to send!"));
+        Operator.Util.shutdown();
       }
 
       if (first) {
