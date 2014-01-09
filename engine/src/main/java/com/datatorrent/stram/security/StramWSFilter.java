@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by pramod on 12/17/13.
  * Built on org.apache.hadoop.yarn.server.webproxy.amfilter.AmIpFilter
  * See https://issues.apache.org/jira/browse/YARN-1516
+ *
+ * @since 0.9.2
  */
 public class StramWSFilter implements Filter
 {

@@ -7,6 +7,8 @@ import java.security.Principal;
 /**
  * Created by pramod on 12/18/13.
  * Borrowed from
+ *
+ * @since 0.9.2
  */
 public class StramWSServletRequestWrapper extends HttpServletRequestWrapper {
   private final StramWSPrincipal principal;

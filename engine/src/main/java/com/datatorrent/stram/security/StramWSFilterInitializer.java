@@ -14,6 +14,8 @@ import java.util.Map;
  * Created by pramod on 12/17/13.
  * Borrowed from org.apache.hadoop.yarn.server.webproxy.amfilter.AmFilterIntializer
  * See https://issues.apache.org/jira/browse/YARN-1517
+ *
+ * @since 0.9.2
  */
 public class StramWSFilterInitializer extends FilterInitializer
 {
