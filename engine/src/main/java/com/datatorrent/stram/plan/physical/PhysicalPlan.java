@@ -537,6 +537,7 @@ public class PhysicalPlan implements Serializable
 
     if (newPartitions.isEmpty()) {
       LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
+      return;
     }
 
     List<Partition<Operator>> addedPartitions = new ArrayList<Partition<Operator>>();
