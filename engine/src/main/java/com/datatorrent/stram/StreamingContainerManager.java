@@ -645,7 +645,7 @@ public class StreamingContainerManager implements PlanContext
     return this.containers.values();
   }
 
-  private void processOperatorDeployStatus(PTOperator oper, OperatorHeartbeat ohb, StramChildAgent sca)
+  private void processOperatorDeployStatus(final PTOperator oper, OperatorHeartbeat ohb, StramChildAgent sca)
   {
     OperatorHeartbeat.DeployState ds = null;
     if (ohb != null) {
@@ -664,7 +664,16 @@ public class StreamingContainerManager implements PlanContext
         switch (ds) {
         case IDLE:
           // remove the operator from the plan
-          LOG.warn("TBD: Remove IDLE operator from plan {}", oper);
+          Runnable r = new Runnable() {
+            @Override
+            public void run() {
+              if (oper.getInputs().isEmpty()) {
+                LOG.info("Removing IDLE operator from plan {}", oper);
+                plan.removeIdlePartition(oper);
+              }
+            }
+          };
+          dispatch(r);
           sca.undeployOpers.add(oper.getId());
           // record operator stop event
           recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));

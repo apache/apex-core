@@ -554,7 +554,7 @@ public class PhysicalPlan implements Serializable
     // remove deprecated partitions from plan
     for (PTOperator p : currentPartitionMap.values()) {
       copyPartitions.remove(p);
-      removePartition(p, currentMapping.parallelPartitions);
+      removePartition(p, currentMapping);
       operatorIdToPartition.remove(p.getId());
     }
     currentMapping.partitions = copyPartitions;
@@ -774,13 +774,29 @@ public class PhysicalPlan implements Serializable
   }
 
   /**
+   * Remove a partition that was reported as idle by the execution layer.
+   * Since the end stream tuple is propagated to the downstream operators,
+   * there is no need to undeploy/redeploy them as part of this operation.
+   * @param p
+   */
+  public void removeIdlePartition(PTOperator p)
+  {
+    PMapping currentMapping = this.logicalToPTOperator.get(p.logicalNode);
+    List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
+    copyPartitions.remove(p);
+    removePartition(p, currentMapping);
+    currentMapping.partitions = copyPartitions;
+    deployChanges();
+  }
+
+  /**
    * Remove the given partition with any associated parallel partitions and
    * per-partition outputStreams.
    *
    * @param oper
    * @return
    */
-  private void removePartition(PTOperator oper, Set<LogicalPlan.OperatorMeta> parallelPartitions) {
+  private void removePartition(PTOperator oper, PMapping operatorMapping) {
 
     // remove any parallel partition
     for (PTOutput out : oper.outputs) {
@@ -788,9 +804,9 @@ public class PhysicalPlan implements Serializable
       for (PTInput in : Lists.newArrayList(out.sinks)) {
         for (LogicalPlan.InputPortMeta im : in.logicalStream.getSinks()) {
           PMapping m = this.logicalToPTOperator.get(im.getOperatorWrapper());
-          if (m.parallelPartitions == parallelPartitions) {
+          if (m.parallelPartitions == operatorMapping.parallelPartitions) {
             // associated operator parallel partitioned
-            removePartition(in.target, parallelPartitions);
+            removePartition(in.target, operatorMapping);
             m.partitions.remove(in.target);
           }
         }
@@ -1173,7 +1189,7 @@ public class PhysicalPlan implements Serializable
     }
 
     for (PTOperator oper : opers.partitions) {
-      removePartition(oper, opers.parallelPartitions);
+      removePartition(oper, opers);
     }
 
     for (StreamMapping ug : opers.outputStreams.values()) {
