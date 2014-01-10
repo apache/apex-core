@@ -436,7 +436,7 @@ public class PhysicalPlanTest {
     dag.addStream("o1.outport1", o1.output, o2.inport1);
     OperatorMeta o1Meta = dag.getMeta(o1);
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
-    dag.setAttribute(o1, OperatorContext.STATS_LISTENER, PartitioningTest.PartitionLoadWatch.class);
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
@@ -886,7 +886,7 @@ public class PhysicalPlanTest {
     o1.partitionKeys = new Integer[] {0,1,2,3};
 
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, o1.partitionKeys.length);
-    dag.setAttribute(o1, OperatorContext.STATS_LISTENER, PartitioningTest.PartitionLoadWatch.class);
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
 
     dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_LIMIT, 2);
     OperatorMeta o1Meta = dag.getMeta(o1);

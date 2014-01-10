@@ -277,6 +277,7 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    @SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart */
     void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
@@ -431,24 +432,12 @@ public class PhysicalPlan implements Serializable
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    Class<? extends StatsListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.STATS_LISTENER);
-    if (statsListenerClass != null) {
+    Collection<StatsListener> statsListeners = m.logicalOperator.getValue(OperatorContext.STATS_LISTENERS);
+    if (statsListeners != null && !statsListeners.isEmpty()) {
       if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<StatsListener>(1);
+        m.statsHandlers = new ArrayList<StatsListener>(statsListeners.size());
       }
-      final StatsListener sh;
-      if (PartitionLoadWatch.class.isAssignableFrom(statsListenerClass)) {
-        try {
-          sh = statsListenerClass.getConstructor(m.getClass()).newInstance(m);
-        }
-        catch (Exception e) {
-          throw new RuntimeException("Failed to instantiate stats listener.", e);
-        }
-      }
-      else {
-        sh = StramUtils.newInstance(statsListenerClass);
-      }
-      m.statsHandlers.add(sh);
+      m.statsHandlers.addAll(statsListeners);
     }
 
     if (m.logicalOperator.getOperator() instanceof StatsListener) {
@@ -457,6 +446,28 @@ public class PhysicalPlan implements Serializable
       }
       m.statsHandlers.add((StatsListener)m.logicalOperator.getOperator());
     }
+
+
+    /*
+    if (statsListeners != null) {
+      if (m.statsHandlers == null) {
+        m.statsHandlers = new ArrayList<StatsListener>(1);
+      }
+      final StatsListener sh;
+      if (PartitionLoadWatch.class.isAssignableFrom(statsListeners)) {
+        try {
+          sh = statsListeners.getConstructor(m.getClass()).newInstance(m);
+        }
+        catch (Exception e) {
+          throw new RuntimeException("Failed to instantiate stats listener.", e);
+        }
+      }
+      else {
+        sh = StramUtils.newInstance(statsListeners);
+      }
+      m.statsHandlers.add(sh);
+    }
+    */
 
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());

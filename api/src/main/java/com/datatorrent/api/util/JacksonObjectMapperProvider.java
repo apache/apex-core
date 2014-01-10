@@ -19,6 +19,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
+
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -34,20 +35,24 @@ import org.codehaus.jackson.map.ser.std.RawSerializer;
 @Produces(MediaType.APPLICATION_JSON)
 public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper>
 {
-  private ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper;
 
   /**
    * <p>Constructor for JacksonObjectMapperProvider.</p>
    */
   public JacksonObjectMapperProvider()
   {
+    this.objectMapper = new ObjectMapper();
     objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
     objectMapper.registerModule(module);
   }
 
-  /** {@inheritDoc} */
+  /** {@inheritDoc}
+   * @param type
+   * @return
+   */
   @Override
   public ObjectMapper getContext(Class<?> type)
   {

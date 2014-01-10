@@ -343,7 +343,7 @@ public class LogicalPlanConfigurationTest {
     Properties props = new Properties();
     props.put("stram.application." + appName + ".class", app.getClass().getName());
     props.put("stram.operator.*.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "2");
-    props.put("stram.operator.*.attr." + getSimpleName(OperatorContext.STATS_LISTENER), PartitionLoadWatch.class.getName());
+    props.put("stram.operator.*.attr." + getSimpleName(OperatorContext.STATS_LISTENERS), PartitionLoadWatch.class.getName());
     props.put("stram.application." + appName + ".operator.operator1.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "20");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
@@ -356,11 +356,10 @@ public class LogicalPlanConfigurationTest {
 
     Assert.assertEquals("", Integer.valueOf(20), dag.getOperatorMeta("operator1").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", Integer.valueOf(2), dag.getOperatorMeta("operator2").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
-    Assert.assertEquals("", PartitionLoadWatch.class, dag.getOperatorMeta("operator2").getValue(OperatorContext.STATS_LISTENER));
-
+    Assert.assertEquals("", PartitionLoadWatch.class, dag.getOperatorMeta("operator2").getValue(OperatorContext.STATS_LISTENERS).toArray()[0].getClass());
   }
 
-    @Test
+  @Test
   public void testPortLevelAttributes() {
     String appName = "app1";
     final GenericTestOperator gt1 = new GenericTestOperator();

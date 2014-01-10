@@ -393,7 +393,6 @@ public class LogicalPlan implements Serializable, DAG
    */
   public final class OperatorMeta implements DAG.OperatorMeta, Serializable
   {
-    private static final long serialVersionUID = 1L;
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap attributes = new DefaultAttributeMap();
@@ -549,6 +548,9 @@ public class LogicalPlan implements Serializable, DAG
               append("operator", this.getOperator().getClass().getSimpleName()).
               toString();
     }
+
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201401091635L;
   }
 
   @Override
