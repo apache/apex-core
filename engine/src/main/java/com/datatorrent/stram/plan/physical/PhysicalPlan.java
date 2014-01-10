@@ -652,6 +652,8 @@ public class PhysicalPlan implements Serializable
     Set<PTContainer> releaseContainers = Sets.newHashSet();
     assignContainers(newContainers, releaseContainers);
     this.undeployOpers.removeAll(newOpers.keySet());
+    //make sure all the new operators are included in deploy operator list
+    this.deployOpers.addAll(this.newOpers.keySet());
     // include downstream dependencies of affected operators into redeploy
     Set<PTOperator> deployOperators = this.getDependents(this.deployOpers);
     ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
@@ -837,7 +839,6 @@ public class PhysicalPlan implements Serializable
     }
     nodeDecl.addPartition(oper);
     this.newOpers.put(oper, partition != null ? partition.getPartitionedInstance() : nodeDecl.logicalOperator.getOperator());
-    this.deployOpers.add(oper);
 
     //
     // update locality
