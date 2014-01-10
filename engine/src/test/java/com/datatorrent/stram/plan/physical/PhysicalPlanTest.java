@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -891,26 +893,75 @@ public class PhysicalPlanTest {
     }
 
     // Test Dynamic change
-    PTOperator o2p1 = plan.getOperators(o2Meta).get(0);
-    Assert.assertEquals("stats handlers " + o2p1, 1, o2p1.statsListeners.size());
-    StatsListener sl = o2p1.statsListeners.get(0);
-    Assert.assertTrue("stats handlers " + o2p1.statsListeners, sl instanceof PartitioningTest.PartitionLoadWatch);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o2p1.getId(), 1);
-
-    plan.onStatusUpdate(o2p1);
-    Assert.assertEquals("repartition event", 1, ctx.events.size());
-    ctx.backupRequests = 0;
-    ctx.events.remove(0).run();
-
-    Assert.assertEquals("partitions after scale up " + o2Meta, 4, plan.getOperators(o2Meta).size());
-    for (PTOperator o : plan.getOperators(o2Meta)) {
-      Assert.assertNotNull(o.container);
-      PTOperator unifier = o.upstreamMerge.values().iterator().next();
-      Assert.assertNotNull(unifier.container);
-      Assert.assertSame("unifier in same container", o.container, unifier.container);
-      Assert.assertEquals("container operators " + o.container, Sets.newHashSet(o.container.getOperators()), Sets.newHashSet(o, unifier));
+    // for M x N partition
+    // scale down N from 3 to 2 and then from 2 to 1
+    for (int i = 0; i < 2; i++) {
+      List<PTOperator> ptos =  plan.getOperators(o2Meta);
+      Set<PTOperator> expUndeploy = Sets.newHashSet(ptos);
+      for (PTOperator ptOperator : ptos) {
+        expUndeploy.addAll(ptOperator.upstreamMerge.values());
+        PartitioningTest.PartitionLoadWatch.loadIndicators.put(ptOperator.getId(), -1);
+        plan.onStatusUpdate(ptOperator);
+      }
+      ctx.backupRequests = 0;
+      ctx.events.remove(0).run();
+      Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(o2Meta));
+      // Either unifiers for each partition or single unifier for single partition is expected to be deployed 
+      expDeploy.addAll(plan.getMergeOperators(o1Meta));
+      for (PTOperator ptOperator : plan.getOperators(o2Meta)) {
+        expDeploy.addAll(ptOperator.upstreamMerge.values());
+      }
+      // from 3 to 2 the containers decrease from 5 to 4, but from 2 to 1 the container remains same because single unifier are not inline with single operator partition
+      Assert.assertEquals("number of containers", 4, plan.getContainers().size());
+      Assert.assertEquals("number of operators", 2-i, plan.getOperators(o2Meta).size());
+      Assert.assertEquals("undeployed operators " + ctx.undeploy, expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deployed operators " + ctx.deploy, expDeploy, ctx.deploy);
     }
-    Assert.assertEquals("number of containers", 6, plan.getContainers().size());
+
+ 
+    
+    // scale up N from 1 to 2 and then from 2 to 3 
+    for (int i = 0; i < 2; i++) {
+      
+      List<PTOperator> unChangedOps = new LinkedList<PTOperator>(plan.getOperators(o2Meta));
+      PTOperator o2p1 = unChangedOps.remove(0);
+      Set<PTOperator> expUndeploy = Sets.newHashSet(o2p1);
+      // Either single unifier for one partition or merged unifiers for each partition is expected to be undeployed 
+      expUndeploy.addAll(plan.getMergeOperators(o1Meta));
+      expUndeploy.addAll(o2p1.upstreamMerge.values());
+      List<PTOperator> nOps = new LinkedList<PTOperator>(); 
+      for (Iterator<PTOperator> iterator = unChangedOps.iterator(); iterator.hasNext();) {
+        PTOperator ptOperator = iterator.next();
+        nOps.addAll(ptOperator.upstreamMerge.values());
+      }
+      unChangedOps.addAll(nOps);
+      
+      
+      PartitioningTest.PartitionLoadWatch.loadIndicators.put(o2p1.getId(), 1);
+
+      plan.onStatusUpdate(o2p1);
+      Assert.assertEquals("repartition event", 1, ctx.events.size());
+      ctx.backupRequests = 0;
+      ctx.events.remove(0).run();
+
+      Assert.assertEquals("partitions after scale up " + o2Meta, 2 + i, plan.getOperators(o2Meta).size());
+      for (PTOperator o : plan.getOperators(o2Meta)) {
+        Assert.assertNotNull(o.container);
+        PTOperator unifier = o.upstreamMerge.values().iterator().next();
+        Assert.assertNotNull(unifier.container);
+        Assert.assertSame("unifier in same container", o.container, unifier.container);
+        Assert.assertEquals("container operators " + o.container, Sets.newHashSet(o.container.getOperators()), Sets.newHashSet(o, unifier));
+      }
+      Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(o2Meta));
+      for (PTOperator ptOperator : plan.getOperators(o2Meta)) {
+        expDeploy.addAll(ptOperator.upstreamMerge.values());
+      }
+      expDeploy.removeAll(unChangedOps);
+      Assert.assertEquals("number of containers", 4 + i , plan.getContainers().size());
+      Assert.assertEquals("undeployed operators" + ctx.undeploy, expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deployed operators" + ctx.deploy, expDeploy, ctx.deploy);
+      
+    }
 
   }
 

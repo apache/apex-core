@@ -168,10 +168,6 @@ public class StreamMapping implements java.io.Serializable
         plan.removePTOperator(oper);
       }
 
-      if (finalUnifier != null && upstream.size() == 1) {
-        plan.removePTOperator(finalUnifier);
-        finalUnifier = null;
-      }
 
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
@@ -211,6 +207,15 @@ public class StreamMapping implements java.io.Serializable
           // no partitioning
           setInput(doperEntry.first, doperEntry.second, upstream.get(0).source, pks);
         }
+      }
+      
+      // Remove the unattached final unifier
+      // Unattached final unifier is from 
+      // 1) Upstream operator partitions are scaled down to one. (no unifier needed)
+      // 2) Downstream operators partitions are scaled up from one to multiple. (replaced by merged unifier)
+      if (finalUnifier != null && finalUnifier.inputs.isEmpty()) {
+          plan.removePTOperator(finalUnifier);
+          finalUnifier = null;
       }
 
     }
