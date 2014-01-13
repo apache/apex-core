@@ -1062,6 +1062,11 @@ public class DTCli
     reader.setBellEnabled(false);
     try {
       processSourceFile(System.getProperty("user.home") + "/.stram/clirc_system", reader);
+    }
+    catch (Exception ex) {
+      // ignore
+    }
+    try {
       processSourceFile(System.getProperty("user.home") + "/.stram/clirc", reader);
     }
     catch (Exception ex) {
