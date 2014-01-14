@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
@@ -15,6 +16,7 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageDouble;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
@@ -44,18 +46,20 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   }
 
   private final int operatorId;
+  public final StatsRevisions statsRevs = new StatsRevisions();
   public OperatorHeartbeat lastHeartbeat;
-  public long totalTuplesProcessed;
-  public long totalTuplesEmitted;
-  public long currentWindowId;
-  public long tuplesProcessedPSMA;
-  public long tuplesEmittedPSMA;
+  public final VersionedLong totalTuplesProcessed = statsRevs.new VersionedLong();
+  public final VersionedLong totalTuplesEmitted = statsRevs.new VersionedLong();
+  public final VersionedLong currentWindowId = statsRevs.new VersionedLong();
+  public final VersionedLong tuplesProcessedPSMA = statsRevs.new VersionedLong();
+  public final VersionedLong tuplesEmittedPSMA = statsRevs.new VersionedLong();
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
   public final MovingAverageDouble cpuPercentageMA;
   public final MovingAverageLong latencyMA;
   public Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
   public Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
+  public ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
 
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
@@ -95,19 +99,19 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   @Override
   public long getCurrentWindowId()
   {
-    return currentWindowId;
+    return currentWindowId.get();
   }
 
   @Override
   public long getTuplesProcessedPSMA()
   {
-    return tuplesProcessedPSMA;
+    return tuplesProcessedPSMA.get();
   }
 
   @Override
   public long getTuplesEmittedPSMA()
   {
-    return tuplesEmittedPSMA;
+    return tuplesEmittedPSMA.get();
   }
 
   @Override

@@ -53,6 +53,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
+import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
@@ -467,6 +468,15 @@ public class StreamingContainerManager implements PlanContext
   public int processEvents()
   {
     for (PTOperator o: reportStats.keySet()) {
+      List<OperatorStats> stats = o.stats.listenerStats.poll();
+      if (!o.stats.listenerStats.isEmpty()) {
+        // append into single list
+        List<OperatorStats> moreStats;
+        while ((moreStats = o.stats.listenerStats.poll()) != null) {
+          stats.addAll(moreStats);
+        }
+      }
+      o.stats.lastWindowedStats = stats;
       plan.onStatusUpdate(o);
       reportStats.remove(o);
     }
@@ -830,6 +840,7 @@ public class StreamingContainerManager implements PlanContext
         oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
 
         final OperatorStatus status = oper.stats;
+        status.statsRevs.checkout();
 
         for (Map.Entry<String, PortStatus> entry : status.inputPortStatusList.entrySet()) {
           entry.getValue().recordingStartTime = Stats.INVALID_TIME_MILLIS;
@@ -937,7 +948,7 @@ public class StreamingContainerManager implements PlanContext
             endWindowStats.emitTimestamp = maxDequeueTimestamp;
           }
 
-          status.currentWindowId = stats.windowId;
+          status.currentWindowId.set(stats.windowId);
           totalCpuTimeUsed += stats.cpuTimeUsed;
           totalElapsedMillis += elapsedMillis;
           statCount++;
@@ -950,8 +961,8 @@ public class StreamingContainerManager implements PlanContext
           endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
         }
 
-        status.totalTuplesProcessed += tuplesProcessed;
-        status.totalTuplesEmitted += tuplesEmitted;
+        status.totalTuplesProcessed.add(tuplesProcessed);
+        status.totalTuplesEmitted.add(tuplesEmitted);
         if (elapsedMillis > 0) {
           long tuplesProcessedPSMA = 0;
           long tuplesEmittedPSMA = 0;
@@ -966,13 +977,16 @@ public class StreamingContainerManager implements PlanContext
           for (PortStatus ps: status.outputPortStatusList.values()) {
             tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
           }
-          status.tuplesProcessedPSMA = tuplesProcessedPSMA;
-          status.tuplesEmittedPSMA = tuplesEmittedPSMA;
-          status.lastWindowedStats = statsList;
-          if (oper.statsListeners != null) {
-            this.reportStats.put(oper, oper);
-          }
+          status.tuplesProcessedPSMA.set(tuplesProcessedPSMA);
+          status.tuplesEmittedPSMA.set(tuplesEmittedPSMA);
         }
+        if (oper.statsListeners != null) {
+          status.listenerStats.add(statsList);
+          this.reportStats.put(oper, oper);
+        } else {
+          status.lastWindowedStats = statsList;
+        }
+        status.statsRevs.commit();
       }
     }
 
@@ -1423,15 +1437,15 @@ public class StreamingContainerManager implements PlanContext
     if (operator.stats != null) {
       OperatorStatus os = operator.stats;
       ni.recordingStartTime = os.recordingStartTime;
-      ni.totalTuplesProcessed = os.totalTuplesProcessed;
-      ni.totalTuplesEmitted = os.totalTuplesEmitted;
-      ni.tuplesProcessedPSMA = os.tuplesProcessedPSMA;
-      ni.tuplesEmittedPSMA = os.tuplesEmittedPSMA;
+      ni.totalTuplesProcessed = os.totalTuplesProcessed.get();
+      ni.totalTuplesEmitted = os.totalTuplesEmitted.get();
+      ni.tuplesProcessedPSMA = os.tuplesProcessedPSMA.get();
+      ni.tuplesEmittedPSMA = os.tuplesEmittedPSMA.get();
       ni.cpuPercentageMA = os.cpuPercentageMA.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = operator.failureCount;
       ni.recoveryWindowId = toWsWindowId(operator.getRecoveryCheckpoint());
-      ni.currentWindowId = toWsWindowId(os.currentWindowId);
+      ni.currentWindowId = toWsWindowId(os.currentWindowId.get());
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
