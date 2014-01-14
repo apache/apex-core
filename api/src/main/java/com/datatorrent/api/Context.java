@@ -21,7 +21,6 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
-import java.util.ArrayList;
 import java.util.Collection;
 
 /**
