@@ -12,6 +12,8 @@ import java.util.List;
 
 /**
  * Created by pramod on 12/19/13.
+ *
+ * @since 0.9.2
  */
 public class HeaderClientFilter extends ClientFilter
 {

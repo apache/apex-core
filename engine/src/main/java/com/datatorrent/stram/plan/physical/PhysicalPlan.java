@@ -120,23 +120,6 @@ public class PhysicalPlan implements Serializable
 
   }
 
-  /**
-   * Determine operators that should be deployed into the execution environment.
-   * Operators can be deployed once all containers are running and any pending
-   * undeploy operations are complete.
-   * @param c
-   * @return
-   */
-  public Set<PTOperator> getOperatorsForDeploy(PTContainer c) {
-    for (PTContainer otherContainer : this.containers) {
-      if (otherContainer != c && (otherContainer.state != PTContainer.State.ACTIVE || !otherContainer.pendingUndeploy.isEmpty())) {
-        LOG.debug("{}({}) unsatisfied dependency: {}({}) undeploy: {}", new Object[] {c.containerId, c.state, otherContainer.containerId, otherContainer.state, otherContainer.pendingUndeploy.size()});
-        return Collections.emptySet();
-      }
-    }
-    return c.pendingDeploy;
-  }
-
   private final AtomicInteger idSequence = new AtomicInteger();
   final AtomicInteger containerSeq = new AtomicInteger();
   private LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
@@ -399,6 +382,7 @@ public class PhysicalPlan implements Serializable
     container.operators.add(pOperator);
     if (!pOperator.upstreamMerge.isEmpty()) {
       for (Map.Entry<InputPortMeta, PTOperator> mEntry : pOperator.upstreamMerge.entrySet()) {
+        assert (mEntry.getValue().container == null) : "Container already assigned for " + mEntry.getValue();
         mEntry.getValue().container = container;
         container.operators.add(mEntry.getValue());
       }
@@ -570,7 +554,7 @@ public class PhysicalPlan implements Serializable
     // remove deprecated partitions from plan
     for (PTOperator p : currentPartitionMap.values()) {
       copyPartitions.remove(p);
-      removePartition(p, currentMapping.parallelPartitions);
+      removePartition(p, currentMapping);
       operatorIdToPartition.remove(p.getId());
     }
     currentMapping.partitions = copyPartitions;
@@ -668,6 +652,8 @@ public class PhysicalPlan implements Serializable
     Set<PTContainer> releaseContainers = Sets.newHashSet();
     assignContainers(newContainers, releaseContainers);
     this.undeployOpers.removeAll(newOpers.keySet());
+    //make sure all the new operators are included in deploy operator list
+    this.deployOpers.addAll(this.newOpers.keySet());
     // include downstream dependencies of affected operators into redeploy
     Set<PTOperator> deployOperators = this.getDependents(this.deployOpers);
     ctx.deploy(releaseContainers, this.undeployOpers, newContainers, deployOperators);
@@ -676,13 +662,23 @@ public class PhysicalPlan implements Serializable
     this.undeployOpers.clear();
   }
 
-  private void assignContainers(Set<PTContainer> newContainers, Set<PTContainer> releaseContainers) {
-    // assign containers to new operators
+  private void assignContainers(Set<PTContainer> newContainers, Set<PTContainer> releaseContainers)
+  {
+    Set<PTOperator> mxnUnifiers = Sets.newHashSet();
+    for (PTOperator o  : this.newOpers.keySet()) {
+      mxnUnifiers.addAll(o.upstreamMerge.values());
+    }
+
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
 
       PTOperator oper = operEntry.getKey();
       long activationWindowId = getActivationWindowId(operEntry.getKey());
       initCheckpoint(oper, operEntry.getValue(), activationWindowId);
+
+      if (mxnUnifiers.contains(operEntry.getKey())) {
+        // MxN unifiers are assigned with the downstream operator
+        continue;
+      }
 
       PTContainer newContainer = null;
       // check for existing inline set
@@ -693,24 +689,19 @@ public class PhysicalPlan implements Serializable
         }
       }
 
-      if (newContainer != null) {
-        setContainer(oper, newContainer);
-        continue;
-      }
-
-      // find container
-      PTContainer c = null;
-      if (c == null) {
-        c = findContainer(oper);
-        if (c == null) {
+      if (newContainer == null) {
+        // find container
+        newContainer = findContainer(oper);
+        if (newContainer == null) {
           // get new container
-          LOG.debug("New container for partition: " + oper);
-          c = new PTContainer(this);
-          containers.add(c);
-          newContainers.add(c);
+          LOG.debug("New container for: " + oper);
+          newContainer = new PTContainer(this);
+          containers.add(newContainer);
+          newContainers.add(newContainer);
         }
       }
-      setContainer(oper, c);
+
+      setContainer(oper, newContainer);
     }
 
     // release containers that are no longer used
@@ -783,13 +774,29 @@ public class PhysicalPlan implements Serializable
   }
 
   /**
+   * Remove a partition that was reported as idle by the execution layer.
+   * Since the end stream tuple is propagated to the downstream operators,
+   * there is no need to undeploy/redeploy them as part of this operation.
+   * @param p
+   */
+  public void removeIdlePartition(PTOperator p)
+  {
+    PMapping currentMapping = this.logicalToPTOperator.get(p.logicalNode);
+    List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
+    copyPartitions.remove(p);
+    removePartition(p, currentMapping);
+    currentMapping.partitions = copyPartitions;
+    deployChanges();
+  }
+
+  /**
    * Remove the given partition with any associated parallel partitions and
    * per-partition outputStreams.
    *
    * @param oper
    * @return
    */
-  private void removePartition(PTOperator oper, Set<LogicalPlan.OperatorMeta> parallelPartitions) {
+  private void removePartition(PTOperator oper, PMapping operatorMapping) {
 
     // remove any parallel partition
     for (PTOutput out : oper.outputs) {
@@ -797,9 +804,9 @@ public class PhysicalPlan implements Serializable
       for (PTInput in : Lists.newArrayList(out.sinks)) {
         for (LogicalPlan.InputPortMeta im : in.logicalStream.getSinks()) {
           PMapping m = this.logicalToPTOperator.get(im.getOperatorWrapper());
-          if (m.parallelPartitions == parallelPartitions) {
+          if (m.parallelPartitions == operatorMapping.parallelPartitions) {
             // associated operator parallel partitioned
-            removePartition(in.target, parallelPartitions);
+            removePartition(in.target, operatorMapping);
             m.partitions.remove(in.target);
           }
         }
@@ -848,7 +855,6 @@ public class PhysicalPlan implements Serializable
     }
     nodeDecl.addPartition(oper);
     this.newOpers.put(oper, partition != null ? partition.getPartitionedInstance() : nodeDecl.logicalOperator.getOperator());
-    this.deployOpers.add(oper);
 
     //
     // update locality
@@ -1183,7 +1189,7 @@ public class PhysicalPlan implements Serializable
     }
 
     for (PTOperator oper : opers.partitions) {
-      removePartition(oper, opers.parallelPartitions);
+      removePartition(oper, opers);
     }
 
     for (StreamMapping ug : opers.outputStreams.values()) {

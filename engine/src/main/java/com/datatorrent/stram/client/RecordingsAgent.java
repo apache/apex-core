@@ -209,10 +209,14 @@ public final class RecordingsAgent extends FSPartFileAgent
   private Set<String> getRunningContainerIds(String appId)
   {
     Set<String> result = new HashSet<String>();
-    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + "/ws/v1/stram/containers";
     try {
       WebServicesClient webServicesClient = new WebServicesClient();
-      JSONObject response = webServicesClient.process(url, JSONObject.class, new WebServicesClient.GetWebServicesHandler<JSONObject>());
+      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appId);
+      if (wr == null) {
+        return result;
+      }
+      WebResource path = wr.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
+      JSONObject response = new JSONObject(webServicesClient.process(path, String.class, new WebServicesClient.GetWebServicesHandler<String>()));
       Object containersObj = response.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
@@ -231,7 +235,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
     }
     catch (Exception ex) {
-      LOG.warn("Error getting running containers for {}. Assuming no containers are running.", appId);
+      LOG.warn("Error {} getting running containers for {}. Assuming no containers are running.", ex.getMessage(), appId);
     }
     return result;
   }
@@ -325,6 +329,9 @@ public final class RecordingsAgent extends FSPartFileAgent
     RecordingInfo info = new RecordingInfo();
     info.appId = appId;
     info.operatorId = opId;
+
+    BufferedReader br = null;
+    IndexFileBufferedReader ifbr = null;
     try {
       String dir = getRecordingDirectory(appId, opId, startTime);
       if (dir == null) {
@@ -341,8 +348,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
       // META file processing
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.META_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.2")) {
@@ -382,8 +388,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
       long prevHiWindowId = -1;
       RecordingsIndexLine indexLine;
@@ -417,7 +422,6 @@ public final class RecordingsAgent extends FSPartFileAgent
           }
         }
       }
-      in.close();
       if (!info.windowIdRanges.isEmpty()) {
         TupleRecorder.Range range = info.windowIdRanges.get(info.windowIdRanges.size() - 1);
         range.high = prevHiWindowId;
@@ -426,6 +430,18 @@ public final class RecordingsAgent extends FSPartFileAgent
     catch (Exception ex) {
       LOG.warn("Got exception when getting recording info", ex);
       return null;
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+        if (br != null) {
+          br.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
 
     return info;
@@ -459,10 +475,9 @@ public final class RecordingsAgent extends FSPartFileAgent
     if (dir == null) {
       return null;
     }
-
+    IndexFileBufferedReader ifbr = null;
     try {
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       long currentOffset = 0;
       boolean readPartFile = false;
       if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
@@ -520,69 +535,73 @@ public final class RecordingsAgent extends FSPartFileAgent
         }
 
         if (readPartFile) {
-          FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
-          String partLine;
-          long tmpOffset = currentOffset;
-          // advance until offset is reached
-          while ((partLine = partBr.readLine()) != null) {
-            int partCursor = 2;
-            if (partLine.startsWith("B:")) {
-              int partCursor2 = partLine.indexOf(':', partCursor);
-              currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
-              partCursor = partCursor2 + 1;
-              currentWindowLow = Long.valueOf(partLine.substring(partCursor));
-              if (limit != numRemainingTuples) {
-                WindowTuplesInfo wtinfo;
-                wtinfo = new WindowTuplesInfo();
-                wtinfo.windowId = currentWindowLow;
-                info.tuples.add(wtinfo);
-              }
-            }
-            else if (partLine.startsWith("T:")) {
-              int partCursor2 = partLine.indexOf(':', partCursor);
-              currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
-              partCursor = partCursor2 + 1;
-              partCursor2 = partLine.indexOf(':', partCursor);
-              String port = partLine.substring(partCursor, partCursor2);
-              boolean portMatch = (ports == null) || (ports.length == 0) || Arrays.asList(ports).contains(port);
-              partCursor = partCursor2 + 1;
-
-              if (portMatch
-                      && ((queryType == QueryType.WINDOW && currentWindowLow >= low)
-                      || (queryType == QueryType.OFFSET && tmpOffset >= low)
-                      || (queryType == QueryType.TIME && currentTimestamp >= low))) {
-
-                if (numRemainingTuples > 0) {
-                  if (info.startOffset == -1) {
-                    info.startOffset = tmpOffset;
-                  }
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+          try {
+            String partLine;
+            long tmpOffset = currentOffset;
+            // advance until offset is reached
+            while ((partLine = partBr.readLine()) != null) {
+              int partCursor = 2;
+              if (partLine.startsWith("B:")) {
+                int partCursor2 = partLine.indexOf(':', partCursor);
+                currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
+                partCursor = partCursor2 + 1;
+                currentWindowLow = Long.valueOf(partLine.substring(partCursor));
+                if (limit != numRemainingTuples) {
                   WindowTuplesInfo wtinfo;
-                  if (info.tuples.isEmpty() || info.tuples.get(info.tuples.size() - 1).windowId != currentWindowLow) {
-                    wtinfo = new WindowTuplesInfo();
-                    wtinfo.windowId = currentWindowLow;
-                    info.tuples.add(wtinfo);
+                  wtinfo = new WindowTuplesInfo();
+                  wtinfo.windowId = currentWindowLow;
+                  info.tuples.add(wtinfo);
+                }
+              }
+              else if (partLine.startsWith("T:")) {
+                int partCursor2 = partLine.indexOf(':', partCursor);
+                currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
+                partCursor = partCursor2 + 1;
+                partCursor2 = partLine.indexOf(':', partCursor);
+                String port = partLine.substring(partCursor, partCursor2);
+                boolean portMatch = (ports == null) || (ports.length == 0) || Arrays.asList(ports).contains(port);
+                partCursor = partCursor2 + 1;
+
+                if (portMatch
+                        && ((queryType == QueryType.WINDOW && currentWindowLow >= low)
+                        || (queryType == QueryType.OFFSET && tmpOffset >= low)
+                        || (queryType == QueryType.TIME && currentTimestamp >= low))) {
+
+                  if (numRemainingTuples > 0) {
+                    if (info.startOffset == -1) {
+                      info.startOffset = tmpOffset;
+                    }
+                    WindowTuplesInfo wtinfo;
+                    if (info.tuples.isEmpty() || info.tuples.get(info.tuples.size() - 1).windowId != currentWindowLow) {
+                      wtinfo = new WindowTuplesInfo();
+                      wtinfo.windowId = currentWindowLow;
+                      info.tuples.add(wtinfo);
+                    }
+                    else {
+                      wtinfo = info.tuples.get(info.tuples.size() - 1);
+                    }
+
+                    partCursor2 = partLine.indexOf(':', partCursor);
+                    int size = Integer.valueOf(partLine.substring(partCursor, partCursor2));
+                    partCursor = partCursor2 + 1;
+                    //partCursor2 = partCursor + size;
+                    String tupleValue = partLine.substring(partCursor);
+                    wtinfo.tuples.add(new TupleInfo(port, tupleValue));
+                    numRemainingTuples--;
                   }
                   else {
-                    wtinfo = info.tuples.get(info.tuples.size() - 1);
+                    return info;
                   }
-
-                  partCursor2 = partLine.indexOf(':', partCursor);
-                  int size = Integer.valueOf(partLine.substring(partCursor, partCursor2));
-                  partCursor = partCursor2 + 1;
-                  //partCursor2 = partCursor + size;
-                  String tupleValue = partLine.substring(partCursor);
-                  wtinfo.tuples.add(new TupleInfo(port, tupleValue));
-                  numRemainingTuples--;
                 }
-                else {
-                  return info;
+                if (portMatch) {
+                  tmpOffset++;
                 }
-              }
-              if (portMatch) {
-                tmpOffset++;
               }
             }
+          }
+          finally {
+            partBr.close();
           }
         }
         currentOffset += numTuples;
@@ -594,6 +613,15 @@ public final class RecordingsAgent extends FSPartFileAgent
     catch (Exception ex) {
       LOG.warn("Got exception when getting tuples info", ex);
       return null;
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
 
     return info;

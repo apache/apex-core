@@ -136,7 +136,7 @@ public class StramRecoveryTest
     Assert.assertNotNull(sca);
 
     Assert.assertEquals(PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
-    Assert.assertEquals(PTOperator.State.INACTIVE, o1p1.getState());
+    Assert.assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
     ContainerStats cstats = new ContainerStats(containerId);
     ContainerHeartbeat hb = new ContainerHeartbeat();
@@ -216,7 +216,7 @@ public class StramRecoveryTest
     PhysicalPlan plan = scm.getPhysicalPlan();
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
-    Assert.assertEquals(PTOperator.State.INACTIVE, o1p1.getState());
+    Assert.assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream() {
       @Override
@@ -236,7 +236,7 @@ public class StramRecoveryTest
     j.write(op1);
     Assert.assertEquals("flush count", 1, flushCount.intValue());
 
-    Assert.assertEquals(PTOperator.State.INACTIVE, o1p1.getState());
+    Assert.assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
     bos.close();
 
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());

@@ -8,8 +8,6 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
@@ -23,11 +21,9 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.api.OperatorDeployInfo;
-import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorContext;
@@ -72,11 +68,15 @@ public class StramChildAgent {
   }
 
   boolean shutdownRequested = false;
+
+  Set<PTOperator> deployOpers = Sets.newHashSet();
+  Set<Integer> undeployOpers = Sets.newHashSet();
+  int deployCnt = 0;
+
   long lastHeartbeatMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
   final StreamingContainerContext initCtx;
-  Runnable onAck = null;
   String jvmName;
   // commented out because free memory is misleading because of GC. may want to revisit this.
   //int memoryMBFree;
@@ -89,14 +89,12 @@ public class StramChildAgent {
   }
 
   public boolean hasPendingWork() {
-    return this.onAck != null || !container.getPendingDeploy().isEmpty() || !container.getPendingUndeploy().isEmpty();
-  }
-
-  private void ackPendingRequest() {
-    if (onAck != null) {
-      onAck.run();
-      onAck = null;
+    for (PTOperator oper : container.getOperators()) {
+      if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
+        return true;
+      }
     }
+    return false;
   }
 
   public void addOperatorRequest(StramToNodeRequest r) {
@@ -109,63 +107,12 @@ public class StramChildAgent {
     return this.operatorRequests;
   }
 
-  public ContainerHeartbeatResponse pollRequest() {
-    ackPendingRequest();
-
-    if (!this.container.getPendingUndeploy().isEmpty()) {
-      ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-      final Set<PTOperator> toUndeploy = Sets.newHashSet(this.container.getPendingUndeploy());
-      List<OperatorDeployInfo> nodeList = getUndeployInfoList(toUndeploy);
-      rsp.undeployRequest = nodeList;
-      rsp.hasPendingRequests = (!this.container.getPendingDeploy().isEmpty());
-      this.onAck = new Runnable() {
-        @Override
-        public void run() {
-          // remove operators from undeploy list to not request it again
-          container.getPendingUndeploy().removeAll(toUndeploy);
-          for (PTOperator operator : toUndeploy) {
-            operator.setState(PTOperator.State.INACTIVE);
-
-            // record operator stop event
-            StramChildAgent.this.dnmgr.recordEventAsync(new StramEvent.StopOperatorEvent(operator.getName(), operator.getId(), operator.getContainer().getExternalId()));
-          }
-          LOG.debug("{} undeploy complete: {} deploy: {}", new Object[] {container.getExternalId(), toUndeploy, container.getPendingDeploy()});
-        }
-      };
-      return rsp;
-    }
-
-    if (!this.container.getPendingDeploy().isEmpty()) {
-      Set<PTOperator> deployOperators = this.container.getPlan().getOperatorsForDeploy(this.container);
-      LOG.debug("container {} deployable operators: {}", container.getExternalId(), deployOperators);
-      ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-      List<OperatorDeployInfo> deployList = getDeployInfoList(deployOperators);
-      if (deployList != null && !deployList.isEmpty()) {
-        rsp.deployRequest = deployList;
-        rsp.nodeRequests = Lists.newArrayList();
-        for (PTOperator o : deployOperators) {
-          rsp.nodeRequests.addAll(o.deployRequests);
-        }
-      }
-      rsp.hasPendingRequests = false;
-      return rsp;
-    }
-
-    return null;
-  }
-
-  // this method is only used for testing
-  @VisibleForTesting
-  public List<OperatorDeployInfo> getDeployInfo() {
-    return getDeployInfoList(container.getPendingDeploy());
-  }
-
   /**
    * Create deploy info for StramChild.
    * @param operators
    * @return StreamingContainerContext
    */
-  private List<OperatorDeployInfo> getDeployInfoList(Set<PTOperator> operators) {
+  public List<OperatorDeployInfo> getDeployInfoList(Collection<PTOperator> operators) {
 
     if (container.bufferServerAddress == null) {
       throw new AssertionError("No buffer server address assigned");
@@ -175,11 +122,10 @@ public class StramChildAgent {
     Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
     for (PTOperator oper : operators) {
-      if (oper.getState() != State.NEW && oper.getState() != State.INACTIVE) {
+      if (oper.getState() != State.PENDING_DEPLOY) {
         LOG.debug("Skipping deploy for operator {} state {}", oper, oper.getState());
         continue;
       }
-      oper.setState(State.PENDING_DEPLOY);
       OperatorDeployInfo ndi = createOperatorDeployInfo(oper);
 
       nodes.put(ndi, oper);
@@ -277,30 +223,6 @@ public class StramChildAgent {
     }
 
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
-  }
-
-  /**
-   * Create operator undeploy request for StramChild. Since the physical plan
-   * could have been modified (dynamic partitioning etc.), stream information
-   * cannot be provided. StramChild keeps track of connected streams and removes
-   * them along with the operator instance.
-   *
-   * @param operators
-   * @return
-   */
-  private List<OperatorDeployInfo> getUndeployInfoList(Set<PTOperator> operators) {
-    List<OperatorDeployInfo> undeployList = new ArrayList<OperatorDeployInfo>(operators.size());
-    for (PTOperator oper : operators) {
-      // skip unless active, can only be determined in the heartbeat thread
-      if (oper.getState() != PTOperator.State.ACTIVE) {
-        LOG.debug("Skipping undeploy request for {} {}", oper, oper.getState());
-        continue;
-      }
-      oper.setState(PTOperator.State.PENDING_UNDEPLOY);
-      OperatorDeployInfo ndi = createOperatorDeployInfo(oper);
-      undeployList.add(ndi);
-    }
-    return undeployList;
   }
 
   /**

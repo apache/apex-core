@@ -7,6 +7,7 @@ package com.datatorrent.stram;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 import java.net.InetSocketAddress;
@@ -42,6 +43,9 @@ public class AlertManagerTest
       public void run()
       {
         while (true) {
+          for (PTOperator o : dnm.getPhysicalPlan().getAllOperators().values()) {
+            o.setState(PTOperator.State.ACTIVE);
+          }
           dnm.processEvents();
           try {
             Thread.sleep(500);

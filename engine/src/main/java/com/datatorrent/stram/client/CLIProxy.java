@@ -13,8 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>CLIProxy class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.2
  */
 public class CLIProxy
 {
@@ -52,11 +54,16 @@ public class CLIProxy
         InputStreamReader isr = new InputStreamReader(is);
         BufferedReader br = new BufferedReader(isr);
         String line;
-        while ((line = br.readLine()) != null) {
-          if (!line.contains(" DEBUG ")) {
-            content.append(line);
-            content.append("\n");
+        try {
+          while ((line = br.readLine()) != null) {
+            if (!line.contains(" DEBUG ")) {
+              content.append(line);
+              content.append("\n");
+            }
           }
+        }
+        finally {
+          br.close();
         }
       }
       catch (IOException ex) {

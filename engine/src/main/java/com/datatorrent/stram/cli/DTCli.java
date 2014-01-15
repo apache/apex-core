@@ -923,16 +923,19 @@ public class DTCli
   {
     boolean consolePresentSaved = consolePresent;
     consolePresent = false;
+    FileLineReader fr = null;
+    String line;
     try {
-      FileLineReader fr = new FileLineReader(fileName);
-      String line;
+      fr = new FileLineReader(fileName);
       while ((line = fr.readLine("")) != null) {
         processLine(line, fr, true);
       }
-      fr.close();
     }
     finally {
       consolePresent = consolePresentSaved;
+      if (fr != null) {
+        fr.close();
+      }
     }
   }
 
@@ -1059,6 +1062,11 @@ public class DTCli
     reader.setBellEnabled(false);
     try {
       processSourceFile(System.getProperty("user.home") + "/.stram/clirc_system", reader);
+    }
+    catch (Exception ex) {
+      // ignore
+    }
+    try {
       processSourceFile(System.getProperty("user.home") + "/.stram/clirc", reader);
     }
     catch (Exception ex) {
@@ -1066,7 +1074,7 @@ public class DTCli
     }
     if (consolePresent) {
       printWelcomeMessage();
-      printLicenseStatus();
+      //printLicenseStatus();
       setupCompleter(reader);
       setupHistory(reader);
     }
@@ -2239,12 +2247,20 @@ public class DTCli
         }
         for (int i = 0; i < arr.length(); i++) {
           JSONObject oper = arr.getJSONObject(i);
-          @SuppressWarnings("unchecked")
-          Iterator<String> keys = oper.keys();
-          while (keys.hasNext()) {
-            if (oper.get(keys.next()).toString().matches("(?i).*" + args[1] + ".*")) {
+          if (StringUtils.isNumeric(args[1])) {
+            if (oper.getString("id").equals(args[1])) {
               matches.put(oper);
               break;
+            }
+          }
+          else {
+            @SuppressWarnings("unchecked")
+            Iterator<String> keys = oper.keys();
+            while (keys.hasNext()) {
+              if (oper.get(keys.next()).toString().matches("(?i).*" + args[1] + ".*")) {
+                matches.put(oper);
+                break;
+              }
             }
           }
         }

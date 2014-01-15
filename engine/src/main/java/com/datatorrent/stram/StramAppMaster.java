@@ -184,8 +184,9 @@ public class StramAppMaster extends CompositeService
     {
       long min = Long.MAX_VALUE;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
-        if (min > entry.getValue().stats.currentWindowId) {
-          min = entry.getValue().stats.currentWindowId;
+        long windowId = entry.getValue().stats.currentWindowId.get();
+        if (min > windowId) {
+          min = windowId;
         }
       }
       return StreamingContainerManager.toWsWindowId(min == Long.MAX_VALUE ? 0 : min);
@@ -202,7 +203,7 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
-        result += entry.getValue().stats.tuplesProcessedPSMA;
+        result += entry.getValue().stats.tuplesProcessedPSMA.get();
       }
       return result;
     }
@@ -212,7 +213,7 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
-        result += entry.getValue().stats.totalTuplesProcessed;
+        result += entry.getValue().stats.totalTuplesProcessed.get();
       }
       return result;
     }
@@ -222,7 +223,7 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
-        result += entry.getValue().stats.tuplesEmittedPSMA;
+        result += entry.getValue().stats.tuplesEmittedPSMA.get();
       }
       return result;
     }
@@ -232,7 +233,7 @@ public class StramAppMaster extends CompositeService
     {
       long result = 0;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
-        result += entry.getValue().stats.totalTuplesEmitted;
+        result += entry.getValue().stats.totalTuplesEmitted.get();
       }
       return result;
     }
@@ -461,11 +462,15 @@ public class StramAppMaster extends CompositeService
       BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
       String line;
       LOG.info("\nDumping files in local dir: begin");
-      while ((line = buf.readLine()) != null) {
-        LOG.info("System CWD content: " + line);
+      try {
+        while ((line = buf.readLine()) != null) {
+          LOG.info("System CWD content: " + line);
+        }
+        LOG.info("Dumping files in local dir: end");
       }
-      LOG.info("Dumping files in local dir: end");
-      buf.close();
+      finally {
+        buf.close();
+      }
     } catch (IOException e) {
       LOG.debug("Exception", e);
     } catch (InterruptedException e) {
@@ -543,8 +548,12 @@ public class StramAppMaster extends CompositeService
     LOG.info("Application master" + ", appId=" + appAttemptID.getApplicationId().getId() + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp() + ", attemptId=" + appAttemptID.getAttemptId());
 
     FileInputStream fis = new FileInputStream("./" + LogicalPlan.SER_FILE_NAME);
-    this.dag = LogicalPlan.read(fis);
-    fis.close();
+    try {
+      this.dag = LogicalPlan.read(fis);
+    }
+    finally {
+      fis.close();
+    }
     // "debug" simply dumps all data using LOG.info
     if (dag.isDebug()) {
       dumpOutDebugInfo();
