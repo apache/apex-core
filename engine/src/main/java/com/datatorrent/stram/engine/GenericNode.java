@@ -15,8 +15,10 @@ import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.tuple.ResetWindowTuple;
@@ -175,7 +177,7 @@ public class GenericNode extends Node<Operator>
    * Note that activate does not return as long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings({"SleepWhileInLoop"})
+  @SuppressWarnings({"SleepWhileInLoop", "UseSpecificCatch", "BroadCatchBlock", "TooBroadCatch"})
   public final void run()
   {
     lastCheckpointedWindowId = 0;
@@ -496,15 +498,30 @@ public class GenericNode extends Node<Operator>
       }
       while (alive);
     }
-    catch (InterruptedException ex) {
+    catch (ShutdownException se) {
+      logger.debug("Shutdown requested by the operator when alive = {}.", alive);
       alive = false;
     }
-    catch (RuntimeException ex) {
-      if (ex.getCause() instanceof InterruptedException) {
-        alive = false;
+    catch (Throwable cause) {
+      synchronized (this) {
+        if (alive) {
+          DTThrowable.rethrow(cause);
+        }
+      }
+
+      Throwable rootCause = cause;
+      while (rootCause != null) {
+        if (rootCause instanceof InterruptedException) {
+          break;
+        }
+        rootCause = rootCause.getCause();
+      }
+
+      if (rootCause == null) {
+        DTThrowable.rethrow(cause);
       }
       else {
-        throw ex;
+        logger.debug("Ignoring InterruptedException after shutdown", cause);
       }
     }
 

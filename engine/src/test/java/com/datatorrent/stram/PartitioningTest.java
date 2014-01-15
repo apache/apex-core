@@ -107,7 +107,7 @@ public class PartitioningTest
         if (blockEndStream) {
           return;
         }
-        throw new RuntimeException(new InterruptedException("No more tuples to send!"));
+        Operator.Util.shutdown();
       }
 
       if (first) {
@@ -223,7 +223,7 @@ public class PartitioningTest
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
     dag.setAttribute(collector, OperatorContext.INITIAL_PARTITION_COUNT, 2);
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENER, PartitionLoadWatch.class);
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitionLoadWatch()}));
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -337,7 +337,7 @@ public class PartitioningTest
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
-      dag.setAttribute(input, OperatorContext.STATS_LISTENER, PartitionLoadWatch.class);
+      dag.setAttribute(input, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitionLoadWatch()}));
 
       StramLocalCluster lc = new StramLocalCluster(dag);
       lc.setHeartbeatMonitoringEnabled(false);

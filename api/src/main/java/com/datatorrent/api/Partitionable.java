@@ -23,7 +23,8 @@ import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator.InputPort;
 
 /**
- * <p>Partitionable interface.</p>
+ * Components which want to have control over how they are partitioned may implement
+ * Partitionable interface and direct the engine to partition them in a certain way.
  *
  * @param <T> type for which custom partitions need to be defined.
  * @since 0.3.2
@@ -52,10 +53,10 @@ public interface Partitionable<T extends Operator>
    * time on the original operator need to be set on new instances.
    *
    * @param partitions
-   *          - Current set of partitions
-   * @param incrementalCapacity
-   *          The count of more instances of this operator can the
-   *          infrastructure support. If this number is positive,
+   *                            - Current set of partitions
+   * @param incrementalCapacity -
+   *                            The count of more instances of this operator can the
+   *                            infrastructure support. If this number is positive,
    * @return New partitioning. Partitions from input list which should not be
    *         changed can be returned as they are.
    */
@@ -65,13 +66,15 @@ public interface Partitionable<T extends Operator>
    * Interface to be implemented by operator that wants to be notified about its effective partitioning.
    * Called by the engine after requested partitioning is applied to the physical plan.
    * Allows the operator to track stats of individual partitions by id.
+   *
+   * @param <T> - Type of the operator
    * @see {@link StatsListener}
    * @see {@link Partitionable#definePartitions}
-   * @param <T>
    */
   interface PartitionAware<T extends Operator>
   {
     void partitioned(Map<Integer, Partition<T>> partitions);
+
   }
 
   public class PartitionKeys implements java.io.Serializable
@@ -80,7 +83,8 @@ public interface Partitionable<T extends Operator>
     final public int mask;
     final public Set<Integer> partitions;
 
-    public PartitionKeys(int mask, Set<Integer> partitions) {
+    public PartitionKeys(int mask, Set<Integer> partitions)
+    {
       this.mask = mask;
       this.partitions = partitions;
     }
@@ -107,16 +111,15 @@ public interface Partitionable<T extends Operator>
       if (this.mask != other.mask) {
         return false;
       }
-      if (this.partitions != other.partitions && (this.partitions == null || !this.partitions.equals(other.partitions))) {
-        return false;
-      }
-      return true;
+      return this.partitions == other.partitions || (this.partitions != null && this.partitions.equals(other.partitions));
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
       return "[" + mask + "," + partitions + "]";
     }
+
   }
 
   public interface Partition<PARTITIONABLE extends Operator>
@@ -124,6 +127,7 @@ public interface Partitionable<T extends Operator>
     /**
      * Return the partition keys for this partition.
      * Input ports that are not mapped will receive all data.
+     *
      * @return Map<InputPort<?>, PartitionKeys>
      */
     public Map<InputPort<?>, PartitionKeys> getPartitionKeys();
@@ -165,5 +169,7 @@ public interface Partitionable<T extends Operator>
      * @return attributes defined for the current context.
      */
     public AttributeMap getAttributes();
+
   }
+
 }

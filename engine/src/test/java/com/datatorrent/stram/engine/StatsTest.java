@@ -21,6 +21,7 @@ import com.datatorrent.stram.engine.StatsTest.TestCollector.TestOutputStatsListe
 import com.datatorrent.stram.engine.StatsTest.TestOperator.TestInputStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
+import java.util.Arrays;
 
 /**
  * Tests the stats generated in the system.
@@ -95,13 +96,13 @@ public class StatsTest
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENER, TestInputStatsListener.class);
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestInputStatsListener()}));
     testOper.addTuple("test tuple 1");
     testOper.addTuple("test tuple 2");
     testOper.setMaxTuples(0);
 
     TestCollector collector = dag.addOperator("Collector", new TestCollector());
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENER, TestOutputStatsListener.class);
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[] {new TestOutputStatsListener()}));
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(null);
 
     StramLocalCluster lc = new StramLocalCluster(dag);

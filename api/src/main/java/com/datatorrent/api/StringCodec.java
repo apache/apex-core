@@ -16,6 +16,13 @@
 package com.datatorrent.api;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+
+import org.apache.commons.lang.StringUtils;
+
+import com.datatorrent.common.util.DTThrowable;
 
 /**
  * This interface is essentially serializer/deserializer interface which works with String as
@@ -125,23 +132,38 @@ public interface StringCodec<T>
    */
   public class Object2String<T> implements StringCodec<T>, Serializable
   {
+    public final String separator;
+
+    public Object2String()
+    {
+      separator = ":";
+    }
+
+    public Object2String(String separator)
+    {
+      this.separator = separator;
+    }
+
     @Override
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"UseSpecificCatch", "BroadCatchBlock", "TooBroadCatch"})
     public T fromString(String string)
     {
-      String[] parts = string.split(string, 2);
+      String[] parts = string.split(separator, 2);
 
       try {
-        Class<?> clazz = Class.forName(parts[0]);
+        @SuppressWarnings("unchecked")
+        Class<? extends T> clazz = (Class<? extends T>)Thread.currentThread().getContextClassLoader().loadClass(parts[0]);
         if (parts.length == 1) {
-          return (T)clazz.newInstance();
+          return clazz.newInstance();
         }
 
-        return (T)clazz.getConstructor(String.class).newInstance(parts[1]);
+        return clazz.getConstructor(String.class).newInstance(parts[1]);
       }
-      catch (Exception cnfe) {
-        throw new RuntimeException(cnfe);
+      catch (Throwable cause) {
+        DTThrowable.rethrow(cause);
       }
+
+      return null;
     }
 
     @Override
@@ -152,10 +174,72 @@ public interface StringCodec<T>
         return pojo.getClass().getCanonicalName();
       }
 
-      return pojo.getClass().getCanonicalName() + ',' + arg;
+      return pojo.getClass().getCanonicalName() + separator + arg;
     }
 
     private static final long serialVersionUID = 201311141853L;
+  }
+
+  public class Collection2String<T> implements StringCodec<Collection<T>>, Serializable
+  {
+    private final String separator;
+    private final StringCodec<T> codec;
+
+    public Collection2String()
+    {
+      separator = ",";
+      codec = null;
+    }
+
+    public Collection2String(String separator, StringCodec<T> codec)
+    {
+      this.separator = separator;
+      this.codec = codec;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Collection<T> fromString(String string)
+    {
+      if (string == null) {
+        return null;
+      }
+
+      if (string.isEmpty()) {
+        return Collections.EMPTY_LIST;
+      }
+
+      String[] parts = string.split(separator);
+      ArrayList<T> arrayList = new ArrayList<T>(parts.length);
+      for (String part : parts) {
+        arrayList.add(codec.fromString(part));
+      }
+
+      return arrayList;
+    }
+
+    @Override
+    public String toString(Collection<T> pojo)
+    {
+      if (pojo == null) {
+        return null;
+      }
+
+      if (pojo.isEmpty()) {
+        return "";
+      }
+
+      String[] parts = new String[pojo.size()];
+
+      int i = 0;
+      for (T o : pojo) {
+        parts[i++] = codec.toString(o);
+      }
+
+      return StringUtils.join(parts, separator);
+    }
+
+    private static final long serialVersionUID = 201401091806L;
   }
 
   public class Enum2String<T extends Enum<T>> implements StringCodec<T>, Serializable
@@ -185,6 +269,7 @@ public interface StringCodec<T>
   public class Class2String<T> implements StringCodec<Class<? extends T>>, Serializable
   {
     @Override
+    @SuppressWarnings({"BroadCatchBlock", "TooBroadCatch"})
     public Class<? extends T> fromString(String string)
     {
       try {
@@ -192,9 +277,11 @@ public interface StringCodec<T>
         Class<? extends T> clazz = (Class)Thread.currentThread().getContextClassLoader().loadClass(string);
         return clazz;
       }
-      catch (Exception cnfe) {
-        throw new RuntimeException(cnfe);
+      catch (Throwable cause) {
+        DTThrowable.rethrow(cause);
       }
+
+      return null;
     }
 
     @Override

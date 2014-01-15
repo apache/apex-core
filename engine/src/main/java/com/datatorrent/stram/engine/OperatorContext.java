@@ -27,7 +27,6 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
  */
 public class OperatorContext extends BaseContext implements Context.OperatorContext
 {
-  private static final long serialVersionUID = 2013060671427L;
   private final Thread thread;
 
   /**
@@ -116,7 +115,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     return lastProcessedWindowId;
   }
 
-  synchronized void report(ContainerStats.OperatorStats stats, long windowId)
+  public void report(ContainerStats.OperatorStats stats, long windowId)
   {
     lastProcessedWindowId = windowId;
     stats.windowId = windowId;
@@ -135,6 +134,9 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     //logger.debug("Received request {} for (node={})", request, id);
     requests.add(request);
   }
+
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+  private static final long serialVersionUID = 2013060671427L;
 
   @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(OperatorContext.class);

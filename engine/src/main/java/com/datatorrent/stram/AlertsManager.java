@@ -4,19 +4,22 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.plan.logical.*;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
+
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+
+import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  * <p>AlertsManager class.</p>
@@ -95,10 +98,10 @@ public class AlertsManager
         }
 
         // set filter operator properties
-        Iterator<String> keys;
         JSONObject properties = filter.optJSONObject("properties");
         if (properties != null) {
-          keys = properties.keys();
+          @SuppressWarnings("unchecked")
+          Iterator<String> keys = properties.keys();
           while (keys.hasNext()) {
             String key = keys.next();
             Object val = properties.get(key);
@@ -123,7 +126,8 @@ public class AlertsManager
         // set escalation operator properties
         properties = escalation.optJSONObject("properties");
         if (properties != null) {
-          keys = properties.keys();
+          @SuppressWarnings("unchecked")
+          Iterator<String> keys = properties.keys();
           while (keys.hasNext()) {
             String key = keys.next();
             Object val = properties.get(key);
@@ -148,7 +152,8 @@ public class AlertsManager
           }
           properties = action.optJSONObject("properties");
           if (properties != null) {
-            keys = properties.keys();
+            @SuppressWarnings("unchecked")
+            Iterator<String> keys = properties.keys();
             while (keys.hasNext()) {
               String key = keys.next();
               Object val = properties.get(key);
@@ -344,4 +349,5 @@ public class AlertsManager
     response.put("createFrom", alertInfo.createFrom);
     return response;
   }
+
 }

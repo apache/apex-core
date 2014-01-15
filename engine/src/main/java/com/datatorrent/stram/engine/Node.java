@@ -38,7 +38,8 @@ import com.datatorrent.stram.tuple.EndStreamTuple;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 
 /**
- * <p>Abstract Node class.</p>
+ * <p>
+ * Abstract Node class.</p>
  *
  * @param <OPERATOR>
  * @author Chetan Narsude <chetan@datatorrent.com>
@@ -218,7 +219,24 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   public void shutdown()
   {
-    alive = false;
+    synchronized (this) {
+      alive = false;
+    }
+
+    if (context == null) {
+      logger.warn("Shutdown requested when context is not available!");
+    }
+    else {
+      context.request(new OperatorCommand()
+      {
+        @Override
+        public void execute(Operator operator, int operatorId, long windowId) throws IOException
+        {
+          alive = false;
+        }
+
+      });
+    }
   }
 
   @Override
@@ -264,7 +282,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         }
       }
     }
-    catch (Exception e) {
+    catch (Error er) {
+      throw er;
+    }
+    catch (RuntimeException re) {
+      throw re;
+    }
+    catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -279,7 +303,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       portStats.endWindowTimestamp = endWindowEmitTime;
       stats.outputPorts.add(portStats);
     }
-
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
@@ -309,16 +332,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected void deactivateSinks()
   {
     sinks = Sink.NO_SINKS;
-  }
-
-  public boolean isAlive()
-  {
-    return alive;
-  }
-
-  public boolean isApplicationWindowBoundary()
-  {
-    return applicationWindowCount == 0;
   }
 
   public static void storeNode(OutputStream stream, Node<?> node) throws IOException

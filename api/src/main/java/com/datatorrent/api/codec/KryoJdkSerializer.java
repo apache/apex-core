@@ -18,7 +18,6 @@ package com.datatorrent.api.codec;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import com.datatorrent.api.annotation.ShipContainingJars;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
@@ -47,10 +46,13 @@ import com.esotericsoftware.kryo.io.Output;
  * operators that have to be transient when using Kryo have to be non-transient /
  * serializable, when using JDK serialization.
  *
+ * This class is deprecated since there is a better implementation via
+ * com.esotericsoftware.kryo.serializers.JavaSerializer in the Kryo library.
+ *
  * @param <T> type of serialized object
  * @since 0.3.2
  */
-@ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class})
+@Deprecated
 public class KryoJdkSerializer<T> extends Serializer<T>
 {
   /** {@inheritDoc} */

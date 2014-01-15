@@ -4,10 +4,11 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.stram.util.AbstractWritableAdapter;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.Context;
+
+import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
  * <p>BaseContext class.</p>
@@ -45,5 +46,6 @@ public class BaseContext extends AbstractWritableAdapter implements Context
     return parentContext == null ? key.defaultValue : parentContext.getValue(key);
   }
 
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   private static final long serialVersionUID = 201306060103L;
 }

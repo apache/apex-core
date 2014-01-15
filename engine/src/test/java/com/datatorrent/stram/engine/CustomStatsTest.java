@@ -24,6 +24,7 @@ import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListen
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.google.common.collect.Lists;
+import java.util.Arrays;
 
 public class CustomStatsTest
 {
@@ -122,7 +123,7 @@ public class CustomStatsTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENER, TestStatsListener.class);
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestStatsListener()}));
     //dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
