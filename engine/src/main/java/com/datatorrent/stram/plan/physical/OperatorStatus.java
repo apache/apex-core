@@ -30,9 +30,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 {
   private static final long serialVersionUID = 201312231552L;
 
-  public class PortStatus implements java.io.Serializable
+  public class PortStatus
   {
-    private static final long serialVersionUID = 201312231635L;
     public String portName;
     public long totalTuples;
     public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
@@ -56,11 +55,12 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
   public final MovingAverageDouble cpuPercentageMA;
   public final MovingAverageLong latencyMA;
-  public Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
-  public Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
+  public final Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
+  public final Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
-  public ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
+  public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
 
+  private final LogicalPlan dag;
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
   public int loadIndicator = 0;
@@ -68,6 +68,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public OperatorStatus(int operatorId, LogicalPlan dag)
   {
     this.operatorId = operatorId;
+    this.dag = dag;
     throughputCalculationInterval = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL);
     throughputCalculationMaxSamples = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES);
     int heartbeatInterval = dag.getValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS);
@@ -124,6 +125,29 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public long getLatencyMA()
   {
     return this.latencyMA.getAvg();
+  }
+
+  private static class SerializationProxy implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312231635L;
+    final int operatorId;
+    final LogicalPlan dag;
+
+    private SerializationProxy(OperatorStatus s) {
+      this.operatorId = s.operatorId;
+      this.dag = s.dag;
+    }
+
+    private Object readResolve() throws java.io.ObjectStreamException
+    {
+      OperatorStatus s = new OperatorStatus(operatorId, dag);
+      return s;
+    }
+  }
+
+  private Object writeReplace() throws java.io.ObjectStreamException
+  {
+      return new SerializationProxy(this);
   }
 
 }
