@@ -1074,7 +1074,7 @@ public class DTCli
     }
     if (consolePresent) {
       printWelcomeMessage();
-      printLicenseStatus();
+      //printLicenseStatus();
       setupCompleter(reader);
       setupHistory(reader);
     }
