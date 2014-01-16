@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.stram.FSRecoveryHandler;
@@ -109,8 +110,19 @@ public class StramRecoveryTest
 
   }
 
+  public static class StatsListeningOperator extends TestGeneratorInputOperator implements StatsListener
+  {
+    int processStatsCnt = 0;
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      processStatsCnt++;
+      return null;
+    }
+  }
+
   /**
-   * Test serialization of the container manager with mocked execution layer.
+   * Test serialization of the container manager with mock execution layer.
    * @throws Exception
    */
   @Test
@@ -121,7 +133,7 @@ public class StramRecoveryTest
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
-    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    StatsListeningOperator o1 = dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
     StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
@@ -179,6 +191,7 @@ public class StramRecoveryTest
 
     Assert.assertSame("dag references", dag, scm.getLogicalPlan());
     Assert.assertEquals("number operators after plan modification", 2, dag.getAllOperators().size());
+    Assert.assertEquals("number stats calls", 1,  o1.processStatsCnt);
 
     // set operator state triggers journal write
     o1p1.setState(PTOperator.State.INACTIVE);
@@ -196,7 +209,9 @@ public class StramRecoveryTest
 
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     Assert.assertEquals("post restore state " + o1p1, PTOperator.State.INACTIVE, o1p1.getState());
-
+    o1 = (StatsListeningOperator)o1p1.getOperatorMeta().getOperator();
+    Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
+    Assert.assertEquals("number stats calls post restore", 1,  o1.processStatsCnt);
 
     URI connectUri = new URI("stram", null, "127.0.0.1", 9999, null, null, null);
     recoveryHandler.writeConnectUri(connectUri.toString());
