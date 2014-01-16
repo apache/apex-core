@@ -3,15 +3,7 @@
  */
 package com.datatorrent.stram.cli;
 
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -1939,17 +1931,41 @@ public class DTCli
           else {
             licenseBytes = StramClientUtils.getLicense(conf);
           }
-          String licenseId = License.getLicenseID(licenseBytes);
-          YarnClient clientRMService = YarnClient.createYarnClient();
-          clientRMService.init(conf);
-          clientRMService.start();
-          ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
-          if (ar == null) {
-            throw new CliException("License not activated. Please run activate-license first before launching any streaming application");
+          // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
+          PrintStream originalStream = System.out;
+          ApplicationId appId = null;
+          try {
+            if (raw) {
+              PrintStream dummyStream = new PrintStream(new OutputStream()
+              {
+                @Override
+                public void write(int b)
+                {
+                  // no-op
+                }
+
+              });
+              System.setOut(dummyStream);
+            }
+            String licenseId = License.getLicenseID(licenseBytes);
+            YarnClient clientRMService = YarnClient.createYarnClient();
+            clientRMService.init(conf);
+            clientRMService.start();
+            ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+            if (ar == null) {
+              throw new CliException("License not activated. Please run activate-license first before launching any streaming application");
+            }
+            appId = submitApp.launchApp(appFactory);
+            currentApp = rmClient.getApplicationReport(appId);
           }
-          ApplicationId appId = submitApp.launchApp(appFactory);
-          currentApp = rmClient.getApplicationReport(appId);
-          printJson("{\"appId\": \"" + appId + "\"}");
+          finally {
+            if (raw) {
+              System.setOut(originalStream);
+            }
+          }
+          if (appId != null) {
+            printJson("{\"appId\": \"" + appId + "\"}");
+          }
         }
         else {
           submitApp.runLocal(appFactory);
