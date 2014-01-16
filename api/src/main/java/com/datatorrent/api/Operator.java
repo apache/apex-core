@@ -38,7 +38,7 @@ public interface Operator extends Component<OperatorContext>
    * materially impact your computation if a few tuples are omitted from the computation and the expected throughput is
    * most likely to consume all the resources available for the operator or the DAG.
    * <br />
-   * EXACTLY_ONCE is not implemented yet. In this mode, it will be guaranteed that once a streaming window is processed
+   * In EXACTLY_ONCE mode, it will be guaranteed that once a streaming window is processed
    * completely, none of the tuples in that window will be processed again.
    *
    */
