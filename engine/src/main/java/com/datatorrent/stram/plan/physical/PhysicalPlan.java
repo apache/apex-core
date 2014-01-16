@@ -13,29 +13,25 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultPartition;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Partitionable;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
-import com.datatorrent.api.StatsListener;
-import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.stram.Journal.RecoverableOperation;
-import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.engine.Node;
@@ -268,6 +264,7 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    @SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart */
     void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
@@ -423,24 +420,12 @@ public class PhysicalPlan implements Serializable
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    Class<? extends StatsListener> statsListenerClass = m.logicalOperator.getValue(OperatorContext.STATS_LISTENER);
-    if (statsListenerClass != null) {
+    Collection<StatsListener> statsListeners = m.logicalOperator.getValue(OperatorContext.STATS_LISTENERS);
+    if (statsListeners != null && !statsListeners.isEmpty()) {
       if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<StatsListener>(1);
+        m.statsHandlers = new ArrayList<StatsListener>(statsListeners.size());
       }
-      final StatsListener sh;
-      if (PartitionLoadWatch.class.isAssignableFrom(statsListenerClass)) {
-        try {
-          sh = statsListenerClass.getConstructor(m.getClass()).newInstance(m);
-        }
-        catch (Exception e) {
-          throw new RuntimeException("Failed to instantiate stats listener.", e);
-        }
-      }
-      else {
-        sh = StramUtils.newInstance(statsListenerClass);
-      }
-      m.statsHandlers.add(sh);
+      m.statsHandlers.addAll(statsListeners);
     }
 
     if (m.logicalOperator.getOperator() instanceof StatsListener) {
@@ -449,6 +434,28 @@ public class PhysicalPlan implements Serializable
       }
       m.statsHandlers.add((StatsListener)m.logicalOperator.getOperator());
     }
+
+
+    /*
+    if (statsListeners != null) {
+      if (m.statsHandlers == null) {
+        m.statsHandlers = new ArrayList<StatsListener>(1);
+      }
+      final StatsListener sh;
+      if (PartitionLoadWatch.class.isAssignableFrom(statsListeners)) {
+        try {
+          sh = statsListeners.getConstructor(m.getClass()).newInstance(m);
+        }
+        catch (Exception e) {
+          throw new RuntimeException("Failed to instantiate stats listener.", e);
+        }
+      }
+      else {
+        sh = StramUtils.newInstance(statsListeners);
+      }
+      m.statsHandlers.add(sh);
+    }
+    */
 
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
@@ -518,6 +525,7 @@ public class PhysicalPlan implements Serializable
 
     if (newPartitions.isEmpty()) {
       LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
+      return;
     }
 
     List<Partition<Operator>> addedPartitions = new ArrayList<Partition<Operator>>();
@@ -901,8 +909,9 @@ public class PhysicalPlan implements Serializable
   private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, Locality ltype,String host) {
 
     HostOperatorSet grpObj = newOperator.getGrouping(ltype);
-    if(host!= null)
+    if(host!= null) {
       grpObj.setHost(host);
+    }
     Set<PTOperator> s = grpObj.getOperatorSet();
     s.add(newOperator);
     LocalityPref loc = localityPrefs.prefs.get(pnodes);
@@ -1051,7 +1060,7 @@ public class PhysicalPlan implements Serializable
    * Add logical operator to the plan. Assumes that upstream operators have been added before.
    * @param om
    */
-  public void addLogicalOperator(OperatorMeta om)
+  public final void addLogicalOperator(OperatorMeta om)
   {
     PMapping pnodes = new PMapping(om);
     String host = pnodes.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);

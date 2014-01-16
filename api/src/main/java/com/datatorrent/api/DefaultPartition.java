@@ -216,4 +216,10 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
     }
   }
 
+  @Override
+  public String toString()
+  {
+    return "DefaultPartition{" + "partitionKeys=" + partitionKeys + ", operator=" + operator + ", loadIndicator=" + loadIndicator + ", attributes=" + attributes + ", stats=" + stats + '}';
+  }
+
 }

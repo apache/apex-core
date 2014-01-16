@@ -80,7 +80,8 @@ public class OiONode extends GenericNode
               if (checkpoint(currentWindowId)) {
                 lastCheckpointedWindowId = currentWindowId;
               }
-            } else {
+            }
+            else {
               checkpoint = true;
             }
             for (int s = sinks.length; s-- > 0;) {
@@ -103,9 +104,7 @@ public class OiONode extends GenericNode
         case END_STREAM:
           if (lastEndStreamWindowId != t.getWindowId()) {
             lastEndStreamWindowId = t.getWindowId();
-
-            for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
-              Entry<String, SweepableReservoir> e = it.next();
+            for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
               PortContextPair<InputPort<?>> pcpair = descriptor.inputPorts.get(e.getKey());
               if (pcpair != null) {
                 pcpair.component.setConnected(false);
@@ -150,7 +149,7 @@ public class OiONode extends GenericNode
   @Override
   public void connectInputPort(String port, SweepableReservoir reservoir)
   {
-    ((OiOStream) reservoir).setControlSink(new ControlSink(reservoir));
+    ((OiOStream)reservoir).setControlSink(new ControlSink(reservoir));
     super.connectInputPort(port, reservoir);
   }
 

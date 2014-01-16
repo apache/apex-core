@@ -25,7 +25,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.util.StringUtils;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
@@ -53,25 +52,11 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.PortContext;
-import com.datatorrent.stram.engine.Stream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.engine.WindowIdActivatedReservoir;
+import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.datatorrent.stram.stream.BufferServerPublisher;
-import com.datatorrent.stram.stream.BufferServerSubscriber;
-import com.datatorrent.stram.stream.FastPublisher;
-import com.datatorrent.stram.stream.FastSubscriber;
-import com.datatorrent.stram.stream.InlineStream;
-import com.datatorrent.stram.stream.MuxStream;
-import com.datatorrent.stram.stream.OiOStream;
-import com.datatorrent.stram.stream.PartitionAwareSink;
+import com.datatorrent.stram.stream.*;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.
@@ -169,7 +154,7 @@ public class StramChild
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
       }
     }
-    catch (Exception ex) {
+    catch (IOException ex) {
       logger.warn("deploy request failed due to {}", ex);
       throw new IllegalStateException("Failed to deploy buffer server", ex);
     }
@@ -185,7 +170,10 @@ public class StramChild
 
         eventBus.subscribe(newInstance);
       }
-      catch (Exception ex) {
+      catch (InstantiationException ex) {
+        logger.warn("Container Event Listener Instantiation", ex);
+      }
+      catch (IllegalAccessException ex) {
         logger.warn("Container Event Listener Instantiation", ex);
       }
     }
@@ -258,21 +246,21 @@ public class StramChild
         stramChild.teardown();
       }
     }
+    catch (Error error) {
+      logger.warn("Error running child", error);
+      /* Report back any failures, for diagnostic purposes */
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      error.printStackTrace(new PrintStream(baos));
+      umbilical.log(childId, "FATAL: " + baos.toString());
+      baos.close();
+    }
     catch (Exception exception) {
-      logger.warn("Exception running child : " + exception);
+      logger.warn("Exception running child", exception);
       /* Report back any failures, for diagnostic purposes */
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       exception.printStackTrace(new PrintStream(baos));
-      umbilical.log(childId, "FATAL: " + baos.toString());
-    }
-    catch (Throwable throwable) {
-      logger.error("Error running child : "
-              + StringUtils.stringifyException(throwable));
-      Throwable tCause = throwable.getCause();
-      String cause = tCause == null
-                     ? throwable.getMessage()
-                     : StringUtils.stringifyException(tCause);
-      umbilical.log(childId, cause);
+      umbilical.log(childId, baos.toString());
+      baos.close();
     }
     finally {
       RPC.stopProxy(umbilical);
@@ -653,8 +641,7 @@ public class StramChild
 
   private void processNodeRequests(boolean flagInvalid)
   {
-    for (Iterator<StramToNodeRequest> it = nodeRequests.iterator(); it.hasNext();) {
-      StramToNodeRequest req = it.next();
+    for (StramToNodeRequest req: nodeRequests) {
       if(req.isDeleted()){
         continue;
       }
@@ -833,7 +820,7 @@ public class StramChild
         nodes.put(ndi.id, node);
         logger.debug("Marking deployed {}", node);
       }
-      catch (Exception e) {
+      catch (IOException e) {
         logger.error("Deploy error", e);
         throw e;
       }

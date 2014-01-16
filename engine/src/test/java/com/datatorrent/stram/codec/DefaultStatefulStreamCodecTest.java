@@ -4,21 +4,16 @@
  */
 package com.datatorrent.stram.codec;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-
-import org.junit.Assert;
-import org.junit.Test;
+import java.io.*;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 
-import com.datatorrent.api.codec.KryoJdkSerializer;
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec.ClassIdPair;
@@ -69,10 +64,7 @@ public class DefaultStatefulStreamCodecTest
       if ((this.s == null) ? (other.s != null) : !this.s.equals(other.s)) {
         return false;
       }
-      if (this.i != other.i) {
-        return false;
-      }
-      return true;
+      return this.i == other.i;
     }
 
   }
@@ -171,12 +163,12 @@ public class DefaultStatefulStreamCodecTest
     Assert.assertEquals("", t1.finalField, t2.finalField);
   }
 
-  @DefaultSerializer(KryoJdkSerializer.class)
+  @DefaultSerializer(JavaSerializer.class)
   public static class OuterClass implements Serializable
   {
     private static final long serialVersionUID = -3128672061060284420L;
 
-    @DefaultSerializer(KryoJdkSerializer.class)
+    @DefaultSerializer(JavaSerializer.class)
     public class InnerClass implements Serializable
     {
       private static final long serialVersionUID = -7176523451391231326L;

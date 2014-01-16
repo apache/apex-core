@@ -24,6 +24,7 @@ import org.apache.hadoop.net.NetUtils;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode.Controller;
 import com.datatorrent.api.Operator;
+
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
@@ -63,7 +64,6 @@ public class StramLocalCluster implements Runnable, Controller
   public interface MockComponentFactory
   {
     WindowGenerator setupWindowGenerator();
-
   }
 
   private MockComponentFactory mockComponentFactory;
@@ -252,10 +252,12 @@ public class StramLocalCluster implements Runnable, Controller
     // even when the environment has a default HDFS location.
     String pathUri = CLUSTER_WORK_DIR.toURI().toString();
     try {
-      FileContext.getLocalFSFileContext().delete(
-              new Path(pathUri/*CLUSTER_WORK_DIR.getAbsolutePath()*/), true);
+      FileContext.getLocalFSFileContext().delete(new Path(pathUri/*CLUSTER_WORK_DIR.getAbsolutePath()*/), true);
     }
-    catch (Exception e) {
+    catch (IllegalArgumentException e) {
+      throw e;
+    }
+    catch (IOException e) {
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
@@ -286,7 +288,8 @@ public class StramLocalCluster implements Runnable, Controller
     return dnmgr;
   }
 
-  public DAG getDAG() {
+  public DAG getDAG()
+  {
     return dnmgr.getPhysicalPlan().getDAG();
   }
 

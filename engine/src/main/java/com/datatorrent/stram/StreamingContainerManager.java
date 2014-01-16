@@ -12,23 +12,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.FutureTask;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 import javax.annotation.Nullable;
 
@@ -39,6 +27,7 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -55,19 +44,14 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.Journal.RecoverableOperation;
+import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -87,9 +71,6 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
-
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
 
 /**
  *
@@ -190,10 +171,10 @@ public class StreamingContainerManager implements PlanContext
 
   private Journal setupJournal()
   {
-    Journal journal = new Journal();
-    journal.register(1, new Journal.SetOperatorState(this));
-    journal.register(2, new Journal.SetContainerResourcePriority(this));
-    return journal;
+    Journal lJournal = new Journal();
+    lJournal.register(1, new Journal.SetOperatorState(this));
+    lJournal.register(2, new Journal.SetContainerResourcePriority(this));
+    return lJournal;
   }
 
   private void setupRecording(AttributeMap attributes, boolean enableEventRecording)
@@ -820,7 +801,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       //LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), shb.getState(), oper.getContainer().getExternalId());
-      if (!(oper.getState() == PTOperator.State.ACTIVE && shb.getState().compareTo(DeployState.ACTIVE.name()) == 0)) {
+      if (!(oper.getState() == PTOperator.State.ACTIVE && shb.getState().compareTo(OperatorHeartbeat.DeployState.ACTIVE.name()) == 0)) {
         // deploy state may require synchronization
         processOperatorDeployStatus(oper, shb, sca);
       }
@@ -1362,8 +1343,9 @@ public class StreamingContainerManager implements PlanContext
 
     // stop containers that are no longer used
     for (PTContainer c: releaseContainers) {
-      if (c.getExternalId() == null)
+      if (c.getExternalId() == null) {
         continue;
+      }
       StramChildAgent sca = containers.get(c.getExternalId());
       if (sca != null) {
         LOG.debug("Container marked for shutdown: {}", c);
@@ -1511,6 +1493,9 @@ public class StreamingContainerManager implements PlanContext
     @Override
     public boolean apply(@Nullable StramToNodeRequest input)
     {
+      if (input == null) {
+        return false;
+      }
       return MATCH_TYPES.contains(input.getRequestType());
     }
 
@@ -1528,6 +1513,9 @@ public class StreamingContainerManager implements PlanContext
     @Override
     public boolean apply(@Nullable StramToNodeRequest input)
     {
+      if (input == null) {
+        return false;
+      }
       return input.getRequestType() == StramToNodeRequest.RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
     }
 
@@ -1659,13 +1647,13 @@ public class StreamingContainerManager implements PlanContext
    */
   public void setPhysicalOperatorProperty(String operatorId, String propertyName, String propertyValue)
   {
-    String operatorName = null;
     int id = Integer.valueOf(operatorId);
     PTOperator o = this.plan.getAllOperators().get(id);
-    if (o == null)
+    if (o == null) {
       return;
+    }
 
-    operatorName = o.getName();
+    String operatorName = o.getName();
     StramChildAgent sca = getContainerAgent(o.getContainer().getExternalId());
     StramToNodeRequest request = new StramToNodeRequest();
     request.setOperatorId(id);
@@ -1834,7 +1822,9 @@ public class StreamingContainerManager implements PlanContext
 
   /**
    * Get the instance for the given application. If the application directory contains a checkpoint, the state will be restored.
+   * @param rh
    * @param dag
+   * @param enableEventRecording
    * @return
    */
   public static StreamingContainerManager getInstance(RecoveryHandler rh, LogicalPlan dag, boolean enableEventRecording)

@@ -9,18 +9,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
+import java.util.*;
 import junit.framework.Assert;
-
-import org.junit.Rule;
-import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import org.junit.Rule;
+import org.junit.Test;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -31,10 +27,12 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.api.Stats.OperatorStats.PortStats;
+import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -50,14 +48,14 @@ import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
+import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -153,7 +151,7 @@ public class StreamingContainerManagerTest {
 
     Assert.assertEquals("number operators assigned to c1", 1, c1.size());
     OperatorDeployInfo o1DI = getNodeDeployInfo(c1, dag.getMeta(o1));
-    Assert.assertNotNull(o1.getName() + " assigned to " + sca1.container.getExternalId(), o1DI);
+    Assert.assertNotNull(o1 + " assigned to " + sca1.container.getExternalId(), o1DI);
     Assert.assertEquals("type " + o1DI, OperatorDeployInfo.OperatorType.INPUT, o1DI.type);
     Assert.assertEquals("inputs " + o1DI.name, 0, o1DI.inputs.size());
     Assert.assertEquals("outputs " + o1DI.name, 1, o1DI.outputs.size());
@@ -440,7 +438,7 @@ public class StreamingContainerManagerTest {
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
-    dag.setAttribute(o1, OperatorContext.STATS_LISTENER, PartitioningTest.PartitionLoadWatch.class);
+     dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
 
     StreamingContainerManager scm = new StreamingContainerManager(dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();

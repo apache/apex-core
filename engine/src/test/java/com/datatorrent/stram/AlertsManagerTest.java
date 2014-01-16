@@ -19,11 +19,17 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.datatorrent.api.DAGContext;
+
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+
 /**
  *
  * @author David Yan <david@datatorrent.com>
  */
-public class AlertManagerTest
+public class AlertsManagerTest
 {
   @Rule public TestMeta testMeta = new TestMeta();
 
@@ -31,8 +37,7 @@ public class AlertManagerTest
   public void testAlertManager() throws JSONException
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
-
+    dag.setAttribute(DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
     dag.addOperator("o", GenericTestOperator.class);
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0)));
