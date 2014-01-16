@@ -1515,7 +1515,7 @@ public class DTCli
       else {
         List<AppFactory> result = new ArrayList<AppFactory>();
         for (AppFactory ac : cfgList) {
-          if (ac.getName().matches(".*" + matchString + ".*")) {
+          if (ac.getName().toLowerCase().contains(matchString.toLowerCase())) {
             result.add(ac);
           }
         }
@@ -2053,21 +2053,26 @@ public class DTCli
           }
 
           if (args.length > 1) {
-            @SuppressWarnings("unchecked")
-            Iterator<String> iterator = jsonObj.keys();
-
-            while (iterator.hasNext()) {
-              Object value = jsonObj.get(iterator.next());
-              if (value.toString().matches("(?i).*" + args[1] + ".*")) {
+            if (StringUtils.isNumeric(args[1])) {
+              if (jsonObj.getString("id").equals(args[1])) {
                 jsonArray.put(jsonObj);
                 break;
+              }
+            }
+            else {
+              @SuppressWarnings("unchecked")
+              Iterator<String> keys = jsonObj.keys();
+              while (keys.hasNext()) {
+                if (jsonObj.get(keys.next()).toString().toLowerCase().contains(args[1].toLowerCase())) {
+                  jsonArray.put(jsonObj);
+                  break;
+                }
               }
             }
           }
           else {
             jsonArray.put(jsonObj);
           }
-
         }
         printJson(jsonArray, "apps");
         if (consolePresent) {
@@ -2257,7 +2262,7 @@ public class DTCli
             @SuppressWarnings("unchecked")
             Iterator<String> keys = oper.keys();
             while (keys.hasNext()) {
-              if (oper.get(keys.next()).toString().matches("(?i).*" + args[1] + ".*")) {
+              if (oper.get(keys.next()).toString().toLowerCase().contains(args[1].toLowerCase())) {
                 matches.put(oper);
                 break;
               }
