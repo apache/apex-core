@@ -8,11 +8,10 @@ import com.datatorrent.api.util.JacksonObjectMapperProvider;
 import com.datatorrent.api.util.PubSubMessage;
 import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 import com.datatorrent.api.util.PubSubMessageCodec;
+import com.datatorrent.stram.util.LRUCache;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import javax.servlet.http.HttpServletRequest;
@@ -37,6 +36,17 @@ public class PubSubWebSocketServlet extends WebSocketServlet
   private ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
   private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
   private InternalMessageHandler internalMessageHandler = null;
+  private static final int latestTopicCount = 100;
+  private LRUCache<String, Long> latestTopics = new LRUCache<String, Long>(latestTopicCount, false)
+  {
+    @Override
+    public Long put(String key, Long value)
+    {
+      remove(key); // this is to make the key the most recently inserted entry
+      return super.put(key, value);
+    }
+
+  };
 
   public interface InternalMessageHandler
   {
@@ -153,6 +163,7 @@ public class PubSubWebSocketServlet extends WebSocketServlet
 
   public synchronized void publish(String topic, Object data)
   {
+    latestTopics.put(topic, System.currentTimeMillis());
     HashSet<PubSubWebSocket> wsSet = topicToSocketMap.get(topic);
     if (wsSet != null) {
       Iterator<PubSubWebSocket> it = wsSet.iterator();
@@ -218,6 +229,11 @@ public class PubSubWebSocketServlet extends WebSocketServlet
             else if (type.equals(PubSubMessageType.UNSUBSCRIBE_NUM_SUBSCRIBERS)) {
               if (topic != null) {
                 unsubscribe(this, topic + ".numSubscribers");
+              }
+            }
+            else if (type.equals(PubSubMessageType.GET_LATEST_TOPICS)) {
+              synchronized (this) {
+                sendData(this, "_latestTopics", latestTopics.keySet());
               }
             }
           }
