@@ -35,7 +35,8 @@ public class PubSubMessage<T>
     UNSUBSCRIBE("unsubscribe"),
     SUBSCRIBE_NUM_SUBSCRIBERS("subscribeNumSubscribers"),
     UNSUBSCRIBE_NUM_SUBSCRIBERS("unsubscribeNumSubscribers"),
-    DATA("data");
+    DATA("data"),
+    GET_LATEST_TOPICS("getLatestTopics");
     private final String identifier;
 
     PubSubMessageType(String identifier)
