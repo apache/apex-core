@@ -183,6 +183,22 @@ public class PhysicalPlan implements Serializable
 
   }
 
+  private static class StatsListenerProxy implements StatsListener, Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
+    final private OperatorMeta om;
+
+    private StatsListenerProxy(OperatorMeta om) {
+      this.om = om;
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return ((StatsListener)om.getOperator()).processStats(stats);
+    }
+  }
+
   /**
    * The logical operator with physical plan info tagged on.
    */
@@ -432,30 +448,8 @@ public class PhysicalPlan implements Serializable
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<StatsListener>(1);
       }
-      m.statsHandlers.add((StatsListener)m.logicalOperator.getOperator());
+      m.statsHandlers.add(new StatsListenerProxy(m.logicalOperator));
     }
-
-
-    /*
-    if (statsListeners != null) {
-      if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<StatsListener>(1);
-      }
-      final StatsListener sh;
-      if (PartitionLoadWatch.class.isAssignableFrom(statsListeners)) {
-        try {
-          sh = statsListeners.getConstructor(m.getClass()).newInstance(m);
-        }
-        catch (Exception e) {
-          throw new RuntimeException("Failed to instantiate stats listener.", e);
-        }
-      }
-      else {
-        sh = StramUtils.newInstance(statsListeners);
-      }
-      m.statsHandlers.add(sh);
-    }
-    */
 
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
@@ -954,6 +948,11 @@ public class PhysicalPlan implements Serializable
     for (PTInput in : oper.inputs) {
       in.source.sinks.remove(in);
     }
+
+    for (HostOperatorSet s : oper.groupings.values()) {
+      s.getOperatorSet().remove(this);
+    }
+
     // remove checkpoint states
     try {
       synchronized (oper.checkpointWindows) {
