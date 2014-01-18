@@ -98,9 +98,9 @@ public class PhysicalPlan implements Serializable
     @Override
     public Response processStats(BatchedOperatorStats status)
     {
+      long tps = operMapping.logicalOperator.getInputStreams().isEmpty() ? status.getTuplesEmittedPSMA() : status.getTuplesProcessedPSMA();
       Response rsp = new Response();
-      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(),
-                                           operMapping.logicalOperator.getInputStreams().isEmpty() ? status.getTuplesEmittedPSMA() : status.getTuplesProcessedPSMA());
+      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
       if (rsp.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
           lastEvalMillis = System.currentTimeMillis();
@@ -947,7 +947,7 @@ public class PhysicalPlan implements Serializable
     }
 
     for (HostOperatorSet s : oper.groupings.values()) {
-      s.getOperatorSet().remove(this);
+      s.getOperatorSet().remove(oper);
     }
 
     // remove checkpoint states
