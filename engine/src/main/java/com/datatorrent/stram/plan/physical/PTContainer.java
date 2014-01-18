@@ -6,10 +6,7 @@ package com.datatorrent.stram.plan.physical;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -27,16 +24,18 @@ import org.apache.commons.lang.builder.ToStringStyle;
  *
  * @since 0.3.5
  */
-public class PTContainer {
+public class PTContainer implements java.io.Serializable
+{
+  private static final long serialVersionUID = 201312112033L;
+
   public enum State {
     NEW,
     ALLOCATED,
     ACTIVE,
-    TIMEDOUT,
     KILLED
   }
 
-  PTContainer.State state = State.NEW;
+  volatile PTContainer.State state = State.NEW;
   private int requiredMemoryMB;
   private int allocatedMemoryMB;
   private int resourceRequestPriority;
@@ -44,13 +43,12 @@ public class PTContainer {
   private final PhysicalPlan plan;
   private final int seq;
   List<PTOperator> operators = new ArrayList<PTOperator>();
-  Set<PTOperator> pendingUndeploy = Collections.newSetFromMap(new ConcurrentHashMap<PTOperator, Boolean>());
-  Set<PTOperator> pendingDeploy = Collections.newSetFromMap(new ConcurrentHashMap<PTOperator, Boolean>());
 
   // execution layer properties
   String containerId; // assigned yarn container id
   public String host;
   public InetSocketAddress bufferServerAddress;
+  public String nodeHttpAddress;
   int restartAttempts;
 
   PTContainer(PhysicalPlan plan) {
@@ -98,6 +96,10 @@ public class PTContainer {
     return operators;
   }
 
+  public int getId() {
+    return this.seq;
+  }
+
   public String getExternalId() {
     return this.containerId;
   }
@@ -106,14 +108,11 @@ public class PTContainer {
     this.containerId = id;
   }
 
-  public Set<PTOperator> getPendingUndeploy()
-  {
-    return pendingUndeploy;
-  }
-
-  public Set<PTOperator> getPendingDeploy()
-  {
-    return pendingDeploy;
+  public String toIdStateString() {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+        append("id", ""+seq + "(" + this.containerId + ")").
+        append("state", this.getState()).
+        toString();
   }
 
   /**

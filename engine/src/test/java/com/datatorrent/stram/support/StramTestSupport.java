@@ -9,8 +9,10 @@ import static java.lang.Thread.sleep;
 
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
+import org.junit.rules.TestWatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static org.junit.Assert.assertTrue;
 
 import com.datatorrent.bufferserver.packet.MessageType;
@@ -37,8 +39,7 @@ abstract public class StramTestSupport
 
   public static Tuple generateBeginWindowTuple(String nodeid, int windowId)
   {
-    Tuple bwt = new Tuple(MessageType.BEGIN_WINDOW);
-    bwt.setWindowId(windowId);
+    Tuple bwt = new Tuple(MessageType.BEGIN_WINDOW, windowId);
     return bwt;
   }
 
@@ -145,5 +146,19 @@ abstract public class StramTestSupport
         return new RegexMatcher(regex);
     }
   }
+
+  public static class TestMeta extends TestWatcher
+  {
+    public String dir = null;
+    @Override
+    protected void starting(org.junit.runner.Description description)
+    {
+      String methodName = description.getMethodName();
+      String className = description.getClassName();
+      //className = className.substring(className.lastIndexOf('.') + 1);
+      this.dir = "target/" + className + "/" + methodName;
+    }
+  };
+
 
 }

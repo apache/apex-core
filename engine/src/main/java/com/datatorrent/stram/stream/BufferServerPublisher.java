@@ -34,7 +34,7 @@ import com.datatorrent.stram.tuple.Tuple;
 public class BufferServerPublisher extends Publisher implements ByteCounterStream
 {
   private StreamCodec<Object> serde;
-  private AtomicLong publishedByteCount = new AtomicLong(0);
+  private final AtomicLong publishedByteCount;
   private EventLoop eventloop;
   private int count;
   private StatefulStreamCodec<Object> statefulSerde;
@@ -42,6 +42,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   public BufferServerPublisher(String sourceId, int queueCapacity)
   {
     super(sourceId, queueCapacity);
+    this.publishedByteCount = new AtomicLong(0);
   }
 
   /**
@@ -122,6 +123,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
    * @param context
    */
   @Override
+  @SuppressWarnings("unchecked")
   public void activate(StreamContext context)
   {
     InetSocketAddress address = context.getBufferServerAddress();

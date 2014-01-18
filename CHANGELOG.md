@@ -1,5 +1,506 @@
 #Release Notes - Streaming Platform
 
+## Version 0.9.2
+
+## Bug
+* [SPOI-1327] - AtLeastOnceTest.testInlineOperatorsRecovery intermittent failure
+* [SPOI-1342] - DTCli should check license and relay the information with each application launched
+* [SPOI-1383] - Last window id and recovery window id do not update on 0.9
+* [SPOI-1439] - Gateway should be secured
+* [SPOI-1445] - Add version detection for Gateway
+* [SPOI-1456] - Free Memory in container widget changes too rapidly
+* [SPOI-1540] - Specification of license handlers and enforcers in the license file.
+* [SPOI-1632] - jar upload fails
+* [SPOI-1634] - Uptime at 1Billion events/s (Machine data)
+* [SPOI-1635] - Update node1 with latest machine data demo
+* [SPOI-1676] - Incremental Obfuscation of dt-flume directory
+* [SPOI-1677] - Supports uploading of dependency jars
+* [SPOI-1678] - When loading jars, make sure they are in their separate space so they don't conflict with gateway, cli and other jars
+* [SPOI-1679] - When uploading jar and when dependencies are not met, allow the upload with a message about dependencies
+* [SPOI-1680] - gateway throws errors when retrieving web service info from stram
+* [SPOI-1687] - Support launching jar and showing logical plan from HDFS 
+* [SPOI-1688] - Map Reduce Monitor Does Not Publish WebSocket Data
+* [SPOI-1697] - Update demo configuration on node2
+* [SPOI-1703] - Update auto provisioning with DataTorrent 0.9.1 and GCE GA
+* [SPOI-1707] - License agent should handle license expiry
+* [SPOI-1708] - Stram should store license expiry
+* [SPOI-1709] - Show license object information in gateway
+* [SPOI-1710] - License cutting utility
+* [SPOI-1712] - Gateway to gracefully handle stram being a newer version than itself
+* [SPOI-1714] - Dynamic partition stop working if you start from only 1  partition
+* [SPOI-1727] - ApplicationInfoAutoPublisher unit test error
+* [SPOI-1728] - StramEvent exception prevents package name obfuscation
+* [SPOI-1739] - recordingStartTime of operator stats is showing -1 from time to time
+* [SPOI-1743] - Tuple recording on port is not showing up in web services
+* [SPOI-1744] - Recording says ended even if the recording is still going on
+
+
+## Improvement
+* [SPOI-1098] - event recorder logging improvements
+* [SPOI-1370] - Make the partition logic available to the end-users
+* [SPOI-1448] - DAG Visualization - Stream Types
+* [SPOI-1603] - BufferServerStatsCollection - dont check against bufferserverpublisher and subscriber
+* [SPOI-1613] - Update the User Interface guide to reflect latest version (0.9.1)
+
+## New Feature
+* [SPOI-165] - Parent jira for authentication
+* [SPOI-170] - Stream should authenticate before allowing an operator to connect
+* [SPOI-258] - Develop Flume Sink and corresponding DT input adapter
+* [SPOI-327] - Parent jira for Security
+* [SPOI-401] - Licensing alert mechanisms
+* [SPOI-411] - Ability to modify (add, upgrade, downgrade) license while the app is running
+* [SPOI-436] - Provide Web Service for obtaining license information (Usage limits, etc)
+* [SPOI-729] - Include license data in DT phone home
+* [SPOI-872] - Logical View of Running Application
+* [SPOI-975] - Support DataLocal Functionality
+* [SPOI-1406] - Add log file path and/or URL to each container info map
+* [SPOI-1621] - Input operator - CDR parser using CSV 
+* [SPOI-1699] - Add locality (and maybe id?) to physical streams in REST calls
+
+## Task
+* [SPOI-1689] - Map Reduce Monitor Web App
+* [SPOI-739] - Hadoop 2.2 certification
+* [SPOI-763] - Competition study
+* [SPOI-1140] - Annotate dag visualization with stream throughout and other data
+* [SPOI-1246] - Support versioning for Gateway to STRAM communications 
+* [SPOI-1253] - Create DataTorrent Application which provides licensing server functionality
+* [SPOI-1389] - ContainerList view should show the log file name (stderr, stdout) in the info widget
+* [SPOI-1405] - Design macros for node0 and node1
+* [SPOI-1609] - Competitive analysis - DT (Platform1 and Platform2)
+* [SPOI-1611] - Benchmarking Ads Dimension on Morado cluster (at-least-once semantics) - Platform1
+* [SPOI-1616] - Benchmarking Performance app with Platform1
+* [SPOI-1670] - Ensure that Dedup operator is fault tolerant
+* [SPOI-1673] - use public/private key encryption for dt phone home
+* [SPOI-1675] - Map Reduce Jobs
+* [SPOI-1686] - Launch separate process when loading classes from application jars
+* [SPOI-1722] - Create a utility to create default license
+* [SPOI-1724] - Create a command line utility to generate customer license
+* [SPOI-1736] - CLI warning on License Violation
+* [SPOI-1742] - Update end-user documentation
+
+
+## Sub-task
+* [SPOI-919] - Certify secure mode with Hadoop 2.2.0
+* [SPOI-966] - Create a licensing agent application
+* [SPOI-1413] - Flume sink part 
+* [SPOI-1414] - DT Input Adapter for Flume
+* [SPOI-1475] - Augment Kafka operator to dynamically adapt to load and broker/partition changes
+* [SPOI-1538] - Develop Ads Dimension on Morado cluster (at-least-once semantics) Platform1
+* [SPOI-1713] - Secure communication between gateway and stram
+* [SPOI-1720] - Ensure that the Partionable interface and StatsListener interface callbacks are made from the same thread
+* [SPOI-1723] - The default license generation should be integrated with build
+* [SPOI-1731] - Sync execution layer deployment state after recovery
+
+## GitHub - DataTorrent/Malhar
+* [616] - fix #615 Update Web Apps Instructions
+* [615] - Update Web Apps Instructions
+* [614] - corrected typo
+* [613] - Fixes #599. Upload and specify dependency jars
+* [612] - fixes #597
+* [611] - fixes #610
+* [610] - Telecom tests failing
+* [609] - Github 597
+* [608] - #fix 607 Machine Data Demo Day Format
+* [607] - Machine Data Demo Day Format
+* [606] - fixes #457 added xml parse operator to parse and pick values from xml nodes and att...
+* [605] - added the history for hadoop 1.x
+* [603] - Map Reduce Monitor - Elapsed Time
+* [602] - Map Reduce Monitor - Elapsed Time
+* [601] - Map Reduce Monitor - Bootstrap JS, Server Errors Notification, Header Alignment
+* [599] - Provide UI for uploading and specifying dependency jars
+* [598] - Map Reduce Monitor - Server Errors Notification
+* [597] - Map Reduce Monitor App - CPU/Memory History
+* [595] - Map Reduce Monitor (History Charts, Animations, Readme, AngularJS Upgrade)
+* [594] - Map Reduce Monitor - Production Files (dist)
+* [593] - Map Reduce Monitor - AngularUI Bootstrap Progressbar issue with ngAnimate
+* [592] - Map Reduce Monitor Update (Readme, App List, History Charts)
+* [591] - Map Reduce Monitor - Map/Reduce History Charts
+* [590] - Fixes #401, adds zoom to physical DAG
+* [589] - Map Reduce Monitor - App List Columns
+* [586] - Map Reduce Monitor - App Id AngularJS Filter
+* [585] - Fixes #569, Cosmetic changes
+* [584] - Map Reduce Monitor - Show Active Job First
+* [581] - Map Reduce Monitor Update (Loading Indicator, Animations, Delayed Promise)
+* [580] - Map Reduce Monitor - AngularJS Animations
+* [579] - Map Reduce Monitor - Upgrade to AngularJS 1.2.6
+* [578] - Map Reduce Monitor - App List Loading Indicator
+* [577] - fixes #553, fixes #575
+* [576] - Map Reduce Monitor - AngularJS Delayed $q Promise
+* [575] - Map Reduce Monitor App - Send Job Stats immediately on Subscribe Request
+* [573] - Map Reduce Monitor Update (App List Grid, Progress Bars, Job Removal)
+* [572] - fixes #570
+* [571] - Map Reduce Monitor - Remove Job on WebSocket Message
+* [570] - clipPath issue when multiple charts on the same page
+* [569] - Various cosmetic updates for console
+* [568] - fixes #542, tooltip no longer obstructed by graph lines
+* [567] - Bird's Eye View for Physical DAG view
+* [566] - fixes #544, windowIds can now handle initial value of -1 or 0
+* [565] - Map Reduce Monitor - Job Selection
+* [564] - fixes #357, added logical operator page
+* [563] - Map Reduce Monitor - App List ng-grid
+* [561] - Map Reduce Monitor - App List Table Filter
+* [560] - Fixed exception with KryoSerializableStreamCodec #559
+* [558] - CDR simulator #524
+* [557] - Github 525
+* [556] - set the name of the io threads created by ning asynchttpclient
+* [554] - Squashed commit of the following:
+* [553] - Map Reduce Monitor App - Store Map/Reduce Progress History
+* [551] - fixes #550
+* [550] - Map Reduce Monitor App - App Should Broadcast Special Message on Unsubscription
+* [549] - Map Reduce Monitor - Stop Updates after Job Unsubscribe
+* [548] - Map Reduce Monitor - Found Job Notification
+* [547] - Fix Github #545
+* [544] - Console does not handle initial windowId
+* [542] - Tooltip for line graphs show up behind graphs after turning series on and off
+* [541] - fixes #535
+* [539] - Map Reduce Monitor - Merge Progress Bars with Progress Table
+* [538] - Map Reduce Monitor - Combine Map/Reduce Counters
+* [536] - Map Reduce Monitor - App List Running Jobs Progress Bar
+* [535] - Console breaks when switching to other page
+* [534] - Fixes #510, Unsubscribe Logical Operators when not used by any widget
+* [533] - Fixes #521, Refactored WindowId usage
+* [532] - Map Reduce Monitor - Counters
+* [530] - Map Reduce Monitor - App List Sort
+* [526] - Map Reduce Monitor - Counters
+* [525] - CDR processing DAG prototype
+* [523] - Github 512
+* [521] - Normalize all WindowId objects by overriding "set" method of appropriate models
+* [519] - Map Reduce Monitor - Header Alignment on Resize
+* [518] - Map Reduce Web App
+* [517] - Map Reduce Monitor - License Headers
+* [516] - Map Reduce Monitor - Map Reduce Jobs List
+* [515] - Map Reduce Monitor - AngularJS Modules Definition
+* [514] - Map Reduce Monitor - Readme (Deployment and Running Instructions)
+* [513] - Map Reduce Monitor - Job Query Loading Indicator
+* [512] - Support Normalization Operator
+* [511] - Map Reduce Monitor - AngularJS Settings Provider
+* [510] - Unsubscribe logicalOperators on InstancePage when not in use by widget
+* [509] - Fixes #505. Also removes one more instance of free memory metric for containers
+* [507] - Map Reduce Monitor - Single Config (Server and Client)
+* [505] - Add processed and emitted metrics to container overview widget
+* [504] - fixes #356, container log url now available in container info widget
+* [503] - Map Reduce Monitor - Active Job Highlight
+* [502] - Map Reduce Monitor - AngularJS Parent Scope Event Propagation
+* [501] - Fixes #364, removed free memory from container metrics
+* [500] - Map Reduce Monitor - Mock Server
+* [499] - Adding support for R. Basic operations - min, max and std deviation support added. Also adding support to run R scripts.
+* [498] - Rsupport pull
+* [496] - Map Reduce Monitor - Progress Line Chart
+* [495] - Map Reduce Monitor - Running MAPREDUCE Applications Discovery
+* [494] - fixes #420, can now set explicit height for widgets
+* [493] - fix #488 added delay before reconnection
+* [492] - CPU/RAM Metrics for Map Reduce Jobs
+* [491] - fix #488 added delay before reconnection
+* [489] - Map Reduce Monitor - Job Controller
+* [488] - WebSocketOutputOperator should wait a specified number of seconds before reconnection
+* [487] - Using uniform naming convention for applications. Fixed incorrect application names. Fixes #486.
+* [486] - Application names are not uniform
+* [485] - CPU/RAM Metrics for Map Reduce Jobs (Map Reduce Monitor App)
+* [484] - Map Reduce Monitor - AngularJS UI-Router Nested Views
+* [483] - Enhance the AbstractSlidingWindow #480, Add a SortedSlidingWindow operator #423
+* [482] - fixes #411. bundling on server.js, monkeypatching fs to avoid EMFILE
+* [479] - fix #443 reconnection when the connection is dropped
+* [478] - fix #443 Handles reconnection when the connection is dropped
+* [477] - Improvements to LogicalDagWidget. Fixes #399, #473, #475, #476
+* [476] - Logical DAG Widget: Limit scroll scale extent
+* [475] - Logical DAG Widget: add ability to reset initial dag view
+* [474] - Map Reduce Monitor - AngularJS UI-Router
+* [473] - Logical DAG Widget: only zoom when alt/option is held down
+* [472] - Map Reduce Monitor App - App Does not Publish Completed Maps
+* [471] - Map Redice Monitor - Reduce Progress Grid
+* [470] - Map Redice Monitor - Map Progress Grid
+* [469] - Map Redice Monitor - AngularJS Percentage Filter
+* [468] - Map Reduce Monitor - Monitored Jobs Grid
+* [467] - Add a general CSV parser operator to parse string, byte[] input to Map #451
+* [466] - Map Redice Monitor - AngularJS Util Service
+* [465] - Map Reduce Monitor - Unsubscribe Action
+* [464] - Map Reduce Monitor - Client-Side Settings
+* [463] - Map Reduce Monitor - WebSocket Unsubscribe
+* [461] - Map Reduce Monitor -  Multiple Jobs Monitoring
+* [460] - Map Reduce Monitor - Progress Bar Animation
+* [459] - Map Reduce Monitor - Upgrade to AngularJS 1.2.4
+* [458] - added xml parser operator and its test, fixes #457
+* [456] - Github 444
+* [454] - Map Reduce Monitor - AngularUI Bootstrap
+* [453] - Map Reduce Monitor - Production Build with Grunt
+* [452] - Map Reduce Monitor - jshint
+* [451] - CSV input operator (CDR processing)
+* [450] - Map Reduce Monitor - Progress Bars 
+* [449] - Map Reduce Monitor App - WebSocket Query
+* [448] - Map Reduce Monitor - Error Notifications with pnotify 
+* [444] - Map Redice Monitor App - Publish Map/Reduce Updates as Array
+* [443] - Map Reduce Monitor App WebSocket Issue
+* [442] - Map Reduce Monitor - Node.js Proxy for Hadoop ResourceManager
+* [441] - Map Reduce Monitor - REST Service
+* [439] - Map Reduce Monitor - Server Configuration
+* [438] - Map Reduce Monitor - Settings
+* [436] - Map Reduce Monitor - Job Progress Grid
+* [435] - Map Reduce Monitor - WebSocket Service with AngularJS provider
+* [434] - Map Reduce Monitor - Unit Tests
+* [433] - Map Reduce Monitor - AngularJS Directives (widgets)
+* [432] - Map Reduce Monitor - Page Layout with Bootstrap
+* [431] - Map Reduce Monitor - Node.js Server
+* [430] - Map Reduce Monitor - Yeoman Generated App
+* [428] - Normalization operator (CDR processing)
+* [427] - Filter operator (CDR Processing)
+* [426] - Enrichment operator (CDR processing)
+* [425] - Aggregator operator (CDR processing)
+* [422] - Github 421
+* [421] - Create RedisOperator taking String,String for performance
+* [420] - Allow widgets to have adjustable height
+* [419] - DAG Styling, DAG Firefox Issue
+* [418] - Logical DAG - Firefox Bottom Margin Issue
+* [417] - Logical DAG Styling
+* [416] - Fix jquery build error
+* [415] - Organized scripts and server
+* [414] - fix #408, fix #413 Logical DAG - Show Stream Locality on Demand
+* [413] - Logical DAG - Right Aligned Legned and Show Locality Link
+* [412] - Improve Front Dev Environment
+* [411] - Improved dev environment for front
+* [410] - Map Reduce Monitor Web App
+* [409] - fix #393 Front Node.js Proxy
+* [408] - Logical DAG - Show Stream Locality on Demand
+* [407] - fixes #373
+* [401] - Physical DAG - Smart Zoom
+* [399] - Physical DAG - Bird's-Eye View
+* [393] - Front Node.js Proxy
+* [375] - fixes #367, improves reload time during dev on front
+* [374] - fixes #367, improves reload time during dev on front
+* [372] - Logical DAG Legend Styling
+* [371] - Logical DAG Legend
+* [370] - Fix issue316 issue317 pull
+* [369] - Logical DAG - Legend
+* [368] - Squashed commit of the following:
+* [367] - Precompile templates for better dev process
+* [366] - Documenting demos pull
+* [365] - Normalized all "processed" and "emitted" labels
+* [364] - Remove free memory from container metrics in UI
+* [362] - Dependency to dagre-d3 fork
+* [361] - Logical DAG - Stream Locality
+* [360] - Update physical operators collection to fetch from physical plan
+* [359] - Add source and sinks to physical operator list 
+* [358] - Normalize processed/s emitted/s labels across data tables and dag view
+* [357] - Create Logical Operator Page
+* [356] - ContainerList view should show the log file name (stderr, stdout) in the info widget
+* [355] - fixes #349, recently-launched app does not request operator list
+* [354] - Make partitionable kafka input operator adjust partitions ifself for kafka partition change(del/add)
+* [353] - Upgrade kafka to 0.8 release
+* [352] - fixes #322
+* [351] - Non-partitioned operators
+* [350] - Key/Value lookup Storage Manager changes
+* [349] - Application launch error in console
+* [348] - Fixes #339, switches cluster metrics to websocket topic
+* [347] - fix #346 Physical DAG - Remove Container IDs
+* [346] - Physical DAG - Remove Container IDs
+* [345] - Added sensible default display for avg app age field in cluster metrics widget #341
+* [344] - Added build cmd to travis script, fixes #343
+* [343] - Build step for front not in travis script
+* [342] - Fix for #328
+* [341] - Cluster overview display items (initial launch)
+* [339] - Cluster stats should come from WebSocket topic
+* [337] - Add 1 to N partition support for kafka input operator with simple kafka consumer #311
+* [336] - logstream integration with siteops ui
+* [332] - Squashed commit of the following:
+* [329] - Documenting demos
+* [328] - Numbers in graph overlay illegible when close together
+* [325] - [DB Lookup & Caching] Create Mongo-db based DB lookup operator
+* [323] - fixes #322
+* [322] - Make connectionList property not null in Redisoutputoperator
+* [313] - Marking operators non-partitionable #312
+* [312] - Set partitionable to false for all operators which are cannot be partitioned
+* [311] - Dynamic partition kafka input operator to adapt to real time load 
+* [298] - LogStream - siteops conversion - totals per second ( pages / bytes)
+* [297] - LogStream - siteops conversion - plot requests over time (per page / per server)
+* [296] - LogStream - siteops conversion - top 10 servers with 404 response (req/sec)
+* [295] - LogStream - siteops conversion - top 10 URL's with 404 response (req/sec)
+* [294] - LogStream - siteops conversion - top 10 clients downloading (bytes/sec)
+* [293] - LogStream - siteops conversion - top 10 client IP's (req/sec)
+* [292] - LogStream - siteops conversion - server load (req/sec/server)
+* [291] - LogStream - siteops conversion - top 10 URL's (req/sec)
+* [290] - Kafka POM WARN during build
+* [277] - Kafka input operator should destroy itself if the topic doesn't exist
+* [270] - [DB Lookup & Caching] Improvement to the design of existing Storage Manager
+* [269] - [logstream] integration with sitestats ui
+* [111] - SPOI-1191 - #comment Added StandardDeviationKeyVal operator and test class.
+* [104] - Map Reduce Monitor Application
+
+
+## Version 0.9.1
+
+## New Feature
+* [SPOI-377] - Input adapter for CouchDB
+* [SPOI-378] - Output Adapter for CouchDb
+* [SPOI-410] - Document and test download to work with Cloudera CDH5
+* [SPOI-945] - Add ability to specify application properties, DAG, operator and port attributes in stram configuration file.
+* [SPOI-1088] - Add mouseover for new graphing module
+* [SPOI-1172] - DAG Visualization - Partition Shape
+* [SPOI-1215] - Gauges in Container View
+* [SPOI-1407] - Add Jar File View
+* [SPOI-1415] - De-duplicaton operator
+* [SPOI-1483] - Hadoop management script or service
+* [SPOI-1501] - Widget - logical operators
+* [SPOI-1535] - Memory Gauge Widget
+* [SPOI-1536] - CPU Gauge Widget
+* [SPOI-1550] - Logical DAG - Multiple Metrics
+* [SPOI-1556] - Logical DAG Real-Time Metrics - Tracking Model Changes
+* [SPOI-1561] - Logical DAG - Throughput
+* [SPOI-1562] - Logical DAG - Prev/Next Metric Navigation
+* [SPOI-1600] - Logical DAG - Show Two Metrics
+* [SPOI-1235] - Add support for "DB lookup" functionality 
+* [SPOI-1236] - Provide support for Cassandra NoSQL database
+
+## Bug
+* [SPOI-600] - Twitter demo failed when I did two simulteneouce operator/container kill
+* [SPOI-993] - Plan modification gives NPE when the containers aren't deployed yet
+* [SPOI-1280] - Recording Chart widget shows up with "X"
+* [SPOI-1303] - If the operator is setup sucessfully, ensure that it gets a chance to teardown.
+* [SPOI-1331] - When an operator is undeployed, its input streams should be disconnected from any upstream operators.
+* [SPOI-1388] - Nodes are showing IP instead of hostnames
+* [SPOI-1412] - Buffer Server uses a different version of guava base jar than Malhar
+* [SPOI-1427] - Accessing Demos From clean VM is not working
+* [SPOI-1430] - When uploading jars, meta information should be extracted and return error if jar is not valid
+* [SPOI-1433] - checkboxes in lists intermittently unresponsive
+* [SPOI-1452] - GetApp web service returns 500 for apps killed via UI
+* [SPOI-1457] - Kill container call returns 500 when request payload is not json
+* [SPOI-1458] - After finish uploading jar from the development tab, the jar list does not get updated until browser's "refresh" button is pressed
+* [SPOI-1459] - get recordings REST call returning null values
+* [SPOI-1497] - Change the names of nodes in hadoop to be just hostname with the domain name.
+* [SPOI-1498] - StreamList widget has "Name" for stream id
+* [SPOI-1499] - CPU usage on operatorList widget is routinely over 100%, sometimes 900%?
+* [SPOI-1548] - Logical DAG - Partition Count
+* [SPOI-1555] - Logical DAG: Partition-Count Metric
+* [SPOI-1563] - Moving average should be computed based on endWindow timestamps
+* [SPOI-1570] - Update sandbox to support Hadoop 2.2 and DataTorrent 0.9.x
+* [SPOI-1572] - gateway automatic update via websocket throws errors
+* [SPOI-1590] - Datanode does not successfully connect to cluster after initial startup
+* [SPOI-1614] - Front files not included during builds after migration to Malhar
+
+
+## Improvement
+* [SPOI-1005] - CLI: create a default clirc that is controlled by the installer
+* [SPOI-1099] - Display app master implementation version
+* [SPOI-1110] - BufferServer Stats should be passed as part of the port stats?
+* [SPOI-1305] - Support StringCodec for enums natively in Attributes
+* [SPOI-1306] - Reduce the verbosity of the Context interface by changing the requirement for defaultValue argument for attrValue
+* [SPOI-1421] - Improve default name for widgets
+* [SPOI-1453] - Publish recently ended apps on WebSocket topics along with running app(s)
+* [SPOI-1560] - "ERROR: mux is missing ..." messages emitted during "mvn test" on stram
+* [SPOI-1574] - Document the additions to the config file specification
+* [SPOI-1582] - Color non-empty filter fields for emphasis
+* [SPOI-1583] - Limit default number of rows for physical operators
+* [SPOI-1588] - Create service wrapper for datanode, namenode, nodemanager, resourcemanager, and historyserver
+* [SPOI-1592] - Latency Measure Units
+* [SPOI-1596] - Service wrapper for DTGateway
+* [SPOI-1601] - Create meaningful names to the demos instead of providing entire path as the demo names
+* [SPOI-1605] - Make default dashes into logical and physical for Instance
+* [SPOI-1606] - Remove various metrics from logical operator list
+
+## Task
+* [SPOI-907] - Create Application DAG visualization
+* [SPOI-1002] - List application names instead of class names where available
+* [SPOI-1140] - Annotate dag visualization with stream throughout and other data
+* [SPOI-1237] - Handle multi-container failure
+* [SPOI-1281] - Remove TopN Widget from dashboard
+* [SPOI-1282] - Update benchmarks
+* [SPOI-1297] - Recover from "multiple container" failure
+* [SPOI-1321] - Automate datanode provisioning
+* [SPOI-1354] - Figure out a way to have charts be dramatically different for key combinations
+* [SPOI-1360] - Create an automation framework for DataTorrent cloud provisioning
+* [SPOI-1365] - Add ability to create, delete, and bootstrap multiple nodes with a single command
+* [SPOI-1385] - Reduce memory used for Twitter demo containers
+* [SPOI-1411] - Deprecate old Malhar webdemos once logstream is available
+* [SPOI-1431] - GET /ws/v1/jars should return more meta information
+* [SPOI-1432] - Implement /ws/v1/jars/{jarname}/meta
+* [SPOI-1473] - Show main cluster stats in DT Console
+* [SPOI-1477] - Automate namenode provisioning
+* [SPOI-1478] - Recipe for Google Cloud provisioning
+* [SPOI-1479] - Base configuration and provisioning
+* [SPOI-1480] - Java install recipe
+* [SPOI-1481] - Recipe to install maven
+* [SPOI-1482] - Hadoop install recipe
+* [SPOI-1484] - Open source UI to Malhar
+* [SPOI-1518] - DT Console AngularJS Integration
+* [SPOI-1519] - Logstream - sitestats UI integration
+* [SPOI-1521] - Gateway to return error details upon status code 400s and 500s
+* [SPOI-1523] - Run certification tests on 0.9.0 release build
+* [SPOI-1524] - Automate performance benchmarking for different stream localities and event sizes
+* [SPOI-1526] - Update GC stram-site.xml to reflect new version settings and customizations
+* [SPOI-1527] - Automate stream locality perfromance benchmarking with the same tuple 
+* [SPOI-1541] - Create clirc compatible with demos
+* [SPOI-1545] - Add documentation to chef repository
+* [SPOI-1553] - DataTorrent performance testing on Google Cloud
+* [SPOI-1554] - Create recipe for datatorrent local install
+* [SPOI-1589] - Create cluster creation helper script for gc-nodes
+* [SPOI-1591] - Create automatic installer for webapps
+* [SPOI-1496] - Website framework selection
+* [SPOI-1602] - Documentation index update to include Gateway API and Scalability Doc
+* [SPOI-1607] - Update docs for 0.9.1 release
+
+## Sub-task
+* [SPOI-1447] - Show stream throughput
+* [SPOI-1449] - DAG Visualization - Latency. Show latency per path/compute
+* [SPOI-1450] - Show partitionable operators
+* [SPOI-1464] - Allow operator to request/trigger repartitioning
+* [SPOI-1466] - DB lookup for MongoDB
+* [SPOI-1474] - Support operator specific stats in STRAM decisions
+* [SPOI-1485] - Add license headers to all relevant files
+* [SPOI-1486] - Move custom npm modules to node_modules folder, update npm registry
+* [SPOI-1487] - Update .travis.yml in malhar to also build and test Front
+* [SPOI-1488] - Create widget for displaying cluster info
+* [SPOI-1490] - Expose gateway API calls for getting cluster information
+* [SPOI-1529] - Understand exactly-once semantics. 
+* [SPOI-1530] - Set-up cluster on local VM
+* [SPOI-1531] - Understand existing AdsDimension App
+* [SPOI-1532] - Develop similar app with at-least once semantics as AdsDimension App
+* [SPOI-1534] - Setup on Morado cluster for bench-marking 
+* [SPOI-1593] - Move front folder into Malhar repository
+* [SPOI-1594] - Define code style standards, integrate a hinter
+* [SPOI-1595] - Create tests for more js files
+
+## GitHub - DataTorrent/Malhar
+* [335] - Fix issue316 issue317 pull
+* [331] - fix #330 Logical DAG Metrics
+* [330] - Logical DAG Metrics
+* [327] - Create a cluster stats widget
+* [326] - Refactored DB Lookup operators and Cache Manager
+* [324] - Add UI to repository
+* [321] - Merged malhar dev 0.9.1 to logstream
+* [320] - Squashed commit of the following:
+* [316] - Provide a property to set tuple size in the RandomWord input operator
+* [315] - fixes #314
+* [314] - RedisOutputOperator Exception 
+* [310] - Fixing default redis listen ports to 6379.  Fixes #309
+* [309] - Fix default redis listen port in webapps config.js
+* [308] - fixes #307
+* [307] - Change the format for passing multiple redis instances during partition
+* [305] - Fix github 278 and 283
+* [304] - Added DataCache, JDBCBasedCache Operator and its test case #303
+* [303] - [DB Lookup & Caching] Create an operator which caches database results in memory for specified time
+* [301] - Removing unused dependency and changing default daemon port to 9090.
+* [300] - Update default settings for webapps
+* [299] - A stream app to benchmark kafka partitionable input operator
+* [287] - Use Yammer Metric to tick the kafka consumer throughput
+* [284] - Squashed commit of the following:
+* [283] - Monitor throughput for each kafka consumer 
+* [282] - Github 278 fix the Simple Kafka Consumer performance
+* [278] - A performance bug in Simple kafka consumer
+* [273] - Optimizing Redis Operator for inserting Maps
+* [264] - Added DataCache, JDBCBasedCache Operator and its test case
+* [262] - Marking operators non-partitionable
+* [260] - Figure out a way to have charts be dramatically different for key combinations in Machine Demo
+* [245] - Kafka Benchmark
+* [159] - Squashed commit of the following:
+* [147] - HighLow is not parameterized
+* [130] - CouchDB Output Adaptar
+* [289] - DimensionTimeBucket*Operator Usage and Issues
+* [252] - Web Apps - Karma Unit Tests
+* [251] - Machine Data Demo - Lookback Field Validation
+* [250] - Mobile Locator Demo - Phone Range Support
+* [232] - Show ingestion rate on MachineDemo UI
+* [104] - Map Reduce Monitor Application
+* [20] - Can not serialize Configuration Object
+
+
 ## Version 0.9.0
 
 ## Improvement

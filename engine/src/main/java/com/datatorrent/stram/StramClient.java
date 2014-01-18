@@ -5,59 +5,40 @@
 package com.datatorrent.stram;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.google.common.base.Objects;
+import com.google.common.collect.Lists;
+
+import org.codehaus.jackson.map.ser.std.RawSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.SubmitApplicationRequest;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
-import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
-import org.apache.hadoop.yarn.api.records.LocalResource;
-import org.apache.hadoop.yarn.api.records.LocalResourceType;
-import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
-import org.apache.hadoop.yarn.api.records.NodeReport;
-import org.apache.hadoop.yarn.api.records.Priority;
-import org.apache.hadoop.yarn.api.records.QueueACL;
-import org.apache.hadoop.yarn.api.records.QueueUserACLInfo;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.protocolrecords.*;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
@@ -66,9 +47,6 @@ import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.esotericsoftware.kryo.Kryo;
-import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
 
 /**
  *
@@ -82,6 +60,9 @@ import com.google.common.collect.Lists;
 public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
+  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
+  public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
+  public static final String DEFAULT_APPNAME = "Stram";
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
@@ -99,11 +80,10 @@ public class StramClient
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  public static final String YARN_APPLICATION_TYPE = "DataTorrent";
-  public static final String DEFAULT_APPNAME = "Stram";
   private String libjars;
   private String files;
   private String archives;
+  private String applicationType = YARN_APPLICATION_TYPE;
 
   /**
    *
@@ -215,7 +195,8 @@ public class StramClient
       org.apache.bval.jsr303.ApacheValidationProvider.class,
       org.apache.bval.BeanValidationContext.class,
       org.apache.commons.lang3.ClassUtils.class,
-      net.engio.mbassy.bus.MBassador.class
+      net.engio.mbassy.bus.MBassador.class,
+      RawSerializer.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
@@ -290,13 +271,19 @@ public class StramClient
 
   private String copyFromLocal(FileSystem fs, String pathSuffix, String[] files) throws IOException
   {
-    StringBuilder csv = new StringBuilder();
+    StringBuilder csv = new StringBuilder(8 * (pathSuffix.length() + 2 + files.length));
     for (String localFile : files) {
       Path src = new Path(localFile);
       String filename = src.getName();
       Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + filename);
-      LOG.info("Copy {} from local filesystem to {}", localFile, dst);
-      fs.copyFromLocalFile(false, true, src, dst);
+      if (localFile.startsWith("hdfs:")) {
+        LOG.info("Copy {} from HDFS to {}", localFile, dst);
+        FileUtil.copy(fs, src, fs, dst, false, true, conf);
+      }
+      else {
+        LOG.info("Copy {} from local filesystem to {}", localFile, dst);
+        fs.copyFromLocalFile(false, true, src, dst);
+      }
       if (csv.length() > 0) {
         csv.append(",");
       }
@@ -391,13 +378,22 @@ public class StramClient
     appContext.setApplicationId(appId);
     // set the application name
     appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
-    appContext.setApplicationType(YARN_APPLICATION_TYPE);
-    appContext.setMaxAppAttempts(1); // no retries until Stram is HA
+    appContext.setApplicationType(this.applicationType);
+    if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
+      appContext.setMaxAppAttempts(1); // no retries until Stram is HA
+    } else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
+      LOG.debug("Attempts capped at {} ({})", conf.get(YarnConfiguration.RM_AM_MAX_ATTEMPTS), YarnConfiguration.RM_AM_MAX_ATTEMPTS);
+    }
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
     // Setup security tokens
+    // If security is enabled get ResourceManager and NameNode delegation tokens.
+    // Set these tokens on the container so that they are sent as part of application submission.
+    // This also sets them up for renewal by ResourceManager. The NameNode delegation rmToken
+    // is also used by ResourceManager to fetch the jars from HDFS and set them up for the
+    // application master launch.
     if (UserGroupInformation.isSecurityEnabled()) {
       Credentials credentials = new Credentials();
       String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
@@ -414,46 +410,25 @@ public class StramClient
           LOG.info("Got dt for " + fs.getUri() + "; " + token);
         }
       }
+
+      InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
+                                                       YarnConfiguration.DEFAULT_RM_ADDRESS,
+                                                       YarnConfiguration.DEFAULT_RM_PORT);
+
+      // Get the ResourceManager delegation rmToken
+      GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
+      gdtr.setRenewer(tokenRenewer);
+      GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
+      org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
+      Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
+      credentials.addToken(rmToken.getService(), rmToken);
+
       DataOutputBuffer dob = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dob);
       ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
       amContainer.setTokens(fsTokens);
     }
-    /*
-     // If Kerberos security is enabled get ResourceManager and NameNode delegation tokens.
-     // Set these tokens on the container so that they are sent as part of application submission.
-     // This also sets them up for renewal by ResourceManager. The NameNode delegation rmToken
-     // is also used by ResourceManager to fetch the jars from HDFS and set them up for the
-     // application master launch.
-     if (UserGroupInformation.isSecurityEnabled()) {
 
-     YarnConfiguration yarnConf = new YarnConfiguration(conf);
-     InetSocketAddress rmAddress = ConfigUtils.getRMAddress(yarnConf);
-     //String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
-     String tokenRenewer = ConfigUtils.getRMUsername(yarnConf);
-
-     // Get the ResourceManager delegation rmToken
-     GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
-     gdtr.setRenewer(tokenRenewer);
-     GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
-     org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
-     Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
-
-     // Get the NameNode delegation rmToken
-     FileSystem dfs = FileSystem.get(conf);
-     Token<?> hdfsToken = dfs.getDelegationToken(tokenRenewer);
-
-     // Setup the credentials to serialize the tokens which can be set on the container.
-     Credentials credentials = new Credentials();
-     credentials.addToken(rmToken.getService(), rmToken);
-     credentials.addToken(hdfsToken.getService(), hdfsToken);
-     DataOutputBuffer dataOutput = new DataOutputBuffer();
-     credentials.writeTokenStorageToStream(dataOutput);
-     byte[] tokensBytes = dataOutput.getData();
-     ByteBuffer tokensBuf = ByteBuffer.wrap(tokensBytes);
-     amContainer.setTokens(tokensBuf);
-     }
-     */
     String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
     // set local resources for the application master
@@ -559,13 +534,17 @@ public class StramClient
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
-    vargs.add(StramAppMaster.class.getName());
+    if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
+      vargs.add(LicensingAppMaster.class.getName());
+    } else {
+      vargs.add(StramAppMaster.class.getName());
+    }
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
 
     // Get final commmand
-    StringBuilder command = new StringBuilder();
+    StringBuilder command = new StringBuilder(9 * vargs.size());
     for (CharSequence str : vargs) {
       command.append(str).append(" ");
     }
@@ -574,10 +553,6 @@ public class StramClient
     List<String> commands = new ArrayList<String>();
     commands.add(command.toString());
     amContainer.setCommands(commands);
-
-    // For launching an AM Container, setting user here is not needed
-    // Set user in ApplicationSubmissionContext
-    // amContainer.setUser(amUser);
 
     // Set up resource type requirements
     // For now, only memory is supported so we set memory requirements
@@ -589,14 +564,10 @@ public class StramClient
     // Not needed in this scenario
     // amContainer.setServiceData(serviceData);
 
-    // The following are not required for launching an application master
-    // amContainer.setContainerId(containerId);
-
     appContext.setAMContainerSpec(amContainer);
 
     // Set the priority for the application master
     Priority pri = Records.newRecord(Priority.class);
-    // TODO - what is the range for priority? how to decide?
     pri.setPriority(amPriority);
     appContext.setPriority(pri);
     // Set the queue to which this application is to be submitted in the RM
@@ -699,6 +670,11 @@ public class StramClient
   public void setArchives(String archives)
   {
     this.archives = archives;
+  }
+
+  public void setApplicationType(String type)
+  {
+    this.applicationType = type;
   }
 
 }

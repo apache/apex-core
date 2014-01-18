@@ -103,10 +103,9 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(60);
   /**
-   * The path to store the application jars under when starting application master and containers. This parameter
-   * is needed only if the default location needs to be overriden.
+   * The path to store application dependencies, recording and other generated files for application master and containers.
    */
-  Attribute<String> APPLICATION_PATH = new Attribute<String>("unknown-application-path");
+  Attribute<String> APPLICATION_PATH = new Attribute<String>(new String2String());
   /**
    * The size limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
    * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new file. Default value is 128k.

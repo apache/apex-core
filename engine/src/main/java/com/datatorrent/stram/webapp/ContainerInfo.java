@@ -22,5 +22,7 @@ public class ContainerInfo {
   public long lastHeartbeat;
   @RecordField(type="stats") public int numOperators;
   @RecordField(type="meta") public int memoryMBAllocated;
-  @RecordField(type="stats") public int memoryMBFree;
+  // commented out because free memory is misleading because of GC. may want to revisit this.
+  //  @RecordField(type="stats") public int memoryMBFree;
+  @RecordField(type="meta") public String containerLogsUrl;
 }

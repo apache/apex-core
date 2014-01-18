@@ -24,6 +24,7 @@ import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListen
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.google.common.collect.Lists;
+import java.util.Arrays;
 
 public class CustomStatsTest
 {
@@ -53,6 +54,8 @@ public class CustomStatsTest
 
     private transient OperatorContext context;
     private static CustomStats lastCustomStats = null;
+    private static Thread processStatsThread = null;
+    private static Thread definePartitionsThread = null;
 
     @Override
     public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, int incrementalCapacity)
@@ -63,6 +66,7 @@ public class CustomStatsTest
       for (Partition<?> p : partitions) {
         BatchedOperatorStats stats = p.getStats();
         if (stats != null) {
+          definePartitionsThread = Thread.currentThread();
           for (OperatorStats os : stats.getLastWindowedStats()) {
             if (os.customStats != null) {
               //LOG.debug("Custom stats: {}", os.customStats);
@@ -94,6 +98,7 @@ public class CustomStatsTest
     @Override
     public Response processStats(BatchedOperatorStats stats)
     {
+      processStatsThread = Thread.currentThread();
       for (OperatorStats os : stats.getLastWindowedStats()) {
         Assert.assertNotNull("custom stats in listener", os.customStats);
       }
@@ -118,7 +123,7 @@ public class CustomStatsTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENER, TestStatsListener.class);
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestStatsListener()}));
     //dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
@@ -138,6 +143,7 @@ public class CustomStatsTest
     Assert.assertNotNull("custom stats received", TestOperator.lastCustomStats);
     Assert.assertEquals("custom stats message", "interesting", ((TestOperatorStats)TestOperator.lastCustomStats).message);
     Assert.assertTrue("attribute defined stats listener called", ((TestOperatorStats)TestOperator.lastCustomStats).attributeListenerCalled);
+    Assert.assertSame("single thread", TestOperator.definePartitionsThread, TestOperator.processStatsThread);
 
   }
 

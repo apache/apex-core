@@ -28,6 +28,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -157,6 +158,30 @@ public class StramWebServicesTest extends JerseyTest
       return gatewayAddress;
     }
 
+    @Override
+    public String getLicenseId()
+    {
+      return null;
+    }
+
+    @Override
+    public long getRemainingLicensedMB()
+    {
+      return 0;
+    }
+
+    @Override
+    public long getAllocatedMB()
+    {
+      return 0;
+    }
+
+    @Override
+    public long getLicenseInfoLastUpdate()
+    {
+      return 0;
+    }
+
   }
 
   public static class SomeStats
@@ -171,9 +196,9 @@ public class StramWebServicesTest extends JerseyTest
     {
       public static List<LogicalPlanRequest> lastRequests;
 
-      DummyStreamingContainerManager()
+      DummyStreamingContainerManager(LogicalPlan dag)
       {
-        super(new LogicalPlan());
+        super(dag);
       }
 
       @Override
@@ -198,12 +223,14 @@ public class StramWebServicesTest extends JerseyTest
 
     }
 
-    private static DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager();
     private final Injector injector = Guice.createInjector(new ServletModule()
     {
       @Override
       protected void configureServlets()
       {
+        LogicalPlan dag = new LogicalPlan();
+        dag.setAttribute(LogicalPlan.APPLICATION_PATH, StramWebServicesTest.class.getName());
+        final DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager(dag);
 
         appContext = new TestAppContext();
         bind(JAXBContextResolver.class);
@@ -445,7 +472,7 @@ public class StramWebServicesTest extends JerseyTest
   void verifyAMInfo(JSONObject info, TestAppContext ctx)
           throws JSONException
   {
-    assertEquals("incorrect number of elements", 10, info.length());
+    assertTrue("Too few elements", info.length() > 10);
 
     verifyAMInfoGeneric(ctx, info.getString("id"), info.getString("user"),
         info.getString("name"), info.getLong("startTime"),

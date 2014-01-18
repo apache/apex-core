@@ -5,17 +5,18 @@
 package com.datatorrent.stram.client;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
@@ -26,6 +27,8 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.stram.license.util.Util;
 
 /**
  *
@@ -40,6 +43,8 @@ import org.slf4j.LoggerFactory;
  */
 public class StramClientUtils
 {
+  public static final String STRAM_LICENSE_FILE = "stram.license.file";
+
   /**
    *
    * TBD<p>
@@ -86,7 +91,7 @@ public class StramClientUtils
               YarnConfiguration.DEFAULT_RM_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
       return ((ApplicationClientProtocol)rpc.getProxy(
-          ApplicationClientProtocol.class, rmAddress, conf));
+              ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -129,6 +134,27 @@ public class StramClientUtils
       GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
       ApplicationReport report = reportResponse.getApplicationReport();
       return report;
+    }
+
+    public List<ApplicationReport> getAllApplicationReports() throws IOException, YarnException
+    {
+      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
+      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
+      return applicationsResponse.getApplicationList();
+    }
+
+    public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
+    {
+      // Till we figure out a good way to map the string application id to an ApplicationId
+      // Get all the application reports and match them with the application id
+      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
+      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
+      for (ApplicationReport report : applicationsResponse.getApplicationList()) {
+        if (report.getApplicationId().toString().equals(appId)) {
+          return report;
+        }
+      }
+      return null;
     }
 
     /**
@@ -190,7 +216,7 @@ public class StramClientUtils
             return true;
           }
           else {
-            LOG.info("Application did finished unsuccessfully."
+            LOG.info("Application finished unsuccessfully."
                     + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
                     + ". Breaking monitoring loop");
             return false;
@@ -215,7 +241,11 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
-  public static final String DT_HOME = System.getenv("DT_HOME");
+  /**
+   * Provides a way to run applications with different .m2 and .stram location for internal use.
+   * The environment variable was renamed as "DT_HOME" is used for other purposes
+   */
+  public static final String DT_HOME = System.getenv("_STRAM_CLIENT_ROOT");
 
   public static File getSettingsRootDir()
   {
@@ -239,6 +269,22 @@ public class StramClientUtils
       conf.addResource(new Path(cfgResource.toURI()));
     }
     return conf;
+  }
+
+  public static byte[] getLicense(Configuration conf) throws IOException
+  {
+    String stramLicenseFile = conf.get(STRAM_LICENSE_FILE);
+    if (stramLicenseFile == null) {
+      return Util.getDefaultLicense();
+    }
+    else {
+      return getLicense(stramLicenseFile);
+    }
+  }
+
+  public static byte[] getLicense(String filePath) throws IOException
+  {
+    return IOUtils.toByteArray(new FileInputStream(filePath));
   }
 
 }

@@ -15,8 +15,8 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import net.engio.mbassy.bus.BusConfiguration;
 import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +25,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.util.StringUtils;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
@@ -39,13 +38,13 @@ import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
-import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.StreamActivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.StreamDeactivationEvent;
+import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -53,25 +52,11 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.PortContext;
-import com.datatorrent.stram.engine.Stream;
-import com.datatorrent.stram.engine.StreamContext;
-import com.datatorrent.stram.engine.SweepableReservoir;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.engine.WindowIdActivatedReservoir;
+import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.datatorrent.stram.stream.BufferServerPublisher;
-import com.datatorrent.stram.stream.BufferServerSubscriber;
-import com.datatorrent.stram.stream.FastPublisher;
-import com.datatorrent.stram.stream.FastSubscriber;
-import com.datatorrent.stram.stream.InlineStream;
-import com.datatorrent.stram.stream.MuxStream;
-import com.datatorrent.stram.stream.OiOStream;
-import com.datatorrent.stram.stream.PartitionAwareSink;
+import com.datatorrent.stram.stream.*;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.
@@ -81,6 +66,7 @@ import com.datatorrent.stram.stream.PartitionAwareSink;
 public class StramChild
 {
   public static final int PORT_QUEUE_CAPACITY = 1024;
+  public static final String ENV_APP_PATH = "DT_APP_PATH";
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
@@ -130,7 +116,7 @@ public class StramChild
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.components = new HashSet<Component<ContainerContext>>();
-    this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default());
+    this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default(1, 1, 1));
     this.singletons = new HashMap<String, Object>();
     this.nodeRequests = new ArrayList<StramToNodeRequest>();
 
@@ -168,7 +154,7 @@ public class StramChild
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
       }
     }
-    catch (Exception ex) {
+    catch (IOException ex) {
       logger.warn("deploy request failed due to {}", ex);
       throw new IllegalStateException("Failed to deploy buffer server", ex);
     }
@@ -184,7 +170,10 @@ public class StramChild
 
         eventBus.subscribe(newInstance);
       }
-      catch (Exception ex) {
+      catch (InstantiationException ex) {
+        logger.warn("Container Event Listener Instantiation", ex);
+      }
+      catch (IllegalAccessException ex) {
         logger.warn("Container Event Listener Instantiation", ex);
       }
     }
@@ -227,9 +216,17 @@ public class StramChild
 
     final Configuration defaultConf = new Configuration();
 
-    String host = args[0];
-    int port = Integer.parseInt(args[1]);
-    final InetSocketAddress address = NetUtils.createSocketAddrForHost(host, port);
+    //String host = args[0];
+    //int port = Integer.parseInt(args[1]);
+    String appPath = System.getenv(ENV_APP_PATH);
+    if (appPath == null) {
+      logger.error("{} not set in container environment.", ENV_APP_PATH);
+      System.exit(1);
+    }
+    FSRecoveryHandler fsrh = new FSRecoveryHandler(appPath, defaultConf);
+    URI heartbeatUri = URI.create(fsrh.readConnectUri());
+
+    final InetSocketAddress address = NetUtils.createSocketAddrForHost(heartbeatUri.getHost(), heartbeatUri.getPort());
     final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                                                                        StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
     int exitStatus = 1; // interpreted as unrecoverable container failure
@@ -249,21 +246,21 @@ public class StramChild
         stramChild.teardown();
       }
     }
+    catch (Error error) {
+      logger.warn("Error running child", error);
+      /* Report back any failures, for diagnostic purposes */
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      error.printStackTrace(new PrintStream(baos));
+      umbilical.log(childId, "FATAL: " + baos.toString());
+      baos.close();
+    }
     catch (Exception exception) {
-      logger.warn("Exception running child : " + exception);
+      logger.warn("Exception running child", exception);
       /* Report back any failures, for diagnostic purposes */
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       exception.printStackTrace(new PrintStream(baos));
-      umbilical.log(childId, "FATAL: " + baos.toString());
-    }
-    catch (Throwable throwable) {
-      logger.error("Error running child : "
-              + StringUtils.stringifyException(throwable));
-      Throwable tCause = throwable.getCause();
-      String cause = tCause == null
-                     ? throwable.getMessage()
-                     : StringUtils.stringifyException(tCause);
-      umbilical.log(childId, cause);
+      umbilical.log(childId, baos.toString());
+      baos.close();
     }
     finally {
       RPC.stopProxy(umbilical);
@@ -375,7 +372,7 @@ public class StramChild
           pair.component.deactivate();
           eventBus.publish(new StreamDeactivationEvent(pair));
         }
-        
+
         pair.component.teardown();
         /**
          * we should also make sure that if this stream is connected to mux stream,
@@ -467,37 +464,37 @@ public class StramChild
     }
   }
 
-  private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
+  private synchronized void undeploy(List<Integer> nodeList)
   {
     logger.info("got undeploy request {}", nodeList);
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<Integer, Node<?>> toUndeploy = new HashMap<Integer, Node<?>>();
-    for (OperatorDeployInfo ndi : nodeList) {
-      Node<?> node = nodes.get(ndi.id);
+    for (Integer operatorId : nodeList) {
+      Node<?> node = nodes.get(operatorId);
       if (node == null) {
-        throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
+        throw new IllegalArgumentException("Node " + operatorId + " is not hosted in this container!");
       }
-      else if (toUndeploy.containsKey(ndi.id)) {
-        throw new IllegalArgumentException("Node " + ndi.id + " is requested to be undeployed more than once");
+      else if (toUndeploy.containsKey(operatorId)) {
+        throw new IllegalArgumentException("Node " + operatorId + " is requested to be undeployed more than once");
       }
       else {
-        toUndeploy.put(ndi.id, node);
+        toUndeploy.put(operatorId, node);
       }
     }
 
     ArrayList<Thread> joinList = new ArrayList<Thread>();
     ArrayList<Integer> discoList = new ArrayList<Integer>();
-    for (OperatorDeployInfo ndi : nodeList) {
-      OperatorContext oc = activeNodes.get(ndi.id);
+    for (Integer operatorId : nodeList) {
+      OperatorContext oc = activeNodes.get(operatorId);
       if (oc == null) {
-        disconnectNode(ndi.id);
+        disconnectNode(operatorId);
       }
       else {
         joinList.add(oc.getThread());
-        discoList.add(ndi.id);
-        nodes.get(ndi.id).shutdown();
+        discoList.add(operatorId);
+        nodes.get(operatorId).shutdown();
       }
     }
 
@@ -516,8 +513,8 @@ public class StramChild
       logger.warn("Aborted waiting for the deactivate to finish!");
     }
 
-    for (OperatorDeployInfo ndi : nodeList) {
-      nodes.remove(ndi.id);
+    for (Integer operatorId : nodeList) {
+      nodes.remove(operatorId);
     }
   }
 
@@ -526,8 +523,10 @@ public class StramChild
     operateListeners(containerContext, false);
 
     deactivate();
-    
+
     assert (streams.isEmpty());
+
+    eventBus.shutdown();
 
     nodes.clear();
 
@@ -571,8 +570,6 @@ public class StramChild
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-      ContainerStats stats = new ContainerStats(containerId);
-      msg.setContainerStats(stats);
 
       msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
@@ -583,41 +580,45 @@ public class StramChild
           msg.restartRequested = true;
         }
       }
-      msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
+      // commented out because freeMemory() is misleading because of GC, may want to revisit this
+      //msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
 
-      // gather heartbeat info for all operators
-      for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
-        OperatorHeartbeat hb = new OperatorHeartbeat();
-        hb.setNodeId(e.getKey());
-        hb.setGeneratedTms(currentTime);
-        hb.setIntervalMs(heartbeatIntervalMillis);
-        OperatorContext ctx = activeNodes.get(e.getKey());
-        if (ctx != null) {
-          ctx.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
+
+      ContainerHeartbeatResponse rsp;
+      do {
+        ContainerStats stats = new ContainerStats(containerId);
+        // gather heartbeat info for all operators
+        for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
+          OperatorHeartbeat hb = new OperatorHeartbeat();
+          hb.setNodeId(e.getKey());
+          hb.setGeneratedTms(currentTime);
+          hb.setIntervalMs(heartbeatIntervalMillis);
+          OperatorContext ctx = activeNodes.get(e.getKey());
+          if (ctx != null) {
+            ctx.drainStats(hb.getOperatorStatsContainer());
+            hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
+          }
+          else {
+            String state = failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString();
+            logger.debug("Sending {} state for operator {}", state, e.getKey());
+            hb.setState(state);
+          }
+          stats.addNodeStats(hb);
         }
-        else {
-          String state = failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString();
-          logger.debug("Sending {} state for operator {}", state, e.getKey());
-          hb.setState(state);
-        }
 
-        stats.addNodeStats(hb);
-      }
+        /**
+         * Container stats published for whoever is interested in listening.
+         * Currently interested candidates are TupleRecorderCollection and BufferServerStatsSubscriber
+         */
+        eventBus.publish(new ContainerStatsEvent(stats));
 
-      /**
-       * Container stats published for whoever is interested in listening.
-       * Currently interested candidates are TupleRecorderCollection and BufferServerStatsSubscriber
-       */
-      eventBus.publish(new ContainerStatsEvent(stats));
+        msg.setContainerStats(stats);
 
-      // heartbeat call and follow-up processing
-      //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
-      ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
-      if (rsp != null) {
+        // heartbeat call and follow-up processing
+        //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
+        rsp = umbilical.processHeartbeat(msg);
         processHeartbeatResponse(rsp);
-        // keep polling at smaller interval if work is pending
-        while (rsp != null && rsp.hasPendingRequests) {
+        if (rsp.hasPendingRequests) {
           logger.info("Waiting for pending request.");
           synchronized (this.heartbeatTrigger) {
             try {
@@ -628,12 +629,9 @@ public class StramChild
               break;
             }
           }
-          rsp = umbilical.pollRequest(this.containerId);
-          if (rsp != null) {
-            processHeartbeatResponse(rsp);
-          }
         }
-      }
+      } while (rsp.hasPendingRequests);
+
     }
     logger.debug("Exiting hearbeat loop");
     umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
@@ -643,8 +641,7 @@ public class StramChild
 
   private void processNodeRequests(boolean flagInvalid)
   {
-    for (Iterator<StramToNodeRequest> it = nodeRequests.iterator(); it.hasNext();) {
-      StramToNodeRequest req = it.next();
+    for (StramToNodeRequest req: nodeRequests) {
       if(req.isDeleted()){
         continue;
       }
@@ -823,7 +820,7 @@ public class StramChild
         nodes.put(ndi.id, node);
         logger.debug("Marking deployed {}", node);
       }
-      catch (Exception e) {
+      catch (IOException e) {
         logger.error("Deploy error", e);
         throw e;
       }

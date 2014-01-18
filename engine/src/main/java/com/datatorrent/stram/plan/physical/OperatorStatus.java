@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
@@ -15,12 +16,20 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageDouble;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
 
-public class OperatorStatus implements BatchedOperatorStats
+/**
+ * <p>OperatorStatus class.</p>
+ *
+ * @since 0.9.1
+ */
+public class OperatorStatus implements BatchedOperatorStats, java.io.Serializable
 {
+  private static final long serialVersionUID = 201312231552L;
+
   public class PortStatus
   {
     public String portName;
@@ -36,19 +45,22 @@ public class OperatorStatus implements BatchedOperatorStats
   }
 
   private final int operatorId;
+  public final StatsRevisions statsRevs = new StatsRevisions();
   public OperatorHeartbeat lastHeartbeat;
-  public long totalTuplesProcessed;
-  public long totalTuplesEmitted;
-  public long currentWindowId;
-  public long tuplesProcessedPSMA;
-  public long tuplesEmittedPSMA;
+  public final VersionedLong totalTuplesProcessed = statsRevs.new VersionedLong();
+  public final VersionedLong totalTuplesEmitted = statsRevs.new VersionedLong();
+  public final VersionedLong currentWindowId = statsRevs.new VersionedLong();
+  public final VersionedLong tuplesProcessedPSMA = statsRevs.new VersionedLong();
+  public final VersionedLong tuplesEmittedPSMA = statsRevs.new VersionedLong();
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
   public final MovingAverageDouble cpuPercentageMA;
   public final MovingAverageLong latencyMA;
-  public Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
-  public Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
+  public final Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
+  public final Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
+  public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
 
+  private final LogicalPlan dag;
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
   public int loadIndicator = 0;
@@ -56,25 +68,13 @@ public class OperatorStatus implements BatchedOperatorStats
   public OperatorStatus(int operatorId, LogicalPlan dag)
   {
     this.operatorId = operatorId;
+    this.dag = dag;
     throughputCalculationInterval = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL);
     throughputCalculationMaxSamples = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES);
     int heartbeatInterval = dag.getValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS);
 
     cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
-// TODO: assuming that these are initialized during heartbeat processing
-/*
-    for (PTOperator.PTInput ptInput: operator.getInputs()) {
-      PortStatus inputPortStatus = new PortStatus();
-      inputPortStatus.portName = ptInput.portName;
-      inputPortStatusList.put(ptInput.portName, inputPortStatus);
-    }
-    for (PTOperator.PTOutput ptOutput: operator.getOutputs()) {
-      PortStatus outputPortStatus = new PortStatus();
-      outputPortStatus.portName = ptOutput.portName;
-      outputPortStatusList.put(ptOutput.portName, outputPortStatus);
-    }
-*/
   }
 
   public boolean isIdle()
@@ -100,19 +100,19 @@ public class OperatorStatus implements BatchedOperatorStats
   @Override
   public long getCurrentWindowId()
   {
-    return currentWindowId;
+    return currentWindowId.get();
   }
 
   @Override
   public long getTuplesProcessedPSMA()
   {
-    return tuplesProcessedPSMA;
+    return tuplesProcessedPSMA.get();
   }
 
   @Override
   public long getTuplesEmittedPSMA()
   {
-    return tuplesEmittedPSMA;
+    return tuplesEmittedPSMA.get();
   }
 
   @Override
@@ -125,6 +125,29 @@ public class OperatorStatus implements BatchedOperatorStats
   public long getLatencyMA()
   {
     return this.latencyMA.getAvg();
+  }
+
+  private static class SerializationProxy implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312231635L;
+    final int operatorId;
+    final LogicalPlan dag;
+
+    private SerializationProxy(OperatorStatus s) {
+      this.operatorId = s.operatorId;
+      this.dag = s.dag;
+    }
+
+    private Object readResolve() throws java.io.ObjectStreamException
+    {
+      OperatorStatus s = new OperatorStatus(operatorId, dag);
+      return s;
+    }
+  }
+
+  private Object writeReplace() throws java.io.ObjectStreamException
+  {
+      return new SerializationProxy(this);
   }
 
 }

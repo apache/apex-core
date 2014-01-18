@@ -456,6 +456,28 @@ public class StramWebServices
     return response;
   }
 
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      @SuppressWarnings("unchecked")
+      Iterator<String> keys = request.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        String val = request.getString(key);
+        dagManager.setPhysicalOperatorProperty(operatorId, key, val);
+      }
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
+    return response;
+  }
+  
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
@@ -525,6 +547,29 @@ public class StramWebServices
     }
   }
 
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
+  {    
+    Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
+
+    try {
+      if (propertyName == null) {
+        return new JSONObject(new ObjectMapper().writeValueAsString(m));
+      }
+      else {
+        Map<String, Object> m1 = new HashMap<String, Object>();
+        m1.put(propertyName, m.get(propertyName));
+        return new JSONObject(new ObjectMapper().writeValueAsString(m1));
+      }
+    }
+    catch (Exception ex) {
+      LOG.warn("Caught exception", ex);
+      throw new RuntimeException(ex);
+    }
+  }
+  
   @GET
   @Path(PATH_LOGICAL_PLAN)
   @Produces(MediaType.APPLICATION_JSON)

@@ -4,21 +4,24 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.IdleTimeHandler;
-
 import java.util.ArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
+import com.datatorrent.common.util.DTThrowable;
+
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
- * <p>InputNode class.</p>
+ * <p>
+ * InputNode class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  * @since 0.3.2
@@ -47,7 +50,7 @@ public class InputNode extends Node<InputOperator>
   }
 
   @Override
-  @SuppressWarnings(value = "SleepWhileInLoop")
+  @SuppressWarnings(value = {"SleepWhileInLoop", "BroadCatchBlock", "TooBroadCatch"})
   public final void run()
   {
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
@@ -100,6 +103,7 @@ public class InputNode extends Node<InputOperator>
                 operator.beginWindow(currentWindowId);
               }
               operator.emitTuples(); /* give at least one chance to emit the tuples */
+
               break;
 
             case END_WINDOW:
@@ -166,15 +170,30 @@ public class InputNode extends Node<InputOperator>
         }
       }
     }
-    catch (InterruptedException ex) {
+    catch (ShutdownException se) {
+      logger.debug("Shutdown requested by the operator when alive = {}.", alive);
       alive = false;
     }
-    catch (RuntimeException ex) {
-      if (ex.getCause() instanceof InterruptedException) {
-        alive = false;
+    catch (Throwable cause) {
+      synchronized (this) {
+        if (alive) {
+          DTThrowable.rethrow(cause);
+        }
+      }
+
+      Throwable rootCause = cause;
+      while (rootCause != null) {
+        if (rootCause instanceof InterruptedException) {
+          break;
+        }
+        rootCause = rootCause.getCause();
+      }
+
+      if (rootCause == null) {
+        DTThrowable.rethrow(cause);
       }
       else {
-        throw ex;
+        logger.debug("Ignoring InterruptedException after shutdown", cause);
       }
     }
 

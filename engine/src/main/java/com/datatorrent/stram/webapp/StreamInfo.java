@@ -10,6 +10,8 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.datatorrent.api.DAG.Locality;
+
 /**
  * <p>StreamInfo class.</p>
  *
@@ -27,4 +29,5 @@ public class StreamInfo
   public String logicalName;
   public Port source = new Port();
   public List<Port> sinks = new ArrayList<Port>();
+  public Locality locality;
 }

@@ -7,18 +7,23 @@ package com.datatorrent.stram;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.beanutils.BeanUtils;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+
+import net.engio.mbassy.listener.Handler;
 
 /**
  * <p>FSEventRecorder class.</p>
@@ -29,7 +34,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 public class FSEventRecorder implements EventRecorder
 {
   public static final String VERSION = "1.0";
-  private final BlockingQueue<Event> queue = new LinkedBlockingQueue<Event>();
+  private final BlockingQueue<StramEvent> queue = new LinkedBlockingQueue<StramEvent>();
   private static final Logger LOG = LoggerFactory.getLogger(FSEventRecorder.class);
   private FSPartFileCollection storage;
   private String basePath = ".";
@@ -46,8 +51,7 @@ public class FSEventRecorder implements EventRecorder
     {
       while (true) {
         try {
-          Event event = queue.take();
-          writeEvent(event);
+          writeEvent(queue.take());
           if (queue.isEmpty()) {
             if (!storage.flushData() && wsClient != null) {
               String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".event." + storage.getBasePath();
@@ -58,8 +62,8 @@ public class FSEventRecorder implements EventRecorder
         catch (InterruptedException ex) {
           return;
         }
-        catch (IOException ex) {
-          LOG.error("Caught IOException", ex);
+        catch (Exception ex) {
+          LOG.error("Caught Exception", ex);
         }
       }
     }
@@ -106,20 +110,26 @@ public class FSEventRecorder implements EventRecorder
     }
   }
 
+  @Handler
   @Override
-  public void recordEventAsync(Event event)
+  public void recordEventAsync(StramEvent event)
   {
     LOG.debug("Adding event to the queue");
     queue.add(event);
   }
 
-  public void writeEvent(Event event) throws IOException
+  public void writeEvent(StramEvent event) throws Exception
   {
     LOG.debug("Writing event {} to the queue", event.getType());
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     bos.write((event.getTimestamp() + ":").getBytes());
     bos.write((event.getType() + ":").getBytes());
-    Slice f = streamCodec.toByteArray(event.getData());
+    @SuppressWarnings("unchecked")
+    Map<String, Object> data = BeanUtils.describe(event);
+    data.remove("timestamp");
+    data.remove("class");
+    data.remove("type");
+    Slice f = streamCodec.toByteArray(data);
     bos.write(f.buffer, f.offset, f.length);
     bos.write("\n".getBytes());
     storage.writeDataItem(bos.toByteArray(), true);

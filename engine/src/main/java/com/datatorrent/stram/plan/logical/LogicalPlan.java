@@ -11,17 +11,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
@@ -34,24 +24,17 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Partitionable;
-import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.stram.engine.Node;
 
 /**
@@ -96,6 +79,7 @@ public class LogicalPlan implements Serializable, DAG
    * Then it can be moved back to DAGContext.
    */
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
+  public static Attribute<String> LICENSE = new Attribute<String>((String)null, new StringCodec.String2String());
 
   static {
     AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
@@ -130,9 +114,12 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 201305221606L;
     private Operator operator;
 
-    private void set(Operator operator)
-    {
+    public OperatorProxy(Operator operator) {
       this.operator = operator;
+    }
+
+    public Operator get() {
+      return this.operator;
     }
 
     private void writeObject(ObjectOutputStream out) throws IOException
@@ -170,7 +157,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     public InputPort<?> getPortObject() {
-      for (Entry<InputPort<?>, InputPortMeta> e : operatorMeta.getPortMapping().inPortMap.entrySet()) {
+      for (Map.Entry<InputPort<?>, InputPortMeta> e : operatorMeta.getPortMapping().inPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey();
         }
@@ -225,7 +212,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     public OutputPort<?> getPortObject() {
-      for (Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
+      for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey();
         }
@@ -234,7 +221,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     public Operator.Unifier<?> getUnifier() {
-      for (Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
+      for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey().getUnifier();
         }
@@ -390,7 +377,6 @@ public class LogicalPlan implements Serializable, DAG
    */
   public final class OperatorMeta implements DAG.OperatorMeta, Serializable
   {
-    private static final long serialVersionUID = 1L;
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap attributes = new DefaultAttributeMap();
@@ -409,9 +395,9 @@ public class LogicalPlan implements Serializable, DAG
 
     private OperatorMeta(String name, Operator operator)
     {
+      LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
-      this.operatorProxy = new OperatorProxy();
-      this.operatorProxy.set(operator);
+      this.operatorProxy = new OperatorProxy(operator);
       this.name = name;
     }
 
@@ -546,6 +532,9 @@ public class LogicalPlan implements Serializable, DAG
               append("operator", this.getOperator().getClass().getSimpleName()).
               toString();
     }
+
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201401091635L;
   }
 
   @Override
@@ -748,6 +737,15 @@ public class LogicalPlan implements Serializable, DAG
   public int getMasterMemoryMB()
   {
     return this.getValue(MASTER_MEMORY_MB);
+  }
+
+  public String assertAppPath()
+  {
+    String path = getAttributes().get(LogicalPlan.APPLICATION_PATH);
+    if (path == null) {
+      throw new AssertionError("Missing " + LogicalPlan.APPLICATION_PATH);
+    }
+    return path;
   }
 
   /**

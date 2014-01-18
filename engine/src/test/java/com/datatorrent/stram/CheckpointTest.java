@@ -8,13 +8,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -38,6 +40,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 /**
  *
@@ -45,19 +48,7 @@ import com.datatorrent.stram.support.StramTestSupport;
 public class CheckpointTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(CheckpointTest.class);
-  private static File testWorkDir = new File("target", CheckpointTest.class.getName());
-
-  @BeforeClass
-  public static void setup()
-  {
-    try {
-      FileContext.getLocalFSFileContext().delete(
-              new Path(testWorkDir.getAbsolutePath()), true);
-    }
-    catch (Exception e) {
-      throw new RuntimeException("could not cleanup test dir", e);
-    }
-  }
+  @Rule public TestMeta testMeta = new TestMeta();
 
   /**
    *
@@ -66,6 +57,13 @@ public class CheckpointTest
   @Before
   public void setupEachTest() throws IOException
   {
+    try {
+      FileContext.getLocalFSFileContext().delete(
+              new Path(new File(testMeta.dir).getAbsolutePath()), true);
+    }
+    catch (Exception e) {
+      throw new RuntimeException("could not cleanup test dir", e);
+    }
     //StramChild.eventloop.start();
   }
 
@@ -84,17 +82,17 @@ public class CheckpointTest
   public void testBackup() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     dag.getAttributes().put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 1);
     // node with no inputs will be connected to window generator
     TestGeneratorInputOperator m1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     m1.setMaxTuples(2);
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
 
     String containerId = "container1";
-    StramChildAgent sca = dnm.assignContainer(new ContainerResource(0, containerId, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
+    StramChildAgent sca = dnm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertNotNull(sca);
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
@@ -104,7 +102,7 @@ public class CheckpointTest
 
     container.setup(sca.getInitContext());
     // push deploy
-    List<OperatorDeployInfo> deployInfo = sca.getDeployInfo();
+    List<OperatorDeployInfo> deployInfo = sca.getDeployInfoList(sca.container.getOperators());
     Assert.assertEquals("size " + deployInfo, 1, deployInfo.size());
 
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
@@ -153,7 +151,7 @@ public class CheckpointTest
     dnm.processHeartbeat(hb); // propagate checkpoint
 
     Thread.sleep(20); // file close delay?
-    File cpFile1 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
+    File cpFile1 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
@@ -164,7 +162,7 @@ public class CheckpointTest
     Assert.assertEquals("window 3", 3, context.getLastProcessedWindowId());
 
     Thread.sleep(20); // file close delay?
-    File cpFile2 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
+    File cpFile2 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     ohb.getOperatorStatsContainer().clear();
@@ -189,6 +187,7 @@ public class CheckpointTest
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -197,6 +196,12 @@ public class CheckpointTest
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      Assert.assertEquals("activation windowId " + oper, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, oper.getRecoveryCheckpoint());
+      Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpointWindows);
+    }
+
     List<PTOperator> nodes1 = plan.getOperators(dag.getMeta(node1));
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
@@ -207,20 +212,25 @@ public class CheckpointTest
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);
 
+    // set all operators as active to enable recovery window id update
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      oper.setState(PTOperator.State.ACTIVE);
+    }
+
     dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode2, 0, pnode2.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode2, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode2.getRecoveryCheckpoint());
 
     HashSet<PTOperator> s = new HashSet<PTOperator>();
     dnm.updateRecoveryCheckpoints(pnode1, s, new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode1, 0, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("number dependencies " + s, 2, s.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
     pnode1.checkpointWindows.add(5L);
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode1, 0L, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, 0, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());

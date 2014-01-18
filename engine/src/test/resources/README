@@ -1,0 +1,9 @@
+PKI in java is apparently straight forward. Please read the codeartisan*.pdf file in the same directory on
+complete approach. However I found that web page towards the end of my investigations. I followed the
+following steps for creating rsa.pub and rsa.prv files.
+
+$ ssh-keyget -t rsa -f ./id_rsa # just press enter when asked to enter passphrase and then repeat it again.
+$ openssl rsa -in id_rsa -pubout -outform DER -out rsa.pub # this gets you public key in X509 encoded format
+$ openssl pkcs8 -topk8 -inform PEM -outform DER -in id_rsa  -nocrypt > rsa.prv # this gets you private key in pkcs8 encoded format
+
+Original files and resultant files are stored in this directory.

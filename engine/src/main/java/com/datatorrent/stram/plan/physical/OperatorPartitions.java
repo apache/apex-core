@@ -2,6 +2,7 @@ package com.datatorrent.stram.plan.physical;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -27,12 +29,6 @@ import com.google.common.collect.Sets;
  * @since 0.3.2
  */
 public class OperatorPartitions {
-
-  final LogicalPlan.OperatorMeta operatorWrapper;
-
-  public OperatorPartitions(LogicalPlan.OperatorMeta operator) {
-    this.operatorWrapper = operator;
-  }
 
   /**
    * The default partitioning applied to operators that do not implement
@@ -43,40 +39,20 @@ public class OperatorPartitions {
   {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPartitioner.class);
 
-    public List<Partition<?>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt)
+    public List<Partition<Operator>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt)
     {
-      List<Partition<?>> partitions = new ArrayList<Partition<?>>(initialPartitionCnt);
+      List<Partition<Operator>> partitions = new ArrayList<Partition<Operator>>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
-        Partition<?> p = new DefaultPartition<Operator>(logicalOperator.getOperator());
+        Partition<Operator> p = new DefaultPartition<Operator>(logicalOperator.getOperator());
         partitions.add(p);
       }
 
       Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
-      if (!inputs.isEmpty() && partitions.size() > 1) {
-        //int partitionBits = 0;
-        //if (initialPartitionCnt > 0) {
-        //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
-        //}
-        int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt-1));
-        int partitionMask = 0;
-        if (partitionBits > 0) {
-          partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
-        }
-
+      if (!inputs.isEmpty()) {
+        // partition the stream that was first connected in the DAG and send full data to remaining input ports
+        // this gives control over which stream to partition under default partitioning to the DAG writer
         InputPortMeta portMeta = inputs.keySet().iterator().next();
-
-        for (int i=0; i<=partitionMask; i++) {
-          // partition the stream that was first connected in the DAG and send full data to remaining input ports
-          // this gives control over which stream to partition under default partitioning to the DAG writer
-          Partition<?> p = partitions.get(i % partitions.size());
-          PartitionKeys pks = p.getPartitionKeys().get(portMeta.getPortObject());
-          if (pks == null) {
-            // TODO: work with the port meta object instead as this is what we will be using during plan processing anyways
-            p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-          } else {
-            pks.partitions.add(i);
-          }
-        }
+        DefaultPartition.assignPartitionKeys(partitions, portMeta.getPortObject());
       }
 
       return partitions;
@@ -92,10 +68,10 @@ public class OperatorPartitions {
      *          List of new partitions
      * @return
      */
-    public List<Partition<?>> repartition(Collection<? extends Partition<?>> partitions) {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>();
-      HashMap<Integer, Partition<?>> lowLoadPartitions = new HashMap<Integer, Partition<?>>();
-      for (Partition<?> p : partitions) {
+    public List<Partition<Operator>> repartition(Collection<? extends Partition<Operator>> partitions) {
+      List<Partition<Operator>> newPartitions = new ArrayList<Partition<Operator>>();
+      HashMap<Integer, Partition<Operator>> lowLoadPartitions = new HashMap<Integer, Partition<Operator>>();
+      for (Partition<Operator> p : partitions) {
         int load = p.getLoad();
         if (load < 0) {
           // combine neighboring underutilized partitions
@@ -105,7 +81,7 @@ public class OperatorPartitions {
             int reducedMask = pks.mask >>> 1;
             String lookupKey = Integer.valueOf(reducedMask) + "-" + Integer.valueOf(partitionKey & reducedMask);
             LOG.debug("pks {} lookupKey {}", pks, lookupKey);
-            Partition<?> siblingPartition = lowLoadPartitions.remove(partitionKey & reducedMask);
+            Partition<Operator> siblingPartition = lowLoadPartitions.remove(partitionKey & reducedMask);
             if (siblingPartition == null) {
               lowLoadPartitions.put(partitionKey & reducedMask, p);
             } else {
@@ -140,7 +116,7 @@ public class OperatorPartitions {
           }
 
           for (int key : newKeys) {
-            Partition<?> newPartition = new DefaultPartition<Operator>(p.getPartitionedInstance());
+            Partition<Operator> newPartition = new DefaultPartition<Operator>(p.getPartitionedInstance());
             newPartition.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
             newPartitions.add(newPartition);
           }
@@ -159,10 +135,10 @@ public class OperatorPartitions {
      * @param partitions
      * @return
      */
-    public static List<Partition<?>> repartitionInputOperator(Collection<? extends Partition<?>> partitions) {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>();
-      List<Partition<?>> lowLoadPartitions = new ArrayList<Partition<?>>();
-      for (Partition<?> p : partitions) {
+    public static List<Partition<Operator>> repartitionInputOperator(Collection<? extends Partition<Operator>> partitions) {
+      List<Partition<Operator>> newPartitions = new ArrayList<Partition<Operator>>();
+      List<Partition<Operator>> lowLoadPartitions = new ArrayList<Partition<Operator>>();
+      for (Partition<Operator> p : partitions) {
         int load = p.getLoad();
         if (load < 0) {
           if (!lowLoadPartitions.isEmpty()) {
@@ -181,6 +157,22 @@ public class OperatorPartitions {
       return newPartitions;
     }
 
+  }
+
+  public static Map<LogicalPlan.InputPortMeta, PartitionKeys> convertPartitionKeys(PTOperator oper, Map<InputPort<?>, PartitionKeys> portKeys)
+  {
+    if (portKeys == null) {
+      return Collections.emptyMap();
+    }
+    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(portKeys.size());
+    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : portKeys.entrySet()) {
+      LogicalPlan.InputPortMeta pportMeta = oper.logicalNode.getMeta(portEntry.getKey());
+      if (pportMeta == null) {
+        throw new AssertionError("Invalid port reference " + portEntry);
+      }
+      partitionKeys.put(pportMeta, portEntry.getValue());
+    }
+    return partitionKeys;
   }
 
 }

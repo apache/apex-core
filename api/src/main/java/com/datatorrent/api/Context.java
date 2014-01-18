@@ -18,8 +18,10 @@ package com.datatorrent.api;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
+import java.util.Collection;
 
 /**
  *
@@ -110,7 +112,7 @@ public interface Context
      * Default partitioning does not consider operator state on split or merge.
      * <p>
      * Operator implements {@link Partitionable}:<br>
-     * Value given as initial capacity hint to {@link PartitionableOperator#definePartitions(java.util.Collection, int)
+     * Value given as initial capacity hint to {@link Partitionable#definePartitions(java.util.Collection, int)}
      * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
@@ -132,7 +134,7 @@ public interface Context
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Class<? extends StatsListener>> STATS_LISTENER = new Attribute<Class<? extends StatsListener>>(null, null);
+    Attribute<Collection<StatsListener>> STATS_LISTENERS  = new Attribute<Collection<StatsListener>>(new Collection2String<StatsListener>(",", new Object2String<StatsListener>(":")));
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */

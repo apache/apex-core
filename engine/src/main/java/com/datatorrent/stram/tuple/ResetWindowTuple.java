@@ -18,8 +18,7 @@ public class ResetWindowTuple extends Tuple
 {
   public ResetWindowTuple(long windowId)
   {
-    super(MessageType.RESET_WINDOW);
-    this.windowId = windowId;
+    super(MessageType.RESET_WINDOW, windowId);
   }
 
   @Override

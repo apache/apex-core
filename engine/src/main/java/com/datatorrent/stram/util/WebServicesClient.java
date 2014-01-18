@@ -4,14 +4,19 @@
  */
 package com.datatorrent.stram.util;
 
+import java.io.IOException;
+import java.security.Principal;
+import java.util.concurrent.Future;
+
 import com.sun.jersey.api.client.AsyncWebResource;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.async.ITypeListener;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
-import java.io.IOException;
-import java.security.Principal;
-import java.util.concurrent.Future;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
@@ -21,8 +26,7 @@ import org.apache.http.impl.auth.SPNegoSchemeFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.http.impl.conn.PoolingClientConnectionManager;
 
 /**
  * <p>WebServicesClient class.</p>
@@ -35,11 +39,15 @@ public class WebServicesClient
 
   private static final Logger LOG = LoggerFactory.getLogger(WebServicesClient.class);
 
+  private static final PoolingClientConnectionManager connectionManager;
   private static final CredentialsProvider credentialsProvider;
 
-  private Client client;
+  private final Client client;
 
   static {
+    connectionManager = new PoolingClientConnectionManager();
+    connectionManager.setMaxTotal(200);
+    connectionManager.setDefaultMaxPerRoute(5);
     credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(AuthScope.ANY, new Credentials() {
 
@@ -60,7 +68,7 @@ public class WebServicesClient
 
   public WebServicesClient() {
     if (UserGroupInformation.isSecurityEnabled()) {
-      DefaultHttpClient httpClient = new DefaultHttpClient();
+      DefaultHttpClient httpClient = new DefaultHttpClient(connectionManager);
       httpClient.setCredentialsProvider(credentialsProvider);
       httpClient.getAuthSchemes().register(AuthPolicy.SPNEGO, new SPNegoSchemeFactory(true));
       ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClient, new BasicCookieStore(), false);

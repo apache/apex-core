@@ -17,9 +17,11 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Partitionable.Partition;
+import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.stram.Journal.SetOperatorState;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -35,15 +37,15 @@ import com.google.common.collect.Sets;
  *
  * @since 0.3.5
  */
-public class PTOperator {
+public class PTOperator implements java.io.Serializable
+{
+  private static final long serialVersionUID = 201312112033L;
 
   public enum State {
-    NEW,
     PENDING_DEPLOY,
     ACTIVE,
     PENDING_UNDEPLOY,
-    INACTIVE,
-    REMOVED
+    INACTIVE
   }
 
   /**
@@ -52,8 +54,10 @@ public class PTOperator {
    * <p>
    * <br>
    */
-  public static class PTInput
+  public static class PTInput implements java.io.Serializable
   {
+    private static final long serialVersionUID = 201312112033L;
+
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator target;
     public final PartitionKeys partitions;
@@ -96,8 +100,10 @@ public class PTOperator {
    * <p>
    * <br>
    */
-  public static class PTOutput
+  public static class PTOutput implements java.io.Serializable
   {
+    private static final long serialVersionUID = 201312112033L;
+
     public final LogicalPlan.StreamMeta logicalStream;
     public final PTOperator source;
     public final String portName;
@@ -158,14 +164,14 @@ public class PTOperator {
     this.stats = new OperatorStatus(this.id, plan.getDAG());
   }
 
-  private volatile PTOperator.State state = State.NEW;
+  private volatile PTOperator.State state = State.INACTIVE;
   private final PhysicalPlan plan;
   PTContainer container;
   LogicalPlan.OperatorMeta logicalNode;
   final int id;
   private final String name;
-  Partition<?> partition;
-  Operator unifier;
+  Map<InputPortMeta, PartitionKeys> partitionKeys;
+  LogicalPlan.OperatorProxy unifier;
   List<PTInput> inputs;
   List<PTOutput> outputs;
   public final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
@@ -194,6 +200,7 @@ public class PTOperator {
   }
 
   public void setState(PTOperator.State state) {
+    this.getPlan().getContext().writeJournal(SetOperatorState.newInstance(this.getId(), state));
     this.state = state;
   }
 
@@ -206,7 +213,7 @@ public class PTOperator {
     if (checkpointWindows != null && !checkpointWindows.isEmpty()) {
       return checkpointWindows.getLast();
     }
-    return 0;
+    return OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
   }
 
   /**
@@ -259,13 +266,24 @@ public class PTOperator {
     return container;
   }
 
-  public Partition<?> getPartition() {
-    return partition;
+  public Map<InputPort<?>, PartitionKeys> getPartitionKeys() {
+    Map<InputPort<?>,PartitionKeys> pkeys = null;
+    if (partitionKeys != null) {
+      pkeys = Maps.newHashMapWithExpectedSize(partitionKeys.size());
+      for (Map.Entry<InputPortMeta, PartitionKeys> e : partitionKeys.entrySet()) {
+        pkeys.put(e.getKey().getPortObject(), e.getValue());
+      }
+    }
+    return pkeys;
+  }
+
+  public void setPartitionKeys(Map<InputPort<?>, PartitionKeys> keys) {
+    this.partitionKeys = OperatorPartitions.convertPartitionKeys(this, keys);
   }
 
   public Operator getUnifier()
   {
-    return unifier;
+    return unifier != null ? unifier.get() : null;
   }
 
   HostOperatorSet getGrouping(Locality type) {
@@ -282,8 +300,10 @@ public class PTOperator {
     return getGrouping(Locality.NODE_LOCAL);
   }
 
+  public class HostOperatorSet implements java.io.Serializable
+  {
+    private static final long serialVersionUID = 201312112033L;
 
-  public class HostOperatorSet{
     private String host;
     private Set<PTOperator> operatorSet;
     public String getHost()
@@ -302,7 +322,6 @@ public class PTOperator {
     {
       this.operatorSet = operatorSet;
     }
-
 
   }
 

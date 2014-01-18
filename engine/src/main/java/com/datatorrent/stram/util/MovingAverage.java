@@ -6,10 +6,12 @@ package com.datatorrent.stram.util;
 
 /**
  * Moving average calculations.
+ *
+ * @since 0.9.1
  */
 public class MovingAverage
 {
-  public static class MovingAverageLong {
+  public static class MovingAverageLong implements java.io.Serializable {
     private final int periods;
     private final long[] values;
     private int index = 0;
@@ -43,7 +45,7 @@ public class MovingAverage
   }
 
   // Generics don't work with numbers.  Hence this mess.
-  public static class MovingAverageDouble {
+  public static class MovingAverageDouble implements java.io.Serializable {
     private final int periods;
     private final double[] values;
     private int index = 0;
@@ -76,7 +78,7 @@ public class MovingAverage
     }
   }
 
-  public static class TimedMovingAverageLong {
+  public static class TimedMovingAverageLong implements java.io.Serializable {
     private final int periods;
     private final long[] values;
     private final long[] timeIntervals;

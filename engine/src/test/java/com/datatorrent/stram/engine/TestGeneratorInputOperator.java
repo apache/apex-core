@@ -8,12 +8,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
-public class TestGeneratorInputOperator extends BaseOperator implements InputOperator
+public class TestGeneratorInputOperator implements InputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputOperator.class);
   public static final String OUTPUT_PORT = "outputPort";
@@ -25,7 +26,7 @@ public class TestGeneratorInputOperator extends BaseOperator implements InputOpe
   private int emitInterval = 1000;
   private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
-  @OutputPortFieldAnnotation(name = "outputPort", optional=false)
+  @OutputPortFieldAnnotation(name = "outputPort", optional = false)
   public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
 
   public int getMaxTuples()
@@ -76,6 +77,7 @@ public class TestGeneratorInputOperator extends BaseOperator implements InputOpe
       LOG.debug("sending tuple " + generatedTuples);
       outport.emit(String.valueOf(generatedTuples));
       if (maxTuples > 0 && maxTuples <= generatedTuples) {
+        Operator.Util.shutdown();
         throw new RuntimeException(new InterruptedException("done emitting all."));
       }
       remainingSleepTime = emitInterval;
@@ -87,10 +89,32 @@ public class TestGeneratorInputOperator extends BaseOperator implements InputOpe
 
   /**
    * Manually add a tuple to emit.
+   *
    * @param s tuple which you want to send through this operator
    */
   public void addTuple(String s)
   {
     externallyAddedTuples.add(s);
   }
+
+  @Override
+  public void beginWindow(long windowId)
+  {
+  }
+
+  @Override
+  public void endWindow()
+  {
+  }
+
+  @Override
+  public void setup(OperatorContext context)
+  {
+  }
+
+  @Override
+  public void teardown()
+  {
+  }
+
 }

@@ -107,7 +107,7 @@ public class PartitioningTest
         if (blockEndStream) {
           return;
         }
-        throw new RuntimeException(new InterruptedException("No more tuples to send!"));
+        Operator.Util.shutdown();
       }
 
       if (first) {
@@ -172,8 +172,9 @@ public class PartitioningTest
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
   }
 
-  public static class PartitionLoadWatch implements StatsListener
+  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
+    private static final long serialVersionUID = 1L;
     final public static Map<Integer, Integer> loadIndicators = new ConcurrentHashMap<Integer, Integer>();
 
     @Override
@@ -222,7 +223,7 @@ public class PartitioningTest
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
     dag.setAttribute(collector, OperatorContext.INITIAL_PARTITION_COUNT, 2);
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENER, PartitionLoadWatch.class);
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitionLoadWatch()}));
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -263,13 +264,13 @@ public class PartitioningTest
     ArrayList<Integer> inputTuples = new ArrayList<Integer>();
     for (PTOperator p: partitions) {
       // default partitioning has one port mapping with a single partition key
-      inputTuples.add(p.getPartition().getPartitionKeys().values().iterator().next().partitions.iterator().next());
+      inputTuples.add(p.getPartitionKeys().values().iterator().next().partitions.iterator().next());
     }
     inputDeployed.testTuples = Collections.synchronizedList(new ArrayList<List<Integer>>());
     inputDeployed.testTuples.add(inputTuples);
 
     for (PTOperator p: partitions) {
-      Integer expectedTuple = p.getPartition().getPartitionKeys().values().iterator().next().partitions.iterator().next();
+      Integer expectedTuple = p.getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
       int i = 0;
       while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null || receivedTuples.isEmpty()) {
@@ -336,7 +337,7 @@ public class PartitioningTest
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
-      dag.setAttribute(input, OperatorContext.STATS_LISTENER, PartitionLoadWatch.class);
+      dag.setAttribute(input, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitionLoadWatch()}));
 
       StramLocalCluster lc = new StramLocalCluster(dag);
       lc.setHeartbeatMonitoringEnabled(false);

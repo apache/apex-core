@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.stream;
 
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -56,9 +55,6 @@ public class OiOStreamTest
     catch (ConstraintViolationException ex) {
       Assert.fail("OIO Single InputPort");
     }
-    catch (ValidationException ex) {
-      Assert.fail("OIO Single InputPort");
-    }
   }
 
   @Test
@@ -81,9 +77,6 @@ public class OiOStreamTest
     catch (ConstraintViolationException ex) {
       Assert.fail("OiOiO validation");
     }
-    catch (ValidationException ex) {
-      Assert.fail("OiOiO validation");
-    }
   }
 
   @Test
@@ -99,9 +92,6 @@ public class OiOStreamTest
       Assert.assertTrue("OiO validation", true);
     }
     catch (ConstraintViolationException ex) {
-      Assert.fail("OiO Single Connected InputPort");
-    }
-    catch (ValidationException ex) {
       Assert.fail("OiO Single Connected InputPort");
     }
   }
@@ -175,9 +165,6 @@ public class OiOStreamTest
     catch (ConstraintViolationException ex) {
       Assert.fail("OIOIO diamond validation");
     }
-    catch (ValidationException ex) {
-      Assert.fail("OIOIO diamond validation");
-    }
   }
 
   @Test
@@ -231,9 +218,6 @@ public class OiOStreamTest
       Assert.assertTrue("OiOiO extended diamond validation", true);
     }
     catch (ConstraintViolationException ex) {
-      Assert.fail("OIOIO extended diamond validation");
-    }
-    catch (ValidationException ex) {
       Assert.fail("OIOIO extended diamond validation");
     }
   }
@@ -290,7 +274,7 @@ public class OiOStreamTest
     public void endWindow()
     {
       assert (threadId == Thread.currentThread().getId());
-      throw new RuntimeException(new InterruptedException());
+      Operator.Util.shutdown();
     }
 
     @Override
@@ -319,6 +303,7 @@ public class OiOStreamTest
       {
         assert (threadList.contains(Thread.currentThread().getId()));
       }
+
     };
 
     @Override
@@ -360,6 +345,7 @@ public class OiOStreamTest
       {
         assert (threadList.contains(Thread.currentThread().getId()));
       }
+
     };
 
     @Override
@@ -400,6 +386,7 @@ public class OiOStreamTest
       {
         assert (threadId == Thread.currentThread().getId());
       }
+
     };
 
     public final transient DefaultInputPort<Number> input2 = new DefaultInputPort<Number>()
@@ -409,6 +396,7 @@ public class OiOStreamTest
       {
         assert (threadId == Thread.currentThread().getId());
       }
+
     };
 
     @Override
@@ -434,6 +422,7 @@ public class OiOStreamTest
     {
       assert (threadId == Thread.currentThread().getId());
     }
+
   }
 
   @Test
@@ -516,11 +505,11 @@ public class OiOStreamTest
     slc = new StramLocalCluster(lp);
     slc.run();
 
-    Assert.assertEquals("nonOIO: Number of threads", 2 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
+    Assert.assertEquals("nonOIO: Number of threads", 2, ThreadIdValidatingGenericIntermediateOperator.threadList.size());
     Assert.assertFalse("nonOIO: Thread Ids of input operator and intermediate operator1",
-                        ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
+                       ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
     Assert.assertFalse("nonOIO: Thread Ids of input operator and intermediate operator2",
-                        ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
+                       ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertFalse("nonOIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0) == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
     Assert.assertFalse("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
 
@@ -536,7 +525,7 @@ public class OiOStreamTest
     slc = new StramLocalCluster(lp);
     slc.run();
 
-    Assert.assertEquals("OIO: Number of threads", 2 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
+    Assert.assertEquals("OIO: Number of threads", 2, ThreadIdValidatingGenericIntermediateOperator.threadList.size());
     Assert.assertEquals("OIO: Thread Ids of input operator and intermediate operator1",
                         ThreadIdValidatingInputOperator.threadId, (long)ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
     Assert.assertEquals("OIO: Thread Ids of input operator and intermediate operator2",
@@ -575,10 +564,10 @@ public class OiOStreamTest
     slc = new StramLocalCluster(lp);
     slc.run();
 
-    Assert.assertEquals("nonOIO: Number of threads ThreadIdValidatingGenericIntermediateOperator", 3 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
-    Assert.assertEquals("nonOIO: Number of unique threads ThreadIdValidatingGenericIntermediateOperator", 3 , (new HashSet<Long>(ThreadIdValidatingGenericIntermediateOperator.threadList)).size());
-    Assert.assertEquals("nonOIO: Number of threads ThreadIdValidatingOutputOperator", 4 ,ThreadIdValidatingOutputOperator.threadList.size());
-    Assert.assertEquals("nonOIO: Number of unique threads ThreadIdValidatingOutputOperator", 4 , (new HashSet<Long>(ThreadIdValidatingOutputOperator.threadList)).size());
+    Assert.assertEquals("nonOIO: Number of threads ThreadIdValidatingGenericIntermediateOperator", 3, ThreadIdValidatingGenericIntermediateOperator.threadList.size());
+    Assert.assertEquals("nonOIO: Number of unique threads ThreadIdValidatingGenericIntermediateOperator", 3, (new HashSet<Long>(ThreadIdValidatingGenericIntermediateOperator.threadList)).size());
+    Assert.assertEquals("nonOIO: Number of threads ThreadIdValidatingOutputOperator", 4, ThreadIdValidatingOutputOperator.threadList.size());
+    Assert.assertEquals("nonOIO: Number of unique threads ThreadIdValidatingOutputOperator", 4, (new HashSet<Long>(ThreadIdValidatingOutputOperator.threadList)).size());
     Assert.assertFalse("nonOIO:: inputOperator1 : ThreadIdValidatingOutputOperator", ThreadIdValidatingOutputOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
     Assert.assertFalse("nonOIO:: inputOperator1 : ThreadIdValidatingGenericIntermediateOperator", ThreadIdValidatingGenericIntermediateOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
 
@@ -594,10 +583,10 @@ public class OiOStreamTest
     slc = new StramLocalCluster(lp);
     slc.run();
 
-    Assert.assertEquals("OIO: Number of threads ThreadIdValidatingGenericIntermediateOperator", 3 ,ThreadIdValidatingGenericIntermediateOperator.threadList.size());
-    Assert.assertEquals("OIO: Number of unique threads ThreadIdValidatingGenericIntermediateOperator", 1 , (new HashSet<Long>(ThreadIdValidatingGenericIntermediateOperator.threadList)).size());
-    Assert.assertEquals("OIO: Number of threads ThreadIdValidatingOutputOperator", 4 ,ThreadIdValidatingOutputOperator.threadList.size());
-    Assert.assertEquals("OIO: Number of unique threads ThreadIdValidatingOutputOperator", 3 , (new HashSet<Long>(ThreadIdValidatingOutputOperator.threadList)).size());
+    Assert.assertEquals("OIO: Number of threads ThreadIdValidatingGenericIntermediateOperator", 3, ThreadIdValidatingGenericIntermediateOperator.threadList.size());
+    Assert.assertEquals("OIO: Number of unique threads ThreadIdValidatingGenericIntermediateOperator", 1, (new HashSet<Long>(ThreadIdValidatingGenericIntermediateOperator.threadList)).size());
+    Assert.assertEquals("OIO: Number of threads ThreadIdValidatingOutputOperator", 4, ThreadIdValidatingOutputOperator.threadList.size());
+    Assert.assertEquals("OIO: Number of unique threads ThreadIdValidatingOutputOperator", 3, (new HashSet<Long>(ThreadIdValidatingOutputOperator.threadList)).size());
     Assert.assertTrue("OIO:: inputOperator1 : ThreadIdValidatingOutputOperator", ThreadIdValidatingOutputOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
     Assert.assertTrue("OIO:: inputOperator1 : ThreadIdValidatingGenericIntermediateOperator", ThreadIdValidatingGenericIntermediateOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
   }

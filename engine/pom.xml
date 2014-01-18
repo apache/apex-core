@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>0.9.1-SNAPSHOT</version>
+    <version>0.9.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>dt-stram</artifactId>
@@ -103,7 +103,7 @@
             <id>create-git-version-info</id>
             <phase>${create-git-version-info-phase}</phase>
             <goals>
-               <goal>revision</goal>
+              <goal>revision</goal>
             </goals>
           </execution>
         </executions>
@@ -122,6 +122,12 @@
       <groupId>javax.jms</groupId>
       <artifactId>jms-api</artifactId>
       <version>1.1-rev-1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.esotericsoftware.kryo</groupId>
+      <artifactId>kryo</artifactId>
+      <version>2.21</version>
+      <!-- scope>provided</scope would like the kryo version to be determined by what the user has -->
     </dependency>
     <dependency>
       <groupId>com.esotericsoftware.reflectasm</groupId>
@@ -147,20 +153,26 @@
     <dependency>
       <groupId>com.sun.jersey.contribs</groupId>
       <artifactId>jersey-apache-client4</artifactId>
-      <version>1.17.1</version>
-    </dependency>
-    <dependency>
-      <!-- required for JarFinder -->
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <version>${hadoop.version}</version>
-      <type>test-jar</type>
-      <scope>compile</scope>
+      <version>${jersey.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-yarn-client</artifactId>
       <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jackson-jaxrs</artifactId>
+          <groupId>org.codehaus.jackson</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jackson-xc</artifactId>
+          <groupId>org.codehaus.jackson</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -198,7 +210,29 @@
     <dependency>
       <groupId>net.engio</groupId>
       <artifactId>mbassador</artifactId>
-      <version>1.1.7</version>
+      <version>1.1.9</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>2.2.0</version>
+      <type>test-jar</type>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.mail</groupId>
+      <artifactId>javax.mail</artifactId>
+      <version>1.5.0</version>
     </dependency>
   </dependencies>
   <profiles>

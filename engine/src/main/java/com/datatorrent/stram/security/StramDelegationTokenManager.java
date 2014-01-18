@@ -18,12 +18,21 @@ public class StramDelegationTokenManager extends AbstractDelegationTokenSecretMa
 {
 
   public StramDelegationTokenManager(long delegationKeyUpdateInterval, long delegationTokenMaxLifetime, long delegationTokenRenewInterval,
-                                                                  long delegationTokenRemoverScanInterval) {
+                                     long delegationTokenRemoverScanInterval) {
     super(delegationKeyUpdateInterval,delegationTokenMaxLifetime,delegationTokenRenewInterval,delegationTokenRemoverScanInterval);
   }
 
-  public void addIdentifier(StramDelegationTokenIdentifier identifier) {
-    createPassword(identifier);
+  public byte[] addIdentifier(StramDelegationTokenIdentifier identifier) throws InvalidToken
+  {
+    byte[] password = null;
+    try {
+      password = retrievePassword(identifier);
+    } catch (InvalidToken iv) {
+    }
+    if (password == null) {
+      password = createPassword(identifier);
+    }
+    return password;
   }
 
   @Override

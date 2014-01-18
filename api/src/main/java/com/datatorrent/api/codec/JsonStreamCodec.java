@@ -21,7 +21,7 @@ import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
-import org.codehaus.jackson.map.ser.impl.RawSerializer;
+import org.codehaus.jackson.map.ser.std.RawSerializer;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.util.ObjectMapperString;

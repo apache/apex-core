@@ -4,11 +4,7 @@
  */
 package com.datatorrent.stram;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.commons.beanutils.BeanUtils;
+import com.datatorrent.stram.api.StramEvent;
 
 /**
  * <p>EventRecorder interface.</p>
@@ -18,54 +14,6 @@ import org.apache.commons.beanutils.BeanUtils;
  */
 public interface EventRecorder
 {
-  public void recordEventAsync(Event event);
-
-  public static class Event
-  {
-    private String type;
-    private long timestamp = System.currentTimeMillis();
-    private Map<String, Object> data = new HashMap<String, Object>();
-
-    public Event(String type)
-    {
-      this.type = type;
-    }
-
-    public void setTimestamp(long timestamp)
-    {
-      this.timestamp = timestamp;
-    }
-
-    public String getType()
-    {
-      return type;
-    }
-
-    public void addData(String key, Object value)
-    {
-      data.put(key, value);
-    }
-
-    public Map<String, Object> getData()
-    {
-      return Collections.unmodifiableMap(data);
-    }
-
-    public long getTimestamp()
-    {
-      return timestamp;
-    }
-
-    public void populateData(Object obj) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException
-    {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> properties = BeanUtils.describe(obj);
-
-      for (Map.Entry<String, Object> property : properties.entrySet()) {
-        data.put(property.getKey(), property.getValue());
-      }
-    }
-
-  }
+  public void recordEventAsync(StramEvent event);
 
 }

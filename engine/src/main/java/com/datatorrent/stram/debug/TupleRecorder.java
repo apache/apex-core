@@ -30,7 +30,8 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient.Handler;
 
 /**
- * <p>TupleRecorder class.</p>
+ * <p>
+ * TupleRecorder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
@@ -39,34 +40,34 @@ public class TupleRecorder
 {
   public static final String VERSION = "1.2";
   private int totalTupleCount = 0;
-  private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
-  private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
+  private final HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
+  private final HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
   private String containerId;
   private int nextPortIndex = 0;
-  private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
+  private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private transient StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
-  private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private String recordingNameTopic;
-  private FSPartFileCollection storage = new FSPartFileCollection()
+  private final FSPartFileCollection storage = new FSPartFileCollection()
   {
     @Override
     protected String getIndexExtraInfo()
     {
-      if (windowIdRanges.isEmpty())
+      if (windowIdRanges.isEmpty()) {
         return null;
+      }
       String str;
       windowIdRanges.get(windowIdRanges.size() - 1).high = TupleRecorder.this.currentWindowId;
       str = convertToString(windowIdRanges);
       int i = 0;
       str += ":";
       StringBuilder countStr = new StringBuilder("{");
-      for (PortCount pc : portCountMap.values()) {
+      for (PortCount pc: portCountMap.values()) {
         if (i != 0) {
           countStr.append(",");
         }
@@ -82,7 +83,7 @@ public class TupleRecorder
     @Override
     protected void resetIndexExtraInfo()
     {
-      for (PortCount pc : portCountMap.values()) {
+      for (PortCount pc: portCountMap.values()) {
         pc.count = 0;
       }
       windowIdRanges.clear();
@@ -247,7 +248,6 @@ public class TupleRecorder
     this.storage.teardown();
   }
 
-  @SuppressWarnings("unchecked")
   public void setup(Operator operator)
   {
     try {
@@ -265,7 +265,7 @@ public class TupleRecorder
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
         PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
-        for (PropertyDescriptor pd : propertyDescriptors) {
+        for (PropertyDescriptor pd: propertyDescriptors) {
           String name = pd.getName();
           Method readMethod = pd.getReadMethod();
 
@@ -280,7 +280,7 @@ public class TupleRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
-      for (PortInfo pi : portMap.values()) {
+      for (PortInfo pi: portMap.values()) {
         f = streamCodec.toByteArray(pi);
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
@@ -415,7 +415,7 @@ public class TupleRecorder
   {
     String result = "";
     int i = 0;
-    for (Range range : ranges) {
+    for (Range range: ranges) {
       if (i++ > 0) {
         result += ",";
       }
@@ -491,4 +491,5 @@ public class TupleRecorder
 
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
 }

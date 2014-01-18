@@ -159,13 +159,6 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
       LOG.error("Error processing heartbeat", ex);
       return null;
     }
-    //return dagManager.processHeartbeat(msg);
-  }
-
-  @Override
-  public ContainerHeartbeatResponse pollRequest(String containerId) {
-    StramChildAgent sca = dagManager.getContainerAgent(containerId);
-    return sca.pollRequest();
   }
 
 }

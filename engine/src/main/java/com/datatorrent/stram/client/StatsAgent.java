@@ -7,6 +7,7 @@ package com.datatorrent.stram.client;
 import com.datatorrent.api.util.ObjectMapperString;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import org.apache.hadoop.fs.*;
@@ -130,7 +131,8 @@ public final class StatsAgent extends FSPartFileAgent
     }
     Path path = new Path(dir);
     JSONObject json;
-
+    BufferedReader br = null;
+    IndexFileBufferedReader ifbr = null;
     try {
       FileStatus fileStatus = fs.getFileStatus(path);
       if (!fileStatus.isDirectory()) {
@@ -138,8 +140,7 @@ public final class StatsAgent extends FSPartFileAgent
       }
 
       // META file processing
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.META_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.0")) {
@@ -157,8 +158,7 @@ public final class StatsAgent extends FSPartFileAgent
         info.containers.put(index, containerInfo);
       }
       // INDEX file processing
-      in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
 
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
@@ -180,6 +180,19 @@ public final class StatsAgent extends FSPartFileAgent
       LOG.warn("Got exception when reading containers info", ex);
       return null;
     }
+    finally {
+      try {
+        if (br != null) {
+          br.close();
+        }
+        if (ifbr != null) {
+          ifbr.close();
+        }
+      }
+      catch (IOException ex) {
+        // ignore
+      }
+    }
 
     return info;
   }
@@ -197,6 +210,8 @@ public final class StatsAgent extends FSPartFileAgent
 
     Path path = new Path(dir);
     JSONObject json;
+    BufferedReader br = null;
+    IndexFileBufferedReader ifbr = null;
 
     try {
       FileStatus fileStatus = fs.getFileStatus(path);
@@ -205,8 +220,7 @@ public final class StatsAgent extends FSPartFileAgent
       }
 
       // META file processing
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.META_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.0")) {
@@ -218,8 +232,7 @@ public final class StatsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
@@ -235,11 +248,22 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
       }
-      in.close();
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading operators info", ex);
       return null;
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+        if (br != null) {
+          br.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
 
     return info;
@@ -253,11 +277,11 @@ public final class StatsAgent extends FSPartFileAgent
       return null;
     }
 
-    try {
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      IndexFileBufferedReader ifbr = new IndexFileBufferedReader(new InputStreamReader(in), dir);
-      StatsIndexLine indexLine;
+    IndexFileBufferedReader ifbr = null;
 
+    try {
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           continue;
@@ -276,30 +300,43 @@ public final class StatsAgent extends FSPartFileAgent
             }
           }
 
-          FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
-          String partLine;
-          // advance until offset is reached
-          while ((partLine = partBr.readLine()) != null) {
-            OperatorStats os = new OperatorStats();
-            int cursor = 0;
-            int cursor2;
-            cursor2 = partLine.indexOf(':', cursor);
-            os.operatorId = Integer.valueOf(partLine.substring(cursor, cursor2));
-            cursor = cursor2 + 1;
-            cursor2 = partLine.indexOf(':', cursor);
-            os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-            cursor = cursor2 + 1;
-            os.stats = new ObjectMapperString(partLine.substring(cursor));
-            if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
-              result.add(os);
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+          try {
+            String partLine;
+            // advance until offset is reached
+            while ((partLine = partBr.readLine()) != null) {
+              OperatorStats os = new OperatorStats();
+              int cursor = 0;
+              int cursor2;
+              cursor2 = partLine.indexOf(':', cursor);
+              os.operatorId = Integer.valueOf(partLine.substring(cursor, cursor2));
+              cursor = cursor2 + 1;
+              cursor2 = partLine.indexOf(':', cursor);
+              os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+              cursor = cursor2 + 1;
+              os.stats = new ObjectMapperString(partLine.substring(cursor));
+              if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
+                result.add(os);
+              }
             }
+          }
+          finally {
+            partBr.close();
           }
         }
       }
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading operators stats", ex);
+    }
+    finally {
+      try {
+        if (ifbr != null) {
+          ifbr.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
     return result;
   }
@@ -311,10 +348,10 @@ public final class StatsAgent extends FSPartFileAgent
     if (dir == null) {
       return null;
     }
+    BufferedReader br = null;
 
     try {
-      FSDataInputStream in = fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE));
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
       String line;
 
       while ((line = br.readLine()) != null) {
@@ -334,28 +371,41 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
 
-        FSDataInputStream partIn = fs.open(new Path(dir, indexLine.partFile));
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(partIn));
-        String partLine;
-        while ((partLine = partBr.readLine()) != null) {
-          ContainerStats cs = new ContainerStats();
-          int cursor = 0;
-          int cursor2;
-          cursor2 = partLine.indexOf(':', cursor);
-          cs.containerId = Integer.valueOf(partLine.substring(cursor, cursor2));
-          cursor = cursor2 + 1;
-          cursor2 = partLine.indexOf(':', cursor);
-          cs.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-          cursor = cursor2 + 1;
-          cs.stats = new ObjectMapperString(partLine.substring(cursor));
-          if ((startTime == null || cs.timestamp >= startTime) && (endTime == null || cs.timestamp <= endTime)) {
-            result.add(cs);
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+        try {
+          String partLine;
+          while ((partLine = partBr.readLine()) != null) {
+            ContainerStats cs = new ContainerStats();
+            int cursor = 0;
+            int cursor2;
+            cursor2 = partLine.indexOf(':', cursor);
+            cs.containerId = Integer.valueOf(partLine.substring(cursor, cursor2));
+            cursor = cursor2 + 1;
+            cursor2 = partLine.indexOf(':', cursor);
+            cs.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+            cursor = cursor2 + 1;
+            cs.stats = new ObjectMapperString(partLine.substring(cursor));
+            if ((startTime == null || cs.timestamp >= startTime) && (endTime == null || cs.timestamp <= endTime)) {
+              result.add(cs);
+            }
           }
+        }
+        finally {
+          partBr.close();
         }
       }
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading containers stats", ex);
+    }
+    finally {
+      try {
+        if (br != null) {
+          br.close();
+        }
+      }
+      catch (IOException ex) {
+      }
     }
     return result;
   }

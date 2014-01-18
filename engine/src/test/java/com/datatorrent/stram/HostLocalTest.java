@@ -25,9 +25,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultPartition;
-import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable;
-import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
@@ -52,10 +50,8 @@ public class HostLocalTest {
     };
 
     @Override
-    @SuppressWarnings("unchecked")
     public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity) {
       List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(incrementalCapacity+1);
-      Partition<PartitioningTestOperator> templatePartition = partitions.iterator().next();
       for (int i = 0; i < 1; i++) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
@@ -102,7 +98,7 @@ public class HostLocalTest {
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       //Assert.assertEquals("Hosts set to host1" , "host1",host);
     }
@@ -139,7 +135,7 @@ public class HostLocalTest {
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       Assert.assertEquals("Hosts set to host1" , "host1",host);
     }
@@ -177,7 +173,7 @@ public class HostLocalTest {
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem);
+      String host = rr.getHost(csr, containerMem,true);
       csr.container.host = host;
       Assert.assertEquals("Hosts set to host2" , "host2",host);
     }

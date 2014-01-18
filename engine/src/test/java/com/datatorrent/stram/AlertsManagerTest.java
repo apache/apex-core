@@ -7,26 +7,40 @@ package com.datatorrent.stram;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+
 import java.net.InetSocketAddress;
+
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+
+import com.datatorrent.api.DAGContext;
+
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  *
  * @author David Yan <david@datatorrent.com>
  */
-public class AlertManagerTest
+public class AlertsManagerTest
 {
+  @Rule public TestMeta testMeta = new TestMeta();
+
   @Test
   public void testAlertManager() throws JSONException
   {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
     dag.addOperator("o", GenericTestOperator.class);
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0)));
+    Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0)));
 
     new Thread()
     {
@@ -34,6 +48,9 @@ public class AlertManagerTest
       public void run()
       {
         while (true) {
+          for (PTOperator o : dnm.getPhysicalPlan().getAllOperators().values()) {
+            o.setState(PTOperator.State.ACTIVE);
+          }
           dnm.processEvents();
           try {
             Thread.sleep(500);

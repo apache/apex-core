@@ -15,11 +15,12 @@ import com.datatorrent.stram.engine.StreamContext;
  * Currently using mbassador event bus
  *
  * @author Ashwin Chandra Putta <ashwin@datatorrent.com>
+ * @since 0.9.1
  */
 public interface ContainerEvent
 {
   Class<?> CONTAINER_EVENTS_LISTENERS[] = new Class<?>[] {
-    com.datatorrent.stram.debug.BufferServerStatsSubscriber.class,
+    com.datatorrent.stram.engine.BufferServerStatsSubscriber.class,
     com.datatorrent.stram.debug.TupleRecorderCollection.class
   };
 

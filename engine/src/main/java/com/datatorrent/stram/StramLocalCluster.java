@@ -24,6 +24,7 @@ import org.apache.hadoop.net.NetUtils;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode.Controller;
 import com.datatorrent.api.Operator;
+
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
@@ -63,7 +64,6 @@ public class StramLocalCluster implements Runnable, Controller
   public interface MockComponentFactory
   {
     WindowGenerator setupWindowGenerator();
-
   }
 
   private MockComponentFactory mockComponentFactory;
@@ -87,12 +87,7 @@ public class StramLocalCluster implements Runnable, Controller
     @Override
     public void log(String containerId, String msg) throws IOException
     {
-      try {
-        logger.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
-      }
-      catch (AssertionError ae) {
-        logger.info("TBF: assertion gets thrown about unknown container while logging {} with containerId {}", msg, containerId);
-      }
+      logger.info("{} msg: {}", containerId, msg);
     }
 
     @Override
@@ -124,13 +119,6 @@ public class StramLocalCluster implements Runnable, Controller
           c.heartbeatCount.notifyAll();
         }
       }
-    }
-
-    @Override
-    public ContainerHeartbeatResponse pollRequest(String containerId)
-    {
-      StramChildAgent sca = dnmgr.getContainerAgent(containerId);
-      return sca.pollRequest();
     }
 
   }
@@ -228,7 +216,7 @@ public class StramLocalCluster implements Runnable, Controller
         wingen = mockComponentFactory.setupWindowGenerator();
       }
       this.child = new LocalStramChild(containerId, umbilical, wingen);
-      ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB());
+      ContainerResource cr = new ContainerResource(cdr.container.getResourceRequestPriority(), containerId, "localhost", cdr.container.getRequiredMemoryMB(), null);
       StramChildAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
       if (sca != null) {
         Thread launchThread = new Thread(this, containerId);
@@ -264,10 +252,12 @@ public class StramLocalCluster implements Runnable, Controller
     // even when the environment has a default HDFS location.
     String pathUri = CLUSTER_WORK_DIR.toURI().toString();
     try {
-      FileContext.getLocalFSFileContext().delete(
-              new Path(pathUri/*CLUSTER_WORK_DIR.getAbsolutePath()*/), true);
+      FileContext.getLocalFSFileContext().delete(new Path(pathUri/*CLUSTER_WORK_DIR.getAbsolutePath()*/), true);
     }
-    catch (Exception e) {
+    catch (IllegalArgumentException e) {
+      throw e;
+    }
+    catch (IOException e) {
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
@@ -298,7 +288,8 @@ public class StramLocalCluster implements Runnable, Controller
     return dnmgr;
   }
 
-  public DAG getDAG() {
+  public DAG getDAG()
+  {
     return dnmgr.getPhysicalPlan().getDAG();
   }
 
@@ -411,7 +402,7 @@ public class StramLocalCluster implements Runnable, Controller
         dnmgr.containerStopRequests.remove(containerIdStr);
         logger.info("Container {} restart.", containerIdStr);
         dnmgr.scheduleContainerRestart(containerIdStr);
-        dnmgr.removeContainerAgent(containerIdStr);
+        //dnmgr.removeContainerAgent(containerIdStr);
       }
 
       // start containers

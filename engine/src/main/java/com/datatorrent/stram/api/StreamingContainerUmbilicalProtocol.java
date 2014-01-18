@@ -16,7 +16,6 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats;
-import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -92,7 +91,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     public static enum DeployState {
-      NEW, // instantiated but not processing yet
       ACTIVE,
       IDLE,// stopped processing (no more input etc.)
       FAILED // problemo!
@@ -195,7 +193,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int bufferServerPort;
 
     public String jvmName;
-    public int memoryMBFree;
+    // commented out because free memory is misleading because of GC. may want to revisit this.
+    //public int memoryMBFree;
     public boolean restartRequested;
 
     public ContainerStats stats;
@@ -241,7 +240,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public String setPropertyKey;
     public String setPropertyValue;
 
-    
+
     public boolean isDeleted()
     {
       return deleted;
@@ -321,7 +320,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * Set when operators need to be removed.
      */
-    public List<OperatorDeployInfo> undeployRequest;
+    public List<Integer> undeployRequest;
 
     /**
      * Set when new operators need to be deployed.
@@ -352,13 +351,5 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * To be called periodically by child for heartbeat protocol.
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
-
-  /**
-   * Called to fetch pending request.
-   *
-   * @param containerId
-   * @return {com.datatorrent.stram.ContainerHeartbeatResponse}
-   */
-  ContainerHeartbeatResponse pollRequest(String containerId);
 
 }

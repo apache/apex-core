@@ -35,7 +35,6 @@ import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
@@ -292,6 +291,20 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   {
     ContainerStats stats = cse.getContainerStats();
     for (OperatorHeartbeat node : stats.operators) {
+      for (OperatorStats os : node.windowStats) {
+        if (os.inputPorts != null) {
+          for (PortStats ps : os.inputPorts) {
+            ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+          }
+        }
+        if (os.outputPorts != null) {
+          for (PortStats ps : os.outputPorts) {
+            ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+          }
+        }
+      }
+    }
+    for (OperatorHeartbeat node : stats.operators) {
       long recordingStartTime;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
       if (tupleRecorder == null) {
@@ -304,18 +317,12 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
                   if (ps.id.equals(entry.getKey().portName)) {
                     ps.recordingStartTime = entry.getValue().getStartTime();
                   }
-                  else {
-                    ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
-                  }
                 }
               }
               if (os.outputPorts != null) {
                 for (PortStats ps : os.outputPorts) {
                   if (ps.id.equals(entry.getKey().portName)) {
                     ps.recordingStartTime = entry.getValue().getStartTime();
-                  }
-                  else {
-                    ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
                   }
                 }
               }
