@@ -4,19 +4,14 @@
  */
 package com.datatorrent.stram;
 
-import static java.lang.Thread.sleep;
-
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.InetSocketAddress;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.license.LicensingAgentProtocolImpl;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.security.StramDelegationTokenManager;
+import com.datatorrent.stram.util.VersionInfo;
+import com.google.common.collect.Sets;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
@@ -26,12 +21,7 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.service.CompositeService;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.YarnClient;
@@ -42,14 +32,13 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.license.LicensingAgentProtocolImpl;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.security.StramDelegationTokenManager;
-import com.datatorrent.stram.util.VersionInfo;
-import com.google.common.collect.Sets;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import static java.lang.Thread.sleep;
 
 /**
  * Application master for licensing
@@ -227,7 +216,7 @@ public class LicensingAppMaster extends CompositeService
 
     // RPC server
     int rpcListenerCount = dag.getValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT);
-    this.rpcListener = new LicensingAgentProtocolImpl(this.getClass().getName(), delegationTokenManager, rpcListenerCount, licenseBytes);
+    this.rpcListener = new LicensingAgentProtocolImpl(this.getClass().getName(), appAttemptID.getApplicationId().toString(), delegationTokenManager, rpcListenerCount, licenseBytes);
     addService(rpcListener);
 
     // initialize all services added above
