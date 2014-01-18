@@ -768,7 +768,7 @@ public class PhysicalPlan implements Serializable
         if (sourceOper.checkpointWindows.isEmpty()) {
           getActivationWindowId(sourceOper);
         }
-        activationWindowId = Math.max(activationWindowId, sourceOper.getRecentCheckpoint());
+        activationWindowId = Math.max(activationWindowId, sourceOper.recoveryCheckpoint);
       }
       return activationWindowId;
     }
@@ -948,6 +948,11 @@ public class PhysicalPlan implements Serializable
     for (PTInput in : oper.inputs) {
       in.source.sinks.remove(in);
     }
+
+    for (HostOperatorSet s : oper.groupings.values()) {
+      s.getOperatorSet().remove(this);
+    }
+
     // remove checkpoint states
     try {
       synchronized (oper.checkpointWindows) {

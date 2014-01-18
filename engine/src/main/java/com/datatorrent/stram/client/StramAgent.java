@@ -70,7 +70,7 @@ public class StramAgent extends FSAgent
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
   protected static String resourceManagerWebappAddress;
-  private static Map<String, StramWebServicesInfo> webServicesInfoMap = new LRUCache<String, StramWebServicesInfo>(100);
+  private static Map<String, StramWebServicesInfo> webServicesInfoMap = new LRUCache<String, StramWebServicesInfo>(100, true);
   protected static String defaultStramRoot = null;
 
   public class AppNotFoundException extends Exception

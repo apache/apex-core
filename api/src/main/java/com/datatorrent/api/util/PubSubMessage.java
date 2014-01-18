@@ -27,6 +27,7 @@ public class PubSubMessage<T>
   public static final String TOPIC_KEY = "topic";
   public static final String DATA_KEY = "data";
   public static final String INTERNAL_TOPIC_PREFIX = "_internal";
+  public static final String NUM_SUBSCRIBERS_SUFFIX = "numSubscribers";
 
   public static enum PubSubMessageType
   {
@@ -35,7 +36,8 @@ public class PubSubMessage<T>
     UNSUBSCRIBE("unsubscribe"),
     SUBSCRIBE_NUM_SUBSCRIBERS("subscribeNumSubscribers"),
     UNSUBSCRIBE_NUM_SUBSCRIBERS("unsubscribeNumSubscribers"),
-    DATA("data");
+    DATA("data"),
+    GET_LATEST_TOPICS("getLatestTopics");
     private final String identifier;
 
     PubSubMessageType(String identifier)
