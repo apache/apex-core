@@ -768,7 +768,7 @@ public class PhysicalPlan implements Serializable
         if (sourceOper.checkpointWindows.isEmpty()) {
           getActivationWindowId(sourceOper);
         }
-        activationWindowId = Math.max(activationWindowId, sourceOper.getRecentCheckpoint());
+        activationWindowId = Math.max(activationWindowId, sourceOper.recoveryCheckpoint);
       }
       return activationWindowId;
     }

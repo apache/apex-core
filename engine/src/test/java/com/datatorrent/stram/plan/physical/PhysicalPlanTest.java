@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,6 +37,7 @@ import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -471,7 +473,7 @@ public class PhysicalPlanTest {
     List<PTOperator> o1NewPartitions = plan.getOperators(o1Meta);
     Assert.assertEquals("partitions " + o1NewPartitions, 1, o1NewPartitions.size());
 
-    Collection<PTOperator> o1NewUnifiers = plan.getMergeOperators(o1Meta);
+    List<PTOperator> o1NewUnifiers = plan.getMergeOperators(o1Meta);
     Assert.assertEquals("unifiers " + o1Meta, 0, o1NewUnifiers.size());
     p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
     Assert.assertTrue("", p1Doper.getOperatorMeta() == dag.getMeta(o2));
@@ -480,6 +482,29 @@ public class PhysicalPlanTest {
     Assert.assertTrue("removed unifier from deployment " + ctx.undeploy,  ctx.undeploy.containsAll(o1Unifiers));
     Assert.assertFalse("removed unifier from deployment " + ctx.deploy,  ctx.deploy.containsAll(o1Unifiers));
 
+    // scale up, ensure unifier is setup at activation checkpoint
+    setActivationCheckpoint(o1NewPartitions.get(0), 3, ctx);
+    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1NewPartitions.get(0).getId(), 1);
+    plan.onStatusUpdate(o1NewPartitions.get(0));
+    Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
+    ctx.events.remove(0).run();
+
+    o1NewUnifiers = plan.getMergeOperators(o1Meta);
+    Assert.assertEquals("unifiers " + o1Meta, 1, o1NewUnifiers.size());
+    Assert.assertEquals("unifier activation checkpoint " + o1Meta, 3, o1NewUnifiers.get(0).recoveryCheckpoint);
+
+  }
+
+  private void setActivationCheckpoint(PTOperator oper, long windowId, TestPlanContext ctx)
+  {
+    try {
+      OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, windowId);
+      Node.storeOperator(stream, oper.logicalNode.getOperator());
+      stream.close();
+      oper.setRecoveryCheckpoint(3);
+    } catch (Exception e) {
+      Assert.fail(e.toString());
+    }
   }
 
   @Test
