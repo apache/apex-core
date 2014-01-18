@@ -99,11 +99,8 @@ public class PhysicalPlan implements Serializable
     public Response processStats(BatchedOperatorStats status)
     {
       Response rsp = new Response();
-      long tps = status.getTuplesProcessedPSMA();
-      if (operMapping.logicalOperator.getInputStreams().isEmpty()) {
-        tps = status.getTuplesProcessedPSMA();
-      }
-      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(),
+                                           operMapping.logicalOperator.getInputStreams().isEmpty() ? status.getTuplesEmittedPSMA() : status.getTuplesProcessedPSMA());
       if (rsp.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
           lastEvalMillis = System.currentTimeMillis();
