@@ -11,14 +11,13 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
+import org.mortbay.util.MultiMap;
+import org.mortbay.util.UrlEncoded;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,14 +61,20 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
       lastConnectURI = uriStr;
     }
     URI heartbeatUri = URI.create(uriStr);
-    List<NameValuePair> params = URLEncodedUtils.parse (heartbeatUri, Charset.defaultCharset().name());
-    for (NameValuePair nvp : params) {
-      if (QP_rpcTimeout.equals(nvp.getName())) {
-        this.rpcTimeout = Integer.parseInt(nvp.getValue());
-      } else if (QP_retryTimeoutMillis.equals(nvp.getName())) {
-        this.retryTimeoutMillis = Long.parseLong(nvp.getValue());
-      } else if (QP_retryDelayMillis.equals(nvp.getName())) {
-        this.retryDelayMillis = Long.parseLong(nvp.getValue());
+
+    String queryStr = heartbeatUri.getQuery();
+    MultiMap mm = new MultiMap();
+    if (queryStr != null) {
+      UrlEncoded.decodeTo(queryStr, mm, Charset.defaultCharset().name());
+    }
+    for (Object key : mm.keySet()) {
+      String value = mm.getString(key);
+      if (QP_rpcTimeout.equals(key)) {
+        this.rpcTimeout = Integer.parseInt(value);
+      } else if (QP_retryTimeoutMillis.equals(key)) {
+        this.retryTimeoutMillis = Long.parseLong(value);
+      } else if (QP_retryDelayMillis.equals(key)) {
+        this.retryDelayMillis = Long.parseLong(value);
       }
     }
     InetSocketAddress address = NetUtils.createSocketAddrForHost(heartbeatUri.getHost(), heartbeatUri.getPort());
