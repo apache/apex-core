@@ -29,7 +29,6 @@ import com.datatorrent.api.StringCodec.Enum2String;
 import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Long2String;
 import com.datatorrent.api.StringCodec.String2String;
-import org.getopt.util.hash.MurmurHash;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
