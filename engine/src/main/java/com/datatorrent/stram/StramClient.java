@@ -380,7 +380,7 @@ public class StramClient
     appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
     appContext.setApplicationType(this.applicationType);
     if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
-      appContext.setMaxAppAttempts(1); // no retries until Stram is HA
+      //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
     } else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
       LOG.debug("Attempts capped at {} ({})", conf.get(YarnConfiguration.RM_AM_MAX_ATTEMPTS), YarnConfiguration.RM_AM_MAX_ATTEMPTS);
     }

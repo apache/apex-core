@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
@@ -223,12 +222,9 @@ public class StramChild
       logger.error("{} not set in container environment.", ENV_APP_PATH);
       System.exit(1);
     }
-    FSRecoveryHandler fsrh = new FSRecoveryHandler(appPath, defaultConf);
-    URI heartbeatUri = URI.create(fsrh.readConnectUri());
+    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, defaultConf);
+    final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
 
-    final InetSocketAddress address = NetUtils.createSocketAddrForHost(heartbeatUri.getHost(), heartbeatUri.getPort());
-    final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
-                                                                       StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
     int exitStatus = 1; // interpreted as unrecoverable container failure
 
     final String childId = System.getProperty("stram.cid");
@@ -263,7 +259,7 @@ public class StramChild
       baos.close();
     }
     finally {
-      RPC.stopProxy(umbilical);
+      rpcProxy.close();
       //FileSystem.closeAll();
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
@@ -718,7 +714,6 @@ public class StramChild
       }
       catch (Exception e) {
         logger.error("deploy request failed", e);
-        // TODO: report it to stram?
         try {
           umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));
         }
