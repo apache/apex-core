@@ -398,7 +398,7 @@ public class ServerTest
   {
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 50L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 49L);
 
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);

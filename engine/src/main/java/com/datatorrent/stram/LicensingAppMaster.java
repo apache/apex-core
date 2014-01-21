@@ -4,14 +4,18 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.license.LicensingAgentProtocolImpl;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.security.StramDelegationTokenManager;
-import com.datatorrent.stram.util.VersionInfo;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import static java.lang.Thread.sleep;
+
 import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
@@ -29,16 +33,15 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.net.InetSocketAddress;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
 
-import static java.lang.Thread.sleep;
+import com.datatorrent.stram.debug.StdOutErrLog;
+import com.datatorrent.stram.license.LicensingAgentProtocolImpl;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.security.StramDelegationTokenManager;
+import com.datatorrent.stram.util.VersionInfo;
 
 /**
  * Application master for licensing
@@ -76,6 +79,7 @@ public class LicensingAppMaster extends CompositeService
    * @param args Command line args
    * @throws Throwable
    */
+  @SuppressWarnings({"null"}) // netbeans is not very smart!
   public static void main(final String[] args) throws Throwable
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
@@ -188,9 +192,9 @@ public class LicensingAppMaster extends CompositeService
   protected void serviceInit(Configuration conf) throws Exception
   {
     LOG.info("Application master"
-        + ", appId=" + appAttemptID.getApplicationId().getId()
-        + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
-        + ", attemptId=" + appAttemptID.getAttemptId());
+             + ", appId=" + appAttemptID.getApplicationId().getId()
+             + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
+             + ", attemptId=" + appAttemptID.getAttemptId());
 
     FileInputStream fis = new FileInputStream("./" + LogicalPlan.SER_FILE_NAME);
     this.dag = LogicalPlan.read(fis);
@@ -244,44 +248,38 @@ public class LicensingAppMaster extends CompositeService
 
   private void run() throws YarnException, IOException
   {
-    try {
-      StramChild.eventloop.start();
-
-      LOG.info("Starting ApplicationMaster");
-      Credentials credentials =
-          UserGroupInformation.getCurrentUser().getCredentials();
-      LOG.info("number of tokens: {}", credentials.getAllTokens().size());
-      Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
-      while (iter.hasNext()) {
-        Token<?> token = iter.next();
-        LOG.debug("token: " + token);
-      }
-      LOG.debug("Registering with RM {}", this.appAttemptID);
-      // Register self with ResourceManager
-      InetSocketAddress connectAddress = NetUtils.getConnectAddress(rpcListener.getAddress());
-      amRmClient.registerApplicationMaster(connectAddress.getHostName(), connectAddress.getPort(), appMasterTrackingUrl);
-      LOG.debug("Registered with RM as {}", connectAddress);
-
-      mainLoop();
-
-      FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
-      finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
-      if (this.finalStatus == FinalApplicationStatus.FAILED) {
-        finishReq.setFinalApplicationStatus(finalStatus);
-        finishReq.setDiagnostics(this.diagnosticsMessage);
-        LOG.info("Diagnostics: " + finishReq.getDiagnostics());
-      }
-      LOG.info("Application completed with {}. Signalling finish to RM", finishReq.getFinalApplicationStatus());
-      amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
-    } finally {
-      StramChild.eventloop.stop();
+    LOG.info("Starting ApplicationMaster");
+    Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
+    LOG.info("number of tokens: {}", credentials.getAllTokens().size());
+    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
+    while (iter.hasNext()) {
+      Token<?> token = iter.next();
+      LOG.debug("token: " + token);
     }
+    LOG.debug("Registering with RM {}", this.appAttemptID);
+    // Register self with ResourceManager
+    InetSocketAddress connectAddress = NetUtils.getConnectAddress(rpcListener.getAddress());
+    amRmClient.registerApplicationMaster(connectAddress.getHostName(), connectAddress.getPort(), appMasterTrackingUrl);
+    LOG.debug("Registered with RM as {}", connectAddress);
+
+    mainLoop();
+
+    FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
+    finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
+    if (this.finalStatus == FinalApplicationStatus.FAILED) {
+      finishReq.setFinalApplicationStatus(finalStatus);
+      finishReq.setDiagnostics(this.diagnosticsMessage);
+      LOG.info("Diagnostics: " + finishReq.getDiagnostics());
+    }
+    LOG.info("Application completed with {}. Signalling finish to RM", finishReq.getFinalApplicationStatus());
+    amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
   }
 
   /**
    * Main run function for the application master
    *
-   * @throws YarnRemoteException
+   * @throws YarnException
+   * @throws IOException
    */
   @SuppressWarnings("SleepWhileInLoop")
   public void mainLoop() throws YarnException, IOException
@@ -292,7 +290,7 @@ public class LicensingAppMaster extends CompositeService
       clientRMService.init(getConfig());
       clientRMService.start();
       List<ApplicationReport> apps = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE),
-          Sets.newEnumSet(Sets.newHashSet(YarnApplicationState.RUNNING), YarnApplicationState.class));
+                                                                     Sets.newEnumSet(Sets.newHashSet(YarnApplicationState.RUNNING), YarnApplicationState.class));
       LOG.debug("There are {} license agents registered", apps.size());
       for (ApplicationReport ar : apps) {
         ApplicationId otherAppId = ar.getApplicationId();
@@ -312,8 +310,14 @@ public class LicensingAppMaster extends CompositeService
       }
       clientRMService.stop();
     }
-    catch (Exception e) {
-      throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
+    catch (Error e) {
+      throw e;
+    }
+    catch (RuntimeException e) {
+      throw e;
+    }
+    catch (Throwable cause) {
+      throw new RuntimeException("Failed to retrieve cluster nodes report.", cause);
     }
 
     while (true) {
@@ -322,7 +326,8 @@ public class LicensingAppMaster extends CompositeService
         amRmClient.allocate(0);
       }
       catch (InterruptedException e) {
-        LOG.info("Sleep interrupted " + e.getMessage());
+        LOG.warn("Licensing Service Interrupted", e);
+        break;
       }
     }
 
