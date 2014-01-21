@@ -17,14 +17,21 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import junit.framework.Assert;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.ipc.RPC.Server;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.test.MockitoUtil;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +44,7 @@ import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.Journal;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.Journal.SetOperatorState;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -258,6 +266,71 @@ public class StramRecoveryTest
     j.replay(new DataInputStream(bis));
     Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
 
+  }
+
+  @Test
+  public void testRpcFailover() throws Exception
+  {
+    String appPath = testMeta.dir;
+    Configuration conf = new Configuration(false);
+    final AtomicBoolean timedout = new AtomicBoolean();
+
+    StreamingContainerUmbilicalProtocol impl = MockitoUtil.mockProtocol(StreamingContainerUmbilicalProtocol.class);
+
+    Mockito.doAnswer(new org.mockito.stubbing.Answer<Void>() {
+      @Override
+      public Void answer(InvocationOnMock invocation) {
+        LOG.debug("got call: " + invocation.getMethod());
+        if (!timedout.get()) {
+          try {
+            timedout.set(true);
+            Thread.sleep(1000);
+          } catch (Exception e) {
+          }
+          //throw new RuntimeException("fail");
+        }
+        return null;
+      }})
+    .when(impl).log("containerId", "timeout");
+
+    Server server = new RPC.Builder(conf).setProtocol(StreamingContainerUmbilicalProtocol.class).setInstance(impl)
+        .setBindAddress("0.0.0.0").setPort(0).setNumHandlers(1).setVerbose(false).build();
+    server.start();
+    InetSocketAddress address = NetUtils.getConnectAddress(server);
+    LOG.info("Mock server listening at " + address);
+
+    int rpcTimeoutMillis = 500;
+    int retryDelayMillis = 100;
+    int retryTimeoutMillis = 500;
+
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(appPath, conf);
+    URI uri = RecoverableRpcProxy.toConnectURI(address, rpcTimeoutMillis, retryDelayMillis, retryTimeoutMillis);
+    recoveryHandler.writeConnectUri(uri.toString());
+
+    RecoverableRpcProxy rp = new RecoverableRpcProxy(appPath, conf);
+    StreamingContainerUmbilicalProtocol protocolProxy = rp.getProxy();
+    protocolProxy.log("containerId", "msg");
+    // simulate socket read timeout
+    try {
+      protocolProxy.log("containerId", "timeout");
+      Assert.fail("expected socket timeout");
+    } catch (java.net.SocketTimeoutException e) {
+      // expected
+    }
+    Assert.assertTrue("timedout", timedout.get());
+    rp.close();
+
+    // test success on retry
+    timedout.set(false);
+    retryTimeoutMillis = 1500;
+    uri = RecoverableRpcProxy.toConnectURI(address, rpcTimeoutMillis, retryDelayMillis, retryTimeoutMillis);
+    recoveryHandler.writeConnectUri(uri.toString());
+
+    protocolProxy.log("containerId", "timeout");
+    Assert.assertTrue("timedout", timedout.get());
+
+    rp.close();
+    server.stop();
   }
 
 }

@@ -1229,8 +1229,8 @@ public class PhysicalPlan implements Serializable
             Runnable r = new Runnable() {
               @Override
               public void run() {
-                pendingRepartition.remove(om);
                 redoPartitions(logicalToPTOperator.get(om));
+                pendingRepartition.remove(om);
               }
             };
             ctx.dispatch(r);
