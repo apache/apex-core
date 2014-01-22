@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import static java.lang.Thread.sleep;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -21,10 +19,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
 
-import com.datatorrent.stram.security.StramWSFilterInitializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -64,11 +64,10 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
+
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
@@ -80,6 +79,7 @@ import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
+import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;

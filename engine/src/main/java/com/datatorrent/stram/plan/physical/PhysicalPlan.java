@@ -1216,6 +1216,7 @@ public class PhysicalPlan implements Serializable
     for (StatsListener l : oper.statsListeners) {
       StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
+        LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
         // TODO: repartition delay needs to come out of the listener
         oper.loadIndicator = rsp.loadIndicator;
         if (rsp.repartitionRequired) {
@@ -1224,7 +1225,7 @@ public class PhysicalPlan implements Serializable
           if (this.pendingRepartition.putIfAbsent(om, om) != null) {
             LOG.debug("Skipping repartitioning for {} load {}", oper, oper.loadIndicator);
           } else {
-            LOG.debug("Scheduling repartitioning for {} {}", oper, oper.loadIndicator);
+            LOG.debug("Scheduling repartitioning for {} load {}", oper, oper.loadIndicator);
             // hand over to monitor thread
             Runnable r = new Runnable() {
               @Override
