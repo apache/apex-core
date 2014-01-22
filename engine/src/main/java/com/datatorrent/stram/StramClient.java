@@ -198,7 +198,6 @@ public class StramClient
       org.codehaus.jackson.map.ser.std.RawSerializer.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
-    jarClasses.addAll(Arrays.asList(defaultClasses));
 
     for (String className : dag.getClassNames()) {
       try {
@@ -231,6 +230,8 @@ public class StramClient
       }
     }
 
+    jarClasses.addAll(Arrays.asList(defaultClasses));
+
     if (dag.isDebug()) {
       LOG.info("Deploy dependencies: {}", jarClasses);
     }
@@ -243,7 +244,6 @@ public class StramClient
         // system class
         continue;
       }
-      //LOG.debug("{} {}", jarClass, jarClass.getProtectionDomain().getCodeSource());
       String sourceLocation = jarClass.getProtectionDomain().getCodeSource().getLocation().toString();
       String jar = sourceToJar.get(sourceLocation);
       if (jar == null) {
@@ -507,7 +507,11 @@ public class StramClient
     // It should be provided out of the box.
     // For now setting all required classpaths including
     // the classpath to "." for the application jar(s)
-    StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+
+    // including ${CLASSPATH} will duplicate the class path in app master, removing it for now
+    //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+
+    StringBuilder classPathEnv = new StringBuilder("./*");
     for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());

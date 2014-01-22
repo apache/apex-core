@@ -68,8 +68,8 @@ public interface Partitionable<T extends Operator>
    * Allows the operator to track stats of individual partitions by id.
    *
    * @param <T> - Type of the operator
-   * @see {@link StatsListener}
-   * @see {@link Partitionable#definePartitions}
+   * @see StatsListener
+   * @see Partitionable#definePartitions
    */
   interface PartitionAware<T extends Operator>
   {

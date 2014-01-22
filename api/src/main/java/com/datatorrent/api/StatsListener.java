@@ -16,6 +16,7 @@
 package com.datatorrent.api;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 import com.datatorrent.api.Stats.OperatorStats;
@@ -56,7 +57,8 @@ public interface StatsListener
   {
     /**
       Stats list will typically contain multiple entries, depending on streaming window size and heartbeat interval.
-     */
+      * @return 
+      */
     List<OperatorStats> getLastWindowedStats();
     int getOperatorId();
     long getCurrentWindowId();
@@ -66,7 +68,7 @@ public interface StatsListener
     long getLatencyMA();
   }
 
-  public class Response
+  public class Response implements Serializable
   {
     /**
      * Set true to request repartition of the logical operator.
@@ -84,11 +86,14 @@ public interface StatsListener
      * List of commands to be executed on all deployed operator instances.
      */
     public List<OperatorCommand> operatorCommands;
+
+    private static final long serialVersionUID = 201401201506L;
   }
 
   /**
    * Called when new stats become available and status for operator is updated.
-   * @param status
+   * @param stats
+   * @return
    */
   Response processStats(BatchedOperatorStats stats);
 
