@@ -199,7 +199,6 @@ public class StramClient
       RawSerializer.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
-    jarClasses.addAll(Arrays.asList(defaultClasses));
 
     for (String className : dag.getClassNames()) {
       try {
@@ -231,6 +230,8 @@ public class StramClient
         }
       }
     }
+
+    jarClasses.addAll(Arrays.asList(defaultClasses));
 
     if (dag.isDebug()) {
       LOG.info("Deploy dependencies: {}", jarClasses);
