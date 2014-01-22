@@ -61,7 +61,7 @@ public class DataList
           temp.acquire(storage, false);         
         }
 
-        this.baseSeconds = temp.rewind(longWindowId, false);
+        this.baseSeconds = temp.rewind(longWindowId, false,storage);
         processingOffset = temp.writingOffset;
         size = 0;
       }
@@ -91,6 +91,7 @@ public class DataList
   public void purge(int baseSeconds, int windowId)
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
+    logger.debug("purge request for windowId {}",longWindowId);
 
     Block prev = null;
     for (Block temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
@@ -99,7 +100,10 @@ public class DataList
           first = temp;
         }
 
-        first.purge(longWindowId, false);
+	if (first.data == null){
+	   first.acquire(storage,false);
+        }
+        first.purge(longWindowId, false,storage);
         break;
       }
       
@@ -356,6 +360,7 @@ public class DataList
         currentCachedBlocks++;
       }
     }
+    logger.debug("currentCachedBlocks before releaes {}",currentCachedBlocks);
     temp = first;
     boolean found = false;
     while (currentCachedBlocks >= numberOfCacheBlocks && temp != null) {
@@ -366,12 +371,13 @@ public class DataList
         }
       }
       if (!found && temp.data != null) {
-        temp.release(storage, true);
+        temp.release(storage, false);
         currentCachedBlocks--;
       }
       temp = temp.next;
       found = false;
     }
+    logger.debug("currentCachedBlocks after release {}",currentCachedBlocks);
   }
 
   public byte[] getBuffer(long windowId)
