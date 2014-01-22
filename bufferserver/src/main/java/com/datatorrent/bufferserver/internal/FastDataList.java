@@ -27,9 +27,9 @@ public class FastDataList extends DataList
     super(identifier);
   }
 
-  public FastDataList(String identifier, int blocksize)
+  public FastDataList(String identifier, int blocksize,int numberOfCacheBlocks)
   {
-    super(identifier, blocksize);
+    super(identifier, blocksize,numberOfCacheBlocks);
   }
 
   long item;
@@ -117,6 +117,7 @@ public class FastDataList extends DataList
     return dli;
   }
 
+  /* TODO: Are these functions required?
   @Override
   public void purge(int baseSeconds, int windowId)
   {
@@ -154,6 +155,10 @@ public class FastDataList extends DataList
           last = temp;
         }
 
+        if(temp.data == null){
+          temp.acquire(storage, false);         
+        }
+
         this.baseSeconds = temp.rewind(longWindowId, true);
         processingOffset = temp.writingOffset;
         size = 0;
@@ -164,6 +169,7 @@ public class FastDataList extends DataList
       dli.rewind(processingOffset);
     }
   }
+  */
 
   private static final Logger logger = LoggerFactory.getLogger(FastDataList.class);
 }

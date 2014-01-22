@@ -270,7 +270,7 @@ public class StramLocalCluster implements Runnable, Controller
 
     if (!perContainerBufferServer) {
       StramChild.eventloop.start();
-      bufferServer = new Server(0, 1024 * 1024);
+      bufferServer = new Server(0, 1024 * 1024,8);
       bufferServer.setSpoolStorage(new DiskStorage());
       SocketAddress bindAddr = bufferServer.run(StramChild.eventloop);
       this.bufferServerAddress = ((InetSocketAddress)bindAddr);
