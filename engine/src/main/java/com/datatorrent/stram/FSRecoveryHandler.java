@@ -37,13 +37,20 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   private final String dir;
   private final Configuration conf;
 
-  private static final String FILE_LOG = "log";
-  private static final String FILE_LOG_BACKUP = "log0";
+  public static final String FILE_LOG = "log";
+  public static final String FILE_LOG_BACKUP = "log0";
+  public static final String FILE_SNAPSHOT = "snapshot";
+  public static final String FILE_SNAPSHOT_BACKUP = "snapshot0";
 
   public FSRecoveryHandler(String appDir, Configuration conf)
   {
     this.dir = appDir + "/recovery";
     this.conf = conf;
+  }
+
+  public String getDir()
+  {
+    return dir;
   }
 
   @Override
@@ -119,8 +126,8 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   @Override
   public void save(Object state) throws IOException
   {
-    Path backupPath = new Path(dir + "/snapshot0");
-    Path path = new Path(dir + "/snapshot");
+    Path backupPath = new Path(dir + "/" + FILE_SNAPSHOT_BACKUP);
+    Path path = new Path(dir + "/" + FILE_SNAPSHOT);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
 
     if (fs.exists(backupPath)) {

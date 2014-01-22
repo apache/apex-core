@@ -1827,7 +1827,7 @@ public class StreamingContainerManager implements PlanContext
    * @param enableEventRecording
    * @return
    */
-  public static StreamingContainerManager getInstance(RecoveryHandler rh, LogicalPlan dag, boolean enableEventRecording)
+  public static StreamingContainerManager getInstance(RecoveryHandler rh, LogicalPlan dag, boolean enableEventRecording) throws IOException
   {
     try {
       CheckpointState checkpointedState = (CheckpointState)rh.restore();
@@ -1855,6 +1855,10 @@ public class StreamingContainerManager implements PlanContext
       }
       scm.recoveryHandler = rh;
       scm.journal.setOutputStream(rh.rotateLog());
+      if (checkpointedState == null) {
+        // initial checkpoint
+        scm.checkpoint();
+      }
       return scm;
     } catch (IOException e) {
       throw new IllegalStateException("Failed to read checkpointed state", e);

@@ -145,6 +145,9 @@ public class StramRecoveryTest
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
     StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
+    File expFile = new File(recoveryHandler.getDir(), FSRecoveryHandler.FILE_SNAPSHOT);
+    Assert.assertTrue("snapshot file " + expFile, expFile.exists());
+
     PhysicalPlan plan = scm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, plan.getContainers().size());
 
