@@ -100,8 +100,8 @@ public class DataList
           first = temp;
         }
 
-	if (first.data == null){
-	   first.acquire(storage,false);
+        if (first.data == null){
+          first.acquire(storage,false);
         }
         first.purge(longWindowId, false,storage);
         break;
