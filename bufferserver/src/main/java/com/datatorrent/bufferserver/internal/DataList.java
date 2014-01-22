@@ -38,6 +38,8 @@ public class DataList
   protected Block last;
   protected Storage storage;
   protected ScheduledExecutorService executor;
+  protected int numberOfBlocks = 10;
+  protected int currentTotalBlocks;
 
   public int getBlockSize()
   {
@@ -47,12 +49,21 @@ public class DataList
   public void rewind(int baseSeconds, int windowId) throws IOException
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
+    currentTotalBlocks = 0;
 
     for (Block temp = first; temp != null; temp = temp.next) {
+      if(temp.data != null){
+        currentTotalBlocks++;
+      }
       if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
         if (temp != last) {
           temp.next = null;
           last = temp;
+        }
+        
+        if(temp.data == null){
+          temp.acquire(storage, false);
+          currentTotalBlocks++;
         }
 
         this.baseSeconds = temp.rewind(longWindowId, false);
@@ -80,6 +91,7 @@ public class DataList
         first = first.next;
       }
     }
+    currentTotalBlocks = 0;
   }
 
   public void purge(int baseSeconds, int windowId)
@@ -95,6 +107,9 @@ public class DataList
 
         first.purge(longWindowId, false);
         break;
+      }
+      if (temp.data != null) {
+        currentTotalBlocks--;
       }
 
       if (storage != null && temp.uniqueIdentifier > 0) {
@@ -121,6 +136,7 @@ public class DataList
     this.blocksize = blocksize;
     first = new Block(identifier, blocksize);
     last = first;
+    currentTotalBlocks++;
   }
 
   public DataList(String identifier)
@@ -340,6 +356,23 @@ public class DataList
     last.next.starting_window = last.ending_window;
     last.next.ending_window = last.ending_window;
     last = last.next;
+    currentTotalBlocks++;
+    Block block = first;
+    boolean found = false;
+    while (currentTotalBlocks >= numberOfBlocks && block != null) {
+      for (Map.Entry<String, DataListIterator> entry : iterators.entrySet()) {
+        if (entry.getValue().da == block) {
+          found = true;
+          break;
+        }
+      }
+      if (!found && block.data != null) {
+        block.release(storage, true);
+        currentTotalBlocks--;
+      }
+      block = block.next;
+      found = false;
+    }
   }
 
   public byte[] getBuffer(long windowId)
