@@ -5,16 +5,14 @@
 
 package com.datatorrent.stram.webapp;
 
-import java.util.List;
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.util.VersionInfo;
+import org.apache.hadoop.yarn.util.Times;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
-
-import org.apache.hadoop.yarn.util.Times;
-
-import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.util.VersionInfo;
+import java.util.List;
 
 /**
  *
@@ -45,6 +43,7 @@ public class AppInfo {
   protected String gatewayAddress;
   protected String licenseId;
   protected long remainingLicensedMB;
+  protected long totalLicensedMB;
   protected long allocatedMB;
   protected long licenseInfoLastUpdate;
   public String appMasterTrackingUrl;
@@ -163,6 +162,7 @@ public class AppInfo {
     this.version = VersionInfo.getBuildVersion();
     this.licenseId = context.getLicenseId();
     this.remainingLicensedMB = context.getRemainingLicensedMB();
+    this.totalLicensedMB = context.getTotalLicensedMB();
     this.allocatedMB = context.getAllocatedMB();
     this.licenseInfoLastUpdate = context.getLicenseInfoLastUpdate();
   }
@@ -228,6 +228,11 @@ public class AppInfo {
   public long getRemainingLicensedMB()
   {
     return remainingLicensedMB;
+  }
+
+  public long getTotalLicensedMB()
+  {
+    return totalLicensedMB;
   }
 
   public long getAllocatedMB()
