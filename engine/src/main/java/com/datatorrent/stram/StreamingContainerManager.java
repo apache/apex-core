@@ -15,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
@@ -27,7 +28,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -44,9 +44,9 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
+import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -151,29 +151,20 @@ public class StreamingContainerManager implements PlanContext
     this.plan = new PhysicalPlan(dag, this);
   }
 
-  StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
+  private StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
   {
     this.vars = checkpointedState.finals;
     this.journal = setupJournal();
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupRecording(this.plan.getDAG().getAttributes(), enableEventRecording);
-
-    // populate container agents for existing containers
-    for (PTContainer c : this.plan.getContainers()) {
-      if (c.getExternalId() != null) {
-        LOG.debug("Restore container agent {} for {}", c.getExternalId(), c);
-        StramChildAgent sca = new StramChildAgent(c, newStreamingContainerContext(c.getExternalId()), this);
-        containers.put(c.getExternalId(), sca);
-      }
-    }
   }
 
   private Journal setupJournal()
   {
     Journal lJournal = new Journal();
     lJournal.register(1, new Journal.SetOperatorState(this));
-    lJournal.register(2, new Journal.SetContainerResourcePriority(this));
+    lJournal.register(2, new Journal.SetContainerState(this));
     return lJournal;
   }
 
@@ -608,6 +599,7 @@ public class StreamingContainerManager implements PlanContext
     container.bufferServerAddress = bufferServerAddr;
     container.nodeHttpAddress = resource.nodeHttpAddress;
     container.setAllocatedMemoryMB(resource.memoryMB);
+    writeJournal(SetContainerState.newInstance(container));
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
     containers.put(resource.containerId, sca);
@@ -1795,7 +1787,10 @@ public class StreamingContainerManager implements PlanContext
     if (recoveryHandler != null) {
       LOG.debug("Checkpointing state");
       synchronized (journal) {
-        journal.getOutputStream().close();
+        DataOutputStream os = journal.getOutputStream();
+        if (os != null) {
+          os.close();
+        }
         DataOutputStream dos = recoveryHandler.rotateLog();
         journal.setOutputStream(dos);
       }
@@ -1852,13 +1847,20 @@ public class StreamingContainerManager implements PlanContext
         DataInputStream logStream = rh.getLog();
         scm.journal.replay(logStream);
         logStream.close();
+
+        // at this point the physical plan has been fully restored
+        // populate container agents for existing containers
+        for (PTContainer c : plan.getContainers()) {
+          if (c.getExternalId() != null) {
+            LOG.debug("Restore container agent {} for {}", c.getExternalId(), c);
+            StramChildAgent sca = new StramChildAgent(c, scm.newStreamingContainerContext(c.getExternalId()), scm);
+            scm.containers.put(c.getExternalId(), sca);
+          }
+        }
+
       }
       scm.recoveryHandler = rh;
-      scm.journal.setOutputStream(rh.rotateLog());
-      if (checkpointedState == null) {
-        // initial checkpoint
-        scm.checkpoint();
-      }
+      scm.checkpoint();
       return scm;
     } catch (IOException e) {
       throw new IllegalStateException("Failed to read checkpointed state", e);

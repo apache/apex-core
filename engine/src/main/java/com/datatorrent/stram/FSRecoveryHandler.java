@@ -67,6 +67,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     }
 
     if (fs.exists(logPath)) {
+      LOG.debug("Creating log backup {}", logBackupPath);
       if (!fs.rename(logPath, logBackupPath)) {
         throw new IOException("Failed to rotate log: " + logPath);
       }
@@ -170,10 +171,10 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
     FileContext fc = FileContext.getFileContext(FileSystem.get(path.toUri(), conf).getUri());
 
+    // recover from wherever it was left
     if (fc.util().exists(backupPath)) {
       LOG.warn("Incomplete checkpoint, reverting to {}", backupPath);
-      fc.delete(path, false);
-      fc.rename(backupPath, path);
+      fc.rename(backupPath, path, Rename.OVERWRITE);
 
       // combine logs (w/o append, create new file)
       Path tmpLogPath = new Path(dir + "/log.combined");
@@ -189,6 +190,14 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       fsOut.close();
       fc.rename(tmpLogPath, logPath, Rename.OVERWRITE);
       fc.delete(logBackupPath, false);
+    } else {
+      // we have log backup, but no checkpoint backup
+      // failure between log rotation and writing checkpoint
+      if (fc.util().exists(logBackupPath)) {
+        LOG.warn("Found {}, did checkpointing fail?");
+        fc.rename(logBackupPath, logPath, Rename.OVERWRITE);
+      }
+
     }
 
     if (!fc.util().exists(path)) {
