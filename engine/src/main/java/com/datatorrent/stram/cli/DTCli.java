@@ -77,7 +77,7 @@ import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.license.GenerateLicenseRequest;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicensingAgentClient;
-import com.datatorrent.stram.license.SubLicense;
+import com.datatorrent.stram.license.LicenseSection;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
@@ -1768,19 +1768,19 @@ public class DTCli
       licenseBytes = StramClientUtils.getLicense(conf);
     }
     String licenseID = License.getLicenseID(licenseBytes);
-    SubLicense[] subLicenses = License.validateGetSubLicenses(licenseBytes);
+    LicenseSection[] licenseSections = License.validateGetLicenseSections(licenseBytes);
     JSONObject licenseObj = new JSONObject();
     licenseObj.put("id", licenseID);
 
     JSONArray sublicArray = new JSONArray();
 
-    SimpleDateFormat sdf = new SimpleDateFormat(SubLicense.DATE_FORMAT);
-    for (SubLicense sublic : subLicenses) {
+    SimpleDateFormat sdf = new SimpleDateFormat(LicenseSection.DATE_FORMAT);
+    for (LicenseSection sublic : licenseSections) {
       JSONObject sublicObj = new JSONObject();
       sublicObj.put("startDate", sdf.format(sublic.getStartDate()));
       sublicObj.put("endDate", sdf.format(sublic.getEndDate()));
       sublicObj.put("comment", sublic.getComment());
-      sublicObj.put("processorList", sublic.getSubLicenseInfoAsJSONObj());
+      sublicObj.put("processorList", sublic.getLicenseSectionInfoAsJSONObj());
       sublicObj.put("constraint", sublic.getConstraint());
       sublicObj.put("url", sublic.getUrl());
       sublicArray.put(sublicObj);
