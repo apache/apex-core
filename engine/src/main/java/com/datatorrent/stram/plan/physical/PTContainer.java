@@ -35,7 +35,7 @@ public class PTContainer implements java.io.Serializable
     KILLED
   }
 
-  volatile PTContainer.State state = State.NEW;
+  private volatile PTContainer.State state = State.NEW;
   private int requiredMemoryMB;
   private int allocatedMemoryMB;
   private int resourceRequestPriority;
@@ -45,7 +45,7 @@ public class PTContainer implements java.io.Serializable
   List<PTOperator> operators = new ArrayList<PTOperator>();
 
   // execution layer properties
-  String containerId; // assigned yarn container id
+  private String containerId; // assigned yarn container id
   public String host;
   public InetSocketAddress bufferServerAddress;
   public String nodeHttpAddress;

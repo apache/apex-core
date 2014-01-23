@@ -39,6 +39,7 @@ import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.stram.FSRecoveryHandler;
+import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.Journal;
@@ -145,6 +146,9 @@ public class StramRecoveryTest
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
     StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
+    File expFile = new File(recoveryHandler.getDir(), FSRecoveryHandler.FILE_SNAPSHOT);
+    Assert.assertTrue("snapshot file " + expFile, expFile.exists());
+
     PhysicalPlan plan = scm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, plan.getContainers().size());
 
@@ -152,7 +156,8 @@ public class StramRecoveryTest
 
     // container allocation
     String containerId = "container1";
-    StramChildAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0));
+    InetSocketAddress bufferServerAddress = InetSocketAddress.createUnresolved("localhost", 0);
+    StramChildAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), bufferServerAddress);
     Assert.assertNotNull(sca);
 
     Assert.assertEquals(PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
@@ -168,6 +173,22 @@ public class StramRecoveryTest
     Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
+    // test restore initial snapshot + log
+    dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
+    dag = scm.getLogicalPlan();
+    plan = scm.getPhysicalPlan();
+
+    o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
+    Assert.assertEquals("post restore state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
+    o1 = (StatsListeningOperator)o1p1.getOperatorMeta().getOperator();
+    Assert.assertEquals("containerId", containerId, o1p1.getContainer().getExternalId());
+    Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
+    Assert.assertEquals("number stats calls", 0,  o1.processStatsCnt); // stats are not logged
+    Assert.assertEquals("post restore 1", PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
+    Assert.assertEquals("post restore 1", bufferServerAddress, o1p1.getContainer().bufferServerAddress);
+
     // operator reports first stats
     OperatorHeartbeat ohb = new OperatorHeartbeat();
     ohb.setNodeId(o1p1.getId());
@@ -178,8 +199,6 @@ public class StramRecoveryTest
     ohb.windowStats = Lists.newArrayList(stats);
     cstats.operators.add(ohb);
     chr = scm.processHeartbeat(hb); // get deploy request
-
-    Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
 
     // logical plan modification triggers snapshot
@@ -199,7 +218,6 @@ public class StramRecoveryTest
 
     Assert.assertSame("dag references", dag, scm.getLogicalPlan());
     Assert.assertEquals("number operators after plan modification", 2, dag.getAllOperators().size());
-    Assert.assertEquals("number stats calls", 1,  o1.processStatsCnt);
 
     // set operator state triggers journal write
     o1p1.setState(PTOperator.State.INACTIVE);
@@ -220,11 +238,8 @@ public class StramRecoveryTest
     o1 = (StatsListeningOperator)o1p1.getOperatorMeta().getOperator();
     Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
     Assert.assertEquals("number stats calls post restore", 1,  o1.processStatsCnt);
-
-    URI connectUri = new URI("stram", null, "127.0.0.1", 9999, null, null, null);
-    recoveryHandler.writeConnectUri(connectUri.toString());
-
-    connectUri = URI.create(recoveryHandler.readConnectUri());
+    Assert.assertEquals("post restore 1", PTContainer.State.ACTIVE, o1p1.getContainer().getState());
+    Assert.assertEquals("post restore 1", bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
   }
 
@@ -250,10 +265,10 @@ public class StramRecoveryTest
     };
     Journal j = new Journal();
     j.setOutputStream(new DataOutputStream(bos));
-    SetOperatorState op1 = new SetOperatorState(scm);
-    j.register(1, op1);
+    j.register(1, new SetOperatorState(scm));
+    j.register(2, new SetContainerState(scm));
 
-    op1 = new SetOperatorState(scm);
+    SetOperatorState op1 = new SetOperatorState(scm);
     op1.operatorId = o1p1.getId();
     op1.state = PTOperator.State.ACTIVE;
     j.write(op1);
@@ -265,6 +280,35 @@ public class StramRecoveryTest
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     j.replay(new DataInputStream(bis));
     Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+
+    InetSocketAddress addr1 = InetSocketAddress.createUnresolved("host1", 1);
+    PTContainer c1 = plan.getContainers().get(0);
+    c1.setState(PTContainer.State.ALLOCATED);
+    c1.setExternalId("eid1");
+    c1.host = "host1";
+    c1.bufferServerAddress = addr1;
+    c1.setAllocatedMemoryMB(2);
+    c1.setRequiredMemoryMB(1);
+
+    SetContainerState scs = new SetContainerState(scm);
+    scs.container = c1;
+    j.write(scs);
+
+    c1.setExternalId(null);
+    c1.setState(PTContainer.State.NEW);
+    c1.setExternalId(null);
+    c1.host = null;
+    c1.bufferServerAddress = null;
+
+    bis = new ByteArrayInputStream(bos.toByteArray());
+    j.replay(new DataInputStream(bis));
+
+    Assert.assertEquals("eid1", c1.getExternalId());
+    Assert.assertEquals(PTContainer.State.ALLOCATED, c1.getState());
+    Assert.assertEquals("host1", c1.host);
+    Assert.assertEquals(addr1, c1.bufferServerAddress);
+    Assert.assertEquals(1, c1.getRequiredMemoryMB());
+    Assert.assertEquals(2, c1.getAllocatedMemoryMB());
 
   }
 
