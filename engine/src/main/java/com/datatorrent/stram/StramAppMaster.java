@@ -373,6 +373,12 @@ public class StramAppMaster extends CompositeService
     }
 
     @Override
+    public long getTotalLicensedMB()
+    {
+      return StramAppMaster.this.licenseClient.getTotalLicensedMB();
+    }
+
+    @Override
     public long getAllocatedMB()
     {
       return StramAppMaster.this.licenseClient.getAllocatedMB();
