@@ -476,10 +476,10 @@ public class DTCli
                                                              null,
                                                              new Arg[] {new FileArg("license-file")},
                                                              "Stop the license agent"));
-    globalCommands.put("list-licenses", new CommandSpec(new ListLicensesCommand(),
+    globalCommands.put("list-license-agents", new CommandSpec(new ListLicenseAgentsCommand(),
                                                         null,
                                                         null,
-                                                        "Show all IDs of all licenses"));
+                                                        "Show IDs of all license agents"));
     globalCommands.put("show-license-status", new CommandSpec(new ShowLicenseStatusCommand(),
                                                               null,
                                                               new Arg[] {new FileArg("license-file")},
@@ -1360,7 +1360,7 @@ public class DTCli
     }
   }
 
-  private List<ApplicationReport> getLicenseList()
+  private List<ApplicationReport> getLicenseAgentList()
   {
     try {
       GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
@@ -1684,7 +1684,11 @@ public class DTCli
 
     for (ApplicationReport ar : runningApplicationList) {
       try {
-        WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
+        WebResource r = getStramWebResource(webServicesClient, ar);
+        if (r == null) {
+          throw new Exception("Cannot get stram web resource for " + ar.getApplicationId());
+        }
+        r = r.path(StramWebServices.PATH_INFO);
 
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -1725,7 +1729,7 @@ public class DTCli
     return licenseInfoMap;
   }
 
-  private class ListLicensesCommand implements Command
+  private class ListLicenseAgentsCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
@@ -1734,7 +1738,7 @@ public class DTCli
 
       try {
         JSONArray jsonArray = new JSONArray();
-        List<ApplicationReport> licList = getLicenseList();
+        List<ApplicationReport> licList = getLicenseAgentList();
         Collections.sort(licList, new Comparator<ApplicationReport>()
         {
           @Override
@@ -1791,7 +1795,7 @@ public class DTCli
       sectionArr.put(sectionObj);
     }
     licenseObj.put("sections", sectionArr);
-    List<ApplicationReport> licList = getLicenseList();
+    List<ApplicationReport> licList = getLicenseAgentList();
     for (ApplicationReport ar : licList) {
       if (ar.getName().equals(licenseID)) {
         licenseObj.put("agentAppId", ar.getApplicationId().toString());
