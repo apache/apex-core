@@ -1675,7 +1675,7 @@ public class DTCli
     // add expiration date range here
   }
 
-  private Map<String, LicenseInfo> getLicenseInfoMap() 
+  private Map<String, LicenseInfo> getLicenseInfoMap()
   {
     List<ApplicationReport> runningApplicationList = getRunningApplicationList();
     WebServicesClient webServicesClient = new WebServicesClient();
@@ -1777,20 +1777,20 @@ public class DTCli
     JSONObject licenseObj = new JSONObject();
     licenseObj.put("id", licenseID);
 
-    JSONArray sublicArray = new JSONArray();
+    JSONArray sectionArr = new JSONArray();
 
     SimpleDateFormat sdf = new SimpleDateFormat(LicenseSection.DATE_FORMAT);
-    for (LicenseSection sublic : licenseSections) {
-      JSONObject sublicObj = new JSONObject();
-      sublicObj.put("startDate", sdf.format(sublic.getStartDate()));
-      sublicObj.put("endDate", sdf.format(sublic.getEndDate()));
-      sublicObj.put("comment", sublic.getComment());
-      sublicObj.put("processorList", sublic.getLicenseSectionInfoAsJSONObj());
-      sublicObj.put("constraint", sublic.getConstraint());
-      sublicObj.put("url", sublic.getUrl());
-      sublicArray.put(sublicObj);
+    for (LicenseSection section : licenseSections) {
+      JSONObject sectionObj = new JSONObject();
+      sectionObj.put("startDate", sdf.format(section.getStartDate()));
+      sectionObj.put("endDate", sdf.format(section.getEndDate()));
+      sectionObj.put("comment", section.getComment());
+      sectionObj.put("processorList", section.getLicenseSectionInfoAsJSONObj());
+      sectionObj.put("constraint", section.getConstraint());
+      sectionObj.put("url", section.getUrl());
+      sectionArr.put(sectionObj);
     }
-    licenseObj.put("sublicenses", sublicArray);
+    licenseObj.put("sections", sectionArr);
     List<ApplicationReport> licList = getLicenseList();
     for (ApplicationReport ar : licList) {
       if (ar.getName().equals(licenseID)) {
