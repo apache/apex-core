@@ -1675,7 +1675,7 @@ public class DTCli
     // add expiration date range here
   }
 
-  private Map<String, LicenseInfo> getLicenseInfoMap() throws JSONException, IOException
+  private Map<String, LicenseInfo> getLicenseInfoMap() 
   {
     List<ApplicationReport> runningApplicationList = getRunningApplicationList();
     WebServicesClient webServicesClient = new WebServicesClient();
@@ -1683,39 +1683,44 @@ public class DTCli
     Map<String, LicenseInfo> licenseInfoMap = new HashMap<String, LicenseInfo>();
 
     for (ApplicationReport ar : runningApplicationList) {
-      WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
+      try {
+        WebResource r = getStramWebResource(webServicesClient, ar).path(StramWebServices.PATH_INFO);
 
-      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-      {
-        @Override
-        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
-          return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        if (!response.has("licenseInfoLastUpdate")) {
+          continue;
         }
+        long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
+        String licenseId = response.getString("licenseId");
+        int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
+        LicenseInfo licenseInfo;
 
-      });
-      if (!response.has("licenseInfoLastUpdate")) {
-        continue;
-      }
-      long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
-      String licenseId = response.getString("licenseId");
-      int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
-      LicenseInfo licenseInfo;
-
-      if (licenseInfoMap.containsKey(licenseId)) {
-        licenseInfo = licenseInfoMap.get(licenseId);
-        if (licenseInfo.lastUpdate < lastUpdate) {
+        if (licenseInfoMap.containsKey(licenseId)) {
+          licenseInfo = licenseInfoMap.get(licenseId);
+          if (licenseInfo.lastUpdate < lastUpdate) {
+            licenseInfo.remainingLicensedMB = remainingLicensedMB;
+            licenseInfo.lastUpdate = lastUpdate;
+          }
+        }
+        else {
+          licenseInfo = new LicenseInfo();
           licenseInfo.remainingLicensedMB = remainingLicensedMB;
           licenseInfo.lastUpdate = lastUpdate;
+          licenseInfoMap.put(licenseId, licenseInfo);
         }
       }
-      else {
-        licenseInfo = new LicenseInfo();
-        licenseInfo.remainingLicensedMB = remainingLicensedMB;
-        licenseInfo.lastUpdate = lastUpdate;
-        licenseInfoMap.put(licenseId, licenseInfo);
+      catch (Exception ex) {
+        LOG.warn("Caught exception when trying to get information about application {}", ar.getApplicationId(), ex);
+        continue;
       }
-
     }
     return licenseInfoMap;
   }
