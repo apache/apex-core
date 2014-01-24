@@ -477,9 +477,9 @@ public class DTCli
                                                              new Arg[] {new FileArg("license-file")},
                                                              "Stop the license agent"));
     globalCommands.put("list-license-agents", new CommandSpec(new ListLicenseAgentsCommand(),
-                                                        null,
-                                                        null,
-                                                        "Show IDs of all license agents"));
+                                                              null,
+                                                              null,
+                                                              "Show IDs of all license agents"));
     globalCommands.put("show-license-status", new CommandSpec(new ShowLicenseStatusCommand(),
                                                               null,
                                                               new Arg[] {new FileArg("license-file")},
@@ -1615,24 +1615,34 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      byte[] licenseBytes;
+      String file = null;
       if (args.length > 1) {
-        licenseBytes = StramClientUtils.getLicense(args[1]);
+        file = args[1];
       }
-      else {
-        licenseBytes = StramClientUtils.getLicense(conf);
-      }
-      String licenseId = License.getLicenseID(licenseBytes);
-      License.validateLicense(licenseBytes);
-      LogicalPlan lp = new LogicalPlan();
-      lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
-      lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
-      StramClient client = new StramClient(lp);
-      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
-      client.startApplication();
-      System.err.println("Started license agent for " + licenseId);
+      String licenseId = activateLicense(file);
+      System.out.println("Started license agent for " + licenseId);
     }
 
+  }
+
+  protected String activateLicense(String file) throws Exception
+  {
+    byte[] licenseBytes;
+    if (file != null) {
+      licenseBytes = StramClientUtils.getLicense(file);
+    }
+    else {
+      licenseBytes = StramClientUtils.getLicense(conf);
+    }
+    String licenseId = License.getLicenseID(licenseBytes);
+    License.validateLicense(licenseBytes);
+    LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
+    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
+    StramClient client = new StramClient(lp);
+    client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+    client.startApplication();
+    return licenseId;
   }
 
   private class DeactivateLicenseCommand implements Command
@@ -1659,7 +1669,7 @@ public class DTCli
           throw new CliException("License not activated: " + licenseId);
         }
         rmClient.killApplication(ar.getApplicationId());
-        System.err.println("Stopped license agent for " + licenseId);
+        System.out.println("Stopped license agent for " + licenseId);
       }
       finally {
         clientRMService.stop();
@@ -1962,7 +1972,17 @@ public class DTCli
             clientRMService.start();
             ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
             if (ar == null) {
-              throw new CliException("License not activated. Please run activate-license first before launching any streaming application");
+              try {
+                activateLicense(null);
+                Thread.sleep(3000);
+                ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+              }
+              catch (Exception ex) {
+                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help.", ex);
+              }
+              if (ar == null) {
+                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help.");
+              }
             }
             appId = submitApp.launchApp(appFactory);
             currentApp = rmClient.getApplicationReport(appId);
