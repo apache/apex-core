@@ -16,10 +16,12 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.bind.annotation.XmlElement;
@@ -51,6 +53,9 @@ import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.NodeId;
+import org.apache.hadoop.yarn.api.records.Priority;
+import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.YarnClient;
@@ -138,6 +143,7 @@ public class StramAppMaster extends CompositeService
   private final Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
   // Count of failed containers
   private final AtomicInteger numFailedContainers = new AtomicInteger();
+  private final ConcurrentLinkedQueue<Runnable> pendingTasks = new ConcurrentLinkedQueue<Runnable>();
   // Launch threads
   // private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
@@ -678,7 +684,6 @@ public class StramAppMaster extends CompositeService
    */
   private boolean status = true;
 
-  // @Override - for licensing using native
   @SuppressWarnings("SleepWhileInLoop")
   public void execute() throws YarnException, IOException
   {
@@ -742,11 +747,20 @@ public class StramAppMaster extends CompositeService
       throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
     }
 
+    // check for previously allocated containers
+    // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
+    checkContainerStatus();
+
     while (!appDone) {
       loopCounter++;
 
       if (licenseClient != null) {
         licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+      }
+
+      Runnable r;
+      while ((r = this.pendingTasks.poll()) != null) {
+        r.run();
       }
 
       // log current state
@@ -824,7 +838,7 @@ public class StramAppMaster extends CompositeService
         if(csr != null)
           requestedResources.remove(csr);
         // allocate resource to container
-        ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
+        ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
         StramChildAgent sca = dnmgr.assignContainer(resource, null);
 
         {
@@ -875,7 +889,7 @@ public class StramAppMaster extends CompositeService
             numFailedContainers.incrementAndGet();
           }
           if (exitStatus == 1) {
-            // StramChild failure
+            // non-recoverable StramChild failure
             appDone = true;
             dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
             LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
@@ -937,6 +951,29 @@ public class StramAppMaster extends CompositeService
   }
 
   /**
+   * Check for containers that were allocated in a previous attempt.
+   * If the containers are still alive, wait for them to check in via heartbeat.
+   */
+  private void checkContainerStatus()
+  {
+    Collection<StramChildAgent> containers = this.dnmgr.getContainerAgents();
+    for (StramChildAgent ca : containers) {
+      ContainerId containerId = ConverterUtils.toContainerId(ca.container.getExternalId());
+      NodeId nodeId = ConverterUtils.toNodeId(ca.container.host);
+
+      // put container back into the allocated list
+      org.apache.hadoop.yarn.api.records.Token containerToken = null;
+      Resource resource = Resource.newInstance(ca.container.getAllocatedMemoryMB(), 1);
+      Priority priority = Priority.newInstance(ca.container.getResourceRequestPriority());
+      Container yarnContainer = Container.newInstance(containerId, nodeId, ca.container.nodeHttpAddress, resource, priority, containerToken);
+      this.allAllocatedContainers.put(containerId.toString(), yarnContainer);
+
+      // check the status
+      nmClient.getContainerStatusAsync(containerId, nodeId);
+    }
+  }
+
+  /**
    * Ask RM to allocate given no. of containers to this Application Master
    *
    * @param requestedContainers
@@ -987,10 +1024,15 @@ public class StramAppMaster extends CompositeService
     }
 
     @Override
-    public void onContainerStatusReceived(ContainerId containerId, ContainerStatus containerStatus)
+    public void onContainerStatusReceived(final ContainerId containerId, final ContainerStatus containerStatus)
     {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Container Status: id=" + containerId + ", status=" + containerStatus);
+      LOG.debug("Container Status: id=" + containerId + ", status=" + containerStatus);
+      if (containerStatus.getState() != ContainerState.RUNNING) {
+        LOG.info("Container {} state {}", containerId, containerStatus.getState());
+        pendingTasks.add(new Runnable() { @Override public void run() {
+            LOG.info("Recovery for {} {}", containerId, containerStatus);
+            dnmgr.scheduleContainerRestart(containerId.toString());
+        }});
       }
     }
 
@@ -1011,13 +1053,19 @@ public class StramAppMaster extends CompositeService
     @Override
     public void onGetContainerStatusError(ContainerId containerId, Throwable t)
     {
-      LOG.error("Failed to query the status of Container " + containerId);
+      LOG.error("Failed to query the status of Container " + containerId, t);
     }
 
     @Override
-    public void onStopContainerError(ContainerId containerId, Throwable t)
+    public void onStopContainerError(final ContainerId containerId, Throwable t)
     {
       LOG.warn("Failed to stop container {}", containerId);
+      // container could not be stopped, we won't receive a stop event from AM heartbeat
+      // short circuit and schedule recovery directly
+      pendingTasks.add(new Runnable() { @Override public void run() {
+        LOG.info("Recovery after container stop failure for {}", containerId);
+        dnmgr.scheduleContainerRestart(containerId.toString());
+      }});
     }
   }
 
