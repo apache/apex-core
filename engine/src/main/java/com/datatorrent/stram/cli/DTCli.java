@@ -105,6 +105,7 @@ import com.datatorrent.stram.webapp.StramWebServices;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
+  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 5000;
   private final Configuration conf = new YarnConfiguration();
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -1974,8 +1975,12 @@ public class DTCli
             if (ar == null) {
               try {
                 activateLicense(null);
-                Thread.sleep(3000);
-                ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+                long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
+                do {
+                  Thread.sleep(500);
+                  ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+                }
+                while (ar == null && System.currentTimeMillis() <= timeout);
               }
               catch (Exception ex) {
                 throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help.", ex);
