@@ -88,6 +88,7 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+import com.google.common.collect.Maps;
 
 /**
  *
@@ -710,8 +711,8 @@ public class StramAppMaster extends CompositeService
       containerMemory = maxMem;
     }
 
-    // this is used for fall back
-    Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = new HashMap<StramChildAgent.ContainerStartRequest, Integer>();
+    // for locality relaxation fall back
+    Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -798,11 +799,6 @@ public class StramAppMaster extends CompositeService
           if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
             entry.setValue(loopCounter);
             StramChildAgent.ContainerStartRequest csr = entry.getKey();
-//            PTContainer c = csr.container;
-//            for (PTOperator oper : c.getOperators()) {
-//              HostOperatorSet grpObj = oper.getNodeLocalOperators();
-//              grpObj.setHost(null);
-//            }
             containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,false));
           }
         }
@@ -831,7 +827,8 @@ public class StramAppMaster extends CompositeService
           }
         }
 
-        if(alreadyAllocated){
+        if (alreadyAllocated) {
+          LOG.debug("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
           releasedContainers.add(allocatedContainer.getId());
           continue;
         }
@@ -1024,15 +1021,11 @@ public class StramAppMaster extends CompositeService
     }
 
     @Override
-    public void onContainerStatusReceived(final ContainerId containerId, final ContainerStatus containerStatus)
+    public void onContainerStatusReceived(ContainerId containerId, ContainerStatus containerStatus)
     {
       LOG.debug("Container Status: id=" + containerId + ", status=" + containerStatus);
       if (containerStatus.getState() != ContainerState.RUNNING) {
-        LOG.info("Container {} state {}", containerId, containerStatus.getState());
-        pendingTasks.add(new Runnable() { @Override public void run() {
-            LOG.info("Recovery for {} {}", containerId, containerStatus);
-            dnmgr.scheduleContainerRestart(containerId.toString());
-        }});
+        recoverContainer(containerId);
       }
     }
 
@@ -1054,19 +1047,26 @@ public class StramAppMaster extends CompositeService
     public void onGetContainerStatusError(ContainerId containerId, Throwable t)
     {
       LOG.error("Failed to query the status of Container " + containerId, t);
+      // if the NM is not reachable, consider container lost and recover
+      recoverContainer(containerId);
     }
 
     @Override
-    public void onStopContainerError(final ContainerId containerId, Throwable t)
+    public void onStopContainerError(ContainerId containerId, Throwable t)
     {
       LOG.warn("Failed to stop container {}", containerId);
       // container could not be stopped, we won't receive a stop event from AM heartbeat
       // short circuit and schedule recovery directly
+      recoverContainer(containerId);
+    }
+
+    private void recoverContainer(final ContainerId containerId) {
       pendingTasks.add(new Runnable() { @Override public void run() {
-        LOG.info("Recovery after container stop failure for {}", containerId);
+        LOG.info("Lost container {}", containerId);
         dnmgr.scheduleContainerRestart(containerId.toString());
       }});
     }
+
   }
 
 }

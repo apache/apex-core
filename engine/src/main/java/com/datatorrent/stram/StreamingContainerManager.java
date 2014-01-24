@@ -255,6 +255,7 @@ public class StreamingContainerManager implements PlanContext
 
       if (!pendingAllocation.contains(c) && c.getExternalId() != null) {
         if (sca.lastHeartbeatMillis == 0) {
+          //LOG.debug("{} {} {}", c.getExternalId(), currentTms - sca.createdMillis, this.vars.heartbeatTimeoutMillis);
           // container allocated but process was either not launched or is not able to phone home
           if (currentTms - sca.createdMillis > 2 * this.vars.heartbeatTimeoutMillis) {
             LOG.info("Container {}@{} startup timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.createdMillis});
@@ -510,6 +511,7 @@ public class StreamingContainerManager implements PlanContext
 
     cs.container.setState(PTContainer.State.KILLED);
     cs.container.bufferServerAddress = null;
+    cs.container.setResourceRequestPriority(-1);
 
     // resolve dependencies
     LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
