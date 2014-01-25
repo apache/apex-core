@@ -1682,6 +1682,7 @@ public class DTCli
   private static class LicenseInfo
   {
     int remainingLicensedMB;
+    int totalLicensedMB;
     long lastUpdate;
     // add expiration date range here
   }
@@ -1716,18 +1717,22 @@ public class DTCli
         long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
         String licenseId = response.getString("licenseId");
         int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
+        int totalLicensedMB = Integer.valueOf(response.getString("totalLicensedMB"));
+
         LicenseInfo licenseInfo;
 
         if (licenseInfoMap.containsKey(licenseId)) {
           licenseInfo = licenseInfoMap.get(licenseId);
           if (licenseInfo.lastUpdate < lastUpdate) {
             licenseInfo.remainingLicensedMB = remainingLicensedMB;
+            licenseInfo.totalLicensedMB = totalLicensedMB;
             licenseInfo.lastUpdate = lastUpdate;
           }
         }
         else {
           licenseInfo = new LicenseInfo();
           licenseInfo.remainingLicensedMB = remainingLicensedMB;
+          licenseInfo.totalLicensedMB = totalLicensedMB;
           licenseInfo.lastUpdate = lastUpdate;
           licenseInfoMap.put(licenseId, licenseInfo);
         }
@@ -1766,6 +1771,7 @@ public class DTCli
           jsonObj.put("agentAppId", ar.getApplicationId().getId());
           if (licenseInfoMap.containsKey(ar.getName())) {
             jsonObj.put("remainingLicensedMB", licenseInfoMap.get(ar.getName()).remainingLicensedMB);
+            jsonObj.put("totalLicensedMB", licenseInfoMap.get(ar.getName()).totalLicensedMB);
           }
           jsonArray.put(jsonObj);
         }
@@ -1816,6 +1822,7 @@ public class DTCli
     Map<String, LicenseInfo> licenseInfoMap = getLicenseInfoMap();
     if (licenseInfoMap.containsKey(licenseID)) {
       licenseObj.put("remainingLicensedMB", licenseInfoMap.get(licenseID).remainingLicensedMB);
+      licenseObj.put("totalLicensedMB", licenseInfoMap.get(licenseID).totalLicensedMB);
     }
     return licenseObj;
   }
