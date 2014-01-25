@@ -475,7 +475,7 @@ public class DTCli
                                                            "Launch the license agent"));
     globalCommands.put("deactivate-license", new CommandSpec(new DeactivateLicenseCommand(),
                                                              null,
-                                                             new Arg[] {new FileArg("license-file")},
+                                                             new Arg[] {new Arg("license-id")},
                                                              "Stop the license agent"));
     globalCommands.put("list-license-agents", new CommandSpec(new ListLicenseAgentsCommand(),
                                                               null,
@@ -1651,15 +1651,16 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      byte[] licenseBytes;
+      String licenseId;
       if (args.length > 1) {
-        licenseBytes = StramClientUtils.getLicense(args[1]);
+        licenseId = args[1];
       }
       else {
+        byte[] licenseBytes;
         licenseBytes = StramClientUtils.getLicense(conf);
+        licenseId = License.getLicenseID(licenseBytes);
+        License.validateLicense(licenseBytes);
       }
-      String licenseId = License.getLicenseID(licenseBytes);
-      License.validateLicense(licenseBytes);
       // TODO: migrate CLI to use YarnClient and this here won't be needed
       YarnClient clientRMService = YarnClient.createYarnClient();
       try {
