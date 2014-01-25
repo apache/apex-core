@@ -1170,7 +1170,7 @@ public class StramChild
     failedNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
 
-    OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
+    OperatorContext operatorContext = new OperatorContext(ndi.id, thread, ndi.contextAttributes, containerContext);
     node.setup(operatorContext);
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
