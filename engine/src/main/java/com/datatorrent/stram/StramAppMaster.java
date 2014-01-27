@@ -807,8 +807,11 @@ public class StramAppMaster extends CompositeService
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
       releasedContainers.clear();
 
-      // TODO: consider remaining licensed memory
-      dnmgr.getPhysicalPlan().setAvailableResources(amResp.getAvailableResources().getMemory());
+      int availableMemory = amResp.getAvailableResources().getMemory();
+      if (licenseClient != null) {
+        Math.min(licenseClient.getRemainingLicensedMB(), availableMemory);
+      }
+      dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
 
       // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
