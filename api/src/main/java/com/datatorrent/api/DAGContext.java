@@ -26,11 +26,12 @@ import com.datatorrent.api.StringCodec.String2String;
  */
 public interface DAGContext extends Context
 {
+  String DT_PREFIX = "dt.";
   /**
    * Launch mode for the application.
    * Used in the client to set configuration depending on how the DAG is executed.
    */
-  String LAUNCH_MODE = "stram.launchmode";
+  String LAUNCH_MODE = DT_PREFIX + "launchmode";
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.

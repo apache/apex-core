@@ -111,7 +111,7 @@
           <verbose>true</verbose>
           <prefix>git</prefix>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>target/classes/dt-stram-git.properties</generateGitPropertiesFilename>
+          <generateGitPropertiesFilename>target/classes/dt-git.properties</generateGitPropertiesFilename>
         </configuration>
       </plugin>
     </plugins>
@@ -258,7 +258,7 @@
             ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418
             (required to use this for all modules from parent project)
           -->
-          <missing>target/classes/dt-stram-git.properties</missing>
+          <missing>target/classes/dt-git.properties</missing>
         </file>
       </activation>
       <properties>

@@ -174,7 +174,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Collection<OperatorMeta> allOperators = dag.getAllOperators();
 
     for (OperatorMeta operatorMeta : allOperators) {
-      String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + "." + operatorMeta.getName();
+      String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + operatorMeta.getName();
       Operator operator = operatorMeta.getOperator();
       props.setProperty(operatorKey + "." + LogicalPlanConfiguration.OPERATOR_CLASSNAME, operator.getClass().getName());
       Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
@@ -187,7 +187,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     Collection<StreamMeta> allStreams = dag.getAllStreams();
 
     for (StreamMeta streamMeta : allStreams) {
-      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + "." + streamMeta.getName();
+      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + streamMeta.getName();
       OutputPortMeta source = streamMeta.getSource();
       List<InputPortMeta> sinks = streamMeta.getSinks();
       props.setProperty(streamKey + "." + LogicalPlanConfiguration.STREAM_SOURCE, source.getOperatorWrapper().getName() + "." + source.getPortName());
@@ -220,7 +220,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     while (operatorIter.hasNext()) {
       String operatorName = operatorIter.next();
       JSONObject operatorDetail = allOperators.getJSONObject(operatorName);
-      String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + "." + operatorName;
+      String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + operatorName;
       props.setProperty(operatorKey + ".classname", operatorDetail.getString("class"));
       JSONObject properties = operatorDetail.optJSONObject("properties");
       if (properties != null) {
@@ -253,7 +253,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     while (streamIter.hasNext()) {
       String streamName = streamIter.next();
       JSONObject streamDetail = allStreams.getJSONObject(streamName);
-      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + "." + streamName;
+      String streamKey = LogicalPlanConfiguration.STREAM_PREFIX + streamName;
       JSONObject sourceDetail = streamDetail.getJSONObject("source");
       JSONArray sinksList = streamDetail.getJSONArray("sinks");
 
