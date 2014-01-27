@@ -52,7 +52,7 @@ public class ServerTest
     eventloopServer.start();
     eventloopClient.start();
 
-    instance = new Server(0, 4096);
+    instance = new Server(0, 4096,8);
     address = instance.run(eventloopServer);
     assert (address instanceof InetSocketAddress);
   }
@@ -183,7 +183,7 @@ public class ServerTest
         break;
       }
     }
-    Thread.sleep(10); // wait some more to receive more tuples if possible
+    Thread.sleep(100); // wait some more to receive more tuples if possible
 
     eventloopClient.disconnect(bsp);
     eventloopClient.disconnect(bss);

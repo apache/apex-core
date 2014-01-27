@@ -37,13 +37,20 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   private final String dir;
   private final Configuration conf;
 
-  private static final String FILE_LOG = "log";
-  private static final String FILE_LOG_BACKUP = "log0";
+  public static final String FILE_LOG = "log";
+  public static final String FILE_LOG_BACKUP = "log0";
+  public static final String FILE_SNAPSHOT = "snapshot";
+  public static final String FILE_SNAPSHOT_BACKUP = "snapshot0";
 
   public FSRecoveryHandler(String appDir, Configuration conf)
   {
     this.dir = appDir + "/recovery";
     this.conf = conf;
+  }
+
+  public String getDir()
+  {
+    return dir;
   }
 
   @Override
@@ -60,6 +67,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     }
 
     if (fs.exists(logPath)) {
+      LOG.debug("Creating log backup {}", logBackupPath);
       if (!fs.rename(logPath, logBackupPath)) {
         throw new IOException("Failed to rotate log: " + logPath);
       }
@@ -119,8 +127,8 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   @Override
   public void save(Object state) throws IOException
   {
-    Path backupPath = new Path(dir + "/snapshot0");
-    Path path = new Path(dir + "/snapshot");
+    Path backupPath = new Path(dir + "/" + FILE_SNAPSHOT_BACKUP);
+    Path path = new Path(dir + "/" + FILE_SNAPSHOT);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
 
     if (fs.exists(backupPath)) {
@@ -163,10 +171,10 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
     FileContext fc = FileContext.getFileContext(FileSystem.get(path.toUri(), conf).getUri());
 
+    // recover from wherever it was left
     if (fc.util().exists(backupPath)) {
       LOG.warn("Incomplete checkpoint, reverting to {}", backupPath);
-      fc.delete(path, false);
-      fc.rename(backupPath, path);
+      fc.rename(backupPath, path, Rename.OVERWRITE);
 
       // combine logs (w/o append, create new file)
       Path tmpLogPath = new Path(dir + "/log.combined");
@@ -182,6 +190,14 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       fsOut.close();
       fc.rename(tmpLogPath, logPath, Rename.OVERWRITE);
       fc.delete(logBackupPath, false);
+    } else {
+      // we have log backup, but no checkpoint backup
+      // failure between log rotation and writing checkpoint
+      if (fc.util().exists(logBackupPath)) {
+        LOG.warn("Found {}, did checkpointing fail?");
+        fc.rename(logBackupPath, logPath, Rename.OVERWRITE);
+      }
+
     }
 
     if (!fc.util().exists(path)) {

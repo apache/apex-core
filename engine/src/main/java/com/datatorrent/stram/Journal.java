@@ -9,6 +9,7 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -84,6 +85,28 @@ public class Journal
     }
   }
 
+  private static void writeLPString(DataOutput out, String s) throws IOException
+  {
+    if (s != null) {
+      byte[] bytes = s.getBytes();
+      out.writeInt(bytes.length);
+      out.write(bytes);
+    } else {
+      out.writeInt(-1);
+    }
+  }
+
+  private static String readLPString(DataInput in) throws IOException
+  {
+    int len = in.readInt();
+    if (len == -1) {
+      return null;
+    }
+    byte[] bytes = new byte[len];
+    in.readFully(bytes);
+    return new String(bytes);
+  }
+
   public static class SetOperatorState implements RecoverableOperation
   {
     final StreamingContainerManager scm;
@@ -124,25 +147,43 @@ public class Journal
   /**
    * Resource priority is logged so that on restore, pending resource requests can be matched to the containers.
    */
-  public static class SetContainerResourcePriority implements RecoverableOperation
+  public static class SetContainerState implements RecoverableOperation
   {
     final StreamingContainerManager scm;
-    public PTContainer c;
+    public PTContainer container;
 
-    public SetContainerResourcePriority(StreamingContainerManager scm)
+    public SetContainerState(StreamingContainerManager scm)
     {
       this.scm = scm;
+    }
+
+    public static RecoverableOperation newInstance(PTContainer container)
+    {
+      SetContainerState op = new SetContainerState(null);
+      op.container = container;
+      return op;
     }
 
     @Override
     public void read(DataInput in) throws IOException
     {
       int containerId = in.readInt();
-      int priority = in.readInt();
+
       for (PTContainer c : scm.getPhysicalPlan().getContainers())
       {
          if (c.getId() == containerId) {
-           c.setResourceRequestPriority(priority);
+           int stateOrd = in.readInt();
+           c.setState(PTContainer.State.values()[stateOrd]);
+           c.setExternalId(readLPString(in));
+           c.setResourceRequestPriority(in.readInt());
+           c.setRequiredMemoryMB(in.readInt());
+           c.setAllocatedMemoryMB(in.readInt());
+           String bufferServerHost = readLPString(in);
+           if (bufferServerHost != null) {
+             c.bufferServerAddress = InetSocketAddress.createUnresolved(bufferServerHost, in.readInt());
+           }
+           c.host = readLPString(in);
+           c.nodeHttpAddress = readLPString(in);
            break;
          }
       }
@@ -151,8 +192,28 @@ public class Journal
     @Override
     public void write(DataOutput out) throws IOException
     {
-      out.writeInt(c.getId());
-      out.writeInt(c.getResourceRequestPriority());
+      out.writeInt(container.getId());
+      // state
+      out.writeInt(container.getState().ordinal());
+      // external id
+      writeLPString(out, container.getExternalId());
+      // resource priority
+      out.writeInt(container.getResourceRequestPriority());
+      // memory required
+      out.writeInt(container.getRequiredMemoryMB());
+      // memory allocated
+      out.writeInt(container.getAllocatedMemoryMB());
+      // buffer server address
+      InetSocketAddress addr = container.bufferServerAddress;
+      if (addr != null) {
+        writeLPString(out, addr.getHostName());
+        out.writeInt(addr.getPort());
+      } else {
+        writeLPString(out, null);
+      }
+      // host
+      writeLPString(out, container.host);
+      writeLPString(out, container.nodeHttpAddress);
     }
   }
 
