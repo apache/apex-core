@@ -94,6 +94,7 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
+import static java.lang.Thread.sleep;
 
 /**
  *
@@ -116,6 +117,7 @@ public class DTCli
   private final Map<String, CommandSpec> logicalPlanChangeCommands = new TreeMap<String, CommandSpec>();
   private final Map<String, String> aliases = new HashMap<String, String>();
   private final Map<String, List<String>> macros = new HashMap<String, List<String>>();
+  private final HashMap<String, String> expansions = new HashMap<String, String>();
   private boolean changingLogicalPlan = false;
   private final List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
   private FileHistory topLevelHistory;
@@ -170,7 +172,7 @@ public class DTCli
       return newCommand;
     }
 
-    public static List<String[]> tokenize(String commandLine)
+    public static List<String[]> tokenize(String commandLine, Map<String, String> expansions)
     {
       List<List<String>> resultBuffer = new ArrayList<List<String>>();
       List<String> commandBuffer = startNewCommand(resultBuffer);
@@ -184,7 +186,7 @@ public class DTCli
         int len = commandLine.length();
         boolean insideQuotes = false;
         boolean potentialEmptyArg = false;
-        StringBuffer buf = new StringBuffer();
+        StringBuffer buf = new StringBuffer(commandLine.length());
 
         for (@SuppressWarnings("AssignmentToForLoopParameter") int i = 0; i < len; ++i) {
           char c = commandLine.charAt(i);
@@ -761,7 +763,7 @@ public class DTCli
   private static String expandCommaSeparatedFiles(String filenames) throws IOException
   {
     String[] entries = filenames.split(",");
-    StringBuilder result = new StringBuilder();
+    StringBuilder result = new StringBuilder(filenames.length());
     for (String entry : entries) {
       for (String file : expandFileNames(entry)) {
         if (result.length() > 0) {
@@ -1108,7 +1110,7 @@ public class DTCli
 
     for (String line : lines) {
       int previousIndex = 0;
-      StringBuilder expandedLine = new StringBuilder();
+      StringBuilder expandedLine = new StringBuilder(line.length());
       while (true) {
         // Search for $0..$9 within the each line and replace by corresponding args
         int currentIndex = line.indexOf('$', previousIndex);
@@ -1152,7 +1154,7 @@ public class DTCli
   {
     try {
       //LOG.debug("line: \"{}\"", line);
-      List<String[]> commands = Tokenizer.tokenize(line);
+      List<String[]> commands = Tokenizer.tokenize(line, expansions);
       if (commands == null) {
         return;
       }
@@ -1855,6 +1857,7 @@ public class DTCli
   private class LaunchCommand implements Command
   {
     @Override
+    @SuppressWarnings("SleepWhileInLoop")
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       String[] newArgs = new String[args.length - 1];
@@ -1985,7 +1988,7 @@ public class DTCli
                 activateLicense(null);
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
                 do {
-                  Thread.sleep(500);
+                  sleep(500);
                   ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
                 }
                 while (ar == null && System.currentTimeMillis() <= timeout);
