@@ -644,9 +644,16 @@ public class StramAppMaster extends CompositeService
     if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
-    nmClient.stop();
-    amRmClient.stop();
-    dnmgr.teardown();
+    if (nmClient != null) {
+      nmClient.stop();
+    }
+    if (amRmClient != null) {
+      amRmClient.stop();
+    }
+
+    if (dnmgr != null) {
+      dnmgr.teardown();
+    }
   }
 
   /**
