@@ -15,6 +15,8 @@
  */
 package com.datatorrent.api;
 
+import com.datatorrent.api.StringCodec.*;
+
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -23,12 +25,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import com.datatorrent.api.StringCodec.Boolean2String;
-import com.datatorrent.api.StringCodec.Enum2String;
-import com.datatorrent.api.StringCodec.Integer2String;
-import com.datatorrent.api.StringCodec.Long2String;
-import com.datatorrent.api.StringCodec.String2String;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
@@ -97,6 +93,14 @@ public interface AttributeMap
       this.name = name;
       this.defaultValue = defaultValue;
       this.codec = codec;
+    }
+
+    public String getSimpleName() {
+      String simpleName = name;
+      if (name != null) {
+        simpleName = name.substring(name.lastIndexOf('.')+1);
+      }
+      return simpleName;
     }
 
     @Override
