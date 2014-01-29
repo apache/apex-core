@@ -138,6 +138,28 @@ public class LogicalPlan implements Serializable, DAG
       return operator.toString();
     }
 
+    @Override
+    public int hashCode()
+    {
+      return operator.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final OperatorProxy other = (OperatorProxy)obj;
+      if (this.operator != other.operator && (this.operator == null || !this.operator.equals(other.operator))) {
+        return false;
+      }
+      return true;
+    }
+
     private static final long serialVersionUID = 201305221606L;
   }
 
@@ -377,6 +399,46 @@ public class LogicalPlan implements Serializable, DAG
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
               append("id", this.id).
               toString();
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int hash = 7;
+      hash = 31 * hash + (this.locality != null ? this.locality.hashCode() : 0);
+      hash = 31 * hash + (this.sinks != null ? this.sinks.hashCode() : 0);
+      hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
+      hash = 31 * hash + (this.codecClass != null ? this.codecClass.hashCode() : 0);
+      hash = 31 * hash + (this.id != null ? this.id.hashCode() : 0);
+      return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final StreamMeta other = (StreamMeta)obj;
+      if (this.locality != other.locality) {
+        return false;
+      }
+      if (this.sinks != other.sinks && (this.sinks == null || !this.sinks.equals(other.sinks))) {
+        return false;
+      }
+      if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
+        return false;
+      }
+      if (this.codecClass != other.codecClass && (this.codecClass == null || !this.codecClass.equals(other.codecClass))) {
+        return false;
+      }
+      if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
+        return false;
+      }
+      return true;
     }
 
   }
