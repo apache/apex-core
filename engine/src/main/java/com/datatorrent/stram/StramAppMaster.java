@@ -817,14 +817,6 @@ public class StramAppMaster extends CompositeService
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
       releasedContainers.clear();
 
-      if (!(amResp.getCompletedContainersStatuses().isEmpty() && amResp.getAllocatedContainers().isEmpty())) {
-        if (licenseClient != null) {
-          // update license agent on allocated container changes
-          licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
-          availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
-        }
-      }
-
       int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
 
@@ -930,6 +922,14 @@ public class StramAppMaster extends CompositeService
 
         dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
 
+      }
+
+      if (licenseClient != null) {
+        if (!(amResp.getCompletedContainersStatuses().isEmpty() && amResp.getAllocatedContainers().isEmpty())) {
+          // update license agent on allocated container changes
+          licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+          availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
+        }
       }
 
       if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
