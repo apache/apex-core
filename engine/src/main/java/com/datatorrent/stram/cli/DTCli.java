@@ -2018,6 +2018,7 @@ public class DTCli
             ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
             if (ar == null) {
               try {
+                LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
                 activateLicense(null);
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
                 do {
