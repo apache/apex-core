@@ -214,6 +214,9 @@ public class StramClient
       for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
         //LOG.debug("checking " + c);
         jarClasses.add(c);
+        for (Class<?> ifc : c.getInterfaces()) {
+          jarClasses.add(ifc);
+        }
         // check for annotated dependencies
         try {
           ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
@@ -221,6 +224,9 @@ public class StramClient
             for (Class<?> depClass : shipJars.classes()) {
               jarClasses.add(depClass);
               LOG.info("Including {} as deploy dependency of {}", depClass, c);
+              for (Class<?> ifc : depClass.getInterfaces()) {
+                jarClasses.add(ifc);
+              }
             }
           }
         }
