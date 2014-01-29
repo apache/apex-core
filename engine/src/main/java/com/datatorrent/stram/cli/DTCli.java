@@ -3,44 +3,39 @@
  */
 package com.datatorrent.stram.cli;
 
-import java.io.*;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
-import jline.console.ConsoleReader;
-import jline.console.completer.AggregateCompleter;
-import jline.console.completer.ArgumentCompleter;
-import jline.console.completer.Completer;
-import jline.console.completer.FileNameCompleter;
-import jline.console.completer.StringsCompleter;
-import jline.console.history.FileHistory;
-import jline.console.history.History;
-import jline.console.history.MemoryHistory;
-
-import javax.ws.rs.core.MediaType;
-
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.client.RecordingsAgent;
+import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
+import com.datatorrent.stram.client.StramAgent;
+import com.datatorrent.stram.client.StramAppLauncher;
+import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
+import com.datatorrent.stram.client.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.GenerateLicenseRequest;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseSection;
+import com.datatorrent.stram.license.LicensingAgentClient;
+import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.security.StramUserLogin;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.StramWebServices;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-
-import org.apache.commons.cli.BasicParser;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PosixParser;
+import jline.console.ConsoleReader;
+import jline.console.completer.*;
+import jline.console.history.FileHistory;
+import jline.console.history.History;
+import jline.console.history.MemoryHistory;
+import org.apache.commons.cli.*;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
@@ -56,45 +51,22 @@ import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
-
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.DAG;
-import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.client.RecordingsAgent;
-import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
-import com.datatorrent.stram.client.StramAgent;
-import com.datatorrent.stram.client.StramAppLauncher;
-import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
-import com.datatorrent.stram.client.StramClientUtils;
-import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
-import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.license.GenerateLicenseRequest;
-import com.datatorrent.stram.license.License;
-import com.datatorrent.stram.license.LicensingAgentClient;
-import com.datatorrent.stram.license.LicenseSection;
-import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.AddStreamSinkRequest;
-import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
-import com.datatorrent.stram.plan.logical.CreateStreamRequest;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.RemoveOperatorRequest;
-import com.datatorrent.stram.plan.logical.RemoveStreamRequest;
-import com.datatorrent.stram.plan.logical.SetOperatorAttributeRequest;
-import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
-import com.datatorrent.stram.plan.logical.SetPortAttributeRequest;
-import com.datatorrent.stram.plan.logical.SetStreamAttributeRequest;
-import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.util.VersionInfo;
-import com.datatorrent.stram.util.WebServicesClient;
-import com.datatorrent.stram.webapp.StramWebServices;
-import org.apache.commons.lang.CharSetUtils;
+import javax.ws.rs.core.MediaType;
+import java.io.*;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  *
@@ -1700,6 +1672,10 @@ public class DTCli
     LogicalPlan lp = new LogicalPlan();
     lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
     lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
+    int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
+    if (licenseMasterMemoryMB > 0) {
+      lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
+    }
     StramClient client = new StramClient(lp);
     client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
     client.startApplication();
