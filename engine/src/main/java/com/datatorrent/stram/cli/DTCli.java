@@ -100,6 +100,8 @@ public class DTCli
   private String pagerCommand;
   private Process pagerProcess;
   private int verboseLevel = 0;
+  private Tokenizer tokenizer = new Tokenizer();
+  private Map<String, String> variableMap = new HashMap<String, String>();
   private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
@@ -126,9 +128,9 @@ public class DTCli
 
   }
 
-  public static class Tokenizer
+  public class Tokenizer
   {
-    private static void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
+    private void appendToCommandBuffer(List<String> commandBuffer, StringBuffer buf, boolean potentialEmptyArg)
     {
       if (potentialEmptyArg || buf.length() > 0) {
         commandBuffer.add(buf.toString());
@@ -136,16 +138,28 @@ public class DTCli
       }
     }
 
-    private static List<String> startNewCommand(List<List<String>> resultBuffer)
+    private List<String> startNewCommand(LinkedList<List<String>> resultBuffer)
     {
       List<String> newCommand = new ArrayList<String>();
+      if (!resultBuffer.isEmpty()) {
+        List<String> lastCommand = resultBuffer.peekLast();
+        if (lastCommand.size() == 1) {
+          String first = lastCommand.get(0);
+          if (first.matches("^[A-Za-z][A-Za-z0-9]*=.*")) {
+            // This is a variable assignment
+            int equalSign = first.indexOf('=');
+            variableMap.put(first.substring(0, equalSign), first.substring(equalSign + 1));
+            resultBuffer.removeLast();
+          }
+        }
+      }
       resultBuffer.add(newCommand);
       return newCommand;
     }
 
-    public static List<String[]> tokenize(String commandLine)
+    public List<String[]> tokenize(String commandLine)
     {
-      List<List<String>> resultBuffer = new ArrayList<List<String>>();
+      LinkedList<List<String>> resultBuffer = new LinkedList<List<String>>();
       List<String> commandBuffer = startNewCommand(resultBuffer);
 
       if (commandLine != null) {
@@ -189,6 +203,51 @@ public class DTCli
               ++i;
             }
           }
+          else if (c == '$') {
+            StringBuilder variableName = new StringBuilder();
+            if (len > i + 1) {
+              if (commandLine.charAt(i + 1) == '{') {
+                ++i;
+                while (len > i + 1) {
+                  char ch = commandLine.charAt(i + 1);
+                  if (ch != '}') {
+                    variableName.append(ch);
+                  }
+                  ++i;
+                  if (ch == '}') {
+                    break;
+                  }
+                  if (len <= i + 1) {
+                    throw new CliException("Parse error: unmatched brace");
+                  }
+                }
+              }
+              else {
+                while (len > i + 1) {
+                  char ch = commandLine.charAt(i + 1);
+                  if ((variableName.length() > 0 && ch >= '0' && ch <= '9') || ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))) {
+                    variableName.append(ch);
+                  }
+                  else {
+                    break;
+                  }
+                  ++i;
+                }
+              }
+              if (variableName.length() == 0) {
+                buf.append(c);
+              }
+              else {
+                String value = variableMap.get(variableName.toString());
+                if (value != null) {
+                  buf.append(value);
+                }
+              }
+            }
+            else {
+              buf.append(c);
+            }
+          }
           else {
             if (insideQuotes) {
               buf.append(c);
@@ -213,7 +272,7 @@ public class DTCli
         }
         appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
       }
-
+      startNewCommand(resultBuffer);
       List<String[]> result = new ArrayList<String[]>();
       for (List<String> command : resultBuffer) {
         String[] commandArray = new String[command.size()];
@@ -1125,7 +1184,7 @@ public class DTCli
   {
     try {
       //LOG.debug("line: \"{}\"", line);
-      List<String[]> commands = Tokenizer.tokenize(line);
+      List<String[]> commands = tokenizer.tokenize(line);
       if (commands == null) {
         return;
       }
