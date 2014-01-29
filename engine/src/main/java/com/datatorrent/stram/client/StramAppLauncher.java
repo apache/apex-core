@@ -59,6 +59,7 @@ public class StramAppLauncher
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
   private final StringWriter mvnBuildClasspathOutput = new StringWriter();
+  private boolean ignorePom = false;
 
   private String generateClassPathFromPom(File pomFile, File cpFile) throws IOException
   {
@@ -82,9 +83,7 @@ public class StramAppLauncher
       IOUtils.copy(output, mvnBuildClasspathOutput);
     }
     if (pw.rc != 0) {
-      // fall through
-      LOG.warn("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + mvnBuildClasspathOutput.toString());
-      return null;
+      throw new RuntimeException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + mvnBuildClasspathOutput.toString());
     }
     cp = FileUtils.readFileToString(cpFile);
     return cp;
@@ -165,22 +164,23 @@ public class StramAppLauncher
 
   public StramAppLauncher(File appJarFile) throws Exception
   {
-    this(appJarFile, null);
+    this(appJarFile, null, false);
   }
 
-  public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
+  public StramAppLauncher(File appJarFile, Configuration conf, boolean ignorePom) throws Exception
   {
     this.jarFile = appJarFile;
     this.conf = conf;
+    this.ignorePom = ignorePom;
     init();
   }
 
   public StramAppLauncher(FileSystem fs, Path path) throws Exception
   {
-    this(fs, path, null);
+    this(fs, path, null, false);
   }
 
-  public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception
+  public StramAppLauncher(FileSystem fs, Path path, Configuration conf, boolean ignorePom) throws Exception
   {
     File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
     jarsDir.mkdirs();
@@ -189,6 +189,7 @@ public class StramAppLauncher
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
     this.conf = conf;
+    this.ignorePom = ignorePom;
     init();
   }
 
@@ -216,7 +217,7 @@ public class StramAppLauncher
 
     // read crc and classpath file, if it exists
     // (we won't run mvn again if pom didn't change)
-    if (cpFile.exists()) {
+    if (!ignorePom && cpFile.exists()) {
       try {
         DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
         pomCrc = dis.readLong();
@@ -238,7 +239,7 @@ public class StramAppLauncher
     while (entriesEnum.hasMoreElements()) {
       java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
       if (!jarEntry.isDirectory()) {
-        if (jarEntry.getName().endsWith("pom.xml")) {
+        if (!ignorePom && jarEntry.getName().endsWith("pom.xml")) {
           File pomDst = new File(baseDir, "pom.xml");
           FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
           if (pomCrc != jarEntry.getCrc()) {
@@ -259,17 +260,19 @@ public class StramAppLauncher
     }
     jar.close();
 
-    File pomFile = new File(baseDir, "pom.xml");
-    if (pomFile.exists()) {
-      if (cp == null) {
-        // try to generate dependency classpath
-        cp = generateClassPathFromPom(pomFile, cpFile);
-      }
-      if (cp != null) {
-        DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
-        dos.writeLong(pomCrc);
-        dos.close();
-        FileUtils.writeStringToFile(cpFile, cp, false);
+    if (!ignorePom) {
+      File pomFile = new File(baseDir, "pom.xml");
+      if (pomFile.exists()) {
+        if (cp == null) {
+          // try to generate dependency classpath
+          cp = generateClassPathFromPom(pomFile, cpFile);
+        }
+        if (cp != null) {
+          DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
+          dos.writeLong(pomCrc);
+          dos.close();
+          FileUtils.writeStringToFile(cpFile, cp, false);
+        }
       }
     }
 
@@ -330,7 +333,7 @@ public class StramAppLauncher
           }
         }
         else {
-          throw new NotImplementedException("Scheme {} in libjars not supported");
+          throw new NotImplementedException("Scheme '" + scheme + "' in libjars not supported");
         }
       }
     }

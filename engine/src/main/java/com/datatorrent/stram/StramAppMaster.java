@@ -758,13 +758,10 @@ public class StramAppMaster extends CompositeService
     // check for previously allocated containers
     // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
     checkContainerStatus();
+    int availableLicensedMemory = (licenseClient != null) ? 0 : Integer.MAX_VALUE;
 
     while (!appDone) {
       loopCounter++;
-
-      if (licenseClient != null) {
-        licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
-      }
 
       Runnable r;
       while ((r = this.pendingTasks.poll()) != null) {
@@ -790,13 +787,26 @@ public class StramAppMaster extends CompositeService
       List<ContainerRequest> containerRequests = new ArrayList<ContainerRequest>();
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
-        StramChildAgent.ContainerStartRequest csr;
-        while ((csr = dnmgr.containerStartRequests.poll()) != null) {
-          csr.container.setResourceRequestPriority(nextRequestPriority++);
-          requestedResources.put(csr, loopCounter);
-          containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,true));
-          numTotalContainers++;
-          numRequestedContainers++;
+        boolean requestResources = true;
+        if (licenseClient != null) {
+          // ensure enough memory is left to request new container
+          licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+          availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
+          int requiredMemory = dnmgr.containerStartRequests.size() * containerMemory;
+          if (requiredMemory > availableLicensedMemory) {
+            LOG.warn("Insufficient licensed memory to request resources required {}m available {}m", requiredMemory, availableLicensedMemory);
+            requestResources = false;
+          }
+        }
+        if (requestResources) {
+          StramChildAgent.ContainerStartRequest csr;
+          while ((csr = dnmgr.containerStartRequests.poll()) != null) {
+            csr.container.setResourceRequestPriority(nextRequestPriority++);
+            requestedResources.put(csr, loopCounter);
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,true));
+            numTotalContainers++;
+            numRequestedContainers++;
+          }
         }
       }
 
@@ -814,10 +824,7 @@ public class StramAppMaster extends CompositeService
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
       releasedContainers.clear();
 
-      int availableMemory = amResp.getAvailableResources().getMemory();
-      if (licenseClient != null) {
-        Math.min(licenseClient.getRemainingLicensedMB(), availableMemory);
-      }
+      int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
 
       // Retrieve list of allocated containers from the response
@@ -877,10 +884,6 @@ public class StramAppMaster extends CompositeService
       // TODO: it seems 2.0.4-alpha doesn't give us any updates
       resourceRequestor.updateNodeReports(amResp.getUpdatedNodes());
 
-      // Check what the current available resources in the cluster are
-      // Resource availableResources = amResp.getAvailableResources();
-      // LOG.debug("Current available resources in the cluster " + availableResources);
-
       // Check the completed containers
       List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
       // LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
@@ -926,6 +929,14 @@ public class StramAppMaster extends CompositeService
 
         dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
 
+      }
+
+      if (licenseClient != null) {
+        if (!(amResp.getCompletedContainersStatuses().isEmpty() && amResp.getAllocatedContainers().isEmpty())) {
+          // update license agent on allocated container changes
+          licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+          availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
+        }
       }
 
       if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
