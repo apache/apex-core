@@ -324,19 +324,19 @@ public class DTCli
 
   }
 
-  private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config) throws Exception
+  private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config, boolean ignorePom) throws Exception
   {
     URI uri = new URI(jarfileUri);
     String scheme = uri.getScheme();
     StramAppLauncher appLauncher = null;
     if (scheme == null || scheme.equals("file")) {
       File jf = new File(uri.getPath());
-      appLauncher = new StramAppLauncher(jf, config);
+      appLauncher = new StramAppLauncher(jf, config, ignorePom);
     }
     else if (scheme.equals("hdfs")) {
       FileSystem fs = FileSystem.get(uri, conf);
       Path path = new Path(uri.getPath());
-      appLauncher = new StramAppLauncher(fs, path, config);
+      appLauncher = new StramAppLauncher(fs, path, config, ignorePom);
     }
     if (appLauncher != null) {
       if (verboseLevel > 0) {
@@ -1917,7 +1917,7 @@ public class DTCli
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
-      StramAppLauncher submitApp = getStramAppLauncher(fileName, config);
+      StramAppLauncher submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
       submitApp.loadDependencies();
       AppFactory appFactory = null;
       if (commandLineInfo.args.length >= 2) {
@@ -2778,7 +2778,7 @@ public class DTCli
       if (commandLineInfo.args.length >= 2) {
         String jarfile = expandFileName(commandLineInfo.args[0], true);
         String appName = commandLineInfo.args[1];
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -2798,7 +2798,7 @@ public class DTCli
       }
       else if (commandLineInfo.args.length == 1) {
         String jarfile = expandFileName(commandLineInfo.args[0], true);
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
         submitApp.loadDependencies();
         List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
         List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
@@ -2841,7 +2841,7 @@ public class DTCli
       if (args.length > 3) {
         String jarfile = args[2];
         String appName = args[3];
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null);
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null, false);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -3254,6 +3254,7 @@ public class DTCli
     Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
     Option archives = OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives");
     Option license = OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license");
+    Option ignorePom = new Option("ignorepom", "Do not run maven to find the dependency");
     options.addOption(local);
     options.addOption(configFile);
     options.addOption(defProperty);
@@ -3261,6 +3262,7 @@ public class DTCli
     options.addOption(files);
     options.addOption(archives);
     options.addOption(license);
+    options.addOption(ignorePom);
     return options;
   }
 
@@ -3271,6 +3273,7 @@ public class DTCli
     CommandLine line = parser.parse(getLaunchCommandLineOptions(), args);
     result.localMode = line.hasOption("local");
     result.configFile = line.getOptionValue("conf");
+    result.ignorePom = line.hasOption("ignorepom");
     String[] defs = line.getOptionValues("D");
     if (defs != null) {
       result.overrideProperties = new HashMap<String, String>();
@@ -3295,6 +3298,7 @@ public class DTCli
   private static class LaunchCommandLineInfo
   {
     boolean localMode;
+    boolean ignorePom;
     String configFile;
     Map<String, String> overrideProperties;
     String libjars;
@@ -3309,7 +3313,9 @@ public class DTCli
   {
     Options options = new Options();
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
+    Option ignorePom = new Option("ignorepom", "Do not run maven to find the dependency");
     options.addOption(libjars);
+    options.addOption(ignorePom);
     return options;
   }
 
@@ -3319,6 +3325,7 @@ public class DTCli
     ShowLogicalPlanCommandLineInfo result = new ShowLogicalPlanCommandLineInfo();
     CommandLine line = parser.parse(getShowLogicalPlanCommandLineOptions(), args);
     result.libjars = line.getOptionValue("libjars");
+    result.ignorePom = line.hasOption("ignorepom");
     result.args = line.getArgs();
     return result;
   }
@@ -3326,6 +3333,7 @@ public class DTCli
   private static class ShowLogicalPlanCommandLineInfo
   {
     String libjars;
+    boolean ignorePom;
     String[] args;
   }
 
