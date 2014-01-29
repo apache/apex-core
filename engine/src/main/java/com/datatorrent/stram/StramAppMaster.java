@@ -852,8 +852,10 @@ public class StramAppMaster extends CompositeService
           releasedContainers.add(allocatedContainer.getId());
           continue;
         }
-        if(csr != null)
+        
+        if(csr != null) {
           requestedResources.remove(csr);
+        }
         // allocate resource to container
         ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
         StramChildAgent sca = dnmgr.assignContainer(resource, null);
