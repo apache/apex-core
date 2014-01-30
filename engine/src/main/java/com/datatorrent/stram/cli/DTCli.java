@@ -203,57 +203,58 @@ public class DTCli
               ++i;
             }
           }
-          else if (c == '$') {
-            StringBuilder variableName = new StringBuilder();
-            if (len > i + 1) {
-              if (commandLine.charAt(i + 1) == '{') {
-                ++i;
-                while (len > i + 1) {
-                  char ch = commandLine.charAt(i + 1);
-                  if (ch != '}') {
-                    variableName.append(ch);
-                  }
-                  ++i;
-                  if (ch == '}') {
-                    break;
-                  }
-                  if (len <= i + 1) {
-                    throw new CliException("Parse error: unmatched brace");
-                  }
-                }
-              }
-              else {
-                while (len > i + 1) {
-                  char ch = commandLine.charAt(i + 1);
-                  if ((variableName.length() > 0 && ch >= '0' && ch <= '9') || ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))) {
-                    variableName.append(ch);
-                  }
-                  else {
-                    break;
-                  }
-                  ++i;
-                }
-              }
-              if (variableName.length() == 0) {
-                buf.append(c);
-              }
-              else {
-                String value = variableMap.get(variableName.toString());
-                if (value != null) {
-                  buf.append(value);
-                }
-              }
-            }
-            else {
-              buf.append(c);
-            }
-          }
           else {
             if (insideQuotes) {
               buf.append(c);
             }
             else {
-              if (c == ';') {
+
+              if (c == '$') {
+                StringBuilder variableName = new StringBuilder();
+                if (len > i + 1) {
+                  if (commandLine.charAt(i + 1) == '{') {
+                    ++i;
+                    while (len > i + 1) {
+                      char ch = commandLine.charAt(i + 1);
+                      if (ch != '}') {
+                        variableName.append(ch);
+                      }
+                      ++i;
+                      if (ch == '}') {
+                        break;
+                      }
+                      if (len <= i + 1) {
+                        throw new CliException("Parse error: unmatched brace");
+                      }
+                    }
+                  }
+                  else {
+                    while (len > i + 1) {
+                      char ch = commandLine.charAt(i + 1);
+                      if ((variableName.length() > 0 && ch >= '0' && ch <= '9') || ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))) {
+                        variableName.append(ch);
+                      }
+                      else {
+                        break;
+                      }
+                      ++i;
+                    }
+                  }
+                  if (variableName.length() == 0) {
+                    buf.append(c);
+                  }
+                  else {
+                    String value = variableMap.get(variableName.toString());
+                    if (value != null) {
+                      buf.append(value);
+                    }
+                  }
+                }
+                else {
+                  buf.append(c);
+                }
+              }
+              else if (c == ';') {
                 appendToCommandBuffer(commandBuffer, buf, potentialEmptyArg);
                 commandBuffer = startNewCommand(resultBuffer);
               }
