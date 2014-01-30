@@ -364,7 +364,7 @@ public class StramWebServices
   }
 
   @POST
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}" + PATH_RECORDINGS_START)
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
   {
@@ -386,7 +386,7 @@ public class StramWebServices
   }
 
   @POST
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}" + PATH_RECORDINGS_STOP)
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject stopRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
   {
@@ -477,7 +477,7 @@ public class StramWebServices
     }
     return response;
   }
-  
+
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
@@ -551,7 +551,7 @@ public class StramWebServices
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
-  {    
+  {
     Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
 
     try {
@@ -569,7 +569,7 @@ public class StramWebServices
       throw new RuntimeException(ex);
     }
   }
-  
+
   @GET
   @Path(PATH_LOGICAL_PLAN)
   @Produces(MediaType.APPLICATION_JSON)
