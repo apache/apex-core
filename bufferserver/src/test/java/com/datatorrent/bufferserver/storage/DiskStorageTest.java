@@ -45,7 +45,7 @@ public class DiskStorageTest
     eventloopClient = new DefaultEventLoop("client");
     eventloopClient.start();
 
-    instance = new Server(0, 1024);
+    instance = new Server(0, 1024,8);
     instance.setSpoolStorage(new DiskStorage());
 
     address = instance.run(eventloopServer);

@@ -9,11 +9,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 
-import org.codehaus.jackson.map.ser.std.RawSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,12 +189,13 @@ public class StramClient
       com.datatorrent.api.StreamCodec.class,
       javax.validation.ConstraintViolationException.class,
       com.ning.http.client.websocket.WebSocketUpgradeHandler.class,
-      Kryo.class,
+      com.esotericsoftware.kryo.Kryo.class,
       org.apache.bval.jsr303.ApacheValidationProvider.class,
       org.apache.bval.BeanValidationContext.class,
       org.apache.commons.lang3.ClassUtils.class,
       net.engio.mbassy.bus.MBassador.class,
-      RawSerializer.class
+      org.codehaus.jackson.annotate.JsonUnwrapped.class,
+      org.codehaus.jackson.map.ser.std.RawSerializer.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 
@@ -215,6 +214,9 @@ public class StramClient
       for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
         //LOG.debug("checking " + c);
         jarClasses.add(c);
+        for (Class<?> ifc : c.getInterfaces()) {
+          jarClasses.add(ifc);
+        }
         // check for annotated dependencies
         try {
           ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
@@ -222,6 +224,9 @@ public class StramClient
             for (Class<?> depClass : shipJars.classes()) {
               jarClasses.add(depClass);
               LOG.info("Including {} as deploy dependency of {}", depClass, c);
+              for (Class<?> ifc : depClass.getInterfaces()) {
+                jarClasses.add(ifc);
+              }
             }
           }
         }

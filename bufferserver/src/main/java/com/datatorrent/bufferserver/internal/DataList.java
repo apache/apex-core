@@ -38,7 +38,8 @@ public class DataList
   protected Block last;
   protected Storage storage;
   protected ScheduledExecutorService executor;
-
+  private final int numberOfCacheBlocks;
+ 
   public int getBlockSize()
   {
     return blocksize;
@@ -47,15 +48,20 @@ public class DataList
   public void rewind(int baseSeconds, int windowId) throws IOException
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
-
+   
     for (Block temp = first; temp != null; temp = temp.next) {
+      
       if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
         if (temp != last) {
           temp.next = null;
           last = temp;
         }
+        
+        if(temp.data == null){
+          temp.acquire(storage, false);         
+        }
 
-        this.baseSeconds = temp.rewind(longWindowId, false);
+        this.baseSeconds = temp.rewind(longWindowId, false,storage);
         processingOffset = temp.writingOffset;
         size = 0;
       }
@@ -85,6 +91,7 @@ public class DataList
   public void purge(int baseSeconds, int windowId)
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
+    logger.debug("purge request for windowId {}",longWindowId);
 
     Block prev = null;
     for (Block temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
@@ -93,10 +100,13 @@ public class DataList
           first = temp;
         }
 
-        first.purge(longWindowId, false);
+        if (first.data == null){
+          first.acquire(storage,false);
+        }
+        first.purge(longWindowId, false,storage);
         break;
       }
-
+      
       if (storage != null && temp.uniqueIdentifier > 0) {
         logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
 
@@ -115,20 +125,23 @@ public class DataList
     return identifier;
   }
 
-  public DataList(String identifier, int blocksize)
+  public DataList(String identifier, int blocksize,int numberOfCacheBlocks)
   {
     this.identifier = identifier;
     this.blocksize = blocksize;
     first = new Block(identifier, blocksize);
     last = first;
+    this.numberOfCacheBlocks = numberOfCacheBlocks;
+   
   }
 
   public DataList(String identifier)
   {
     /*
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
+     * we will use default value of 8 block sizes to be cached in memory
      */
-    this(identifier, 64 * 1024 * 1024);
+    this(identifier, 64 * 1024 * 1024,8);
   }
 
   MutableInt nextOffset = new MutableInt();
@@ -340,6 +353,31 @@ public class DataList
     last.next.starting_window = last.ending_window;
     last.next.ending_window = last.ending_window;
     last = last.next;
+    Block temp = first;
+    int currentCachedBlocks=0;
+    for (temp = first; temp != null; temp = temp.next) {
+      if(temp.data != null){
+        currentCachedBlocks++;
+      }
+    }
+    logger.debug("currentCachedBlocks before releaes {}",currentCachedBlocks);
+    temp = first;
+    boolean found = false;
+    while (currentCachedBlocks >= numberOfCacheBlocks && temp != null) {
+      for (Map.Entry<String, DataListIterator> entry : iterators.entrySet()) {
+        if (entry.getValue().da == temp) {
+          found = true;
+          break;
+        }
+      }
+      if (!found && temp.data != null) {
+        temp.release(storage, false);
+        currentCachedBlocks--;
+      }
+      temp = temp.next;
+      found = false;
+    }
+    logger.debug("currentCachedBlocks after release {}",currentCachedBlocks);
   }
 
   public byte[] getBuffer(long windowId)

@@ -4,6 +4,28 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.api.*;
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.validation.ValidationException;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,36 +33,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
-
-import javax.validation.ValidationException;
-
-import com.google.common.base.CaseFormat;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.hadoop.conf.Configuration;
-
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  *
@@ -58,9 +50,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String GATEWAY_PREFIX = DAGContext.DT_PREFIX + "gateway.";
   public static final String GATEWAY_ADDRESS_PROP = "address";
   public static final String GATEWAY_ADDRESS = GATEWAY_PREFIX + GATEWAY_ADDRESS_PROP;
-  public static final String DAEMON_PREFIX = DAGContext.DT_PREFIX + "daemon.";
 
   public static final String STREAM_PREFIX = DAGContext.DT_PREFIX + "stream.";
+  public static final String LICENSE_PREFIX = DAGContext.DT_PREFIX + "license.";
   public static final String STREAM_SOURCE = "source";
   public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";
@@ -838,12 +830,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       String propertyValue = props.getProperty(propertyName);
       this.properties.setProperty(propertyName, propertyValue);
       if (propertyName.startsWith(DAGContext.DT_PREFIX)) {
-        if (propertyName.startsWith(DAEMON_PREFIX)) {
-          LOG.warn("Use of {} prefix is deprecated, please use the prefix {} instead", DAEMON_PREFIX, GATEWAY_PREFIX);
-        } else {
-          String[] keyComps = propertyName.split("\\.");
-          parseStramPropertyTokens(keyComps, 1, propertyName, propertyValue, stramConf);
-        }
+        String[] keyComps = propertyName.split("\\.");
+        parseStramPropertyTokens(keyComps, 1, propertyName, propertyValue, stramConf);
       }
     }
     return this;
@@ -1276,10 +1264,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  private String getSimpleName(Attribute<?> attribute) {
-    return attribute.name.substring(attribute.name.lastIndexOf('.')+1);
-  }
-
   private final Map<Class<? extends Context>, Map<String, Attribute<Object>>> attributeMap = Maps.newHashMap();
 
   private void parseAttribute(Conf conf, String[] keys, int index, StramElement element, String attrValue)
@@ -1292,7 +1276,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       Set<Attribute<Object>> attributes = AttributeInitializer.getAttributes(clazz);
       m = Maps.newHashMapWithExpectedSize(attributes.size());
       for (Attribute<Object> attr : attributes) {
-        m.put(getSimpleName(attr), attr);
+        m.put(attr.getSimpleName(), attr);
       }
       attributeMap.put(clazz, m);
     }
@@ -1313,7 +1297,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     if (element != StramElement.ATTR || isDeprecated) {
-      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleName(attr);
+      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + attr.getSimpleName();
       LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", getCompleteKey(keys, 0), expName);
     }
 

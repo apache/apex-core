@@ -12,7 +12,8 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -44,8 +45,7 @@ import com.datatorrent.stram.license.util.Util;
  */
 public class StramClientUtils
 {
-  public static final String DT_LICENSE_FILE = "dt.license.file";
-
+  public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   /**
    *
    * TBD<p>
@@ -290,6 +290,17 @@ public class StramClientUtils
   public static byte[] getLicense(String filePath) throws IOException
   {
     return IOUtils.toByteArray(new FileInputStream(filePath));
+  }
+
+  public static int getLicenseMasterMemory(Configuration conf) {
+    String licenseMasterMemoryProp = LogicalPlanConfiguration.LICENSE_PREFIX + DAGContext.MASTER_MEMORY_MB.getSimpleName();
+    int licenseMasterMemoryMB = conf.getInt(licenseMasterMemoryProp, 0);
+    // Default to stram master memory setting if
+    if (licenseMasterMemoryMB == 0) {
+      String masterMemoryProp = DAGContext.DT_PREFIX + DAGContext.MASTER_MEMORY_MB.getSimpleName();
+      licenseMasterMemoryMB = conf.getInt(masterMemoryProp, 0);
+    }
+    return licenseMasterMemoryMB;
   }
 
 }

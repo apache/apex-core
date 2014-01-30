@@ -54,6 +54,8 @@ public interface StramAppContext extends Context
 
   long getRemainingLicensedMB();
 
+  long getTotalLicensedMB();
+
   long getAllocatedMB();
   
   long getLicenseInfoLastUpdate();
