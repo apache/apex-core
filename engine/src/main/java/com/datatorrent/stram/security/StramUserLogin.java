@@ -5,10 +5,14 @@
 package com.datatorrent.stram.security;
 
 import java.io.IOException;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.security.UserGroupInformation;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.UserGroupInformation;
+
+import com.datatorrent.api.DAGContext;
 
 /**
  * <p>StramUserLogin class.</p>
@@ -18,15 +22,15 @@ import org.slf4j.LoggerFactory;
  */
 public class StramUserLogin
 {
-
   private static final Logger LOG = LoggerFactory.getLogger(StramUserLogin.class);
-  private static final String STRAM_AUTH_PRINCIPAL = "stram.authentication.principal";
-  private static final String STRAM_AUTH_KEYTAB = "stram.authentication.keytab";
+  private static final String DT_AUTH_PREFIX = DAGContext.DT_PREFIX + "authentication.";
+  private static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX +  "principal";
+  private static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
 
   public static void attemptAuthentication(Configuration conf) throws IOException {
     if (UserGroupInformation.isSecurityEnabled()) {
-      String userPrincipal = conf.get(STRAM_AUTH_PRINCIPAL);
-      String userKeytab = conf.get(STRAM_AUTH_KEYTAB);
+      String userPrincipal = conf.get(DT_AUTH_PRINCIPAL);
+      String userKeytab = conf.get(DT_AUTH_KEYTAB);
       authenticate(userPrincipal, userKeytab);
     }
   }

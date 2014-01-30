@@ -227,7 +227,7 @@ public class StramChild
 
     int exitStatus = 1; // interpreted as unrecoverable container failure
 
-    final String childId = System.getProperty("stram.cid");
+    final String childId = System.getProperty(DAGContext.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
       StramChild stramChild = new StramChild(childId, defaultConf, umbilical);

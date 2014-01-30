@@ -58,7 +58,7 @@ public class LicensingAppMaster extends CompositeService
       // container id should always be set in the env by the framework
       throw new AssertionError("ContainerId not set in the environment");
     }
-    System.setProperty("stram.cid", containerIdString);
+    System.setProperty(DAGContext.DT_PREFIX + "cid", containerIdString);
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(LicensingAppMaster.class);

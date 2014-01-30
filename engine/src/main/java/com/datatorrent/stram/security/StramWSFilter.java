@@ -1,16 +1,5 @@
 package com.datatorrent.stram.security;
 
-import com.datatorrent.stram.webapp.WebServices;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-
-import javax.servlet.*;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -19,6 +8,19 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.servlet.*;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+
+import com.datatorrent.stram.webapp.WebServices;
 
 /**
  * Created by pramod on 12/17/13.
@@ -36,7 +38,7 @@ public class StramWSFilter implements Filter
   //update the proxy IP list about every 5 min
   private static final long updateInterval = 5 * 60 * 1000;
 
-  public static final String CLIENT_COOKIE = "stram-client";
+  public static final String CLIENT_COOKIE = "dt-client";
 
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = 90 * 60 * 1000;
@@ -71,6 +73,7 @@ public class StramWSFilter implements Filter
     }
   }
 
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
   protected Set<String> getProxyAddresses() throws ServletException {
     long now = System.currentTimeMillis();
     synchronized(this) {

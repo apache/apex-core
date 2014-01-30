@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import org.apache.commons.io.FileUtils;
@@ -27,8 +29,6 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.license.util.Util;
 
@@ -45,9 +45,7 @@ import com.datatorrent.stram.license.util.Util;
  */
 public class StramClientUtils
 {
-
-  public static final String STRAM_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + ".file";
-
+  public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   /**
    *
    * TBD<p>
@@ -164,7 +162,8 @@ public class StramClientUtils
      * Kill a submitted application by sending a call to the ASM
      *
      * @param appId Application Id to be killed.
-     * @throws YarnRemoteException
+     * @throws YarnException
+     * @throws IOException
      */
     public void killApplication(ApplicationId appId) throws YarnException, IOException
     {
@@ -189,8 +188,11 @@ public class StramClientUtils
      * Monitor the submitted application for completion. Kill application if time expires.
      *
      * @param appId Application Id of application to be monitored
+     * @param callback
+     * @param timeoutMillis
      * @return true if application completed successfully
-     * @throws YarnRemoteException
+     * @throws YarnException
+     * @throws IOException
      */
     @SuppressWarnings("SleepWhileInLoop")
     public boolean waitForCompletion(ApplicationId appId, AppStatusCallback callback, long timeoutMillis) throws YarnException, IOException
@@ -245,28 +247,28 @@ public class StramClientUtils
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
   /**
-   * Provides a way to run applications with different .m2 and .stram location for internal use.
+   * Provides a way to run applications with different .m2 and .dt location for internal use.
    * The environment variable was renamed as "DT_HOME" is used for other purposes
    */
-  public static final String DT_HOME = System.getenv("_STRAM_CLIENT_ROOT");
+  public static final String DT_HOME = System.getenv("_DT_CLIENT_ROOT");
 
   public static File getSettingsRootDir()
   {
     if (DT_HOME == null || DT_HOME.isEmpty()) {
-      return new File(FileUtils.getUserDirectory(), ".stram");
+      return new File(FileUtils.getUserDirectory(), ".dt");
     }
 
-    return new File(DT_HOME, ".stram");
+    return new File(DT_HOME, ".dt");
   }
 
-  private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
-  public static final String STRAM_SITE_XML_FILE = "stram-site.xml";
+  private static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
+  public static final String DT_SITE_XML_FILE = "dt-site.xml";
 
   public static Configuration addStramResources(Configuration conf)
   {
-    conf.addResource(STRAM_DEFAULT_XML_FILE);
-    conf.addResource(STRAM_SITE_XML_FILE);
-    File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
+    conf.addResource(DT_DEFAULT_XML_FILE);
+    conf.addResource(DT_SITE_XML_FILE);
+    File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.DT_SITE_XML_FILE);
     if (cfgResource.exists()) {
       LOG.info("Loading settings: " + cfgResource.toURI());
       conf.addResource(new Path(cfgResource.toURI()));
@@ -276,7 +278,7 @@ public class StramClientUtils
 
   public static byte[] getLicense(Configuration conf) throws IOException
   {
-    String stramLicenseFile = conf.get(STRAM_LICENSE_FILE);
+    String stramLicenseFile = conf.get(DT_LICENSE_FILE);
     if (stramLicenseFile == null) {
       return Util.getDefaultLicense();
     }
@@ -291,11 +293,11 @@ public class StramClientUtils
   }
 
   public static int getLicenseMasterMemory(Configuration conf) {
-    String licenseMasterMemoryProp = LogicalPlanConfiguration.LICENSE_PREFIX + "." + DAGContext.MASTER_MEMORY_MB.getSimpleName();
+    String licenseMasterMemoryProp = LogicalPlanConfiguration.LICENSE_PREFIX + DAGContext.MASTER_MEMORY_MB.getSimpleName();
     int licenseMasterMemoryMB = conf.getInt(licenseMasterMemoryProp, 0);
     // Default to stram master memory setting if
     if (licenseMasterMemoryMB == 0) {
-      String masterMemoryProp = LogicalPlanConfiguration.STRAM_PREFIX + "." + DAGContext.MASTER_MEMORY_MB.getSimpleName();
+      String masterMemoryProp = DAGContext.DT_PREFIX + DAGContext.MASTER_MEMORY_MB.getSimpleName();
       licenseMasterMemoryMB = conf.getInt(masterMemoryProp, 0);
     }
     return licenseMasterMemoryMB;

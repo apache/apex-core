@@ -45,6 +45,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 import com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LogicalPlanConfigurationTest {
 
@@ -60,7 +62,7 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testLoadFromConfigXml() {
     Configuration conf = new Configuration(false);
-    conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
+    conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
     LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
@@ -129,7 +131,7 @@ public class LogicalPlanConfigurationTest {
       if (level > 0) {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
       }
-      System.out.println(prefix + operator.getName());
+      logger.debug(prefix  + operator.getName());
       for (StreamMeta downStream : operator.getOutputStreams().values()) {
           if (!downStream.getSinks().isEmpty()) {
             for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
@@ -196,10 +198,10 @@ public class LogicalPlanConfigurationTest {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put("stram.containerMemoryMB", "123"); // backward compatibility mapping
-    props.put("stram." + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
-    props.put("stram.application." + appName + ".attr." + getSimpleName(DAG.APPLICATION_PATH), "/otherdir");
-    props.put("stram.application." + appName + ".attr." + getSimpleName(DAG.STREAMING_WINDOW_SIZE_MILLIS), "1000");
+    props.put(DAGContext.DT_PREFIX + "containerMemoryMB", "123"); // backward compatibility mapping
+    props.put(DAGContext.DT_PREFIX + "" + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".attr." + getSimpleName(DAG.APPLICATION_PATH), "/otherdir");
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".attr." + getSimpleName(DAG.STREAMING_WINDOW_SIZE_MILLIS), "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -227,7 +229,7 @@ public class LogicalPlanConfigurationTest {
       }
     };
     Configuration conf = new Configuration(false);
-    conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
+    conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
     LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
     pb.addFromConfiguration(conf);
 
@@ -244,20 +246,20 @@ public class LogicalPlanConfigurationTest {
     Properties props = new Properties();
 
     // match operator by name
-    props.put("stram.template.matchId1.matchIdRegExp", ".*operator1.*");
-    props.put("stram.template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
-    props.put("stram.template.matchId1.nested.property", "nested.propertyValue-matchId1");
+    props.put(DAGContext.DT_PREFIX + "template.matchId1.matchIdRegExp", ".*operator1.*");
+    props.put(DAGContext.DT_PREFIX + "template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
+    props.put(DAGContext.DT_PREFIX + "template.matchId1.nested.property", "nested.propertyValue-matchId1");
 
     // match class name, lower priority
-    props.put("stram.template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
-    props.put("stram.template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
+    props.put(DAGContext.DT_PREFIX + "template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
+    props.put(DAGContext.DT_PREFIX + "template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
 
     // match class name
-    props.put("stram.template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
-    props.put("stram.template.t2.myStringProperty", "myStringPropertyValue");
+    props.put(DAGContext.DT_PREFIX + "template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
+    props.put(DAGContext.DT_PREFIX + "template.t2.myStringProperty", "myStringPropertyValue");
 
     // direct setting
-    props.put("stram.operator.operator3.emitFormat", "emitFormatValue");
+    props.put(DAGContext.DT_PREFIX + "operator.operator3.emitFormat", "emitFormatValue");
 
     LogicalPlan dag = new LogicalPlan();
     Operator operator1 = dag.addOperator("operator1", new ValidationTestOperator());
@@ -287,8 +289,8 @@ public class LogicalPlanConfigurationTest {
   public void testSetOperatorProperties() {
 
     Configuration conf = new Configuration(false);
-    conf.set("stram.operator.o1.myStringProperty", "myStringPropertyValue");
-    conf.set("stram.operator.o2.stringArrayField", "a,b,c");
+    conf.set(DAGContext.DT_PREFIX + "operator.o1.myStringProperty", "myStringPropertyValue");
+    conf.set(DAGContext.DT_PREFIX + "operator.o2.stringArrayField", "a,b,c");
 
     LogicalPlan dag = new LogicalPlan();
     GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
@@ -312,12 +314,12 @@ public class LogicalPlanConfigurationTest {
       }
     };
     Configuration conf = new Configuration(false);
-    conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
+    conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
 
     LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
 
     Properties properties = new Properties();
-    properties.put("stram.application.TestAliasApp.class", app.getClass().getName());
+    properties.put(DAGContext.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
 
     builder.addFromProperties(properties);
 
@@ -341,10 +343,10 @@ public class LogicalPlanConfigurationTest {
     };
 
     Properties props = new Properties();
-    props.put("stram.application." + appName + ".class", app.getClass().getName());
-    props.put("stram.operator.*.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "2");
-    props.put("stram.operator.*.attr." + getSimpleName(OperatorContext.STATS_LISTENERS), PartitionLoadWatch.class.getName());
-    props.put("stram.application." + appName + ".operator.operator1.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "20");
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(DAGContext.DT_PREFIX + "operator.*.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "2");
+    props.put(DAGContext.DT_PREFIX + "operator.*.attr." + getSimpleName(OperatorContext.STATS_LISTENERS), PartitionLoadWatch.class.getName());
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "20");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -378,12 +380,12 @@ public class LogicalPlanConfigurationTest {
     };
 
     Properties props = new Properties();
-    props.put("stram.application." + appName + ".class", app.getClass().getName());
-    props.put("stram.application." + appName + ".operator.operator1.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
-    props.put("stram.application." + appName + ".operator.operator2.inputport.input1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
-    props.put("stram.application." + appName + ".operator.operator2.outputport.output1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
-    props.put("stram.application." + appName + ".operator.operator3.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
-    props.put("stram.application." + appName + ".operator.operator3.inputport.input2.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -423,7 +425,7 @@ public class LogicalPlanConfigurationTest {
     // attribute that cannot be configured
 
     Properties props = new Properties();
-    props.put("stram.attr.NOT_CONFIGURABLE", "value");
+    props.put(DAGContext.DT_PREFIX + "attr.NOT_CONFIGURABLE", "value");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -439,13 +441,14 @@ public class LogicalPlanConfigurationTest {
 
     // invalid attribute name
     props = new Properties();
-    props.put("stram.attr.INVALID_NAME", "value");
+    String invalidAttribute = DAGContext.DT_PREFIX + "attr.INVALID_NAME";
+    props.put(invalidAttribute, "value");
 
     try {
       new LogicalPlanConfiguration().addFromProperties(props);
       Assert.fail("Exception expected");
     } catch (Exception e) {
-      Assert.assertThat("Invalid attribute name", e.getMessage(), RegexMatcher.matches("Invalid attribute reference: stram.attr.INVALID_NAME"));
+      Assert.assertThat("Invalid attribute name", e.getMessage(), RegexMatcher.matches("Invalid attribute reference: " + invalidAttribute));
     }
 
   }
@@ -462,4 +465,5 @@ public class LogicalPlanConfigurationTest {
     }
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(LogicalPlanConfigurationTest.class);
 }

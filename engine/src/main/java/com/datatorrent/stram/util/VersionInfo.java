@@ -47,7 +47,7 @@ public class VersionInfo {
         VersionInfo.version = v;
       }
 
-      resources = VersionInfo.class.getClassLoader().getResources("dt-stram-git.properties");
+      resources = VersionInfo.class.getClassLoader().getResources("dt-git.properties");
       while (resources.hasMoreElements()) {
         Properties gitInfo = new Properties();
         gitInfo.load(resources.nextElement().openStream());

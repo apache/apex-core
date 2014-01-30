@@ -56,7 +56,7 @@ public class LogicalPlan implements Serializable, DAG
   private static final long serialVersionUID = -2099729915606048704L;
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlan.class);
   // The name under which the application master expects its configuration.
-  public static final String SER_FILE_NAME = "stram-conf.ser";
+  public static final String SER_FILE_NAME = "dt-conf.ser";
 
   /**
    * Constant

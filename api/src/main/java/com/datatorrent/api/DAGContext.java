@@ -26,11 +26,12 @@ import com.datatorrent.api.StringCodec.String2String;
  */
 public interface DAGContext extends Context
 {
+  String DT_PREFIX = "dt.";
   /**
    * Launch mode for the application.
    * Used in the client to set configuration depending on how the DAG is executed.
    */
-  String LAUNCH_MODE = "stram.launchmode";
+  String LAUNCH_MODE = DT_PREFIX + "launchmode";
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
@@ -118,7 +119,7 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
   /**
-   * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "stram.gateway.address" in the configuration.
+   * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.address" in the configuration.
    */
   Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
   /**

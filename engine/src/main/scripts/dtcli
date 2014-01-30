@@ -7,12 +7,12 @@ MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
   #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
-  STRAM_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
-  if [ ! -f "$STRAM_CORE_JAR" ]; then
-    echoerr "Error: Cannot find $STRAM_CORE_JAR";
+  DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
+  if [ ! -f "$DT_CORE_JAR" ]; then
+    echoerr "Error: Cannot find $DT_CORE_JAR";
     exit 1;
   fi
-  STRAM_CLASSPATH="$STRAM_CLASSPATH:$STRAM_CORE_JAR"
+  DT_CLASSPATH="$DT_CLASSPATH:$DT_CORE_JAR"
 else
   MVN_GENERATED_PATH="$( dirname "$0" )/mvn-generated-runtime-classpath"
   if [ ! -f "$MVN_GENERATED_PATH" ]; then
@@ -21,28 +21,28 @@ else
   fi
 fi
 
-STRAM_CLASSPATH=$STRAM_CLASSPATH:`cat $MVN_GENERATED_PATH`
-#echo "$STRAM_CLASSPATH"
+DT_CLASSPATH=$DT_CLASSPATH:`cat $MVN_GENERATED_PATH`
+#echo "$DT_CLASSPATH"
 
-if [ "$STRAM_CLASSPATH" != "" ]; then
+if [ "$DT_CLASSPATH" != "" ]; then
   if test -z "$HADOOP_CLASSPATH"
   then
-    export HADOOP_CLASSPATH=$STRAM_CLASSPATH
+    export HADOOP_CLASSPATH=$DT_CLASSPATH
   else
-    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$STRAM_CLASSPATH
+    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$DT_CLASSPATH
   fi
 fi
 
-if [ "$STRAM_CLIENT_OPTS" = "" ]; then
-  STRAM_CLIENT_OPTS=-Xmx1024m
+if [ "$DT_CLIENT_OPTS" = "" ]; then
+  DT_CLIENT_OPTS=-Xmx1024m
 fi
 
-export HADOOP_CLIENT_OPTS="$STRAM_CLIENT_OPTS"
+export HADOOP_CLIENT_OPTS="$DT_CLIENT_OPTS"
 
 if [ "$HADOOP_PREFIX" = "" ]; then
   echoerr "Warning: HADOOP_PREFIX is not set, running standalone."
-  export CLASSPATH=$STRAM_CLASSPATH
-  java $STRAM_CLIENT_OPTS com.datatorrent.stram.cli.DTCli "$@"
+  export CLASSPATH=$DT_CLASSPATH
+  java $DT_CLIENT_OPTS com.datatorrent.stram.cli.DTCli "$@"
 else
   # remove hadoop and duplicate slf4j binding (bash replace is too slow)
 #  export HADOOP_CLASSPATH=${HADOOP_CLASSPATH/slf4j-log4j12-1.7.1.jar/slf4j-log4j12-DUPBINDING.jar}

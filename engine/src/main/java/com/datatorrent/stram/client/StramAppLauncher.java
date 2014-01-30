@@ -6,6 +6,7 @@ package com.datatorrent.stram.client;
 
 import java.io.*;
 import java.lang.reflect.Modifier;
+import java.net.*;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -15,24 +16,26 @@ import java.util.jar.JarEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import java.net.*;
-import org.apache.commons.lang.NotImplementedException;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -205,6 +208,20 @@ public class StramAppLauncher
       conf = getConfig(null, null);
     }
     propertiesBuilder.addFromConfiguration(conf);
+    Iterator<Map.Entry<String, String>> iterator = conf.iterator();
+    Map<String, String> newEntries = new HashMap<String, String>();
+    while (iterator.hasNext()) {
+      Map.Entry<String, String> entry = iterator.next();
+      if (entry.getKey().startsWith("stram.")) {
+        String newKey = DAGContext.DT_PREFIX + entry.getKey().substring(6);
+        LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
+        newEntries.put(newKey, entry.getValue());
+      }
+      iterator.remove();
+    }
+    for (Map.Entry<String, String> entry : newEntries.entrySet()) {
+      conf.set(entry.getKey(), entry.getValue());
+    }
 
     File baseDir = StramClientUtils.getSettingsRootDir();
     baseDir = new File(baseDir, jarFile.getName());
@@ -391,20 +408,6 @@ public class StramAppLauncher
   {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
-    /*
-     // user settings
-     File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
-     if (cfgResource.exists()) {
-     LOG.info("Loading settings: " + cfgResource.toURI());
-     conf.addResource(new Path(cfgResource.toURI()));
-     }
-     */
-    //File appDir = new File(StramClientUtils.getSettingsRootDir(), jarFile.getName());
-    //cfgResource = new File(appDir, StramClientUtils.STRAM_SITE_XML_FILE);
-    //if (cfgResource.exists()) {
-    //  LOG.info("Loading settings from: " + cfgResource.toURI());
-    //  conf.addResource(new Path(cfgResource.toURI()));
-    //}
     if (overrideConfFileName != null) {
       File overrideConfFile = new File(overrideConfFileName);
       if (overrideConfFile.exists()) {
