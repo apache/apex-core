@@ -25,6 +25,8 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 
 /**
  * Heartbeat RPC proxy invocation handler that handles fail over.
+ *
+ * @since 0.9.3
  */
 public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler, Closeable
 {
