@@ -78,7 +78,7 @@ import java.util.*;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
-  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 5000;
+  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 10000;
   private final Configuration conf = new YarnConfiguration();
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -2023,8 +2023,11 @@ public class DTCli
                 activateLicense(null);
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
                 do {
-                  Thread.sleep(500);
+                  Thread.sleep(1000);
                   ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+                  if (ar == null && !raw) {
+                    System.out.println("Waiting for license agent to start...");
+                  }
                 }
                 while (ar == null && System.currentTimeMillis() <= timeout);
               }
