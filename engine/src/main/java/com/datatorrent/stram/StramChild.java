@@ -37,6 +37,7 @@ import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
@@ -62,7 +63,7 @@ import com.datatorrent.stram.stream.*;
  *
  * @since 0.3.2
  */
-public class StramChild
+public class StramChild extends YarnContainerMain
 {
   public static final int PORT_QUEUE_CAPACITY = 1024;
   public static final String ENV_APP_PATH = "DT_APP_PATH";
@@ -104,17 +105,6 @@ public class StramChild
   private RequestFactory requestFactory;
 
   static {
-    System.setProperty("hadoop.log.file", "dt.log");
-    if (System.getenv("CDH_YARN_HOME") != null) {
-      // map logging properties to what CHD expects out of the box
-      String[] keys = new String[] { "log.dir", "log.file", "root.logger" };
-      for (String key : keys) {
-        String v = System.getProperty("hadoop." + key);
-        if (v != null) {
-          System.setProperty(key, v);
-        }
-      }
-    }
     try {
       eventloop = new DefaultEventLoop("ProcessWideEventLoop");
     }
