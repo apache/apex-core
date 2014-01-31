@@ -104,6 +104,17 @@ public class StramChild
   private RequestFactory requestFactory;
 
   static {
+    System.setProperty("hadoop.log.file", "dt.log");
+    if (System.getenv("CDH_YARN_HOME") != null) {
+      // map logging properties to what CHD expects out of the box
+      String[] keys = new String[] { "log.dir", "log.file", "root.logger" };
+      for (String key : keys) {
+        String v = System.getProperty("hadoop." + key);
+        if (v != null) {
+          System.setProperty(key, v);
+        }
+      }
+    }
     try {
       eventloop = new DefaultEventLoop("ProcessWideEventLoop");
     }

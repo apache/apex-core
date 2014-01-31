@@ -21,13 +21,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -72,7 +72,6 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.DAGContext;
-
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
@@ -119,6 +118,18 @@ public class StramAppMaster extends CompositeService
       throw new AssertionError("ContainerId not set in the environment");
     }
     System.setProperty(DAGContext.DT_PREFIX + "cid", containerIdString);
+    System.setProperty("hadoop.log.file", "dt.log");
+    if (envs.get("CDH_YARN_HOME") != null) {
+      // map logging properties to what CHD expects out of the box
+      String[] keys = new String[] { "log.dir", "log.file", "root.logger" };
+      for (String key : keys) {
+        String v = System.getProperty("hadoop." + key);
+        if (v != null) {
+          System.setProperty(key, v);
+        }
+      }
+    }
+
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
