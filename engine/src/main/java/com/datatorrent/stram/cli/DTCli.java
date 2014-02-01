@@ -1674,9 +1674,7 @@ public class DTCli
     lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
     lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
-    if (licenseMasterMemoryMB > 0) {
-      lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
-    }
+    lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
     StramClient client = new StramClient(lp);
     client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
     client.startApplication();

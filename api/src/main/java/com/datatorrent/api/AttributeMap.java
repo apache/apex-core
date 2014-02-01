@@ -95,14 +95,6 @@ public interface AttributeMap
       this.codec = codec;
     }
 
-    public String getSimpleName() {
-      String simpleName = name;
-      if (name != null) {
-        simpleName = name.substring(name.lastIndexOf('.')+1);
-      }
-      return simpleName;
-    }
-
     @Override
     public int hashCode()
     {
