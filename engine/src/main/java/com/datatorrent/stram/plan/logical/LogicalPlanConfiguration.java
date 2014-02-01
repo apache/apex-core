@@ -1048,6 +1048,10 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return props;
   }
 
+  private String getSimpleName(Attribute<?> attribute) {
+    return attribute.name.substring(attribute.name.lastIndexOf('.')+1);
+  }
+
   /**
    * Get the configuration opProps for the given operator.
    * These can be operator specific settings or settings from matching templates.
@@ -1276,7 +1280,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       Set<Attribute<Object>> attributes = AttributeInitializer.getAttributes(clazz);
       m = Maps.newHashMapWithExpectedSize(attributes.size());
       for (Attribute<Object> attr : attributes) {
-        m.put(attr.getSimpleName(), attr);
+        m.put(getSimpleName(attr), attr);
       }
       attributeMap.put(clazz, m);
     }
@@ -1297,7 +1301,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     if (element != StramElement.ATTR || isDeprecated) {
-      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + attr.getSimpleName();
+      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleName(attr);
       LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", getCompleteKey(keys, 0), expName);
     }
 
