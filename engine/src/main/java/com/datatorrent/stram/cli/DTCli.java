@@ -3,8 +3,54 @@
  */
 package com.datatorrent.stram.cli;
 
+import java.io.*;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import jline.console.ConsoleReader;
+import jline.console.completer.*;
+import jline.console.history.FileHistory;
+import jline.console.history.History;
+import jline.console.history.MemoryHistory;
+
+import javax.ws.rs.core.MediaType;
+
+import com.google.common.collect.Sets;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.cli.*;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.log4j.Appender;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.tools.ant.DirectoryScanner;
+
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
+
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.RecordingsAgent;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
@@ -26,47 +72,6 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.google.common.collect.Sets;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import jline.console.ConsoleReader;
-import jline.console.completer.*;
-import jline.console.history.FileHistory;
-import jline.console.history.History;
-import jline.console.history.MemoryHistory;
-import org.apache.commons.cli.*;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
-import org.apache.hadoop.yarn.client.api.YarnClient;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnException;
-import org.apache.log4j.Appender;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.core.MediaType;
-import java.io.*;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.*;
 
 /**
  *
@@ -171,7 +176,7 @@ public class DTCli
         int len = commandLine.length();
         boolean insideQuotes = false;
         boolean potentialEmptyArg = false;
-        StringBuffer buf = new StringBuffer();
+        StringBuffer buf = new StringBuffer(commandLine.length());
 
         for (@SuppressWarnings("AssignmentToForLoopParameter") int i = 0; i < len; ++i) {
           char c = commandLine.charAt(i);
@@ -210,7 +215,7 @@ public class DTCli
             else {
 
               if (c == '$') {
-                StringBuilder variableName = new StringBuilder();
+                StringBuilder variableName = new StringBuilder(32);
                 if (len > i + 1) {
                   if (commandLine.charAt(i + 1) == '{') {
                     ++i;
@@ -794,7 +799,7 @@ public class DTCli
   private static String expandCommaSeparatedFiles(String filenames) throws IOException
   {
     String[] entries = filenames.split(",");
-    StringBuilder result = new StringBuilder();
+    StringBuilder result = new StringBuilder(filenames.length());
     for (String entry : entries) {
       for (String file : expandFileNames(entry)) {
         if (result.length() > 0) {
@@ -1141,7 +1146,7 @@ public class DTCli
 
     for (String line : lines) {
       int previousIndex = 0;
-      StringBuilder expandedLine = new StringBuilder();
+      StringBuilder expandedLine = new StringBuilder(line.length());
       while (true) {
         // Search for $0..$9 within the each line and replace by corresponding args
         int currentIndex = line.indexOf('$', previousIndex);
@@ -1890,6 +1895,7 @@ public class DTCli
   private class LaunchCommand implements Command
   {
     @Override
+    @SuppressWarnings("SleepWhileInLoop")
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       String[] newArgs = new String[args.length - 1];
