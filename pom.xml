@@ -27,7 +27,6 @@
     <netbeans.hint.license>datatorrent-inc</netbeans.hint.license>
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
-    <maven.deploy.skip>true</maven.deploy.skip>
     <hadoop.version>2.2.0</hadoop.version>
     <github.global.server>github</github.global.server>
     <jackson.version>1.9.2</jackson.version>
@@ -193,6 +192,7 @@
       <properties>
         <maven.compiler.debug>false</maven.compiler.debug>
         <maven.compiler.optimize>true</maven.compiler.optimize>
+        <maven.deploy.skip>true</maven.deploy.skip>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
         <distMgmtStagingUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtStagingUrl>
