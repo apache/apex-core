@@ -2,37 +2,6 @@
 
 echoerr() { echo "$@" 1>&2; }
 
-BUILD_DIR="$( dirname "$0" )/../../../target"
-MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
-if [ -f "$MVN_GENERATED_PATH" ]; then
-  # development launch mode
-  #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
-  DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
-  if [ ! -f "$DT_CORE_JAR" ]; then
-    echoerr "Error: Cannot find $DT_CORE_JAR";
-    exit 1;
-  fi
-  DT_CLASSPATH="$DT_CLASSPATH:$DT_CORE_JAR"
-else
-  MVN_GENERATED_PATH="$( dirname "$0" )/mvn-generated-runtime-classpath"
-  if [ ! -f "$MVN_GENERATED_PATH" ]; then
-    echoerr "Error: Cannot find $MVN_GENERATED_PATH (has $( cd $(dirname $0)/..; pwd -P )/install.sh run?)";
-    exit 1;
-  fi
-fi
-
-DT_CLASSPATH=$DT_CLASSPATH:`cat $MVN_GENERATED_PATH`
-#echo "$DT_CLASSPATH"
-
-if [ "$DT_CLASSPATH" != "" ]; then
-  if test -z "$HADOOP_CLASSPATH"
-  then
-    export HADOOP_CLASSPATH=$DT_CLASSPATH
-  else
-    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$DT_CLASSPATH
-  fi
-fi
-
 if [ "$DT_CLIENT_OPTS" = "" ]; then
   DT_CLIENT_OPTS=-Xmx1024m
 fi
@@ -47,6 +16,39 @@ fi
 # HADOOP_HOME env variable overrides hadoop in the path
 HADOOP_PREFIX=${HADOOP_PREFIX:-${HADOOP_HOME:-$HADOOP_DIR}}
 
+BUILD_DIR="$( dirname "$0" )/../../../target"
+MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
+if [ -f "$MVN_GENERATED_PATH" ]; then
+  # development launch mode
+  #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
+  DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
+  if [ ! -f "$DT_CORE_JAR" ]; then
+    echoerr "Error: Cannot find $DT_CORE_JAR";
+    exit 1;
+  fi
+  DT_CLASSPATH="$DT_CLASSPATH:$DT_CORE_JAR"
+  DT_CLASSPATH=$DT_CLASSPATH:`cat $MVN_GENERATED_PATH`
+else
+  # running from installation
+  if [ "$HADOOP_PREFIX" = "" ]; then
+    echo "Hadoop installation not found. Please set HADOOP_PREFIX or include hadoop in PATH."
+    exit 1;
+  fi
+  BASEDIR=$( cd $(dirname $0); cd ..; pwd -P )
+  DT_CLASSPATH=$BASEDIR/deps/engine'/*'
+fi
+
+#echoerr "$DT_CLASSPATH"
+
+if [ "$DT_CLASSPATH" != "" ]; then
+  if test -z "$HADOOP_CLASSPATH"
+  then
+    export HADOOP_CLASSPATH="$DT_CLASSPATH"
+  else
+    export HADOOP_CLASSPATH="$HADOOP_CLASSPATH:$DT_CLASSPATH"
+  fi
+fi
+
 if [ "$HADOOP_PREFIX" = "" ]; then
   echoerr "Warning: HADOOP_PREFIX is not set, running standalone."
   export CLASSPATH=$DT_CLASSPATH
@@ -54,8 +56,8 @@ if [ "$HADOOP_PREFIX" = "" ]; then
 else
   # remove hadoop and duplicate slf4j binding (bash replace is too slow)
 #  export HADOOP_CLASSPATH=${HADOOP_CLASSPATH/slf4j-log4j12-1.7.1.jar/slf4j-log4j12-DUPBINDING.jar}
-  export HADOOP_CLASSPATH=$(echo -n $HADOOP_CLASSPATH | tr ":" "\n" | sed "/slf4j-log4j/d" | sed "/org\/apache\/hadoop/d" | tr "\n" ":")
-  #$HADOOP_PREFIX/bin/hadoop classpath
+  export HADOOP_CLASSPATH=$(echo -n "$HADOOP_CLASSPATH" | tr ":" "\n" | sed "/slf4j-log4j/d" | sed "/org\/apache\/hadoop/d" | tr "\n" ":")
+#  $HADOOP_PREFIX/bin/hadoop classpath
   $HADOOP_PREFIX/bin/hadoop com.datatorrent.stram.cli.DTCli "$@"
 fi
 
