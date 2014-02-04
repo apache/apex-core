@@ -11,21 +11,20 @@
   <url>http://www.datatorrent.com</url>
 
   <organization>
-    <name>DataTorrent Inc.</name>
+    <name>DataTorrent, Inc.</name>
     <url>http://www.datatorrent.com/</url>
   </organization>
 
   <licenses>
     <license>
-      <name>DataTorrent Inc. 0.9</name>
-      <url>http://www.datatorrent.com/licenses/LICENSE-0.9</url>
+      <name>DataTorrent, Inc.</name>
+      <url>http://www.datatorrent.com/</url>
     </license>
   </licenses>
-  <inceptionYear>2012</inceptionYear>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
+    <netbeans.hint.license>datatorrent-inc</netbeans.hint.license>
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <maven.deploy.skip>true</maven.deploy.skip>
