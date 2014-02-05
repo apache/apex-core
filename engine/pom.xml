@@ -14,10 +14,6 @@
 
   <name>Streaming Application Manager</name>
 
-  <properties>
-    <maven.deploy.skip>true</maven.deploy.skip>
-  </properties>
-
   <build>
     <plugins>
       <!-- plugin> for licensing using native
