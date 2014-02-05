@@ -88,8 +88,8 @@ public class StramAppMasterService extends CompositeService
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMasterService.class);
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7 * 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 7 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 365 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 365 * 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
@@ -671,7 +671,9 @@ public class StramAppMasterService extends CompositeService
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
       releasedContainers.clear();
 
-      int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
+      // CDH reporting incorrect resources, see SPOI-1846. Workaround for now.
+      //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
+      int availableMemory = availableLicensedMemory;
       dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
 
       // Retrieve list of allocated containers from the response
@@ -782,8 +784,8 @@ public class StramAppMasterService extends CompositeService
         if (!(amResp.getCompletedContainersStatuses().isEmpty() && amResp.getAllocatedContainers().isEmpty())) {
           // update license agent on allocated container changes
           licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
-          availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
         }
+        availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
       }
 
       if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
