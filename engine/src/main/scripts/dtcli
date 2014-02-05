@@ -31,7 +31,7 @@ if [ -f "$MVN_GENERATED_PATH" ]; then
 else
   # running from installation
   if [ "$HADOOP_PREFIX" = "" ]; then
-    echo "Hadoop installation not found. Please set HADOOP_PREFIX or include hadoop in PATH."
+    echoerr "Hadoop installation not found. Please set HADOOP_PREFIX or include hadoop in PATH."
     exit 1;
   fi
   BASEDIR=$( cd $(dirname $0); cd ..; pwd -P )
