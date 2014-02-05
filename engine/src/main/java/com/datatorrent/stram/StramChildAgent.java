@@ -140,7 +140,7 @@ public class StramChildAgent {
         portInfo.declaredStreamId = streamMeta.getName();
         portInfo.portName = out.portName;
 
-        streamMeta.getSource().getAttributes();
+        //portInfo.contextAttributes = streamMeta.getSource().getAttributes();
         portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
 
         boolean outputUnified = false;
