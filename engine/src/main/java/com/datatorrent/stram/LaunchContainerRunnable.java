@@ -216,7 +216,7 @@ public class LaunchContainerRunnable implements Runnable
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
-    vargs.add("-Dstram.cid=" + jvmID);
+    vargs.add("-Ddt.cid=" + jvmID);
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 

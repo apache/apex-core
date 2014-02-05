@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
@@ -38,6 +37,7 @@ import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
@@ -63,7 +63,7 @@ import com.datatorrent.stram.stream.*;
  *
  * @since 0.3.2
  */
-public class StramChild
+public class StramChild extends YarnContainerMain
 {
   public static final int PORT_QUEUE_CAPACITY = 1024;
   public static final String ENV_APP_PATH = "DT_APP_PATH";
@@ -147,7 +147,7 @@ public class StramChild
       if (ctx.deployBufferServer) {
         eventloop.start();
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, 64 * 1024 * 1024);
+        bufferServer = new Server(0, 64 * 1024 * 1024,8);
         bufferServer.setSpoolStorage(new DiskStorage());
         SocketAddress bindAddr = bufferServer.run(eventloop);
         logger.debug("Buffer server started: {}", bindAddr);
@@ -223,15 +223,12 @@ public class StramChild
       logger.error("{} not set in container environment.", ENV_APP_PATH);
       System.exit(1);
     }
-    FSRecoveryHandler fsrh = new FSRecoveryHandler(appPath, defaultConf);
-    URI heartbeatUri = URI.create(fsrh.readConnectUri());
+    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, defaultConf);
+    final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
 
-    final InetSocketAddress address = NetUtils.createSocketAddrForHost(heartbeatUri.getHost(), heartbeatUri.getPort());
-    final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
-                                                                       StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
     int exitStatus = 1; // interpreted as unrecoverable container failure
 
-    final String childId = System.getProperty("stram.cid");
+    final String childId = System.getProperty(DAGContext.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
       StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
@@ -263,7 +260,7 @@ public class StramChild
       baos.close();
     }
     finally {
-      RPC.stopProxy(umbilical);
+      rpcProxy.close();
       //FileSystem.closeAll();
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
@@ -718,7 +715,6 @@ public class StramChild
       }
       catch (Exception e) {
         logger.error("deploy request failed", e);
-        // TODO: report it to stram?
         try {
           umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));
         }
@@ -1175,7 +1171,7 @@ public class StramChild
     failedNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
 
-    OperatorContext operatorContext = new OperatorContext(new Integer(ndi.id), thread, ndi.contextAttributes, containerContext);
+    OperatorContext operatorContext = new OperatorContext(ndi.id, thread, ndi.contextAttributes, containerContext);
     node.setup(operatorContext);
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;

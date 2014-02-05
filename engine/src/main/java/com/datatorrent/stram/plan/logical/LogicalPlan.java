@@ -52,10 +52,11 @@ import com.datatorrent.stram.engine.Node;
  */
 public class LogicalPlan implements Serializable, DAG
 {
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   private static final long serialVersionUID = -2099729915606048704L;
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlan.class);
   // The name under which the application master expects its configuration.
-  public static final String SER_FILE_NAME = "stram-conf.ser";
+  public static final String SER_FILE_NAME = "dt-conf.ser";
 
   /**
    * Constant
@@ -111,7 +112,6 @@ public class LogicalPlan implements Serializable, DAG
 
   public static class OperatorProxy implements Serializable
   {
-    private static final long serialVersionUID = 201305221606L;
     private Operator operator;
 
     public OperatorProxy(Operator operator) {
@@ -132,6 +132,35 @@ public class LogicalPlan implements Serializable, DAG
       operator = Node.retrieveOperator(input);
     }
 
+    @Override
+    public String toString()
+    {
+      return operator.toString();
+    }
+
+    @Override
+    public int hashCode()
+    {
+      return operator.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final OperatorProxy other = (OperatorProxy)obj;
+      if (this.operator != other.operator && (this.operator == null || !this.operator.equals(other.operator))) {
+        return false;
+      }
+      return true;
+    }
+
+    private static final long serialVersionUID = 201305221606L;
   }
 
   public LogicalPlan()
@@ -140,6 +169,7 @@ public class LogicalPlan implements Serializable, DAG
 
   public final class InputPortMeta implements DAG.InputPortMeta, Serializable
   {
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 1L;
     private OperatorMeta operatorMeta;
     private String fieldName;
@@ -195,6 +225,7 @@ public class LogicalPlan implements Serializable, DAG
 
   public final class OutputPortMeta implements DAG.OutputPortMeta, Serializable
   {
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 1L;
     private OperatorMeta operatorMeta;
     private String fieldName;
@@ -331,13 +362,13 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       // determine codec for the stream based on what was set on the ports
-      Class<? extends StreamCodec<?>> codecClass = port.getStreamCodec();
-      if (codecClass != null) {
-        if (this.codecClass != null && !this.codecClass.equals(codecClass)) {
-          String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", codecClass, portMeta, this.codecClass);
+      Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
+      if (lCodecClass != null) {
+        if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
+          String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", lCodecClass, portMeta, this.codecClass);
           throw new IllegalArgumentException(msg);
         }
-        this.codecClass = codecClass;
+        this.codecClass = lCodecClass;
       }
 
       sinks.add(portMeta);
@@ -368,6 +399,46 @@ public class LogicalPlan implements Serializable, DAG
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
               append("id", this.id).
               toString();
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int hash = 7;
+      hash = 31 * hash + (this.locality != null ? this.locality.hashCode() : 0);
+      hash = 31 * hash + (this.sinks != null ? this.sinks.hashCode() : 0);
+      hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
+      hash = 31 * hash + (this.codecClass != null ? this.codecClass.hashCode() : 0);
+      hash = 31 * hash + (this.id != null ? this.id.hashCode() : 0);
+      return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final StreamMeta other = (StreamMeta)obj;
+      if (this.locality != other.locality) {
+        return false;
+      }
+      if (this.sinks != other.sinks && (this.sinks == null || !this.sinks.equals(other.sinks))) {
+        return false;
+      }
+      if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
+        return false;
+      }
+      if (this.codecClass != other.codecClass && (this.codecClass == null || !this.codecClass.equals(other.codecClass))) {
+        return false;
+      }
+      if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
+        return false;
+      }
+      return true;
     }
 
   }
@@ -527,10 +598,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public String toString()
     {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("id", this.name).
-              append("operator", this.getOperator().getClass().getSimpleName()).
-              toString();
+      return "OperatorMeta{" + "name=" + name + ", operatorProxy=" + operatorProxy + ", attributes=" + attributes + '}';
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
@@ -948,18 +1016,22 @@ public class LogicalPlan implements Serializable, DAG
         StreamMeta sm = om.inputStreams.values().iterator().next();
         if (sm.locality == Locality.THREAD_LOCAL) {
           Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
-          if (oioStreamRoot == -1)
+          if (oioStreamRoot == -1) {
             om.oioRoot = sm.source.operatorMeta.hashCode();
-          else
+          }
+          else {
             om.oioRoot = oioStreamRoot;
+          }
           return om.oioRoot;
-        } else {
+        }
+        else {
           om.oioRoot = -1;
           return om.hashCode();
         }
       case 0:
         om.oioRoot = -1;
         return om.hashCode();
+
       default:
         validateThreadLocal(om);
         return om.oioRoot;

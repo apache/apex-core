@@ -19,6 +19,11 @@ import static java.lang.Thread.sleep;
 
 import javax.ws.rs.core.MediaType;
 
+import com.google.common.collect.Lists;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
 import org.junit.BeforeClass;
@@ -27,11 +32,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.junit.Assert.assertEquals;
-
-import com.google.common.collect.Lists;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -52,6 +52,7 @@ import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
+import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
@@ -59,16 +60,16 @@ import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.annotation.ShipContainingJars;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 
+import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.webapp.StramWebServices;
-import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -147,7 +148,7 @@ public class StramMiniClusterTest
 
   private File createTmpPropFile(Properties props) throws IOException
   {
-    File tmpFile = File.createTempFile("stram-junit", ".properties");
+    File tmpFile = File.createTempFile("dt-junit", ".properties");
     tmpFile.deleteOnExit();
     props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
     LOG.info("topology: " + tmpFile);
@@ -181,23 +182,23 @@ public class StramMiniClusterTest
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put("stram.operator.numGen.classname", TestGeneratorInputOperator.class.getName());
-    dagProps.put("stram.operator.numGen.maxTuples", "1");
+    dagProps.put(DAGContext.DT_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
+    dagProps.put(DAGContext.DT_PREFIX + "operator.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
-    //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
-    //props.put("stram.stream.output.inputNode", "module2");
-    //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
+    //props.put(DAGContext.DT_PREFIX + "stream.output.classname", HDFSOutputStream.class.getName());
+    //props.put(DAGContext.DT_PREFIX + "stream.output.inputNode", "module2");
+    //props.put(DAGContext.DT_PREFIX + "stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put("stram.operator.module1.classname", GenericTestOperator.class.getName());
+    dagProps.put(DAGContext.DT_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
 
-    dagProps.put("stram.operator.module2.classname", GenericTestOperator.class.getName());
+    dagProps.put(DAGContext.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
 
-    dagProps.put("stram.stream.fromNumGen.source", "numGen.outputPort");
-    dagProps.put("stram.stream.fromNumGen.sinks", "module1.input1");
+    dagProps.put(DAGContext.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
+    dagProps.put(DAGContext.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
 
-    dagProps.put("stram.stream.n1n2.source", "module1.output1");
-    dagProps.put("stram.stream.n1n2.sinks", "module2.input1");
+    dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.source", "module1.output1");
+    dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
 
     dagProps.setProperty(LogicalPlan.MASTER_MEMORY_MB.name, "128");
     dagProps.setProperty(LogicalPlan.CONTAINER_MEMORY_MB.name, "512");
@@ -240,9 +241,9 @@ public class StramMiniClusterTest
 
     // single container topology of inline input and module
     Properties props = new Properties();
-    props.put("stram.stream.input.classname", TestGeneratorInputOperator.class.getName());
-    props.put("stram.stream.input.outputNode", "module1");
-    props.put("stram.module.module1.classname", GenericTestOperator.class.getName());
+    props.put(DAGContext.DT_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
+    props.put(DAGContext.DT_PREFIX + "stream.input.outputNode", "module1");
+    props.put(DAGContext.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
     File tmpFile = createTmpPropFile(props);
 

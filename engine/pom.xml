@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>0.9.3-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>dt-stram</artifactId>
@@ -111,7 +111,7 @@
           <verbose>true</verbose>
           <prefix>git</prefix>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>target/classes/dt-stram-git.properties</generateGitPropertiesFilename>
+          <generateGitPropertiesFilename>target/classes/dt-git.properties</generateGitPropertiesFilename>
         </configuration>
       </plugin>
     </plugins>
@@ -234,6 +234,12 @@
       <artifactId>javax.mail</artifactId>
       <version>1.5.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>1.8.5</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>
@@ -252,7 +258,7 @@
             ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418
             (required to use this for all modules from parent project)
           -->
-          <missing>target/classes/dt-stram-git.properties</missing>
+          <missing>target/classes/dt-git.properties</missing>
         </file>
       </activation>
       <properties>

@@ -24,7 +24,9 @@ package com.datatorrent.api;
  * when operator is idling. If the operator has no need to do such auxiliary processing, they should not
  * implement this interface. In which case, the engine will put the operator in scaled back processing mode
  * to better utilize CPU. It resumes its normal processing as soon as it detects tuples being received
- * or generated.
+ * or generated. If this interface is implemented, care should be taken to ensure that it will not result
+ * in busy loop because the engine keeps calling handleIdleTime until it does not have tuples which it
+ * can give to the operator.
  *
  * @since 0.3.2
  */
@@ -32,6 +34,8 @@ public interface IdleTimeHandler
 {
   /**
    * Callback for operators to implement if they are interested in using the idle cycles to do auxiliary processing.
+   * If this method detects that it does not have any work to do, it should block the call for a short duration
+   * to prevent busy loop. handleIdleTime is called over and over until operator has tuples to process.
    */
   public void handleIdleTime();
 

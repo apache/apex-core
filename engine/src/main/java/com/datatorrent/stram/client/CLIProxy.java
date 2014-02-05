@@ -23,6 +23,7 @@ public class CLIProxy
   private static final Logger LOG = LoggerFactory.getLogger(CLIProxy.class);
   private String dtHome = null;
 
+  @SuppressWarnings("serial")
   public static class CommandException extends Exception
   {
     public CommandException(String message)
@@ -78,13 +79,16 @@ public class CLIProxy
     this.dtHome = dtHome;
   }
 
-  public JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars) throws Exception
+  public JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars, boolean ignorePom) throws Exception
   {
     StringBuilder sb = new StringBuilder("show-logical-plan ");
     if (!libjars.isEmpty()) {
       sb.append("-libjars ");
       sb.append(StringUtils.join(libjars, ','));
       sb.append(" ");
+    }
+    if (ignorePom) {
+      sb.append("-ignorepom ");
     }
     sb.append(jarUri);
     sb.append(" \"");
@@ -93,7 +97,7 @@ public class CLIProxy
     return issueCommand(sb.toString());
   }
 
-  public JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars) throws Exception
+  public JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars, boolean ignorePom) throws Exception
   {
     StringBuilder sb = new StringBuilder("launch ");
     for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -107,6 +111,9 @@ public class CLIProxy
       sb.append("-libjars ");
       sb.append(StringUtils.join(libjars, ','));
       sb.append(" ");
+    }
+    if (ignorePom) {
+      sb.append("-ignorepom ");
     }
     sb.append(jarUri);
     sb.append(" \"");

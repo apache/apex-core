@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
  * MVCC store for single writer and multiple readers of consistent revisions.
  * All values are managed in arrays and referenced through an index map.
  * Fields can be added, but not removed.
+ *
+ * @since 0.9.3
  */
 public class StatsRevisions implements Serializable
 {

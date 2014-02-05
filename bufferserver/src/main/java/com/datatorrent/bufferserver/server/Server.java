@@ -44,6 +44,7 @@ import com.datatorrent.netlet.Listener.ServerListener;
 public class Server implements ServerListener
 {
   public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
+  public static final int DEFAULT_NUMBER_OF_CACHED_BLOCKS=8;
   private final int port;
   private String identity;
   private Storage storage;
@@ -56,13 +57,14 @@ public class Server implements ServerListener
    */
   public Server(int port)
   {
-    this(port, DEFAULT_BUFFER_SIZE);
+    this(port, DEFAULT_BUFFER_SIZE,DEFAULT_NUMBER_OF_CACHED_BLOCKS);
   }
 
-  public Server(int port, int blocksize)
+  public Server(int port, int blocksize,int numberOfCacheBlocks)
   {
     this.port = port;
     this.blockSize = blocksize;
+    this.numberOfCacheBlocks = numberOfCacheBlocks;
     executor = Executors.newSingleThreadScheduledExecutor(new NameableThreadFactory("ServerHelper"));
   }
 
@@ -134,6 +136,7 @@ public class Server implements ServerListener
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
   private final int blockSize;
+  private final int numberOfCacheBlocks;
 
   public void handlePurgeRequest(PurgeRequestTuple request, final AbstractLengthPrependerClient ctx) throws IOException
   {
@@ -233,7 +236,7 @@ public class Server implements ServerListener
         dl = publisherBuffers.get(upstream_identifier);
       }
       else {
-        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize) : new DataList(upstream_identifier, blockSize);
+        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize,numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize,numberOfCacheBlocks);
         publisherBuffers.put(upstream_identifier, dl);
       }
 
@@ -287,7 +290,7 @@ public class Server implements ServerListener
       }
     }
     else {
-      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize) : new DataList(identifier, blockSize);
+      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize,numberOfCacheBlocks) : new DataList(identifier, blockSize,numberOfCacheBlocks);
       publisherBuffers.put(identifier, dl);
     }
     dl.setSecondaryStorage(storage);

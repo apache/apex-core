@@ -111,14 +111,14 @@ public class StramAgent extends FSAgent
     webServicesInfoMap.put(appid, info);
   }
 
-  private static synchronized StramWebServicesInfo getCachedSebServicesInfo(String appid)
+  private static synchronized StramWebServicesInfo getCachedWebServicesInfo(String appid)
   {
     return webServicesInfoMap.get(appid);
   }
 
   private static synchronized StramWebServicesInfo getWebServicesInfo(String appid)
   {
-    StramWebServicesInfo info = getCachedSebServicesInfo(appid);
+    StramWebServicesInfo info = getCachedWebServicesInfo(appid);
     if ((info == null) || checkSecExpiredToken(appid, info)) {
       info = retrieveWebServicesInfo(appid);
       if (info != null) {
@@ -235,7 +235,7 @@ public class StramAgent extends FSAgent
       return new StramWebServicesInfo(appMasterUrl, version, appPath, secToken);
     }
     catch (Exception ex) {
-      //LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
+      LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
       return null;
     }
   }

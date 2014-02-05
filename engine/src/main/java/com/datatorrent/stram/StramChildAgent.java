@@ -259,6 +259,9 @@ public class StramChildAgent {
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 
     if (pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
+      // TODO: following should be handled in the container at deploy time
+      // for exactly once container should also purge previous checkpoint
+      // whenever new checkpoint is written.
       StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
         String appPath = getInitContext().getValue(LogicalPlan.APPLICATION_PATH);

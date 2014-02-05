@@ -7,21 +7,21 @@
   <!-- sample for defining DAG in Hadoop configuration format -->
 
   <property>
-    <name>stram.gateway.address</name>
+    <name>dt.gateway.address</name>
     <value>hostname:9090</value>
   </property>
 
   <!--  Operator 1 -->
 
   <property>
-    <name>stram.operator.operator1.classname</name>
+    <name>dt.operator.operator1.classname</name>
     <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>The root operator</description>
   </property>
 
   <!-- operator subclass specific property -->
   <property>
-    <name>stram.operator.operator1.myStringProperty</name>
+    <name>dt.operator.operator1.myStringProperty</name>
     <value>myStringPropertyValue</value>
     <description>subclass specific property</description>
   </property>
@@ -29,7 +29,7 @@
   <!-- Operator 2, with stream partitioning policy -->
 
   <property>
-    <name>stram.operator.operator2.classname</name>
+    <name>dt.operator.operator2.classname</name>
     <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
@@ -37,19 +37,19 @@
   <!--  Stream connecting operator1 and operator2 -->
 
   <property>
-    <name>stram.stream.n1n2.source</name>
+    <name>dt.stream.n1n2.source</name>
     <value>operator1.output1</value>
     <description></description>
   </property>
 
   <property>
-    <name>stram.stream.n1n2.sinks</name>
+    <name>dt.stream.n1n2.sinks</name>
     <value>operator2.input1</value>
     <description></description>
   </property>
 
   <property>
-    <name>stram.stream.n1n2.partitionPolicy</name>
+    <name>dt.stream.n1n2.partitionPolicy</name>
     <value>someTargetPolicy</value>
     <description>The partition policy for this stream.</description>
   </property>
@@ -57,7 +57,7 @@
   <!-- Operator 3, receives input from operator 2 -->
 
   <property>
-    <name>stram.operator.operator3.classname</name>
+    <name>dt.operator.operator3.classname</name>
     <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
@@ -65,19 +65,19 @@
   <!-- Operator 4, also receives input from operator 2 -->
 
   <property>
-    <name>stram.operator.operator4.classname</name>
+    <name>dt.operator.operator4.classname</name>
     <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
 
   <property>
-    <name>stram.stream.n2n3.source</name>
+    <name>dt.stream.n2n3.source</name>
     <value>operator2.output1</value>
     <description>Operator 3 receives input from operator 2.</description>
   </property>
 
   <property>
-    <name>stram.stream.n2n3.sinks</name>
+    <name>dt.stream.n2n3.sinks</name>
     <value>operator3.input1,operator4.input1</value>
     <description>operator3 and operator4 receives input from operator 2.</description>
   </property>
@@ -85,18 +85,18 @@
   <!-- Operator 5 -->
 
   <property>
-    <name>stram.operator.operator5.classname</name>
+    <name>dt.operator.operator5.classname</name>
     <value>com.datatorrent.stram.engine.GenericTestOperator</value>
   </property>
 
   <property>
-    <name>stram.stream.n4n5.source</name>
+    <name>dt.stream.n4n5.source</name>
     <value>operator4.output1</value>
     <description>Operator 5 receives input from operator 4.</description>
   </property>
 
   <property>
-    <name>stram.stream.n4n5.sinks</name>
+    <name>dt.stream.n4n5.sinks</name>
     <value>operator5.input1</value>
     <description>Operator 5 receives input from operator 4.</description>
   </property>
@@ -105,7 +105,7 @@
   <!-- Operator 6, single operator w/o links -->
 
   <property>
-    <name>stram.operator.operator6.classname</name>
+    <name>dt.operator.operator6.classname</name>
     <value>com.datatorrent.stram.engine.GenericTestOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>

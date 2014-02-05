@@ -4,29 +4,28 @@
 
   <groupId>com.datatorrent</groupId>
   <artifactId>dt-framework</artifactId>
-  <version>0.9.3-SNAPSHOT</version>
+  <version>1.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>
   <url>http://www.datatorrent.com</url>
 
   <organization>
-    <name>DataTorrent Inc.</name>
+    <name>DataTorrent, Inc.</name>
     <url>http://www.datatorrent.com/</url>
   </organization>
 
   <licenses>
     <license>
-      <name>DataTorrent Inc. 0.9</name>
-      <url>http://www.datatorrent.com/licenses/LICENSE-0.9</url>
+      <name>DataTorrent, Inc.</name>
+      <url>http://www.datatorrent.com/</url>
     </license>
   </licenses>
-  <inceptionYear>2012</inceptionYear>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <netbeans.hint.license>datatorrent-inc</netbeans.hint.license>
     <maven.compiler.optimize>false</maven.compiler.optimize>
-    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.2.0</hadoop.version>
     <github.global.server>github</github.global.server>

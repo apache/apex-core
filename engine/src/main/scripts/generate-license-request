@@ -7,7 +7,7 @@ MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
   #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
-  DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
+  DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -v tests`
   if [ ! -f "$DT_CORE_JAR" ]; then
     echoerr "Error: Cannot find $DT_CORE_JAR";
     exit 1;
@@ -22,7 +22,6 @@ else
 fi
 
 DT_CLASSPATH=$DT_CLASSPATH:`cat $MVN_GENERATED_PATH`
-#echo "$DT_CLASSPATH"
 
 if [ "$DT_CLASSPATH" != "" ]; then
   if test -z "$HADOOP_CLASSPATH"
@@ -39,23 +38,6 @@ fi
 
 export HADOOP_CLIENT_OPTS="$DT_CLIENT_OPTS"
 
-# check for hadoop in the path
-HADOOP_IN_PATH=`which hadoop 2>/dev/null`
-if [ -f ${HADOOP_IN_PATH} ]; then
-  HADOOP_DIR=`dirname "$HADOOP_IN_PATH"`/..
-fi
-# HADOOP_HOME env variable overrides hadoop in the path
-HADOOP_PREFIX=${HADOOP_PREFIX:-${HADOOP_HOME:-$HADOOP_DIR}}
-
-if [ "$HADOOP_PREFIX" = "" ]; then
-  echoerr "Warning: HADOOP_PREFIX is not set, running standalone."
-  export CLASSPATH=$DT_CLASSPATH
-  java $DT_CLIENT_OPTS com.datatorrent.stram.cli.DTCli "$@"
-else
-  # remove hadoop and duplicate slf4j binding (bash replace is too slow)
-#  export HADOOP_CLASSPATH=${HADOOP_CLASSPATH/slf4j-log4j12-1.7.1.jar/slf4j-log4j12-DUPBINDING.jar}
-  export HADOOP_CLASSPATH=$(echo -n $HADOOP_CLASSPATH | tr ":" "\n" | sed "/slf4j-log4j/d" | sed "/org\/apache\/hadoop/d" | tr "\n" ":")
-  #$HADOOP_PREFIX/bin/hadoop classpath
-  $HADOOP_PREFIX/bin/hadoop com.datatorrent.stram.cli.DTCli "$@"
-fi
+export CLASSPATH=$DT_CLASSPATH
+java $DT_CLIENT_OPTS com.datatorrent.stram.license.GenerateLicenseRequest "$@"
 

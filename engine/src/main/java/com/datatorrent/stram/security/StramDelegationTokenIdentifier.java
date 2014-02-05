@@ -15,8 +15,7 @@ import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdenti
  */
 public class StramDelegationTokenIdentifier extends AbstractDelegationTokenIdentifier
 {
-
-  public static final Text IDENTIFIER_KIND = new Text("STRAM_DELEGATION_TOKEN");
+  public static final Text IDENTIFIER_KIND = new Text("DT_DELEGATION_TOKEN");
 
   public StramDelegationTokenIdentifier() {
   }

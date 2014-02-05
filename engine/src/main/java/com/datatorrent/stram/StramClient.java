@@ -9,11 +9,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 
-import org.codehaus.jackson.map.ser.std.RawSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,15 +189,15 @@ public class StramClient
       com.datatorrent.api.StreamCodec.class,
       javax.validation.ConstraintViolationException.class,
       com.ning.http.client.websocket.WebSocketUpgradeHandler.class,
-      Kryo.class,
+      com.esotericsoftware.kryo.Kryo.class,
       org.apache.bval.jsr303.ApacheValidationProvider.class,
       org.apache.bval.BeanValidationContext.class,
       org.apache.commons.lang3.ClassUtils.class,
       net.engio.mbassy.bus.MBassador.class,
-      RawSerializer.class
+      org.codehaus.jackson.annotate.JsonUnwrapped.class,
+      org.codehaus.jackson.map.ser.std.RawSerializer.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
-    jarClasses.addAll(Arrays.asList(defaultClasses));
 
     for (String className : dag.getClassNames()) {
       try {
@@ -216,6 +214,9 @@ public class StramClient
       for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
         //LOG.debug("checking " + c);
         jarClasses.add(c);
+        for (Class<?> ifc : c.getInterfaces()) {
+          jarClasses.add(ifc);
+        }
         // check for annotated dependencies
         try {
           ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
@@ -223,6 +224,9 @@ public class StramClient
             for (Class<?> depClass : shipJars.classes()) {
               jarClasses.add(depClass);
               LOG.info("Including {} as deploy dependency of {}", depClass, c);
+              for (Class<?> ifc : depClass.getInterfaces()) {
+                jarClasses.add(ifc);
+              }
             }
           }
         }
@@ -231,6 +235,8 @@ public class StramClient
         }
       }
     }
+
+    jarClasses.addAll(Arrays.asList(defaultClasses));
 
     if (dag.isDebug()) {
       LOG.info("Deploy dependencies: {}", jarClasses);
@@ -244,7 +250,6 @@ public class StramClient
         // system class
         continue;
       }
-      //LOG.debug("{} {}", jarClass, jarClass.getProtectionDomain().getCodeSource());
       String sourceLocation = jarClass.getProtectionDomain().getCodeSource().getLocation().toString();
       String jar = sourceToJar.get(sourceLocation);
       if (jar == null) {
@@ -380,7 +385,7 @@ public class StramClient
     appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
     appContext.setApplicationType(this.applicationType);
     if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
-      appContext.setMaxAppAttempts(1); // no retries until Stram is HA
+      //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
     } else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
       LOG.debug("Attempts capped at {} ({})", conf.get(YarnConfiguration.RM_AM_MAX_ATTEMPTS), YarnConfiguration.RM_AM_MAX_ATTEMPTS);
     }
@@ -508,7 +513,11 @@ public class StramClient
     // It should be provided out of the box.
     // For now setting all required classpaths including
     // the classpath to "." for the application jar(s)
-    StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+
+    // including ${CLASSPATH} will duplicate the class path in app master, removing it for now
+    //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+
+    StringBuilder classPathEnv = new StringBuilder("./*");
     for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
@@ -530,7 +539,7 @@ public class StramClient
     // default heap size 75% of total memory
     vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
     vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
-    vargs.add("-XX:HeapDumpPath=/tmp/stram-heap-" + appId.getId() + ".bin");
+    vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 

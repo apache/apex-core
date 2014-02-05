@@ -120,6 +120,7 @@ public class PhysicalPlan implements Serializable
   private final LogicalPlan dag;
   private transient final PlanContext ctx;
   private int maxContainers = 1;
+  private int availableMemoryMB = Integer.MAX_VALUE;
   private final LocalityPrefs localityPrefs = new LocalityPrefs();
   private final LocalityPrefs inlinePrefs = new LocalityPrefs();
 
@@ -516,6 +517,12 @@ public class PhysicalPlan implements Serializable
 
     if (newPartitions.isEmpty()) {
       LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
+      return;
+    }
+
+    int requiredMemoryMB = (newPartitions.size() - currentPartitions.size()) * dag.getContainerMemoryMB();
+    if (requiredMemoryMB > availableMemoryMB) {
+      LOG.warn("Insufficient headroom for repartitioning: available {}m required {}m", availableMemoryMB, requiredMemoryMB);
       return;
     }
 
@@ -1211,11 +1218,17 @@ public class PhysicalPlan implements Serializable
     this.logicalToPTOperator = copyMap;
   }
 
+  public void setAvailableResources(int memoryMB)
+  {
+    this.availableMemoryMB = memoryMB;
+  }
+
   public void onStatusUpdate(PTOperator oper)
   {
     for (StatsListener l : oper.statsListeners) {
       StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
+        LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
         // TODO: repartition delay needs to come out of the listener
         oper.loadIndicator = rsp.loadIndicator;
         if (rsp.repartitionRequired) {
@@ -1224,13 +1237,13 @@ public class PhysicalPlan implements Serializable
           if (this.pendingRepartition.putIfAbsent(om, om) != null) {
             LOG.debug("Skipping repartitioning for {} load {}", oper, oper.loadIndicator);
           } else {
-            LOG.debug("Scheduling repartitioning for {} {}", oper, oper.loadIndicator);
+            LOG.debug("Scheduling repartitioning for {} load {}", oper, oper.loadIndicator);
             // hand over to monitor thread
             Runnable r = new Runnable() {
               @Override
               public void run() {
-                pendingRepartition.remove(om);
                 redoPartitions(logicalToPTOperator.get(om));
+                pendingRepartition.remove(om);
               }
             };
             ctx.dispatch(r);
