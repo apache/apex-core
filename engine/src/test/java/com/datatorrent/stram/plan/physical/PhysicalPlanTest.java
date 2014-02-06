@@ -509,8 +509,12 @@ public class PhysicalPlanTest {
   {
     try {
       OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, windowId);
-      Node.storeOperator(stream, oper.logicalNode.getOperator());
-      stream.close();
+      try {
+        Node.storeOperator(stream, oper.logicalNode.getOperator());
+      }
+      finally {
+        stream.close();
+      }
       oper.setRecoveryCheckpoint(3);
     } catch (Exception e) {
       Assert.fail(e.toString());

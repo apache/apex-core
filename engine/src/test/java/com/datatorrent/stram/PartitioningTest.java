@@ -356,8 +356,12 @@ public class PartitioningTest
         p.checkpointWindows.add(10L);
         p.setRecoveryCheckpoint(10L);
         OutputStream stream = new FSStorageAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
-        Node.storeOperator(stream, inputDeployed);
-        stream.close();
+        try {
+          Node.storeOperator(stream, inputDeployed);
+        }
+        finally {
+          stream.close();
+        }
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);

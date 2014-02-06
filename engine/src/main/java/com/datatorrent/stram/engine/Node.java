@@ -373,8 +373,12 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (ba != null) {
       try {
         OutputStream stream = ba.getSaveStream(id, windowId);
-        Node.storeNode(stream, this);
-        stream.close();
+        try {
+          Node.storeNode(stream, this);
+        }
+        finally {
+          stream.close();
+        }
 
         checkpointedWindowId = windowId;
         if (operator instanceof CheckpointListener) {
