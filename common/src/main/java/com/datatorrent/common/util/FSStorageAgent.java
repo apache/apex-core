@@ -84,8 +84,6 @@ public class FSStorageAgent implements StorageAgent
       }
     }
 
-
-
     return mrWindowId;
   }
 
