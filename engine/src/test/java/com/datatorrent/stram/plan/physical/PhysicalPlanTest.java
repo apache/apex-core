@@ -85,6 +85,7 @@ public class PhysicalPlanTest {
         p.getPartitionKeys().put(this.inport1, lpks);
         p.getPartitionKeys().put(this.inportWithCodec, lpks);
         p.getPartitionedInstance().pks = p.getPartitionKeys().values().toString();
+        p.getPartitionedInstance().setName(p.getPartitionKeys().values().toString());
         newPartitions.add(p);
       }
       return newPartitions;
