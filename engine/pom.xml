@@ -130,6 +130,12 @@
       <artifactId>reflectasm</artifactId>
       <version>1.07</version>
       <classifier>shaded</classifier>
+      <exclusions>
+        <exclusion>
+          <groupId>org.ow2.asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.bval</groupId>
