@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.datatorrent.api.DAGContext;
@@ -148,16 +149,8 @@ public class StramClientUtils
 
     public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
     {
-      // Till we figure out a good way to map the string application id to an ApplicationId
-      // Get all the application reports and match them with the application id
-      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
-      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
-      for (ApplicationReport report : applicationsResponse.getApplicationList()) {
-        if (report.getApplicationId().toString().equals(appId)) {
-          return report;
-        }
-      }
-      return null;
+      ApplicationId applicationId = ConverterUtils.toApplicationId(appId);
+      return getApplicationReport(applicationId);
     }
 
     /**
