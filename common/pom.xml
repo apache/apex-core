@@ -5,12 +5,17 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>0.9.3-RC2</version>
+    <version>0.9.3-RC5</version>
   </parent>
 
   <artifactId>dt-common</artifactId>
   <name>Base Library</name>
   <packaging>jar</packaging>
+
+  <properties>
+    <maven.deploy.skip>false</maven.deploy.skip>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.slf4j</groupId>

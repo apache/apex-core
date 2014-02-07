@@ -31,6 +31,7 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
+import org.apache.commons.lang.StringUtils;
 
 /**
  *
@@ -279,12 +280,12 @@ public class StramClientUtils
 
   public static byte[] getLicense(Configuration conf) throws IOException
   {
-    String stramLicenseFile = conf.get(DT_LICENSE_FILE);
-    if (stramLicenseFile == null) {
+    String dtLicenseFile = conf.get(DT_LICENSE_FILE);
+    if (StringUtils.isBlank(dtLicenseFile)) {
       return Util.getDefaultLicense();
     }
     else {
-      return getLicense(stramLicenseFile);
+      return getLicense(dtLicenseFile);
     }
   }
 
