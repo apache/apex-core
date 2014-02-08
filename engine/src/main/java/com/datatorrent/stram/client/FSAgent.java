@@ -25,10 +25,13 @@ public class FSAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(FSAgent.class);
   protected FileSystem fs;
+  protected Configuration conf;
 
   public void setup() throws IOException
   {
-    fs = FileSystem.get(new Configuration());
+    conf = StramClientUtils.addStramResources(new Configuration());
+    System.out.println(conf + "\\\\\\\\\\\\" + conf.get("dt.dfsRootDirectory"));
+    fs = FileSystem.get(conf);
   }
 
   public void createFile(String path, byte[] content) throws IOException
