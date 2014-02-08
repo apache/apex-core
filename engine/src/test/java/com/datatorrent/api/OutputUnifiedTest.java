@@ -7,12 +7,20 @@ package com.datatorrent.api;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import java.util.ArrayList;
-import java.util.List;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+
+import java.net.InetSocketAddress;
+import java.util.List;
 
 /**
  *
@@ -21,9 +29,10 @@ import org.junit.Test;
 public class OutputUnifiedTest
 {
 
-  public static class TestPartitionOperator extends BaseOperator {
+  @Rule
+  public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
-    public static List<Boolean> unifiedStates = new ArrayList<Boolean>();
+  public static class TestPartitionOperator extends BaseOperator {
 
     public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>() {
 
@@ -79,7 +88,6 @@ public class OutputUnifiedTest
       @Override
       public void setup(PortContext context)
       {
-        unifiedStates.add(context.getAttributes().get(PortContext.IS_OUTPUT_UNIFIED));
       }
 
     };
@@ -101,14 +109,12 @@ public class OutputUnifiedTest
 
   public static class TestInputOperator implements InputOperator {
 
-    public static List<Boolean> unifiedStates = new ArrayList<Boolean>();
 
     public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>() {
 
       @Override
       public void setup(PortContext context)
       {
-        unifiedStates.add(context.getAttributes().get(PortContext.IS_OUTPUT_UNIFIED));
       }
 
     };
@@ -144,6 +150,7 @@ public class OutputUnifiedTest
   @Test
   public void testManyToOnePartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
@@ -159,25 +166,22 @@ public class OutputUnifiedTest
     dag.addStream("s1", i1.output, op1.input);
     dag.addStream("s2", op1.output, op2.input);
 
-    TestInputOperator.unifiedStates.clear();
-    TestPartitionOperator.unifiedStates.clear();
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    Assert.assertEquals("Number of containers", 6, containers.size());
 
-    StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.run(4000);
-    lc.shutdown();
+    assignContainers(scm, containers);
 
-    for (boolean unified : TestInputOperator.unifiedStates) {
-      Assert.assertFalse("partition operator output unified", unified);
-    }
-    for (boolean unified : TestPartitionOperator.unifiedStates) {
-      Assert.assertTrue("partition operator output unified", unified);
-    }
+    testOutputAttribute(dag, i1, scm, physicalPlan, false);
+    testOutputAttribute(dag, op1, scm, physicalPlan, true);
 
   }
 
   @Test
   public void testMxNPartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
@@ -195,25 +199,22 @@ public class OutputUnifiedTest
     dag.addStream("s1", i1.output, op1.input);
     dag.addStream("s2", op1.output, op2.input);
 
-    TestInputOperator.unifiedStates.clear();
-    TestPartitionOperator.unifiedStates.clear();
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    Assert.assertEquals("Number of containers", 6, containers.size());
 
-    StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.run(4000);
-    lc.shutdown();
+    assignContainers(scm, containers);
 
-    for (boolean unified : TestInputOperator.unifiedStates) {
-      Assert.assertFalse("partition operator output unified", unified);
-    }
-    for (boolean unified : TestPartitionOperator.unifiedStates) {
-      Assert.assertTrue("partition operator output unified", unified);
-    }
+    testOutputAttribute(dag, i1, scm, physicalPlan, false);
+    testOutputAttribute(dag, op1, scm, physicalPlan, true);
 
   }
 
   @Test
   public void testParallelPartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
@@ -231,20 +232,39 @@ public class OutputUnifiedTest
     dag.addStream("s1", i1.output, op1.input);
     dag.addStream("s2", op1.output, op2.input);
 
-    TestInputOperator.unifiedStates.clear();
-    TestPartitionOperator.unifiedStates.clear();
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    Assert.assertEquals("Number of containers", 6, containers.size());
 
-    StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.run(4000);
-    lc.shutdown();
+    assignContainers(scm, containers);
 
-    for (boolean unified : TestInputOperator.unifiedStates) {
-      Assert.assertFalse("partition operator output unified", unified);
+    testOutputAttribute(dag, i1, scm, physicalPlan, false);
+    testOutputAttribute(dag, op1, scm, physicalPlan, true);
+  }
+
+  private void testOutputAttribute(LogicalPlan dag, Operator operator, StreamingContainerManager scm, PhysicalPlan physicalPlan, boolean result)
+  {
+    List<PTOperator> ptOperators = physicalPlan.getOperators(dag.getMeta(operator));
+    for (PTOperator ptOperator : ptOperators) {
+      PTContainer container = ptOperator.getContainer();
+      StramChildAgent agent = scm.getContainerAgent("container" + container.getId());
+      System.out.println("Opsize " + container.getOperators().size());
+      List<OperatorDeployInfo> deployInfoList = agent.getDeployInfoList(container.getOperators());
+      Assert.assertEquals("Deploy info size", 1, deployInfoList.size());
+      Assert.assertEquals("Is output unified", deployInfoList.get(0).outputs.get(0).getAttributes().get(PortContext.IS_OUTPUT_UNIFIED), result);
     }
-    for (boolean unified : TestPartitionOperator.unifiedStates) {
-      Assert.assertTrue("partition operator output unified", unified);
-    }
+  }
 
+  private void assignContainers(StreamingContainerManager scm, List<PTContainer> containers)
+  {
+    for (PTContainer container : containers) {
+      assignContainer(scm, "container" + container.getId());
+    }
+  }
+
+  private static StramChildAgent assignContainer(StreamingContainerManager scm, String containerId) {
+    return scm.assignContainer(new StreamingContainerManager.ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
 }
