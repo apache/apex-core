@@ -11,6 +11,11 @@
   <artifactId>dt-common</artifactId>
   <name>Base Library</name>
   <packaging>jar</packaging>
+
+  <properties>
+    <maven.deploy.skip>false</maven.deploy.skip>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.slf4j</groupId>
