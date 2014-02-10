@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.datatorrent.api.Context.PortContext;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
@@ -138,7 +139,18 @@ public class StramChildAgent {
         OutputDeployInfo portInfo = new OutputDeployInfo();
         portInfo.declaredStreamId = streamMeta.getName();
         portInfo.portName = out.portName;
-        portInfo.contextAttributes =streamMeta.getSource().getAttributes();
+
+        //portInfo.contextAttributes = streamMeta.getSource().getAttributes();
+        portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
+
+        boolean outputUnified = false;
+        for (PTOperator.PTInput input : out.sinks) {
+          if (input.target.getUnifier() != null) {
+            outputUnified = true;
+            break;
+          }
+        }
+        portInfo.contextAttributes.put(PortContext.IS_OUTPUT_UNIFIED, outputUnified);
 
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           // input attributes of the downstream operator
