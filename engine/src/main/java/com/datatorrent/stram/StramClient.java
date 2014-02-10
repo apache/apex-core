@@ -278,7 +278,7 @@ public class StramClient
     for (String localFile : files) {
       Path src = new Path(localFile);
       String filename = src.getName();
-      Path dst = new Path(StramClientUtils.getAppRootDir(fs, conf), pathSuffix + "/" + filename);
+      Path dst = new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix + "/" + filename);
       if (localFile.startsWith("hdfs:")) {
         LOG.info("Copy {} from HDFS to {}", localFile, dst);
         FileUtil.copy(fs, src, fs, dst, false, true, conf);
@@ -463,12 +463,12 @@ public class StramClient
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
     }
 
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(StramClientUtils.getAppRootDir(fs, conf), pathSuffix).toString());
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix).toString());
 
     // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
       Path log4jSrc = new Path(log4jPropFile);
-      Path log4jDst = new Path(StramClientUtils.getAppRootDir(fs, conf), "log4j.props");
+      Path log4jDst = new Path(StramClientUtils.getDTRootDir(fs, conf), "log4j.props");
       fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
       FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
       LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
@@ -481,7 +481,7 @@ public class StramClient
     }
 
     // push application configuration to dfs location
-    Path cfgDst = new Path(StramClientUtils.getAppRootDir(fs, conf), pathSuffix + "/" + LogicalPlan.SER_FILE_NAME);
+    Path cfgDst = new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix + "/" + LogicalPlan.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(cfgDst, true);
     LogicalPlan.write(this.dag, outStream);
     outStream.close();
