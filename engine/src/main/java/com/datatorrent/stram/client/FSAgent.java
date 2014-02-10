@@ -30,7 +30,6 @@ public class FSAgent
   public void setup() throws IOException
   {
     conf = StramClientUtils.addStramResources(new Configuration());
-    System.out.println(conf + "\\\\\\\\\\\\" + conf.get("dt.dfsRootDirectory"));
     fs = FileSystem.get(conf);
   }
 
@@ -43,6 +42,12 @@ public class FSAgent
   {
     return fs;
   }
+  
+  public Configuration getConf()
+  {
+    return conf;
+  }
+  
 
   public void createFile(Path path, byte[] content) throws IOException
   {

@@ -14,7 +14,6 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 import org.apache.commons.io.FileUtils;
@@ -279,7 +278,7 @@ public class StramClientUtils
   
   public static Path getAppRootDir(FileSystem fs, Configuration conf)
   {
-    return conf.get(DT_APP_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(conf.get(DT_APP_ROOT_DIR));
+    return conf.get(DT_APP_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_APP_ROOT_DIR));
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException

@@ -468,7 +468,7 @@ public class StramClient
     // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
       Path log4jSrc = new Path(log4jPropFile);
-      Path log4jDst = new Path(fs.getHomeDirectory(), "log4j.props");
+      Path log4jDst = new Path(StramClientUtils.getAppRootDir(fs, conf), "log4j.props");
       fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
       FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
       LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
