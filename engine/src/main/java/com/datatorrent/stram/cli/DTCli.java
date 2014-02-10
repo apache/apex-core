@@ -105,8 +105,8 @@ public class DTCli
   private String pagerCommand;
   private Process pagerProcess;
   private int verboseLevel = 0;
-  private Tokenizer tokenizer = new Tokenizer();
-  private Map<String, String> variableMap = new HashMap<String, String>();
+  private final Tokenizer tokenizer = new Tokenizer();
+  private final Map<String, String> variableMap = new HashMap<String, String>();
   private static boolean lastCommandError = false;
 
   private static class FileLineReader extends ConsoleReader
@@ -758,7 +758,7 @@ public class DTCli
       fileName = System.getProperty("user.home") + fileName.substring(1);
     }
     fileName = new File(fileName).getCanonicalPath();
-    LOG.debug("Canonical path: {}", fileName);
+    //LOG.debug("Canonical path: {}", fileName);
     if (expandWildCard) {
       DirectoryScanner scanner = new DirectoryScanner();
       scanner.setIncludes(new String[] {fileName});

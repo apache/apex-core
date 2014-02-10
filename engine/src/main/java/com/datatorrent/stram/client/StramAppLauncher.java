@@ -7,16 +7,11 @@ package com.datatorrent.stram.client;
 import java.io.*;
 import java.lang.reflect.Modifier;
 import java.net.*;
-import java.net.JarURLConnection;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.net.URLConnection;
 import java.util.*;
 import java.util.jar.JarEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -30,7 +25,6 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
-
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
@@ -203,7 +197,7 @@ public class StramAppLauncher
 
   private void init() throws Exception
   {
-
+    this.ignorePom = true;
     if (conf == null) {
       conf = getConfig(null, null);
     }
@@ -275,7 +269,22 @@ public class StramAppLauncher
         }
       }
     }
+
+    String MANIFEST_CP = "Class-Path";
+    String jarClasspath = jar.getManifest().getMainAttributes().getValue(MANIFEST_CP);
     jar.close();
+
+    LinkedHashSet<URL> clUrls = new LinkedHashSet<URL>();
+    URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
+    URLConnection urlConnection = mainJarUrl.openConnection();
+    if (urlConnection instanceof JarURLConnection) {
+      // JDK6 keeps jar file shared and open as long as the process is running.
+      // we want the jar file to be opened on every launch to pick up latest changes
+      // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
+      // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
+      ((JarURLConnection)urlConnection).getJarFile().close();
+    }
+    clUrls.add(mainJarUrl);
 
     if (!ignorePom) {
       File pomFile = new File(baseDir, "pom.xml");
@@ -288,15 +297,31 @@ public class StramAppLauncher
           DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
           dos.writeLong(pomCrc);
           dos.close();
+          // wasn't the path already written to the file?
           FileUtils.writeStringToFile(cpFile, cp, false);
+          String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");
+          for (String path : pathList) {
+            clUrls.add(new URL("file:" + path));
+          }
+        }
+      }
+    } else if (jarClasspath != null) {
+      String jars[] = jarClasspath.split(" ");
+      File repoRoot = new File(System.getProperty("user.home") + "/.m2/repository");
+      if (repoRoot.exists()) {
+        LOG.debug("Resolving manifest entry {} based on {}", MANIFEST_CP, repoRoot);
+        for (String relPath : jars) {
+          File path = new File(repoRoot, relPath);
+          clUrls.add(path.toURI().toURL());
         }
       }
     }
 
-    LinkedHashSet<URL> clUrls = new LinkedHashSet<URL>();
+    clUrls.add(new File(jarFile.getParent(), "*").toURI().toURL());
 
-    // dependencies from parent loader, if classpath can't be found from pom
+    // add the jar dependencies
     if (cp == null) {
+      // dependencies from parent loader, if classpath can't be found from pom
       ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
       if (baseCl instanceof URLClassLoader) {
         URL[] baseUrls = ((URLClassLoader)baseCl).getURLs();
@@ -305,54 +330,9 @@ public class StramAppLauncher
       }
     }
 
-    URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
-    URLConnection urlConnection = mainJarUrl.openConnection();
-    if (urlConnection instanceof JarURLConnection) {
-      // JDK6 keeps jar file shared and open as long as the process is running.
-      // we want the jar file to be opened on every launch to pick up latest changes
-      // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
-      // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
-      ((JarURLConnection)urlConnection).getJarFile().close();
-    }
-
-    clUrls.add(mainJarUrl);
-    // add the jar dependencies
-    if (cp != null) {
-      String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");
-      for (String path : pathList) {
-        clUrls.add(new URL("file:" + path));
-      }
-    }
-
     String libjars = conf.get(LIBJARS_CONF_KEY_NAME);
     if (libjars != null) {
-      for (String libjar : libjars.split(",")) {
-        // if hdfs, copy from hdfs to local
-        URI uri = new URI(libjar);
-        String scheme = uri.getScheme();
-        if (scheme == null) {
-          clUrls.add(new URL("file:" + libjar));
-        }
-        else if (scheme.equals("file")) {
-          clUrls.add(new URL(libjar));
-        }
-        else if (scheme.equals("hdfs")) {
-          if (fs != null) {
-            Path path = new Path(libjar);
-            File dependencyJarsDir = new File(StramClientUtils.getSettingsRootDir(), "dependencyJars");
-            dependencyJarsDir.mkdirs();
-            File localJarFile = new File(dependencyJarsDir, path.getName());
-            fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
-            clUrls.add(new URL("file:" + localJarFile.getAbsolutePath()));
-          }
-          else {
-            throw new NotImplementedException("Jar file needs to be from HDFS also in order for the dependency jars to be in HDFS");
-          }
-        }
-        else {
-          throw new NotImplementedException("Scheme '" + scheme + "' in libjars not supported");
-        }
-      }
+      processLibJars(libjars, clUrls);
     }
 
     for (URL baseURL : clUrls) {
@@ -364,6 +344,37 @@ public class StramAppLauncher
     // we have the classpath dependencies, scan for java configurations
     findAppConfigClasses(classFileNames);
 
+  }
+
+  private void processLibJars(String libjars, Set<URL> clUrls) throws Exception
+  {
+    for (String libjar : libjars.split(",")) {
+      // if hdfs, copy from hdfs to local
+      URI uri = new URI(libjar);
+      String scheme = uri.getScheme();
+      if (scheme == null) {
+        clUrls.add(new URL("file:" + libjar));
+      }
+      else if (scheme.equals("file")) {
+        clUrls.add(new URL(libjar));
+      }
+      else if (scheme.equals("hdfs")) {
+        if (fs != null) {
+          Path path = new Path(libjar);
+          File dependencyJarsDir = new File(StramClientUtils.getSettingsRootDir(), "dependencyJars");
+          dependencyJarsDir.mkdirs();
+          File localJarFile = new File(dependencyJarsDir, path.getName());
+          fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
+          clUrls.add(new URL("file:" + localJarFile.getAbsolutePath()));
+        }
+        else {
+          throw new NotImplementedException("Jar file needs to be from HDFS also in order for the dependency jars to be in HDFS");
+        }
+      }
+      else {
+        throw new NotImplementedException("Scheme '" + scheme + "' in libjars not supported");
+      }
+    }
   }
 
   /**
