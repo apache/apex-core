@@ -2003,6 +2003,7 @@ public class DTCli
           // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
           PrintStream originalStream = System.out;
           ApplicationId appId = null;
+          YarnClient clientRMService = YarnClient.createYarnClient();
           try {
             if (raw) {
               PrintStream dummyStream = new PrintStream(new OutputStream()
@@ -2017,7 +2018,6 @@ public class DTCli
               System.setOut(dummyStream);
             }
             String licenseId = License.getLicenseID(licenseBytes);
-            YarnClient clientRMService = YarnClient.createYarnClient();
             clientRMService.init(conf);
             clientRMService.start();
             ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
@@ -2046,6 +2046,7 @@ public class DTCli
             currentApp = rmClient.getApplicationReport(appId);
           }
           finally {
+            clientRMService.stop();
             if (raw) {
               System.setOut(originalStream);
             }
