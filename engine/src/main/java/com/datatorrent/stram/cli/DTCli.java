@@ -1258,7 +1258,6 @@ public class DTCli
       lastCommandError = true;
     }
     catch (Exception e) {
-      e.printStackTrace();
       System.err.println("Unexpected error: " + e);
       LOG.error("Error processing line: {}", line, e);
       lastCommandError = true;
