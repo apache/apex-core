@@ -14,7 +14,6 @@ import com.google.common.collect.Lists;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
@@ -23,7 +22,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -40,7 +38,7 @@ import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
-
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -91,7 +89,7 @@ public class StramClient
   StramClient(Configuration conf) throws Exception
   {
     // Set up the configuration and RPC
-    this.conf = conf;
+    this.conf = StramClientUtils.addStramResources(conf);
   }
 
   public StramClient(LogicalPlan dag) throws Exception
@@ -280,7 +278,7 @@ public class StramClient
     for (String localFile : files) {
       Path src = new Path(localFile);
       String filename = src.getName();
-      Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + filename);
+      Path dst = new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix + "/" + filename);
       if (localFile.startsWith("hdfs:")) {
         LOG.info("Copy {} from HDFS to {}", localFile, dst);
         FileUtil.copy(fs, src, fs, dst, false, true, conf);
@@ -465,12 +463,12 @@ public class StramClient
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
     }
 
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(fs.getHomeDirectory(), pathSuffix).toString());
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix).toString());
 
     // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
       Path log4jSrc = new Path(log4jPropFile);
-      Path log4jDst = new Path(fs.getHomeDirectory(), "log4j.props");
+      Path log4jDst = new Path(StramClientUtils.getDTRootDir(fs, conf), "log4j.props");
       fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
       FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
       LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
@@ -483,7 +481,7 @@ public class StramClient
     }
 
     // push application configuration to dfs location
-    Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + LogicalPlan.SER_FILE_NAME);
+    Path cfgDst = new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix + "/" + LogicalPlan.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(cfgDst, true);
     LogicalPlan.write(this.dag, outStream);
     outStream.close();

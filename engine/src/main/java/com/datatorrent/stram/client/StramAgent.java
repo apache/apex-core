@@ -166,7 +166,7 @@ public class StramAgent extends FSAgent
 
   public String getDefaultStramRoot()
   {
-    return (defaultStramRoot == null) ? (fs.getHomeDirectory() + "/" + StramClient.DEFAULT_APPNAME) : defaultStramRoot;
+    return (defaultStramRoot == null) ? (StramClientUtils.getDTRootDir(fs, conf) + "/" + StramClient.DEFAULT_APPNAME) : defaultStramRoot;
   }
 
   public String getAppPath(String appId)

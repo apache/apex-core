@@ -10,13 +10,17 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
@@ -31,6 +35,7 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
+
 import org.apache.commons.lang.StringUtils;
 
 /**
@@ -48,6 +53,7 @@ public class StramClientUtils
 {
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
+  public static final String DT_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
   /**
    *
    * TBD<p>
@@ -148,16 +154,8 @@ public class StramClientUtils
 
     public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
     {
-      // Till we figure out a good way to map the string application id to an ApplicationId
-      // Get all the application reports and match them with the application id
-      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
-      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
-      for (ApplicationReport report : applicationsResponse.getApplicationList()) {
-        if (report.getApplicationId().toString().equals(appId)) {
-          return report;
-        }
-      }
-      return null;
+      ApplicationId applicationId = ConverterUtils.toApplicationId(appId);
+      return getApplicationReport(applicationId);
     }
 
     /**
@@ -276,6 +274,12 @@ public class StramClientUtils
       conf.addResource(new Path(cfgResource.toURI()));
     }
     return conf;
+  }
+  
+  
+  public static Path getDTRootDir(FileSystem fs, Configuration conf)
+  {
+    return conf.get(DT_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_ROOT_DIR));
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException

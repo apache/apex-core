@@ -58,7 +58,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
         PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
       }
       catch (Exception ex) {
-        LOG.error("onMessage has problem parsing message {}", message, ex);
+        LOG.warn("onMessage has problem parsing this message \"{}\". Ignoring...", message);
       }
     }
 

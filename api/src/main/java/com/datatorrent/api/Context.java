@@ -81,6 +81,12 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
+    /**
+     * Whether the output is unified.
+     * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
+     */
+    public static final Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
   }
@@ -180,7 +186,7 @@ public interface Context
     /**
      * Return the operator runtime id.
      *
-     * @return String
+     * @return The id
      */
     int getId();
 

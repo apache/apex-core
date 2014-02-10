@@ -4,37 +4,11 @@
  */
 package com.datatorrent.stram.plan;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Test;
-
+import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -45,8 +19,20 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.util.*;
+
+import static org.junit.Assert.*;
 
 public class LogicalPlanConfigurationTest {
 
@@ -198,8 +184,8 @@ public class LogicalPlanConfigurationTest {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "containerMemoryMB", "123"); // backward compatibility mapping
-    props.put(DAGContext.DT_PREFIX + "" + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
+    props.put(DAGContext.DT_PREFIX + "attr." + getSimpleName(DAG.CONTAINER_MEMORY_MB), "123");
+    props.put(DAGContext.DT_PREFIX + "attr." + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
     props.put(DAGContext.DT_PREFIX + "application." + appName + ".attr." + getSimpleName(DAG.APPLICATION_PATH), "/otherdir");
     props.put(DAGContext.DT_PREFIX + "application." + appName + ".attr." + getSimpleName(DAG.STREAMING_WINDOW_SIZE_MILLIS), "1000");
 

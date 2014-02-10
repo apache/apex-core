@@ -80,14 +80,6 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       rf.registerDelegate(StramToNodeRequest.RequestType.STOP_RECORDING, impl);
       rf.registerDelegate(StramToNodeRequest.RequestType.SYNC_RECORDING, impl);
     }
-    if (gatewayAddress != null) {
-      try {
-        wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
-      }
-      catch (Exception ex) {
-        logger.warn("Error initializing websocket", ex);
-      }
-    }
   }
 
   @Override
@@ -145,6 +137,19 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     }
     if (!conflict) {
       logger.debug("Executing start recording request for {}", operatorIdPortNamePair);
+
+      if (gatewayAddress != null && wsClient == null) {
+        synchronized (this) {
+          if (wsClient == null) {
+            try {
+              wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
+            }
+            catch (Exception ex) {
+              logger.warn("Error initializing websocket", ex);
+            }
+          }
+        }
+      }
 
       TupleRecorder tupleRecorder = new TupleRecorder();
       tupleRecorder.setContainerId(containerId);
