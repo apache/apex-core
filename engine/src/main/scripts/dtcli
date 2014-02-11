@@ -35,7 +35,7 @@ else
     exit 1;
   fi
   BASEDIR=$( cd $(dirname $0); cd ..; pwd -P )
-  DT_CLASSPATH=$BASEDIR/deps/engine'/*'
+  DT_CLASSPATH=$BASEDIR/lib'/*'
 fi
 
 #echoerr "$DT_CLASSPATH"
