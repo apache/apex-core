@@ -2219,6 +2219,9 @@ public class DTCli
       try {
         while (++i < args.length) {
           app = getApplication(args[i]);
+          if (app == null) {
+            throw new CliException("Streaming application with id " + args[i] + " is not found.");
+          }
           rmClient.killApplication(app.getApplicationId());
           if (app == currentApp) {
             currentApp = null;
@@ -2234,10 +2237,6 @@ public class DTCli
       catch (NumberFormatException nfe) {
         throw new CliException("Invalid application Id " + args[i], nfe);
       }
-      catch (NullPointerException npe) {
-        throw new CliException("Application with Id " + args[i] + " does not seem to be alive!", npe);
-      }
-
     }
 
   }
