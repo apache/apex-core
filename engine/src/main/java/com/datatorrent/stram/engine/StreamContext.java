@@ -31,8 +31,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
 {
   public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
   public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
-  @SuppressWarnings("rawtypes")
-  public static final Attribute<StreamCodec> CODEC = new Attribute<StreamCodec>(null, null);
+  public static final Attribute<StreamCodec<Object>> CODEC = new Attribute<StreamCodec<Object>>(null, null);
 
   @Override
   public AttributeMap getAttributes()

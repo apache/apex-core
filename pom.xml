@@ -4,7 +4,7 @@
 
   <groupId>com.datatorrent</groupId>
   <artifactId>dt-framework</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>0.9.4-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>
@@ -33,8 +33,6 @@
     <jersey.version>1.9</jersey.version>
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
-    <package.prefix>/opt/dt</package.prefix>
-    <package.groupname>dtorrent</package.groupname>
   </properties>
 
   <dependencies>
@@ -198,6 +196,8 @@
         <distMgmtStagingUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtStagingUrl>
         <distMgmtSnapshotUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories/snapshots/</distMgmtSnapshotUrl>
         <distMgmtReleaseUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories/releases/</distMgmtReleaseUrl>
+        <package.prefix>/opt/dt</package.prefix>
+        <package.groupname>dtorrent</package.groupname>
       </properties>
       <distributionManagement>
         <repository>
