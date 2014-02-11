@@ -317,7 +317,11 @@ public class StramAppLauncher
       }
     }
 
-    clUrls.add(new File(jarFile.getParent(), "*").toURI().toURL());
+    // add all jar files from same directory
+    Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
+    for (File jarFile : jarFiles) {
+      clUrls.add(jarFile.toURI().toURL());
+    }
 
     // add the jar dependencies
     if (cp == null) {
