@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
+import com.datatorrent.common.util.NameableThreadFactory;
 
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
@@ -97,19 +98,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     try {
       AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
       config.setIoThreadMultiplier(ioThreadMultiplier);
-      config.setApplicationThreadPool(Executors.newCachedThreadPool(new ThreadFactory()
-      {
-        private long count = 0;
-
-        @Override
-        public Thread newThread(Runnable r)
-        {
-          Thread t = new Thread(r);
-          t.setName("AsyncHttpClient-" + count++);
-          return t;
-        }
-
-      }));
+      config.setApplicationThreadPool(Executors.newCachedThreadPool(new NameableThreadFactory("AsyncHttpClient")));
       client = new AsyncHttpClient(config);
     }
     catch (Exception ex) {
