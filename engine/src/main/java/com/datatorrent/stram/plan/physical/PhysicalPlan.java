@@ -728,8 +728,12 @@ public class PhysicalPlan implements Serializable
     try {
       LOG.debug("Writing activation checkpoint {} {} {}", windowId, oper, oo);
       OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, windowId);
-      Node.storeOperator(stream, oo);
-      stream.close();
+      try {
+        Node.storeOperator(stream, oo);
+      }
+      finally {
+        stream.close();
+      }
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + oper, e);

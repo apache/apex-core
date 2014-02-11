@@ -296,8 +296,13 @@ public class StreamingContainerManagerTest {
 
     try {
       InputStream stream = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
-      Operator operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
-      stream.close();
+      Operator operator;
+      try {
+        operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
+      }
+      finally {
+        stream.close();
+      }
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
@@ -423,8 +428,12 @@ public class StreamingContainerManagerTest {
     long windowIds[] = {123, 345, 234};
     for (long windowId : windowIds) {
       OutputStream os = sa.getSaveStream(1, windowId);
-      os.write(String.valueOf(windowId).getBytes());
-      os.close();
+      try {
+        os.write(String.valueOf(windowId).getBytes());
+      }
+      finally {
+        os.close();
+      }
     }
     Assert.assertEquals("Most recently saved windowId", windowIds[1], sa.getMostRecentWindowId(1));
   }

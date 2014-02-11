@@ -805,9 +805,16 @@ public class StramChild extends YarnContainerMain
 
       try {
         logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
+        Node<?> node;
+
         InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.checkpointWindowId);
-        Node<?> node = Node.retrieveNode(stream, ndi.type);
-        stream.close();
+        try {
+         node = Node.retrieveNode(stream, ndi.type);
+        }
+        finally {
+          stream.close();
+        }
+        
         node.currentWindowId = ndi.checkpointWindowId;
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           massageUnifierDeployInfo(ndi);
