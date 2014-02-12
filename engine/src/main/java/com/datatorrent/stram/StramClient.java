@@ -58,7 +58,7 @@ public class StramClient
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
-  public static final String DEFAULT_APPNAME = "Stram";
+  public static final String DEFAULT_APPNAME = "DataTorrentStreamingApplication";
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
@@ -212,9 +212,7 @@ public class StramClient
       for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
         //LOG.debug("checking " + c);
         jarClasses.add(c);
-        for (Class<?> ifc : c.getInterfaces()) {
-          jarClasses.add(ifc);
-        }
+        jarClasses.addAll(Arrays.asList(c.getInterfaces()));
         // check for annotated dependencies
         try {
           ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
@@ -222,9 +220,7 @@ public class StramClient
             for (Class<?> depClass : shipJars.classes()) {
               jarClasses.add(depClass);
               LOG.info("Including {} as deploy dependency of {}", depClass, c);
-              for (Class<?> ifc : depClass.getInterfaces()) {
-                jarClasses.add(ifc);
-              }
+              jarClasses.addAll(Arrays.asList(depClass.getInterfaces()));
             }
           }
         }
