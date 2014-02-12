@@ -620,7 +620,7 @@ public class StreamingContainerManager implements PlanContext
   {
     StramChildAgent cs = containers.get(containerId);
     if (cs == null) {
-      throw new AssertionError("Unknown container " + containerId);
+      LOG.warn("Trying to get unknown container " + containerId);
     }
     return cs;
   }
