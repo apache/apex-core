@@ -529,7 +529,14 @@ public class StreamingContainerManager implements PlanContext
   public void removeContainerAgent(String containerId)
   {
     LOG.debug("Removing container agent {}", containerId);
-    containers.remove(containerId);
+    StramChildAgent containerAgent = containers.remove(containerId);
+    if (containerAgent != null) {
+      // record operator stop for this container
+      for (PTOperator oper : containerAgent.container.getOperators()) {
+        StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId);
+        recordEventAsync(ev);
+      }
+    }
   }
 
   public static class ContainerResource

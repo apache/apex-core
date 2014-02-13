@@ -781,18 +781,13 @@ public class StramAppMasterService extends CompositeService
           numCompletedContainers.incrementAndGet();
           LOG.info("Container completed successfully." + ", containerId=" + containerStatus.getContainerId());
         }
-        // record operator stop for this container
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
-        for (PTOperator oper : containerAgent.container.getOperators()) {
-          StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerStatus.getContainerId().toString());
-          ev.setReason("container exited with status " + exitStatus);
-          dnmgr.recordEventAsync(ev);
-        }
-        // record container stop event
-        StramEvent ev = new StramEvent.StopContainerEvent(containerStatus.getContainerId().toString(), containerStatus.getExitStatus());
-        dnmgr.recordEventAsync(ev);
 
-        dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
+        String containerIdStr = containerStatus.getContainerId().toString();
+        dnmgr.removeContainerAgent(containerIdStr);
+
+        // record container stop event
+        StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
+        dnmgr.recordEventAsync(ev);
 
       }
 
