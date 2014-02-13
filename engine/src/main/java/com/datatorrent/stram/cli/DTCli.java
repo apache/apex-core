@@ -7,6 +7,9 @@ import java.io.*;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+import com.datatorrent.stram.license.*;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.FileHistory;
@@ -62,10 +65,6 @@ import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.license.GenerateLicenseRequest;
-import com.datatorrent.stram.license.License;
-import com.datatorrent.stram.license.LicenseSection;
-import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.security.StramUserLogin;
@@ -1706,7 +1705,7 @@ public class DTCli
       try {
         clientRMService.init(conf);
         clientRMService.start();
-        ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+        ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
         if (ar == null) {
           throw new CliException("License not activated: " + licenseId);
         }
@@ -2020,7 +2019,7 @@ public class DTCli
             String licenseId = License.getLicenseID(licenseBytes);
             clientRMService.init(conf);
             clientRMService.start();
-            ApplicationReport ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+            ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
             if (ar == null) {
               try {
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
@@ -2028,7 +2027,7 @@ public class DTCli
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
                 do {
                   Thread.sleep(1000);
-                  ar = LicensingAgentClient.getLicensingAgentAppReport(licenseId, clientRMService);
+                  ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
                   if (ar == null && !raw) {
                     System.out.println("Waiting for license agent to start...");
                   }
