@@ -2,22 +2,36 @@
 
 ## Version 0.9.3
 
-## Sub-task
-* [SPOI-1451] - Show critical path
-* [SPOI-1682] - Too many mbassy threads!!!
-* [SPOI-1721] - Augment the Partitionable interface to inform of all the partitions which actually were deployed
-* [SPOI-1729] - Recalculate operator recovery checkpoints in AM recovery 
-* [SPOI-1733] - Container heartbeat RPC failover
+## New Feature
+* [SPOI-261] - Design a general purpose read from stream and write to cassandra
+* [SPOI-400] - Each streaming application should license check
+* [SPOI-1622] - Input operator - XML parser
+* [SPOI-1647] - LogStream UI 
+* [SPOI-1770] - Gateway should expose list of available topics
+* [SPOI-1778] - Open readme on sandbox startup
+* [SPOI-1804] - Start license app on launch app if not running
+* [SPOI-1805] - command to show license file info in cli
+* [SPOI-1812] - Create REST call for specific license agent, given a license id
+* [SPOI-1823] - Gateway REST API - Get Running Applications List
+* [SPOI-1829] - Semantic URLs for Web Apps
 
+## Improvement
+* [SPOI-1202] - Provide a way to check whether an operator is partitioned
+* [SPOI-1783] - Add allocatedMB to main application list
+* [SPOI-1789] - Change frequency of heartbeats to license app
+* [SPOI-1795] - License file to clearly state hard enforcement or soft enforcement
+* [SPOI-1816] - support simple variable substitution in the cli
+* [SPOI-1835] - support gateway status command
+
+## Story
+* [SPOI-1320] - Support MQTT protocol
+* [SPOI-1542] - Input operator - Directory Scan
 
 ## Bug
-* [SPOI-1404] - Create seperate environment for node0 for demos
-* [SPOI-1636] - Update all node1 demo to 0.9.3 release
 * [SPOI-1696] - Make de-duper dynamically partitionable
 * [SPOI-1704] - Stram enforcement to lock physical plan changes when license memory limit is reached
 * [SPOI-1706] - Design a enforcement format for the license policy
 * [SPOI-1711] - Encryption/obfuscation of communication between stram and license agent
-* [SPOI-1775] - MROperator demo applications fail when launched from Sandbox
 * [SPOI-1779] - Update sandbox documentation terminology
 * [SPOI-1802] - Provide total license memory via stram web services
 * [SPOI-1807] - Unknown outage on Machine data demo
@@ -27,95 +41,28 @@
 * [SPOI-1815] - Make stram memory reporting to license manager asynchronous 
 * [SPOI-1818] - Chance "className" in license file to id
 * [SPOI-1820] - dtcli script doesn't exit when maven command fails
-
-
-## Improvement
-* [SPOI-802] - Black list container nodes
-* [SPOI-1202] - Provide a way to check whether an operator is partitioned
-* [SPOI-1311] - Review platform documentation
-* [SPOI-1566] - Certification - future directions
-* [SPOI-1783] - Add allocatedMB to main application list
-* [SPOI-1789] - Change frequency of heartbeats to license app
-* [SPOI-1795] - License file to clearly state hard enforcement or soft enforcement
-* [SPOI-1816] - support simple variable substitution in the cli
-
-## New Feature
-* [SPOI-261] - Design a general purpose read from stream and write to cassandra
-* [SPOI-393] - High Availability for STRAM
-* [SPOI-400] - Each streaming application should license check
-* [SPOI-406] - Document and test download to work with Hortonworks HDP 2.0
-* [SPOI-1171] - DAG Visualization - Physical and Execution View
-* [SPOI-1182] - Add Key-based filter functionality to malhar library for Min, Max, SimpleMovingAverage, StandardDeviation like operators
-* [SPOI-1301] - UI design for STRAM logs (as a widget)
-* [SPOI-1416] - Implement event filter for spend/overspend
-* [SPOI-1463] - Auto-scale Ingestion
-* [SPOI-1622] - Input operator - XML parser
-* [SPOI-1624] - Support NetFlow protocol
-* [SPOI-1625] - Support for sFlow protocol
-* [SPOI-1626] - CDR Processing (master JIRA)
-* [SPOI-1627] - Counter Generator
-* [SPOI-1628] - Baseliner (Machine Learning) 
-* [SPOI-1629] - Threshold Monitoring (parent JIRA)
-* [SPOI-1647] - LogStream UI 
-* [SPOI-1649] - Logstream - Let users specify dimension combination and aggregation keys on the fly
-* [SPOI-1650] - Logstream - Produce a real-time map of where your users are geographically coming from
-* [SPOI-1651] - Logstream - Show Capacity planning: Take per-user-resource generated in 10 and project based on user growth what that would be required based on growth trends.
-* [SPOI-1652] - Logstream - Show Capacity insight: How much (memory, cpu, disk) are my systems using for given amount of traffic? Generate real-time per-user numbers for each system resource. Ex: 1user = 10MB RAM, .05 CPU, 1MB disk.
-* [SPOI-1653] - Logstream - Show average and standard deviation of CPU / memory / IO / page response time (for showing how well load is balanced)
-* [SPOI-1654] - Logstream - aggregate top hits and bytes for URL, geo DMA, IP, URL/status code, url
-* [SPOI-1655] - Logstream - alerts when per user resources are higher than normal values from historical data
-* [SPOI-1656] - Logstream - aggregate hits per second doesn't match the CPU / memory according to historical ratio
-* [SPOI-1657] - Logstream - aggregate bytes per second doesn't match the network IO according to historical ratio
-* [SPOI-1658] - Logstream - aggregate hits per second is outside of reasonable fluctuation from normal values of this time of the day/week/month
-* [SPOI-1659] - Logstream - Aggregate mysql slow log tables in FROM clause and columns in WHERE clause.
-* [SPOI-1660] - Logstream - Aggregate mysql slow log events per second outside of reasonable range. send alert for possible query optimization
-* [SPOI-1661] - Logstream - Aggregate individual CPU / memory / IO / disk space outside of reasonable range. send alert for possible machine failure
-* [SPOI-1662] - Logstream - Aggregate CPU / memory / IO / page response time outside of reasonable range. send alert for adding / removing resources
-* [SPOI-1663] - Logstream - Aggregate URL/status code (in 400s and 500s) hits outside of reasonable range. send alert for fixing those URLs
-* [SPOI-1664] - Logstream - Aggregate individual bytes per second for particular machine outside of reasonable range. send alert for possible machine failure
-* [SPOI-1665] - Logstream - Aggregate bytes per second outside of reasonable range. send alert for possible ddos attack or network problem
-* [SPOI-1770] - Gateway should expose list of available topics
-* [SPOI-1778] - Open readme on sandbox startup
-* [SPOI-1804] - Start license app on launch app if not running
-* [SPOI-1805] - command to show license file info in cli
-* [SPOI-1812] - Create REST call for specific license agent, given a license id
-* [SPOI-1823] - Gateway REST API - Get Running Applications List
-
-## Story
-* [SPOI-1320] - Support MQTT protocol
-* [SPOI-1418] - Collaborate with Apple iAd group reg: POC
-* [SPOI-1542] - Input operator - Directory Scan
-* [SPOI-1608] - Platform Benchmarking (Platform1 and Platform2)
+* [SPOI-1826] - Update documentation title
+* [SPOI-1827] - Install script errors
+* [SPOI-1831] - CLI warning about trouble with license manager
+* [SPOI-1833] - Use encrypted byte arrays for RPC wire protocol for licensing
+* [SPOI-1840] - Change default license memory limit to 25GB
+* [SPOI-1841] - Make stram memory enforcement tolerances property settings for the enforcer
+* [SPOI-1842] - Investigate the possibility of engine obfuscation jar not containing any references to license package path
+* [SPOI-1880] - GET nonexistent container returns 500 error
 
 ## Task
-* [SPOI-212] - Security: Handle token expiration and renewal for long running yarn app
-* [SPOI-722] - Document ads demo (add comments to codebase)
-* [SPOI-1206] - Review Licensing of Third Party Libraries
-* [SPOI-1291] - Create benchmark in DataTorrent and compare results
 * [SPOI-1375] - All sandbox apps must work in 8G VM. Need to test each
-* [SPOI-1390] - Add bufferserver stats to ContainerView
-* [SPOI-1403] - HDFS Operator Benchmark
 * [SPOI-1467] - DB lookup for Cassandra
 * [SPOI-1507] - datatorrent.com webapp development - pilot test of Angular and WP integration
 * [SPOI-1509] - datatorrent.com webapp development - db design
 * [SPOI-1511] - datatorrent.com webapp development - app design
 * [SPOI-1512] - datatorrent.com webapp development - app dev
-* [SPOI-1513] - datatorrent.com webapp development - app testing
-* [SPOI-1514] - datatorrent.com webapp development - front testing
 * [SPOI-1515] - datatorrent.com webapp deveopment - integrate standalone app with cms
 * [SPOI-1516] - datatorrent.com webapp development - add GA info during registration
 * [SPOI-1517] - datatorrent.com webapp development - background jobs
-* [SPOI-1520] - Run logstream on the cluster
-* [SPOI-1610] - Develop benchmarking app for AdsDimension App (exactly once semantics) - Platform1
-* [SPOI-1612] - Benchmarking Ads Dimension demo app on Morado cluster (exactly once semantics) - Platform1
 * [SPOI-1617] - Benchmarking Performance app with Platform2
-* [SPOI-1618] - Benchmarking Machine Data app with Platform1
-* [SPOI-1619] - Benchmarking Machine Data app with Platform2
 * [SPOI-1641] - Benchmarking Ads Dimension App - Platform2
-* [SPOI-1642] - Certify support for node failure
-* [SPOI-1666] - Unit test coverage for node local attribute and stream affinity
 * [SPOI-1715] - Show remainingLicensedMB and allocatedMB in UI for each application
-* [SPOI-1745] - Document Demo Application Setup
 * [SPOI-1763] - Provide support for Accumulo NoSQL db
 * [SPOI-1780] - Sandbox - activate license automatically
 * [SPOI-1781] - Sandbox - increase memory to 8GB
@@ -123,68 +70,84 @@
 * [SPOI-1787] - Add license instructions to README
 * [SPOI-1790] - Ensure update to license app on any resource change by StrAM
 * [SPOI-1791] - Hard enforcement for free license (6GB), and eval license
-* [SPOI-1792] - RM domains in License file
 * [SPOI-1793] - Hide sub-license and make license object behave as “what is license data right now?”
-* [SPOI-1794] - Create license info as a string 
 * [SPOI-1798] - Date format change in license file
 * [SPOI-1799] - Change name "Sublicense" to "Section" or "LicenseSection"
 * [SPOI-1800] - Webservice specs for Gateway for license info
+* [SPOI-1825] - Update end user documentation
+* [SPOI-1832] - Support CDH default log4j setup
 
+## Sub-task
+* [SPOI-1451] - Show critical path
+* [SPOI-1721] - Augment the Partitionable interface to inform of all the partitions which actually were deployed
+* [SPOI-1733] - Container heartbeat RPC failover
 
 
 ## Malhar - Version 0.9.3
 
-## Bug
-* [MLHR-4] - Use new livechart module for OpChart Widget
-* [MLHR-13] - Console status column display
-* [MLHR-648] - Update Issues section in README files 
-* [MLHR-650] - Changing metrics on logical dag fails
-* [MLHR-654] - Some widgets' height changes when changing width
-* [MLHR-667] - Add UI version to console
-* [MLHR-670] - Memory leak in console
-* [MLHR-677] - Widgets Data Models
-* [MLHR-680] - Update license information dialog for new REST call info
+** New Feature
+    * [MLHR-5] - UI component for license information
+    * [MLHR-6] - Google Line Chart Widget
+    * [MLHR-7] - Gauge Widget
+    * [MLHR-8] - Top N Widget
+    * [MLHR-9] - Compile Widget from HTML Template
+    * [MLHR-10] - Make widgets resizable and renameable in ui-builder
+    * [MLHR-11] - Dashboard Component Grunt Tasks
+    * [MLHR-653] - Dynamically Connect Widgets to WebSocket Topics
+    * [MLHR-655] - Create serializing mechanism for instantiated widgets and dashboard(s)
+    * [MLHR-656] - Add/Compile Widgets from templateUrl
+    * [MLHR-664] - Support MQTT protocol
+    * [MLHR-668] - Set up widget configure dialog
+    * [MLHR-669] - Visual Data Demo App
+    * [MLHR-671] - Add allocatedMB column in main application list
+    * [MLHR-673] - Dashboard App - Notification Service
+    * [MLHR-674] - Explicit Saving/Loading of Dash configurations in ui builder
+    * [MLHR-687] - Dashboard App - Filter WebSocket Topics
+    * [MLHR-689] - Dashboard App - Widget Options Modal
+    * [MLHR-690] - Dashboard App - Widgets Schema
+    * [MLHR-691] - WebSocket Topics Debugger Widget
+    * [MLHR-692] - JSON Widget
+    * [MLHR-693] - Progressbar Widget
+    * [MLHR-695] - Pie Chart Widget
+    * [MLHR-696] - Dashboard App - Development/Production Scripts
+    * [MLHR-697] - Dashboard App - Node.js Configuration
+    * [MLHR-698] - Dashboard App - WebSocket/REST API Configuration
+
+** Improvement
+    * [MLHR-686] - Deglobalize the visibly component
+
+** Bug
+    * [MLHR-4] - Use new livechart module for OpChart Widget
+    * [MLHR-13] - Console status column display
+    * [MLHR-648] - Update Issues section in README files 
+    * [MLHR-650] - Changing metrics on logical dag fails
+    * [MLHR-654] - Some widgets' height changes when changing width
+    * [MLHR-667] - Add UI version to console
+    * [MLHR-670] - Memory leak in console
+    * [MLHR-677] - Widgets Data Models
+    * [MLHR-680] - Update license information dialog for new REST call info
+    * [MLHR-725] - WindowId Formatter
+    * [MLHR-739] - Stream Locality Toggle fails for DAG view
+
+** Story
+    * [MLHR-1] - Reusable Dashboard Component with AngularJS
+    * [MLHR-2] - Dashboard Widgets
+    * [MLHR-3] - Dashboard App
+
+** Task
+    * [MLHR-321] - Directory Scan operator
+    * [MLHR-452] - Create a De-duplication operator
+    * [MLHR-603] - Supports upload of dependency jars
+    * [MLHR-638] - Test streaming application for dynamic partition
+    * [MLHR-645] - More fields in drop down in logicalDAG widget
+    * [MLHR-646] - Document issue tracking location in README
+    * [MLHR-652] - Parallel Simple Linear Regression
+    * [MLHR-657] - Migrate memcache adapters to use the new database adapter interface
+    * [MLHR-662] - Migrate Redis adapters to use the new database adapter interface
+    * [MLHR-663] - Design new DB adapters interface
+    * [MLHR-666] - DB lookup for Cassandra
 
 
-## Improvement
-* [MLHR-686] - Deglobalize the visibly component
-
-## New Feature
-* [MLHR-5] - UI component for license information
-* [MLHR-6] - Google Line Chart Widget
-* [MLHR-7] - Gauge Widget
-* [MLHR-8] - Top N Widget
-* [MLHR-9] - Compile Widget from HTML Template
-* [MLHR-10] - Make widgets resizable and renameable in ui-builder
-* [MLHR-11] - Dashboard Component Grunt Tasks
-* [MLHR-653] - Dynamically Connect Widgets to WebSocket Topics
-* [MLHR-655] - Create serializing mechanism for instantiated widgets and dashboard(s)
-* [MLHR-656] - Add/Compile Widgets from templateUrl
-* [MLHR-664] - Support MQTT protocol
-* [MLHR-668] - Set up widget configure dialog
-* [MLHR-669] - Visual Data Demo App
-* [MLHR-671] - Add allocatedMB column in main application list
-* [MLHR-673] - Dashboard App - Notification Service
-* [MLHR-674] - Explicit Saving/Loading of Dash configurations in ui builder
-
-## Story
-* [MLHR-1] - Reusable Dashboard Component with AngularJS
-* [MLHR-2] - Dashboard Widgets
-* [MLHR-3] - Dashboard App
-
-## Task
-* [MLHR-15] - Propose scalable and partionable design for  Threshold operator
-* [MLHR-321] - Directory Scan operator
-* [MLHR-603] - Supports upload of dependency jars
-* [MLHR-638] - Test streaming application for dynamic partition
-* [MLHR-646] - Document issue tracking location in README
-* [MLHR-652] - Parallel Simple Linear Regression
-* [MLHR-657] - Migrate memcache adapters to use the new database adapter interface
-* [MLHR-662] - Migrate Redis adapters to use the new database adapter interface
-* [MLHR-663] - Design new DB adapters interface
-* [MLHR-666] - DB lookup for Cassandra
-* [MLHR-675] - Provide support for Accumulo NoSQL db
-* [MLHR-678] - Time Series Forecasting with Least Squares Method
 
 ## Version 0.9.2
 
