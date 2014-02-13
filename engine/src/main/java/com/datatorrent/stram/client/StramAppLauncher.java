@@ -197,7 +197,6 @@ public class StramAppLauncher
 
   private void init() throws Exception
   {
-    this.ignorePom = true;
     if (conf == null) {
       conf = getConfig(null, null);
     }
@@ -244,8 +243,15 @@ public class StramAppLauncher
     FileUtils.deleteDirectory(baseDir);
 
     java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
-    List<String> classFileNames = new ArrayList<String>();
+    String MANIFEST_CP = "Class-Path";
+    String jarClasspath = jar.getManifest().getMainAttributes().getValue(MANIFEST_CP);
 
+    if (jarClasspath != null) {
+      LOG.debug("Using manifest entry {} to resolve dependencies", MANIFEST_CP);
+      ignorePom = true;
+    }
+
+    List<String> classFileNames = new ArrayList<String>();
     java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
     while (entriesEnum.hasMoreElements()) {
       java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
@@ -270,8 +276,6 @@ public class StramAppLauncher
       }
     }
 
-    String MANIFEST_CP = "Class-Path";
-    String jarClasspath = jar.getManifest().getMainAttributes().getValue(MANIFEST_CP);
     jar.close();
 
     LinkedHashSet<URL> clUrls = new LinkedHashSet<URL>();
@@ -314,6 +318,8 @@ public class StramAppLauncher
           File path = new File(repoRoot, relPath);
           clUrls.add(path.toURI().toURL());
         }
+      } else {
+        LOG.debug("Ignoring manifest entry {} because {} does not exist.", MANIFEST_CP, repoRoot);
       }
     }
 

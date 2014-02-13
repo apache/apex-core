@@ -341,31 +341,46 @@ public class StramAppMasterService extends CompositeService
     @Override
     public String getLicenseId()
     {
-      return StramAppMasterService.this.licenseClient.getLicenseId();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getLicenseId();
+      }
+      return "";
     }
 
     @Override
     public long getRemainingLicensedMB()
     {
-      return StramAppMasterService.this.licenseClient.getRemainingLicensedMB();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getRemainingLicensedMB();
+      }
+      return 0;
     }
 
     @Override
     public long getTotalLicensedMB()
     {
-      return StramAppMasterService.this.licenseClient.getTotalLicensedMB();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getTotalLicensedMB();
+      }
+      return 0;
     }
 
     @Override
     public long getAllocatedMB()
     {
-      return StramAppMasterService.this.licenseClient.getAllocatedMB();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getAllocatedMB();
+      }
+      return 0;
     }
 
     @Override
     public long getLicenseInfoLastUpdate()
     {
-      return StramAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
+      }
+      return 0;
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
@@ -697,7 +712,7 @@ public class StramAppMasterService extends CompositeService
         }
 
         if (alreadyAllocated) {
-          LOG.debug("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
+          LOG.info("Releasing {} as resource with priority {} was already assigned to {}", allocatedContainer.getId(), allocatedContainer.getPriority(), csr.container.toIdStateString());
           releasedContainers.add(allocatedContainer.getId());
           continue;
         }
@@ -757,6 +772,7 @@ public class StramAppMasterService extends CompositeService
             LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
           } else {
             // Recoverable failure or process killed (externally or via stop request by AM)
+            // also occurs when a container was released by the application but never assigned/launched
             LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
             dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
           }

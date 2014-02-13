@@ -501,9 +501,9 @@ public class StreamingContainerManager implements PlanContext
    */
   public void scheduleContainerRestart(String containerId)
   {
-
-    StramChildAgent cs = getContainerAgent(containerId);
-    if (cs.shutdownRequested == true) {
+    StramChildAgent cs = this.getContainerAgent(containerId);
+    if (cs == null || cs.shutdownRequested == true) {
+      // the container is no longer used / was released by us
       return;
     }
 
@@ -593,7 +593,7 @@ public class StreamingContainerManager implements PlanContext
     pendingAllocation.remove(container);
     container.setState(PTContainer.State.ALLOCATED);
     if (container.getExternalId() != null) {
-      LOG.info("Replacing container agent {}", container.getExternalId());
+      LOG.info("Removing container agent {}", container.getExternalId());
       this.containers.remove(container.getExternalId());
     }
     container.setExternalId(resource.containerId);
@@ -605,6 +605,7 @@ public class StreamingContainerManager implements PlanContext
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
     containers.put(resource.containerId, sca);
+    LOG.debug("Assigned container {} priority {}", resource.containerId, resource.priority);
     return sca;
   }
 
@@ -620,7 +621,7 @@ public class StreamingContainerManager implements PlanContext
   {
     StramChildAgent cs = containers.get(containerId);
     if (cs == null) {
-      throw new AssertionError("Unknown container " + containerId);
+      LOG.warn("Trying to get unknown container " + containerId);
     }
     return cs;
   }
