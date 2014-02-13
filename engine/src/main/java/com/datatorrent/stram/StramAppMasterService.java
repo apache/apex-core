@@ -341,31 +341,46 @@ public class StramAppMasterService extends CompositeService
     @Override
     public String getLicenseId()
     {
-      return StramAppMasterService.this.licenseClient.getLicenseId();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getLicenseId();
+      }
+      return "";
     }
 
     @Override
     public long getRemainingLicensedMB()
     {
-      return StramAppMasterService.this.licenseClient.getRemainingLicensedMB();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getRemainingLicensedMB();
+      }
+      return 0;
     }
 
     @Override
     public long getTotalLicensedMB()
     {
-      return StramAppMasterService.this.licenseClient.getTotalLicensedMB();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getTotalLicensedMB();
+      }
+      return 0;
     }
 
     @Override
     public long getAllocatedMB()
     {
-      return StramAppMasterService.this.licenseClient.getAllocatedMB();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getAllocatedMB();
+      }
+      return 0;
     }
 
     @Override
     public long getLicenseInfoLastUpdate()
     {
-      return StramAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
+      if (StramAppMasterService.this.licenseClient != null) {
+        return StramAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
+      }
+      return 0;
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
