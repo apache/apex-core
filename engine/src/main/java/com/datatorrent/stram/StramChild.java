@@ -67,9 +67,10 @@ public class StramChild extends YarnContainerMain
 {
   public static final int PORT_QUEUE_CAPACITY = 1024;
   public static final String ENV_APP_PATH = "DT_APP_PATH";
+  private final transient String jvmName;
   private final String containerId;
   private final Configuration conf;
-  private final StreamingContainerUmbilicalProtocol umbilical;
+  private final transient StreamingContainerUmbilicalProtocol umbilical;
   protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
@@ -115,6 +116,7 @@ public class StramChild extends YarnContainerMain
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
+    this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
     this.components = new HashSet<Component<ContainerContext>>();
     this.eventBus = new MBassador<ContainerEvent>(BusConfiguration.Default(1, 1, 1));
     this.singletons = new HashMap<String, Object>();
@@ -147,7 +149,7 @@ public class StramChild extends YarnContainerMain
       if (ctx.deployBufferServer) {
         eventloop.start();
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, 64 * 1024 * 1024,8);
+        bufferServer = new Server(0, 64 * 1024 * 1024, 8);
         bufferServer.setSpoolStorage(new DiskStorage());
         SocketAddress bindAddr = bufferServer.run(eventloop);
         logger.debug("Buffer server started: {}", bindAddr);
@@ -380,7 +382,7 @@ public class StramChild extends YarnContainerMain
           if (sourcePair == pair) {
             /* for some reason we had the stream stored against both source and sink identifiers */
             streams.remove(pair.context.getSourceId());
-            }
+          }
           else {
             /* the stream was one of the many streams sourced by a muxstream */
             unregisterSinkFromMux(sourcePair, sinkIdentifier);
@@ -439,6 +441,7 @@ public class StramChild extends YarnContainerMain
 
     return found;
   }
+
   private void disconnectWindowGenerator(int nodeid, Node<?> node)
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
@@ -568,7 +571,7 @@ public class StramChild extends YarnContainerMain
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
 
-      msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+      msg.jvmName = jvmName;
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
         msg.bufferServerPort = this.bufferServerAddress.getPort();
@@ -621,13 +624,14 @@ public class StramChild extends YarnContainerMain
             try {
               this.heartbeatTrigger.wait(500);
             }
-            catch (InterruptedException e1) {
-              logger.warn("Interrupted in heartbeat loop, exiting..");
+            catch (InterruptedException ie) {
+              logger.warn("Interrupted in heartbeat loop", ie);
               break;
             }
           }
         }
-      } while (rsp.hasPendingRequests);
+      }
+      while (rsp.hasPendingRequests);
 
     }
     logger.debug("Exiting hearbeat loop");
@@ -638,8 +642,8 @@ public class StramChild extends YarnContainerMain
 
   private void processNodeRequests(boolean flagInvalid)
   {
-    for (StramToNodeRequest req: nodeRequests) {
-      if(req.isDeleted()){
+    for (StramToNodeRequest req : nodeRequests) {
+      if (req.isDeleted()) {
         continue;
       }
       OperatorContext oc = activeNodes.get(req.getOperatorId());
@@ -809,12 +813,12 @@ public class StramChild extends YarnContainerMain
 
         InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.checkpointWindowId);
         try {
-         node = Node.retrieveNode(stream, ndi.type);
+          node = Node.retrieveNode(stream, ndi.type);
         }
         finally {
           stream.close();
         }
-        
+
         node.currentWindowId = ndi.checkpointWindowId;
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           massageUnifierDeployInfo(ndi);
@@ -1373,7 +1377,7 @@ public class StramChild extends YarnContainerMain
   {
     long finishedWindowId;
     if (ndi.contextAttributes != null
-            && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
+        && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
       /* this is really not a valid window Id, but it works since the valid window id will be numerically bigger */
       long currentMillis = System.currentTimeMillis();
       long diff = currentMillis - firstWindowMillis;
