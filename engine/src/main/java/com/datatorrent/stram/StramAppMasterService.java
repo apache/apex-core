@@ -712,7 +712,7 @@ public class StramAppMasterService extends CompositeService
         }
 
         if (alreadyAllocated) {
-          LOG.info("Releasing {} as resource with priority {} was already assigned to {}", allocatedContainer.getId(), allocatedContainer.getPriority(), csr.container.toIdStateString());
+          LOG.info("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
           releasedContainers.add(allocatedContainer.getId());
           continue;
         }
