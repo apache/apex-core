@@ -590,12 +590,6 @@ public class StramAppMasterService extends CompositeService
     // The allocate calls to the RM count as heartbeat so, for now, this additional heartbeat emitter
     // is not required.
 
-    // Setup ask for containers from RM
-    // Send request for containers to RM
-    // Until we get our fully allocated quota, we keep on polling RM for containers
-    // Keep looping until all containers finished processing
-    // ( regardless of success/failure).
-
     int loopCounter = -1;
     List<ContainerId> releasedContainers = new ArrayList<ContainerId>();
     int numTotalContainers = 0;
@@ -620,6 +614,7 @@ public class StramAppMasterService extends CompositeService
     // check for previously allocated containers
     // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
     checkContainerStatus();
+    FinalApplicationStatus finalStatus = FinalApplicationStatus.SUCCEEDED;
     int availableLicensedMemory = (licenseClient != null) ? 0 : Integer.MAX_VALUE;
 
     while (!appDone) {
@@ -712,22 +707,16 @@ public class StramAppMasterService extends CompositeService
         }
 
         if (alreadyAllocated) {
-          LOG.info("Releasing {} as resource with priority {} was already assigned to {}", allocatedContainer.getId(), allocatedContainer.getPriority(), csr.container.toIdStateString());
+          LOG.info("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
           releasedContainers.add(allocatedContainer.getId());
           continue;
         }
         if(csr != null)
           requestedResources.remove(csr);
+
         // allocate resource to container
         ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
         StramChildAgent sca = dnmgr.assignContainer(resource, null);
-
-        {
-          // record container start event
-          StramEvent ev = new StramEvent.StartContainerEvent(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString());
-          ev.setTimestamp(timestamp);
-          dnmgr.recordEventAsync(ev);
-        }
 
         if (sca == null) {
           // allocated container no longer needed, add release request
@@ -741,6 +730,11 @@ public class StramAppMasterService extends CompositeService
           // launchThreads.add(launchThread);
           // launchThread.start();
           launchContainer.run(); // communication with NMs is now async
+
+          // record container start event
+          StramEvent ev = new StramEvent.StartContainerEvent(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString());
+          ev.setTimestamp(timestamp);
+          dnmgr.recordEventAsync(ev);
         }
       }
 
@@ -781,18 +775,13 @@ public class StramAppMasterService extends CompositeService
           numCompletedContainers.incrementAndGet();
           LOG.info("Container completed successfully." + ", containerId=" + containerStatus.getContainerId());
         }
-        // record operator stop for this container
-        StramChildAgent containerAgent = dnmgr.getContainerAgent(containerStatus.getContainerId().toString());
-        for (PTOperator oper : containerAgent.container.getOperators()) {
-          StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerStatus.getContainerId().toString());
-          ev.setReason("container exited with status " + exitStatus);
-          dnmgr.recordEventAsync(ev);
-        }
-        // record container stop event
-        StramEvent ev = new StramEvent.StopContainerEvent(containerStatus.getContainerId().toString(), containerStatus.getExitStatus());
-        dnmgr.recordEventAsync(ev);
 
-        dnmgr.removeContainerAgent(containerAgent.container.getExternalId());
+        String containerIdStr = containerStatus.getContainerId().toString();
+        dnmgr.removeContainerAgent(containerIdStr);
+
+        // record container stop event
+        StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
+        dnmgr.recordEventAsync(ev);
 
       }
 
@@ -804,8 +793,13 @@ public class StramAppMasterService extends CompositeService
         availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
       }
 
-      if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
+      if (dnmgr.forcedShutdown) {
+        LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
+        finalStatus = FinalApplicationStatus.FAILED;
+        appDone = true;
+      } else if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
         LOG.debug("Exiting as no more containers are allocated or requested");
+        finalStatus = FinalApplicationStatus.SUCCEEDED;
         appDone = true;
       }
 
@@ -817,10 +811,9 @@ public class StramAppMasterService extends CompositeService
 
     LOG.info("Application completed. Signalling finish to RM");
     FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
-    if (numFailedContainers.get() == 0) {
-      finishReq.setFinalApplicationStatus(FinalApplicationStatus.SUCCEEDED);
-    } else {
-      finishReq.setFinalApplicationStatus(FinalApplicationStatus.FAILED);
+    finishReq.setFinalApplicationStatus(finalStatus);
+
+    if (finalStatus != FinalApplicationStatus.SUCCEEDED) {
       String diagnostics = "Diagnostics." + ", total=" + numTotalContainers + ", completed=" + numCompletedContainers.get() + ", allocated=" + allAllocatedContainers.size() + ", failed=" + numFailedContainers.get();
       if (!StringUtils.isEmpty(dnmgr.shutdownDiagnosticsMessage)) {
         diagnostics += "\n";
