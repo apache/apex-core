@@ -712,7 +712,7 @@ public class StramAppMasterService extends CompositeService
         }
 
         if (alreadyAllocated) {
-          LOG.debug("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
+          LOG.info("Releasing {} as resource with priority {} was already assigned to {}", allocatedContainer.getId(), allocatedContainer.getPriority(), csr.container.toIdStateString());
           releasedContainers.add(allocatedContainer.getId());
           continue;
         }
@@ -772,6 +772,7 @@ public class StramAppMasterService extends CompositeService
             LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
           } else {
             // Recoverable failure or process killed (externally or via stop request by AM)
+            // also occurs when a container was released by the application but never assigned/launched
             LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
             dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
           }
