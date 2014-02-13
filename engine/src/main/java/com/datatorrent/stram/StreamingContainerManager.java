@@ -97,7 +97,8 @@ public class StreamingContainerManager implements PlanContext
   private FSEventRecorder eventRecorder;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
-  protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
+  protected boolean forcedShutdown = false;
+  private final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
   private final AtomicBoolean eventQueueProcessing = new AtomicBoolean();
   private final HashSet<PTContainer> pendingAllocation = Sets.newLinkedHashSet();
   protected String shutdownDiagnosticsMessage = "";
@@ -107,8 +108,8 @@ public class StreamingContainerManager implements PlanContext
   private final AlertsManager alertsManager = new AlertsManager(this);
   private CriticalPathInfo criticalPathInfo;
   private final ConcurrentMap<PTOperator, PTOperator> reportStats = Maps.newConcurrentMap();
-  final AtomicBoolean deployChangeInProgress = new AtomicBoolean();
-  int deployChangeCnt;
+  private final AtomicBoolean deployChangeInProgress = new AtomicBoolean();
+  private int deployChangeCnt;
 
   private MBassador<StramEvent> eventBus; // event bus for publishing stram events
   final private Journal journal;
@@ -241,6 +242,7 @@ public class StreamingContainerManager implements PlanContext
           LOG.warn("Waiting for resource: {}m priority: {} {}", c.getRequiredMemoryMB(), c.getResourceRequestPriority(), c);
         }
         shutdownAllContainers(msg);
+        this.forcedShutdown = true;
       }
       else {
         for (PTContainer c : pendingAllocation) {
@@ -735,6 +737,7 @@ public class StreamingContainerManager implements PlanContext
         String msg = String.format("Shutdown after reaching failure threshold for %s", oper);
         LOG.warn(msg);
         shutdownAllContainers(msg);
+        forcedShutdown = true;
       }
     } else {
       // should not get here
