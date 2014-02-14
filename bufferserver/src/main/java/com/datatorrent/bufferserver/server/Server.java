@@ -18,6 +18,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ import com.datatorrent.netlet.AbstractLengthPrependerClient;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.Listener.ServerListener;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * The buffer server application<p>
@@ -86,6 +88,12 @@ public class Server implements ServerListener
   public void unregistered(SelectionKey key)
   {
     executor.shutdown();
+    try {
+      executor.awaitTermination(5000, TimeUnit.MILLISECONDS);
+    }
+    catch (InterruptedException ex) {
+      logger.debug("Executor Termination", ex);
+    }
     logger.info("Server stopped listening at {}", address);
   }
 
@@ -448,12 +456,6 @@ public class Server implements ServerListener
       }
     }
 
-    @Override
-    public void handleException(Exception cce, DefaultEventLoop el)
-    {
-      el.disconnect(this);
-    }
-
   }
 
   class Subscriber extends AbstractLengthPrependerClient
@@ -475,13 +477,6 @@ public class Server implements ServerListener
     public void onMessage(byte[] buffer, int offset, int size)
     {
       logger.warn("Received data when no data is expected: {}", Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
-    }
-
-    @Override
-    public void handleException(Exception cce, DefaultEventLoop el)
-    {
-      unregistered(key);
-      el.disconnect(this);
     }
 
     @Override
@@ -683,8 +678,13 @@ public class Server implements ServerListener
     @Override
     public void handleException(Exception cce, DefaultEventLoop el)
     {
-      unregistered(key);
-      el.disconnect(this);
+      if (cce instanceof RejectedExecutionException && executor.isTerminated()) {
+        logger.warn("Terminated Executor.", cce);
+        el.disconnect(this);
+      }
+      else {
+        super.handleException(cce, el);
+      }
     }
 
     @Override

@@ -58,7 +58,7 @@ public class StramClient
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
-  public static final String DEFAULT_APPNAME = "DataTorrentStreamingApplication";
+  public static final String DEFAULT_APPNAME = "DataTorrent";
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
