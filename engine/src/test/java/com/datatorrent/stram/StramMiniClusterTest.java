@@ -200,10 +200,10 @@ public class StramMiniClusterTest
     dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.source", "module1.output1");
     dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(LogicalPlan.MASTER_MEMORY_MB.name, "128");
-    dagProps.setProperty(LogicalPlan.CONTAINER_MEMORY_MB.name, "512");
-    dagProps.setProperty(LogicalPlan.DEBUG.name, "true");
-    dagProps.setProperty(LogicalPlan.CONTAINERS_MAX_COUNT.name, "2");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINER_MEMORY_MB.getName(), "512");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
     tb.addFromProperties(dagProps);
 
     Properties tplgProperties = tb.getProperties();
