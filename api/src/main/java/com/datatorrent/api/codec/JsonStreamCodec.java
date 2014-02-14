@@ -32,7 +32,9 @@ import com.datatorrent.common.util.Slice;
  *
  * @param <T> tuple type
  * @since 0.3.2
+ * @deprecated Please use com.datatorrent.lib.codec.JsonStreamCodec instead.
  */
+@Deprecated
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {
   private ObjectMapper mapper;
