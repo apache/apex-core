@@ -118,6 +118,11 @@ public interface AttributeMap
       return true;
     }
 
+    public String getName()
+    {
+      return "attr" + name.substring(name.lastIndexOf('.'));
+    }
+    
     @Override
     public String toString()
     {

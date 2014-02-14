@@ -20,10 +20,10 @@ package com.datatorrent.api;
  * This interface provides a convenient way of setting up and tearing down most
  * entities in the system.
  *
- * @param <T1> Context used for the current run of the component.
+ * @param <CONTEXT> Context used for the current run of the component.
  * @since 0.3.2
  */
-public interface Component<T1 extends Context>
+public interface Component<CONTEXT extends Context>
 {
   /**
    * It's recommended to use this separator to create scoped names for the components.
@@ -39,12 +39,16 @@ public interface Component<T1 extends Context>
 
   /**
    * Callback to give the component a chance to perform tasks required as part of setting itself up.
+   * This callback is made exactly once during the operator lifetime. If you want to perform certain
+   * setup tasks every time the operator is activated/deactivated, please implement ActivationListener.
+   *
+   * @param context - context in which the operator executues.
    */
-  public void setup(T1 context);
+  public void setup(CONTEXT context);
 
   /**
    * Callback to give the component a chance to perform tasks required as part of tearing itself down.
-   * A recommended practice is to do reciprocate the setup tasks by doing exactly opposite.
+   * A recommended practice is to reciprocate the tasks in setup by doing exactly opposite.
    */
   public void teardown();
 

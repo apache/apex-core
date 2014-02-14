@@ -39,18 +39,9 @@ import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.api.*;
-import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
-import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
-import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
-import com.datatorrent.stram.api.ContainerEvent.StreamActivationEvent;
-import com.datatorrent.stram.api.ContainerEvent.StreamDeactivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.*;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -295,13 +286,16 @@ public class StramChild extends YarnContainerMain
     try {
       Iterator<Integer> iterator = activeOperators.iterator();
       for (Thread t : activeThreads) {
-        t.join();
+        t.join(1000);
+        if (!t.getState().equals(State.TERMINATED)) {
+          t.interrupt();
+        }
         disconnectNode(iterator.next());
       }
       assert (activeNodes.isEmpty());
     }
     catch (InterruptedException ex) {
-      logger.info("Aborting wait for for operators to get deactivated as got interrupted with {}", ex);
+      logger.warn("Aborting wait for operators to get deactivated!", ex);
     }
 
     for (WindowGenerator wg : activeGenerators.keySet()) {
@@ -507,10 +501,10 @@ public class StramChild extends YarnContainerMain
         }
         disconnectNode(iterator.next());
       }
-      logger.info("undeploy complete");
+      logger.info("Undeploy complete.");
     }
     catch (InterruptedException ex) {
-      logger.warn("Aborted waiting for the deactivate to finish!");
+      logger.warn("Aborting wait for operators to get deactivated!", ex);
     }
 
     for (Integer operatorId : nodeList) {

@@ -139,7 +139,7 @@ public interface DAGContext extends Context
   /**
    * Timeout for allocating container resources. Default value is 60s.
    */
-  Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(60000);
+  Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(Integer.MAX_VALUE);
   /**
    * Maximum number of windows that can be pending for statistics calculation. Statistics are computed when
    * the metrics are available from all operators for a window. If the information is not available from all operators then
@@ -149,7 +149,7 @@ public interface DAGContext extends Context
   Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
   /**
    * The time interval for recording statistics. The statistics are periodically recorded with interval equal to the stats
-   * record interval. If the interval is specified as 0 then no statistics are recorded. The defaul value is 0.
+   * record interval. If the interval is specified as 0 then no statistics are recorded. The default value is 0.
    */
   Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
 
