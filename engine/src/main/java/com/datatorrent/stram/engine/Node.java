@@ -93,6 +93,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   @Override
   public void setup(OperatorContext context)
   {
+    shutdown = false;
     operator.setup(context);
 //    this is where the ports should be setup but since the
 //    portcontext is not available here, we are doing it in
@@ -216,9 +217,12 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
+  protected volatile boolean shutdown;
 
   public void shutdown()
   {
+    shutdown = true;
+
     synchronized (this) {
       alive = false;
     }
@@ -489,7 +493,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (operator instanceof ActivationListener) {
       ((ActivationListener<?>)operator).deactivate();
     }
-    emitEndStream();
+
+    if (!shutdown && !alive) {
+      emitEndStream();
+    }
 
     deactivateSinks();
     this.context = null;
