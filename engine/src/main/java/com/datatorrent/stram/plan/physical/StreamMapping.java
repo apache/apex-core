@@ -205,12 +205,16 @@ public class StreamMapping implements java.io.Serializable
           }
         } else {
           // no partitioning
+          PTOperator unifier = doperEntry.first.upstreamMerge.remove(doperEntry.second);
+          if (unifier != null) {
+            plan.removePTOperator(unifier);
+          }
           setInput(doperEntry.first, doperEntry.second, upstream.get(0).source, pks);
         }
       }
-      
+
       // Remove the unattached final unifier
-      // Unattached final unifier is from 
+      // Unattached final unifier is from
       // 1) Upstream operator partitions are scaled down to one. (no unifier needed)
       // 2) Downstream operators partitions are scaled up from one to multiple. (replaced by merged unifier)
       if (finalUnifier != null && finalUnifier.inputs.isEmpty()) {
