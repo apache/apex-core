@@ -1232,7 +1232,7 @@ public class PhysicalPlan implements Serializable
     for (StatsListener l : oper.statsListeners) {
       StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
-        LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
+        //LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
         // TODO: repartition delay needs to come out of the listener
         oper.loadIndicator = rsp.loadIndicator;
         if (rsp.repartitionRequired) {
