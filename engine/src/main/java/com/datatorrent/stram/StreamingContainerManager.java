@@ -33,6 +33,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
 import com.datatorrent.api.AttributeMap;
@@ -90,6 +92,7 @@ public class StreamingContainerManager implements PlanContext
 
   private final FinalVars vars;
   private final PhysicalPlan plan;
+  private final Clock clock = new SystemClock();
 
   private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
@@ -141,14 +144,13 @@ public class StreamingContainerManager implements PlanContext
 
   public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
   {
-    AttributeMap attributes = dag.getAttributes();
-    this.vars = new FinalVars(attributes);
+    this.vars = new FinalVars(dag, clock.getTime());
     this.journal = setupJournal();
     // setup prior to plan creation for event recording
     if (enableEventRecording) {
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     }
-    setupRecording(attributes, enableEventRecording);
+    setupRecording(dag.getAttributes(), enableEventRecording);
     this.plan = new PhysicalPlan(dag, this);
   }
 
@@ -230,7 +232,7 @@ public class StreamingContainerManager implements PlanContext
    */
   public void monitorHeartbeat()
   {
-    long currentTms = System.currentTimeMillis();
+    long currentTms = clock.getTime();
 
     // look for resource allocation timeout
     if (!pendingAllocation.isEmpty()) {
@@ -290,7 +292,7 @@ public class StreamingContainerManager implements PlanContext
     try {
       statsRecorder.recordContainers(containers, currentTms);
       statsRecorder.recordOperators(getOperatorInfoList(), currentTms);
-      lastRecordStatsTime = System.currentTimeMillis();
+      lastRecordStatsTime = clock.getTime();
     } catch (Exception ex) {
       LOG.warn("Exception caught when recording stats", ex);
     }
@@ -516,16 +518,15 @@ public class StreamingContainerManager implements PlanContext
     cs.container.setResourceRequestPriority(-1);
 
     // resolve dependencies
-    LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
-    MutableLong ml = new MutableLong();
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
     for (PTOperator oper: cs.container.getOperators()) {
-      // TODO: traverse container local upstream operators
-      updateRecoveryCheckpoints(oper, checkpoints, ml);
+      // TODO: include container local upstream operators
+      updateRecoveryCheckpoints(oper, ctx);
     }
 
     // redeploy cycle for all affected operators
-    LOG.info("Affected operators {}", checkpoints);
-    deploy(Collections.<PTContainer>emptySet(), checkpoints, Sets.newHashSet(cs.container), checkpoints);
+    LOG.info("Affected operators {}", ctx.visited);
+    deploy(Collections.<PTContainer>emptySet(), ctx.visited, Sets.newHashSet(cs.container), ctx.visited);
   }
 
   public void removeContainerAgent(String containerId)
@@ -754,7 +755,7 @@ public class StreamingContainerManager implements PlanContext
    */
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
-    long currentTimeMillis = System.currentTimeMillis();
+    long currentTimeMillis = clock.getTime();
 
     StramChildAgent sca = this.containers.get(heartbeat.getContainerId());
     if (sca == null || sca.container.getState() == PTContainer.State.KILLED) {
@@ -934,7 +935,10 @@ public class StreamingContainerManager implements PlanContext
             endWindowStats.emitTimestamp = maxDequeueTimestamp;
           }
 
-          status.currentWindowId.set(stats.windowId);
+          if (status.currentWindowId.get() != stats.windowId) {
+            status.lastWindowIdChangeTms = currentTimeMillis;
+            status.currentWindowId.set(stats.windowId);
+          }
           totalCpuTimeUsed += stats.cpuTimeUsed;
           totalElapsedMillis += elapsedMillis;
           statCount++;
@@ -1107,34 +1111,58 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
+  public static class UpdateCheckpointsContext
+  {
+    public final MutableLong committedWindowId = new MutableLong(Long.MAX_VALUE);
+    public final Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
+    public final Set<PTOperator> blocked = new LinkedHashSet<PTOperator>();
+    public final long currentTms;
+
+    public UpdateCheckpointsContext(Clock clock) {
+      this.currentTms = clock.getTime();
+    }
+
+  }
+
   /**
    * Compute checkpoints required for a given operator instance to be recovered.
    * This is done by looking at checkpoints available for downstream dependencies first,
    * and then selecting the most recent available checkpoint that is smaller than downstream.
    *
    * @param operator Operator instance for which to find recovery checkpoint
-   * @param visited Set into which to collect visited dependencies
-   * @param committedWindowId
+   * @param ctx Context into which to collect traversal info
    */
-  public void updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited, MutableLong committedWindowId)
+  public void updateRecoveryCheckpoints(PTOperator operator, UpdateCheckpointsContext ctx)
   {
-    if (operator.getRecoveryCheckpoint() < committedWindowId.longValue()) {
-      committedWindowId.setValue(operator.getRecoveryCheckpoint());
+    if (operator.getRecoveryCheckpoint() < ctx.committedWindowId.longValue()) {
+      ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint());
+    }
+
+    if (operator.getState() == PTOperator.State.ACTIVE && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis)
+    {
+      ctx.blocked.add(operator);
     }
 
     long maxCheckpoint = operator.getRecentCheckpoint();
-    // find smallest of most recent subscriber checkpoints
+    // DFS downstream operators
     for (PTOperator.PTOutput out: operator.getOutputs()) {
       for (PTOperator.PTInput sink: out.sinks) {
         PTOperator sinkOperator = sink.target;
-        if (!visited.contains(sinkOperator)) {
+        if (!ctx.visited.contains(sinkOperator)) {
           // downstream traversal
-          updateRecoveryCheckpoints(sinkOperator, visited, committedWindowId);
+          updateRecoveryCheckpoints(sinkOperator, ctx);
         }
         // recovery window id cannot move backwards
         // when dynamically adding new operators
         if (sinkOperator.getRecoveryCheckpoint() >= operator.getRecoveryCheckpoint()) {
           maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.getRecoveryCheckpoint());
+        }
+
+        if (ctx.blocked.contains(sinkOperator)) {
+          if (sinkOperator.stats.getCurrentWindowId() == operator.stats.getCurrentWindowId()) {
+            // downstream operator is blocked by this operator
+            ctx.blocked.remove(sinkOperator);
+          }
         }
       }
     }
@@ -1165,7 +1193,7 @@ public class StreamingContainerManager implements PlanContext
       LOG.debug("Skipping checkpoint update {} {}", operator, operator.getState());
     }
 
-    visited.add(operator);
+    ctx.visited.add(operator);
   }
 
   /**
@@ -1174,21 +1202,26 @@ public class StreamingContainerManager implements PlanContext
    */
   private long updateCheckpoints()
   {
-    MutableLong lCommittedWindowId = new MutableLong(Long.MAX_VALUE);
-
-    Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
     for (OperatorMeta logicalOperator: plan.getDAG().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator: operators) {
-          updateRecoveryCheckpoints(operator, visitedCheckpoints, lCommittedWindowId);
+          updateRecoveryCheckpoints(operator, ctx);
         }
       }
     }
     purgeCheckpoints();
 
-    return lCommittedWindowId.longValue();
+    for (PTOperator oper : ctx.blocked) {
+      String containerId = oper.getContainer().getExternalId();
+      if (containerId != null) {
+        LOG.info("Blocked operator {} container {}", oper, oper.getContainer().toIdStateString());
+        this.containerStopRequests.put(containerId, containerId);
+      }
+    }
+    return ctx.committedWindowId.longValue();
   }
 
   private BufferServerController getBufferServerClient(PTOperator operator)
@@ -1300,7 +1333,7 @@ public class StreamingContainerManager implements PlanContext
       ContainerStartRequest dr = new ContainerStartRequest(c);
       containerStartRequests.add(dr);
       pendingAllocation.add(dr.container);
-      lastResourceRequest = System.currentTimeMillis();
+      lastResourceRequest = clock.getTime();
       for (PTOperator operator: c.getOperators()) {
         operator.setState(PTOperator.State.INACTIVE);
       }
@@ -1890,10 +1923,10 @@ public class StreamingContainerManager implements PlanContext
     private final int maxWindowsBehindForStats;
     private final int recordStatsInterval;
 
-    private FinalVars(AttributeMap attributes)
+    private FinalVars(LogicalPlan dag, long tms)
     {
+      AttributeMap attributes = dag.getAttributes();
       /* try to align to it to please eyes. */
-      long tms = System.currentTimeMillis();
       windowStartMillis = tms - (tms % 1000);
 
       if (attributes.get(LogicalPlan.APPLICATION_PATH) == null) {
@@ -1910,21 +1943,9 @@ public class StreamingContainerManager implements PlanContext
         attributes.put(LogicalPlan.CHECKPOINT_WINDOW_COUNT, 30000 / attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
       }
 
-      if (attributes.get(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS) != null) {
-        this.heartbeatTimeoutMillis = attributes.get(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
-      } else {
-        this.heartbeatTimeoutMillis = LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS.defaultValue;
-      }
-
-      if (attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG) == null) {
-        attributes.put(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG, 1000);
-      }
-      this.maxWindowsBehindForStats = attributes.get(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
-
-      if (attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS) == null) {
-        attributes.put(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS, 0);
-      }
-      this.recordStatsInterval = attributes.get(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
+      this.heartbeatTimeoutMillis = dag.getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
+      this.maxWindowsBehindForStats = dag.getValue(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
+      this.recordStatsInterval = dag.getValue(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
     }
   }
 

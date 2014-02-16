@@ -9,9 +9,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.util.SystemClock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -19,13 +22,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -41,6 +42,7 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+import com.google.common.collect.Sets;
 
 /**
  *
@@ -186,6 +188,7 @@ public class CheckpointTest
   @Test
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
+    Clock clock = new SystemClock();
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
@@ -217,34 +220,34 @@ public class CheckpointTest
       oper.setState(PTOperator.State.ACTIVE);
     }
 
-    dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>(), new MutableLong());
+    dnm.updateRecoveryCheckpoints(pnode2, new UpdateCheckpointsContext(clock));
     Assert.assertEquals("no checkpoints " + pnode2, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode2.getRecoveryCheckpoint());
 
-    HashSet<PTOperator> s = new HashSet<PTOperator>();
-    dnm.updateRecoveryCheckpoints(pnode1, s, new MutableLong());
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(pnode1, ctx);
     Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("number dependencies " + s, 2, s.size());
+    Assert.assertEquals("number dependencies " + ctx.visited, 2, ctx.visited.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
     pnode1.checkpointWindows.add(5L);
-    dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
+    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
     Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
-    dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
+    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
     Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(4L);
-    dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
+    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
     Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
-    dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
+    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
     Assert.assertEquals("checkpoint pnode1", 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
@@ -261,6 +264,82 @@ public class CheckpointTest
 
     dnm.addCheckpoint(pnode2, 5L);
     Assert.assertEquals("add latest", Arrays.asList(new Long[] {2L, 3L, 4L, 5L}), pnode2.checkpointWindows);
+
+  }
+
+  public class MockClock implements Clock
+  {
+    public long time = 0;
+
+    @Override
+    public long getTime()
+    {
+      return time;
+    }
+  }
+
+  @Test
+  public void testWindowProcessingTimeout()
+  {
+    MockClock clock = new MockClock();
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    // set all operators as active to enable recovery window id update
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      oper.setState(PTOperator.State.ACTIVE);
+    }
+
+    List<PTOperator> partitions = plan.getOperators(dag.getMeta(o1));
+    Assert.assertNotNull(partitions);
+    Assert.assertEquals(1, partitions.size());
+    PTOperator o1p1 = partitions.get(0);
+
+    partitions = plan.getOperators(dag.getMeta(o2));
+    Assert.assertNotNull(partitions);
+    Assert.assertEquals(1, partitions.size());
+    PTOperator o2p1 = partitions.get(0);
+
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertTrue("no blocked operators", ctx.blocked.isEmpty());
+
+    o1p1.stats.statsRevs.checkout();
+    o1p1.stats.currentWindowId.set(1);
+    o1p1.stats.lastWindowIdChangeTms = 1;
+    o1p1.stats.statsRevs.commit();
+
+    clock.time = o1p1.stats.windowProcessingTimeoutMillis + 1;
+
+    ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("operators blocked", Sets.newHashSet(o2p1), ctx.blocked);
+
+    clock.time++;
+    ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("operators blocked", Sets.newHashSet(o1p1, o2p1), ctx.blocked);
+
+    o2p1.stats.statsRevs.checkout();
+    o2p1.stats.currentWindowId.set(o1p1.stats.getCurrentWindowId());
+    o2p1.stats.statsRevs.commit();
+
+    ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("operators blocked", Sets.newHashSet(o1p1), ctx.blocked);
+
+    clock.time--;
+    ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("operators blocked", Sets.newHashSet(), ctx.blocked);
 
   }
 

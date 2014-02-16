@@ -59,6 +59,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
   public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
+  public volatile long lastWindowIdChangeTms = 0;
+  public final int windowProcessingTimeoutMillis;
 
   private final LogicalPlan dag;
   private final int throughputCalculationInterval;
@@ -75,6 +77,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
     cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
+    this.windowProcessingTimeoutMillis = dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) * 120;
   }
 
   public boolean isIdle()
