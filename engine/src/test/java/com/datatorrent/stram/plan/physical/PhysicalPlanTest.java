@@ -874,6 +874,7 @@ public class PhysicalPlanTest {
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
     OperatorMeta o1Meta = dag.getMeta(o1);
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -957,8 +958,6 @@ public class PhysicalPlanTest {
       Assert.assertEquals("deployed operators " + ctx.deploy, expDeploy, ctx.deploy);
     }
 
-
-
     // scale up N from 1 to 2 and then from 2 to 3
     for (int i = 0; i < 2; i++) {
 
@@ -983,7 +982,9 @@ public class PhysicalPlanTest {
       ctx.backupRequests = 0;
       ctx.events.remove(0).run();
 
-      Assert.assertEquals("partitions after scale up " + o2Meta, 2 + i, plan.getOperators(o2Meta).size());
+      Assert.assertEquals("N partitions after scale up " + o2Meta, 2 + i, plan.getOperators(o2Meta).size());
+      Assert.assertTrue("no unifiers", plan.getMergeOperators(o1Meta).isEmpty());
+
       for (PTOperator o : plan.getOperators(o2Meta)) {
         Assert.assertNotNull(o.container);
         PTOperator unifier = o.upstreamMerge.values().iterator().next();
@@ -1000,6 +1001,62 @@ public class PhysicalPlanTest {
       Assert.assertEquals("undeployed operators" + ctx.undeploy, expUndeploy, ctx.undeploy);
       Assert.assertEquals("deployed operators" + ctx.deploy, expDeploy, ctx.deploy);
 
+    }
+
+    // scale down M to 1
+    {
+      Set<PTOperator> expUndeploy = Sets.newHashSet();
+      Set<PTOperator> expDeploy = Sets.newHashSet();
+      for (PTOperator o2p : plan.getOperators(o2Meta)) {
+        expUndeploy.addAll(o2p.upstreamMerge.values());
+        expUndeploy.add(o2p);
+        expDeploy.add(o2p);
+      }
+
+      for (PTOperator o1p : plan.getOperators(o1Meta)) {
+        expUndeploy.add(o1p);
+        PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p.getId(), -1);
+        plan.onStatusUpdate(o1p);
+      }
+
+      Assert.assertEquals("repartition event", 1, ctx.events.size());
+      ctx.events.remove(0).run();
+
+      Assert.assertEquals("M partitions after scale down " + o1Meta, 1, plan.getOperators(o1Meta).size());
+      expUndeploy.removeAll(plan.getOperators(o1Meta));
+
+      for (PTOperator o2p : plan.getOperators(o2Meta)) {
+        Assert.assertTrue("merge unifier " + o2p + " " + o2p.upstreamMerge, o2p.upstreamMerge.isEmpty());
+      }
+
+      Assert.assertEquals("undeploy", expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deploy", expDeploy, ctx.deploy);
+    }
+
+    // scale up M to 2
+    Assert.assertEquals("M partitions " + o1Meta, 1, plan.getOperators(o1Meta).size());
+    {
+      Set<PTOperator> expUndeploy = Sets.newHashSet();
+      Set<PTOperator> expDeploy = Sets.newHashSet();
+      for (PTOperator o1p : plan.getOperators(o1Meta)) {
+        expUndeploy.add(o1p);
+        PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p.getId(), 1);
+        plan.onStatusUpdate(o1p);
+      }
+
+      Assert.assertEquals("repartition event", 1, ctx.events.size());
+      ctx.events.remove(0).run();
+
+      Assert.assertEquals("M partitions after scale up " + o1Meta, 2, plan.getOperators(o1Meta).size());
+      expDeploy.addAll(plan.getOperators(o1Meta));
+      for (PTOperator o2p : plan.getOperators(o2Meta)) {
+        expUndeploy.add(o2p);
+        expDeploy.add(o2p);
+        Assert.assertEquals("merge unifier " + o2p + " " + o2p.upstreamMerge, 1, o2p.upstreamMerge.size());
+        expDeploy.addAll(o2p.upstreamMerge.values());
+      }
+      Assert.assertEquals("undeploy", expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deploy", expDeploy, ctx.deploy);
     }
 
   }
