@@ -705,6 +705,7 @@ public class StreamingContainerManager implements PlanContext
         LOG.debug("{} marking deployed: {} remote status {}", container.getExternalId(), oper, ds);
         oper.setState(PTOperator.State.ACTIVE);
         oper.stats.lastHeartbeat = null; // reset on redeploy
+        oper.stats.lastWindowIdChangeTms = clock.getTime();
         recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
       }
       break;
