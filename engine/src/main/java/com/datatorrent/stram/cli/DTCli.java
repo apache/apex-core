@@ -932,7 +932,7 @@ public class DTCli
       }
     }
     StramClientUtils.addStramResources(conf);
-    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS, "localhost:8088"));
+    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS));
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
