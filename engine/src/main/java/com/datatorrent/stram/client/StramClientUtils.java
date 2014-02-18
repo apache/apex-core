@@ -264,7 +264,13 @@ public class StramClientUtils
   private static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
 
-  public static Configuration addStramResources(Configuration conf)
+  public static Configuration addDTDefaultResources(Configuration conf)
+  {
+    conf.addResource(DT_DEFAULT_XML_FILE);
+    return conf;
+  }
+
+  public static Configuration addDTSiteResources(Configuration conf)
   {
     conf.addResource(DT_DEFAULT_XML_FILE);
     conf.addResource(DT_SITE_XML_FILE);
@@ -275,8 +281,7 @@ public class StramClientUtils
     }
     return conf;
   }
-  
-  
+
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
   {
     return conf.get(DT_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_ROOT_DIR));

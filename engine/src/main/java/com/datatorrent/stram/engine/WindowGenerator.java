@@ -163,23 +163,23 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
       logger.info("Catching up from {} to {}", currentWindowMillis, currentTms);
       ses.schedule(
               new Runnable()
-              {
-                @Override
-                public void run()
-                {
-                  try {
-                    resetBeginNewWindow();
-                    do {
-                      endCurrentBeginNewWindow();
-                    }
-                    while (currentWindowMillis < ses.getCurrentTimeMillis());
-                  }
-                  catch (InterruptedException ie) {
-                    handleException(ie);
-                  }
-                }
+      {
+        @Override
+        public void run()
+        {
+          try {
+            resetBeginNewWindow();
+            do {
+              endCurrentBeginNewWindow();
+            }
+            while (currentWindowMillis < ses.getCurrentTimeMillis());
+          }
+          catch (InterruptedException ie) {
+            handleException(ie);
+          }
+        }
 
-              },
+      },
               0, TimeUnit.MILLISECONDS);
     }
     else {
@@ -228,6 +228,21 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   public int getCount(boolean reset)
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  public static long getWindowCount(long millis, long firstMillis, long widthMillis)
+  {
+    long diff = millis - firstMillis;
+    return diff / widthMillis;
+  }
+
+  public static long getWindowId(long millis, long firstWindowMillis, long windowWidthMillis)
+  {
+    long diff = millis - firstWindowMillis;
+    long remainder = diff % (windowWidthMillis * (WindowGenerator.MAX_WINDOW_ID + 1));
+    long baseSeconds = (millis - remainder) / 1000;
+    long windowId = remainder / windowWidthMillis;
+    return baseSeconds << 32 | windowId;
   }
 
   private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir

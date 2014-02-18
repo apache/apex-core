@@ -159,22 +159,12 @@ public class StramAppLauncher
 
   }
 
-  public StramAppLauncher(File appJarFile) throws Exception
-  {
-    this(appJarFile, null, false);
-  }
-
   public StramAppLauncher(File appJarFile, Configuration conf, boolean ignorePom) throws Exception
   {
     this.jarFile = appJarFile;
     this.conf = conf;
     this.ignorePom = ignorePom;
     init();
-  }
-
-  public StramAppLauncher(FileSystem fs, Path path) throws Exception
-  {
-    this(fs, path, null, false);
   }
 
   public StramAppLauncher(FileSystem fs, Path path, Configuration conf, boolean ignorePom) throws Exception
@@ -197,9 +187,6 @@ public class StramAppLauncher
 
   private void init() throws Exception
   {
-    if (conf == null) {
-      conf = getConfig(null, null);
-    }
     propertiesBuilder.addFromConfiguration(conf);
     Iterator<Map.Entry<String, String>> iterator = conf.iterator();
     Map<String, String> newEntries = new HashMap<String, String>();
@@ -425,10 +412,8 @@ public class StramAppLauncher
     }
   }
 
-  public static Configuration getConfig(String overrideConfFileName, Map<String, String> overrideProperties) throws IOException
+  public static Configuration getOverriddenConfig(Configuration conf, String overrideConfFileName, Map<String, String> overrideProperties) throws IOException
   {
-    Configuration conf = new Configuration(false);
-    StramClientUtils.addStramResources(conf);
     if (overrideConfFileName != null) {
       File overrideConfFile = new File(overrideConfFileName);
       if (overrideConfFile.exists()) {
@@ -503,7 +488,7 @@ public class StramAppLauncher
     LogicalPlan dag = prepareDAG(appConfig);
     byte[] licenseBytes = StramClientUtils.getLicense(conf);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
-    StramClient client = new StramClient(dag);
+    StramClient client = new StramClient(conf, dag);
     client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
     client.setFiles(conf.get(FILES_CONF_KEY_NAME));
     client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));

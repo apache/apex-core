@@ -88,13 +88,12 @@ public class StramClient
    */
   StramClient(Configuration conf) throws Exception
   {
-    // Set up the configuration and RPC
-    this.conf = StramClientUtils.addStramResources(conf);
+    this.conf = conf;
   }
 
-  public StramClient(LogicalPlan dag) throws Exception
+  public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
-    this(new Configuration());
+    this(conf);
     this.dag = dag;
     dag.validate();
   }

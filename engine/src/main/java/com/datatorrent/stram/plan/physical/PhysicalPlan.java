@@ -32,7 +32,7 @@ import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 
 import com.datatorrent.stram.Journal.RecoverableOperation;
-import com.datatorrent.stram.api.OperatorDeployInfo;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -164,6 +164,10 @@ public class PhysicalPlan implements Serializable
     /**
      * Request deployment change as sequence of undeploy, container start and deploy groups with dependency.
      * Called on initial plan and on dynamic changes during execution.
+     * @param releaseContainers
+     * @param undeploy
+     * @param startContainers
+     * @param deploy
      */
     public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
 
@@ -376,14 +380,13 @@ public class PhysicalPlan implements Serializable
     }
 
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
-      initCheckpoint(operEntry.getKey(), operEntry.getValue(), OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+      initCheckpoint(operEntry.getKey(), operEntry.getValue(), Checkpoint.INITIAL_CHECKPOINT);
     }
     // request initial deployment
     ctx.deploy(Collections.<PTContainer>emptySet(), Collections.<PTOperator>emptySet(), Sets.newHashSet(containers), deployOperators);
     this.newOpers.clear();
     this.deployOpers.clear();
     this.undeployOpers.clear();
-
   }
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
@@ -452,7 +455,7 @@ public class PhysicalPlan implements Serializable
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
     for (Partition<Operator> partition : partitions) {
-      PTOperator p = addPTOperator(m, partition, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+      PTOperator p = addPTOperator(m, partition, Checkpoint.INITIAL_CHECKPOINT);
       operatorIdToPartition.put(p.getId(), partition);
     }
     updateStreamMappings(m);
@@ -475,7 +478,7 @@ public class PhysicalPlan implements Serializable
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(operators.size());
 
     final Collection<Partition<Operator>> newPartitions;
-    long minCheckpoint = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
+    Checkpoint minCheckpoint = null;
 
     for (PTOperator pOperator : operators) {
       Map<InputPort<?>, PartitionKeys> pks = pOperator.getPartitionKeys();
@@ -485,10 +488,11 @@ public class PhysicalPlan implements Serializable
 
       // if partitions checkpoint at different windows, processing for new or modified
       // partitions will start from earliest checkpoint found (at least once semantics)
-      if (minCheckpoint < 0) {
+      if (minCheckpoint == null) {
         minCheckpoint = pOperator.recoveryCheckpoint;
-      } else {
-        minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
+      }
+      else if (minCheckpoint.windowId > pOperator.recoveryCheckpoint.windowId) {
+        minCheckpoint = pOperator.recoveryCheckpoint;
       }
 
       Operator partitionedOperator = loadOperator(pOperator);
@@ -678,8 +682,8 @@ public class PhysicalPlan implements Serializable
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
 
       PTOperator oper = operEntry.getKey();
-      long activationWindowId = getActivationWindowId(operEntry.getKey());
-      initCheckpoint(oper, operEntry.getValue(), activationWindowId);
+      Checkpoint checkpoint = getActivationCheckpoint(operEntry.getKey());
+      initCheckpoint(oper, operEntry.getValue(), checkpoint);
 
       if (mxnUnifiers.contains(operEntry.getKey())) {
         // MxN unifiers are assigned with the downstream operator
@@ -720,14 +724,11 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  private void initCheckpoint(PTOperator oper, Operator oo, long windowId) {
-    if (windowId == 0) {
-      throw new AssertionError("Invalid checkpoint window id: " + oper);
-    }
-
+  private void initCheckpoint(PTOperator oper, Operator oo, Checkpoint checkpoint)
+  {
     try {
-      LOG.debug("Writing activation checkpoint {} {} {}", windowId, oper, oo);
-      OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, windowId);
+      LOG.debug("Writing activation checkpoint {} {} {}", checkpoint, oper, oo);
+      OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, checkpoint.windowId);
       try {
         Node.storeOperator(stream, oo);
       }
@@ -738,21 +739,21 @@ public class PhysicalPlan implements Serializable
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + oper, e);
     }
-    oper.setRecoveryCheckpoint(windowId);
-    if (windowId != OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID) {
-      oper.checkpointWindows.add(windowId);
+    oper.setRecoveryCheckpoint(checkpoint);
+    if (!Checkpoint.INITIAL_CHECKPOINT.equals(checkpoint)) {
+      oper.checkpoints.add(checkpoint);
     }
   }
 
   public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
-      InputStream is = ctx.getStorageAgent().getLoadStream(oper.id, oper.recoveryCheckpoint);
+      InputStream is = ctx.getStorageAgent().getLoadStream(oper.id, oper.recoveryCheckpoint.windowId);
       if (is == null) {
         throw new AssertionError(String.format("Cannot read state for %s %s", oper.id, oper.recoveryCheckpoint));
       }
       try {
-        return Node.retrieveOperatorWrapper(is).operator;
+        return Node.retrieveOperator(is);
       } finally {
         is.close();
       }
@@ -767,18 +768,18 @@ public class PhysicalPlan implements Serializable
    * NoOp when already initialized.
    * @param oper
    */
-  private long getActivationWindowId(PTOperator oper)
+  private Checkpoint getActivationCheckpoint(PTOperator oper)
   {
-    if (oper.recoveryCheckpoint == 0 && oper.checkpointWindows.isEmpty()) {
-      long activationWindowId = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
+    if (oper.recoveryCheckpoint == null && oper.checkpoints.isEmpty()) {
+      Checkpoint activationCheckpoint = Checkpoint.INITIAL_CHECKPOINT;
       for (PTInput input : oper.inputs) {
         PTOperator sourceOper = input.source.source;
-        if (sourceOper.checkpointWindows.isEmpty()) {
-          getActivationWindowId(sourceOper);
+        if (sourceOper.checkpoints.isEmpty()) {
+          getActivationCheckpoint(sourceOper);
         }
-        activationWindowId = Math.max(activationWindowId, sourceOper.recoveryCheckpoint);
+        activationCheckpoint = Checkpoint.max(activationCheckpoint, sourceOper.recoveryCheckpoint);
       }
-      return activationWindowId;
+      return activationCheckpoint;
     }
     return oper.recoveryCheckpoint;
   }
@@ -844,7 +845,7 @@ public class PhysicalPlan implements Serializable
     return null;
   }
 
-  private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition, long activationWindowId) {
+  private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition, Checkpoint checkpoint) {
     String host = null;
     if(partition != null){
      host = partition.getAttributes().get(OperatorContext.LOCALITY_HOST);
@@ -859,7 +860,7 @@ public class PhysicalPlan implements Serializable
       setupOutput(nodeDecl, oper, outputEntry);
     }
 
-    oper.recoveryCheckpoint = activationWindowId;
+    oper.recoveryCheckpoint = checkpoint;
     if (partition != null) {
       oper.setPartitionKeys(partition.getPartitionKeys());
     }
@@ -962,9 +963,9 @@ public class PhysicalPlan implements Serializable
 
     // remove checkpoint states
     try {
-      synchronized (oper.checkpointWindows) {
-        for (long checkpointWindowId : oper.checkpointWindows) {
-          ctx.getStorageAgent().delete(oper.id, checkpointWindowId);
+      synchronized (oper.checkpoints) {
+        for (Checkpoint checkpoint : oper.checkpoints) {
+          ctx.getStorageAgent().delete(oper.id, checkpoint.windowId);
         }
       }
     } catch (IOException e) {
@@ -1105,7 +1106,7 @@ public class PhysicalPlan implements Serializable
       // parallel partition
       for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
         // TODO: the initial checkpoint has to be derived from upstream operators
-        addPTOperator(pnodes, null, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID);
+        addPTOperator(pnodes, null, Checkpoint.INITIAL_CHECKPOINT);
       }
     } else {
       initPartitioning(pnodes);

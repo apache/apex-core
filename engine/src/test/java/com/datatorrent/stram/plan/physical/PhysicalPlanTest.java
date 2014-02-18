@@ -5,17 +5,7 @@
 package com.datatorrent.stram.plan.physical;
 
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import junit.framework.Assert;
 
@@ -32,7 +22,9 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
@@ -307,8 +299,8 @@ public class PhysicalPlanTest {
     r.run();
     Assert.assertEquals("operators after scale up", 3, plan.getOperators(o1Meta).size());
     for (PTOperator p : plan.getOperators(o1Meta)) {
-      Assert.assertEquals("activation window id " + p, -1, p.recoveryCheckpoint);
-      Assert.assertEquals("checkpoints " + p + " " + p.checkpointWindows, Lists.newArrayList(), p.checkpointWindows);
+      Assert.assertEquals("activation window id " + p, Checkpoint.INITIAL_CHECKPOINT, p.recoveryCheckpoint);
+      Assert.assertEquals("checkpoints " + p + " " + p.checkpoints, Lists.newArrayList(), p.checkpoints);
       PartitioningTest.PartitionLoadWatch.loadIndicators.put(p.getId(), -1);
       plan.onStatusUpdate(p);
     }
@@ -318,7 +310,7 @@ public class PhysicalPlanTest {
     // ensure scale up maintains min checkpoint
     long checkpoint=1;
     for (PTOperator p : plan.getOperators(o1Meta)) {
-      p.checkpointWindows.add(checkpoint);
+      p.checkpoints.add(checkpoint);
       p.setRecoveryCheckpoint(checkpoint);
       PartitioningTest.PartitionLoadWatch.loadIndicators.put(p.getId(), 1);
       plan.onStatusUpdate(p);
@@ -326,7 +318,7 @@ public class PhysicalPlanTest {
     ctx.events.remove(0).run();
     Assert.assertEquals("operators after scale up (2)", 4, plan.getOperators(o1Meta).size());
     for (PTOperator p : plan.getOperators(o1Meta)) {
-      Assert.assertEquals("checkpoints " + p.checkpointWindows, p.checkpointWindows.size(), 1);
+      Assert.assertEquals("checkpoints " + p.checkpoints, p.checkpoints.size(), 1);
     }
 */
   }
@@ -502,8 +494,7 @@ public class PhysicalPlanTest {
 
     o1NewUnifiers = plan.getMergeOperators(o1Meta);
     Assert.assertEquals("unifiers " + o1Meta, 1, o1NewUnifiers.size());
-    Assert.assertEquals("unifier activation checkpoint " + o1Meta, 3, o1NewUnifiers.get(0).recoveryCheckpoint);
-
+    Assert.assertEquals("unifier activation checkpoint " + o1Meta, 3, o1NewUnifiers.get(0).recoveryCheckpoint.windowId);
   }
 
   private void setActivationCheckpoint(PTOperator oper, long windowId, TestPlanContext ctx)
@@ -516,7 +507,7 @@ public class PhysicalPlanTest {
       finally {
         stream.close();
       }
-      oper.setRecoveryCheckpoint(3);
+      oper.setRecoveryCheckpoint(new Checkpoint(3, 0, 0));
     } catch (Exception e) {
       Assert.fail(e.toString());
     }

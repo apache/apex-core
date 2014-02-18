@@ -29,6 +29,7 @@ import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
@@ -478,7 +479,7 @@ public class StreamingContainerManagerTest {
     ohb.setNodeId(o1p1.getId());
     ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
     OperatorStats stats = new OperatorStats();
-    stats.checkpointedWindowId = 2;
+    stats.checkpoint = new Checkpoint(2, 0, 0);
     stats.windowId = 3;
 
     stats.outputPorts = Lists.newArrayList();
@@ -505,7 +506,7 @@ public class StreamingContainerManagerTest {
 
     // second operator heartbeat
     stats = new OperatorStats();
-    stats.checkpointedWindowId = 2;
+    stats.checkpoint = new Checkpoint(2, 0, 0);
     stats.windowId = 4;
 
     stats.outputPorts = Lists.newArrayList();

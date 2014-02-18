@@ -75,14 +75,13 @@ public class OiONode extends GenericNode
           break;
 
         case CHECKPOINT:
-          if (lastCheckpointedWindowId < currentWindowId && !checkpoint) {
+          if (lastCheckpointedWindowId < currentWindowId && !doCheckpoint) {
             if (checkpointWindowCount == 0) {
-              if (checkpoint(currentWindowId)) {
-                lastCheckpointedWindowId = currentWindowId;
-              }
+              checkpoint(currentWindowId);
+              lastCheckpointedWindowId = currentWindowId;
             }
             else {
-              checkpoint = true;
+              doCheckpoint = true;
             }
             for (int s = sinks.length; s-- > 0;) {
               sinks[s].put(t);
@@ -104,7 +103,7 @@ public class OiONode extends GenericNode
         case END_STREAM:
           if (lastEndStreamWindowId != t.getWindowId()) {
             lastEndStreamWindowId = t.getWindowId();
-            for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
+            for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
               PortContextPair<InputPort<?>> pcpair = descriptor.inputPorts.get(e.getKey());
               if (pcpair != null) {
                 pcpair.component.setConnected(false);

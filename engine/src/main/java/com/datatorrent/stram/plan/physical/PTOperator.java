@@ -4,31 +4,27 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.Journal.SetOperatorState;
-import com.datatorrent.stram.api.OperatorDeployInfo;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  *
@@ -158,6 +154,7 @@ public class PTOperator implements java.io.Serializable
 
   PTOperator(PhysicalPlan plan, int id, String name, OperatorMeta om)
   {
+    this.checkpoints = new LinkedList<Checkpoint>();
     this.plan = plan;
     this.name = name;
     this.id = id;
@@ -175,8 +172,8 @@ public class PTOperator implements java.io.Serializable
   LogicalPlan.OperatorProxy unifier;
   List<PTInput> inputs;
   List<PTOutput> outputs;
-  public final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
-  long recoveryCheckpoint = 0;
+  public final LinkedList<Checkpoint> checkpoints;
+  Checkpoint recoveryCheckpoint;
   public int failureCount = 0;
   public int loadIndicator = 0;
   public List<? extends StatsListener> statsListeners;
@@ -210,11 +207,12 @@ public class PTOperator implements java.io.Serializable
    * representing the last getSaveStream reported.
    * @return long
    */
-  public long getRecentCheckpoint() {
-    if (checkpointWindows != null && !checkpointWindows.isEmpty()) {
-      return checkpointWindows.getLast();
+  public Checkpoint getRecentCheckpoint() {
+    if (checkpoints.isEmpty()) {
+      return Checkpoint.INITIAL_CHECKPOINT;
     }
-    return OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
+
+    return checkpoints.getLast();
   }
 
   /**
@@ -223,12 +221,12 @@ public class PTOperator implements java.io.Serializable
    *
    * @return long
    */
-  public long getRecoveryCheckpoint()
+  public Checkpoint getRecoveryCheckpoint()
   {
     return recoveryCheckpoint;
   }
 
-  public void setRecoveryCheckpoint(long recoveryCheckpoint)
+  public void setRecoveryCheckpoint(Checkpoint recoveryCheckpoint)
   {
     this.recoveryCheckpoint = recoveryCheckpoint;
   }
