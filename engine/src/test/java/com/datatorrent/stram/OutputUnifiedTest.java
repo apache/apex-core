@@ -5,7 +5,6 @@
 package com.datatorrent.stram;
 
 import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
@@ -13,7 +12,6 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
