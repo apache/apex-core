@@ -52,6 +52,10 @@ public class FSAgent
     return conf;
   }
 
+  public void createDirectory(Path path) throws IOException
+  {
+    fs.mkdirs(path);
+  }
 
   public void createFile(Path path, byte[] content) throws IOException
   {
