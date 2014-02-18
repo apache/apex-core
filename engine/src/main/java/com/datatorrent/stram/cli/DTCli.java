@@ -1628,7 +1628,7 @@ public class DTCli
 
       currentApp = getApplication(args[1]);
       if (currentApp == null) {
-        throw new CliException("Invalid application id: " + args[1]);
+        throw new CliException("Streaming application with id " + args[1] + " is not found.");
       }
 
       boolean connected = false;
@@ -2092,7 +2092,7 @@ public class DTCli
         for (int i = 1; i < args.length; i++) {
           apps[i - 1] = getApplication(args[i]);
           if (apps[i - 1] == null) {
-            throw new CliException("App " + args[i] + " not found!");
+            throw new CliException("Streaming application with id " + args[i] + " is not found.");
           }
         }
       }
@@ -3158,6 +3158,9 @@ public class DTCli
       ApplicationReport appReport;
       if (args.length > 1) {
         appReport = getApplication(args[1]);
+        if (appReport == null) {
+          throw new CliException("Streaming application with id " + args[1] + " is not found.");
+        }
       }
       else {
         if (currentApp == null) {
