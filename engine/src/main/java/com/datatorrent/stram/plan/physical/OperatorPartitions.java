@@ -166,7 +166,7 @@ public class OperatorPartitions {
     }
     HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(portKeys.size());
     for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : portKeys.entrySet()) {
-      LogicalPlan.InputPortMeta pportMeta = oper.logicalNode.getMeta(portEntry.getKey());
+      LogicalPlan.InputPortMeta pportMeta = oper.operatorMeta.getMeta(portEntry.getKey());
       if (pportMeta == null) {
         throw new AssertionError("Invalid port reference " + portEntry);
       }

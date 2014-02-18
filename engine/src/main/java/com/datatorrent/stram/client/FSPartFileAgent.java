@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jettison.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,11 @@ public abstract class FSPartFileAgent extends StramAgent
   private Map<String, String> lastIndexLines = new HashMap<String, String>();
 
   protected abstract IndexLine parseIndexLine(String line) throws JSONException;
+
+  public FSPartFileAgent(Configuration conf)
+  {
+    super(conf);
+  }
 
   public void setLastIndexLine(String basePath, String line)
   {

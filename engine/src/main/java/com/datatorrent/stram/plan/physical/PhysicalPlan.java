@@ -792,7 +792,7 @@ public class PhysicalPlan implements Serializable
    */
   public void removeIdlePartition(PTOperator p)
   {
-    PMapping currentMapping = this.logicalToPTOperator.get(p.logicalNode);
+    PMapping currentMapping = this.logicalToPTOperator.get(p.operatorMeta);
     List<PTOperator> copyPartitions = Lists.newArrayList(currentMapping.partitions);
     copyPartitions.remove(p);
     removePartition(p, currentMapping);
@@ -898,9 +898,8 @@ public class PhysicalPlan implements Serializable
   }
 
   PTOperator newOperator(OperatorMeta om, String name) {
-    PTOperator oper = new PTOperator(this, idSequence.incrementAndGet(), name);
+    PTOperator oper = new PTOperator(this, idSequence.incrementAndGet(), name, om);
     allOperators.put(oper.id, oper);
-    oper.logicalNode = om;
     oper.inputs = new ArrayList<PTInput>();
     oper.outputs = new ArrayList<PTOutput>();
 

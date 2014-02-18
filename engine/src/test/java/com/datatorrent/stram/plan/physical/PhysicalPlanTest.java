@@ -502,7 +502,7 @@ public class PhysicalPlanTest {
     try {
       OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, windowId);
       try {
-        Node.storeOperator(stream, oper.logicalNode.getOperator());
+        Node.storeOperator(stream, oper.operatorMeta.getOperator());
       }
       finally {
         stream.close();

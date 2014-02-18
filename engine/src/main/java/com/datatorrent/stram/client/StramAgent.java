@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.NewCookie;
+import org.apache.hadoop.conf.Configuration;
 
 /**
  * <p>Abstract StramAgent class.</p>
@@ -50,22 +51,25 @@ public class StramAgent extends FSAgent
     SecurityInfo securityInfo;
   }
 
-  private static class SecurityInfo {
+  private static class SecurityInfo
+  {
     public static final long DEFAULT_EXPIRY_INTERVAL = 60 * 60 * 1000;
-
     HeaderClientFilter secClientFilter;
     long expiryInterval = DEFAULT_EXPIRY_INTERVAL;
     long issueTime;
 
-    SecurityInfo(String secToken) {
+    SecurityInfo(String secToken)
+    {
       issueTime = System.currentTimeMillis();
       secClientFilter = new HeaderClientFilter();
       secClientFilter.addCookie(new Cookie(StramWSFilter.CLIENT_COOKIE, secToken));
     }
 
-    boolean isExpiredToken() {
+    boolean isExpiredToken()
+    {
       return ((System.currentTimeMillis() - issueTime) >= expiryInterval);
     }
+
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
@@ -89,6 +93,11 @@ public class StramAgent extends FSAgent
       return "App id " + appId + " is not found";
     }
 
+  }
+
+  public StramAgent(Configuration conf)
+  {
+    super(conf);
   }
 
   public static void setResourceManagerWebappAddress(String addr)
@@ -183,34 +192,36 @@ public class StramAgent extends FSAgent
   {
     String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
     /*
-    // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
-    if (UserGroupInformation.isSecurityEnabled()) {
-      StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
-      try {
-        StramClientUtils.ClientRMHelper clientRM = new StramClientUtils.ClientRMHelper(yarnClient);
-        ApplicationReport report = clientRM.getApplicationReport(appId);
-        if (report != null) {
-          url = "http://" + report.getOriginalTrackingUrl() + WebServices.PATH;
-        } else {
-          LOG.warn("No matching application found for {} in yarn", appId);
-          return null;
-        }
-      } catch (Exception ex) {
-        LOG.warn("Cannot get the tracking url for {} from yarn", appId);
-        LOG.warn("Caught exception", ex);
-        return null;
-      }
-    }
-    */
+     // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
+     if (UserGroupInformation.isSecurityEnabled()) {
+     StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
+     try {
+     StramClientUtils.ClientRMHelper clientRM = new StramClientUtils.ClientRMHelper(yarnClient);
+     ApplicationReport report = clientRM.getApplicationReport(appId);
+     if (report != null) {
+     url = "http://" + report.getOriginalTrackingUrl() + WebServices.PATH;
+     } else {
+     LOG.warn("No matching application found for {} in yarn", appId);
+     return null;
+     }
+     } catch (Exception ex) {
+     LOG.warn("Cannot get the tracking url for {} from yarn", appId);
+     LOG.warn("Caught exception", ex);
+     return null;
+     }
+     }
+     */
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
       JSONObject response;
       String secToken = null;
+      LOG.debug("Accessing url {}", url);
       if (!UserGroupInformation.isSecurityEnabled()) {
         response = new JSONObject(webServicesClient.process(url,
-                                                             String.class,
-                                                             new WebServicesClient.GetWebServicesHandler<String>()));
-      } else {
+                                                            String.class,
+                                                            new WebServicesClient.GetWebServicesHandler<String>()));
+      }
+      else {
         ClientResponse clientResponse = webServicesClient.process(url,
                                                                   ClientResponse.class,
                                                                   new WebServicesClient.GetWebServicesHandler<ClientResponse>());
@@ -240,7 +251,8 @@ public class StramAgent extends FSAgent
     }
   }
 
-  private static boolean checkSecExpiredToken(String appId, StramWebServicesInfo info) {
+  private static boolean checkSecExpiredToken(String appId, StramWebServicesInfo info)
+  {
     boolean expired = false;
     if (info.securityInfo != null) {
       if (info.securityInfo.isExpiredToken()) {

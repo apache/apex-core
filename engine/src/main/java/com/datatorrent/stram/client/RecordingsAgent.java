@@ -100,6 +100,11 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   }
 
+  public RecordingsAgent(Configuration conf)
+  {
+    super(conf);
+  }
+  
   public void setLocalMode(boolean localMode)
   {
     this.localMode = localMode;
