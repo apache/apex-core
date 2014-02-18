@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -74,6 +75,11 @@ public final class StatsAgent extends FSPartFileAgent
     public int containerId;
     public long timestamp;
     public ObjectMapperString stats;
+  }
+
+  public StatsAgent(Configuration conf)
+  {
+    super(conf);
   }
 
   public String getOperatorStatsDirectory(String appId, String opName)

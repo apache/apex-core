@@ -627,7 +627,7 @@ public class StreamingContainerManager implements PlanContext
   {
     StramChildAgent cs = containers.get(containerId);
     if (cs == null) {
-      LOG.warn("Trying to get unknown container " + containerId);
+      LOG.warn("Trying to get unknown container {}", containerId);
     }
     return cs;
   }
