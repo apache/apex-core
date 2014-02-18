@@ -7,25 +7,21 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.Operator;
+
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -147,7 +143,7 @@ public class CheckpointTest
     List<com.datatorrent.api.Stats.OperatorStats> stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 3, stats.size());
     Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
-    Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpointedWindowId); // lags windowId
+    Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpoint.getWindowId()); // lags windowId
     dnm.processHeartbeat(hb); // propagate checkpoint
 
     Thread.sleep(20); // file close delay?
@@ -170,7 +166,7 @@ public class CheckpointTest
     stats = ohb.getOperatorStatsContainer();
     Assert.assertEquals("windows stats " + stats, 1, stats.size());
     Assert.assertEquals("windowId " + stats.get(0), 3, stats.get(0).windowId);
-    Assert.assertEquals("checkpointedWindowId " + stats.get(0), 2, stats.get(0).checkpointedWindowId); // lags windowId
+    Assert.assertEquals("checkpointedWindowId " + stats.get(0), 2, stats.get(0).checkpoint.getWindowId()); // lags windowId
     dnm.processHeartbeat(hb); // propagate checkpoint
 
     // purge checkpoints
@@ -198,8 +194,8 @@ public class CheckpointTest
     PhysicalPlan plan = dnm.getPhysicalPlan();
 
     for (PTOperator oper : plan.getAllOperators().values()) {
-      Assert.assertEquals("activation windowId " + oper, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, oper.getRecoveryCheckpoint());
-      Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpointWindows);
+      Assert.assertEquals("activation windowId " + oper, Checkpoint.INITIAL_CHECKPOINT, oper.getRecoveryCheckpoint());
+      Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpoints);
     }
 
     List<PTOperator> nodes1 = plan.getOperators(dag.getMeta(node1));
@@ -218,50 +214,59 @@ public class CheckpointTest
     }
 
     dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode2, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode2.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode2, Checkpoint.INITIAL_CHECKPOINT, pnode2.getRecoveryCheckpoint());
 
     HashSet<PTOperator> s = new HashSet<PTOperator>();
     dnm.updateRecoveryCheckpoints(pnode1, s, new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode1, Checkpoint.INITIAL_CHECKPOINT, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals("number dependencies " + s, 2, s.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
-    pnode1.checkpointWindows.add(3L);
-    pnode1.checkpointWindows.add(5L);
+    pnode1.checkpoints.add(new Checkpoint(3L, 0, 0));
+    pnode1.checkpoints.add(new Checkpoint(5L, 0, 0));
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("no checkpoints " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("no checkpoints " + pnode1, Checkpoint.INITIAL_CHECKPOINT, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, Checkpoint.INITIAL_CHECKPOINT, pnode1.getRecoveryCheckpoint());
 
-    pnode2.checkpointWindows.add(3L);
+    pnode2.checkpoints.add(new Checkpoint(3L, 0, 0));
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint().windowId);
+    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint().windowId);
 
-    pnode2.checkpointWindows.add(4L);
+    pnode2.checkpoints.add(new Checkpoint(4L, 0, 0));
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint().windowId);
+    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint().windowId);
 
-    pnode1.checkpointWindows.add(1, 4L);
-    Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
+    pnode1.checkpoints.add(1, new Checkpoint(4L, 0, 0));
+    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(new Long[] {3L, 4L, 5L}));
     dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
-    Assert.assertEquals("checkpoint pnode1", 4L, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
+    Assert.assertEquals("checkpoint pnode1", 4L, pnode1.getRecoveryCheckpoint().windowId);
+    Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint().windowId);
+    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(new Long[] {4L, 5L}));
 
     // out of sequence windowIds should be sorted
-    dnm.addCheckpoint(pnode2, 2L);
-    Assert.assertEquals("add first", Arrays.asList(new Long[] {2L, 4L}), pnode2.checkpointWindows);
+    dnm.addCheckpoint(pnode2, new Checkpoint(2L, 0, 0));
+    Assert.assertEquals("add first", getCheckpoints(new Long[] {2L, 4L}), pnode2.checkpoints);
 
-    dnm.addCheckpoint(pnode2, 3L);
-    Assert.assertEquals("add middle", Arrays.asList(new Long[] {2L, 3L, 4L}), pnode2.checkpointWindows);
+    dnm.addCheckpoint(pnode2, new Checkpoint(3L, 0, 0));
+    Assert.assertEquals("add middle", getCheckpoints(new Long[] {2L, 3L, 4L}), pnode2.checkpoints);
 
-    dnm.addCheckpoint(pnode2, 4L);
-    Assert.assertEquals("ignore duplicate", Arrays.asList(new Long[] {2L, 3L, 4L}), pnode2.checkpointWindows);
+    dnm.addCheckpoint(pnode2, new Checkpoint(4L, 0, 0));
+    Assert.assertEquals("ignore duplicate", getCheckpoints(new Long[] {2L, 3L, 4L}), pnode2.checkpoints);
 
-    dnm.addCheckpoint(pnode2, 5L);
-    Assert.assertEquals("add latest", Arrays.asList(new Long[] {2L, 3L, 4L, 5L}), pnode2.checkpointWindows);
+    dnm.addCheckpoint(pnode2, new Checkpoint(5L, 0, 0));
+    Assert.assertEquals("add latest", getCheckpoints(new Long[] {2L, 3L, 4L, 5L}), pnode2.checkpoints);
 
   }
 
+  public List<Checkpoint> getCheckpoints(Long[] windowIds)
+  {
+    List<Checkpoint> list = new ArrayList<Checkpoint>(windowIds.length);
+    for (Long windowId : windowIds) {
+      list.add(new Checkpoint(windowId, 0, 0));
+    }
+
+    return list;
+  }
 }

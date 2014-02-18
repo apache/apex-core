@@ -932,7 +932,7 @@ public class DTCli
       }
     }
     StramClientUtils.addStramResources(conf);
-    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS, "localhost:8088"));
+    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS));
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1188,6 +1188,12 @@ public class DTCli
   private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
+      if (reader.isHistoryEnabled()) {
+        History history = reader.getHistory();
+        if (history instanceof FileHistory) {
+          ((FileHistory)history).flush();
+        }
+      }
       //LOG.debug("line: \"{}\"", line);
       List<String[]> commands = tokenizer.tokenize(line);
       if (commands == null) {

@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.api.Checkpoint;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -168,15 +169,15 @@ public class StramLocalClusterTest
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode1, 1, ptNode1.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode1, 1, ptNode1.getRecentCheckpoint().windowId);
     c2.triggerHeartbeat();
     //Thread.yield();
     Thread.sleep(1); // yield without using yield for heartbeat cycle
     c2.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode2, 1, ptNode2.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode2, 1, ptNode2.getRecentCheckpoint().windowId);
 
-    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {1L}), ptNode1.checkpointWindows);
-    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {1L}), ptNode2.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Checkpoint[] {new Checkpoint(1L, 0, 0)}), ptNode1.checkpoints);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Checkpoint[] {new Checkpoint(1L, 0, 0)}), ptNode2.checkpoints);
 
     //
     // simulate container failure (operator o1)
@@ -247,8 +248,8 @@ public class StramLocalClusterTest
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
-    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {3L}), ptNode1.checkpointWindows);
-    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {3L}), ptNode2.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Checkpoint[] {new Checkpoint(3L, 0, 0)}), ptNode1.checkpoints);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Checkpoint[] {new Checkpoint(3L, 0, 0)}), ptNode2.checkpoints);
 
     localCluster.shutdown();
   }

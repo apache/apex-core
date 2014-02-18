@@ -57,7 +57,7 @@ public class InputNode extends Node<InputOperator>
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
 
     boolean insideWindow = false;
-    boolean checkpoint = false;
+    boolean doCheckpoint = false;
 
     try {
       while (alive) {
@@ -120,8 +120,9 @@ public class InputNode extends Node<InputOperator>
               controlTupleCount++;
 
               if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-                if (checkpoint && checkpoint(currentWindowId)) {
-                  checkpoint = false;
+                if (doCheckpoint) {
+                  checkpoint(currentWindowId);
+                  doCheckpoint = false;
                 }
                 else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                   checkpoint(currentWindowId);
@@ -139,7 +140,7 @@ public class InputNode extends Node<InputOperator>
                 checkpoint(currentWindowId);
               }
               else {
-                checkpoint = true;
+                doCheckpoint = true;
               }
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
@@ -204,7 +205,7 @@ public class InputNode extends Node<InputOperator>
         applicationWindowCount = 0;
       }
       if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-        if (checkpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+        if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
         }
         checkpointWindowCount = 0;

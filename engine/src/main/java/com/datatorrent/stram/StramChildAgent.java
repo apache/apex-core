@@ -8,19 +8,23 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.datatorrent.api.Context.PortContext;
 import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.conf.Configuration;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.http.HttpConfig;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+
+import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
-import com.datatorrent.bufferserver.util.Codec;
+
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
@@ -35,9 +39,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.webapp.ContainerInfo;
-
-import org.apache.hadoop.http.HttpConfig;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
 
 /**
  *
@@ -254,8 +255,7 @@ public class StramChildAgent {
     if (oper.getUnifier() != null) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
-
-    long checkpointWindowId = oper.getRecoveryCheckpoint();
+    Checkpoint checkpoint = oper.getRecoveryCheckpoint();
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 
     if (pm == ProcessingMode.AT_MOST_ONCE || pm == ProcessingMode.EXACTLY_ONCE) {
@@ -268,16 +268,20 @@ public class StramChildAgent {
         agent = new FSStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
       }
       // pick the checkpoint most recently written to HDFS
+      // this should be handled differently. What happens to the checkpoint reported?
       try {
-        checkpointWindowId = agent.getMostRecentWindowId(oper.getId());
+        long checkpointId = agent.getMostRecentWindowId(oper.getId());
+        if (checkpoint == null || checkpoint.windowId != checkpointId) {
+          checkpoint = new Checkpoint(checkpointId, 0, 0);
+        }
       }
       catch (Exception e) {
           throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
       }
     }
 
-    LOG.debug("{} recovery checkpoint {}", oper, Codec.getStringWindowId(checkpointWindowId));
-    ndi.checkpointWindowId = checkpointWindowId;
+    LOG.debug("{} recovery checkpoint {}", oper, checkpoint);
+    ndi.checkpoint = checkpoint;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
     // clone the map as StramChild assumes ownership and may add non-serializable attributes
