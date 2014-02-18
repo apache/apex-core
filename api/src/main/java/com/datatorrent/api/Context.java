@@ -86,7 +86,7 @@ public interface Context
      * Whether the output is unified.
      * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
      */
-    public static final Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
+    Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
@@ -180,6 +180,13 @@ public interface Context
      * should be specified as AT_MOST_ONCE otherwise it will result in an error.
      */
     Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<Operator.ProcessingMode>(ProcessingMode.AT_LEAST_ONCE);
+    /**
+     * Timeout to identify stalled processing, specified as count of streaming windows. If the last processed
+     * window does not advance within the specified timeout count, the operator will be considered stuck and the
+     * container restart. There are multiple reasons this could happen: clock drift, hardware issue, networking issue,
+     * blocking operator logic, etc.
+     */
+    Attribute<Integer> TIMEOUT_WINDOW_COUNT = new Attribute<Integer>(120);
     /**
      * Whether or not to auto record the tuples
      */

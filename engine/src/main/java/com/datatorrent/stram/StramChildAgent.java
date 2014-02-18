@@ -227,9 +227,10 @@ public class StramChildAgent {
           }
           inputInfo.bufferServerHost = addr.getHostName();
           inputInfo.bufferServerPort = addr.getPort();
-          if (streamMeta.getCodecClass() != null) {
-            inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
-          }
+        }
+
+        if (streamMeta.getCodecClass() != null) {
+          inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
         }
         ndi.inputs.add(inputInfo);
       }

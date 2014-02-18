@@ -4,12 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.support.StramTestSupport.TestMeta;
-
 import java.net.InetSocketAddress;
 
 import org.codehaus.jettison.json.JSONArray;
@@ -20,10 +14,11 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.datatorrent.api.DAGContext;
-
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 /**
  *
