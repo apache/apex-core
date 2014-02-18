@@ -4,30 +4,26 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.api.OperatorDeployInfo;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.support.StramTestSupport;
+import java.net.InetSocketAddress;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.net.InetSocketAddress;
-import java.util.List;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.stram.api.OperatorDeployInfo;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestOutputOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.stream.OiOEndWindowTest.TestInputOperator;
+import com.datatorrent.stram.support.StramTestSupport;
 
 /**
  *
@@ -39,121 +35,6 @@ public class OutputUnifiedTest
   @Rule
   public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
-  public static class TestPartitionOperator extends BaseOperator {
-
-    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>() {
-
-      @Override
-      public void process(Object tuple)
-      {
-        output.emit(tuple);
-      }
-
-    };
-
-    private static class TestUnifier implements Unifier<Object>{
-
-      public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
-
-      @Override
-      public void process(Object tuple)
-      {
-        output.emit(tuple);
-      }
-
-      @Override
-      public void beginWindow(long windowId)
-      {
-      }
-
-      @Override
-      public void endWindow()
-      {
-      }
-
-      @Override
-      public void setup(OperatorContext context)
-      {
-      }
-
-      @Override
-      public void teardown()
-      {
-      }
-
-    }
-
-    @OutputPortFieldAnnotation(name="output", optional = true)
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>() {
-
-      @Override
-      public Unifier<Object> getUnifier()
-      {
-        return new TestUnifier();
-      }
-
-      @Override
-      public void setup(PortContext context)
-      {
-      }
-
-    };
-
-  }
-
-  public static class TestOutputOperator extends BaseOperator {
-
-    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>() {
-
-      @Override
-      public void process(Object tuple)
-      {
-      }
-
-    };
-
-  }
-
-  public static class TestInputOperator implements InputOperator {
-
-
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>() {
-
-      @Override
-      public void setup(PortContext context)
-      {
-      }
-
-    };
-
-    @Override
-    public void emitTuples()
-    {
-      output.emit(new Object());
-    }
-
-    @Override
-    public void beginWindow(long windowId)
-    {
-    }
-
-    @Override
-    public void endWindow()
-    {
-    }
-
-    @Override
-    public void setup(OperatorContext context)
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
-    }
-
-  }
-
   @Test
   public void testManyToOnePartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
@@ -162,7 +43,7 @@ public class OutputUnifiedTest
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
-    TestPartitionOperator op1 = new TestPartitionOperator();
+    GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
     dag.setAttribute(op1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
@@ -170,8 +51,8 @@ public class OutputUnifiedTest
     TestOutputOperator op2 = new TestOutputOperator();
     dag.addOperator("op2", op2);
 
-    dag.addStream("s1", i1.output, op1.input);
-    dag.addStream("s2", op1.output, op2.input);
+    dag.addStream("s1", i1.output, op1.inport1);
+    dag.addStream("s2", op1.outport1, op2.inport);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan physicalPlan = scm.getPhysicalPlan();
@@ -193,7 +74,7 @@ public class OutputUnifiedTest
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
-    TestPartitionOperator op1 = new TestPartitionOperator();
+    GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
     dag.setAttribute(op1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
@@ -203,8 +84,8 @@ public class OutputUnifiedTest
 
     dag.setAttribute(op2, OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
-    dag.addStream("s1", i1.output, op1.input);
-    dag.addStream("s2", op1.output, op2.input);
+    dag.addStream("s1", i1.output, op1.inport1);
+    dag.addStream("s2", op1.outport1, op2.inport);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan physicalPlan = scm.getPhysicalPlan();
@@ -228,16 +109,16 @@ public class OutputUnifiedTest
 
     dag.setAttribute(i1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
-    TestPartitionOperator op1 = new TestPartitionOperator();
+    GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
-    dag.setInputPortAttribute(op1.input, PortContext.PARTITION_PARALLEL, true);
+    dag.setInputPortAttribute(op1.inport1, PortContext.PARTITION_PARALLEL, true);
 
     TestOutputOperator op2 = new TestOutputOperator();
     dag.addOperator("op2", op2);
 
-    dag.addStream("s1", i1.output, op1.input);
-    dag.addStream("s2", op1.output, op2.input);
+    dag.addStream("s1", i1.output, op1.inport1);
+    dag.addStream("s2", op1.outport1, op2.inport);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan physicalPlan = scm.getPhysicalPlan();
