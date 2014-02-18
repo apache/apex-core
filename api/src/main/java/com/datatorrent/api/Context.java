@@ -181,6 +181,13 @@ public interface Context
      */
     Attribute<Operator.ProcessingMode> PROCESSING_MODE = new Attribute<Operator.ProcessingMode>(ProcessingMode.AT_LEAST_ONCE);
     /**
+     * Timeout to identify stalled processing, specified as count of streaming windows. If the last processed
+     * window does not advance within the specified timeout count, the operator will be considered stuck and the
+     * container restart. There are multiple reasons this could happen: clock drift, hardware issue, networking issue,
+     * blocking operator logic, etc.
+     */
+    Attribute<Integer> TIMEOUT_WINDOW_COUNT = new Attribute<Integer>(120);
+    /**
      * Whether or not to auto record the tuples
      */
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);

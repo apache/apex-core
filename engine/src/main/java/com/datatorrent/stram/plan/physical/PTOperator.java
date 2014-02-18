@@ -156,18 +156,19 @@ public class PTOperator implements java.io.Serializable
 
  }
 
-  PTOperator(PhysicalPlan plan, int id, String name)
+  PTOperator(PhysicalPlan plan, int id, String name, OperatorMeta om)
   {
     this.plan = plan;
     this.name = name;
     this.id = id;
-    this.stats = new OperatorStatus(this.id, plan.getDAG());
+    this.operatorMeta = om;
+    this.stats = new OperatorStatus(this.id, om);
   }
 
   private volatile PTOperator.State state = State.INACTIVE;
   private final PhysicalPlan plan;
   PTContainer container;
-  LogicalPlan.OperatorMeta logicalNode;
+  final LogicalPlan.OperatorMeta operatorMeta;
   final int id;
   private final String name;
   Map<InputPortMeta, PartitionKeys> partitionKeys;
@@ -192,7 +193,7 @@ public class PTOperator implements java.io.Serializable
    * @return Operator
    */
   public OperatorMeta getOperatorMeta() {
-    return this.logicalNode;
+    return this.operatorMeta;
   }
 
   public PTOperator.State getState() {
@@ -237,7 +238,7 @@ public class PTOperator implements java.io.Serializable
    * @return String
    */
   public String getLogicalId() {
-    return logicalNode.getName();
+    return operatorMeta.getName();
   }
 
   public int getId() {
