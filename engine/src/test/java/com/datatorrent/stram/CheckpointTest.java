@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -23,7 +24,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
+import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
@@ -33,16 +36,19 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHe
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.ManualScheduledExecutorService;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -290,7 +296,7 @@ public class CheckpointTest
   }
 
   @Test
-  public void testWindowProcessingTimeout()
+  public void testUpdateCheckpointsProcessingTimeout()
   {
     MockClock clock = new MockClock();
     LogicalPlan dag = new LogicalPlan();
@@ -354,7 +360,64 @@ public class CheckpointTest
 
   }
 
+  @Test
+  public void testBlockedOperatorContainerRestart()
+  {
+    MockClock clock = new MockClock();
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.TIMEOUT_WINDOW_COUNT, 2);
+
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+
+    StreamingContainerManager scm = new StreamingContainerManager(dag, false, clock);
+    PhysicalPlan plan = scm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    Assert.assertEquals("Number of containers", 2, containers.size());
+
+    Map<PTContainer, MockContainer> mockContainers = Maps.newHashMap();
+    // allocate/assign all containers
+    for (PTContainer c : containers) {
+      MockContainer mc = new MockContainer(scm, c);
+      mockContainers.put(c, mc);
+    }
+    // deploy all containers
+    for (MockContainer mc : mockContainers.values()) {
+      mc.deploy();
+    }
+
+    PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
+    MockContainer mc1 = mockContainers.get(o1p1.getContainer());
+    MockOperatorStats o1p1mos = mockContainers.get(o1p1.getContainer()).stats(o1p1.getId());
+    o1p1mos.currentWindowId(1).deployState(DeployState.ACTIVE);
+    clock.time = 10;
+    mc1.sendHeartbeat();
+
+    Assert.assertEquals(clock.time, o1p1.stats.lastWindowIdChangeTms);
+    Assert.assertEquals(1, o1p1.stats.currentWindowId.get());
+    Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+    int timeoutMs = dag.getMeta(o1).getValue(OperatorContext.TIMEOUT_WINDOW_COUNT) * dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS);
+    Assert.assertEquals("processing timeout", timeoutMs, o1p1.stats.windowProcessingTimeoutMillis);
+
+    clock.time += timeoutMs;
+    mc1.sendHeartbeat();
+    Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+    Assert.assertEquals(10, o1p1.stats.lastWindowIdChangeTms);
+    scm.monitorHeartbeat();
+    Assert.assertTrue(scm.containerStopRequests.isEmpty());
+
+    clock.time++;
+    mc1.sendHeartbeat();
+    Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+    scm.monitorHeartbeat();
+    Assert.assertTrue(scm.containerStopRequests.containsKey(o1p1.getContainer().getExternalId()));
+
+  }
 
 
 }
