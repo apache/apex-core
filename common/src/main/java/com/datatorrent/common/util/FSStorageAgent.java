@@ -20,6 +20,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.util.Codec;
 public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
@@ -41,8 +42,8 @@ public class FSStorageAgent implements StorageAgent
   @Override
   public OutputStream getSaveStream(int id, long windowId) throws IOException
   {
-    //logger.debug("Saving: {}{}{}{}{}", checkpointFsPath, PATH_SEPARATOR, id, PATH_SEPARATOR, windowId);
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + Codec.getStringWindowId(windowId));
+    logger.debug("Saving: {}", path);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     return fs.create(path);
   }
@@ -50,8 +51,8 @@ public class FSStorageAgent implements StorageAgent
   @Override
   public InputStream getLoadStream(int id, long windowId) throws IOException
   {
-    //logger.debug("Loading: {}{}{}{}{}", checkpointFsPath, PATH_SEPARATOR, id, PATH_SEPARATOR, windowId);
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + Codec.getStringWindowId(windowId));
+    logger.debug("Loading: {}", path);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     return fs.open(path);
   }
@@ -59,8 +60,8 @@ public class FSStorageAgent implements StorageAgent
   @Override
   public void delete(int id, long windowId) throws IOException
   {
-    //logger.debug("Deleting: {}{}{}{}{}", checkpointFsPath, PATH_SEPARATOR, id, PATH_SEPARATOR, windowId);
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + Codec.getStringWindowId(windowId));
+    logger.debug("Deleting: {}", path);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     fs.delete(path, false);
   }
@@ -73,12 +74,12 @@ public class FSStorageAgent implements StorageAgent
 
     FileStatus[] files = fs.listStatus(path);
     if (files == null || files.length == 0) {
-      throw new IOException("Storage agent has not saved anything yet!");
+      throw new IOException("Storage Agent has not saved anything yet!");
     }
 
-    long mrWindowId = Long.valueOf(files[files.length - 1].getPath().getName());
+    long mrWindowId = Codec.getLongWindowId(files[files.length - 1].getPath().getName());
     for (int i = files.length - 1; i-- > 0;) {
-      long windowId = Long.valueOf(files[i].getPath().getName());
+      long windowId = Codec.getLongWindowId(files[i].getPath().getName());
       if (windowId > mrWindowId) {
         mrWindowId = windowId;
       }
@@ -93,6 +94,5 @@ public class FSStorageAgent implements StorageAgent
     return checkpointFsPath;
   }
 
-  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(FSStorageAgent.class);
 }
