@@ -12,6 +12,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.PurgeRequestTuple;
 import com.datatorrent.bufferserver.packet.ResetRequestTuple;
 import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
@@ -34,13 +35,13 @@ public abstract class Controller extends AbstractLengthPrependerClient
   public void purge(String version, String sourceId, long windowId)
   {
     write(PurgeRequestTuple.getSerializedRequest(version, sourceId, windowId));
-    logger.debug("Sent purge request sourceId = {}, windowId = {}", sourceId, windowId);
+    logger.debug("Sent purge request sourceId = {}, windowId = {}", sourceId, Codec.getStringWindowId(windowId));
   }
 
   public void reset(String version, String sourceId, long windowId)
   {
     write(ResetRequestTuple.getSerializedRequest(version, sourceId, windowId));
-    logger.debug("Sent reset request sourceId = {}, windowId = {}", sourceId, windowId);
+    logger.debug("Sent reset request sourceId = {}, windowId = {}", sourceId, Codec.getStringWindowId(windowId));
   }
 
   @Override

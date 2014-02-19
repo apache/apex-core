@@ -105,7 +105,7 @@ public class FastDataList extends DataList
   public Iterator<SerializedData> newIterator(String identifier, long windowId)
   {
     for (Block temp = first; temp != null; temp = temp.next) {
-      if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
+      if (temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
         DataListIterator dli = new FastDataListIterator(temp, storage);
         iterators.put(identifier, dli);
         return dli;
@@ -156,7 +156,7 @@ public class FastDataList extends DataList
         }
 
         if(temp.data == null){
-          temp.acquire(storage, false);         
+          temp.acquire(storage, false);
         }
 
         this.baseSeconds = temp.rewind(longWindowId, true);
