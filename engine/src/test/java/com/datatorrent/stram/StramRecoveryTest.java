@@ -4,23 +4,22 @@
  */
 package com.datatorrent.stram;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import junit.framework.Assert;
-
-import com.google.common.collect.Lists;
-
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
@@ -29,19 +28,18 @@ import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.test.MockitoUtil;
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.stram.api.Checkpoint;
-import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
-
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
-import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
@@ -55,6 +53,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+import com.google.common.collect.Lists;
 
 public class StramRecoveryTest
 {
@@ -146,22 +145,10 @@ public class StramRecoveryTest
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
 
-    // container allocation
-    String containerId = "container1";
-    InetSocketAddress bufferServerAddress = InetSocketAddress.createUnresolved("localhost", 0);
-    StramChildAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), bufferServerAddress);
-    Assert.assertNotNull(sca);
+    MockContainer mc = new MockContainer(scm, o1p1.getContainer());
+    PTContainer originalContainer = o1p1.getContainer();
 
-    Assert.assertEquals(PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
-    Assert.assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
-
-    ContainerStats cstats = new ContainerStats(containerId);
-    ContainerHeartbeat hb = new ContainerHeartbeat();
-    hb.setContainerStats(cstats);
-
-    ContainerHeartbeatResponse chr = scm.processHeartbeat(hb); // get deploy request
-    Assert.assertNotNull(chr.deployRequest);
-    Assert.assertEquals(""+chr.deployRequest, 1, chr.deployRequest.size());
+    Assert.assertNotNull(o1p1.getContainer().bufferServerAddress);
     Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
@@ -175,22 +162,21 @@ public class StramRecoveryTest
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     Assert.assertEquals("post restore state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
     o1 = (StatsListeningOperator)o1p1.getOperatorMeta().getOperator();
-    Assert.assertEquals("containerId", containerId, o1p1.getContainer().getExternalId());
+    Assert.assertEquals("containerId", originalContainer.getExternalId(), o1p1.getContainer().getExternalId());
     Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
     Assert.assertEquals("number stats calls", 0,  o1.processStatsCnt); // stats are not logged
     Assert.assertEquals("post restore 1", PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
-    Assert.assertEquals("post restore 1", bufferServerAddress, o1p1.getContainer().bufferServerAddress);
+    Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
-    // operator reports first stats
-    OperatorHeartbeat ohb = new OperatorHeartbeat();
-    ohb.setNodeId(o1p1.getId());
-    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
-    OperatorStats stats = new OperatorStats();
-    stats.checkpoint = new Checkpoint(2, 0, 0);
-    stats.windowId = 3;
-    ohb.windowStats = Lists.newArrayList(stats);
-    cstats.operators.add(ohb);
-    scm.processHeartbeat(hb); // get deploy request
+    StramChildAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
+    Assert.assertNotNull("allocated container restored " + originalContainer, sca);
+
+    // YARN-1490 - simulate container terminated on AM recovery
+    scm.scheduleContainerRestart(originalContainer.getExternalId());
+
+    mc = new MockContainer(scm, o1p1.getContainer());
+    mc.stats(o1p1.getId()).deployState(OperatorHeartbeat.DeployState.ACTIVE).currentWindowId(3);
+    mc.sendHeartbeat();
     Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
 
     // logical plan modification triggers snapshot
@@ -231,7 +217,7 @@ public class StramRecoveryTest
     Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
     Assert.assertEquals("number stats calls post restore", 1,  o1.processStatsCnt);
     Assert.assertEquals("post restore 1", PTContainer.State.ACTIVE, o1p1.getContainer().getState());
-    Assert.assertEquals("post restore 1", bufferServerAddress, o1p1.getContainer().bufferServerAddress);
+    Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
   }
 
