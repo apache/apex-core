@@ -16,6 +16,7 @@ import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.bufferserver.util.BitVector;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.SerializedData;
 import com.datatorrent.common.util.VarInt;
 import com.datatorrent.common.util.VarInt.MutableInt;
@@ -39,7 +40,7 @@ public class DataList
   protected Storage storage;
   protected ScheduledExecutorService executor;
   private final int numberOfCacheBlocks;
- 
+
   public int getBlockSize()
   {
     return blocksize;
@@ -48,17 +49,17 @@ public class DataList
   public void rewind(int baseSeconds, int windowId) throws IOException
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
-   
+
     for (Block temp = first; temp != null; temp = temp.next) {
-      
+
       if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
         if (temp != last) {
           temp.next = null;
           last = temp;
         }
-        
+
         if(temp.data == null){
-          temp.acquire(storage, false);         
+          temp.acquire(storage, false);
         }
 
         this.baseSeconds = temp.rewind(longWindowId, false,storage);
@@ -91,7 +92,7 @@ public class DataList
   public void purge(int baseSeconds, int windowId)
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
-    logger.debug("purge request for windowId {}",longWindowId);
+    logger.debug("purge request for windowId {}", Codec.getStringWindowId(longWindowId));
 
     Block prev = null;
     for (Block temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
@@ -106,7 +107,7 @@ public class DataList
         first.purge(longWindowId, false,storage);
         break;
       }
-      
+
       if (storage != null && temp.uniqueIdentifier > 0) {
         logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
 
@@ -132,7 +133,7 @@ public class DataList
     first = new Block(identifier, blocksize);
     last = first;
     this.numberOfCacheBlocks = numberOfCacheBlocks;
-   
+
   }
 
   public DataList(String identifier)
