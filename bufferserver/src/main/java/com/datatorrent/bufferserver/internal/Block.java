@@ -4,7 +4,6 @@
  */
 package com.datatorrent.bufferserver.internal;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +82,7 @@ public class Block
     }
   }
 
-  public long rewind(long windowId, boolean fast,Storage storage)
+  public long rewind(long windowId, boolean fast, Storage storage)
   {
     long bs = starting_window & 0x7fffffff00000000L;
     DataListIterator dli = fast ? new FastDataListIterator(this, storage) : new DataListIterator(this, storage);
@@ -121,7 +120,7 @@ public class Block
     return bs;
   }
 
-  public void purge(long longWindowId, boolean fast,Storage storage)
+  public void purge(long longWindowId, boolean fast, Storage storage)
   {
 //    logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
 //                 new Object[] {VarInt.getStringWindowId(starting_window), VarInt.getStringWindowId(longWindowId), VarInt.getStringWindowId(ending_window)});
@@ -129,7 +128,7 @@ public class Block
     long bs = starting_window & 0xffffffff00000000L;
     SerializedData lastReset = null;
 
-    DataListIterator dli = fast? new FastDataListIterator(this, storage): new DataListIterator(this, storage);
+    DataListIterator dli = fast ? new FastDataListIterator(this, storage) : new DataListIterator(this, storage);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();

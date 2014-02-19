@@ -268,6 +268,16 @@ public class CheckpointTest
 
   }
 
+  public List<Checkpoint> getCheckpoints(Long[] windowIds)
+  {
+    List<Checkpoint> list = new ArrayList<Checkpoint>(windowIds.length);
+    for (Long windowId : windowIds) {
+      list.add(new Checkpoint(windowId, 0, 0));
+    }
+
+    return list;
+  }
+
   public class MockClock implements Clock
   {
     public long time = 0;
@@ -344,13 +354,7 @@ public class CheckpointTest
 
   }
 
-  public List<Checkpoint> getCheckpoints(Long[] windowIds)
-  {
-    List<Checkpoint> list = new ArrayList<Checkpoint>(windowIds.length);
-    for (Long windowId : windowIds) {
-      list.add(new Checkpoint(windowId, 0, 0));
-    }
 
-    return list;
-  }
+
+
 }

@@ -86,7 +86,7 @@ public interface Context
      * Whether the output is unified.
      * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
      */
-    public static final Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
+    Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(PortContext.class);

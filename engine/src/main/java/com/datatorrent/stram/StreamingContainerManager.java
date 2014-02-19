@@ -46,6 +46,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.util.Codec;
 
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
@@ -1139,9 +1140,9 @@ public class StreamingContainerManager implements PlanContext
     if (operator.getRecoveryCheckpoint().windowId < ctx.committedWindowId.longValue()) {
       ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint().windowId);
     }
-
-    if (operator.getState() == PTOperator.State.ACTIVE && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis)
-    {
+    
+    if (operator.getState() == PTOperator.State.ACTIVE
+        && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       ctx.blocked.add(operator);
     }
 
@@ -1205,12 +1206,13 @@ public class StreamingContainerManager implements PlanContext
         }
 
         if (!done) {
+          LOG.debug("Possibily will cause problems with the checkpointing because recovery checkpoint {} is random", Codec.getStringWindowId(c1));
           operator.setRecoveryCheckpoint(new Checkpoint(c1, 0, 0));
         }
       }
     }
     else {
-      LOG.debug("Skipping checkpoint update {} {}", operator, operator.getState());
+      LOG.debug("Skipping checkpoint update {} during {}", operator, operator.getState());
     }
 
     ctx.visited.add(operator);
