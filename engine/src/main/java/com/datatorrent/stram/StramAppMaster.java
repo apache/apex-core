@@ -81,14 +81,14 @@ public class StramAppMaster extends StramUtils.YarnContainerMain
     StramAppMasterService appMaster = null;
     try {
       appMaster = new StramAppMasterService(appAttemptID);
-      LOG.info("Initializing ApplicationMaster");
+      LOG.info("Initializing Application Master.");
 
       Configuration conf = new YarnConfiguration();
       appMaster.init(conf);
       appMaster.start();
       result = appMaster.run();
     } catch (Throwable t) {
-      LOG.error("Error running ApplicationMaster", t);
+      LOG.error("Exiting Application Master", t);
       System.exit(1);
     } finally {
       if (appMaster != null) {
@@ -97,10 +97,10 @@ public class StramAppMaster extends StramUtils.YarnContainerMain
     }
 
     if (result) {
-      LOG.info("Application Master completed. exiting");
+      LOG.info("Application Master completed.");
       System.exit(0);
     } else {
-      LOG.info("Application Master failed. exiting");
+      LOG.info("Application Master failed.");
       System.exit(2);
     }
   }

@@ -39,7 +39,7 @@ public class DataList
   protected Block last;
   protected Storage storage;
   protected ScheduledExecutorService executor;
-  private final int numberOfCacheBlocks;
+  private final int MAX_COUNT_OF_INMEM_BLOCKS;
 
   public int getBlockSize()
   {
@@ -58,17 +58,13 @@ public class DataList
           last = temp;
         }
 
-        if(temp.data == null){
-          temp.acquire(storage, false);
-        }
-
-        this.baseSeconds = temp.rewind(longWindowId, false,storage);
+        this.baseSeconds = temp.rewind(longWindowId, false, storage);
         processingOffset = temp.writingOffset;
         size = 0;
       }
     }
 
-    for (DataListIterator dli: iterators.values()) {
+    for (DataListIterator dli : iterators.values()) {
       dli.rewind(processingOffset);
     }
   }
@@ -101,10 +97,7 @@ public class DataList
           first = temp;
         }
 
-        if (first.data == null){
-          first.acquire(storage,false);
-        }
-        first.purge(longWindowId, false,storage);
+        first.purge(longWindowId, false, storage);
         break;
       }
 
@@ -126,13 +119,13 @@ public class DataList
     return identifier;
   }
 
-  public DataList(String identifier, int blocksize,int numberOfCacheBlocks)
+  public DataList(String identifier, int blocksize, int numberOfCacheBlocks)
   {
     this.identifier = identifier;
     this.blocksize = blocksize;
     first = new Block(identifier, blocksize);
     last = first;
-    this.numberOfCacheBlocks = numberOfCacheBlocks;
+    this.MAX_COUNT_OF_INMEM_BLOCKS = numberOfCacheBlocks;
 
   }
 
@@ -142,7 +135,7 @@ public class DataList
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
      * we will use default value of 8 block sizes to be cached in memory
      */
-    this(identifier, 64 * 1024 * 1024,8);
+    this(identifier, 64 * 1024 * 1024, 8);
   }
 
   MutableInt nextOffset = new MutableInt();
@@ -216,7 +209,7 @@ public class DataList
       @Override
       public void run()
       {
-        for (DataListener dl: all_listeners) {
+        for (DataListener dl : all_listeners) {
           dl.addedData();
         }
       }
@@ -242,7 +235,7 @@ public class DataList
   public Iterator<SerializedData> newIterator(String identifier, long windowId)
   {
     for (Block temp = first; temp != null; temp = temp.next) {
-      if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
+      if (temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
         DataListIterator dli = new DataListIterator(temp, storage);
         iterators.put(identifier, dli);
         return dli;
@@ -265,7 +258,7 @@ public class DataList
     boolean released = false;
     if (iterator instanceof DataListIterator) {
       DataListIterator dli = (DataListIterator)iterator;
-      for (Entry<String, DataListIterator> e: iterators.entrySet()) {
+      for (Entry<String, DataListIterator> e : iterators.entrySet()) {
         if (e.getValue() == dli) {
           iterators.remove(e.getKey());
           released = true;
@@ -286,7 +279,7 @@ public class DataList
   {
     int count = 0;
 
-    for (DataListIterator dli: iterators.values()) {
+    for (DataListIterator dli : iterators.values()) {
       count++;
       dli.da.release(storage, false);
       dli.da = null;
@@ -303,7 +296,7 @@ public class DataList
     //logger.debug("total {} listeners {} -> {}", all_listeners.size(), dl, this);
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition: partitions) {
+      for (BitVector partition : partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
@@ -333,7 +326,7 @@ public class DataList
   {
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition: partitions) {
+      for (BitVector partition : partitions) {
         if (listeners.containsKey(partition)) {
           listeners.get(partition).remove(dl);
         }
@@ -354,31 +347,36 @@ public class DataList
     last.next.starting_window = last.ending_window;
     last.next.ending_window = last.ending_window;
     last = last.next;
-    Block temp = first;
-    int currentCachedBlocks=0;
-    for (temp = first; temp != null; temp = temp.next) {
-      if(temp.data != null){
-        currentCachedBlocks++;
+
+    int inmemBlockCount;
+
+    inmemBlockCount = 0;
+    for (Block temp = first; temp != null; temp = temp.next) {
+      if (temp.data != null) {
+        inmemBlockCount++;
       }
     }
-    logger.debug("currentCachedBlocks before releaes {}",currentCachedBlocks);
-    temp = first;
-    boolean found = false;
-    while (currentCachedBlocks >= numberOfCacheBlocks && temp != null) {
-      for (Map.Entry<String, DataListIterator> entry : iterators.entrySet()) {
-        if (entry.getValue().da == temp) {
-          found = true;
-          break;
+
+    if (inmemBlockCount >= MAX_COUNT_OF_INMEM_BLOCKS) {
+      logger.debug("InmemBlockCount before releaes {}", inmemBlockCount);
+      for (Block temp = first; temp != null; temp = temp.next) {
+        boolean found = false;
+        for (DataListIterator iterator : iterators.values()) {
+          if (iterator.da == temp) {
+            found = true;
+            break;
+          }
+        }
+
+        if (!found && temp.data != null) {
+          temp.release(storage, false);
+          if (--inmemBlockCount < MAX_COUNT_OF_INMEM_BLOCKS) {
+            break;
+          }
         }
       }
-      if (!found && temp.data != null) {
-        temp.release(storage, false);
-        currentCachedBlocks--;
-      }
-      temp = temp.next;
-      found = false;
+      logger.debug("InmemBlockCount after release {}", inmemBlockCount);
     }
-    logger.debug("currentCachedBlocks after release {}",currentCachedBlocks);
   }
 
   public byte[] getBuffer(long windowId)
@@ -417,7 +415,7 @@ public class DataList
     int oldestBlockIndex = Integer.MAX_VALUE;
     int oldestReadOffset = Integer.MAX_VALUE;
 
-    for (Map.Entry<String, DataListIterator> entry: iterators.entrySet()) {
+    for (Map.Entry<String, DataListIterator> entry : iterators.entrySet()) {
       Integer index = indices.get(entry.getValue().da);
       if (index == null) {
         // error
