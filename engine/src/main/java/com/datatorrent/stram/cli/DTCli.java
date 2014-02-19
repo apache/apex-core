@@ -86,7 +86,7 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 10000;
-  private final Configuration conf = new YarnConfiguration();
+  private Configuration conf;
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
@@ -934,8 +934,8 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
-    StramClientUtils.addStramResources(conf);
-    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS, "localhost:8088"));
+    conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
+    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS));
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1085,7 +1085,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent();
+    recordingsAgent = new RecordingsAgent(conf);
     recordingsAgent.setup();
   }
 
@@ -1191,6 +1191,12 @@ public class DTCli
   private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
+      if (reader.isHistoryEnabled()) {
+        History history = reader.getHistory();
+        if (history instanceof FileHistory) {
+          ((FileHistory)history).flush();
+        }
+      }
       //LOG.debug("line: \"{}\"", line);
       List<String[]> commands = tokenizer.tokenize(line);
       if (commands == null) {
@@ -1625,7 +1631,7 @@ public class DTCli
 
       currentApp = getApplication(args[1]);
       if (currentApp == null) {
-        throw new CliException("Invalid application id: " + args[1]);
+        throw new CliException("Streaming application with id " + args[1] + " is not found.");
       }
 
       boolean connected = false;
@@ -1682,7 +1688,7 @@ public class DTCli
     lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
     lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
-    StramClient client = new StramClient(lp);
+    StramClient client = new StramClient(conf, lp);
     client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
     client.startApplication();
     return licenseId;
@@ -1872,7 +1878,7 @@ public class DTCli
       if (commandLineInfo.configFile != null) {
         commandLineInfo.configFile = expandFileName(commandLineInfo.configFile, true);
       }
-      Configuration config = StramAppLauncher.getConfig(commandLineInfo.configFile, commandLineInfo.overrideProperties);
+      Configuration config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), commandLineInfo.configFile, commandLineInfo.overrideProperties);
       if (commandLineInfo.libjars != null) {
         commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
         config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
@@ -2054,7 +2060,7 @@ public class DTCli
         for (int i = 1; i < args.length; i++) {
           apps[i - 1] = getApplication(args[i]);
           if (apps[i - 1] == null) {
-            throw new CliException("App " + args[i] + " not found!");
+            throw new CliException("Streaming application with id " + args[i] + " is not found.");
           }
         }
       }
@@ -2745,7 +2751,7 @@ public class DTCli
       String[] newArgs = new String[args.length - 1];
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       ShowLogicalPlanCommandLineInfo commandLineInfo = getShowLogicalPlanCommandLineInfo(newArgs);
-      Configuration config = StramAppLauncher.getConfig(null, null);
+      Configuration config = StramClientUtils.addDTSiteResources(new Configuration());
       if (commandLineInfo.libjars != null) {
         commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
         config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
@@ -2817,7 +2823,8 @@ public class DTCli
       if (args.length > 3) {
         String jarfile = args[2];
         String appName = args[3];
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, null, false);
+        Configuration config = StramClientUtils.addDTSiteResources(new Configuration());
+        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, false);
         submitApp.loadDependencies();
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
@@ -3119,6 +3126,9 @@ public class DTCli
       ApplicationReport appReport;
       if (args.length > 1) {
         appReport = getApplication(args[1]);
+        if (appReport == null) {
+          throw new CliException("Streaming application with id " + args[1] + " is not found.");
+        }
       }
       else {
         if (currentApp == null) {

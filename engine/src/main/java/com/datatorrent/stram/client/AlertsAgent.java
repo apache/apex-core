@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -30,6 +31,11 @@ import org.slf4j.LoggerFactory;
 public class AlertsAgent extends StramAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(AlertsAgent.class);
+
+  public AlertsAgent(Configuration conf)
+  {
+    super(conf);
+  }
 
   private String getAlertTemplatesDirectory()
   {

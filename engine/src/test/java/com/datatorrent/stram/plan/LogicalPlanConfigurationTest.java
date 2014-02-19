@@ -175,19 +175,15 @@ public class LogicalPlanConfigurationTest {
 
   }
 
-  private static String getSimpleName(Attribute<?> attr) {
-    return attr.name.substring(attr.name.lastIndexOf('.')+1);
-  }
-
   @Test
   public void testAppLevelAttributes() {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "attr." + getSimpleName(DAG.CONTAINER_MEMORY_MB), "123");
-    props.put(DAGContext.DT_PREFIX + "attr." + getSimpleName(DAG.APPLICATION_PATH), "/defaultdir");
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".attr." + getSimpleName(DAG.APPLICATION_PATH), "/otherdir");
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".attr." + getSimpleName(DAG.STREAMING_WINDOW_SIZE_MILLIS), "1000");
+    props.put(DAGContext.DT_PREFIX + DAG.CONTAINER_MEMORY_MB.getName(), "123");
+    props.put(DAGContext.DT_PREFIX + DAG.APPLICATION_PATH.getName(), "/defaultdir");
+    props.put(DAGContext.DT_PREFIX + "application." + appName + "." + DAG.APPLICATION_PATH.getName(), "/otherdir");
+    props.put(DAGContext.DT_PREFIX + "application." + appName + "." + DAG.STREAMING_WINDOW_SIZE_MILLIS.getName(), "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -330,9 +326,9 @@ public class LogicalPlanConfigurationTest {
 
     Properties props = new Properties();
     props.put(DAGContext.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
-    props.put(DAGContext.DT_PREFIX + "operator.*.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "2");
-    props.put(DAGContext.DT_PREFIX + "operator.*.attr." + getSimpleName(OperatorContext.STATS_LISTENERS), PartitionLoadWatch.class.getName());
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1.attr." + getSimpleName(OperatorContext.APPLICATION_WINDOW_COUNT), "20");
+    props.put(DAGContext.DT_PREFIX + "operator.*." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "2");
+    props.put(DAGContext.DT_PREFIX + "operator.*." + OperatorContext.STATS_LISTENERS.getName(), PartitionLoadWatch.class.getName());
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "20");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -367,11 +363,11 @@ public class LogicalPlanConfigurationTest {
 
     Properties props = new Properties();
     props.put(DAGContext.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.port.*.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 16 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2.attr." + getSimpleName(PortContext.QUEUE_CAPACITY), "" + 32 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
+    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);

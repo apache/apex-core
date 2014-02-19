@@ -33,7 +33,9 @@ import com.esotericsoftware.kryo.serializers.JavaSerializer;
  *
  * @param <T> - Type of the object which you would like to serialize using KryoJdkSerializer.
  * @since 0.3.2
+ * @deprecated - Please use com.datatorrent.lib.codec.KryoJdkContainer instead.
  */
+@Deprecated
 @DefaultSerializer(JavaSerializer.class)
 public class KryoJdkContainer<T> implements Serializable
 {

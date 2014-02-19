@@ -14,7 +14,6 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.stram.engine.WindowGenerator;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -25,10 +24,6 @@ import com.datatorrent.stram.engine.WindowGenerator;
 public class OperatorDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
-  /**
-   * WindowId used to store the state of the operator which has not processed a single tuple.
-   */
-  public static final long STATELESS_CHECKPOINT_WINDOW_ID = WindowGenerator.MIN_WINDOW_ID - 1;
 
   public enum OperatorType {
     INPUT, UNIFIER, GENERIC, OIO
@@ -39,8 +34,6 @@ public class OperatorDeployInfo implements Serializable
    */
   public static class InputDeployInfo implements Serializable, PortContext
   {
-    private static final long serialVersionUID = 201208271957L;
-
     public Locality locality;
 
     /**
@@ -120,7 +113,8 @@ public class OperatorDeployInfo implements Serializable
       return get;
     }
 
-
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201208271957L;
   }
 
   /**
@@ -131,8 +125,6 @@ public class OperatorDeployInfo implements Serializable
    */
   public static class OutputDeployInfo implements PortContext, Serializable
   {
-    private static final long serialVersionUID = 201208271958L;
-
     /**
      * Port name matching the node's port declaration
      */
@@ -186,6 +178,9 @@ public class OperatorDeployInfo implements Serializable
 
       return attr;
     }
+
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201208271958L;
   }
 
   /**
@@ -208,7 +203,7 @@ public class OperatorDeployInfo implements Serializable
    * The checkpoint window identifier.
    * Used to restore state and incoming streams as part of recovery.
    */
-  public long checkpointWindowId = STATELESS_CHECKPOINT_WINDOW_ID;
+  public Checkpoint checkpoint;
 
   /**
    * Inputs to node, either from socket stream or inline from other node(s).
@@ -235,7 +230,7 @@ public class OperatorDeployInfo implements Serializable
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
             append("name", this.name).
             append("type", this.type).
-            append("checkpoint", this.checkpointWindowId).
+            append("checkpoint", this.checkpoint).
             append("inputs", this.inputs).
             append("outputs", this.outputs).
             toString();

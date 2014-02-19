@@ -51,6 +51,7 @@ import com.esotericsoftware.kryo.io.Output;
  *
  * @param <T> type of serialized object
  * @since 0.3.2
+ * @deprecated Please use com.esotericsoftware.kryo.serializers.JavaSerializer instead.
  */
 @Deprecated
 public class KryoJdkSerializer<T> extends Serializer<T>

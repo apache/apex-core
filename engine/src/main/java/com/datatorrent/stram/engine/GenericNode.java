@@ -139,11 +139,13 @@ public class GenericNode extends Node<Operator>
     }
 
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-      if (checkpoint && checkpoint(currentWindowId)) {
+      if (doCheckpoint) {
+        checkpoint(currentWindowId);
         lastCheckpointedWindowId = currentWindowId;
-        checkpoint = false;
+        doCheckpoint = false;
       }
-      else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && checkpoint(currentWindowId)) {
+      else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+        checkpoint(currentWindowId);
         lastCheckpointedWindowId = currentWindowId;
       }
       checkpointWindowCount = 0;
@@ -168,7 +170,7 @@ public class GenericNode extends Node<Operator>
   }
 
   boolean insideWindow;
-  boolean checkpoint;
+  boolean doCheckpoint;
   long lastCheckpointedWindowId;
 
   /**
@@ -182,7 +184,7 @@ public class GenericNode extends Node<Operator>
   {
     lastCheckpointedWindowId = 0;
     insideWindow = false;
-    checkpoint = false;
+    doCheckpoint = false;
 
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
@@ -289,15 +291,14 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                long checkPtWinId = t.getWindowId();
-                if (lastCheckpointedWindowId < checkPtWinId && !checkpoint) {
+                long checkpointWindow = t.getWindowId();
+                if (lastCheckpointedWindowId < checkpointWindow && !doCheckpoint) {
                   if (checkpointWindowCount == 0) {
-                    if (checkpoint(checkPtWinId)) {
-                      lastCheckpointedWindowId = checkPtWinId;
-                    }
+                    checkpoint(checkpointWindow);
+                    lastCheckpointedWindowId = checkpointWindow;
                   }
                   else {
-                    checkpoint = true;
+                    doCheckpoint = true;
                   }
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
@@ -533,7 +534,7 @@ public class GenericNode extends Node<Operator>
       }
 
       if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
-        if (checkpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
+        if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
         }
         checkpointWindowCount = 0;

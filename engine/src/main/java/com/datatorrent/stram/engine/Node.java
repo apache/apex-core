@@ -27,7 +27,10 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.MuxSink;
@@ -60,7 +63,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
   protected int id;
-  protected final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
+  protected final HashMap<String, Sink<Object>> outputs;
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile Sink<Object>[] sinks = Sink.NO_SINKS;
   protected boolean alive;
@@ -70,18 +73,23 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected long endWindowEmitTime;
   protected long lastSampleCpuTime;
   protected ThreadMXBean tmb;
-  protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
-  protected long checkpointedWindowId = OperatorDeployInfo.STATELESS_CHECKPOINT_WINDOW_ID;
+  protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes; // end window dequeue time for input ports
+  protected Checkpoint checkpoint;
   public int applicationWindowCount;
   public int checkpointWindowCount;
   protected int controlTupleCount;
+  protected final boolean stateless;
 
   public Node(OPERATOR operator)
   {
     this.operator = operator;
+    stateless = operator.getClass().isAnnotationPresent(Stateless.class);
+    outputs = new HashMap<String, Sink<Object>>();
 
     descriptor = new PortMappingDescriptor();
     Operators.describe(operator, descriptor);
+
+    endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>();
     tmb = ManagementFactory.getThreadMXBean();
   }
 
@@ -93,6 +101,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   @Override
   public void setup(OperatorContext context)
   {
+    shutdown = false;
     operator.setup(context);
 //    this is where the ports should be setup but since the
 //    portcontext is not available here, we are doing it in
@@ -216,9 +225,12 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
+  protected volatile boolean shutdown;
 
   public void shutdown()
   {
+    shutdown = true;
+
     synchronized (this) {
       alive = false;
     }
@@ -307,7 +319,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;
-    stats.checkpointedWindowId = checkpointedWindowId;
+
+    if (checkpoint != null) {
+      stats.checkpoint = checkpoint;
+      checkpoint = null;
+    }
 
     context.report(stats, windowId);
   }
@@ -334,100 +350,77 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     sinks = Sink.NO_SINKS;
   }
 
-  public static void storeNode(OutputStream stream, Node<?> node) throws IOException
-  {
-    OperatorWrapper ow = new OperatorWrapper();
-    ow.operator = node.operator;
-    ow.windowCount = node.applicationWindowCount;
-    storeOperatorWrapper(stream, ow);
-  }
-
   public static void storeOperator(OutputStream stream, Operator operator) throws IOException
-  {
-    OperatorWrapper ow = new OperatorWrapper();
-    ow.operator = operator;
-    ow.windowCount = 0;
-    storeOperatorWrapper(stream, ow);
-  }
-
-  private static void storeOperatorWrapper(OutputStream stream, OperatorWrapper ow) throws IOException
   {
     Output output = new Output(4096, Integer.MAX_VALUE);
     output.setOutputStream(stream);
     final Kryo k = new Kryo();
-    k.writeClassAndObject(output, ow);
+    k.writeClassAndObject(output, operator);
     output.flush();
-  }
-
-  public static OperatorWrapper retrieveOperatorWrapper(InputStream stream)
-  {
-    final Kryo k = new Kryo();
-    k.setClassLoader(Thread.currentThread().getContextClassLoader());
-    Input input = new Input(stream);
-    return (OperatorWrapper)k.readClassAndObject(input);
-  }
-
-  protected boolean checkpoint(long windowId)
-  {
-    StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
-    if (ba != null) {
-      try {
-        OutputStream stream = ba.getSaveStream(id, windowId);
-        try {
-          Node.storeNode(stream, this);
-        }
-        finally {
-          stream.close();
-        }
-
-        checkpointedWindowId = windowId;
-        if (operator instanceof CheckpointListener) {
-          ((CheckpointListener)operator).checkpointed(checkpointedWindowId);
-        }
-        return true;
-      }
-      catch (IOException ie) {
-        try {
-          logger.warn("Rolling back checkpoint {} for Operator {} due to the exception {}",
-                      new Object[] {Codec.getStringWindowId(windowId), operator, ie});
-          ba.delete(id, windowId);
-        }
-        catch (IOException ex) {
-          logger.warn("Error while rolling back checkpoint", ex);
-        }
-        throw new RuntimeException(ie);
-      }
-    }
-
-    return false;
   }
 
   public static Operator retrieveOperator(InputStream stream)
   {
-    return retrieveOperatorWrapper(stream).operator;
+    final Kryo k = new Kryo();
+    k.setClassLoader(Thread.currentThread().getContextClassLoader());
+    Input input = new Input(stream);
+    return (Operator)k.readClassAndObject(input);
+  }
+
+  void checkpoint(long windowId)
+  {
+    if (!stateless) {
+      StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
+      if (ba != null) {
+        try {
+          OutputStream stream = ba.getSaveStream(id, windowId);
+          try {
+            Node.storeOperator(stream, operator);
+          }
+          finally {
+            stream.close();
+          }
+        }
+        catch (IOException ie) {
+          try {
+            logger.warn("Rolling back checkpoint {} for Operator {} due to the exception {}",
+                        new Object[] {Codec.getStringWindowId(windowId), operator, ie});
+            ba.delete(id, windowId);
+          }
+          catch (IOException ex) {
+            logger.warn("Error while rolling back checkpoint", ex);
+          }
+          throw new RuntimeException(ie);
+        }
+      }
+    }
+
+    checkpoint = new Checkpoint(windowId, applicationWindowCount, checkpointWindowCount);
+    if (operator instanceof CheckpointListener) {
+      ((CheckpointListener)operator).checkpointed(windowId);
+    }
   }
 
   @SuppressWarnings("unchecked")
   public static Node<?> retrieveNode(InputStream stream, OperatorDeployInfo.OperatorType type)
   {
-    OperatorWrapper ow = retrieveOperatorWrapper(stream);
-    logger.debug("type={}, operator class={}", type, ow.operator.getClass());
+    Operator operator = retrieveOperator(stream);
+    logger.debug("type={}, operator class={}", type, operator.getClass());
 
     Node<?> node;
-    if (ow.operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
-      node = new InputNode((InputOperator)ow.operator);
+    if (operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
+      node = new InputNode((InputOperator)operator);
     }
-    else if (ow.operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
-      node = new UnifierNode((Unifier<Object>)ow.operator);
+    else if (operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
+      node = new UnifierNode((Unifier<Object>)operator);
     }
     else if (type == OperatorDeployInfo.OperatorType.OIO) {
-      node = new OiONode(ow.operator);
+      node = new OiONode(operator);
     }
     else {
-      node = new GenericNode(ow.operator);
+      node = new GenericNode(operator);
     }
 
-    node.applicationWindowCount = ow.windowCount;
     return node;
   }
 
@@ -489,16 +482,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if (operator instanceof ActivationListener) {
       ((ActivationListener<?>)operator).deactivate();
     }
-    emitEndStream();
+
+    if (!shutdown && !alive) {
+      emitEndStream();
+    }
 
     deactivateSinks();
     this.context = null;
-  }
-
-  public static class OperatorWrapper
-  {
-    public Operator operator;
-    public int windowCount;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

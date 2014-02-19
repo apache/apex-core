@@ -20,6 +20,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
@@ -353,8 +354,9 @@ public class PartitioningTest
         Assert.assertNotNull(inputDeployed);
         partProperties.add(inputDeployed.partitionProperty);
         // move to checkpoint to verify that checkpoint state is updated upon repartition
-        p.checkpointWindows.add(10L);
-        p.setRecoveryCheckpoint(10L);
+        Checkpoint checkpoint = new Checkpoint(10L, 0, 0);
+        p.checkpoints.add(checkpoint);
+        p.setRecoveryCheckpoint(checkpoint);
         OutputStream stream = new FSStorageAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
         try {
           Node.storeOperator(stream, inputDeployed);

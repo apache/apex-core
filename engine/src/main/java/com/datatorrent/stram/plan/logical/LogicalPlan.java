@@ -595,6 +595,11 @@ public class LogicalPlan implements Serializable, DAG
       return this.operatorProxy.operator;
     }
 
+    public LogicalPlan getDAG()
+    {
+      return LogicalPlan.this;
+    }
+
     @Override
     public String toString()
     {

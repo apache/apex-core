@@ -63,7 +63,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.annotation.ShipContainingJars;
-
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
@@ -98,6 +98,7 @@ public class StramMiniClusterTest
   public static void setup() throws InterruptedException, IOException
   {
     LOG.info("Starting up YARN cluster");
+    conf = StramClientUtils.addDTDefaultResources(conf);
     conf.setInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 128);
     conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 20); // workaround to avoid containers being killed because java allocated too much vmem
     conf.setStrings("yarn.scheduler.capacity.root.queues", "default");
@@ -200,10 +201,10 @@ public class StramMiniClusterTest
     dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.source", "module1.output1");
     dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(LogicalPlan.MASTER_MEMORY_MB.name, "128");
-    dagProps.setProperty(LogicalPlan.CONTAINER_MEMORY_MB.name, "512");
-    dagProps.setProperty(LogicalPlan.DEBUG.name, "true");
-    dagProps.setProperty(LogicalPlan.CONTAINERS_MAX_COUNT.name, "2");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINER_MEMORY_MB.getName(), "512");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
+    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
     tb.addFromProperties(dagProps);
 
     Properties tplgProperties = tb.getProperties();
@@ -363,11 +364,12 @@ public class StramMiniClusterTest
   {
 
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
     dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 
     LOG.info("Initializing Client");
-    StramClient client = new StramClient(dag);
+    StramClient client = new StramClient(conf, dag);
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }

@@ -4,22 +4,23 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import junit.framework.Assert;
+
+import com.google.common.collect.Lists;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
@@ -28,23 +29,15 @@ import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.test.MockitoUtil;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.stram.FSRecoveryHandler;
+import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.Journal.SetContainerState;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.Journal;
-import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.Journal.SetOperatorState;
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -62,7 +55,6 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
-import com.google.common.collect.Lists;
 
 public class StramRecoveryTest
 {
@@ -194,11 +186,11 @@ public class StramRecoveryTest
     ohb.setNodeId(o1p1.getId());
     ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
     OperatorStats stats = new OperatorStats();
-    stats.checkpointedWindowId = 2;
+    stats.checkpoint = new Checkpoint(2, 0, 0);
     stats.windowId = 3;
     ohb.windowStats = Lists.newArrayList(stats);
     cstats.operators.add(ohb);
-    chr = scm.processHeartbeat(hb); // get deploy request
+    scm.processHeartbeat(hb); // get deploy request
     Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
 
     // logical plan modification triggers snapshot

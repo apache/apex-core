@@ -15,6 +15,7 @@ import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
+import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageDouble;
@@ -59,22 +60,26 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
   public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
+  public volatile long lastWindowIdChangeTms = 0;
+  public final int windowProcessingTimeoutMillis;
 
-  private final LogicalPlan dag;
+  private final LogicalPlan.OperatorMeta operatorMeta;
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
   public int loadIndicator = 0;
 
-  public OperatorStatus(int operatorId, LogicalPlan dag)
+  public OperatorStatus(int operatorId, LogicalPlan.OperatorMeta om)
   {
     this.operatorId = operatorId;
-    this.dag = dag;
+    this.operatorMeta = om;
+    LogicalPlan dag = om.getDAG();
     throughputCalculationInterval = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_INTERVAL);
     throughputCalculationMaxSamples = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES);
     int heartbeatInterval = dag.getValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS);
 
     cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
+    this.windowProcessingTimeoutMillis = dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) * om.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT);
   }
 
   public boolean isIdle()
@@ -131,16 +136,16 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   {
     private static final long serialVersionUID = 201312231635L;
     final int operatorId;
-    final LogicalPlan dag;
+    final LogicalPlan.OperatorMeta operatorMeta;
 
     private SerializationProxy(OperatorStatus s) {
       this.operatorId = s.operatorId;
-      this.dag = s.dag;
+      this.operatorMeta = s.operatorMeta;
     }
 
     private Object readResolve() throws java.io.ObjectStreamException
     {
-      OperatorStatus s = new OperatorStatus(operatorId, dag);
+      OperatorStatus s = new OperatorStatus(operatorId, operatorMeta);
       return s;
     }
   }
