@@ -10,10 +10,11 @@ package com.datatorrent.stram;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -21,6 +22,7 @@ import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
+import com.google.common.collect.Lists;
 public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
@@ -67,9 +69,9 @@ public class FSStorageAgent implements StorageAgent
   }
 
   @Override
-  public long getMostRecentWindowId(int id) throws IOException
+  public Collection<Long> getWindowsIds(int operatorId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
 
     FileStatus[] files = fs.listStatus(path);
@@ -77,15 +79,11 @@ public class FSStorageAgent implements StorageAgent
       throw new IOException("Storage Agent has not saved anything yet!");
     }
 
-    long mrWindowId = Codec.getLongWindowId(files[files.length - 1].getPath().getName());
-    for (int i = files.length - 1; i-- > 0;) {
-      long windowId = Codec.getLongWindowId(files[i].getPath().getName());
-      if (windowId > mrWindowId) {
-        mrWindowId = windowId;
-      }
+    List<Long> windowIds = Lists.newArrayListWithExpectedSize(files.length);
+    for (FileStatus file : files) {
+      windowIds.add(Codec.getLongWindowId(file.getPath().getName()));
     }
-
-    return mrWindowId;
+    return windowIds;
   }
 
   @Override
