@@ -6,6 +6,9 @@ package com.datatorrent.bufferserver.packet;
 
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.common.util.VarInt;
 import static com.datatorrent.bufferserver.packet.Tuple.CLASSIC_VERSION;
 import static com.datatorrent.bufferserver.packet.Tuple.writeString;
@@ -42,59 +45,56 @@ public class GenericRequestTuple extends RequestTuple
 
     int dataOffset = offset + 1;
     int limit = offset + length;
-    /*
-     * read the version.
-     */
-    int idlen = readVarInt(dataOffset, limit);
-    if (idlen > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      version = new String(buffer, dataOffset, idlen);
-      dataOffset += idlen;
-    }
-    else if (idlen == 0) {
-      version = EMPTY_STRING;
-      dataOffset++;
-    }
-    else {
-      return;
-    }
-    /*
-     * read the identifier.
-     */
-    idlen = readVarInt(dataOffset, limit);
-    if (idlen > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      identifier = new String(buffer, dataOffset, idlen);
-      dataOffset += idlen;
-    }
-    else if (idlen == 0) {
-      identifier = EMPTY_STRING;
-      dataOffset++;
-    }
-    else {
-      return;
-    }
 
-    baseSeconds = readVarInt(dataOffset, limit);
-    if (baseSeconds != Integer.MIN_VALUE) {
-      while (buffer[dataOffset++] < 0) {
+    try {
+      /*
+       * read the version.
+       */
+      int idlen = readVarInt(dataOffset, limit);
+      if (idlen > 0) {
+        while (buffer[dataOffset++] < 0) {
+        }
+        version = new String(buffer, dataOffset, idlen);
+        dataOffset += idlen;
       }
-    }
-    else {
-      return;
-    }
+      else if (idlen == 0) {
+        version = EMPTY_STRING;
+        dataOffset++;
+      }
+      else {
+        return;
+      }
+      /*
+       * read the identifier.
+       */
+      idlen = readVarInt(dataOffset, limit);
+      if (idlen > 0) {
+        while (buffer[dataOffset++] < 0) {
+        }
+        identifier = new String(buffer, dataOffset, idlen);
+        dataOffset += idlen;
+      }
+      else if (idlen == 0) {
+        identifier = EMPTY_STRING;
+        dataOffset++;
+      }
+      else {
+        return;
+      }
 
-    windowId = readVarInt(dataOffset, limit);
-    if (windowId >= 0) {
+      baseSeconds = readVarInt(dataOffset, limit);
       while (buffer[dataOffset++] < 0) {
       }
+
+      windowId = readVarInt(dataOffset, limit);
+      while (buffer[dataOffset++] < 0) {
+      }
+      
+      valid = true;
     }
-    else {
-      return;
+    catch (NumberFormatException nfe) {
+      logger.warn("Unparseable Tuple", nfe);
     }
-    valid = true;
   }
 
   @Override
@@ -155,4 +155,5 @@ public class GenericRequestTuple extends RequestTuple
     return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + '}';
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(GenericRequestTuple.class);
 }

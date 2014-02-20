@@ -12,8 +12,10 @@ import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.ResetWindowTuple;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.SerializedData;
 import com.datatorrent.common.util.VarInt;
+import com.sun.org.apache.bcel.internal.classfile.Code;
 
 /**
  * <p>Block class.</p>
@@ -112,9 +114,11 @@ public class Block
     if (starting_window == -1) {
       starting_window = windowId;
       ending_window = windowId;
+      //logger.debug("assigned both window id {}", this);
     }
     else if (windowId < ending_window) {
       ending_window = windowId;
+      //logger.debug("assigned end window id {}", this);
     }
 
     return bs;
@@ -156,6 +160,7 @@ public class Block
 
               this.starting_window = bs | bwt.getWindowId();
               this.readingOffset = sd.offset;
+              //logger.debug("assigned starting window id {}", this);
             }
 
             break done;
@@ -174,10 +179,12 @@ public class Block
         this.readingOffset = this.writingOffset - lastReset.size;
         System.arraycopy(lastReset.bytes, lastReset.offset, this.data, this.readingOffset, lastReset.size);
         this.starting_window = this.ending_window = bs;
+        logger.debug("=20140220= reassign the windowids {}", this);
       }
       else {
         this.readingOffset = this.writingOffset;
-        this.starting_window = this.ending_window = 0;
+        this.starting_window = this.ending_window = longWindowId;
+        logger.debug("=20140220= avoid the windowids {}", this);
       }
 
 
@@ -259,6 +266,16 @@ public class Block
         new Thread(r).start();
       }
     }
+  }
+
+  @Override
+  public String toString()
+  {
+    return "Block{" + "identifier=" + identifier + ", data=" + (data == null ? "null" : data.length)
+           + ", readingOffset=" + readingOffset + ", writingOffset=" + writingOffset
+           + ", starting_window=" + Codec.getStringWindowId(starting_window) + ", ending_window=" + Codec.getStringWindowId(ending_window)
+           + ", uniqueIdentifier=" + uniqueIdentifier + ", next=" + (next == null ? "null" : next.identifier)
+           + ", refCount=" + refCount + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Block.class);

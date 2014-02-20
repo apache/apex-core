@@ -7,6 +7,9 @@ package com.datatorrent.bufferserver.packet;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.common.util.VarInt;
 
 /**
@@ -33,122 +36,117 @@ public class SubscribeRequestTuple extends RequestTuple
     parsed = true;
     int dataOffset = offset + 1;
     int limit = offset + length;
-    /*
-     * read the version.
-     */
-    int idlen = readVarInt(dataOffset, limit);
-    if (idlen > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      version = new String(buffer, dataOffset, idlen);
-      dataOffset += idlen;
-    }
-    else if (idlen == 0) {
-      version = EMPTY_STRING;
-      dataOffset++;
-    }
-    else {
-      return;
-    }
-    /*
-     * read the identifier.
-     */
-    idlen = readVarInt(dataOffset, limit);
-    if (idlen > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      identifier = new String(buffer, dataOffset, idlen);
-      dataOffset += idlen;
-    }
-    else if (idlen == 0) {
-      identifier = EMPTY_STRING;
-      dataOffset++;
-    }
-    else {
-      return;
-    }
-
-    baseSeconds = readVarInt(dataOffset, limit);
-    if (getBaseSeconds() != Integer.MIN_VALUE) {
-      while (buffer[dataOffset++] < 0) {
-      }
-    }
-    else {
-      return;
-    }
-
-    windowId = readVarInt(dataOffset, limit);
-    if (windowId != Integer.MIN_VALUE) {
-      while (buffer[dataOffset++] < 0) {
-      }
-    }
-    else {
-      return;
-    }
-    /*
-     * read the type
-     */
-    idlen = readVarInt(dataOffset, limit);
-    if (idlen > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      streamType = new String(buffer, dataOffset, idlen);
-      dataOffset += idlen;
-    }
-    else if (idlen == 0) {
-      streamType = EMPTY_STRING;
-      dataOffset++;
-    }
-    else {
-      return;
-    }
-    /*
-     * read the upstream identifier
-     */
-    idlen = readVarInt(dataOffset, limit);
-    if (idlen > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      upstreamIdentifier = new String(buffer, dataOffset, idlen);
-      dataOffset += idlen;
-    }
-    else if (idlen == 0) {
-      upstreamIdentifier = EMPTY_STRING;
-      dataOffset++;
-    }
-    else {
-      return;
-    }
-    /*
-     * read the partition count
-     */
-    int count = readVarInt(dataOffset, limit);
-    if (count > 0) {
-      while (buffer[dataOffset++] < 0) {
-      }
-      mask = readVarInt(dataOffset, limit);
-      if (getMask() > 0) {
+    try {
+      /*
+       * read the version.
+       */
+      int idlen = readVarInt(dataOffset, limit);
+      if (idlen > 0) {
         while (buffer[dataOffset++] < 0) {
         }
+        version = new String(buffer, dataOffset, idlen);
+        dataOffset += idlen;
+      }
+      else if (idlen == 0) {
+        version = EMPTY_STRING;
+        dataOffset++;
       }
       else {
-        /* mask cannot be zero */
         return;
       }
-      partitions = new int[count];
-      for (int i = 0; i < count; i++) {
-        partitions[i] = readVarInt(dataOffset, limit);
-        if (getPartitions()[i] == -1) {
-          return;
+      /*
+       * read the identifier.
+       */
+      idlen = readVarInt(dataOffset, limit);
+      if (idlen > 0) {
+        while (buffer[dataOffset++] < 0) {
         }
-        else {
+        identifier = new String(buffer, dataOffset, idlen);
+        dataOffset += idlen;
+      }
+      else if (idlen == 0) {
+        identifier = EMPTY_STRING;
+        dataOffset++;
+      }
+      else {
+        return;
+      }
+
+      baseSeconds = readVarInt(dataOffset, limit);
+      while (buffer[dataOffset++] < 0) {
+      }
+
+      windowId = readVarInt(dataOffset, limit);
+      while (buffer[dataOffset++] < 0) {
+      }
+      /*
+       * read the type
+       */
+      idlen = readVarInt(dataOffset, limit);
+      if (idlen > 0) {
+        while (buffer[dataOffset++] < 0) {
+        }
+        streamType = new String(buffer, dataOffset, idlen);
+        dataOffset += idlen;
+      }
+      else if (idlen == 0) {
+        streamType = EMPTY_STRING;
+        dataOffset++;
+      }
+      else {
+        return;
+      }
+      /*
+       * read the upstream identifier
+       */
+      idlen = readVarInt(dataOffset, limit);
+      if (idlen > 0) {
+        while (buffer[dataOffset++] < 0) {
+        }
+        upstreamIdentifier = new String(buffer, dataOffset, idlen);
+        dataOffset += idlen;
+      }
+      else if (idlen == 0) {
+        upstreamIdentifier = EMPTY_STRING;
+        dataOffset++;
+      }
+      else {
+        return;
+      }
+      /*
+       * read the partition count
+       */
+      int count = readVarInt(dataOffset, limit);
+      if (count > 0) {
+        while (buffer[dataOffset++] < 0) {
+        }
+        mask = readVarInt(dataOffset, limit);
+        if (getMask() > 0) {
           while (buffer[dataOffset++] < 0) {
           }
         }
+        else {
+          /* mask cannot be zero */
+          return;
+        }
+        partitions = new int[count];
+        for (int i = 0; i < count; i++) {
+          partitions[i] = readVarInt(dataOffset, limit);
+          if (getPartitions()[i] == -1) {
+            return;
+          }
+          else {
+            while (buffer[dataOffset++] < 0) {
+            }
+          }
+        }
       }
-    }
 
-    valid = true;
+      valid = true;
+    }
+    catch (NumberFormatException nfe) {
+      logger.warn("Unparseable Tuple", nfe);
+    }
   }
 
   public boolean isParsed()
@@ -277,7 +275,8 @@ public class SubscribeRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null? "null": Arrays.toString(partitions)) + '}';
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(SubscribeRequestTuple.class);
 }
