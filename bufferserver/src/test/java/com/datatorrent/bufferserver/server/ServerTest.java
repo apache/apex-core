@@ -183,7 +183,7 @@ public class ServerTest
         break;
       }
     }
-    Thread.sleep(100); // wait some more to receive more tuples if possible
+    Thread.sleep(10); // wait some more to receive more tuples if possible
 
     eventloopClient.disconnect(bsp);
     eventloopClient.disconnect(bss);

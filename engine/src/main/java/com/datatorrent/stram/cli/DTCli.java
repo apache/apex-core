@@ -65,6 +65,9 @@ import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
+import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
+import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.security.StramUserLogin;
@@ -1735,57 +1738,22 @@ public class DTCli
 
   private Map<String, LicenseInfo> getLicenseInfoMap()
   {
-    List<ApplicationReport> runningApplicationList = getRunningApplicationList();
-    WebServicesClient webServicesClient = new WebServicesClient();
-
     Map<String, LicenseInfo> licenseInfoMap = new HashMap<String, LicenseInfo>();
 
-    for (ApplicationReport ar : runningApplicationList) {
+    int rpcTimeout = 1000;
+    List<ApplicationReport> licenseAgentList = getLicenseAgentList();
+    for (ApplicationReport licenseAgent : licenseAgentList) {
+      String licenseId = licenseAgent.getName();
       try {
-        WebResource r = getStramWebResource(webServicesClient, ar);
-        if (r == null) {
-          throw new Exception("Cannot get stram web resource for " + ar.getApplicationId());
-        }
-        r = r.path(StramWebServices.PATH_INFO);
-
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
-        if (!response.has("licenseInfoLastUpdate")) {
-          continue;
-        }
-        long lastUpdate = Long.valueOf(response.getString("licenseInfoLastUpdate"));
-        String licenseId = response.getString("licenseId");
-        int remainingLicensedMB = Integer.valueOf(response.getString("remainingLicensedMB"));
-        int totalLicensedMB = Integer.valueOf(response.getString("totalLicensedMB"));
-
-        LicenseInfo licenseInfo;
-
-        if (licenseInfoMap.containsKey(licenseId)) {
-          licenseInfo = licenseInfoMap.get(licenseId);
-          if (licenseInfo.lastUpdate < lastUpdate) {
-            licenseInfo.remainingLicensedMB = remainingLicensedMB;
-            licenseInfo.totalLicensedMB = totalLicensedMB;
-            licenseInfo.lastUpdate = lastUpdate;
-          }
-        }
-        else {
-          licenseInfo = new LicenseInfo();
-          licenseInfo.remainingLicensedMB = remainingLicensedMB;
-          licenseInfo.totalLicensedMB = totalLicensedMB;
-          licenseInfo.lastUpdate = lastUpdate;
-          licenseInfoMap.put(licenseId, licenseInfo);
-        }
+        LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout);
+        ClusterMemoryReportState reportState = lap.protocol.getMemoryMetricReport(new GetMemoryMetricReportRequest()).getReportState();
+        LicenseInfo licenseInfo = new LicenseInfo();
+        licenseInfo.remainingLicensedMB = reportState.getFreeMemoryMB();
+        licenseInfo.totalLicensedMB = reportState.getFreeMemoryMB() + reportState.getUsedMemoryMB();
+        licenseInfoMap.put(licenseId, licenseInfo);
       }
       catch (Exception ex) {
-        LOG.warn("Caught exception when trying to get information about application {}", ar.getApplicationId(), ex);
-        continue;
+        LOG.warn("Cannot get license info for license id {}", licenseId, ex);
       }
     }
     return licenseInfoMap;

@@ -450,7 +450,7 @@ public class StreamingContainerManagerTest {
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
      dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
 
-    StreamingContainerManager scm = new StreamingContainerManager(dag, false);
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, plan.getContainers().size());
 

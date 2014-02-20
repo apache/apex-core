@@ -76,7 +76,7 @@ public class DiskStorage implements Storage
             }
           }
           else {
-            throw new RuntimeException("Collission in identifier name, please ensure that the slug for the identifiers is differents");
+            throw new IllegalStateException("Collission in identifier name, please ensure that the slug for the identifiers is differents");
           }
         }
         catch (IOException ex) {
@@ -84,7 +84,7 @@ public class DiskStorage implements Storage
         }
       }
       else {
-        throw new RuntimeException("Identity file is hijacked!");
+        throw new IllegalStateException("Identity file is hijacked!");
       }
     }
     else {

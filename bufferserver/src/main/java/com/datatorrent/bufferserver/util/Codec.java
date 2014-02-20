@@ -14,7 +14,12 @@ public class Codec
 {
   public static String getStringWindowId(long windowId)
   {
-    return String.valueOf(windowId >> 32) + "[" + (int)windowId + "]";
+    return String.valueOf(windowId >> 32) + '[' + (int)windowId + ']';
   }
 
+  public static long getLongWindowId(String windowId)
+  {
+    int index = windowId.indexOf('[');
+    return (Long.parseLong(windowId.substring(0, index)) << 32) | Integer.parseInt(windowId.substring(index + 1, windowId.length() - 1));
+  }
 }

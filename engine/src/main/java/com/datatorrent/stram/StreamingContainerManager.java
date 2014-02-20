@@ -46,6 +46,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.util.Codec;
 
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
@@ -93,7 +94,7 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private final FinalVars vars;
   private final PhysicalPlan plan;
-  private final Clock clock = new SystemClock();
+  private final Clock clock;
 
   private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
@@ -135,13 +136,19 @@ public class StreamingContainerManager implements PlanContext
     LinkedList<Integer> path = new LinkedList<Integer>();
   }
 
-  public StreamingContainerManager(LogicalPlan dag)
+  public StreamingContainerManager(LogicalPlan dag, Clock clock)
   {
-    this(dag, false);
+    this(dag, false, clock);
   }
 
-  public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording)
+  public StreamingContainerManager(LogicalPlan dag)
   {
+    this(dag, false, new SystemClock());
+  }
+
+  public StreamingContainerManager(LogicalPlan dag, boolean enableEventRecording, Clock clock)
+  {
+    this.clock = clock;
     this.vars = new FinalVars(dag, clock.getTime());
     this.journal = setupJournal();
     // setup prior to plan creation for event recording
@@ -155,6 +162,7 @@ public class StreamingContainerManager implements PlanContext
   private StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
   {
     this.vars = checkpointedState.finals;
+    this.clock = new SystemClock();
     this.journal = setupJournal();
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
@@ -588,6 +596,7 @@ public class StreamingContainerManager implements PlanContext
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         if (c.getResourceRequestPriority() == resource.priority) {
           container = c;
+          break;
         }
       }
     }
@@ -1140,8 +1149,8 @@ public class StreamingContainerManager implements PlanContext
       ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint().windowId);
     }
 
-    if (operator.getState() == PTOperator.State.ACTIVE && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis)
-    {
+    if (operator.getState() == PTOperator.State.ACTIVE
+        && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       ctx.blocked.add(operator);
     }
 
@@ -1195,7 +1204,7 @@ public class StreamingContainerManager implements PlanContext
       }
       else {
         boolean done = false;
-
+        // FIXME: synchronization issue
         for (Checkpoint checkpoint : operator.checkpoints) {
           if (checkpoint.windowId == c1) {
             operator.setRecoveryCheckpoint(checkpoint);
@@ -1205,12 +1214,13 @@ public class StreamingContainerManager implements PlanContext
         }
 
         if (!done) {
+          LOG.debug("Possibily will cause problems with the checkpointing because recovery checkpoint {} is random", Codec.getStringWindowId(c1));
           operator.setRecoveryCheckpoint(new Checkpoint(c1, 0, 0));
         }
       }
     }
     else {
-      LOG.debug("Skipping checkpoint update {} {}", operator, operator.getState());
+      LOG.debug("Skipping checkpoint update {} during {}", operator, operator.getState());
     }
 
     ctx.visited.add(operator);
@@ -1889,7 +1899,7 @@ public class StreamingContainerManager implements PlanContext
       CheckpointState checkpointedState = (CheckpointState)rh.restore();
       StreamingContainerManager scm;
       if (checkpointedState == null) {
-        scm = new StreamingContainerManager(dag, enableEventRecording);
+        scm = new StreamingContainerManager(dag, enableEventRecording, new SystemClock());
       } else {
         scm = new StreamingContainerManager(checkpointedState, enableEventRecording);
         // find better way to support final transient members

@@ -15,10 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +31,6 @@ import com.datatorrent.netlet.AbstractLengthPrependerClient;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.Listener.ServerListener;
-import java.util.concurrent.RejectedExecutionException;
 
 /**
  * The buffer server application<p>
@@ -46,7 +42,7 @@ import java.util.concurrent.RejectedExecutionException;
 public class Server implements ServerListener
 {
   public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
-  public static final int DEFAULT_NUMBER_OF_CACHED_BLOCKS=8;
+  public static final int DEFAULT_NUMBER_OF_CACHED_BLOCKS = 8;
   private final int port;
   private String identity;
   private Storage storage;
@@ -59,10 +55,10 @@ public class Server implements ServerListener
    */
   public Server(int port)
   {
-    this(port, DEFAULT_BUFFER_SIZE,DEFAULT_NUMBER_OF_CACHED_BLOCKS);
+    this(port, DEFAULT_BUFFER_SIZE, DEFAULT_NUMBER_OF_CACHED_BLOCKS);
   }
 
-  public Server(int port, int blocksize,int numberOfCacheBlocks)
+  public Server(int port, int blocksize, int numberOfCacheBlocks)
   {
     this.port = port;
     this.blockSize = blocksize;
@@ -244,7 +240,7 @@ public class Server implements ServerListener
         dl = publisherBuffers.get(upstream_identifier);
       }
       else {
-        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize,numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize,numberOfCacheBlocks);
+        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
         publisherBuffers.put(upstream_identifier, dl);
       }
 
@@ -255,7 +251,7 @@ public class Server implements ServerListener
 
       int mask = request.getMask();
       if (mask != 0) {
-        for (Integer bs: request.getPartitions()) {
+        for (Integer bs : request.getPartitions()) {
           ln.addPartition(bs, mask);
         }
       }
@@ -298,7 +294,7 @@ public class Server implements ServerListener
       }
     }
     else {
-      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize,numberOfCacheBlocks) : new DataList(identifier, blockSize,numberOfCacheBlocks);
+      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize, numberOfCacheBlocks) : new DataList(identifier, blockSize, numberOfCacheBlocks);
       publisherBuffers.put(identifier, dl);
     }
     dl.setSecondaryStorage(storage);
@@ -483,6 +479,30 @@ public class Server implements ServerListener
     public void unregistered(final SelectionKey key)
     {
       super.unregistered(key);
+      teardown();
+    }
+
+    @Override
+    public void handleException(Exception cce, DefaultEventLoop el)
+    {
+      teardown();
+      super.handleException(cce, el);
+    }
+
+
+    @Override
+    public String toString()
+    {
+      return "Server.Subscriber{" + "type=" + type + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
+    }
+
+    private volatile boolean torndown;
+    private void teardown()
+    {
+      if (torndown) {
+        return;
+      }
+      torndown = true;
 
       LogicalNode ln = subscriberGroups.get(type);
       if (ln != null) {
@@ -506,12 +526,6 @@ public class Server implements ServerListener
           subscriberGroups.remove(ln.getGroup());
         }
       }
-    }
-
-    @Override
-    public String toString()
-    {
-      return "Server.Subscriber{" + "type=" + type + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
     }
 
   }
@@ -639,13 +653,45 @@ public class Server implements ServerListener
     @Override
     public void unregistered(final SelectionKey key)
     {
+      super.unregistered(key);
+      teardown();
+    }
+
+    @Override
+    public void handleException(Exception cce, DefaultEventLoop el)
+    {
+      teardown();
+
+      if (cce instanceof RejectedExecutionException && executor.isTerminated()) {
+        logger.warn("Terminated Executor.", cce);
+        el.disconnect(this);
+      }
+      else {
+        super.handleException(cce, el);
+      }
+    }
+
+    @Override
+    public String toString()
+    {
+      return "Server.Publisher{" + "datalist=" + datalist + '}';
+    }
+
+    private volatile boolean torndown;
+    private void teardown()
+    {
+      if (torndown) {
+        return;
+      }
+      torndown = true;
+
       /*
        * if the publisher unregistered, all the downstream guys are going to be unregistered anyways
        * in our world. So it makes sense to kick them out proactively. Otherwise these clients since
        * are not being written to, just stick around till the next publisher shows up and eat into
        * the data it's publishing for the new subscribers.
        */
-      super.unregistered(key);
+
       /**
        * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
@@ -670,27 +716,9 @@ public class Server implements ServerListener
         }
       }
 
-      for (LogicalNode ln: list) {
+      for (LogicalNode ln : list) {
         ln.boot(eventloop);
       }
-    }
-
-    @Override
-    public void handleException(Exception cce, DefaultEventLoop el)
-    {
-      if (cce instanceof RejectedExecutionException && executor.isTerminated()) {
-        logger.warn("Terminated Executor.", cce);
-        el.disconnect(this);
-      }
-      else {
-        super.handleException(cce, el);
-      }
-    }
-
-    @Override
-    public String toString()
-    {
-      return "Server.Publisher{" + "datalist=" + datalist + '}';
     }
 
   }
