@@ -1921,6 +1921,7 @@ public class StreamingContainerManager implements PlanContext
 
         // restore checkpoint info
         plan.syncCheckpoints();
+        scm.committedWindowId = scm.updateCheckpoints();
 
         // at this point the physical plan has been fully restored
         // populate container agents for existing containers
