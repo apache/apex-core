@@ -32,7 +32,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StatsListener.OperatorCommand;
-import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
@@ -834,7 +833,7 @@ public class StramChild extends YarnContainerMain
   }
 
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
-          String sourceIdentifier, long startingWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
+          String sourceIdentifier, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
           throws UnknownHostException
   {
     String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
@@ -842,7 +841,7 @@ public class StramChild extends YarnContainerMain
     StreamContext bssc = new StreamContext(nodi.declaredStreamId);
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
-    bssc.setFinishedWindowId(startingWindowId);
+    bssc.setFinishedWindowId(finishedWindowId);
     bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
@@ -868,7 +867,7 @@ public class StramChild extends YarnContainerMain
      */
     for (OperatorDeployInfo ndi : nodeList) {
       Node<?> node = nodes.get(ndi.id);
-      long finishedWindowId = ndi.checkpoint.windowId > 0 ? ndi.checkpoint.windowId : 0;
+      long checkpointWindowId = ndi.checkpoint.windowId;
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nodi.portName);
@@ -884,7 +883,7 @@ public class StramChild extends YarnContainerMain
            * this stream exists. That means someone outside of this container must be interested.
            */
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                  deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
+                  deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
           newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
         }
@@ -903,7 +902,7 @@ public class StramChild extends YarnContainerMain
              */
             StreamContext context = new StreamContext(nodi.declaredStreamId);
             context.setSourceId(sourceIdentifier);
-            context.setFinishedWindowId(finishedWindowId);
+            context.setFinishedWindowId(checkpointWindowId);
             Stream stream = new MuxStream();
 
             newStreams.put(sourceIdentifier, pair = new ComponentContextPair<Stream, StreamContext>(stream, context));
@@ -916,7 +915,7 @@ public class StramChild extends YarnContainerMain
              * seems to at least one more party interested but placed in a container other than this one.
              */
             SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                    deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
+                    deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
             newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
 
             String sinkIdentifier = pair.context.getSinkId();
