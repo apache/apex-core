@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -37,11 +38,14 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
@@ -121,6 +125,16 @@ public class StramRecoveryTest
     }
   }
 
+  public static void checkpoint(StreamingContainerManager scm, PTOperator oper, Checkpoint checkpoint) throws Exception
+  {
+    // write checkpoint while AM is out,
+    // it needs to be picked up as part of restore
+    StorageAgent sa = scm.getStorageAgent();
+    OutputStream os = sa.getSaveStream(oper.getId(), checkpoint.windowId);
+    Node.storeOperator(os, oper.getOperatorMeta().getOperator());
+    os.close();
+  }
+
   /**
    * Test serialization of the container manager with mock execution layer.
    * @throws Exception
@@ -174,8 +188,10 @@ public class StramRecoveryTest
     // YARN-1490 - simulate container terminated on AM recovery
     scm.scheduleContainerRestart(originalContainer.getExternalId());
 
+    Checkpoint firstCheckpoint = new Checkpoint(3, 0, 0);
     mc = new MockContainer(scm, o1p1.getContainer());
-    mc.stats(o1p1.getId()).deployState(OperatorHeartbeat.DeployState.ACTIVE).currentWindowId(3);
+    checkpoint(scm, o1p1, firstCheckpoint);
+    mc.stats(o1p1.getId()).deployState(OperatorHeartbeat.DeployState.ACTIVE).currentWindowId(3).checkpointWindowId(3);
     mc.sendHeartbeat();
     Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
 
@@ -200,6 +216,11 @@ public class StramRecoveryTest
     // set operator state triggers journal write
     o1p1.setState(PTOperator.State.INACTIVE);
 
+    Checkpoint offlineCheckpoint = new Checkpoint(10, 0, 0);
+    // write checkpoint while AM is out,
+    // it needs to be picked up as part of restore
+    checkpoint(scm, o1p1, offlineCheckpoint);
+
     // test restore
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
@@ -219,6 +240,8 @@ public class StramRecoveryTest
     Assert.assertEquals("post restore 1", PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
+    // offline checkpoint detection
+    Assert.assertEquals("checkpoints after recovery", Lists.newArrayList(firstCheckpoint, offlineCheckpoint),  o1p1.checkpoints);
   }
 
   @Test

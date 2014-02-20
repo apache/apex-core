@@ -413,20 +413,20 @@ public class StreamingContainerManagerTest {
   }
 
   @Test
-  public void testGetMostRecetCheckpointWindowId() throws Exception {
+  public void testCheckpointWindowIds() throws Exception {
     File path =  new File(testMeta.dir);
     FileUtils.deleteDirectory(path.getAbsoluteFile());
 
     FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getAbsolutePath());
     try {
-      sa.getMostRecentWindowId(1);
+      sa.getWindowsIds(1);
       Assert.fail("There should not be any most recently saved windowId!");
     }
     catch (IOException io) {
       Assert.assertTrue("No State Saved", true);
     }
 
-    long windowIds[] = {123, 345, 234};
+    List<Long> windowIds = Lists.newArrayList(123L, 345L, 234L);
     for (long windowId : windowIds) {
       OutputStream os = sa.getSaveStream(1, windowId);
       try {
@@ -436,7 +436,8 @@ public class StreamingContainerManagerTest {
         os.close();
       }
     }
-    Assert.assertEquals("Most recently saved windowId", windowIds[1], sa.getMostRecentWindowId(1));
+    Assert.assertEquals("Saved windowIds", windowIds.size(), sa.getWindowsIds(1).size());
+    Assert.assertEquals("Saved windowIds", Sets.newHashSet(windowIds), Sets.newHashSet(sa.getWindowsIds(1)));
   }
 
   @Test
