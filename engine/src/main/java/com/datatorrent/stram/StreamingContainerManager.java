@@ -1148,7 +1148,7 @@ public class StreamingContainerManager implements PlanContext
     if (operator.getRecoveryCheckpoint().windowId < ctx.committedWindowId.longValue()) {
       ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint().windowId);
     }
-    
+
     if (operator.getState() == PTOperator.State.ACTIVE
         && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       ctx.blocked.add(operator);
@@ -1204,7 +1204,7 @@ public class StreamingContainerManager implements PlanContext
       }
       else {
         boolean done = false;
-
+        // FIXME: synchronization issue
         for (Checkpoint checkpoint : operator.checkpoints) {
           if (checkpoint.windowId == c1) {
             operator.setRecoveryCheckpoint(checkpoint);
