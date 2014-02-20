@@ -80,7 +80,7 @@ public class MockContainer
       ohb.setNodeId(oe.getKey());
       ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
       OperatorStats stats = new OperatorStats();
-      stats.checkpoint = new Checkpoint(oe.getValue().currentWindowId, 0, 0);
+      stats.checkpoint = new Checkpoint(oe.getValue().checkpointWindowId, 0, 0);
       stats.windowId = oe.getValue().currentWindowId;
 
       //stats.outputPorts = Lists.newArrayList();
@@ -111,6 +111,7 @@ public class MockContainer
     final int operatorId;
     OperatorHeartbeat.DeployState deployState;
     long currentWindowId;
+    long checkpointWindowId;
 
     private MockOperatorStats(int operatorId)
     {
@@ -124,6 +125,11 @@ public class MockContainer
 
     public MockOperatorStats currentWindowId(long windowId) {
       this.currentWindowId = windowId;
+      return this;
+    }
+
+    public MockOperatorStats checkpointWindowId(long windowId) {
+      this.checkpointWindowId = windowId;
       return this;
     }
 

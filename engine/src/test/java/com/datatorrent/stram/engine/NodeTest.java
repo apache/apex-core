@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -19,7 +21,6 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 
@@ -195,11 +196,12 @@ public class NodeTest
       calls.add(new Call("delete", operatorId, windowId));
     }
 
+
     @Override
-    public long getMostRecentWindowId(int operatorId) throws IOException
+    public Collection<Long> getWindowsIds(int operatorId) throws IOException
     {
-      calls.add(new Call("getMostRecentWindowId", operatorId, 0));
-      return 0;
+      calls.add(new Call("getWindowsIds", operatorId, 0));
+      return Collections.emptyList();
     }
 
   }

@@ -1919,6 +1919,9 @@ public class StreamingContainerManager implements PlanContext
         scm.journal.replay(logStream);
         logStream.close();
 
+        // restore checkpoint info
+        plan.syncCheckpoints();
+
         // at this point the physical plan has been fully restored
         // populate container agents for existing containers
         for (PTContainer c : plan.getContainers()) {

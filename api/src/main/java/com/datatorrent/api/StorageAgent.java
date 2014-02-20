@@ -18,6 +18,7 @@ package com.datatorrent.api;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
 
 /**
  * Interface to define writing/reading checkpoint state
@@ -60,10 +61,10 @@ public interface StorageAgent
   /**
    * Return the most recent windowId for which state identified by operatorId was saved successfully.
    * @param operatorId - The operator for which the state was saved.
-   * @return windowId - The windowId which was passed to the most recent successful save call.
-   * @throws IOException - throws this exception if the window id could not be determined.
-   * @since 0.3.5
+   * @return Collection of windowIds for available states that can be retrieved through load.
+   * @throws IOException
+   * @since 0.9.4
    */
-  public long getMostRecentWindowId(int operatorId) throws IOException;
+  public Collection<Long> getWindowsIds(int operatorId) throws IOException;
 
 }

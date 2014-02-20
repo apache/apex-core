@@ -271,7 +271,13 @@ public class StramChildAgent {
       // pick the checkpoint most recently written to HDFS
       // this should be handled differently. What happens to the checkpoint reported?
       try {
-        long checkpointId = agent.getMostRecentWindowId(oper.getId());
+        Collection<Long> windowIds = agent.getWindowsIds(oper.getId());
+        long checkpointId = Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID;
+        for (Long windowId : windowIds) {
+          if (windowId > checkpointId) {
+            checkpointId = windowId;
+          }
+        }
         if (checkpoint == null || checkpoint.windowId != checkpointId) {
           checkpoint = new Checkpoint(checkpointId, 0, 0);
         }

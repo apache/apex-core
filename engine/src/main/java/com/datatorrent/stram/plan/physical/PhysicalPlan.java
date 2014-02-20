@@ -20,7 +20,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 
 import com.datatorrent.api.*;
@@ -30,7 +29,6 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
-
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -1256,4 +1254,26 @@ public class PhysicalPlan implements Serializable
       }
     }
   }
+
+  /**
+   * Read available checkpoints from storage agent for all operators.
+   */
+  public void syncCheckpoints() throws IOException
+  {
+    for (PTOperator oper : getAllOperators().values()) {
+      StorageAgent sa = ctx.getStorageAgent();
+      Collection<Long> windowIds = sa.getWindowsIds(oper.getId());
+      oper.checkpoints.clear();
+      ArrayList<Long> sortedIds = new ArrayList<Long>(windowIds);
+      Collections.sort(sortedIds);
+      for (Long wid : sortedIds) {
+        if (wid.longValue() != Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID) {
+          // TODO: calculate appCount and checkpointCount
+          Checkpoint c = new Checkpoint(wid.longValue(), 0, 0);
+          oper.checkpoints.add(c);
+        }
+      }
+    }
+  }
+
 }
