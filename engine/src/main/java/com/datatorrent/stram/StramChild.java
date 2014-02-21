@@ -807,7 +807,7 @@ public class StramChild extends YarnContainerMain
         logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId));
         Node<?> node;
 
-        InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.checkpoint.windowId);
+        InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId);
         try {
           node = Node.retrieveNode(stream, ndi.type);
         }
@@ -815,6 +815,7 @@ public class StramChild extends YarnContainerMain
           stream.close();
         }
 
+        node.stateless = ndi.stateless;
         node.currentWindowId = ndi.checkpoint.windowId;
         node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
 

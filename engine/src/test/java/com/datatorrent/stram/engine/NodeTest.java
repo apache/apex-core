@@ -207,7 +207,7 @@ public class NodeTest
   }
 
   @Test
-  public void testOperatorCheckpointing()
+  public void testStatelessOperatorCheckpointing()
   {
     Node<StatelessOperator> node = new Node<StatelessOperator>(new StatelessOperator())
     {
@@ -228,6 +228,7 @@ public class NodeTest
     DefaultAttributeMap attributeMap = new DefaultAttributeMap();
     attributeMap.put(OperatorContext.STORAGE_AGENT, new StorageAgentImpl());
     node.context = new com.datatorrent.stram.engine.OperatorContext(0, Thread.currentThread(), attributeMap, null);
+    node.stateless = true;
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();
       node.checkpoint(0);
@@ -236,7 +237,7 @@ public class NodeTest
   }
 
   @Test
-  public void testStatelessOperatorCheckpointing()
+  public void testOperatorCheckpointing()
   {
     Node<TestGenericOperator> node = new Node<TestGenericOperator>(new TestGenericOperator())
     {
@@ -260,7 +261,7 @@ public class NodeTest
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();
       node.checkpoint(0);
-      Assert.assertNotSame("Calls to StorageAgent", 0, StorageAgentImpl.calls.size());
+      Assert.assertEquals("Calls to StorageAgent", 1, StorageAgentImpl.calls.size());
     }
   }
 

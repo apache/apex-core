@@ -12,7 +12,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -22,8 +21,8 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -256,6 +255,8 @@ public class StramChildAgent {
     if (oper.getUnifier() != null) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
+    ndi.stateless = operator.getClass().isAnnotationPresent(Stateless.class);
+
     Checkpoint checkpoint = oper.getRecoveryCheckpoint();
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
 

@@ -78,12 +78,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int applicationWindowCount;
   public int checkpointWindowCount;
   protected int controlTupleCount;
-  protected final boolean stateless;
+  public boolean stateless;
 
   public Node(OPERATOR operator)
   {
     this.operator = operator;
-    stateless = operator.getClass().isAnnotationPresent(Stateless.class);
     outputs = new HashMap<String, Sink<Object>>();
 
     descriptor = new PortMappingDescriptor();

@@ -35,7 +35,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   public static final int WINDOW_MASK = 0x3fff;
   public static final int MIN_WINDOW_ID = 0;
   public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
-  public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID) > 0 ? (int)(Long.MAX_VALUE / MAX_WINDOW_ID) : Integer.MAX_VALUE;
+  public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID);
   private final ScheduledExecutorService ses;
   private final MasterReservoir masterReservoir;
   private long firstWindowMillis; // Window start time
