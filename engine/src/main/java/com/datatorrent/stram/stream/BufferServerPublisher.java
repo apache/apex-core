@@ -14,6 +14,7 @@ import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.bufferserver.client.Publisher;
 import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
@@ -130,7 +131,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
     eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
-    logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getBufferServerAddress()});
+    logger.debug("Registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), Codec.getStringWindowId(context.getFinishedWindowId()), context.getBufferServerAddress()});
     serde = context.get(StreamContext.CODEC);
     statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
     super.activate(null, context.getFinishedWindowId());

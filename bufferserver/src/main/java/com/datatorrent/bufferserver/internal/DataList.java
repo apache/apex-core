@@ -173,13 +173,15 @@ public class DataList
       if (processingOffset + size <= writeOffset) {
         switch (last.data[processingOffset]) {
           case MessageType.BEGIN_WINDOW_VALUE:
-            Tuple btw = Tuple.getTuple(last.data, processingOffset, size);
+            Tuple bwt = Tuple.getTuple(last.data, processingOffset, size);
             if (last.starting_window == -1) {
-              last.starting_window = baseSeconds | btw.getWindowId();
+              last.starting_window = baseSeconds | bwt.getWindowId();
               last.ending_window = last.starting_window;
+              //logger.debug("assigned both window id {}", last);
             }
             else {
-              last.ending_window = baseSeconds | btw.getWindowId();
+              last.ending_window = baseSeconds | bwt.getWindowId();
+              //logger.debug("assigned last window id {}", last);
             }
             break;
 
@@ -234,16 +236,19 @@ public class DataList
 
   public Iterator<SerializedData> newIterator(String identifier, long windowId)
   {
+    //logger.debug("request for a new iterator {} and {}", identifier, windowId);
     for (Block temp = first; temp != null; temp = temp.next) {
-      if (temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
+      if (temp.starting_window >= windowId || temp.ending_window > windowId) {
         DataListIterator dli = new DataListIterator(temp, storage);
         iterators.put(identifier, dli);
+        //logger.debug("returning new iterator on temp = {}", temp);
         return dli;
       }
     }
 
     DataListIterator dli = new DataListIterator(last, storage);
     iterators.put(identifier, dli);
+    //logger.debug("returning new iterator on last = {}", last);
     return dli;
   }
 
@@ -348,6 +353,7 @@ public class DataList
     last.next.ending_window = last.ending_window;
     last = last.next;
 
+    //logger.debug("addbuffer last = {}", last);
     int inmemBlockCount;
 
     inmemBlockCount = 0;
@@ -381,9 +387,11 @@ public class DataList
 
   public byte[] getBuffer(long windowId)
   {
+    //logger.debug("getBuffer windowid = {} when starting_window = {}", windowId, last.starting_window);
     if (last.starting_window == -1) {
       last.starting_window = windowId;
       last.ending_window = windowId;
+      baseSeconds = windowId & 0xffffffff00000000L;
     }
     return last.data;
   }

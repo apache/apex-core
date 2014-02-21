@@ -149,7 +149,8 @@ public abstract class Tuple
       }
     }
 
-    return Integer.MIN_VALUE;
+    throw new NumberFormatException("Invalid varint at location " + offset + " => "
+                                    + Arrays.toString(Arrays.copyOfRange(buffer, offset, limit)));
   }
 
   public MessageType getType()

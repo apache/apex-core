@@ -217,6 +217,7 @@ public class Server implements ServerListener
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;
     if (subscriberGroups.containsKey(type)) {
+      //logger.debug("adding to exiting group = {}", subscriberGroups.get(type));
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
@@ -238,16 +239,19 @@ public class Server implements ServerListener
       DataList dl;
       if (publisherBuffers.containsKey(upstream_identifier)) {
         dl = publisherBuffers.get(upstream_identifier);
+        //logger.debug("old list = {}", dl);
       }
       else {
         dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) : new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
         publisherBuffers.put(upstream_identifier, dl);
+        //logger.debug("new list = {}", dl);
       }
 
+      long skipWindowId = (long)request.getBaseSeconds() << 32 | request.getWindowId();
       ln = new LogicalNode(upstream_identifier,
                            type,
-                           dl.newIterator(identifier, request.getWindowId()),
-                           (long)request.getBaseSeconds() << 32 | request.getWindowId());
+                           dl.newIterator(identifier, skipWindowId),
+                           skipWindowId);
 
       int mask = request.getMask();
       if (mask != 0) {
@@ -489,7 +493,6 @@ public class Server implements ServerListener
       super.handleException(cce, el);
     }
 
-
     @Override
     public String toString()
     {
@@ -497,8 +500,10 @@ public class Server implements ServerListener
     }
 
     private volatile boolean torndown;
+
     private void teardown()
     {
+      //logger.debug("Teardown is being called {}", torndown, new Exception());
       if (torndown) {
         return;
       }
@@ -678,8 +683,10 @@ public class Server implements ServerListener
     }
 
     private volatile boolean torndown;
+
     private void teardown()
     {
+      //logger.debug("Teardown is being called {}", torndown, new Exception());
       if (torndown) {
         return;
       }
