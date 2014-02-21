@@ -1857,10 +1857,12 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      /*
       String b64EncodedString = new GenerateLicenseRequest().getLicenseRequest(Util.getDefaultPublicKey());
       System.out.println("-------------------------- Cut from below ------------------------------");
       System.out.println(b64EncodedString);
       System.out.println("------------------------------------------------------------------------");
+      */
     }
 
   }
