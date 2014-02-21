@@ -1173,8 +1173,8 @@ public class StramChild extends YarnContainerMain
 
     windowGenerator.setWindowWidth(windowWidthMillis);
 
-    long windowCount = WindowGenerator.getWindowCount(firstWindowMillis, millisAtFirstWindow, windowWidthMillis);
-    windowGenerator.setCheckpointCount(checkpointWindowCount, (int)(windowCount % windowWidthMillis));
+    long windowCount = WindowGenerator.getWindowCount(millisAtFirstWindow, firstWindowMillis, windowWidthMillis);
+    windowGenerator.setCheckpointCount(checkpointWindowCount, (int)(windowCount % checkpointWindowCount));
     return windowGenerator;
   }
 
