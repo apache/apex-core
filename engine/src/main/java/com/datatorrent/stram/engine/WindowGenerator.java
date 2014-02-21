@@ -127,9 +127,10 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     windowWidthMillis = millis;
   }
 
-  public void setCheckpointCount(int streamingWindowCount)
+  public void setCheckpointCount(int streamingWindowCount, int offset)
   {
     checkpointCount = streamingWindowCount;
+    checkPointWindowCount = offset;
   }
 
   @Override

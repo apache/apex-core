@@ -106,7 +106,7 @@ public class CheckpointTest
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
-    wingen.setCheckpointCount(1);
+    wingen.setCheckpointCount(1, 0);
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
 
     container.setup(sca.getInitContext());
