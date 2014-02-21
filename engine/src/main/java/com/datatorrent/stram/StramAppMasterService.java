@@ -762,6 +762,7 @@ public class StramAppMasterService extends CompositeService
           if (exitStatus == 1) {
             // non-recoverable StramChild failure
             appDone = true;
+            finalStatus = FinalApplicationStatus.FAILED;
             dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
             LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
           } else {
