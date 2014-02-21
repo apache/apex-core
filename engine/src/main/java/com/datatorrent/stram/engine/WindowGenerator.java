@@ -129,6 +129,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
 
   public void setCheckpointCount(int streamingWindowCount, int offset)
   {
+    logger.debug("setCheckpointCount: {} {}", streamingWindowCount, offset);
     checkpointCount = streamingWindowCount;
     checkPointWindowCount = offset;
   }
