@@ -1857,12 +1857,78 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      /*
-      String b64EncodedString = new GenerateLicenseRequest().getLicenseRequest(Util.getDefaultPublicKey());
+      Map<String, String> infoMap = new HashMap<String, String>();
+
+      // name, company, email, phone, country
+      boolean useHistory = reader.isHistoryEnabled();
+      reader.setHistoryEnabled(false);
+      History previousHistory = reader.getHistory();
+      History dummyHistory = new MemoryHistory();
+      reader.setHistory(dummyHistory);
+      List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+      for (Completer c : completers) {
+        reader.removeCompleter(c);
+      }
+      String name, company, email, phone, country;
+      while (true) {
+        name = StringUtils.trim(reader.readLine("Your name: "));
+        if (StringUtils.isBlank(name)) {
+          System.out.println("Please enter your name.");
+        }
+        else {
+          break;
+        }
+      }
+      while (true) {
+        company = StringUtils.trim(reader.readLine("Company: "));
+        if (StringUtils.isBlank(company)) {
+          System.out.println("Please enter your company name.");
+        }
+        else {
+          break;
+        }
+      }
+      while (true) {
+        email = StringUtils.trim(reader.readLine("Your email address: "));
+        if (!email.matches("^[a-zA-Z0-9._%+-]+@[^@]+\\.[a-zA-Z][a-zA-Z]+")) {
+          System.out.println("Please enter a valid email address. Make sure your email is valid because we will send your license to this address.");
+        }
+        else {
+          break;
+        }
+      }
+      phone = StringUtils.trim(reader.readLine("Your contact phone number: "));
+
+      while (true) {
+        country = StringUtils.trim(reader.readLine("Country (2-letter code): ")).toUpperCase();
+        if (!country.matches("^[A-Z][A-Z]$")) {
+          System.out.println("Please enter your 2-letter country code. e.g. \"US\"");
+        }
+        else {
+          break;
+        }
+      }
+
+      infoMap.put("name", name);
+      infoMap.put("company", company);
+      infoMap.put("email", email);
+      infoMap.put("phone", phone);
+      infoMap.put("country", country);
+      infoMap.put("type", "trial");
+
+      reader.setHistoryEnabled(useHistory);
+      reader.setHistory(previousHistory);
+      for (Completer c : completers) {
+        reader.addCompleter(c);
+      }
+
+
+      String b64EncodedString = GenerateLicenseRequest.getLicenseRequest(Util.getDefaultPublicKey(), infoMap);
+      System.out.println();
+      System.out.println("Please send an email with the following to license@datatorrent.com to request this license.");
       System.out.println("-------------------------- Cut from below ------------------------------");
       System.out.println(b64EncodedString);
       System.out.println("------------------------------------------------------------------------");
-      */
     }
 
   }
