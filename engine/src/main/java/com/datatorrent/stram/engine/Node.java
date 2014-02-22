@@ -27,7 +27,6 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.StatsListener.OperatorCommand;
-import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.api.Checkpoint;
