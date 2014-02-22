@@ -58,7 +58,6 @@ import com.datatorrent.stram.stream.*;
  */
 public class StramChild extends YarnContainerMain
 {
-  public static final int PORT_QUEUE_CAPACITY = 1024;
   public static final String ENV_APP_PATH = "DT_APP_PATH";
   private final transient String jvmName;
   private final String containerId;
@@ -735,7 +734,7 @@ public class StramChild extends YarnContainerMain
       if (odi.id == sourceOperatorId) {
         for (OperatorDeployInfo.OutputDeployInfo odiodi : odi.outputs) {
           if (odiodi.portName.equals(sourcePortName)) {
-            return odiodi.getValue(PortContext.QUEUE_CAPACITY);
+            return getValue(PortContext.QUEUE_CAPACITY, odiodi, odi);
           }
         }
       }
@@ -872,7 +871,7 @@ public class StramChild extends YarnContainerMain
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nodi.portName);
-        int queueCapacity = nodi.getValue(PortContext.QUEUE_CAPACITY);
+        int queueCapacity = getValue(PortContext.QUEUE_CAPACITY, nodi, ndi);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
@@ -996,7 +995,7 @@ public class StramChild extends YarnContainerMain
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
-          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.getValue(PortContext.QUEUE_CAPACITY);
+          int queueCapacity = getValue(PortContext.QUEUE_CAPACITY, nidi, ndi);
 
           Checkpoint checkpoint = getFinishedCheckpoint(ndi);
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
@@ -1407,8 +1406,6 @@ public class StramChild extends YarnContainerMain
     return checkpoint;
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
-
   public void operateListeners(StreamingContainerContext ctx, boolean setup)
   {
     if (setup) {
@@ -1423,4 +1420,42 @@ public class StramChild extends YarnContainerMain
     }
   }
 
+  /**
+   * Traverse the components to find out the default value set at the top level.
+   * In OO this class should be shielded from using internal implementation. When
+   * OperatorDeployInfo starts implementing proper semantics of Context, this
+   * would not be needed.
+   *
+   * @param <T> Type of the attribute.
+   * @param key Name of the attribute.
+   * @param portContext Port context if applicable otherwise null.
+   * @param deployInfo Operator context if applicable otherwise null.
+   * @return Value of the operator
+   */
+  private <T> T getValue(AttributeMap.Attribute<T> key, com.datatorrent.api.Context.PortContext portContext, OperatorDeployInfo deployInfo)
+  {
+    if (portContext != null) {
+      AttributeMap attributes = portContext.getAttributes();
+      if (attributes != null) {
+        T attr = attributes.get(key);
+        if (attr != null) {
+          return attr;
+        }
+      }
+    }
+
+    if (deployInfo != null) {
+      AttributeMap attributes = deployInfo.contextAttributes;
+      if (attributes != null) {
+        T attr = attributes.get(key);
+        if (attr != null) {
+          return attr;
+        }
+      }
+    }
+
+    return containerContext.getValue(key);
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
 }
