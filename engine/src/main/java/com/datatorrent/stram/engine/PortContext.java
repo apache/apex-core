@@ -16,11 +16,12 @@ import com.datatorrent.api.Context;
  */
 public class PortContext extends BaseContext implements Context.PortContext
 {
-  private static final long serialVersionUID = 201306071424L;
 
   public PortContext(AttributeMap attributes, Context parentContext)
   {
     super(attributes, parentContext);
   }
 
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+  private static final long serialVersionUID = 201306071424L;
 }

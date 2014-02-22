@@ -43,8 +43,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StreamingContainerContext extends BaseContext implements ContainerContext {
-    private static final long serialVersionUID = 201209071402L;
+  public static class StreamingContainerContext extends BaseContext implements ContainerContext
+  {
     /**
      * Operators should start processing the initial window at this time.
      */
@@ -71,6 +71,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
               .append("applicationAttributes", getAttributes()).toString();
     }
 
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201209071402L;
   }
 
   /**
