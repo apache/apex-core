@@ -1168,10 +1168,8 @@ public class StramChild extends YarnContainerMain
      */
     windowGenerator.setResetWindow(firstWindowMillis);
 
-    long millisAtFirstWindow = (finishedWindowId >> 32) * 1000 + windowWidthMillis * (finishedWindowId & WindowGenerator.MAX_WINDOW_ID) + windowWidthMillis;
-    millisAtFirstWindow = millisAtFirstWindow > firstWindowMillis ? millisAtFirstWindow : firstWindowMillis;
+    long millisAtFirstWindow = WindowGenerator.getWindowMillis(finishedWindowId, firstWindowMillis, windowWidthMillis);
     windowGenerator.setFirstWindow(millisAtFirstWindow);
-
     windowGenerator.setWindowWidth(windowWidthMillis);
 
     long windowCount = WindowGenerator.getWindowCount(millisAtFirstWindow, firstWindowMillis, windowWidthMillis);

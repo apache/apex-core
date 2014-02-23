@@ -247,6 +247,13 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
     return baseSeconds << 32 | windowId;
   }
 
+  public static long getWindowMillis(long windowId, long firstWindowMillis, long windowWidthMillis)
+  {
+    long millis = (windowId >> 32) * 1000 + windowWidthMillis * (windowId & WindowGenerator.MAX_WINDOW_ID) + windowWidthMillis;
+    millis = millis > firstWindowMillis ? millis : firstWindowMillis;
+    return millis;
+  }
+
   private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir
   {
     MasterReservoir(int n)

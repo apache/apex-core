@@ -21,7 +21,6 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -255,7 +254,7 @@ public class StramChildAgent {
     if (oper.getUnifier() != null) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
-    ndi.stateless = operator.getClass().isAnnotationPresent(Stateless.class);
+    ndi.stateless = oper.isOperatorStateLess();
 
     Checkpoint checkpoint = oper.getRecoveryCheckpoint();
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);

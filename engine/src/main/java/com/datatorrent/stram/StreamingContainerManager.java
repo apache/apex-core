@@ -15,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
@@ -27,7 +28,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -47,7 +47,6 @@ import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
-
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
@@ -57,6 +56,7 @@ import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -1155,6 +1155,11 @@ public class StreamingContainerManager implements PlanContext
     }
 
     long maxCheckpoint = operator.getRecentCheckpoint().windowId;
+    if (maxCheckpoint == Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID && operator.isOperatorStateLess()) {
+      long currentWindowId = WindowGenerator.getWindowId(ctx.currentTms, this.vars.windowStartMillis, this.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+      maxCheckpoint = currentWindowId;
+    }
+
     // DFS downstream operators
     for (PTOperator.PTOutput out: operator.getOutputs()) {
       for (PTOperator.PTInput sink: out.sinks) {
@@ -1181,43 +1186,28 @@ public class StreamingContainerManager implements PlanContext
     // checkpoint frozen during deployment
     if (operator.getState() != PTOperator.State.PENDING_DEPLOY) {
       // remove previous checkpoints
-      long c1 = Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID;
+      Checkpoint c1 = Checkpoint.INITIAL_CHECKPOINT;
       synchronized (operator.checkpoints) {
-        if (!operator.checkpoints.isEmpty()) {
-          if ((c1 = operator.checkpoints.getFirst().windowId) <= maxCheckpoint) {
-            long c2 = Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID;
-            while (operator.checkpoints.size() > 1 && (c2 = operator.checkpoints.get(1).windowId) <= maxCheckpoint) {
-              operator.checkpoints.removeFirst();
-              //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
-              this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
-              c1 = c2;
-            }
+        if (!operator.checkpoints.isEmpty() && (operator.checkpoints.getFirst()).windowId <= maxCheckpoint) {
+          c1 = operator.checkpoints.getFirst();
+          Checkpoint c2;
+          while (operator.checkpoints.size() > 1 && ((c2 = operator.checkpoints.get(1)).windowId) <= maxCheckpoint) {
+            operator.checkpoints.removeFirst();
+            //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
+            this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1.windowId));
+            c1 = c2;
           }
-          else {
-            c1 = Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID;
+        } else {
+          if (operator.checkpoints.isEmpty()) {
+            if (operator.isOperatorStateLess()) {
+              LOG.debug("Adding checkpoint for stateless operator {} {}", operator, Codec.getStringWindowId(maxCheckpoint));
+              c1 = operator.addCheckpoint(maxCheckpoint, this.vars.windowStartMillis);
+            }
           }
         }
       }
       //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpoints});
-      if (c1 == Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID) {
-        operator.setRecoveryCheckpoint(Checkpoint.INITIAL_CHECKPOINT);
-      }
-      else {
-        boolean done = false;
-        // FIXME: synchronization issue
-        for (Checkpoint checkpoint : operator.checkpoints) {
-          if (checkpoint.windowId == c1) {
-            operator.setRecoveryCheckpoint(checkpoint);
-            done = true;
-            break;
-          }
-        }
-
-        if (!done) {
-          LOG.debug("Possibily will cause problems with the checkpointing because recovery checkpoint {} is random", Codec.getStringWindowId(c1));
-          operator.setRecoveryCheckpoint(new Checkpoint(c1, 0, 0));
-        }
-      }
+      operator.setRecoveryCheckpoint(c1);
     }
     else {
       LOG.debug("Skipping checkpoint update {} during {}", operator, operator.getState());
@@ -1233,11 +1223,11 @@ public class StreamingContainerManager implements PlanContext
   private long updateCheckpoints()
   {
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
-    for (OperatorMeta logicalOperator: plan.getDAG().getRootOperators()) {
+    for (OperatorMeta logicalOperator : plan.getDAG().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
-        for (PTOperator operator: operators) {
+        for (PTOperator operator : operators) {
           updateRecoveryCheckpoints(operator, ctx);
         }
       }
@@ -1920,7 +1910,7 @@ public class StreamingContainerManager implements PlanContext
         logStream.close();
 
         // restore checkpoint info
-        plan.syncCheckpoints();
+        plan.syncCheckpoints(scm.vars.windowStartMillis, scm.clock.getTime());
         scm.committedWindowId = scm.updateCheckpoints();
 
         // at this point the physical plan has been fully restored

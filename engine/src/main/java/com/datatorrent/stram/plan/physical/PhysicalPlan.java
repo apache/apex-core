@@ -280,7 +280,6 @@ public class PhysicalPlan implements Serializable
       }
     }
 
-    @SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart */
     void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
@@ -1258,7 +1257,7 @@ public class PhysicalPlan implements Serializable
   /**
    * Read available checkpoints from storage agent for all operators.
    */
-  public void syncCheckpoints() throws IOException
+  public void syncCheckpoints(long startTime, long currentTime) throws IOException
   {
     for (PTOperator oper : getAllOperators().values()) {
       StorageAgent sa = ctx.getStorageAgent();
@@ -1268,11 +1267,18 @@ public class PhysicalPlan implements Serializable
       Collections.sort(sortedIds);
       for (Long wid : sortedIds) {
         if (wid.longValue() != Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID) {
-          // TODO: calculate appCount and checkpointCount
-          Checkpoint c = new Checkpoint(wid.longValue(), 0, 0);
-          oper.checkpoints.add(c);
+          oper.addCheckpoint(wid.longValue(), startTime);
         }
       }
+/*
+      if (oper.isOperatorStateLess()) {
+        // since storage agent has no info for stateless operators, add a single "most recent" checkpoint
+        // required to initialize checkpoint dependency, becomes recovery checkpoint if there are no stateful downstream operator(s)
+        long currentWindowId = WindowGenerator.getWindowId(currentTime, startTime, dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
+        Checkpoint checkpoint = oper.addCheckpoint(currentWindowId, startTime);
+        oper.checkpoints.add(checkpoint);
+      }
+*/
     }
   }
 

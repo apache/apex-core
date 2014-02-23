@@ -18,7 +18,6 @@ import com.google.common.collect.Sets;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.util.Clock;
@@ -26,7 +25,7 @@ import org.apache.hadoop.yarn.util.SystemClock;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
-
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
@@ -273,6 +272,57 @@ public class CheckpointTest
     Assert.assertEquals("add latest", getCheckpoints(new Long[] {2L, 3L, 4L, 5L}), pnode2.checkpoints);
 
   }
+
+  @Stateless
+  public static class StatelessOperator extends GenericTestOperator
+  {
+  }
+
+  @Test
+  public void testUpdateCheckpointsStateless()
+  {
+    MockClock clock = new MockClock();
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 1);
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    StatelessOperator stateless1 = dag.addOperator("stateless1", StatelessOperator.class);
+    StatelessOperator stateless2 = dag.addOperator("stateless2", StatelessOperator.class);
+
+    dag.addStream("o1.outport1", o1.outport1, stateless1.inport1);
+    dag.addStream("stateless1.outport1", stateless1.outport1, stateless2.inport1);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag, clock);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      Assert.assertEquals("activation windowId " + oper, Checkpoint.INITIAL_CHECKPOINT, oper.getRecoveryCheckpoint());
+      Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpoints);
+      // set all operators as active to enable recovery window id update
+      oper.setState(PTOperator.State.ACTIVE);
+    }
+
+    PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
+    PTOperator stateless1p1 = plan.getOperators(dag.getMeta(stateless1)).get(0);
+    PTOperator stateless2p1 = plan.getOperators(dag.getMeta(stateless2)).get(0);
+
+    clock.time = 3;
+    UpdateCheckpointsContext ctx;
+    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("initial checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("initial checkpoint " + stateless1p1, new Checkpoint(clock.getTime(), 0, 0), stateless2p1.getRecoveryCheckpoint());
+    Assert.assertEquals("initial checkpoint " + stateless2p1, new Checkpoint(clock.getTime(), 0, 0), stateless2p1.getRecoveryCheckpoint());
+    Assert.assertEquals("number dependencies " + ctx.visited, 3, ctx.visited.size());
+
+    // adding checkpoints to upstream only does not move recovery checkpoint
+    o1p1.checkpoints.add(new Checkpoint(3L, 0, 0));
+    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("", getCheckpoints(new Long[] {3L}), o1p1.checkpoints);
+    Assert.assertEquals("", new Checkpoint(3L, 0, 0), o1p1.getRecoveryCheckpoint());
+
+  }
+
 
   public List<Checkpoint> getCheckpoints(Long[] windowIds)
   {

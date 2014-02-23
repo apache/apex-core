@@ -12,15 +12,17 @@ import com.google.common.collect.Sets;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.api.StatsListener;
-
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -283,6 +285,22 @@ public class PTOperator implements java.io.Serializable
   public Operator getUnifier()
   {
     return unifier != null ? unifier.get() : null;
+  }
+
+  public boolean isOperatorStateLess()
+  {
+    Operator oper = this.unifier != null ? this.unifier.get() : operatorMeta.getOperator();
+    return oper.getClass().isAnnotationPresent(Stateless.class);
+  }
+
+  public Checkpoint addCheckpoint(long windowId, long startTime)
+  {
+    int widthMillis = operatorMeta.getDAG().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
+    long millis = WindowGenerator.getWindowMillis(windowId, startTime, widthMillis);
+    long count = WindowGenerator.getWindowCount(millis, startTime, widthMillis);
+    Checkpoint c = new Checkpoint(windowId, (int)(count % operatorMeta.getValue(OperatorContext.APPLICATION_WINDOW_COUNT)), (int)(count % operatorMeta.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT)));
+    this.checkpoints.add(c);
+    return c;
   }
 
   HostOperatorSet getGrouping(Locality type) {
