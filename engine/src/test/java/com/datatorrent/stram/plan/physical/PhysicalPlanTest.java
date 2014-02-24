@@ -6,7 +6,6 @@ package com.datatorrent.stram.plan.physical;
 
 import java.io.OutputStream;
 import java.util.*;
-
 import junit.framework.Assert;
 
 import com.google.common.collect.Lists;
@@ -22,11 +21,11 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitionable.Partition;
 import com.datatorrent.api.Partitionable.PartitionKeys;
-import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.bufferserver.util.Codec;
+
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.Node;
@@ -500,13 +499,7 @@ public class PhysicalPlanTest {
   private void setActivationCheckpoint(PTOperator oper, long windowId, TestPlanContext ctx)
   {
     try {
-      OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, windowId);
-      try {
-        Node.storeOperator(stream, oper.operatorMeta.getOperator());
-      }
-      finally {
-        stream.close();
-      }
+      ctx.getStorageAgent().save(oper.operatorMeta.getOperator(), oper.id, windowId);
       oper.setRecoveryCheckpoint(new Checkpoint(3, 0, 0));
     } catch (Exception e) {
       Assert.fail(e.toString());

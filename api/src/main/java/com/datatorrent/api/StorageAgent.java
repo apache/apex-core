@@ -16,42 +16,45 @@
 package com.datatorrent.api;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Collection;
 
 /**
- * Interface to define writing/reading checkpoint state
+ * Interface to define writing/reading checkpoint state of any operator.
  *
- * @since 0.3.2
+ * @since 0.9.4
  */
 public interface StorageAgent
 {
   /**
-   * Store the state of the object against the unique key formed using operatorId and windowId.
+   * Save the object so that the same object can be loaded later using the given combination of
+   * operatorId and windowId.
    *
-   * Typically the stream is used to write an operator or some other aggregate object which contains
-   * reference to operator object.
+   * Typically the storage agent would serialize the state of the object during the save state.
+   * The serialized state can be accessed from anywhere on the cluster to recreate the object
+   * through the load callback.
    *
-   * @param operatorId
-   * @param windowId
-   * @return OutputStream
+   * @param object - The operator whose state needs to be saved.
+   * @param operatorId - Identifier of the operator.
+   * @param windowId - Identifier for the specific state of the operator.
    * @throws IOException
    */
-  public OutputStream getSaveStream(int operatorId, long windowId) throws IOException;
+  public void save(Object object, int operatorId, long windowId) throws IOException;
 
   /**
    * Get the input stream from which can be used to retrieve the stored objects back.
    *
    * @param operatorId Id for which the object was previously saved
    * @param windowId WindowId for which the object was previously saved
-   * @return Input stream which can be used to retrieve the serialized object
+   * @return object (or a copy of it) which was saved earlier using the save call.
    * @throws IOException
    */
-  public InputStream getLoadStream(int operatorId, long windowId) throws IOException;
+  public Object load(int operatorId, long windowId) throws IOException;
 
   /**
-   * <p>delete.</p>
+   * Delete the artifacts related to store call of the operatorId and the windowId.
+   *
+   * Through this call, the agent is informed that the object saved against the operatorId
+   * and the windowId together will not be needed again.
+   *
    * @param operatorId
    * @param windowId
    * @throws IOException
@@ -59,12 +62,16 @@ public interface StorageAgent
   public void delete(int operatorId, long windowId) throws IOException;
 
   /**
-   * Return the most recent windowId for which state identified by operatorId was saved successfully.
+   * Return an array windowId for which the object was saved but not deleted.
+   *
+   * The set is essentially difference between the sets two sets. The first set contains
+   * all the windowIds passed using the successful save calls. The second set contains all
+   * the windowIds passed using the successful delete calls.
+   *
    * @param operatorId - The operator for which the state was saved.
    * @return Collection of windowIds for available states that can be retrieved through load.
    * @throws IOException
-   * @since 0.9.4
    */
-  public Collection<Long> getWindowsIds(int operatorId) throws IOException;
+  public long[] getWindowIds(int operatorId) throws IOException;
 
 }

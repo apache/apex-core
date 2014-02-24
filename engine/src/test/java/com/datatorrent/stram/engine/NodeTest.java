@@ -5,11 +5,7 @@
 package com.datatorrent.stram.engine;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -162,32 +158,16 @@ public class NodeTest
     static final ArrayList<Call> calls = new ArrayList<Call>();
 
     @Override
-    public OutputStream getSaveStream(int operatorId, long windowId) throws IOException
+    public void save(Object object, int operatorId, long windowId) throws IOException
     {
       calls.add(new Call("getSaveStream", operatorId, windowId));
-      return new OutputStream()
-      {
-        @Override
-        public void write(int b) throws IOException
-        {
-        }
-
-      };
     }
 
     @Override
-    public InputStream getLoadStream(int operatorId, long windowId) throws IOException
+    public Object load(int operatorId, long windowId) throws IOException
     {
       calls.add(new Call("getLoadStream", operatorId, windowId));
-      return new InputStream()
-      {
-        @Override
-        public int read() throws IOException
-        {
-          return 0;
-        }
-
-      };
+      return null;
     }
 
     @Override
@@ -198,10 +178,10 @@ public class NodeTest
 
 
     @Override
-    public Collection<Long> getWindowsIds(int operatorId) throws IOException
+    public long[] getWindowIds(int operatorId) throws IOException
     {
       calls.add(new Call("getWindowsIds", operatorId, 0));
-      return Collections.emptyList();
+      return new long[0];
     }
 
   }

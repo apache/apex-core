@@ -14,10 +14,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -348,36 +344,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     sinks = Sink.NO_SINKS;
   }
 
-  public static void storeOperator(OutputStream stream, Operator operator) throws IOException
-  {
-    Output output = new Output(4096, Integer.MAX_VALUE);
-    output.setOutputStream(stream);
-    final Kryo k = new Kryo();
-    k.writeClassAndObject(output, operator);
-    output.flush();
-  }
-
-  public static Operator retrieveOperator(InputStream stream)
-  {
-    final Kryo k = new Kryo();
-    k.setClassLoader(Thread.currentThread().getContextClassLoader());
-    Input input = new Input(stream);
-    return (Operator)k.readClassAndObject(input);
-  }
-
   void checkpoint(long windowId)
   {
     if (!stateless) {
       StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (ba != null) {
         try {
-          OutputStream stream = ba.getSaveStream(id, windowId);
-          try {
-            Node.storeOperator(stream, operator);
-          }
-          finally {
-            stream.close();
-          }
+          ba.save(operator, id, windowId);
         }
         catch (IOException ie) {
           try {
@@ -400,9 +373,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   }
 
   @SuppressWarnings("unchecked")
-  public static Node<?> retrieveNode(InputStream stream, OperatorDeployInfo.OperatorType type)
+  public static Node<?> retrieveNode(Object operator, OperatorDeployInfo.OperatorType type)
   {
-    Operator operator = retrieveOperator(stream);
     logger.debug("type={}, operator class={}", type, operator.getClass());
 
     Node<?> node;
@@ -413,10 +385,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       node = new UnifierNode((Unifier<Object>)operator);
     }
     else if (type == OperatorDeployInfo.OperatorType.OIO) {
-      node = new OiONode(operator);
+      node = new OiONode((Operator)operator);
     }
     else {
-      node = new GenericNode(operator);
+      node = new GenericNode((Operator)operator);
     }
 
     return node;

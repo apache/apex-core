@@ -2,7 +2,6 @@ package com.datatorrent.stram;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
@@ -20,10 +19,10 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -251,7 +250,7 @@ public class PartitioningTest
       StramTestSupport.waitForActivation(lc, p);
     }
 
-    PartitionLoadWatch.loadIndicators.remove(splitPartition);
+    PartitionLoadWatch.loadIndicators.remove(splitPartition.getId());
 
     PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
     LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
@@ -312,7 +311,7 @@ public class PartitioningTest
     {
       List<Partition<PartitionableInputOperator>> newPartitions = new ArrayList<Partition<PartitionableInputOperator>>(3);
       Iterator<? extends Partition<PartitionableInputOperator>> iterator = partitions.iterator();
-      Partition<PartitionableInputOperator> templatePartition = null;
+      Partition<PartitionableInputOperator> templatePartition;
       for (int i = 0; i < 3; i++) {
         PartitionableInputOperator op = new PartitionableInputOperator();
         if (iterator.hasNext()) {
@@ -357,13 +356,7 @@ public class PartitioningTest
         Checkpoint checkpoint = new Checkpoint(10L, 0, 0);
         p.checkpoints.add(checkpoint);
         p.setRecoveryCheckpoint(checkpoint);
-        OutputStream stream = new FSStorageAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
-        try {
-          Node.storeOperator(stream, inputDeployed);
-        }
-        finally {
-          stream.close();
-        }
+        new FSStorageAgent(new Configuration(false), checkpointDir.getPath()).save(inputDeployed, p.getId(), 10L);
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
@@ -374,7 +367,7 @@ public class PartitioningTest
       while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS) {
         count += lc.dnmgr.processEvents();
       }
-      PartitionLoadWatch.loadIndicators.remove(partitions.get(0));
+      PartitionLoadWatch.loadIndicators.remove(partitions.get(0).getId());
 
       partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       partProperties = new HashSet<String>();

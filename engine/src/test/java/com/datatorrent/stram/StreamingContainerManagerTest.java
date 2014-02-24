@@ -6,15 +6,13 @@ package com.datatorrent.stram;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
-import junit.framework.Assert;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -29,16 +27,15 @@ import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
-import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
-import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -47,7 +44,6 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -296,14 +292,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      InputStream stream = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
-      Operator operator;
-      try {
-        operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
-      }
-      finally {
-        stream.close();
-      }
+      Object operator = (Operator)new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).load(mergeNodeDI.id, -1);
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
@@ -419,25 +408,22 @@ public class StreamingContainerManagerTest {
 
     FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getAbsolutePath());
     try {
-      sa.getWindowsIds(1);
+      sa.getWindowIds(1);
       Assert.fail("There should not be any most recently saved windowId!");
     }
     catch (IOException io) {
       Assert.assertTrue("No State Saved", true);
     }
 
-    List<Long> windowIds = Lists.newArrayList(123L, 345L, 234L);
+    long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
-      OutputStream os = sa.getSaveStream(1, windowId);
-      try {
-        os.write(String.valueOf(windowId).getBytes());
-      }
-      finally {
-        os.close();
-      }
+      sa.save(windowId, 1, windowId);
     }
-    Assert.assertEquals("Saved windowIds", windowIds.size(), sa.getWindowsIds(1).size());
-    Assert.assertEquals("Saved windowIds", Sets.newHashSet(windowIds), Sets.newHashSet(sa.getWindowsIds(1)));
+
+    Arrays.sort(windowIds);
+    long[] windowsIds = sa.getWindowIds(1);
+    Arrays.sort(windowsIds);
+    Assert.assertArrayEquals("Saved windowIds", windowIds, windowsIds);
   }
 
   @Test

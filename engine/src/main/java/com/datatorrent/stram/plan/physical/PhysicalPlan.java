@@ -5,8 +5,6 @@
 package com.datatorrent.stram.plan.physical;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
@@ -32,7 +30,6 @@ import com.datatorrent.api.Partitionable.PartitionKeys;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -280,6 +277,7 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    @SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart; you don't be an idiot! */
     void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
@@ -725,13 +723,7 @@ public class PhysicalPlan implements Serializable
   {
     try {
       LOG.debug("Writing activation checkpoint {} {} {}", checkpoint, oper, oo);
-      OutputStream stream = ctx.getStorageAgent().getSaveStream(oper.id, checkpoint.windowId);
-      try {
-        Node.storeOperator(stream, oo);
-      }
-      finally {
-        stream.close();
-      }
+      ctx.getStorageAgent().save(oo, oper.id, checkpoint.windowId);
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + oper, e);
@@ -745,15 +737,7 @@ public class PhysicalPlan implements Serializable
   public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
-      InputStream is = ctx.getStorageAgent().getLoadStream(oper.id, oper.recoveryCheckpoint.windowId);
-      if (is == null) {
-        throw new AssertionError(String.format("Cannot read state for %s %s", oper.id, oper.recoveryCheckpoint));
-      }
-      try {
-        return Node.retrieveOperator(is);
-      } finally {
-        is.close();
-      }
+      return (Operator)ctx.getStorageAgent().load(oper.id, oper.recoveryCheckpoint.windowId);
     } catch (IOException e) {
       throw new RuntimeException("Failed to read partition state for " + oper, e);
     }
@@ -1256,18 +1240,20 @@ public class PhysicalPlan implements Serializable
 
   /**
    * Read available checkpoints from storage agent for all operators.
+   * @param startTime
+   * @param currentTime 
+   * @throws IOException
    */
   public void syncCheckpoints(long startTime, long currentTime) throws IOException
   {
     for (PTOperator oper : getAllOperators().values()) {
       StorageAgent sa = ctx.getStorageAgent();
-      Collection<Long> windowIds = sa.getWindowsIds(oper.getId());
+      long[] windowIds = sa.getWindowIds(oper.getId());
+      Arrays.sort(windowIds);
       oper.checkpoints.clear();
-      ArrayList<Long> sortedIds = new ArrayList<Long>(windowIds);
-      Collections.sort(sortedIds);
-      for (Long wid : sortedIds) {
-        if (wid.longValue() != Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID) {
-          oper.addCheckpoint(wid.longValue(), startTime);
+      for (long wid : windowIds) {
+        if (wid != Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID) {
+          oper.addCheckpoint(wid, startTime);
         }
       }
 /*

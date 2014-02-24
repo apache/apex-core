@@ -4,23 +4,23 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import junit.framework.Assert;
+
+import com.google.common.collect.Lists;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
@@ -29,23 +29,17 @@ import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.test.MockitoUtil;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
@@ -57,7 +51,6 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
-import com.google.common.collect.Lists;
 
 public class StramRecoveryTest
 {
@@ -130,9 +123,7 @@ public class StramRecoveryTest
     // write checkpoint while AM is out,
     // it needs to be picked up as part of restore
     StorageAgent sa = scm.getStorageAgent();
-    OutputStream os = sa.getSaveStream(oper.getId(), checkpoint.windowId);
-    Node.storeOperator(os, oper.getOperatorMeta().getOperator());
-    os.close();
+    sa.save(oper.getOperatorMeta().getOperator(), oper.getId(), checkpoint.windowId);
   }
 
   /**
@@ -159,6 +150,7 @@ public class StramRecoveryTest
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
 
+    @SuppressWarnings("UnusedAssignment") /* sneaky: the constructor does some changes to the container */
     MockContainer mc = new MockContainer(scm, o1p1.getContainer());
     PTContainer originalContainer = o1p1.getContainer();
 

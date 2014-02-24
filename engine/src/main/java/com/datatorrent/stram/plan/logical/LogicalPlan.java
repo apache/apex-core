@@ -35,7 +35,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.engine.Node;
+import com.datatorrent.stram.FSStorageAgent;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -122,14 +122,14 @@ public class LogicalPlan implements Serializable, DAG
       return this.operator;
     }
 
-    private void writeObject(ObjectOutputStream out) throws IOException
+    private void writeObject(ObjectOutputStream out)
     {
-      Node.storeOperator(out, operator);
+      FSStorageAgent.store(out, operator);
     }
 
-    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
+    private void readObject(ObjectInputStream input)
     {
-      operator = Node.retrieveOperator(input);
+      operator = (Operator)FSStorageAgent.retrieve(input);
     }
 
     @Override

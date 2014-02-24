@@ -6,7 +6,6 @@ package com.datatorrent.stram;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.Thread.State;
 import java.net.*;
@@ -802,33 +801,18 @@ public class StramChild extends YarnContainerMain
         }
       }
 
-      try {
-        logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId));
-        Node<?> node;
+      logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId));
+      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ndi.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId), ndi.type);
+      node.stateless = ndi.stateless;
+      node.currentWindowId = ndi.checkpoint.windowId;
+      node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
 
-        InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId);
-        try {
-          node = Node.retrieveNode(stream, ndi.type);
-        }
-        finally {
-          stream.close();
-        }
-
-        node.stateless = ndi.stateless;
-        node.currentWindowId = ndi.checkpoint.windowId;
-        node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
-
-        if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-          massageUnifierDeployInfo(ndi);
-        }
-        node.setId(ndi.id);
-        nodes.put(ndi.id, node);
-        logger.debug("Marking deployed {}", node);
+      if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
+        massageUnifierDeployInfo(ndi);
       }
-      catch (IOException e) {
-        logger.error("Deploy error", e);
-        throw e;
-      }
+      node.setId(ndi.id);
+      nodes.put(ndi.id, node);
+      logger.debug("Marking deployed {}", node);
     }
   }
 
