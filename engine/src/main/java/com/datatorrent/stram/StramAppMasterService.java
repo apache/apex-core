@@ -531,18 +531,12 @@ public class StramAppMasterService extends CompositeService
     dnmgr.teardown();
   }
 
-  public boolean run() throws YarnException
+  public boolean run() throws Exception
   {
     boolean status = true;
     try {
       StramChild.eventloop.start();
       execute();
-    } catch (Exception re) {
-      status = false;
-      LOG.error("Caught Exception in execute()", re);
-      if (re.getCause() instanceof YarnException) {
-        throw (YarnException) re.getCause();
-      }
     } finally {
       StramChild.eventloop.stop();
     }
