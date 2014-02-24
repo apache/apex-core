@@ -922,7 +922,7 @@ public class StramAppMasterService extends CompositeService
     @Override
     public void onGetContainerStatusError(ContainerId containerId, Throwable t)
     {
-      LOG.error("Failed to query the status of Container " + containerId, t);
+      LOG.error("Failed to query the status of " + containerId, t);
       // if the NM is not reachable, consider container lost and recover
       recoverContainer(containerId);
     }
@@ -940,6 +940,7 @@ public class StramAppMasterService extends CompositeService
       pendingTasks.add(new Runnable() { @Override public void run() {
         LOG.info("Lost container {}", containerId);
         dnmgr.scheduleContainerRestart(containerId.toString());
+        allAllocatedContainers.remove(containerId.toString());
       }});
     }
 
