@@ -6,7 +6,7 @@ package com.datatorrent.stram.plan.physical;
 
 import java.io.OutputStream;
 import java.util.*;
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;

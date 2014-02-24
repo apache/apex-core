@@ -4,12 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import junit.framework.Assert;
 import static java.lang.Thread.sleep;
 
 import com.google.common.collect.Sets;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;

@@ -11,7 +11,7 @@ import com.datatorrent.stram.stream.FastSubscriber;
 import com.datatorrent.api.Sink;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;

@@ -6,7 +6,7 @@ package com.datatorrent.stram.engine;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.junit.Test;
 

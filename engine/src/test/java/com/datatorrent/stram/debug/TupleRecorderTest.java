@@ -6,7 +6,7 @@ package com.datatorrent.stram.debug;
 
 import java.io.*;
 import java.util.ArrayList;
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.After;

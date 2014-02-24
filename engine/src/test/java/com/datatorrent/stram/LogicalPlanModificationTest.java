@@ -7,7 +7,7 @@ import java.util.concurrent.FutureTask;
 
 import javax.validation.ValidationException;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.junit.Rule;
 import org.junit.Test;

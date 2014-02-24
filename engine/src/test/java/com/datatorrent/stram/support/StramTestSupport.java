@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.support;
 
-import junit.framework.AssertionFailedError;
 import static java.lang.Thread.sleep;
 
 import org.hamcrest.BaseMatcher;
@@ -23,6 +22,7 @@ import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+import org.junit.Assert;
 
 /**
  * Bunch of utilities shared between tests.
@@ -120,7 +120,9 @@ abstract public class StramTestSupport
       LOG.debug("Waiting for {}({}) in container {}", new Object[] {operator, operator.getState(), operator.getContainer()});
       Thread.sleep(500);
     }
-    throw new AssertionFailedError("timeout waiting for operator deployment " + operator);
+
+    Assert.fail("timeout waiting for operator deployment " + operator);
+    return null;
   }
 
   public static class RegexMatcher extends BaseMatcher<String>

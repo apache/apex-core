@@ -11,7 +11,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import com.google.common.collect.Lists;
 

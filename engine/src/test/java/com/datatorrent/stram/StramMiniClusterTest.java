@@ -14,7 +14,7 @@ import java.net.URL;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
-import junit.framework.Assert;
+import org.junit.Assert;
 import static java.lang.Thread.sleep;
 
 import javax.ws.rs.core.MediaType;
