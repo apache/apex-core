@@ -251,24 +251,24 @@ public class CheckpointTest
     Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint().windowId);
 
     pnode1.checkpoints.add(1, new Checkpoint(4L, 0, 0));
-    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(new Long[] {3L, 4L, 5L}));
+    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(3L, 4L, 5L));
     dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
     Assert.assertEquals("checkpoint pnode1", 4L, pnode1.getRecoveryCheckpoint().windowId);
     Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint().windowId);
-    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(new Long[] {4L, 5L}));
+    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(4L, 5L));
 
     // out of sequence windowIds should be sorted
     dnm.addCheckpoint(pnode2, new Checkpoint(2L, 0, 0));
-    Assert.assertEquals("add first", getCheckpoints(new Long[] {2L, 4L}), pnode2.checkpoints);
+    Assert.assertEquals("add first", getCheckpoints(2L, 4L), pnode2.checkpoints);
 
     dnm.addCheckpoint(pnode2, new Checkpoint(3L, 0, 0));
-    Assert.assertEquals("add middle", getCheckpoints(new Long[] {2L, 3L, 4L}), pnode2.checkpoints);
+    Assert.assertEquals("add middle", getCheckpoints(2L, 3L, 4L), pnode2.checkpoints);
 
     dnm.addCheckpoint(pnode2, new Checkpoint(4L, 0, 0));
-    Assert.assertEquals("ignore duplicate", getCheckpoints(new Long[] {2L, 3L, 4L}), pnode2.checkpoints);
+    Assert.assertEquals("ignore duplicate", getCheckpoints(2L, 3L, 4L), pnode2.checkpoints);
 
     dnm.addCheckpoint(pnode2, new Checkpoint(5L, 0, 0));
-    Assert.assertEquals("add latest", getCheckpoints(new Long[] {2L, 3L, 4L, 5L}), pnode2.checkpoints);
+    Assert.assertEquals("add latest", getCheckpoints(2L, 3L, 4L, 5L), pnode2.checkpoints);
 
   }
 
