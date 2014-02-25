@@ -22,8 +22,6 @@ import org.apache.hadoop.fs.*;
 
 import com.datatorrent.api.StorageAgent;
 
-import com.datatorrent.bufferserver.util.Codec;
-
 public class FSStorageAgent implements StorageAgent
 {
   private static final String PATH_SEPARATOR = "/";
@@ -45,7 +43,7 @@ public class FSStorageAgent implements StorageAgent
   @Override
   public void save(Object object, int id, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + Codec.getStringWindowId(windowId));
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     logger.debug("Saving: {}", path);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     FSDataOutputStream stream = fs.create(path);
@@ -60,7 +58,7 @@ public class FSStorageAgent implements StorageAgent
   @Override
   public Object load(int operatorId, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId + PATH_SEPARATOR + Codec.getStringWindowId(windowId));
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId + PATH_SEPARATOR + windowId);
     logger.debug("Loading: {}", path);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     FSDataInputStream stream = fs.open(path);
@@ -75,7 +73,7 @@ public class FSStorageAgent implements StorageAgent
   @Override
   public void delete(int id, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + Codec.getStringWindowId(windowId));
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     logger.debug("Deleting: {}", path);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     fs.delete(path, false);
@@ -94,7 +92,7 @@ public class FSStorageAgent implements StorageAgent
 
     long windowIds[] = new long[files.length];
     for (int i = files.length; i-- > 0;) {
-      windowIds[i] = Codec.getLongWindowId(files[i].getPath().getName());
+      windowIds[i] = Long.parseLong(files[i].getPath().getName());
     }
     return windowIds;
   }
