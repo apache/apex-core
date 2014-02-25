@@ -26,7 +26,6 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.annotation.Stateless;
-import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
@@ -279,7 +278,7 @@ public class CheckpointTest
   }
 
   @Test
-  public void testUpdateCheckpointsStateless()
+  public void testUpdateCheckpointsRecovery()
   {
     MockClock clock = new MockClock();
     LogicalPlan dag = new LogicalPlan();
@@ -287,11 +286,12 @@ public class CheckpointTest
     dag.setAttribute(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 1);
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
-    StatelessOperator stateless1 = dag.addOperator("stateless1", StatelessOperator.class);
-    StatelessOperator stateless2 = dag.addOperator("stateless2", StatelessOperator.class);
+    StatelessOperator o2SL = dag.addOperator("o2SL", StatelessOperator.class);
+    StatelessOperator o3SL = dag.addOperator("o3SL", StatelessOperator.class);
+    GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
 
-    dag.addStream("o1.outport1", o1.outport1, stateless1.inport1);
-    dag.addStream("stateless1.outport1", stateless1.outport1, stateless2.inport1);
+    dag.addStream("o1.outport1", o1.outport1, o2SL.inport1);
+    dag.addStream("o2SL.outport1", o2SL.outport1, o3SL.inport1, o4.inport1);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag, clock);
     PhysicalPlan plan = dnm.getPhysicalPlan();
@@ -304,27 +304,32 @@ public class CheckpointTest
     }
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
-    PTOperator stateless1p1 = plan.getOperators(dag.getMeta(stateless1)).get(0);
-    PTOperator stateless2p1 = plan.getOperators(dag.getMeta(stateless2)).get(0);
+    PTOperator o2SLp1 = plan.getOperators(dag.getMeta(o2SL)).get(0);
+    PTOperator o3SLp1 = plan.getOperators(dag.getMeta(o3SL)).get(0);
+    PTOperator o4p1 = plan.getOperators(dag.getMeta(o4)).get(0);
 
+    Checkpoint leafCheckpoint = new Checkpoint(2L, 0, 0);
     clock.time = 3;
+    o4p1.checkpoints.add(leafCheckpoint);
+
     UpdateCheckpointsContext ctx;
     dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock));
     Assert.assertEquals("initial checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
-    Assert.assertEquals("initial checkpoint " + stateless1p1, new Checkpoint(clock.getTime(), 0, 0), stateless2p1.getRecoveryCheckpoint());
-    Assert.assertEquals("initial checkpoint " + stateless2p1, new Checkpoint(clock.getTime(), 0, 0), stateless2p1.getRecoveryCheckpoint());
-    Assert.assertEquals("number dependencies " + ctx.visited, 3, ctx.visited.size());
+    Assert.assertEquals("initial checkpoint " + o2SLp1, leafCheckpoint, o2SLp1.getRecoveryCheckpoint());
+    Assert.assertEquals("initial checkpoint " + o3SLp1, new Checkpoint(clock.getTime(), 0, 0), o3SLp1.getRecoveryCheckpoint());
+    Assert.assertEquals("number dependencies " + ctx.visited, plan.getAllOperators().size(), ctx.visited.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
-    o1p1.checkpoints.add(new Checkpoint(3L, 0, 0));
+    Checkpoint rootCheckpoint = new Checkpoint(2L, 0, 0);
+    o1p1.checkpoints.add(rootCheckpoint);
     dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("", getCheckpoints(new Long[] {3L}), o1p1.checkpoints);
-    Assert.assertEquals("", new Checkpoint(3L, 0, 0), o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("", getCheckpoints(rootCheckpoint.windowId), o1p1.checkpoints);
+    Assert.assertEquals("recovery checkpoint " + o1p1, rootCheckpoint, o1p1.getRecoveryCheckpoint());
 
   }
 
 
-  public List<Checkpoint> getCheckpoints(Long[] windowIds)
+  public List<Checkpoint> getCheckpoints(Long... windowIds)
   {
     List<Checkpoint> list = new ArrayList<Checkpoint>(windowIds.length);
     for (Long windowId : windowIds) {
