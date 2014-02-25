@@ -286,7 +286,7 @@ public class StreamingContainerManager implements PlanContext
     // events that may modify the plan
     processEvents();
 
-    committedWindowId = updateCheckpoints();
+    committedWindowId = updateCheckpoints(false);
     calculateEndWindowStats();
     if (this.vars.recordStatsInterval > 0 && (lastRecordStatsTime + this.vars.recordStatsInterval <= currentTms)) {
       recordStats(currentTms);
@@ -1128,11 +1128,17 @@ public class StreamingContainerManager implements PlanContext
     public final Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
     public final Set<PTOperator> blocked = new LinkedHashSet<PTOperator>();
     public final long currentTms;
+    public final boolean recovery;
 
     public UpdateCheckpointsContext(Clock clock) {
       this.currentTms = clock.getTime();
+      this.recovery = false;
     }
 
+    public UpdateCheckpointsContext(Clock clock, boolean recovery) {
+      this.currentTms = clock.getTime();
+      this.recovery = recovery;
+    }
   }
 
   /**
@@ -1155,7 +1161,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     long maxCheckpoint = operator.getRecentCheckpoint().windowId;
-    if (maxCheckpoint == Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID && operator.isOperatorStateLess()) {
+    if (ctx.recovery && maxCheckpoint == Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID && operator.isOperatorStateLess()) {
       long currentWindowId = WindowGenerator.getWindowId(ctx.currentTms, this.vars.windowStartMillis, this.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
       maxCheckpoint = currentWindowId;
     }
@@ -1184,7 +1190,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // checkpoint frozen during deployment
-    if (operator.getState() != PTOperator.State.PENDING_DEPLOY) {
+    if (ctx.recovery || operator.getState() != PTOperator.State.PENDING_DEPLOY) {
       // remove previous checkpoints
       Checkpoint c1 = Checkpoint.INITIAL_CHECKPOINT;
       synchronized (operator.checkpoints) {
@@ -1198,11 +1204,9 @@ public class StreamingContainerManager implements PlanContext
             c1 = c2;
           }
         } else {
-          if (operator.checkpoints.isEmpty()) {
-            if (operator.isOperatorStateLess()) {
-              LOG.debug("Adding checkpoint for stateless operator {} {}", operator, Codec.getStringWindowId(maxCheckpoint));
-              c1 = operator.addCheckpoint(maxCheckpoint, this.vars.windowStartMillis);
-            }
+          if (ctx.recovery && operator.checkpoints.isEmpty() && operator.isOperatorStateLess()) {
+            LOG.debug("Adding checkpoint for stateless operator {} {}", operator, Codec.getStringWindowId(maxCheckpoint));
+            c1 = operator.addCheckpoint(maxCheckpoint, this.vars.windowStartMillis);
           }
         }
       }
@@ -1220,9 +1224,9 @@ public class StreamingContainerManager implements PlanContext
    * Visit all operators to update current checkpoint based on updated downstream state.
    * Purge older checkpoints that are no longer needed.
    */
-  private long updateCheckpoints()
+  private long updateCheckpoints(boolean recovery)
   {
-    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery);
     for (OperatorMeta logicalOperator : plan.getDAG().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
@@ -1916,7 +1920,7 @@ public class StreamingContainerManager implements PlanContext
 
         // restore checkpoint info
         plan.syncCheckpoints(scm.vars.windowStartMillis, scm.clock.getTime());
-        scm.committedWindowId = scm.updateCheckpoints();
+        scm.committedWindowId = scm.updateCheckpoints(true);
 
         // at this point the physical plan has been fully restored
         // populate container agents for existing containers

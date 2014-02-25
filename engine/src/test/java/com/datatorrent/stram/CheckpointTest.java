@@ -190,6 +190,11 @@ public class CheckpointTest
     container.teardown();
   }
 
+  @Stateless
+  public static class StatelessOperator extends GenericTestOperator
+  {
+  }
+
   @Test
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
@@ -197,10 +202,12 @@ public class CheckpointTest
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
 
-    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
-    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3SL = dag.addOperator("o3SL", StatelessOperator.class);
 
-    dag.addStream("n1n2", node1.outport1, node2.inport1);
+    dag.addStream("o1.output1", o1.outport1, o2.inport1);
+    dag.addStream("o2.output1", o2.outport1, o3SL.inport1);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
@@ -210,71 +217,81 @@ public class CheckpointTest
       Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpoints);
     }
 
-    List<PTOperator> nodes1 = plan.getOperators(dag.getMeta(node1));
+    List<PTOperator> nodes1 = plan.getOperators(dag.getMeta(o1));
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
-    PTOperator pnode1 = nodes1.get(0);
+    PTOperator o1p1 = nodes1.get(0);
 
-    List<PTOperator> nodes2 = plan.getOperators(dag.getMeta(node2));
-    Assert.assertNotNull(nodes2);
-    Assert.assertEquals(1, nodes2.size());
-    PTOperator pnode2 = nodes2.get(0);
+    PTOperator o2p1 = plan.getOperators(dag.getMeta(o2)).get(0);
+    PTOperator o3SLp1 = plan.getOperators(dag.getMeta(o3SL)).get(0);
+
+    // recovery checkpoint won't update in deploy state
+    for (PTOperator oper : plan.getAllOperators().values()) {
+      Assert.assertEquals("", PTOperator.State.PENDING_DEPLOY, oper.getState());
+    }
+
+    dnm.updateRecoveryCheckpoints(o2p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("no checkpoints " + o2p1, Checkpoint.INITIAL_CHECKPOINT, o2p1.getRecoveryCheckpoint());
+
+    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("no checkpoints " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("number dependencies " + ctx.visited, 3, ctx.visited.size());
+
+    // adding checkpoints to upstream only does not move recovery checkpoint
+    Checkpoint cp3 = new Checkpoint(3L, 0, 0);
+    Checkpoint cp5 = new Checkpoint(5L, 0, 0);
+    Checkpoint cp4 = new Checkpoint(4L, 0, 0);
+
+    o1p1.checkpoints.add(cp3);
+    o1p1.checkpoints.add(cp5);
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
+
+    o2p1.checkpoints.add(new Checkpoint(3L, 0, 0));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + o2p1, Checkpoint.INITIAL_CHECKPOINT, o2p1.getRecoveryCheckpoint());
+
+    // set leaf operator checkpoint
+    dnm.addCheckpoint(o3SLp1, cp5);
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + o2p1, Checkpoint.INITIAL_CHECKPOINT, o2p1.getRecoveryCheckpoint());
 
     // set all operators as active to enable recovery window id update
     for (PTOperator oper : plan.getAllOperators().values()) {
       oper.setState(PTOperator.State.ACTIVE);
     }
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("checkpoint " + o1p1, cp3, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + o2p1, cp3, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + o3SLp1, cp5, o3SLp1.getRecoveryCheckpoint());
 
-    dnm.updateRecoveryCheckpoints(pnode2, new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("no checkpoints " + pnode2, Checkpoint.INITIAL_CHECKPOINT, pnode2.getRecoveryCheckpoint());
+    o2p1.checkpoints.add(cp4);
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("checkpoint " + o1p1, cp3, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + o2p1, cp4, o2p1.getRecoveryCheckpoint());
 
-    UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
-    dnm.updateRecoveryCheckpoints(pnode1, ctx);
-    Assert.assertEquals("no checkpoints " + pnode1, Checkpoint.INITIAL_CHECKPOINT, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("number dependencies " + ctx.visited, 2, ctx.visited.size());
-
-    // adding checkpoints to upstream only does not move recovery checkpoint
-    pnode1.checkpoints.add(new Checkpoint(3L, 0, 0));
-    pnode1.checkpoints.add(new Checkpoint(5L, 0, 0));
-    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("no checkpoints " + pnode1, Checkpoint.INITIAL_CHECKPOINT, pnode1.getRecoveryCheckpoint());
-    Assert.assertEquals("checkpoint " + pnode1, Checkpoint.INITIAL_CHECKPOINT, pnode1.getRecoveryCheckpoint());
-
-    pnode2.checkpoints.add(new Checkpoint(3L, 0, 0));
-    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint().windowId);
-    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint().windowId);
-
-    pnode2.checkpoints.add(new Checkpoint(4L, 0, 0));
-    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("checkpoint pnode1", 3L, pnode1.getRecoveryCheckpoint().windowId);
-    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint().windowId);
-
-    pnode1.checkpoints.add(1, new Checkpoint(4L, 0, 0));
-    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(3L, 4L, 5L));
-    dnm.updateRecoveryCheckpoints(pnode1, new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("checkpoint pnode1", 4L, pnode1.getRecoveryCheckpoint().windowId);
-    Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint().windowId);
-    Assert.assertEquals(pnode1.checkpoints, getCheckpoints(4L, 5L));
+    o1p1.checkpoints.add(1, cp4);
+    Assert.assertEquals(o1p1.checkpoints, getCheckpoints(3L, 4L, 5L));
+    dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));
+    Assert.assertEquals("checkpoint " + o1p1, cp4, o1p1.getRecoveryCheckpoint());
+    Assert.assertEquals(o1p1.checkpoints, getCheckpoints(4L, 5L));
 
     // out of sequence windowIds should be sorted
-    dnm.addCheckpoint(pnode2, new Checkpoint(2L, 0, 0));
-    Assert.assertEquals("add first", getCheckpoints(2L, 4L), pnode2.checkpoints);
+    dnm.addCheckpoint(o2p1, new Checkpoint(2L, 0, 0));
+    Assert.assertEquals("add first", getCheckpoints(2L, 4L), o2p1.checkpoints);
 
-    dnm.addCheckpoint(pnode2, new Checkpoint(3L, 0, 0));
-    Assert.assertEquals("add middle", getCheckpoints(2L, 3L, 4L), pnode2.checkpoints);
+    dnm.addCheckpoint(o2p1, new Checkpoint(3L, 0, 0));
+    Assert.assertEquals("add middle", getCheckpoints(2L, 3L, 4L), o2p1.checkpoints);
 
-    dnm.addCheckpoint(pnode2, new Checkpoint(4L, 0, 0));
-    Assert.assertEquals("ignore duplicate", getCheckpoints(2L, 3L, 4L), pnode2.checkpoints);
+    dnm.addCheckpoint(o2p1, new Checkpoint(4L, 0, 0));
+    Assert.assertEquals("ignore duplicate", getCheckpoints(2L, 3L, 4L), o2p1.checkpoints);
 
-    dnm.addCheckpoint(pnode2, new Checkpoint(5L, 0, 0));
-    Assert.assertEquals("add latest", getCheckpoints(2L, 3L, 4L, 5L), pnode2.checkpoints);
+    dnm.addCheckpoint(o2p1, new Checkpoint(5L, 0, 0));
+    Assert.assertEquals("add latest", getCheckpoints(2L, 3L, 4L, 5L), o2p1.checkpoints);
 
-  }
-
-  @Stateless
-  public static class StatelessOperator extends GenericTestOperator
-  {
   }
 
   @Test
@@ -299,8 +316,6 @@ public class CheckpointTest
     for (PTOperator oper : plan.getAllOperators().values()) {
       Assert.assertEquals("activation windowId " + oper, Checkpoint.INITIAL_CHECKPOINT, oper.getRecoveryCheckpoint());
       Assert.assertEquals("checkpoints " + oper, Collections.emptyList(), oper.checkpoints);
-      // set all operators as active to enable recovery window id update
-      oper.setState(PTOperator.State.ACTIVE);
     }
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
@@ -313,18 +328,11 @@ public class CheckpointTest
     o4p1.checkpoints.add(leafCheckpoint);
 
     UpdateCheckpointsContext ctx;
-    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock));
+    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock, true));
     Assert.assertEquals("initial checkpoint " + o1p1, Checkpoint.INITIAL_CHECKPOINT, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("initial checkpoint " + o2SLp1, leafCheckpoint, o2SLp1.getRecoveryCheckpoint());
     Assert.assertEquals("initial checkpoint " + o3SLp1, new Checkpoint(clock.getTime(), 0, 0), o3SLp1.getRecoveryCheckpoint());
     Assert.assertEquals("number dependencies " + ctx.visited, plan.getAllOperators().size(), ctx.visited.size());
-
-    // adding checkpoints to upstream only does not move recovery checkpoint
-    Checkpoint rootCheckpoint = new Checkpoint(2L, 0, 0);
-    o1p1.checkpoints.add(rootCheckpoint);
-    dnm.updateRecoveryCheckpoints(o1p1, ctx = new UpdateCheckpointsContext(clock));
-    Assert.assertEquals("", getCheckpoints(rootCheckpoint.windowId), o1p1.checkpoints);
-    Assert.assertEquals("recovery checkpoint " + o1p1, rootCheckpoint, o1p1.getRecoveryCheckpoint());
 
   }
 
