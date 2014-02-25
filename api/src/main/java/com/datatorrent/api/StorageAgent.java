@@ -64,7 +64,7 @@ public interface StorageAgent
   /**
    * Return an array windowId for which the object was saved but not deleted.
    *
-   * The set is essentially difference between the sets two sets. The first set contains
+   * The set is essentially difference between two sets. The first set contains
    * all the windowIds passed using the successful save calls. The second set contains all
    * the windowIds passed using the successful delete calls.
    *

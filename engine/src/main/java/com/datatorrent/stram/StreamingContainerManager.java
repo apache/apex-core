@@ -1327,6 +1327,17 @@ public class StreamingContainerManager implements PlanContext
     return m;
   }
 
+  private void requestContainer(PTContainer c)
+  {
+    ContainerStartRequest dr = new ContainerStartRequest(c);
+    containerStartRequests.add(dr);
+    pendingAllocation.add(dr.container);
+    lastResourceRequest = System.currentTimeMillis();
+    for (PTOperator operator : c.getOperators()) {
+      operator.setState(PTOperator.State.INACTIVE);
+    }
+  }
+
   @Override
   public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy)
   {
@@ -1350,13 +1361,7 @@ public class StreamingContainerManager implements PlanContext
 
       // start new containers
       for (PTContainer c : startContainers) {
-        ContainerStartRequest dr = new ContainerStartRequest(c);
-        containerStartRequests.add(dr);
-        pendingAllocation.add(dr.container);
-        lastResourceRequest = System.currentTimeMillis();
-        for (PTOperator operator : c.getOperators()) {
-          operator.setState(PTOperator.State.INACTIVE);
-        }
+        requestContainer(c);
       }
 
       // (re)deploy affected operators
@@ -1920,9 +1925,11 @@ public class StreamingContainerManager implements PlanContext
             LOG.debug("Restore container agent {} for {}", c.getExternalId(), c);
             StramChildAgent sca = new StramChildAgent(c, scm.newStreamingContainerContext(c.getExternalId()), scm);
             scm.containers.put(c.getExternalId(), sca);
+          } else {
+            LOG.debug("Requesting new resource for {}", c.toIdStateString());
+            scm.requestContainer(c);
           }
         }
-
       }
       scm.recoveryHandler = rh;
       scm.checkpoint();
