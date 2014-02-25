@@ -159,7 +159,7 @@ public class CheckpointTest
     dnm.processHeartbeat(hb); // propagate checkpoint
 
     Thread.sleep(20); // file close delay?
-    File cpFile1 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/" + Codec.getStringWindowId(1));
+    File cpFile1 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
@@ -170,7 +170,7 @@ public class CheckpointTest
     Assert.assertEquals("window 3", 3, context.getLastProcessedWindowId());
 
     Thread.sleep(20); // file close delay?
-    File cpFile2 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/" + Codec.getStringWindowId(2));
+    File cpFile2 = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     ohb.getOperatorStatsContainer().clear();
