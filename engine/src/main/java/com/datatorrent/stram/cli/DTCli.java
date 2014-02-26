@@ -1778,7 +1778,7 @@ public class DTCli
           }
 
         });
-        
+
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z");
 
         for (ApplicationReport ar : licList) {
@@ -3207,18 +3207,31 @@ public class DTCli
         }
         appReport = currentApp;
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
+      JSONObject response;
+      try {
+        WebServicesClient webServicesClient = new WebServicesClient();
+        WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
 
-      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-      {
-        @Override
-        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
-          return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-        }
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
-      });
+        });
+      }
+      catch (Exception ex) {
+        response = new JSONObject();
+        response.put("startTime", appReport.getStartTime());
+        response.put("id", appReport.getApplicationId().toString());
+        response.put("name", appReport.getName());
+        response.put("user", appReport.getUser());
+      }
+      response.put("state", appReport.getYarnApplicationState().name());
+      response.put("trackingUrl", appReport.getTrackingUrl());
+      response.put("finalStatus", appReport.getFinalApplicationStatus());
       printJson(response);
     }
 
