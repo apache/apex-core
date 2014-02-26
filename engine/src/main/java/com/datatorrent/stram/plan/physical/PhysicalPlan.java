@@ -723,7 +723,8 @@ public class PhysicalPlan implements Serializable
   {
     try {
       LOG.debug("Writing activation checkpoint {} {} {}", checkpoint, oper, oo);
-      ctx.getStorageAgent().save(oo, oper.id, checkpoint.windowId);
+      long windowId = oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : checkpoint.windowId;
+      ctx.getStorageAgent().save(oo, oper.id, windowId);
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + oper, e);
@@ -1241,7 +1242,7 @@ public class PhysicalPlan implements Serializable
   /**
    * Read available checkpoints from storage agent for all operators.
    * @param startTime
-   * @param currentTime 
+   * @param currentTime
    * @throws IOException
    */
   public void syncCheckpoints(long startTime, long currentTime) throws IOException

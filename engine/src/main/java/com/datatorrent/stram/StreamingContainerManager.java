@@ -1261,12 +1261,14 @@ public class StreamingContainerManager implements PlanContext
     StorageAgent ba = new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
     for (Pair<PTOperator, Long> p : purgeCheckpoints) {
       PTOperator operator = p.getFirst();
-      try {
-        ba.delete(operator.getId(), p.getSecond());
-        //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
-      }
-      catch (Exception e) {
-        LOG.error("Failed to purge checkpoint " + p, e);
+      if (!operator.isOperatorStateLess()) {
+        try {
+          ba.delete(operator.getId(), p.getSecond());
+          //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
+        }
+        catch (Exception e) {
+          LOG.error("Failed to purge checkpoint " + p, e);
+        }
       }
       // delete stream state when using buffer server
       for (PTOperator.PTOutput out : operator.getOutputs()) {
