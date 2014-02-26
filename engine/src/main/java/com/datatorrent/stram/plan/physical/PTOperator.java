@@ -289,6 +289,9 @@ public class PTOperator implements java.io.Serializable
 
   public boolean isOperatorStateLess()
   {
+    if (operatorMeta.getDAG().getValue(OperatorContext.STATELESS) || operatorMeta.getValue(OperatorContext.STATELESS)) {
+      return true;
+    }
     Operator oper = this.unifier != null ? this.unifier.get() : operatorMeta.getOperator();
     return oper.getClass().isAnnotationPresent(Stateless.class);
   }

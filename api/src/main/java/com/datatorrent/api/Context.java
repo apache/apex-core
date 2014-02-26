@@ -137,9 +137,11 @@ public interface Context
      */
     Attribute<Collection<StatsListener>> STATS_LISTENERS  = new Attribute<Collection<StatsListener>>(new Collection2String<StatsListener>(",", new Object2String<StatsListener>(":")));
     /**
-     * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
+     * Conveys whether the Operator is stateful or stateless. If the operator is stateless, no checkpointing is required
+     * by the engine. The attribute is ignored when the operator was already declared stateless through the
+     * {@link Stateless} annotation.
      */
-    //public static final Attribute<Boolean> STATELESS = new Attribute<Boolean>("stateless");
+    Attribute<Boolean> STATELESS = new Attribute<Boolean>(false);
     /**
      * Attribute of the operator that suggests the ideal RAM that the operator may need for optimal functioning.
      */

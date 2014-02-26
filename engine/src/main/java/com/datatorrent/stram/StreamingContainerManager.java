@@ -825,7 +825,7 @@ public class StreamingContainerManager implements PlanContext
       if (!oper.stats.isIdle()) {
         containerIdle = false;
       }
-      if (!oper.stats.isIdle() && !statsList.isEmpty()) {
+      if (!statsList.isEmpty()) {
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
