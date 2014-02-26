@@ -654,9 +654,7 @@ public class StramAppMasterService extends CompositeService
           while ((csr = dnmgr.containerStartRequests.poll()) != null) {
             csr.container.setResourceRequestPriority(nextRequestPriority++);
             requestedResources.put(csr, loopCounter);
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,true));
-            numTotalContainers++;
-            numRequestedContainers++;
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory,true));            
           }
         }
       }
@@ -672,6 +670,8 @@ public class StramAppMasterService extends CompositeService
         }
       }
 
+      numTotalContainers += containerRequests.size();
+      numRequestedContainers += containerRequests.size();
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
       releasedContainers.clear();
 
