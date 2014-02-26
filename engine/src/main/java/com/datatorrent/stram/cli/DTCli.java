@@ -1778,11 +1778,14 @@ public class DTCli
           }
 
         });
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z");
 
         for (ApplicationReport ar : licList) {
           JSONObject jsonObj = new JSONObject();
           jsonObj.put("id", ar.getName());
           jsonObj.put("agentAppId", ar.getApplicationId().getId());
+          jsonObj.put("startTime", sdf.format(new java.util.Date(ar.getStartTime())));
           if (licenseInfoMap.containsKey(ar.getName())) {
             jsonObj.put("remainingLicensedMB", licenseInfoMap.get(ar.getName()).remainingLicensedMB);
             jsonObj.put("totalLicensedMB", licenseInfoMap.get(ar.getName()).totalLicensedMB);
