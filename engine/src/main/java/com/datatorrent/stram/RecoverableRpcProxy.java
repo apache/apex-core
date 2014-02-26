@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import static java.lang.Thread.sleep;
 
 /**
  * Heartbeat RPC proxy invocation handler that handles fail over.
@@ -90,6 +91,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
   }
 
   @Override
+  @SuppressWarnings("SleepWhileInLoop")
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
   {
     Object result;
@@ -118,7 +120,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         if (connectMillis < retryTimeoutMillis) {
           LOG.info("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis-connectMillis);
           umbilical = null;
-          Thread.sleep(retryDelayMillis);
+          sleep(retryDelayMillis);
         } else {
           LOG.error("Giving up RPC connection recovery after {} ms", connectMillis);
           throw targetException;
@@ -141,13 +143,12 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
 
   public static URI toConnectURI(InetSocketAddress address, int rpcTimeoutMillis, int retryDelayMillis, int retryTimeoutMillis) throws Exception
   {
-    StringBuilder query = new StringBuilder();
-    query.setLength(0);
-    query.append(RecoverableRpcProxy.QP_rpcTimeout + "=" + rpcTimeoutMillis);
+    StringBuilder query = new StringBuilder(256);
+    query.append(RecoverableRpcProxy.QP_rpcTimeout + '=').append(rpcTimeoutMillis);
     query.append('&');
-    query.append(RecoverableRpcProxy.QP_retryDelayMillis + "=" + retryDelayMillis);
+    query.append(RecoverableRpcProxy.QP_retryDelayMillis + '=').append(retryDelayMillis);
     query.append('&');
-    query.append(RecoverableRpcProxy.QP_retryTimeoutMillis + "=" + retryTimeoutMillis);
+    query.append(RecoverableRpcProxy.QP_retryTimeoutMillis + '=').append(retryTimeoutMillis);
     return new URI("stram", null, address.getHostName(), address.getPort(), null, query.toString(), null);
   }
 
