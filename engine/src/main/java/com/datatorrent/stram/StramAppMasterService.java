@@ -679,16 +679,13 @@ public class StramAppMasterService extends CompositeService
         switch(amResp.getAMCommand()){
           case AM_RESYNC:
           case AM_SHUTDOWN:
-            throw new YarnRuntimeException("Killing the current instance of AM");
+            throw new YarnRuntimeException("Received the "+ amResp.getAMCommand() +" command from RM");
           default:
-            throw new YarnRuntimeException("Killing the current instance of AM");            
+            throw new YarnRuntimeException("Received the "+ amResp.getAMCommand() +" command from RM");            
           
         }
-
       }
-
-      releasedContainers.clear();
-      
+      releasedContainers.clear();      
 
       // CDH reporting incorrect resources, see SPOI-1846. Workaround for now.
       //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
