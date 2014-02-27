@@ -55,6 +55,7 @@ import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
 import org.apache.hadoop.yarn.client.api.async.impl.NMClientAsyncImpl;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
@@ -673,7 +674,21 @@ public class StramAppMasterService extends CompositeService
       numTotalContainers += containerRequests.size();
       numRequestedContainers += containerRequests.size();
       AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
+      if(amResp.getAMCommand() != null){
+        LOG.info(" statement executed:{}",amResp.getAMCommand());
+        switch(amResp.getAMCommand()){
+          case AM_RESYNC:
+          case AM_SHUTDOWN:
+            throw new YarnRuntimeException("Killing the current instance of AM");
+          default:
+            throw new YarnRuntimeException("Killing the current instance of AM");            
+          
+        }
+
+      }
+
       releasedContainers.clear();
+      
 
       // CDH reporting incorrect resources, see SPOI-1846. Workaround for now.
       //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
