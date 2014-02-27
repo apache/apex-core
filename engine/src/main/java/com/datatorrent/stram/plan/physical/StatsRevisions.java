@@ -11,7 +11,6 @@ import java.util.IdentityHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * MVCC store for single writer and multiple readers of consistent revisions.
  * All values are managed in arrays and referenced through an index map.
@@ -21,12 +20,16 @@ import org.slf4j.LoggerFactory;
  */
 public class StatsRevisions implements Serializable
 {
-  private static final long serialVersionUID = 201401131642L;
-  private static final Logger LOG = LoggerFactory.getLogger(StatsRevisions.class);
-
   private final IdentityHashMap<Object, Integer> longsIndex = new IdentityHashMap<Object, Integer>();
   private transient ThreadLocal<Revision> VERSION = new ThreadLocal<Revision>();
   private Revision current = new Revision();
+
+  public VersionedLong newVersionedLong()
+  {
+    VersionedLong vl = new VersionedLong(longsIndex.size());
+    longsIndex.put(vl, vl.index);
+    return vl;
+  }
 
   private class Revision implements Serializable
   {
@@ -56,10 +59,9 @@ public class StatsRevisions implements Serializable
     private static final long serialVersionUID = 201401131642L;
     private final int index;
 
-    public VersionedLong()
+    private VersionedLong(int index)
     {
-      this.index = longsIndex.size();
-      longsIndex.put(this, index);
+      this.index = index;
     }
 
     public long get()
@@ -86,14 +88,13 @@ public class StatsRevisions implements Serializable
         long[] newArray = new long[index + 10];
         System.arraycopy(v.longs, 0, newArray, 0, v.longs.length);
         v.longs = newArray;
-        LOG.debug("new array length: " + v.longs.length);
       }
       v.longs[index] = val;
     }
 
     public void add(long val)
     {
-      set(get()+val);
+      set(get() + val);
     }
 
     @Override
@@ -104,16 +105,21 @@ public class StatsRevisions implements Serializable
 
   }
 
-  public void checkout() {
+  public void checkout()
+  {
     Revision v = new Revision(current);
     VERSION.set(v);
   }
 
-  public void commit() {
+  public void commit()
+  {
     //LOG.debug("commit " + this);
     Revision v = VERSION.get();
     current = v;
     VERSION.remove();
   }
 
+  @SuppressWarnings("unused")
+  private static final Logger LOG = LoggerFactory.getLogger(StatsRevisions.class);
+  private static final long serialVersionUID = 201401131642L;
 }

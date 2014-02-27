@@ -267,7 +267,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   public void activated(NodeActivationEvent nae)
   {
     Node<?> node = nae.getNode();
-    if (node.getContext().getValue(OperatorContext.AUTO_RECORD)) {
+    if (node.context.getValue(OperatorContext.AUTO_RECORD)) {
       startRecording(node, node.getId(), null);
     }
     else {

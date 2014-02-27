@@ -12,16 +12,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Sink;
-import com.datatorrent.stram.engine.DefaultReservoir;
-import com.datatorrent.stram.engine.GenericNode;
-import com.datatorrent.stram.engine.Node;
-import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.engine.StreamContext;
+
+import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.tuple.Tuple;
 
@@ -39,14 +36,14 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
-    final GenericNode node1 = new GenericNode(operator1);
+    final GenericNode node1 = new GenericNode(operator1, new OperatorContext(1, new DefaultAttributeMap(), null));
     node1.setId(1);
-    operator1.setup(new OperatorContext(0, null, null, null));
+    operator1.setup(node1.context);
 
     final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
-    final GenericNode node2 = new GenericNode(operator2);
+    final GenericNode node2 = new GenericNode(operator2, new OperatorContext(2, new DefaultAttributeMap(), null));
     node2.setId(2);
-    operator2.setup(new OperatorContext(0, null, null, null));
+    operator2.setup(node2.context);
 
     StreamContext streamContext = new StreamContext("node1->node2");
     InlineStream stream = new InlineStream(1024);
@@ -149,14 +146,11 @@ public class InlineStreamTest
       public void run()
       {
         int id = counter.incrementAndGet();
-        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(),
-                                                  new AttributeMap.DefaultAttributeMap(),
-                                                  null);
-        activeNodes.put(ctx.getId(), node);
-        node.activate(ctx);
+        activeNodes.put(id, node);
+        node.activate();
         node.run();
         node.deactivate();
-        activeNodes.remove(ctx.getId());
+        activeNodes.remove(id);
       }
 
     };

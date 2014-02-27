@@ -92,12 +92,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       return windowStats;
     }
 
-    public static enum DeployState {
-      ACTIVE,
-      IDLE,// stopped processing (no more input etc.)
-      FAILED // problemo!
-    }
-
     /**
      * Operator id.
      */
@@ -141,13 +135,19 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * State of the operator (processing, idle etc).
      */
-    public String state;
+    public static enum DeployState {
+      ACTIVE,
+      SHUTDOWN,
+      FAILED // problemo!
+    }
 
-    public String getState() {
+    public DeployState state;
+
+    public DeployState getState() {
       return state;
     }
 
-    public void setState(String state) {
+    public void setState(DeployState state) {
       this.state = state;
     }
   }

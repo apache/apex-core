@@ -4,14 +4,17 @@
  */
 package com.datatorrent.stram.engine;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>UnifierNode class.</p>
@@ -78,9 +81,9 @@ public class UnifierNode extends GenericNode
 
   final UnifiedPort unifiedPort = new UnifiedPort();
 
-  public UnifierNode(Unifier<Object> unifier)
+  public UnifierNode(Unifier<Object> unifier, OperatorContext context)
   {
-    super(unifier);
+    super(unifier, context);
     this.unifier = unifier;
   }
 

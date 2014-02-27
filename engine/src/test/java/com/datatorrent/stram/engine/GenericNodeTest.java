@@ -42,7 +42,6 @@ public class GenericNodeTest
       }
 
     };
-
     @InputPortFieldAnnotation(name = "ip2", optional = true)
     public final transient DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
     {
@@ -53,8 +52,7 @@ public class GenericNodeTest
       }
 
     };
-
-    @OutputPortFieldAnnotation(name="op", optional=true)
+    @OutputPortFieldAnnotation(name = "op", optional = true)
     DefaultOutputPort<Object> op = new DefaultOutputPort<Object>();
 
     @Override
@@ -90,7 +88,7 @@ public class GenericNodeTest
     long sleeptime = 25L;
     final ArrayList<Object> list = new ArrayList<Object>();
     GenericOperator go = new GenericOperator();
-    final GenericNode gn = new GenericNode(go);
+    final GenericNode gn = new GenericNode(go, new com.datatorrent.stram.engine.OperatorContext(0, new DefaultAttributeMap(), null));
     gn.setId(1);
     DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
     DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
@@ -121,10 +119,7 @@ public class GenericNodeTest
       public void run()
       {
         ab.set(true);
-        gn.activate(new OperatorContext(0,
-                                        this,
-                                        new DefaultAttributeMap(),
-                                        null));
+        gn.activate();
         gn.run();
         gn.deactivate();
       }

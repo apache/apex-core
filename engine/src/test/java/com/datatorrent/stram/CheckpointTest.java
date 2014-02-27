@@ -6,32 +6,25 @@ package com.datatorrent.stram;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.DAG;
+import com.datatorrent.api.*;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.MockContainer.MockOperatorStats;
 import com.datatorrent.stram.StreamingContainerManager.UpdateCheckpointsContext;
 import com.datatorrent.stram.api.Checkpoint;
@@ -43,8 +36,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  *
@@ -144,17 +135,14 @@ public class CheckpointTest
     Assert.assertEquals("number checkpoints " + checkpoints, 1, checkpoints.size());
     Assert.assertEquals("checkpoints " + o2p1, Sets.newHashSet(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID), checkpoints);
 
-    // TODO: looks like checkpoints are written but not sent with heartbeat when operators goes IDLE
-/*
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
 
-    List<File> cpFiles = Lists.newArrayList();
+    //List<File> cpFiles = Lists.newArrayList();
     for (Checkpoint cp : o1p1.checkpoints) {
       File cpFile = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + o1p1.getId() + "/" + cp.windowId);
-      cpFiles.add(cpFile);
+      //cpFiles.add(cpFile);
       Assert.assertTrue("checkpoint file not found: " + cpFile, cpFile.exists() && cpFile.isFile());
     }
-*/
   }
 
   @Stateless

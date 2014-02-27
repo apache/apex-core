@@ -4,10 +4,9 @@
  */
 package com.datatorrent.stram.engine;
 
-import static java.lang.Thread.sleep;
-
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import static java.lang.Thread.sleep;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -18,6 +17,7 @@ import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Sink;
+
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
@@ -67,7 +67,11 @@ public class AtMostOnceTest extends ProcessingModeTests
   {
     final HashSet<Object> collection = new HashSet<Object>();
 
-    final GenericNode node = new GenericNode(new MultiInputOperator());
+    AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
+    map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
+    map.put(OperatorContext.PROCESSING_MODE, processingMode);
+
+    final GenericNode node = new GenericNode(new MultiInputOperator(), new com.datatorrent.stram.engine.OperatorContext(1, map, null));
     DefaultReservoir reservoir1 = new DefaultReservoir("input1", 1024);
     DefaultReservoir reservoir2 = new DefaultReservoir("input1", 1024);
     node.connectInputPort("input1", reservoir1);
@@ -98,11 +102,8 @@ public class AtMostOnceTest extends ProcessingModeTests
       @Override
       public void run()
       {
-        AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
-        map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
-        map.put(OperatorContext.PROCESSING_MODE, processingMode);
         active.set(true);
-        node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
+        node.activate();
         node.run();
         node.deactivate();
       }

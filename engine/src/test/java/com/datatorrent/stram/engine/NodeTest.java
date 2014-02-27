@@ -176,7 +176,6 @@ public class NodeTest
       calls.add(new Call("delete", operatorId, windowId));
     }
 
-
     @Override
     public long[] getWindowIds(int operatorId) throws IOException
     {
@@ -189,7 +188,10 @@ public class NodeTest
   @Test
   public void testStatelessOperatorCheckpointing()
   {
-    Node<StatelessOperator> node = new Node<StatelessOperator>(new StatelessOperator())
+    DefaultAttributeMap attributeMap = new DefaultAttributeMap();
+    attributeMap.put(OperatorContext.STORAGE_AGENT, new StorageAgentImpl());
+    Node<StatelessOperator> node = new Node<StatelessOperator>(new StatelessOperator(),
+                                                               new com.datatorrent.stram.engine.OperatorContext(0, attributeMap, null))
     {
       @Override
       public void connectInputPort(String port, SweepableReservoir reservoir)
@@ -204,11 +206,8 @@ public class NodeTest
       }
 
     };
-
-    DefaultAttributeMap attributeMap = new DefaultAttributeMap();
-    attributeMap.put(OperatorContext.STORAGE_AGENT, new StorageAgentImpl());
-    node.context = new com.datatorrent.stram.engine.OperatorContext(0, Thread.currentThread(), attributeMap, null);
     node.stateless = true;
+
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();
       node.checkpoint(0);
@@ -219,7 +218,10 @@ public class NodeTest
   @Test
   public void testOperatorCheckpointing()
   {
-    Node<TestGenericOperator> node = new Node<TestGenericOperator>(new TestGenericOperator())
+    DefaultAttributeMap attributeMap = new DefaultAttributeMap();
+    attributeMap.put(OperatorContext.STORAGE_AGENT, new StorageAgentImpl());
+    Node<TestGenericOperator> node = new Node<TestGenericOperator>(new TestGenericOperator(),
+                                                                   new com.datatorrent.stram.engine.OperatorContext(0, attributeMap, null))
     {
       @Override
       public void connectInputPort(String port, SweepableReservoir reservoir)
@@ -235,9 +237,6 @@ public class NodeTest
 
     };
 
-    DefaultAttributeMap attributeMap = new DefaultAttributeMap();
-    attributeMap.put(OperatorContext.STORAGE_AGENT, new StorageAgentImpl());
-    node.context = new com.datatorrent.stram.engine.OperatorContext(0, Thread.currentThread(), attributeMap, null);
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();
       node.checkpoint(0);

@@ -235,8 +235,12 @@ public class ProcessingModeTests
   public void testNonLinearOperatorRecovery() throws InterruptedException
   {
     final HashSet<Object> collection = new HashSet<Object>();
+    AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
+    map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
+    map.put(OperatorContext.PROCESSING_MODE, processingMode);
 
-    final GenericNode node = new GenericNode(new MultiInputOperator());
+    final GenericNode node = new GenericNode(new MultiInputOperator(),
+                                             new com.datatorrent.stram.engine.OperatorContext(1, map, null));
     DefaultReservoir reservoir1 = new DefaultReservoir("input1", 1024);
     DefaultReservoir reservoir2 = new DefaultReservoir("input1", 1024);
     node.connectInputPort("input1", reservoir1);
@@ -267,11 +271,8 @@ public class ProcessingModeTests
       @Override
       public void run()
       {
-        AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
-        map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
-        map.put(OperatorContext.PROCESSING_MODE, processingMode);
         active.set(true);
-        node.activate(new com.datatorrent.stram.engine.OperatorContext(1, this, map, null));
+        node.activate();
         node.run();
         node.deactivate();
       }

@@ -81,9 +81,9 @@ public class GenericNode extends Node<Operator>
     super.removeSinks(sinks);
   }
 
-  public GenericNode(Operator operator)
+  public GenericNode(Operator operator, OperatorContext context)
   {
-    super(operator);
+    super(operator, context);
   }
 
   @SuppressWarnings("unchecked")

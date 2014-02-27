@@ -74,10 +74,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int checkpointWindowCount;
   protected int controlTupleCount;
   public boolean stateless;
+  public final OperatorContext context;
 
-  public Node(OPERATOR operator)
+  public Node(OPERATOR operator, OperatorContext context)
   {
     this.operator = operator;
+    this.context = context;
+
     outputs = new HashMap<String, Sink<Object>>();
 
     descriptor = new PortMappingDescriptor();
@@ -217,7 +220,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  protected OperatorContext context;
   protected ProcessingMode PROCESSING_MODE;
   protected volatile boolean shutdown;
 
@@ -373,22 +375,22 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   }
 
   @SuppressWarnings("unchecked")
-  public static Node<?> retrieveNode(Object operator, OperatorDeployInfo.OperatorType type)
+  public static Node<?> retrieveNode(Object operator, OperatorContext context, OperatorDeployInfo.OperatorType type)
   {
     logger.debug("type={}, operator class={}", type, operator.getClass());
 
     Node<?> node;
     if (operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
-      node = new InputNode((InputOperator)operator);
+      node = new InputNode((InputOperator)operator, context);
     }
     else if (operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
-      node = new UnifierNode((Unifier<Object>)operator);
+      node = new UnifierNode((Unifier<Object>)operator, context);
     }
     else if (type == OperatorDeployInfo.OperatorType.OIO) {
-      node = new OiONode((Operator)operator);
+      node = new OiONode((Operator)operator, context);
     }
     else {
-      node = new GenericNode((Operator)operator);
+      node = new GenericNode((Operator)operator, context);
     }
 
     return node;
@@ -415,15 +417,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
-  public OperatorContext getContext()
-  {
-    return context;
-  }
-
   @SuppressWarnings("unchecked")
-  public void activate(OperatorContext context)
+  public void activate()
   {
-    this.context = context;
     alive = true;
     APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
@@ -434,6 +430,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       CHECKPOINT_WINDOW_COUNT = 1;
     }
 
+    context.setThread(Thread.currentThread());
     activateSinks();
     if (operator instanceof ActivationListener) {
       ((ActivationListener<OperatorContext>)operator).activate(context);
@@ -458,7 +455,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
 
     deactivateSinks();
-    this.context = null;
+    context.setThread(null);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);
