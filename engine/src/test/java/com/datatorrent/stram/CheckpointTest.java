@@ -135,17 +135,14 @@ public class CheckpointTest
     Assert.assertEquals("number checkpoints " + checkpoints, 1, checkpoints.size());
     Assert.assertEquals("checkpoints " + o2p1, Sets.newHashSet(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID), checkpoints);
 
-    // TODO: looks like checkpoints are written but not sent with heartbeat when operators goes SHUTDOWN
-/*
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
 
-    List<File> cpFiles = Lists.newArrayList();
+    //List<File> cpFiles = Lists.newArrayList();
     for (Checkpoint cp : o1p1.checkpoints) {
       File cpFile = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + o1p1.getId() + "/" + cp.windowId);
-      cpFiles.add(cpFile);
+      //cpFiles.add(cpFile);
       Assert.assertTrue("checkpoint file not found: " + cpFile, cpFile.exists() && cpFile.isFile());
     }
-*/
   }
 
   @Stateless
