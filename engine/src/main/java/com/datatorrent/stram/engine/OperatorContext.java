@@ -27,23 +27,13 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
  */
 public class OperatorContext extends BaseContext implements Context.OperatorContext
 {
-  private final Thread thread;
-
-  /**
-   * @return the thread
-   */
-  public Thread getThread()
-  {
-    return thread;
-  }
-
+  private Thread thread;
   private long lastProcessedWindowId = -1;
   private final int id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
   private final CircularBuffer<OperatorCommand> requests = new CircularBuffer<OperatorCommand>(1024);
   private CustomStats customStats;
-
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
@@ -75,15 +65,13 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   /**
    *
    * @param id the value of id
-   * @param worker
    * @param attributes the value of attributes
    * @param parentContext
    */
-  public OperatorContext(int id, Thread worker, AttributeMap attributes, Context parentContext)
+  public OperatorContext(int id, AttributeMap attributes, Context parentContext)
   {
     super(attributes, parentContext);
     this.id = id;
-    this.thread = worker;
   }
 
   @Override
@@ -135,9 +123,18 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     requests.add(request);
   }
 
+  public Thread getThread()
+  {
+    return thread;
+  }
+
+  public void setThread(Thread thread)
+  {
+    this.thread = thread;
+  }
+
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   private static final long serialVersionUID = 2013060671427L;
-
   @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(OperatorContext.class);
 }

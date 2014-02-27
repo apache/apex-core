@@ -33,9 +33,9 @@ public class OiONode extends GenericNode
   private long lastEndStreamWindowId = WindowGenerator.MAX_WINDOW_ID - 1;
   private int expectingEndWindows = 0;
 
-  public OiONode(Operator operator)
+  public OiONode(Operator operator, OperatorContext context)
   {
-    super(operator);
+    super(operator, context);
   }
 
   class ControlSink implements Sink<Tuple>

@@ -184,10 +184,10 @@ public class StramLocalCluster implements Runnable, Controller
 
     OperatorContext getNodeContext(int id)
     {
-      return activeNodes.get(id);
+      return nodes.get(id).context;
     }
 
-    Operator getNode(int id)
+    Operator getOperator(int id)
     {
       return nodes.get(id).getOperator();
     }

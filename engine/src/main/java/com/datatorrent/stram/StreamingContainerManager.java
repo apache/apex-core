@@ -652,20 +652,23 @@ public class StreamingContainerManager implements PlanContext
   {
     OperatorHeartbeat.DeployState ds = null;
     if (ohb != null) {
-      ds = OperatorHeartbeat.DeployState.valueOf(ohb.getState());
+      ds = ohb.getState();
     }
 
     LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), ds, oper.getContainer().getExternalId());
 
     switch (oper.getState()) {
     case ACTIVE:
-      LOG.warn("status out of sync {} expected {} remote {}", oper, oper.getState(), ds);
+      // Commented out the warning below because it's expected when the operator does something
+      // quickly and goes out of commission, it will report SHUTDOWN correcly whereas this code
+      // is incorrectly expecting ACTIVE to be reported.
+      //LOG.warn("status out of sync {} expected {} remote {}", oper, oper.getState(), ds);
       // operator expected active, check remote status
       if (ds == null) {
         sca.deployOpers.add(oper);
       } else {
         switch (ds) {
-        case IDLE:
+        case SHUTDOWN:
           // remove the operator from the plan
           Runnable r = new Runnable() {
             @Override
@@ -815,7 +818,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       //LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), shb.getState(), oper.getContainer().getExternalId());
-      if (!(oper.getState() == PTOperator.State.ACTIVE && shb.getState().compareTo(OperatorHeartbeat.DeployState.ACTIVE.name()) == 0)) {
+      if (!(oper.getState() == PTOperator.State.ACTIVE && shb.getState() == OperatorHeartbeat.DeployState.ACTIVE)) {
         // deploy state may require synchronization
         processOperatorDeployStatus(oper, shb, sca);
       }

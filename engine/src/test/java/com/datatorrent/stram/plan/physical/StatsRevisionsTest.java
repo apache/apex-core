@@ -19,7 +19,7 @@ public class StatsRevisionsTest
   public void test()
   {
     StatsRevisions revs = new StatsRevisions();
-    VersionedLong vl = revs.new VersionedLong();
+    VersionedLong vl = revs.newVersionedLong();
 
     long v = vl.get();
     Assert.assertTrue("initial value", v == 0);

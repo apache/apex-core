@@ -7,9 +7,13 @@ package com.datatorrent.stram;
 import java.net.InetSocketAddress;
 import java.util.Map;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 import org.junit.Assert;
 
 import com.datatorrent.api.Stats.OperatorStats;
+
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -17,8 +21,6 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Mock container for testing container manager and heartbeat protocol.
@@ -78,10 +80,10 @@ public class MockContainer
     for (Map.Entry<Integer, MockOperatorStats> oe : this.stats.entrySet()) {
       OperatorHeartbeat ohb = new OperatorHeartbeat();
       ohb.setNodeId(oe.getKey());
-      ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
-      OperatorStats stats = new OperatorStats();
-      stats.checkpoint = new Checkpoint(oe.getValue().checkpointWindowId, 0, 0);
-      stats.windowId = oe.getValue().currentWindowId;
+      ohb.setState(OperatorHeartbeat.DeployState.ACTIVE);
+      OperatorStats lstats = new OperatorStats();
+      lstats.checkpoint = new Checkpoint(oe.getValue().checkpointWindowId, 0, 0);
+      lstats.windowId = oe.getValue().currentWindowId;
 
       //stats.outputPorts = Lists.newArrayList();
       //PortStats ps = new PortStats(TestGeneratorInputOperator.OUTPUT_PORT);
@@ -89,7 +91,7 @@ public class MockContainer
       //ps.tupleCount = 1;
       //stats.outputPorts.add(ps);
 
-      ohb.windowStats = Lists.newArrayList(stats);
+      ohb.windowStats = Lists.newArrayList(lstats);
       cstats.operators.add(ohb);
     }
 

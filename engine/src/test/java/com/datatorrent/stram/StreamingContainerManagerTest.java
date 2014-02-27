@@ -464,7 +464,7 @@ public class StreamingContainerManagerTest {
     // first operator heartbeat
     OperatorHeartbeat ohb = new OperatorHeartbeat();
     ohb.setNodeId(o1p1.getId());
-    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE.name());
+    ohb.setState(OperatorHeartbeat.DeployState.ACTIVE);
     OperatorStats stats = new OperatorStats();
     stats.checkpoint = new Checkpoint(2, 0, 0);
     stats.windowId = 3;
@@ -477,7 +477,7 @@ public class StreamingContainerManagerTest {
 
     ohb.windowStats = Lists.newArrayList(stats);
     cstats.operators.add(ohb);
-    chr = scm.processHeartbeat(hb); // activate operator
+    scm.processHeartbeat(hb); // activate operator
 
     Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
     Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
@@ -505,7 +505,7 @@ public class StreamingContainerManagerTest {
     ohb.windowStats = Lists.newArrayList(stats);
     cstats.operators.clear();
     cstats.operators.add(ohb);
-    chr = scm.processHeartbeat(hb);
+    scm.processHeartbeat(hb);
 
     Assert.assertEquals("tuples " + o1p1, 2, o1p1.stats.totalTuplesEmitted.get());
     Assert.assertEquals("window " + o1p1, 4, o1p1.stats.currentWindowId.get());

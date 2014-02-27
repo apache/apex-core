@@ -11,6 +11,7 @@ import java.lang.Thread.State;
 import java.net.*;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import net.engio.mbassy.bus.MBassador;
@@ -39,7 +40,6 @@ import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.api.*;
-import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.ContainerEvent.*;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
@@ -72,7 +72,6 @@ public class StramChild extends YarnContainerMain
    * value: list of nodes which are in oio with oio owning thread node
    */
   protected final Map<Integer, ArrayList<Integer>> oioGroups = new ConcurrentHashMap<Integer, ArrayList<Integer>>();
-  protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private int heartbeatIntervalMillis = 1000;
@@ -272,12 +271,12 @@ public class StramChild extends YarnContainerMain
     ArrayList<Integer> activeOperators = new ArrayList<Integer>();
 
     for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
-      OperatorContext oc = activeNodes.get(e.getKey());
-      if (oc == null) {
+      Thread t = e.getValue().context.getThread();
+      if (t == null) {
         disconnectNode(e.getKey());
       }
       else {
-        activeThreads.add(oc.getThread());
+        activeThreads.add(t);
         activeOperators.add(e.getKey());
         e.getValue().shutdown();
       }
@@ -292,7 +291,6 @@ public class StramChild extends YarnContainerMain
         }
         disconnectNode(iterator.next());
       }
-      assert (activeNodes.isEmpty());
     }
     catch (InterruptedException ex) {
       logger.warn("Aborting wait for operators to get deactivated!", ex);
@@ -481,12 +479,12 @@ public class StramChild extends YarnContainerMain
     ArrayList<Thread> joinList = new ArrayList<Thread>();
     ArrayList<Integer> discoList = new ArrayList<Integer>();
     for (Integer operatorId : nodeList) {
-      OperatorContext oc = activeNodes.get(operatorId);
-      if (oc == null) {
+      Thread t = nodes.get(operatorId).context.getThread();
+      if (t == null) {
         disconnectNode(operatorId);
       }
       else {
-        joinList.add(oc.getThread());
+        joinList.add(t);
         discoList.add(operatorId);
         nodes.get(operatorId).shutdown();
       }
@@ -587,16 +585,10 @@ public class StramChild extends YarnContainerMain
           hb.setNodeId(e.getKey());
           hb.setGeneratedTms(currentTime);
           hb.setIntervalMs(heartbeatIntervalMillis);
-          OperatorContext ctx = activeNodes.get(e.getKey());
-          if (ctx != null) {
-            ctx.drainStats(hb.getOperatorStatsContainer());
-            hb.setState(OperatorHeartbeat.DeployState.ACTIVE.toString());
-          }
-          else {
-            String state = failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED.toString() : OperatorHeartbeat.DeployState.IDLE.toString();
-            logger.debug("Sending {} state for operator {}", state, e.getKey());
-            hb.setState(state);
-          }
+          OperatorContext context = e.getValue().context;
+          context.drainStats(hb.getOperatorStatsContainer());
+          hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED
+                      : context.getThread() == null ? OperatorHeartbeat.DeployState.SHUTDOWN : OperatorHeartbeat.DeployState.ACTIVE);
           stats.addNodeStats(hb);
         }
 
@@ -640,8 +632,8 @@ public class StramChild extends YarnContainerMain
       if (req.isDeleted()) {
         continue;
       }
-      OperatorContext oc = activeNodes.get(req.getOperatorId());
-      if (oc == null) {
+      OperatorContext oc = nodes.get(req.getOperatorId()).context;
+      if (oc.getThread() == null) {
         if (flagInvalid) {
           logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
           req.setDeleted(true);
@@ -670,13 +662,12 @@ public class StramChild extends YarnContainerMain
     if (rsp.committedWindowId != lastCommittedWindowId) {
       lastCommittedWindowId = rsp.committedWindowId;
       OperatorCommand nr = null;
-      for (Map.Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
-        Node<?> node = nodes.get(e.getKey());
-        if (node == null) {
+      for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
+        if (e.getValue().context.getThread() == null) {
           continue;
         }
 
-        if (node.getOperator() instanceof CheckpointListener) {
+        if (e.getValue().getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new OperatorCommand()
             {
@@ -688,7 +679,7 @@ public class StramChild extends YarnContainerMain
 
             };
           }
-          e.getValue().request(nr);
+          e.getValue().context.request(nr);
         }
       }
     }
@@ -802,7 +793,9 @@ public class StramChild extends YarnContainerMain
       }
 
       logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId));
-      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ndi.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId), ndi.type);
+      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ndi.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId),
+                                       new OperatorContext(ndi.id, ndi.contextAttributes, containerContext),
+                                       ndi.type);
       node.stateless = ndi.stateless;
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
@@ -1160,20 +1153,19 @@ public class StramChild extends YarnContainerMain
     return windowGenerator;
   }
 
-  private void setupNode(OperatorDeployInfo ndi, Thread thread)
+  private void setupNode(OperatorDeployInfo ndi)
   {
     failedNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
 
-    OperatorContext operatorContext = new OperatorContext(ndi.id, thread, ndi.contextAttributes, containerContext);
-    node.setup(operatorContext);
+    node.setup(node.context);
 
     /* setup context for all the input ports */
     LinkedHashMap<String, PortContextPair<InputPort<?>>> inputPorts = node.getPortMappingDescriptor().inputPorts;
     LinkedHashMap<String, PortContextPair<InputPort<?>>> newInputPorts = new LinkedHashMap<String, PortContextPair<InputPort<?>>>(inputPorts.size());
     for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
       InputPort<?> port = inputPorts.get(idi.portName).component;
-      PortContext context = new PortContext(idi.contextAttributes, operatorContext);
+      PortContext context = new PortContext(idi.contextAttributes, node.context);
       newInputPorts.put(idi.portName, new PortContextPair<InputPort<?>>(port, context));
       port.setup(context);
     }
@@ -1184,32 +1176,30 @@ public class StramChild extends YarnContainerMain
     LinkedHashMap<String, PortContextPair<OutputPort<?>>> newOutputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>(outputPorts.size());
     for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
       OutputPort<?> port = outputPorts.get(odi.portName).component;
-      PortContext context = new PortContext(odi.contextAttributes, operatorContext);
+      PortContext context = new PortContext(odi.contextAttributes, node.context);
       newOutputPorts.put(odi.portName, new PortContextPair<OutputPort<?>>(port, context));
       port.setup(context);
     }
     outputPorts.putAll(newOutputPorts);
 
-    logger.info("activating {} in container {}", node, containerId);
+    logger.debug("activating {} in container {}", node, containerId);
     /* This introduces need for synchronization on processNodeRequest which was solved by adding deleted field in StramToNodeRequest  */
     processNodeRequests(false);
-    node.activate(operatorContext);
-    activeNodes.put(ndi.id, operatorContext);
+    node.activate();
     eventBus.publish(new NodeActivationEvent(node));
   }
 
   private void teardownNode(OperatorDeployInfo ndi)
   {
-    activeNodes.remove(ndi.id);
     final Node<?> node = nodes.get(ndi.id);
     if (node == null) {
       logger.warn("node {}/{} took longer to exit, resulting in unclean undeploy!", ndi.id, ndi.name);
     }
     else {
-      node.deactivate();
       eventBus.publish(new NodeDeactivationEvent(node));
+      node.deactivate();
       node.teardown();
-      logger.info("deactivated {}", node.getId());
+      logger.debug("deactivated {}", node.getId());
     }
   }
 
@@ -1231,7 +1221,6 @@ public class StramChild extends YarnContainerMain
       if (ndi.type == OperatorType.OIO) {
         continue;
       }
-      assert (!activeNodes.containsKey(ndi.id));
 
       final Node<?> node = nodes.get(ndi.id);
       new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.name).concat(":").concat(node.getOperator().getClass().getSimpleName()))
@@ -1243,7 +1232,7 @@ public class StramChild extends YarnContainerMain
           OperatorDeployInfo currentdi = ndi;
           try {
             /* primary operator initialization */
-            setupNode(currentdi, this);
+            setupNode(currentdi);
             setOperators.add(currentdi);
 
             /* lets go for OiO operator initialization */
@@ -1251,7 +1240,7 @@ public class StramChild extends YarnContainerMain
             if (oioNodeIdList != null) {
               for (Integer oioNodeId : oioNodeIdList) {
                 currentdi = nodeMap.get(oioNodeId);
-                setupNode(currentdi, this);
+                setupNode(currentdi);
                 setOperators.add(currentdi);
               }
             }
@@ -1264,7 +1253,7 @@ public class StramChild extends YarnContainerMain
 
             node.run(); /* this is a blocking call */
           }
-          catch (Throwable ex) {
+          catch (Exception ex) {
             if (currentdi == null) {
               failedNodes.add(ndi.id);
               logger.error("Operator set {} failed stopped running due to an exception.", setOperators, ex);
@@ -1279,7 +1268,8 @@ public class StramChild extends YarnContainerMain
               try {
                 teardownNode(ndi);
               }
-              catch (Throwable ex) {
+              catch (Exception ex) {
+                failedNodes.add(ndi.id);
                 logger.error("Shutdown of operator {} failed due to an exception", ndi, ex);
               }
             }
@@ -1295,7 +1285,8 @@ public class StramChild extends YarnContainerMain
                   try {
                     teardownNode(oiodi);
                   }
-                  catch (Throwable ex) {
+                  catch (Exception ex) {
+                    failedNodes.add(oiodi.id);
                     logger.error("Shutdown of operator {} failed due to an exception", oiodi, ex);
                   }
                 }
@@ -1311,7 +1302,7 @@ public class StramChild extends YarnContainerMain
     }
 
     /**
-     * we need to make sure that before any of the operators gets the first message, it's activate.
+     * we need to make sure that before any of the operators get the first message, it's activate.
      */
     try {
       signal.await();

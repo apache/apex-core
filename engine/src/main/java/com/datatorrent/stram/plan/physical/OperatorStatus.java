@@ -11,8 +11,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.datatorrent.api.Stats;
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.OperatorContext;
@@ -48,11 +49,11 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   private final int operatorId;
   public final StatsRevisions statsRevs = new StatsRevisions();
   public OperatorHeartbeat lastHeartbeat;
-  public final VersionedLong totalTuplesProcessed = statsRevs.new VersionedLong();
-  public final VersionedLong totalTuplesEmitted = statsRevs.new VersionedLong();
-  public final VersionedLong currentWindowId = statsRevs.new VersionedLong();
-  public final VersionedLong tuplesProcessedPSMA = statsRevs.new VersionedLong();
-  public final VersionedLong tuplesEmittedPSMA = statsRevs.new VersionedLong();
+  public final VersionedLong totalTuplesProcessed = statsRevs.newVersionedLong();
+  public final VersionedLong totalTuplesEmitted = statsRevs.newVersionedLong();
+  public final VersionedLong currentWindowId = statsRevs.newVersionedLong();
+  public final VersionedLong tuplesProcessedPSMA = statsRevs.newVersionedLong();
+  public final VersionedLong tuplesEmittedPSMA = statsRevs.newVersionedLong();
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
   public final MovingAverageDouble cpuPercentageMA;
   public final MovingAverageLong latencyMA;
@@ -84,7 +85,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
   public boolean isIdle()
   {
-    if ((lastHeartbeat != null && DeployState.IDLE.name().equals(lastHeartbeat.getState()))) {
+    if (lastHeartbeat != null && DeployState.SHUTDOWN == lastHeartbeat.getState()) {
       return true;
     }
     return false;
