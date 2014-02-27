@@ -1260,7 +1260,7 @@ public class StramChild extends YarnContainerMain
             }
             else {
               failedNodes.add(currentdi.id);
-              logger.error("Abandoning deployment of operator {} due setup failure", currentdi, ex);
+              logger.error("Abandoning deployment of operator {} due setup failure.", currentdi, ex);
             }
           }
           finally {
@@ -1270,7 +1270,7 @@ public class StramChild extends YarnContainerMain
               }
               catch (Exception ex) {
                 failedNodes.add(ndi.id);
-                logger.error("Shutdown of operator {} failed due to an exception", ndi, ex);
+                logger.error("Shutdown of operator {} failed due to an exception.", ndi, ex);
               }
             }
             else {
@@ -1287,7 +1287,7 @@ public class StramChild extends YarnContainerMain
                   }
                   catch (Exception ex) {
                     failedNodes.add(oiodi.id);
-                    logger.error("Shutdown of operator {} failed due to an exception", oiodi, ex);
+                    logger.error("Shutdown of operator {} failed due to an exception.", oiodi, ex);
                   }
                 }
                 else {
@@ -1302,13 +1302,13 @@ public class StramChild extends YarnContainerMain
     }
 
     /**
-     * we need to make sure that before any of the operators get the first message, it's activate.
+     * we need to make sure that before any of the operators gets the first message, it's activated.
      */
     try {
       signal.await();
     }
     catch (InterruptedException ex) {
-      logger.debug("Activation of Operators interruped", ex);
+      logger.debug("Activation of operators interruped.", ex);
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
