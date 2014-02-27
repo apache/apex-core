@@ -1681,7 +1681,6 @@ public class StreamingContainerManager implements PlanContext
 
     Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
     LogicalPlanConfiguration.setOperatorProperties(logicalOperator.getOperator(), properties);
-    // need to record this to a log in the future when review history is supported
 
     List<PTOperator> operators = plan.getOperators(logicalOperator);
     for (PTOperator o : operators) {
