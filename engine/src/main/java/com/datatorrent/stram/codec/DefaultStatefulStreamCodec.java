@@ -9,16 +9,18 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.common.util.Slice;
 
 /**
@@ -63,11 +65,14 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   {
     if (dspair.state != null) {
       try {
-        input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.offset + dspair.state.length);
+        input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
           //logger.debug("registering class {} => {}", pair.classname, pair.id);
           register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
+          if (classResolver.nextAvailableRegistrationId <= pair.id) {
+            classResolver.nextAvailableRegistrationId = pair.id + 1;
+          }
         }
       }
       catch (Exception ex) {
@@ -85,7 +90,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
       }
     }
 
-    input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.offset + dspair.data.length);
+    input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.length);
     try {
       return readClassAndObject(input);
     }
@@ -136,42 +141,6 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   public void resetState()
   {
     classResolver.unregisterImplicitlyRegisteredTypes();
-  }
-
-  @Override
-  @SuppressWarnings("rawtypes")
-  public Registration getRegistration(Class type)
-  {
-    if (type == null) {
-      throw new IllegalArgumentException("type cannot be null.");
-    }
-
-    Registration registration = classResolver.getRegistration(type);
-
-
-    if (registration == null) {
-      if (Proxy.isProxyClass(type)) {
-        // If a Proxy class, treat it like an InvocationHandler because the concrete class for a proxy is generated.
-        registration = getRegistration(InvocationHandler.class);
-      }
-      else if (!type.isEnum() && Enum.class
-              .isAssignableFrom(type)) {
-        // This handles an enum value that is an inner class. Eg: enum A {b{}};
-        registration = getRegistration(type.getEnclosingClass());
-      }
-      else if (EnumSet.class
-              .isAssignableFrom(type)) {
-        registration = classResolver.getRegistration(EnumSet.class);
-      }
-      if (registration == null) {
-        if (isRegistrationRequired()) {
-          throw new IllegalArgumentException("Class is not registered: " + type.getName()
-                  + "\nNote: To register this class use: kryo.register(" + type.getName() + ".class);");
-        }
-        registration = classResolver.registerImplicit(type);
-      }
-    }
-    return registration;
   }
 
   final ClassResolver classResolver;
