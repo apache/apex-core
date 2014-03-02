@@ -792,11 +792,9 @@ public class StramChild extends YarnContainerMain
         }
       }
 
+      OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
       logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId));
-      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ndi.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId),
-                                       new OperatorContext(ndi.id, ndi.contextAttributes, containerContext),
-                                       ndi.type);
-      node.stateless = ndi.stateless;
+      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
 

@@ -137,10 +137,8 @@ public class CheckpointTest
 
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
 
-    //List<File> cpFiles = Lists.newArrayList();
     for (Checkpoint cp : o1p1.checkpoints) {
       File cpFile = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + o1p1.getId() + "/" + cp.windowId);
-      //cpFiles.add(cpFile);
       Assert.assertTrue("checkpoint file not found: " + cpFile, cpFile.exists() && cpFile.isFile());
     }
   }

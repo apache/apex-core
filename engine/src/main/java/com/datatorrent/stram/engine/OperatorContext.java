@@ -33,6 +33,8 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
   private final CircularBuffer<OperatorCommand> requests = new CircularBuffer<OperatorCommand>(1024);
+  public final boolean stateless;
+
   private CustomStats customStats;
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
@@ -72,6 +74,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   {
     super(attributes, parentContext);
     this.id = id;
+    this.stateless = super.getValue(OperatorContext.STATELESS);
   }
 
   @Override

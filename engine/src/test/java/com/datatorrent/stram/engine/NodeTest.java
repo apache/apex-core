@@ -142,15 +142,8 @@ public class NodeTest
   {
     static class Call
     {
-      private final String calltype;
-      private final int operatorId;
-      private final long windowId;
-
       Call(String calltype, int operatorId, long windowId)
       {
-        this.calltype = calltype;
-        this.operatorId = operatorId;
-        this.windowId = windowId;
       }
 
     }
@@ -190,6 +183,7 @@ public class NodeTest
   {
     DefaultAttributeMap attributeMap = new DefaultAttributeMap();
     attributeMap.put(OperatorContext.STORAGE_AGENT, new StorageAgentImpl());
+    attributeMap.put(OperatorContext.STATELESS, true);
     Node<StatelessOperator> node = new Node<StatelessOperator>(new StatelessOperator(),
                                                                new com.datatorrent.stram.engine.OperatorContext(0, attributeMap, null))
     {
@@ -206,7 +200,6 @@ public class NodeTest
       }
 
     };
-    node.stateless = true;
 
     synchronized (StorageAgentImpl.calls) {
       StorageAgentImpl.calls.clear();

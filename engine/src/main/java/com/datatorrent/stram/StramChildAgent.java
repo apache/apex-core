@@ -254,7 +254,6 @@ public class StramChildAgent {
     if (oper.getUnifier() != null) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
-    ndi.stateless = oper.isOperatorStateLess();
 
     Checkpoint checkpoint = oper.getRecoveryCheckpoint();
     ProcessingMode pm = oper.getOperatorMeta().getValue(OperatorContext.PROCESSING_MODE);
@@ -293,6 +292,9 @@ public class StramChildAgent {
     ndi.id = oper.getId();
     // clone the map as StramChild assumes ownership and may add non-serializable attributes
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
+    if (oper.isOperatorStateLess()) {
+      ndi.contextAttributes.put(OperatorContext.STATELESS, true);
+    }
     return ndi;
   }
 

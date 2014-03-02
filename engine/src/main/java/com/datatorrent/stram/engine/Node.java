@@ -73,7 +73,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int applicationWindowCount;
   public int checkpointWindowCount;
   protected int controlTupleCount;
-  public boolean stateless;
   public final OperatorContext context;
 
   public Node(OPERATOR operator, OperatorContext context)
@@ -348,7 +347,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   void checkpoint(long windowId)
   {
-    if (!stateless) {
+    if (!context.stateless) {
       StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (ba != null) {
         try {

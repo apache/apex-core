@@ -206,12 +206,6 @@ public class OperatorDeployInfo implements Serializable
   public Checkpoint checkpoint;
 
   /**
-   * Indicates whether the operator is stateless.
-   * Controls behavior for loading and saving operator.
-   */
-  public boolean stateless;
-
-  /**
    * Inputs to node, either from socket stream or inline from other node(s).
    */
   public List<InputDeployInfo> inputs;
