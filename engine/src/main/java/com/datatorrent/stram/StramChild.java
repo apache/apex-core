@@ -135,6 +135,13 @@ public class StramChild extends YarnContainerMain
     checkpointFsPath = ctx.getValue(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(DAGContext.STRING_CODECS);
+      logger.debug("LOADING CONVERTERS");
+    for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
+      logger.debug("GOT {} = {}", entry.getKey().getName(), entry.getValue().getName());
+    }
+    StringCodecs.loadConverters(codecs);
+
     try {
       if (ctx.deployBufferServer) {
         eventloop.start();
@@ -632,7 +639,12 @@ public class StramChild extends YarnContainerMain
       if (req.isDeleted()) {
         continue;
       }
-      OperatorContext oc = nodes.get(req.getOperatorId()).context;
+      Node<?> node = nodes.get(req.getOperatorId());
+      if (node == null) {
+        logger.warn("Node for operator {} is not found, probably not deployed yet", req.getOperatorId());
+        continue;
+      }
+      OperatorContext oc = node.context;
       if (oc.getThread() == null) {
         if (flagInvalid) {
           logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);

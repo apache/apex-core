@@ -1,5 +1,6 @@
 package com.datatorrent.stram.plan.physical;
 
+import com.datatorrent.api.DAGContext;
 import java.util.Collections;
 import java.util.Map;
 
@@ -14,6 +15,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.StringCodec;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 
 /**
@@ -36,6 +39,7 @@ public class PlanModifier {
   {
     this.logicalPlan = logicalPlan;
     this.physicalPlan = null;
+    init();
   }
 
   /**
@@ -46,6 +50,15 @@ public class PlanModifier {
   {
     this.physicalPlan = plan;
     this.logicalPlan = plan.getDAG();
+    init();
+  }
+
+  private void init()
+  {
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = logicalPlan.getAttributes().get(DAGContext.STRING_CODECS);
+    if (codecs != null) {
+      StringCodecs.loadConverters(codecs);
+    }
   }
 
   public StreamMeta addSinks(String id, Operator.InputPort<?>... sinks)

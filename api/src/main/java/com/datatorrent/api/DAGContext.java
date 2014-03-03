@@ -17,7 +17,11 @@ package com.datatorrent.api;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.StringCodec.Class2String;
+import com.datatorrent.api.StringCodec.Map2String;
+import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
+import java.util.Map;
 
 /**
  * <p>DAGContext interface.</p>
@@ -164,6 +168,12 @@ public interface DAGContext extends Context
    * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
    */
   Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
+
+  /**
+   * The string codec map for classes that are to be set or get through properties as strings.
+   * Only supports string codecs that have a constructor with no arguments
+   */
+  Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);

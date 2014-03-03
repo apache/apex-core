@@ -23,6 +23,7 @@ import java.util.Collections;
 import org.apache.commons.lang.StringUtils;
 
 import com.datatorrent.common.util.DTThrowable;
+import java.util.*;
 
 /**
  * This interface is essentially serializer/deserializer interface which works with String as
@@ -180,16 +181,67 @@ public interface StringCodec<T>
     private static final long serialVersionUID = 201311141853L;
   }
 
+  public class Map2String<K, V> implements StringCodec<Map<K, V>>, Serializable
+  {
+    private final StringCodec<K> keyCodec;
+    private final StringCodec<V> valueCodec;
+    private final String separator;
+    private final String equal;
+
+    public Map2String(String separator, String equal, StringCodec<K> keyCodec, StringCodec<V> valueCodec)
+    {
+      this.equal = equal;
+      this.separator = separator;
+      this.keyCodec = keyCodec;
+      this.valueCodec = valueCodec;
+    }
+
+    @Override
+    public Map<K, V> fromString(String string)
+    {
+      if (string == null) {
+        return null;
+      }
+
+      if (string.isEmpty()) {
+        return new HashMap<K, V>();
+      }
+
+      String[] parts = string.split(separator);
+      HashMap<K, V> map = new HashMap<K, V>();
+      for (String part : parts) {
+        String[] kvpair = part.split(equal, 2);
+        map.put(keyCodec.fromString(kvpair[0]), valueCodec.fromString(kvpair[1]));
+      }
+
+      return map;
+    }
+
+    @Override
+    public String toString(Map<K, V> map)
+    {
+      if (map == null) {
+        return null;
+      }
+
+      if (map.isEmpty()) {
+        return "";
+      }
+      String[] parts = new String[map.size()];
+      int i = 0;
+      for (Map.Entry<K, V> entry : map.entrySet()) {
+        parts[i++] = keyCodec.toString(entry.getKey()) + equal + valueCodec.toString(entry.getValue());
+      }
+      return StringUtils.join(parts, separator);
+    }
+
+    private static final long serialVersionUID = 201402272053L;
+  }
+
   public class Collection2String<T> implements StringCodec<Collection<T>>, Serializable
   {
     private final String separator;
     private final StringCodec<T> codec;
-
-    public Collection2String()
-    {
-      separator = ",";
-      codec = null;
-    }
 
     public Collection2String(String separator, StringCodec<T> codec)
     {

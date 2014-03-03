@@ -24,6 +24,14 @@
       <version>${hadoop.version}</version>
       <exclusions>
         <exclusion>
+	        <artifactId>commons-beanutils</artifactId>
+          <groupId>commons-beanutils</groupId>
+        </exclusion>
+        <exclusion>
+	        <artifactId>commons-beanutils-core</artifactId>
+          <groupId>commons-beanutils</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>jackson-core-asl</artifactId>
           <groupId>org.codehaus.jackson</groupId>
         </exclusion>
@@ -66,6 +74,11 @@
       <artifactId>jackson-mapper-asl</artifactId>
       <groupId>org.codehaus.jackson</groupId>
       <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <version>1.8.3</version>
     </dependency>
   </dependencies>
 </project>

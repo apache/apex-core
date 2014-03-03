@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -37,15 +38,11 @@ import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.Component;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.StorageAgent;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
@@ -155,8 +152,9 @@ public class StreamingContainerManager implements PlanContext
     if (enableEventRecording) {
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     }
-    setupRecording(dag.getAttributes(), enableEventRecording);
     this.plan = new PhysicalPlan(dag, this);
+    setupRecording(dag.getAttributes(), enableEventRecording);
+    setupStringCodecs();
   }
 
   private StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
@@ -167,6 +165,7 @@ public class StreamingContainerManager implements PlanContext
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupRecording(this.plan.getDAG().getAttributes(), enableEventRecording);
+    setupStringCodecs();
   }
 
   private Journal setupJournal()
@@ -192,6 +191,14 @@ public class StreamingContainerManager implements PlanContext
       eventRecorder.setWebSocketClient(wsClient);
       eventRecorder.setup();
       eventBus.subscribe(eventRecorder);
+    }
+  }
+
+  private void setupStringCodecs()
+  {
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = this.plan.getDAG().getAttributes().get(DAGContext.STRING_CODECS);
+    if (codecs != null) {
+      StringCodecs.loadConverters(codecs);
     }
   }
 
@@ -631,6 +638,8 @@ public class StreamingContainerManager implements PlanContext
     StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getDAG());
     scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.vars.windowStartMillis;
+
+
     return scc;
   }
 

@@ -23,11 +23,17 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
+import org.codehaus.jackson.map.SerializerProvider;
+import org.codehaus.jackson.map.module.SimpleModule;
+import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +44,12 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
 import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.StringCodec;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
@@ -90,6 +99,7 @@ public class StramWebServices
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
   private final ObjectMapper objectMapper = new ObjectMapper();
+  private boolean initialized = false;
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -112,10 +122,38 @@ public class StramWebServices
     return true;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void init()
   {
     //clear content type
     httpResponse.setContentType(null);
+    if (!initialized) {
+      Map<Class<?>, Class<? extends StringCodec<?>>> codecs = dagManager.getApplicationAttributes().get(DAGContext.STRING_CODECS);
+      if (codecs != null) {
+        StringCodecs.loadConverters(codecs);
+        SimpleModule sm = new SimpleModule("DTSerializationModule", new Version(1, 0, 0, null));
+        for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
+          try {
+            final StringCodec<Object> codec = (StringCodec<Object>)entry.getValue().newInstance();
+            sm.addSerializer(new SerializerBase(entry.getKey())
+            {
+              @Override
+              public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider) throws IOException, JsonProcessingException
+              {
+                jgen.writeString(codec.toString(value));
+              }
+
+            });
+          }
+          catch (Exception ex) {
+            LOG.error("Caught exception when instantiating codec for class {}", entry.getKey().getName(), ex);
+          }
+        }
+
+        objectMapper.registerModule(sm);
+      }
+      initialized = true;
+    }
   }
 
   void checkAccess(HttpServletRequest request)
@@ -442,6 +480,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject setOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new NotFoundException();
@@ -453,11 +492,16 @@ public class StramWebServices
       while (keys.hasNext()) {
         String key = keys.next();
         String val = request.getString(key);
+        LOG.debug("Setting property for {}: {}={}", operatorId, key, val);
         dagManager.setOperatorProperty(operatorId, key, val);
       }
     }
     catch (JSONException ex) {
       LOG.warn("Got JSON Exception: ", ex);
+    }
+    catch (Exception ex) {
+      LOG.error("Caught exception: ", ex);
+      throw new RuntimeException(ex);
     }
     return response;
   }
@@ -468,6 +512,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
   {
+    init();
     JSONObject response = new JSONObject();
     try {
       @SuppressWarnings("unchecked")
@@ -539,6 +584,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
   {
+    init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new NotFoundException();
@@ -546,12 +592,12 @@ public class StramWebServices
     Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
     try {
       if (propertyName == null) {
-        return new JSONObject(new ObjectMapper().writeValueAsString(m));
+        return new JSONObject(objectMapper.writeValueAsString(m));
       }
       else {
         Map<String, Object> m1 = new HashMap<String, Object>();
         m1.put(propertyName, m.get(propertyName));
-        return new JSONObject(new ObjectMapper().writeValueAsString(m1));
+        return new JSONObject(objectMapper.writeValueAsString(m1));
       }
     }
     catch (Exception ex) {

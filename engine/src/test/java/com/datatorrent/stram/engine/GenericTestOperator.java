@@ -60,6 +60,8 @@ public class GenericTestOperator extends BaseOperator {
 
   private String myStringProperty;
 
+  private GenericOperatorProperty genericOperatorProperty = new GenericOperatorProperty("test");
+
   public String getMyStringProperty() {
     return myStringProperty;
   }
@@ -92,6 +94,16 @@ public class GenericTestOperator extends BaseOperator {
 
   public void setEmitFormat(String emitFormat) {
     this.emitFormat = emitFormat;
+  }
+
+  public GenericOperatorProperty getGenericOperatorProperty()
+  {
+    return genericOperatorProperty;
+  }
+
+  public void setGenericOperatorProperty(GenericOperatorProperty genericOperatorProperty)
+  {
+    this.genericOperatorProperty = genericOperatorProperty;
   }
 
   private void processInternal(Object o) {
