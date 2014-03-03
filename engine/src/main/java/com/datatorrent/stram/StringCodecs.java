@@ -97,14 +97,4 @@ public class StringCodecs
     }
   }
 
-  public void exportToObjectMapper(ObjectMapper mapper)
-  {
-    SimpleModule simpleModule = new SimpleModule("SimpleModule",
-                                                 new Version(1, 0, 0, null));
-    for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
-      //simpleModule.addSerializer(new JsonSerializer<Object>);
-    }
-    mapper.registerModule(simpleModule);
-  }
-
 }
