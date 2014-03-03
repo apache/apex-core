@@ -53,7 +53,7 @@ public class StramClientUtils
 {
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
-  public static final String DT_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
+  public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
   /**
    *
    * TBD<p>
@@ -284,7 +284,7 @@ public class StramClientUtils
 
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
   {
-    return conf.get(DT_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_ROOT_DIR));
+    return conf.get(DT_DFS_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_DFS_ROOT_DIR));
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException
