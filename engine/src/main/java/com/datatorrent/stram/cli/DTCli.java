@@ -85,7 +85,7 @@ import com.datatorrent.stram.webapp.StramWebServices;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
-  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 10000;
+  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
   private Configuration conf;
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -1393,20 +1393,21 @@ public class DTCli
       throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
     }
   }
-/*
-  private List<ApplicationReport> getRunningApplicationList()
-  {
-    try {
-      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
-      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
-      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
-    }
-    catch (Exception e) {
-      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
-    }
-  }
-*/
+  /*
+   private List<ApplicationReport> getRunningApplicationList()
+   {
+   try {
+   GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
+   appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
+   appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
+   return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+   }
+   catch (Exception e) {
+   throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+   }
+   }
+   */
+
   private List<ApplicationReport> getLicenseAgentList()
   {
     try {
@@ -2069,11 +2070,18 @@ public class DTCli
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
                 activateLicense(null);
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
+                boolean waitMessagePrinted = false;
                 do {
                   Thread.sleep(1000);
                   ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
-                  if (ar == null && !raw) {
-                    System.out.println("Waiting for license agent to start...");
+                  if (ar == null) {
+                    if (!raw) {
+                      System.out.println("Waiting for license agent to start...");
+                      waitMessagePrinted = true;
+                    }
+                  }
+                  else if (waitMessagePrinted) {
+                    System.out.println("License agent started.");
                   }
                 }
                 while (ar == null && System.currentTimeMillis() <= timeout);
