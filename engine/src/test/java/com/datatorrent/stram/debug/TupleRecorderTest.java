@@ -84,7 +84,7 @@ public class TupleRecorderTest
       recorder.addInputPortInfo("ip2", "str2");
       recorder.addInputPortInfo("ip3", "str3");
       recorder.addOutputPortInfo("op1", "str4");
-      recorder.setup(null);
+      recorder.setup(null, null);
 
       recorder.beginWindow(1000);
       recorder.beginWindow(1000);

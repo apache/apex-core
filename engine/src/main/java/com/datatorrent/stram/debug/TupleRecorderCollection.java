@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.debug;
 
+import com.datatorrent.api.*;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -14,15 +15,10 @@ import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Component;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener.OperatorCommand;
@@ -54,6 +50,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private String appPath;
   private String containerId; // this should be retired!
   private SharedPubSubWebSocketClient wsClient;
+  private Map<Class<?>, Class<? extends StringCodec<?>>> codecs;
 
   public TupleRecorder getTupleRecorder(int operId, String portName)
   {
@@ -69,6 +66,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     containerId = ctx.getValue(ContainerContext.IDENTIFIER);
     gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_ADDRESS);
     appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
+    codecs = ctx.getAttributes().get(DAGContext.STRING_CODECS);
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
     RequestFactory rf = ctx.getValue(ContainerContext.REQUEST_FACTORY);
@@ -186,7 +184,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
 
         node.addSinks(sinkMap);
-        tupleRecorder.setup(node.getOperator());
+        tupleRecorder.setup(node.getOperator(), codecs);
         put(operatorIdPortNamePair, tupleRecorder);
       }
       else {

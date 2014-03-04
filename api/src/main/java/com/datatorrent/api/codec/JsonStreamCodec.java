@@ -24,8 +24,16 @@ import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.RawSerializer;
 
 import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.util.ObjectMapperString;
 import com.datatorrent.common.util.Slice;
+import java.util.Map;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.SerializationConfig;
+import org.codehaus.jackson.map.SerializerProvider;
+import org.codehaus.jackson.map.ser.std.SerializerBase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>JsonStreamCodec class.</p>
@@ -38,6 +46,7 @@ import com.datatorrent.common.util.Slice;
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {
   private ObjectMapper mapper;
+  private static final Logger LOG = LoggerFactory.getLogger(JsonStreamCodec.class);
 
   /**
    * <p>Constructor for JsonStreamCodec.</p>
@@ -46,12 +55,44 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   {
     mapper = new ObjectMapper();
     mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+    mapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
     SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
     mapper.registerModule(module);
   }
 
-  /** {@inheritDoc} */
+  public JsonStreamCodec(Map<Class<?>, Class<? extends StringCodec<?>>> codecs)
+  {
+    mapper = new ObjectMapper();
+    mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+    mapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+    SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
+    module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
+    if (codecs != null) {
+      for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
+        try {
+          final StringCodec<Object> codec = (StringCodec<Object>)entry.getValue().newInstance();
+          module.addSerializer(new SerializerBase(entry.getKey())
+          {
+            @Override
+            public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider) throws IOException, JsonProcessingException
+            {
+              jgen.writeString(codec.toString(value));
+            }
+
+          });
+        }
+        catch (Exception ex) {
+          LOG.error("Caught exception when instantiating codec for class {}", entry.getKey().getName(), ex);
+        }
+      }
+    }
+    mapper.registerModule(module);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public Object fromByteArray(Slice data)
   {
@@ -64,7 +105,9 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     }
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public Slice toByteArray(T o)
   {
@@ -80,7 +123,9 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     }
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public int getPartition(T o)
   {

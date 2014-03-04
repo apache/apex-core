@@ -16,10 +16,7 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
-import com.datatorrent.api.Stats;
-import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.*;
 import com.datatorrent.api.codec.JsonStreamCodec;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
@@ -49,7 +46,7 @@ public class TupleRecorder
   private int nextPortIndex = 0;
   private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
-  private transient StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
+  private transient StreamCodec<Object> streamCodec;
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private String recordingNameTopic;
@@ -248,7 +245,7 @@ public class TupleRecorder
     this.storage.teardown();
   }
 
-  public void setup(Operator operator)
+  public void setup(Operator operator, Map<Class<?>, Class<? extends StringCodec<?>>> codecs)
   {
     try {
       storage.setup();
@@ -275,7 +272,7 @@ public class TupleRecorder
           }
         }
       }
-
+      streamCodec = new JsonStreamCodec<Object>(codecs);
       Slice f = streamCodec.toByteArray(recordInfo);
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
