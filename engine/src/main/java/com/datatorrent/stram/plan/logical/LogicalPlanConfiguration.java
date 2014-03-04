@@ -18,15 +18,18 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.ValidationException;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -758,11 +761,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       if(appAlias == null){
         try {
           ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(className).getAnnotation(ApplicationAnnotation.class);
-          if (an != null && an.name() != null && an.name().length() != 0) {
+          if (an != null && !StringUtils.isBlank(an.name())) {
             appAlias = an.name();
           }
         } catch (ClassNotFoundException e) {
-          LOG.error("Unable to load class: " + className + " " + e);
+          LOG.error("Unable to load class: ", e);
         }
       }
     } else {
