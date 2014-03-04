@@ -13,36 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.api.codec;
+package com.datatorrent.lib.codec;
 
 import java.io.*;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.module.SimpleModule;
-import org.codehaus.jackson.map.ser.std.RawSerializer;
-
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.StringCodec;
-import com.datatorrent.api.util.ObjectMapperString;
-import com.datatorrent.common.util.Slice;
-import java.util.Map;
-import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.map.SerializerProvider;
+import org.codehaus.jackson.map.module.SimpleModule;
+import org.codehaus.jackson.map.ser.std.RawSerializer;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.util.ObjectMapperString;
+
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StringCodec;
+
+import com.datatorrent.common.util.Slice;
 
 /**
  * <p>JsonStreamCodec class.</p>
  *
  * @param <T> tuple type
  * @since 0.3.2
- * @deprecated Please use com.datatorrent.lib.codec.JsonStreamCodec instead.
  */
-@Deprecated
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {
   private ObjectMapper mapper;

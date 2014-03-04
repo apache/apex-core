@@ -11,7 +11,7 @@ import java.util.*;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.RecordField;
-import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.lib.codec.JsonStreamCodec;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;

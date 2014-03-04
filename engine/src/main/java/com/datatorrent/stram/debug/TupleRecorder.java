@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.lib.codec.JsonStreamCodec;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.engine.WindowGenerator;

@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.beanutils.BeanUtils;
 
 import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.lib.codec.JsonStreamCodec;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.util.FSPartFileCollection;

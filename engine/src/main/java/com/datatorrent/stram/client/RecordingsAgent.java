@@ -27,7 +27,7 @@ import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 
-import com.datatorrent.api.util.ObjectMapperString;
+import com.datatorrent.lib.util.ObjectMapperString;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 
 import com.datatorrent.stram.debug.TupleRecorder;

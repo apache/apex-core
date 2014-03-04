@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.api.util;
+package com.datatorrent.lib.util;
 
 /**
  * <p> PubSubMessage </p>

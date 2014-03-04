@@ -2,12 +2,14 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.api.util;
+package com.datatorrent.lib.util;
 
-import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
 import java.io.IOException;
 import java.util.HashMap;
+
 import org.codehaus.jackson.map.ObjectMapper;
+
+import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
 
 /**
  * <p>PubSubMessageCodec class.</p>
