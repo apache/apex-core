@@ -9,6 +9,7 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -286,15 +287,19 @@ public class LogicalPlanConfigurationTest {
     Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.getStringArrayField());
   }
 
+  @ApplicationAnnotation(name="AnotatedAlias")
+  class AnnotatedApplication implements StreamingApplication{
+
+    @Override
+    public void populateDAG(DAG dag, Configuration conf)
+    {
+      dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
+    }
+    
+  }
   @Test
   public void testAppAlias() {
-    StreamingApplication app = new StreamingApplication() {
-      @Override
-      public void populateDAG(DAG dag, Configuration conf)
-      {
-        dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
-      }
-    };
+    StreamingApplication app = new AnnotatedApplication();
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
 
@@ -310,6 +315,22 @@ public class LogicalPlanConfigurationTest {
     builder.prepareDAG(dag, app, appPath, conf);
 
     Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+  }
+  
+  
+  @Test
+  public void testAppAnnotationAlias() {
+    StreamingApplication app = new AnnotatedApplication();
+    Configuration conf = new Configuration(false);
+    conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
+
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
+
+    LogicalPlan dag = new LogicalPlan();
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+    builder.prepareDAG(dag, app, appPath, conf);
+
+    Assert.assertEquals("Application name", "AnotatedAlias", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
   }
 
   @Test

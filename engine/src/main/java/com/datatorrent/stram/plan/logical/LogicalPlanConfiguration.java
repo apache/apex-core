@@ -9,6 +9,7 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -754,6 +755,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appPath.endsWith(CLASS_SUFFIX)) {
       String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
       appAlias = stramConf.appAliases.get(className);
+      if(appAlias == null){
+        try {
+          ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(className).getAnnotation(ApplicationAnnotation.class);
+          if (an != null) {
+            appAlias = an.name();
+          }
+        } catch (ClassNotFoundException e) {
+          LOG.error("Unable to load class: " + className + " " + e);
+        }
+      }
     } else {
       appAlias = stramConf.appAliases.get(appPath);
     }
