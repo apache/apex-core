@@ -3212,6 +3212,8 @@ public class DTCli
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
+        // refresh the state in currentApp
+        currentApp = rmClient.getApplicationReport(currentApp.getApplicationId());
         appReport = currentApp;
       }
       JSONObject response;
