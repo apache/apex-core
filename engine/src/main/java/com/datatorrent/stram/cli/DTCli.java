@@ -2075,7 +2075,7 @@ public class DTCli
                   Thread.sleep(1000);
                   ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
                   if (ar == null) {
-                    if (!raw) {
+                    if (!raw && !waitMessagePrinted) {
                       System.out.println("Waiting for license agent to start...");
                       waitMessagePrinted = true;
                     }
