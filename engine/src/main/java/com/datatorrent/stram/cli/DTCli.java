@@ -1393,7 +1393,7 @@ public class DTCli
       throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
     }
   }
-
+/*
   private List<ApplicationReport> getRunningApplicationList()
   {
     try {
@@ -1406,7 +1406,7 @@ public class DTCli
       throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
     }
   }
-
+*/
   private List<ApplicationReport> getLicenseAgentList()
   {
     try {
@@ -1732,7 +1732,6 @@ public class DTCli
   {
     int remainingLicensedMB;
     int totalLicensedMB;
-    long lastUpdate;
     // add expiration date range here
   }
 
