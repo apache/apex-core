@@ -136,11 +136,7 @@ public class StramChild extends YarnContainerMain
     fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(DAGContext.STRING_CODECS);
-      logger.debug("LOADING CONVERTERS");
     if (codecs != null) {
-      for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
-        logger.debug("GOT {} = {}", entry.getKey().getName(), entry.getValue().getName());
-      }
       StringCodecs.loadConverters(codecs);
     }
 
