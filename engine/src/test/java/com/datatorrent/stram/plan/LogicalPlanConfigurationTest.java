@@ -287,7 +287,7 @@ public class LogicalPlanConfigurationTest {
     Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.getStringArrayField());
   }
 
-  @ApplicationAnnotation(name="AnotatedAlias")
+  @ApplicationAnnotation(name="AnnotatedAlias")
   class AnnotatedApplication implements StreamingApplication{
 
     @Override
