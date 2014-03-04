@@ -137,10 +137,12 @@ public class StramChild extends YarnContainerMain
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(DAGContext.STRING_CODECS);
       logger.debug("LOADING CONVERTERS");
-    for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
-      logger.debug("GOT {} = {}", entry.getKey().getName(), entry.getValue().getName());
+    if (codecs != null) {
+      for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
+        logger.debug("GOT {} = {}", entry.getKey().getName(), entry.getValue().getName());
+      }
+      StringCodecs.loadConverters(codecs);
     }
-    StringCodecs.loadConverters(codecs);
 
     try {
       if (ctx.deployBufferServer) {

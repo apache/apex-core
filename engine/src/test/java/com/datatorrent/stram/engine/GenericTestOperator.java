@@ -60,7 +60,7 @@ public class GenericTestOperator extends BaseOperator {
 
   private String myStringProperty;
 
-  private GenericOperatorProperty genericOperatorProperty = new GenericOperatorProperty("test");
+  private transient GenericOperatorProperty genericOperatorProperty = new GenericOperatorProperty("test");
 
   public String getMyStringProperty() {
     return myStringProperty;
