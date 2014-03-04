@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.api.util;
+package com.datatorrent.lib.util;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,9 +29,11 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
+
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
-import com.datatorrent.api.util.PubSubMessage.PubSubMessageType;
+
 import com.datatorrent.common.util.NameableThreadFactory;
 
 /**
