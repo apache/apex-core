@@ -123,14 +123,14 @@
               <outputDirectory>src/main/x-java</outputDirectory>
               <resources>
                 <resource>
-                  <directory>../../malhar/library/src/main/java/com/datatorrent/lib/codec</directory>
+                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/codec</directory>
                   <targetPath>com/datatorrent/lib/codec</targetPath>
                   <includes>
                     <include>JsonStreamCodec.java</include>
                   </includes>
                 </resource>
                 <resource>
-                  <directory>../../malhar/library/src/main/java/com/datatorrent/lib/util</directory>
+                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/util</directory>
                   <targetPath>com/datatorrent/lib/util</targetPath>
                   <includes>
                     <include>JacksonObjectMapperProvider.java</include>
