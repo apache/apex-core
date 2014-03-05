@@ -330,7 +330,7 @@ public class LogicalPlanConfigurationTest {
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
     builder.prepareDAG(dag, app, appPath, conf);
 
-    Assert.assertEquals("Application name", "AnotatedAlias", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+    Assert.assertEquals("Application name", "AnnotatedAlias", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
   }
 
   @Test

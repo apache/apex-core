@@ -766,7 +766,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
             appAlias = an.name();
           }
         } catch (ClassNotFoundException e) {
-          LOG.error("Unable to load class: ", e);
+          LOG.warn("Unable to load class: ", e);
         }
       }
     } else {
