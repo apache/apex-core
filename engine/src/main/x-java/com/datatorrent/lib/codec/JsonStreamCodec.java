@@ -41,7 +41,6 @@ import com.datatorrent.common.util.Slice;
  * <p>JsonStreamCodec class.</p>
  *
  * @param <T> tuple type
- * @since 0.3.2
  */
 public class JsonStreamCodec<T> implements StreamCodec<T>
 {
