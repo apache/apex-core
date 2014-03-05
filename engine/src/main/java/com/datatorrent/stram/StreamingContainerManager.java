@@ -120,6 +120,7 @@ public class StreamingContainerManager implements PlanContext
   private long committedWindowId;
   // (operator id, port name) to timestamp
   private final Map<Pair<Integer, String>, Long> lastEndWindowTimestamps = new HashMap<Pair<Integer, String>, Long>();
+  private long currentEndWindowStatsWindowId;
 
   private static class EndWindowStats
   {
@@ -349,6 +350,7 @@ public class StreamingContainerManager implements PlanContext
             cpi.latency = findCriticalPath(endWindowStatsMap, leafOperators, cpi.path);
             criticalPathInfo = cpi;
             endWindowStatsOperatorMap.remove(windowId);
+            currentEndWindowStatsWindowId = windowId;
           }
         }
         else {
@@ -964,13 +966,14 @@ public class StreamingContainerManager implements PlanContext
           totalCpuTimeUsed += stats.cpuTimeUsed;
           totalElapsedMillis += elapsedMillis;
           statCount++;
-
-          Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
-          if (endWindowStatsMap == null) {
-            endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
-            endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
+          if (stats.windowId > currentEndWindowStatsWindowId) {
+            Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
+            if (endWindowStatsMap == null) {
+              endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
+              endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
+            }
+            endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
           }
-          endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
         }
 
         status.totalTuplesProcessed.add(tuplesProcessed);

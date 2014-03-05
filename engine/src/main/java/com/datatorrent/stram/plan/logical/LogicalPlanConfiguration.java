@@ -9,6 +9,7 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -18,15 +19,18 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.ValidationException;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -755,6 +759,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appPath.endsWith(CLASS_SUFFIX)) {
       String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
       appAlias = stramConf.appAliases.get(className);
+      if(appAlias == null){
+        try {
+          ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(className).getAnnotation(ApplicationAnnotation.class);
+          if (an != null && !StringUtils.isBlank(an.name())) {
+            appAlias = an.name();
+          }
+        } catch (ClassNotFoundException e) {
+          LOG.error("Unable to load class: ", e);
+        }
+      }
     } else {
       appAlias = stramConf.appAliases.get(appPath);
     }
