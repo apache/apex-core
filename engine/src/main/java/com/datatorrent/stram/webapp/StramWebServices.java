@@ -477,11 +477,18 @@ public class StramWebServices
   public JSONObject getContainer(@PathParam("containerId") String containerId) throws Exception
   {
     init();
-    StramChildAgent sca = dagManager.getContainerAgent(containerId);
-    if (sca == null) {
-      throw new NotFoundException();
+    ContainerInfo ci;
+    if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
+      ci = getAppMasterContainerInfo();
     }
-    return new JSONObject(objectMapper.writeValueAsString(sca.getContainerInfo()));
+    else {
+      StramChildAgent sca = dagManager.getContainerAgent(containerId);
+      if (sca == null) {
+        throw new NotFoundException();
+      }
+      ci = sca.getContainerInfo();
+    }
+    return new JSONObject(objectMapper.writeValueAsString(ci));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -490,7 +497,14 @@ public class StramWebServices
   public JSONObject killContainer(@PathParam("containerId") String containerId)
   {
     JSONObject response = new JSONObject();
-    dagManager.stopContainer(containerId);
+    if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
+      // kill itself
+      LOG.info("Received command to kill the AM container. Exiting...");
+      System.exit(0);
+    }
+    else {
+      dagManager.stopContainer(containerId);
+    }
     return response;
   }
 
