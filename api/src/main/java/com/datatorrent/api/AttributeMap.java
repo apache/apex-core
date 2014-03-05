@@ -15,8 +15,6 @@
  */
 package com.datatorrent.api;
 
-import com.datatorrent.api.StringCodec.*;
-
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -25,6 +23,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import com.datatorrent.api.StringCodec.*;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
@@ -183,6 +183,30 @@ public interface AttributeMap
       return map.entrySet();
     }
 
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof DefaultAttributeMap)) {
+        return false;
+      }
+
+      DefaultAttributeMap that = (DefaultAttributeMap) o;
+
+      if (map != null ? !map.equals(that.map) : that.map != null) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      return map != null ? map.hashCode() : 0;
+    }
   }
 
   /**
