@@ -8,6 +8,7 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
@@ -41,7 +42,9 @@ import com.google.inject.Inject;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAGContext;
@@ -436,6 +439,21 @@ public class StramWebServices
     return response;
   }
 
+  ContainerInfo getAppMasterContainerInfo()
+  {
+    ContainerInfo ci = new ContainerInfo();
+    ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
+    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
+    ci.state = "ACTIVE";
+    ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
+    ci.numOperators = 0;
+    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
+    ci.lastHeartbeat = -1;
+    ci.containerLogsUrl = HttpConfig.getSchemePrefix() + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+
+    return ci;
+  }
+
   @GET
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
   @Produces(MediaType.APPLICATION_JSON)
@@ -444,6 +462,8 @@ public class StramWebServices
     init();
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     ContainersInfo ci = new ContainersInfo();
+    // add itself (app master container)
+    ci.add(getAppMasterContainerInfo());
     for (StramChildAgent sca : containerAgents) {
       ci.add(sca.getContainerInfo());
     }
