@@ -206,44 +206,6 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public boolean equals(Object o)
-    {
-      if (this == o) {
-        return true;
-      }
-      if (!(o instanceof InputPortMeta)) {
-        return false;
-      }
-
-      InputPortMeta that = (InputPortMeta) o;
-
-      if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
-        return false;
-      }
-      if (fieldName != null ? !fieldName.equals(that.fieldName) : that.fieldName != null) {
-        return false;
-      }
-      if (operatorMeta != null ? !operatorMeta.equals(that.operatorMeta) : that.operatorMeta != null) {
-        return false;
-      }
-      if (portAnnotation != null ? !portAnnotation.equals(that.portAnnotation) : that.portAnnotation != null) {
-        return false;
-      }
-
-      return true;
-    }
-
-    @Override
-    public int hashCode()
-    {
-      int result = operatorMeta != null ? operatorMeta.hashCode() : 0;
-      result = 31 * result + (fieldName != null ? fieldName.hashCode() : 0);
-      result = 31 * result + (portAnnotation != null ? portAnnotation.hashCode() : 0);
-      result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
-      return result;
-    }
-
-    @Override
     public AttributeMap getAttributes()
     {
       return attributes;
@@ -323,44 +285,6 @@ public class LogicalPlan implements Serializable, DAG
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
-    }
-
-    @Override
-    public boolean equals(Object o)
-    {
-      if (this == o) {
-        return true;
-      }
-      if (!(o instanceof OutputPortMeta)) {
-        return false;
-      }
-
-      OutputPortMeta that = (OutputPortMeta) o;
-
-      if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
-        return false;
-      }
-      if (fieldName != null ? !fieldName.equals(that.fieldName) : that.fieldName != null) {
-        return false;
-      }
-      if (operatorMeta != null ? !operatorMeta.equals(that.operatorMeta) : that.operatorMeta != null) {
-        return false;
-      }
-      if (portAnnotation != null ? !portAnnotation.equals(that.portAnnotation) : that.portAnnotation != null) {
-        return false;
-      }
-
-      return true;
-    }
-
-    @Override
-    public int hashCode()
-    {
-      int result = operatorMeta != null ? operatorMeta.hashCode() : 0;
-      result = 31 * result + (fieldName != null ? fieldName.hashCode() : 0);
-      result = 31 * result + (portAnnotation != null ? portAnnotation.hashCode() : 0);
-      result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
-      return result;
     }
   }
 
