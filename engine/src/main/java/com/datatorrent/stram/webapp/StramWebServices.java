@@ -498,7 +498,7 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      throw new org.apache.hadoop.yarn.webapp.WebAppException(PATH);
+      throw new UnsupportedOperationException();
     }
     else {
       dagManager.stopContainer(containerId);
