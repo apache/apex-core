@@ -500,7 +500,20 @@ public class StramWebServices
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
       // kill itself
       LOG.info("Received command to kill the AM container. Exiting...");
-      System.exit(0);
+      new Thread()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            Thread.sleep(3000);
+          }
+          catch (InterruptedException ex) {
+          }
+          System.exit(0);
+        }
+
+      }.start();
     }
     else {
       dagManager.stopContainer(containerId);
