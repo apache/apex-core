@@ -206,6 +206,44 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof InputPortMeta)) {
+        return false;
+      }
+
+      InputPortMeta that = (InputPortMeta) o;
+
+      if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
+        return false;
+      }
+      if (fieldName != null ? !fieldName.equals(that.fieldName) : that.fieldName != null) {
+        return false;
+      }
+      if (operatorMeta != null ? !operatorMeta.equals(that.operatorMeta) : that.operatorMeta != null) {
+        return false;
+      }
+      if (portAnnotation != null ? !portAnnotation.equals(that.portAnnotation) : that.portAnnotation != null) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = operatorMeta != null ? operatorMeta.hashCode() : 0;
+      result = 31 * result + (fieldName != null ? fieldName.hashCode() : 0);
+      result = 31 * result + (portAnnotation != null ? portAnnotation.hashCode() : 0);
+      result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
+      return result;
+    }
+
+    @Override
     public AttributeMap getAttributes()
     {
       return attributes;
@@ -285,6 +323,44 @@ public class LogicalPlan implements Serializable, DAG
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof OutputPortMeta)) {
+        return false;
+      }
+
+      OutputPortMeta that = (OutputPortMeta) o;
+
+      if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
+        return false;
+      }
+      if (fieldName != null ? !fieldName.equals(that.fieldName) : that.fieldName != null) {
+        return false;
+      }
+      if (operatorMeta != null ? !operatorMeta.equals(that.operatorMeta) : that.operatorMeta != null) {
+        return false;
+      }
+      if (portAnnotation != null ? !portAnnotation.equals(that.portAnnotation) : that.portAnnotation != null) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = operatorMeta != null ? operatorMeta.hashCode() : 0;
+      result = 31 * result + (fieldName != null ? fieldName.hashCode() : 0);
+      result = 31 * result + (portAnnotation != null ? portAnnotation.hashCode() : 0);
+      result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
+      return result;
     }
   }
 
@@ -606,6 +682,44 @@ public class LogicalPlan implements Serializable, DAG
       return "OperatorMeta{" + "name=" + name + ", operatorProxy=" + operatorProxy + ", attributes=" + attributes + '}';
     }
 
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof OperatorMeta)) {
+        return false;
+      }
+
+      OperatorMeta that = (OperatorMeta) o;
+
+      if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
+        return false;
+      }
+      if (name != null ? !name.equals(that.name) : that.name != null) {
+        return false;
+      }
+      if (operatorAnnotation != null ? !operatorAnnotation.equals(that.operatorAnnotation) : that.operatorAnnotation != null) {
+        return false;
+      }
+      if (operatorProxy != null ? !operatorProxy.equals(that.operatorProxy) : that.operatorProxy != null) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = attributes != null ? attributes.hashCode() : 0;
+      result = 31 * result + (operatorProxy != null ? operatorProxy.hashCode() : 0);
+      result = 31 * result + (name != null ? name.hashCode() : 0);
+      result = 31 * result + (operatorAnnotation != null ? operatorAnnotation.hashCode() : 0);
+      return result;
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201401091635L;
   }
@@ -687,7 +801,7 @@ public class LogicalPlan implements Serializable, DAG
   @SuppressWarnings({"unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
   {
-    return addStream(id, source, new Operator.InputPort[] {sink1});
+    return addStream(id, source, new Operator.InputPort[]{sink1});
   }
 
   @Override
@@ -1158,5 +1272,35 @@ public class LogicalPlan implements Serializable, DAG
             append("streams", this.streams).
             append("properties", this.attributes).
             toString();
+  }
+
+  @Override
+  public boolean equals(Object o)
+  {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof LogicalPlan)) {
+      return false;
+    }
+
+    LogicalPlan that = (LogicalPlan) o;
+
+    if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
+      return false;
+    }
+    if (streams != null ? !streams.equals(that.streams) : that.streams != null) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode()
+  {
+    int result = streams != null ? streams.hashCode() : 0;
+    result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
+    return result;
   }
 }

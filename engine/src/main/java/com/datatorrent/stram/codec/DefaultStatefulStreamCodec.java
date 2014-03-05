@@ -4,10 +4,7 @@
  */
 package com.datatorrent.stram.codec;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.EnumSet;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
@@ -75,13 +72,14 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
           }
         }
       }
-      catch (Exception ex) {
-        logger.error("Catastrophic Error: Execution halted due to Kryo exception!", ex);
+      catch (Throwable th) {
+        logger.error("Catastrophic Error: Execution halted due to Kryo exception!", th);
         synchronized (this) {
           try {
             wait();
           }
-          catch (Exception e) {
+          catch (InterruptedException ex) {
+            throw new RuntimeException("Serialization State Error Halt Interrupted", ex);
           }
         }
       }
@@ -91,16 +89,19 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     }
 
     input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.length);
+    // the following code does not need to be in the try-catch block. It can be
+    // taken out of it, once the stability of the code is validated by 4/1/2014.
     try {
       return readClassAndObject(input);
     }
-    catch (Exception ex) {
-      logger.error("Catastrophic Error: Execution halted due to Kryo exception!", ex);
+    catch (Throwable th) {
+      logger.error("Catastrophic Error: Execution halted due to Kryo exception!", th);
       synchronized (this) {
         try {
           wait();
         }
-        catch (Exception e) {
+        catch (InterruptedException ex) {
+          throw new RuntimeException("Serialization Data Error Halt Interrupted", ex);
         }
       }
       return null;
