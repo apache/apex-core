@@ -498,22 +498,7 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      // kill itself
-      LOG.info("Received command to kill the AM container. Exiting...");
-      new Thread()
-      {
-        @Override
-        public void run()
-        {
-          try {
-            Thread.sleep(3000);
-          }
-          catch (InterruptedException ex) {
-          }
-          System.exit(0);
-        }
-
-      }.start();
+      throw new UnsupportedOperationException();
     }
     else {
       dagManager.stopContainer(containerId);
