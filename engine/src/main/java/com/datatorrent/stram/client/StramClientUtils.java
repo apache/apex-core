@@ -35,7 +35,8 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
-import java.net.URI;
+import java.io.*;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 import org.apache.commons.lang.StringUtils;
@@ -285,6 +286,11 @@ public class StramClientUtils
     return conf;
   }
 
+  public static URL getDTSiteXmlFile()
+  {
+    return StramClientUtils.class.getResource(DT_SITE_XML_FILE);
+  }
+
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
   {
     return conf.get(DT_DFS_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_DFS_ROOT_DIR));
@@ -317,15 +323,67 @@ public class StramClientUtils
    *
    * @param key
    * @param value
+   * @throws IOException
    */
-  public static void changeDTEnvironment(String key, String value)
+  public static void changeDTEnvironment(String key, String value) throws IOException
   {
-    /*
     URL resource = StramClientUtils.class.getResource(DT_ENV_SH_FILE);
-    File cfgResource = new File(resource.toURI());
-    cfgResource.
-
-*/
+    if (resource == null) {
+      File envFile = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.DT_ENV_SH_FILE);
+      FileOutputStream out = new FileOutputStream(envFile);
+      try {
+        out.write(("export " + key + "=\"" + value + "\"\n").getBytes());
+      }
+      finally {
+        out.close();
+      }
+    }
+    else {
+      try {
+        File cfgResource = new File(resource.toURI());
+        synchronized (StramClientUtils.class) {
+          BufferedReader br = new BufferedReader(new FileReader(cfgResource));
+          StringBuilder sb = new StringBuilder();
+          try {
+            String line;
+            boolean changed = false;
+            while ((line = br.readLine()) != null) {
+              try {
+                line = line.trim();
+                if (line.startsWith("#")) {
+                  continue;
+                }
+                if (line.matches("export\\s+" + key + "=.*")) {
+                  line = "export " + key + "=\"" + value + "\"";
+                  changed = true;
+                }
+              }
+              finally {
+                sb.append(line).append("\n");
+              }
+            }
+            if (!changed) {
+              sb.append("export ").append(key).append("=\"").append(value).append("\"\n");
+            }
+          }
+          finally {
+            br.close();
+          }
+          if (sb.length() > 0) {
+            FileOutputStream out = new FileOutputStream(cfgResource);
+            try {
+              out.write(sb.toString().getBytes());
+            }
+            finally {
+              out.close();
+            }
+          }
+        }
+      }
+      catch (URISyntaxException ex) {
+        LOG.error("Caught exception when getting env resource:", ex);
+      }
+    }
   }
 
 }
