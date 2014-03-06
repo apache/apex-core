@@ -36,6 +36,7 @@ import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 
@@ -57,6 +58,7 @@ public class StramClientUtils
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
   public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
+
   /**
    *
    * TBD<p>
@@ -288,7 +290,16 @@ public class StramClientUtils
 
   public static URL getDTSiteXmlFile()
   {
-    return StramClientUtils.class.getResource(DT_SITE_XML_FILE);
+    URL resource = StramClientUtils.class.getResource(DT_SITE_XML_FILE);
+    if (resource == null) {
+      try {
+        resource = new URL("file:" + System.getenv("user.home") + "/.dt/dt-site.xml");
+      }
+      catch (MalformedURLException ex) {
+        LOG.error("Caught exception: ", ex);
+      }
+    }
+    return resource;
   }
 
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
