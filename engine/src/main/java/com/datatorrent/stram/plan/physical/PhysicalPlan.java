@@ -457,12 +457,9 @@ public class PhysicalPlan implements Serializable
     }
     updateStreamMappings(m);
 
-    if (operator instanceof Partitioner.PartitionAware) {
-      @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitioner.PartitionAware<Operator> partitionable = (Partitioner.PartitionAware)operator;
-      partitionable.partitioned(operatorIdToPartition);
+    if (partitioner != null) {
+      partitioner.partitioned(operatorIdToPartition);
     }
-
   }
 
   private void redoPartitions(PMapping currentMapping)
@@ -474,7 +471,6 @@ public class PhysicalPlan implements Serializable
     Map<Partition<?>, PTOperator> currentPartitionMap = Maps.newHashMapWithExpectedSize(operators.size());
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(operators.size());
 
-    final Collection<Partition<Operator>> newPartitions;
     Checkpoint minCheckpoint = null;
 
     for (PTOperator pOperator : operators) {
@@ -502,13 +498,21 @@ public class PhysicalPlan implements Serializable
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
       LOG.debug("partition load: {} {} {}", new Object[] {e.getValue(), e.getKey().getPartitionKeys(), e.getKey().getLoad()});
     }
-    if (currentMapping.logicalOperator.getOperator() instanceof Partitioner) {
+
+    Operator operator = currentMapping.logicalOperator.getOperator();
+    @SuppressWarnings("unchecked")
+    Partitioner<Operator> partitioner = currentMapping.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)
+                                        ? (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER)
+                                        : operator instanceof Partitioner ? (Partitioner<Operator>)operator : null;
+
+    Collection<Partition<Operator>> newPartitions = null;
+    if (partitioner != null) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
-      @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitioner<Operator> partitionable = (Partitioner)currentMapping.logicalOperator.getOperator();
-      newPartitions = partitionable.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), incrementalCapacity);
-    } else {
+      newPartitions = partitioner.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), incrementalCapacity);
+    }
+
+    if (newPartitions == null) {
       if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
         newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
       } else {
@@ -602,12 +606,9 @@ public class PhysicalPlan implements Serializable
     deployChanges();
     this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
 
-    if (currentMapping.logicalOperator.getOperator() instanceof Partitioner.PartitionAware) {
-      @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitioner.PartitionAware<Operator> partitionable = (Partitioner.PartitionAware)currentMapping.logicalOperator.getOperator();
-      partitionable.partitioned(operatorIdToPartition);
+    if (partitioner != null) {
+      partitioner.partitioned(operatorIdToPartition);
     }
-
   }
 
   private void updateStreamMappings(PMapping m) {
