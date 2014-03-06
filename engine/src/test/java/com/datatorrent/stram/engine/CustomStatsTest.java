@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Partitionable;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.CustomStats;
 import com.datatorrent.stram.StramLocalCluster;
@@ -30,7 +30,7 @@ public class CustomStatsTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(CustomStatsTest.class);
 
-  public static class TestOperator extends TestGeneratorInputOperator implements Partitionable<TestOperator>, StatsListener
+  public static class TestOperator extends TestGeneratorInputOperator implements Partitioner<TestOperator>, StatsListener
   {
     static class TestOperatorStats implements CustomStats
     {

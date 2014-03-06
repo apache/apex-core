@@ -16,7 +16,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.stram.Journal.SetOperatorState;

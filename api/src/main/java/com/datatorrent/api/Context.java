@@ -193,6 +193,16 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
+
+    /**
+     * How the operator distributes its state and share the input can be influenced by setting the Partitioner attribute.
+     * If this attribute is set to non null value, the instance of the partitioner is used to partition and merge the
+     * state of the operator and the inputs. If this attribute is set to null then default partitioning is used.
+     * If the attribute is not set and the operator implements Partitioner interface, then the instance of the operator
+     * is used otherwise default default partitioning is used.
+     */
+    Attribute<Partitioner<? extends Operator>> PARTITIONER  = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
+
     /**
      * Return the operator runtime id.
      *

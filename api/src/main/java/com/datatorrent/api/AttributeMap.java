@@ -45,6 +45,15 @@ public interface AttributeMap
   <T> T get(Attribute<T> key);
 
   /**
+   * Return true if value for an attribute is set. It returns false if the
+   * value for the attribute was never set.
+   *
+   * @param key attribute key
+   * @return true if the value for the attribute was set, false otherwise.
+   */
+  boolean contains(Attribute<?> key);
+
+  /**
    * Assign value for a particular attributes.
    * @param <T> Type of the value
    * @param key Attribute which is being assigned the value
@@ -122,7 +131,7 @@ public interface AttributeMap
     {
       return "attr" + name.substring(name.lastIndexOf('.'));
     }
-    
+
     @Override
     public String toString()
     {
@@ -137,7 +146,6 @@ public interface AttributeMap
    */
   public class DefaultAttributeMap implements AttributeMap, Serializable
   {
-    private static final long serialVersionUID = 201306051022L;
     private final HashMap<Attribute<?>, Object> map;
 
     public DefaultAttributeMap()
@@ -207,6 +215,14 @@ public interface AttributeMap
     {
       return map != null ? map.hashCode() : 0;
     }
+
+    @Override
+    public boolean contains(Attribute<?> key)
+    {
+      return map.containsKey(key);
+    }
+
+    private static final long serialVersionUID = 201306051022L;
   }
 
   /**

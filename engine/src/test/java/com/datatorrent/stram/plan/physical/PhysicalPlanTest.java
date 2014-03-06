@@ -4,13 +4,13 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.*;
-import org.junit.Assert;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.*;
@@ -19,8 +19,8 @@ import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.Partitionable.Partition;
-import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.Partitioner.Partition;
+import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 
 import com.datatorrent.stram.PartitioningTest;
@@ -28,7 +28,6 @@ import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -45,7 +44,7 @@ public class PhysicalPlanTest {
 
   }
 
-  public static class PartitioningTestOperator extends GenericTestOperator implements Partitionable<PartitioningTestOperator>, Partitionable.PartitionAware<PartitioningTestOperator>
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>, Partitioner.PartitionAware<PartitioningTestOperator>
   {
     final public static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
@@ -531,7 +530,7 @@ public class PhysicalPlanTest {
     }
 
     ArrayList<Partition<Operator>> lowLoadPartitions = new ArrayList<Partition<Operator>>();
-    for (Partition<?> p : partitions) {
+    for (Partition<Operator> p : partitions) {
       lowLoadPartitions.add(new DefaultPartition<Operator>(p.getPartitionedInstance(), p.getPartitionKeys(), -1, null));
     }
     // merge to single partition
@@ -631,18 +630,18 @@ public class PhysicalPlanTest {
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 
-    PartitioningTestOperator partNode = dag.addOperator("partNode", PartitioningTestOperator.class);
-    partNode.partitionKeys = new Integer[] {0,1};
-    dag.getMeta(partNode).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, partNode.partitionKeys.length);
+    PartitioningTestOperator partOperator = dag.addOperator("partNode", PartitioningTestOperator.class);
+    partOperator.partitionKeys = new Integer[] {0,1};
+    dag.getMeta(partOperator).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, partOperator.partitionKeys.length);
 
-    dag.addStream("o1_outport1", o1.outport1, o2.inport1, o3.inport1, partNode.inport1)
+    dag.addStream("o1_outport1", o1.outport1, o2.inport1, o3.inport1, partOperator.inport1)
             .setLocality(null);
 
     // same container for o2 and o3
     dag.addStream("o2_outport1", o2.outport1, o3.inport2)
             .setLocality(Locality.CONTAINER_LOCAL);
 
-    dag.addStream("o3_outport1", o3.outport1, partNode.inport2);
+    dag.addStream("o3_outport1", o3.outport1, partOperator.inport2);
 
     int maxContainers = 4;
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
@@ -660,7 +659,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("operators " + c2, c2ExpNodes, c2ActNodes);
 
     // one container per partition
-    OperatorMeta partOperMeta = dag.getMeta(partNode);
+    OperatorMeta partOperMeta = dag.getMeta(partOperator);
     List<PTOperator> partitions = plan.getOperators(partOperMeta);
     for (PTOperator partition : partitions) {
       Assert.assertEquals("operators container" + partition, 1, partition.getContainer().getOperators().size());

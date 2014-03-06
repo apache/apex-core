@@ -24,28 +24,28 @@ import com.google.common.collect.Sets;
 
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitionable.Partition;
-import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.Partitioner.Partition;
+import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 
 /**
  * <p>
  * DefaultPartition class.</p>
  *
- * @param <T>
+ * @param <T> type of the operator
  * @since 0.9.1
  */
-public class DefaultPartition<T extends Operator> implements Partitionable.Partition<T>
+public class DefaultPartition<T> implements Partitioner.Partition<T>
 {
   private final PartitionPortMap partitionKeys;
-  private final T operator;
+  private final T partitionable;
   private final int loadIndicator;
   private final AttributeMap attributes = new DefaultAttributeMap();
   private final BatchedOperatorStats stats;
 
-  public DefaultPartition(T operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator, BatchedOperatorStats stats)
+  public DefaultPartition(T partitionable, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator, BatchedOperatorStats stats)
   {
-    this.operator = operator;
+    this.partitionable = partitionable;
     this.partitionKeys = new PartitionPortMap();
     this.partitionKeys.putAll(partitionKeys);
     this.partitionKeys.modified = false;
@@ -53,9 +53,9 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
     this.stats = stats;
   }
 
-  public DefaultPartition(T operator)
+  public DefaultPartition(T partitionable)
   {
-    this(operator, new PartitionPortMap(), 0, null);
+    this(partitionable, new PartitionPortMap(), 0, null);
   }
 
   @Override
@@ -80,7 +80,7 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
   @Override
   public T getPartitionedInstance()
   {
-    return operator;
+    return partitionable;
   }
 
   public boolean isModified()
@@ -178,12 +178,13 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
    * The incoming stream will be partitioned by n keys, with n the nearest power of 2 greater or equal to the
    * number of partition instances provided. If the number of instances does not align with a power of 2, some of the
    * partitions will be assigned 2 keys. This logic is used for default partitioning and can be used to implement
-   * {@link Partitionable}.
+   * {@link Partitioner}.
    *
+   * @param <T> Type of the partitionable object
    * @param partitions
    * @param inputPort
    */
-  public static <T extends Operator> void assignPartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
+  public static <T> void assignPartitionKeys(Collection<Partition<T>> partitions, InputPort<?> inputPort)
   {
     if (partitions.isEmpty()) {
       throw new IllegalArgumentException("partitions collection cannot be empty");
@@ -219,7 +220,7 @@ public class DefaultPartition<T extends Operator> implements Partitionable.Parti
   @Override
   public String toString()
   {
-    return "DefaultPartition{" + "partitionKeys=" + partitionKeys + ", operator=" + operator + ", loadIndicator=" + loadIndicator + ", attributes=" + attributes + ", stats=" + stats + '}';
+    return "DefaultPartition{" + "partitionKeys=" + partitionKeys + ", operator=" + partitionable + ", loadIndicator=" + loadIndicator + ", attributes=" + attributes + ", stats=" + stats + '}';
   }
 
 }

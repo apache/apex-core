@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitionable;
-import com.datatorrent.api.Partitionable.Partition;
-import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.Partitioner;
+import com.datatorrent.api.Partitioner.Partition;
+import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
@@ -32,7 +32,7 @@ public class OperatorPartitions {
 
   /**
    * The default partitioning applied to operators that do not implement
-   * {@link Partitionable} but are configured for partitioning in the
+   * {@link Partitioner} but are configured for partitioning in the
    * DAG.
    */
   public static class DefaultPartitioner
@@ -60,7 +60,7 @@ public class OperatorPartitions {
 
     /**
      * Change existing partitioning based on runtime state (load). Unlike
-     * implementations of {@link Partitionable}), decisions are made
+     * implementations of {@link Partitioner}), decisions are made
      * solely based on load indicator and operator state is not
      * considered in the event of partition split or merge.
      *

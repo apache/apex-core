@@ -934,9 +934,11 @@ public class LogicalPlan implements Serializable, DAG
               }
             }
           }
-          // Check if partition implements Partitionable
-          if (Partitionable.class.isAssignableFrom(n.getOperator().getClass())) {
-            throw new ValidationException("Operator " + n.getName() + " is not partitionable but implements PartitionableOperator" );
+
+          // Check if the operator implements Partitioner
+          if (n.getValue(OperatorContext.PARTITIONER) != null
+              || n.attributes != null && !n.attributes.contains(OperatorContext.PARTITIONER) && Partitioner.class.isAssignableFrom(n.getOperator().getClass())) {
+            throw new ValidationException("Operator " + n.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!");
           }
         }
       }

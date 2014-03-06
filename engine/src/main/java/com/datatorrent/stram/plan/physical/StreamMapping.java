@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;

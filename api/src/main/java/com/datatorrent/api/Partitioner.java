@@ -19,17 +19,16 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 
 /**
  * Components which want to have control over how they are partitioned may implement
- * Partitionable interface and direct the engine to partition them in a certain way.
+ * Partitioner interface and direct the engine to partition them in a certain way.
  *
- * @param <T> type for which custom partitions need to be defined.
  * @since 0.3.2
  */
-public interface Partitionable<T extends Operator>
+public interface Partitioner<T>
 {
   /**
    * Give an opportunity to the operator to decide how it would like to clone
@@ -67,11 +66,10 @@ public interface Partitionable<T extends Operator>
    * Called by the engine after requested partitioning is applied to the physical plan.
    * Allows the operator to track stats of individual partitions by id.
    *
-   * @param <T> - Type of the operator
    * @see StatsListener
-   * @see Partitionable#definePartitions
+   * @see Partitioner#definePartitions
    */
-  interface PartitionAware<T extends Operator>
+  interface PartitionAware<T>
   {
     void partitioned(Map<Integer, Partition<T>> partitions);
 
@@ -122,7 +120,7 @@ public interface Partitionable<T extends Operator>
 
   }
 
-  public interface Partition<PARTITIONABLE extends Operator>
+  public interface Partition<T>
   {
     /**
      * Return the partition keys for this partition.
@@ -160,7 +158,7 @@ public interface Partitionable<T extends Operator>
      *
      * @return frozen operator instance
      */
-    public PARTITIONABLE getPartitionedInstance();
+    public T getPartitionedInstance();
 
     /**
      * Get the attributes associated with this partition.

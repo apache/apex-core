@@ -297,7 +297,7 @@ public class PartitioningTest
 
   }
 
-  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, Partitionable<PartitionableInputOperator>
+  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, Partitioner<PartitionableInputOperator>
   {
     String partitionProperty = "partition";
 

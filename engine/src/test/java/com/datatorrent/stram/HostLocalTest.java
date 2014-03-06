@@ -9,33 +9,29 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import org.junit.Assert;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultPartition;
-import com.datatorrent.api.Partitionable;
-import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestStreamCodec;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestStreamCodec;
 
 public class HostLocalTest {
 
-  public static class PartitioningTestOperator extends GenericTestOperator implements Partitionable<PartitioningTestOperator> {
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator> {
 
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override

@@ -25,8 +25,8 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitionable.Partition;
-import com.datatorrent.api.Partitionable.PartitionKeys;
+import com.datatorrent.api.Partitioner.Partition;
+import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -407,20 +407,22 @@ public class PhysicalPlan implements Serializable
     }
 
     Operator operator = m.logicalOperator.getOperator();
-    Collection<Partition<Operator>> partitions = new ArrayList<Partition<Operator>>(1);
-    if (operator instanceof Partitionable) {
-      @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitionable<Operator> partitionable = (Partitionable)operator;
-      // operator to provide initial partitioning
-      partitions.add(new DefaultPartition<Operator>(operator));
-      partitions = partitionable.definePartitions(partitions, partitionCnt - 1);
-    }
-    else {
-      partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
+    Collection<Partition<Operator>> partitions = null;
+
+    @SuppressWarnings("unchecked")
+    Partitioner<Operator> partitioner = m.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)
+                                        ? (Partitioner<Operator>)m.logicalOperator.getValue(OperatorContext.PARTITIONER)
+                                        : operator instanceof Partitioner? (Partitioner<Operator>)operator: null;
+    if (partitioner != null) {
+      /* do the partitioning as user specified */
+      Collection<Partition<Operator>> collection = new ArrayList<Partition<Operator>>(1);
+      collection.add(new DefaultPartition<Operator>(operator));
+      partitions = partitioner.definePartitions(collection, partitionCnt - 1);
     }
 
-    if (partitions == null || partitions.isEmpty()) {
-      throw new AssertionError("PartitionableOperator must return at least one partition: " + m.logicalOperator);
+    if (partitions == null) {
+      /* default partitioning */
+      partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
     }
 
     int minTps = m.logicalOperator.getValue(OperatorContext.PARTITION_TPS_MIN);
@@ -455,9 +457,9 @@ public class PhysicalPlan implements Serializable
     }
     updateStreamMappings(m);
 
-    if (operator instanceof Partitionable.PartitionAware) {
+    if (operator instanceof Partitioner.PartitionAware) {
       @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitionable.PartitionAware<Operator> partitionable = (Partitionable.PartitionAware)operator;
+      Partitioner.PartitionAware<Operator> partitionable = (Partitioner.PartitionAware)operator;
       partitionable.partitioned(operatorIdToPartition);
     }
 
@@ -500,11 +502,11 @@ public class PhysicalPlan implements Serializable
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
       LOG.debug("partition load: {} {} {}", new Object[] {e.getValue(), e.getKey().getPartitionKeys(), e.getKey().getLoad()});
     }
-    if (currentMapping.logicalOperator.getOperator() instanceof Partitionable) {
+    if (currentMapping.logicalOperator.getOperator() instanceof Partitioner) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
       @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitionable<Operator> partitionable = (Partitionable)currentMapping.logicalOperator.getOperator();
+      Partitioner<Operator> partitionable = (Partitioner)currentMapping.logicalOperator.getOperator();
       newPartitions = partitionable.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), incrementalCapacity);
     } else {
       if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
@@ -600,9 +602,9 @@ public class PhysicalPlan implements Serializable
     deployChanges();
     this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
 
-    if (currentMapping.logicalOperator.getOperator() instanceof Partitionable.PartitionAware) {
+    if (currentMapping.logicalOperator.getOperator() instanceof Partitioner.PartitionAware) {
       @SuppressWarnings({ "unchecked", "rawtypes" })
-      Partitionable.PartitionAware<Operator> partitionable = (Partitionable.PartitionAware)currentMapping.logicalOperator.getOperator();
+      Partitioner.PartitionAware<Operator> partitionable = (Partitioner.PartitionAware)currentMapping.logicalOperator.getOperator();
       partitionable.partitioned(operatorIdToPartition);
     }
 
@@ -827,7 +829,7 @@ public class PhysicalPlan implements Serializable
     return null;
   }
 
-  private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition, Checkpoint checkpoint) {
+  private PTOperator addPTOperator(PMapping nodeDecl, Partition<? extends Operator> partition, Checkpoint checkpoint) {
     String host = null;
     if(partition != null){
      host = partition.getAttributes().get(OperatorContext.LOCALITY_HOST);

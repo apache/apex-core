@@ -323,7 +323,7 @@ public class LogicalPlanTest {
   }
 
   @OperatorAnnotation(partitionable = false)
-  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitionable<TestOperatorAnnotationOperator2> {
+  public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitioner<TestOperatorAnnotationOperator2> {
 
     @Override
     public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int incrementalCapacity)
@@ -369,7 +369,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise operator is not partitionable for operator2");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Operator " + operator2.getName() + " is not partitionable but implements PartitionableOperator", e.getMessage());
+      Assert.assertEquals("Operator " + operator2.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
     }
   }
 
