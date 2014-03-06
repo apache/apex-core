@@ -35,6 +35,8 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
+import java.net.URI;
+import java.net.URL;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -263,6 +265,7 @@ public class StramClientUtils
 
   private static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
+  public static final String DT_ENV_SH_FILE = "dt-env.sh";
 
   public static Configuration addDTDefaultResources(Configuration conf)
   {
@@ -306,6 +309,23 @@ public class StramClientUtils
   public static int getLicenseMasterMemory(Configuration conf)
   {
     return conf.getInt(DT_LICENSE_MASTER_MEMORY, 256);
+  }
+
+  /**
+   * Change DT environment variable in the env file.
+   * Calling this will require a restart for the new setting to take place
+   *
+   * @param key
+   * @param value
+   */
+  public static void changeDTEnvironment(String key, String value)
+  {
+    /*
+    URL resource = StramClientUtils.class.getResource(DT_ENV_SH_FILE);
+    File cfgResource = new File(resource.toURI());
+    cfgResource.
+
+*/
   }
 
 }
