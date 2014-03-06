@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.io.Serializable;
 import java.util.*;
 
 import com.google.common.collect.Lists;
@@ -44,7 +43,7 @@ public class PhysicalPlanTest {
 
   }
 
-  public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>, Partitioner.PartitionAware<PartitioningTestOperator>
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>
   {
     final public static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";

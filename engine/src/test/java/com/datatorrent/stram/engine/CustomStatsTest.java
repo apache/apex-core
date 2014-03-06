@@ -25,6 +25,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.google.common.collect.Lists;
 import java.util.Arrays;
+import java.util.Map;
 
 public class CustomStatsTest
 {
@@ -56,6 +57,11 @@ public class CustomStatsTest
     private static CustomStats lastCustomStats = null;
     private static Thread processStatsThread = null;
     private static Thread definePartitionsThread = null;
+
+    @Override
+    public void partitioned(Map<Integer, Partition<TestOperator>> partitions)
+    {
+    }
 
     @Override
     public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, int incrementalCapacity)

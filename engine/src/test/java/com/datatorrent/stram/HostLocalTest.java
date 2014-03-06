@@ -61,6 +61,11 @@ public class HostLocalTest {
       return newPartitions;
     }
 
+    @Override
+    public void partitioned(Map<Integer, Partition<PartitioningTestOperator>> partitions)
+    {
+    }
+
   }
 
   @Test

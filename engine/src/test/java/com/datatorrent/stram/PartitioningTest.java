@@ -324,6 +324,11 @@ public class PartitioningTest
       return newPartitions;
     }
 
+    @Override
+    public void partitioned(Map<Integer, Partition<PartitionableInputOperator>> partitions)
+    {
+    }
+
     /**
      * Tests input operator partitioning with state modification
      *

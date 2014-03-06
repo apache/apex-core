@@ -26,6 +26,7 @@ import com.datatorrent.api.StatsListener.BatchedOperatorStats;
  * Components which want to have control over how they are partitioned may implement
  * Partitioner interface and direct the engine to partition them in a certain way.
  *
+ * @param <T> Super type of the object which can be partitioned by the partitioner
  * @since 0.3.2
  */
 public interface Partitioner<T>
@@ -50,6 +51,9 @@ public interface Partitioner<T>
    * has the opportunity to transfer state from these existing operator
    * instances to new instances. At minimum, properties set at initialization
    * time on the original operator need to be set on new instances.
+   * <p>
+   * If an operator implements this interface but still wants the framework to
+   * use the default partitioning, this method should return null.
    *
    * @param partitions
    *                            - Current set of partitions
@@ -62,18 +66,14 @@ public interface Partitioner<T>
   public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
 
   /**
-   * Interface to be implemented by operator that wants to be notified about its effective partitioning.
-   * Called by the engine after requested partitioning is applied to the physical plan.
+   * The engine calls this method to notify partitioner of the changes to partitioning.
    * Allows the operator to track stats of individual partitions by id.
    *
+   * @param partitions A map of operator ids to the differnt operator partitions and their input mappings.
    * @see StatsListener
    * @see Partitioner#definePartitions
    */
-  interface PartitionAware<T>
-  {
     void partitioned(Map<Integer, Partition<T>> partitions);
-
-  }
 
   public class PartitionKeys implements java.io.Serializable
   {

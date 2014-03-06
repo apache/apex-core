@@ -42,6 +42,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+import java.util.*;
 
 public class LogicalPlanTest {
 
@@ -329,6 +330,11 @@ public class LogicalPlanTest {
     public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int incrementalCapacity)
     {
       return null;
+    }
+
+    @Override
+    public void partitioned(Map<Integer, Partition<TestOperatorAnnotationOperator2>> partitions)
+    {
     }
 
   }
