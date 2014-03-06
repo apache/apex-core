@@ -293,7 +293,7 @@ public class StramClientUtils
     URL resource = StramClientUtils.class.getResource(DT_SITE_XML_FILE);
     if (resource == null) {
       try {
-        resource = new URL("file:" + System.getenv("user.home") + "/.dt/dt-site.xml");
+        resource = new URL("file:" + System.getProperty("user.home") + "/.dt/dt-site.xml");
       }
       catch (MalformedURLException ex) {
         LOG.error("Caught exception: ", ex);
