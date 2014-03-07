@@ -58,6 +58,7 @@ public class StramClientUtils
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
   public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
+  public static final String DT_CONFIG_STATUS = DAGContext.DT_PREFIX + "configStatus";
 
   /**
    *
