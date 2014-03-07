@@ -269,7 +269,7 @@ public class StramClientUtils
 
   public static File getConfigDir()
   {
-    URL resource = StramClientUtils.class.getResource(DT_ENV_SH_FILE);
+    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
     try {
       if (resource == null) {
         return getSettingsRootDir();
