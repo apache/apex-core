@@ -267,6 +267,17 @@ public class StramClientUtils
     return new File(DT_HOME, ".dt");
   }
 
+  public static File getConfigDir()
+  {
+    URL resource = StramClientUtils.class.getResource(DT_ENV_SH_FILE);
+    try {
+      return new File(resource.toURI()).getParentFile();
+    }
+    catch (URISyntaxException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   private static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
   public static final String DT_ENV_SH_FILE = "dt-env.sh";
