@@ -271,6 +271,9 @@ public class StramClientUtils
   {
     URL resource = StramClientUtils.class.getResource(DT_ENV_SH_FILE);
     try {
+      if (resource == null) {
+        return getSettingsRootDir();
+      }
       return new File(resource.toURI()).getParentFile();
     }
     catch (URISyntaxException ex) {
