@@ -305,7 +305,7 @@ public class StramClientUtils
 
   public static URL getDTSiteXmlFile()
   {
-    URL resource = StramClientUtils.class.getResource(DT_SITE_XML_FILE);
+    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_SITE_XML_FILE);
     if (resource == null) {
       try {
         resource = new URL("file:" + System.getProperty("user.home") + "/.dt/dt-site.xml");
@@ -353,7 +353,7 @@ public class StramClientUtils
    */
   public static void changeDTEnvironment(String key, String value) throws IOException
   {
-    URL resource = StramClientUtils.class.getResource(DT_ENV_SH_FILE);
+    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
     if (resource == null) {
       File envFile = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.DT_ENV_SH_FILE);
       FileOutputStream out = new FileOutputStream(envFile);
