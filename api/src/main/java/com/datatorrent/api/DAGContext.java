@@ -74,7 +74,7 @@ public interface DAGContext extends Context
    */
   Attribute<String> ARCHIVES = new Attribute<String>(new String2String());
   /**
-   * The maximum number or containers (excluding the application master) that the application is allowed to request.
+   * The maximum number of containers (excluding the application master) that the application is allowed to request.
    * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
    * Example: DAG with several operators and all streams container local would require one container,
    * only one container will be requested from the resource manager.
