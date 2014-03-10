@@ -955,6 +955,7 @@ public class DTCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
+    LOG.debug("Sourcing {}", fileName);
     boolean consolePresentSaved = consolePresent;
     consolePresent = false;
     FileLineReader fr = null;
@@ -1095,13 +1096,13 @@ public class DTCli
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
     try {
-      processSourceFile(System.getProperty("user.home") + "/.dt/clirc_system", reader);
+      processSourceFile(StramClientUtils.getConfigDir() + "/clirc_system", reader);
     }
     catch (Exception ex) {
       // ignore
     }
     try {
-      processSourceFile(System.getProperty("user.home") + "/.dt/clirc", reader);
+      processSourceFile(StramClientUtils.getSettingsRootDir() + "/clirc", reader);
     }
     catch (Exception ex) {
       // ignore
