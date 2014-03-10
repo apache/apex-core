@@ -69,7 +69,7 @@ public interface Partitioner<T>
    * The engine calls this method to notify partitioner of the changes to partitioning.
    * Allows the operator to track stats of individual partitions by id.
    *
-   * @param partitions A map of operator ids to the differnt operator partitions and their input mappings.
+   * @param partitions A map of operator ids to the different operator partitions and their input mappings.
    * @see StatsListener
    * @see Partitioner#definePartitions
    */
