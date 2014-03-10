@@ -2,6 +2,11 @@
 
 echoerr() { echo "$@" 1>&2; }
 
+# Load DataTorrent environment settings
+for conf_dir in "/etc/datatorrent" "$HOME/.dt/conf" "$HOME/.dt"; do
+    [[ -f "${conf_dir}/dt-env.sh" ]] && . "${conf_dir}/dt-env.sh"
+done
+
 if [ "$DT_CLIENT_OPTS" = "" ]; then
   DT_CLIENT_OPTS=-Xmx1024m
 fi
@@ -34,7 +39,7 @@ else
     echoerr "Hadoop installation not found. Please set HADOOP_PREFIX or include hadoop in PATH."
     exit 1;
   fi
-  BASEDIR=$( cd $(dirname $0); cd ..; pwd -P )
+  BASEDIR=$( cd $(dirname `readlink -e $0`); cd ..; pwd -P )
   DT_CLASSPATH=$BASEDIR/lib'/*'
 fi
 
