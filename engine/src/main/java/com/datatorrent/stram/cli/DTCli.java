@@ -946,6 +946,7 @@ public class DTCli
     if (socks != null) {
       int colon = socks.indexOf(':');
       if (colon > 0) {
+        LOG.info("Using socks proxy at {}", socks);
         System.setProperty("socksProxyHost", socks.substring(0, colon));
         System.setProperty("socksProxyPort", socks.substring(colon + 1));
       }
