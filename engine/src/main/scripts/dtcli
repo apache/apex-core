@@ -40,7 +40,7 @@ else
     exit 1;
   fi
   BASEDIR=$( cd $(dirname `readlink -e $0`); cd ..; pwd -P )
-  DT_CLASSPATH=$BASEDIR/lib'/*'
+  DT_CLASSPATH=$BASEDIR/lib'/*'":${DT_CLASSPATH}"
 fi
 
 #echoerr "$DT_CLASSPATH"
