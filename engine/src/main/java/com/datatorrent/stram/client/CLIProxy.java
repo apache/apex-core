@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.*;
+import com.datatorrent.stram.util.StreamGobbler;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang.StringUtils;
@@ -29,47 +29,6 @@ public class CLIProxy
     public CommandException(String message)
     {
       super(message);
-    }
-
-  }
-
-  private static class StreamGobbler extends Thread
-  {
-    InputStream is;
-    StringBuilder content = new StringBuilder();
-
-    StreamGobbler(InputStream is)
-    {
-      this.is = is;
-    }
-
-    String getContent()
-    {
-      return content.toString();
-    }
-
-    @Override
-    public void run()
-    {
-      try {
-        InputStreamReader isr = new InputStreamReader(is);
-        BufferedReader br = new BufferedReader(isr);
-        String line;
-        try {
-          while ((line = br.readLine()) != null) {
-            if (!line.contains(" DEBUG ")) {
-              content.append(line);
-              content.append("\n");
-            }
-          }
-        }
-        finally {
-          br.close();
-        }
-      }
-      catch (IOException ex) {
-        LOG.error("Caught exception", ex);
-      }
     }
 
   }
