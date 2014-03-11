@@ -32,9 +32,16 @@ public class FSAgent
     this.conf = conf;
   }
 
+  public FSAgent(FileSystem fs)
+  {
+    this.fs = fs;
+  }
+
   public void setup() throws IOException
   {
-    fs = FileSystem.get(conf);
+    if (fs == null) {
+      fs = FileSystem.get(conf);
+    }
   }
 
   public void createFile(String path, byte[] content) throws IOException
@@ -121,4 +128,5 @@ public class FSAgent
     }
     return files;
   }
+
 }
