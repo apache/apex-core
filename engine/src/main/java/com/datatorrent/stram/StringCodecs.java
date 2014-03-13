@@ -3,17 +3,17 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.StringCodec;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.commons.beanutils.ConvertUtils;
-import org.apache.commons.beanutils.Converter;
-import org.codehaus.jackson.Version;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.module.SimpleModule;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.beanutils.Converter;
+
+import com.datatorrent.api.StringCodec;
+import com.datatorrent.common.util.DTThrowable;
 
 /**
  *
@@ -39,15 +39,24 @@ public class StringCodecs
       {
         for (Class<?> clazz = value.getClass(); clazz != null; clazz = clazz.getSuperclass()) {
           Class<? extends StringCodec> codec = codecs.get(clazz);
-          if (codec != null) {
-            try {
-              return codec.newInstance().toString(value);
-            }
-            catch (Exception ex) {
-              LOG.warn("Cannot use class {} convert to string", codec.getCanonicalName(), ex);
-            }
+          if (codec == null) {
+            continue;
           }
+
+          StringCodec instance;
+          try {
+            instance = codec.newInstance();
+          }
+          catch (IllegalAccessException ex) {
+            throw new RuntimeException("Internal Error - it's impossible for this exception to be thrown!", ex);
+          }
+          catch (InstantiationException ex) {
+            throw new RuntimeException("Internal Error - it's impossible for this exception to be thrown!", ex);
+          }
+
+          return instance.toString(value);
         }
+
         return value.toString();
       }
 
@@ -65,7 +74,12 @@ public class StringCodecs
   public static void loadConverters(Map<Class<?>, Class<? extends StringCodec<?>>> map)
   {
     for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : map.entrySet()) {
-      register(entry.getValue(), entry.getKey());
+      try {
+        register(entry.getValue(), entry.getKey());
+      }
+      catch (Exception ex) {
+        DTThrowable.rethrow(ex);
+      }
     }
   }
 
@@ -75,26 +89,19 @@ public class StringCodecs
     codecs.remove(clazz);
   }
 
-  public static <T> void register(final Class<? extends StringCodec<?>> codec, final Class<T> clazz)
+  public static <T> void register(final Class<? extends StringCodec<?>> codec, final Class<T> clazz) throws InstantiationException, IllegalAccessException
   {
-    try {
-      final StringCodec<?> codecInstance = codec.newInstance();
-      ConvertUtils.register(new Converter()
+    final StringCodec<?> codecInstance = codec.newInstance();
+    ConvertUtils.register(new Converter()
+    {
+      @Override
+      public Object convert(Class type, Object value)
       {
-        @Override
-        public Object convert(Class type, Object value)
-        {
+        return codecInstance.fromString(value.toString());
+      }
 
-          return codecInstance.fromString(value.toString());
-
-        }
-
-      }, clazz);
-      codecs.put(clazz, codec);
-    }
-    catch (Exception ex) {
-      LOG.warn("Cannot register converter {}", codec.getCanonicalName(), ex);
-    }
+    }, clazz);
+    codecs.put(clazz, codec);
   }
 
 }
