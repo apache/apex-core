@@ -19,7 +19,6 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.StringCodec.Class2String;
 import com.datatorrent.api.StringCodec.Map2String;
-import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 import java.util.Map;
 
