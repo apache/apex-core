@@ -12,15 +12,14 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import static java.lang.Thread.sleep;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Output;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.bufferserver.packet.*;
-import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.Listener;
 import com.datatorrent.netlet.Listener.ClientListener;
@@ -100,12 +99,12 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   }
 
   @Override
-  @SuppressWarnings({"SyncOnNonFinal"})
   public void write() throws IOException
   {
+    final ByteBuffer lReadBuffer = readBuffer;
     SocketChannel sc = (SocketChannel)key.channel();
     do {
-      synchronized (readBuffer) { /* it continues to give warning in netbeans even though I have put appropriate suppresswarnings */
+      synchronized (lReadBuffer) {
         sc.write(readBuffer);
         if (readBuffer.position() < readBuffer.capacity()) {
           if (!readBuffer.hasRemaining()) {
@@ -132,7 +131,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   }
 
   @Override
-  public void handleException(Exception cce, DefaultEventLoop el)
+  public void handleException(Exception cce, EventLoop el)
   {
     logger.debug("Generically handling", cce);
   }

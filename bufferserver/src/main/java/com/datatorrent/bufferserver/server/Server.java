@@ -313,7 +313,7 @@ public class Server implements ServerListener
   }
 
   @Override
-  public void handleException(Exception cce, DefaultEventLoop el)
+  public void handleException(Exception cce, EventLoop el)
   {
     if (cce instanceof RuntimeException) {
       throw (RuntimeException)cce;
@@ -487,7 +487,7 @@ public class Server implements ServerListener
     }
 
     @Override
-    public void handleException(Exception cce, DefaultEventLoop el)
+    public void handleException(Exception cce, EventLoop el)
     {
       teardown();
       super.handleException(cce, el);
@@ -663,7 +663,7 @@ public class Server implements ServerListener
     }
 
     @Override
-    public void handleException(Exception cce, DefaultEventLoop el)
+    public void handleException(Exception cce, EventLoop el)
     {
       teardown();
 
