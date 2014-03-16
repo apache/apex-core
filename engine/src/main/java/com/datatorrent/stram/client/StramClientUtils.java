@@ -252,19 +252,10 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
-  /**
-   * Provides a way to run applications with different .m2 and .dt location for internal use.
-   * The environment variable was renamed as "DT_HOME" is used for other purposes
-   */
-  public static final String DT_HOME = System.getenv("_DT_CLIENT_ROOT");
 
   public static File getSettingsRootDir()
   {
-    if (DT_HOME == null || DT_HOME.isEmpty()) {
-      return new File(FileUtils.getUserDirectory(), ".dt");
-    }
-
-    return new File(DT_HOME, ".dt");
+    return new File(FileUtils.getUserDirectory(), ".dt");
   }
 
   public static File getConfigDir()

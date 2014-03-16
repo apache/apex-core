@@ -14,8 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -28,8 +28,12 @@ import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
+import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
+import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.google.common.collect.Lists;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -45,83 +49,21 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
  */
 public class StramAppLauncher
 {
+  public static final String CLASSPATH_RESOLVERS_KEY_NAME = "dt.classpath.resolvers";
   public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
+
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private final File jarFile;
   private FileSystem fs;
-  private Configuration conf;
+  private final Configuration conf;
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
   private final StringWriter mvnBuildClasspathOutput = new StringWriter();
   private boolean ignorePom = false;
 
-  private String generateClassPathFromPom(File pomFile, File cpFile) throws IOException
-  {
-    String cp;
-    LOG.info("Generating classpath via mvn from " + pomFile);
-    LOG.info("java.home: " + System.getProperty("java.home"));
-
-    String dt_home;
-    if (StramClientUtils.DT_HOME != null && !StramClientUtils.DT_HOME.isEmpty()) {
-      dt_home = " -Duser.home=" + StramClientUtils.DT_HOME;
-    }
-    else {
-      dt_home = "";
-    }
-    String cmd = "mvn dependency:build-classpath" + dt_home + " -q -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
-    LOG.debug("Executing: {}", cmd);
-    Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", cmd});
-    ProcessWatcher pw = new ProcessWatcher(p);
-    InputStream output = p.getInputStream();
-    while (!pw.isFinished()) {
-      IOUtils.copy(output, mvnBuildClasspathOutput);
-    }
-    if (pw.rc != 0) {
-      throw new RuntimeException("Failed to run: " + cmd + " (exit code " + pw.rc + ")" + "\n" + mvnBuildClasspathOutput.toString());
-    }
-    cp = FileUtils.readFileToString(cpFile);
-    return cp;
-  }
-
-  /**
-   *
-   * Starts a command and waits for it to complete<p>
-   * <br>
-   *
-   */
-  public static class ProcessWatcher implements Runnable
-  {
-    private final Process p;
-    private volatile boolean finished = false;
-    private volatile int rc;
-
-    @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
-    public ProcessWatcher(Process p)
-    {
-      this.p = p;
-      new Thread(this).start();
-    }
-
-    public boolean isFinished()
-    {
-      return finished;
-    }
-
-    @Override
-    public void run()
-    {
-      try {
-        rc = p.waitFor();
-      }
-      catch (Exception e) {
-      }
-      finished = true;
-    }
-
-  }
 
   public static interface AppFactory
   {
@@ -204,57 +146,24 @@ public class StramAppLauncher
     }
 
     File baseDir = StramClientUtils.getSettingsRootDir();
-    baseDir = new File(baseDir, jarFile.getName());
+    baseDir = new File(new File(baseDir, "appcache"), jarFile.getName());
     baseDir.mkdirs();
 
-    File pomCrcFile = new File(baseDir, "pom.xml.crc");
-    File cpFile = new File(baseDir, "mvn-classpath");
-    long pomCrc = 0;
-    String cp = null;
-
-    // read crc and classpath file, if it exists
-    // (we won't run mvn again if pom didn't change)
-    if (!ignorePom && cpFile.exists()) {
-      try {
-        DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
-        pomCrc = dis.readLong();
-        dis.close();
-        cp = FileUtils.readFileToString(cpFile, "UTF-8");
-      }
-      catch (Exception e) {
-        LOG.error("Cannot read CRC from {}", pomCrcFile);
-      }
-    }
-
-    // TODO: cache based on application jar checksum
-    FileUtils.deleteDirectory(baseDir);
-
-    java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
-    String MANIFEST_CP = "Class-Path";
-    String jarClasspath = jar.getManifest().getMainAttributes().getValue(MANIFEST_CP);
-
-    if (jarClasspath != null) {
-      LOG.debug("Using manifest entry {} to resolve dependencies", MANIFEST_CP);
-      ignorePom = true;
-    }
+    //java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
+    JarFileContext jfc = new JarFileContext(new java.util.jar.JarFile(jarFile), mvnBuildClasspathOutput);
+    jfc.cacheDir = baseDir;
 
     List<String> classFileNames = new ArrayList<String>();
-    java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
+    java.util.Enumeration<JarEntry> entriesEnum = jfc.jarFile.entries();
     while (entriesEnum.hasMoreElements()) {
       java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
       if (!jarEntry.isDirectory()) {
-        if (!ignorePom && jarEntry.getName().endsWith("pom.xml")) {
-          File pomDst = new File(baseDir, "pom.xml");
-          FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
-          if (pomCrc != jarEntry.getCrc()) {
-            LOG.info("CRC of " + jarEntry.getName() + " changed, invalidating cached classpath.");
-            cp = null;
-            pomCrc = jarEntry.getCrc();
-          }
+        if (jarEntry.getName().endsWith("pom.xml")) {
+          jfc.pomEntry = jarEntry;
         }
         else if (jarEntry.getName().endsWith(".app.properties")) {
           File targetFile = new File(baseDir, jarEntry.getName());
-          FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
+          FileUtils.copyInputStreamToFile(jfc.jarFile.getInputStream(jarEntry), targetFile);
           appResourceList.add(new PropertyFileAppFactory(targetFile));
         }
         else if (jarEntry.getName().endsWith(".class")) {
@@ -263,10 +172,38 @@ public class StramAppLauncher
       }
     }
 
-    jar.close();
-
-    LinkedHashSet<URL> clUrls = new LinkedHashSet<URL>();
     URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
+    jfc.urls.add(mainJarUrl);
+
+    // resolve dependencies
+    List<Resolver> resolvers = Lists.newArrayList();
+
+    String resolverConfig = this.conf.get(CLASSPATH_RESOLVERS_KEY_NAME, null);
+    if (!StringUtils.isEmpty(resolverConfig)) {
+      resolvers = new ClassPathResolvers().createResolvers(resolverConfig);
+    } else {
+      // default setup if nothing was configured
+      String manifestCp = jfc.jarFile.getManifest().getMainAttributes().getValue(ManifestResolver.ATTR_NAME);
+      if (manifestCp != null) {
+        File repoRoot = new File(System.getProperty("user.home") + "/.m2/repository");
+        if (repoRoot.exists()) {
+          LOG.debug("Resolving manifest attribute {} based on {}", ManifestResolver.ATTR_NAME, repoRoot);
+          resolvers.add(new ClassPathResolvers.ManifestResolver(repoRoot));
+        } else {
+          LOG.warn("Ignoring manifest attribute {} because {} does not exist.", ManifestResolver.ATTR_NAME, repoRoot);
+        }
+      } else if (!ignorePom) {
+        // support jar files built w/o manifest attribute prior to 0.9.3
+        resolvers.add(new ClassPathResolvers.MavenResolver());
+      }
+    }
+
+    for (Resolver r : resolvers) {
+      r.resolve(jfc);
+    }
+
+    jfc.jarFile.close();
+
     URLConnection urlConnection = mainJarUrl.openConnection();
     if (urlConnection instanceof JarURLConnection) {
       // JDK6 keeps jar file shared and open as long as the process is running.
@@ -275,41 +212,8 @@ public class StramAppLauncher
       // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
       ((JarURLConnection)urlConnection).getJarFile().close();
     }
-    clUrls.add(mainJarUrl);
 
-    if (!ignorePom) {
-      File pomFile = new File(baseDir, "pom.xml");
-      if (pomFile.exists()) {
-        if (cp == null) {
-          // try to generate dependency classpath
-          cp = generateClassPathFromPom(pomFile, cpFile);
-        }
-        if (cp != null) {
-          DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
-          dos.writeLong(pomCrc);
-          dos.close();
-          // wasn't the path already written to the file?
-          FileUtils.writeStringToFile(cpFile, cp, false);
-          String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");
-          for (String path : pathList) {
-            clUrls.add(new URL("file:" + path));
-          }
-        }
-      }
-    } else if (jarClasspath != null) {
-      String jars[] = jarClasspath.split(" ");
-      File repoRoot = new File(System.getProperty("user.home") + "/.m2/repository");
-      if (repoRoot.exists()) {
-        LOG.debug("Resolving manifest entry {} based on {}", MANIFEST_CP, repoRoot);
-        for (String relPath : jars) {
-          File path = new File(repoRoot, relPath);
-          clUrls.add(path.toURI().toURL());
-        }
-      } else {
-        LOG.debug("Ignoring manifest entry {} because {} does not exist.", MANIFEST_CP, repoRoot);
-      }
-    }
-
+    LinkedHashSet<URL> clUrls = jfc.urls;
     // add all jar files from same directory
     Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
     for (File jarFile : jarFiles) {
@@ -317,6 +221,7 @@ public class StramAppLauncher
     }
 
     // add the jar dependencies
+/*
     if (cp == null) {
       // dependencies from parent loader, if classpath can't be found from pom
       ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
@@ -326,6 +231,7 @@ public class StramAppLauncher
         clUrls.addAll(Arrays.asList(baseUrls));
       }
     }
+*/
 
     String libjars = conf.get(LIBJARS_CONF_KEY_NAME);
     if (libjars != null) {
