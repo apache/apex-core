@@ -49,7 +49,7 @@ import com.google.common.collect.Lists;
  */
 public class StramAppLauncher
 {
-  public static final String CLASSPATH_RESOLVERS_KEY_NAME = "dt.classpath.resolvers";
+  public static final String CLASSPATH_RESOLVERS_KEY_NAME = DAGContext.DT_PREFIX + "classpath.resolvers";
   public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
