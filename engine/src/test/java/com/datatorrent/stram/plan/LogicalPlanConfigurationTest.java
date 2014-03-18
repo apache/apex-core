@@ -44,7 +44,7 @@ public class LogicalPlanConfigurationTest {
   }
 
   /**
-   * Test read from stram-site.xml in Hadoop configuration format.
+   * Test read from dt-site.xml in Hadoop configuration format.
    */
   @Test
   public void testLoadFromConfigXml() {
@@ -295,7 +295,7 @@ public class LogicalPlanConfigurationTest {
     {
       dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
     }
-    
+
   }
   @Test
   public void testAppAlias() {
@@ -316,8 +316,8 @@ public class LogicalPlanConfigurationTest {
 
     Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
   }
-  
-  
+
+
   @Test
   public void testAppAnnotationAlias() {
     StreamingApplication app = new AnnotatedApplication();
