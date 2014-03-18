@@ -53,7 +53,6 @@
     <module>stram</module>
     <module>engine</module>
     <module>gateway</module>
-    <module>flume</module>
     <module>certification</module>
   </modules>
 
@@ -184,6 +183,7 @@
     <profile>
       <id>release</id>
       <modules>
+        <module>flume</module>
         <module>malhar</module>
         <module>dist</module>
       </modules>
