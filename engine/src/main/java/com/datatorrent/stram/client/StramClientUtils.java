@@ -35,11 +35,14 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
-
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -293,7 +296,40 @@ public class StramClientUtils
       LOG.info("Loading settings: " + cfgResource.toURI());
       conf.addResource(new Path(cfgResource.toURI()));
     }
+
+    convertDeprecatedProperties(conf);
+
     return conf;
+  }
+
+  @SuppressWarnings("deprecation")
+  private static void convertDeprecatedProperties(Configuration conf)
+  {
+    Iterator<Map.Entry<String, String>> iterator = conf.iterator();
+    Map<String, String> newEntries = new HashMap<String, String>();
+    while (iterator.hasNext()) {
+      Map.Entry<String, String> entry = iterator.next();
+      if (entry.getKey().startsWith("stram.")) {
+        String newKey = DAGContext.DT_PREFIX + entry.getKey().substring(6);
+        LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
+        newEntries.put(newKey, entry.getValue());
+        iterator.remove();
+      }
+      else if (entry.getKey().equals(DAGContext.DT_PREFIX + LogicalPlan.GATEWAY_ADDRESS.getName())) {
+        String newKey = DAGContext.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName();
+        newEntries.put(newKey, entry.getValue());
+        LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
+        iterator.remove();
+      }
+      else if (entry.getKey().equals(DAGContext.DT_PREFIX + "gateway.address")) {
+        String newKey = LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS;
+        newEntries.put(newKey, entry.getValue());
+        iterator.remove();
+      }
+    }
+    for (Map.Entry<String, String> entry : newEntries.entrySet()) {
+      conf.set(entry.getKey(), entry.getValue());
+    }
   }
 
   public static URL getDTSiteXmlFile()

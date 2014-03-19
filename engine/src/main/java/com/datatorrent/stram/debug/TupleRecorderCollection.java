@@ -64,7 +64,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     tupleRecordingPartFileSize = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE);
     tupleRecordingPartFileTimeMillis = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS);
     containerId = ctx.getValue(ContainerContext.IDENTIFIER);
-    gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_ADDRESS);
+    gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
     appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
     codecs = ctx.getAttributes().get(DAGContext.STRING_CODECS);
 

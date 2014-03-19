@@ -205,7 +205,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupWsClient(AttributeMap attributes)
   {
-    String gatewayAddress = attributes.get(LogicalPlan.GATEWAY_ADDRESS);
+    String gatewayAddress = attributes.get(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
     if (gatewayAddress != null) {
       try {
         wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);

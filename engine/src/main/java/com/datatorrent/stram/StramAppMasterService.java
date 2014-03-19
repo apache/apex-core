@@ -335,7 +335,7 @@ public class StramAppMasterService extends CompositeService
     @Override
     public String getGatewayAddress()
     {
-      return getValue(LogicalPlan.GATEWAY_ADDRESS);
+      return getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
     }
 
     @Override

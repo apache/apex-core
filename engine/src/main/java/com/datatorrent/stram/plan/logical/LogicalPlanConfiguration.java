@@ -52,8 +52,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
   public static final String GATEWAY_PREFIX = DAGContext.DT_PREFIX + "gateway.";
-  public static final String GATEWAY_ADDRESS_PROP = "address";
-  public static final String GATEWAY_ADDRESS = GATEWAY_PREFIX + GATEWAY_ADDRESS_PROP;
+  public static final String GATEWAY_LISTEN_ADDRESS_PROP = "listenAddress";
+  public static final String GATEWAY_LISTEN_ADDRESS = GATEWAY_PREFIX + GATEWAY_LISTEN_ADDRESS_PROP;
 
   public static final String STREAM_PREFIX = DAGContext.DT_PREFIX + "stream.";
   public static final String LICENSE_PREFIX = DAGContext.DT_PREFIX + "license.";
@@ -1175,9 +1175,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     for (Conf appConf : appConfs) {
       Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
       if (gwConf != null) {
-        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_ADDRESS_PROP);
+        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_LISTEN_ADDRESS_PROP);
         if (gatewayAddress !=  null) {
-          dag.setAttribute(DAGContext.GATEWAY_ADDRESS, gatewayAddress);
+          dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, gatewayAddress);
           break;
         }
       }

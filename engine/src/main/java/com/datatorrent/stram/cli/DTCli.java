@@ -1263,7 +1263,11 @@ public class DTCli
       }
     }
     catch (CliException e) {
-      System.err.println(e.getMessage());
+      String msg = e.getMessage();
+      if (e.getCause() != null) {
+        msg += ": " + e.getCause().getMessage();
+      }
+      System.err.println(msg);
       LOG.debug("Error processing line: " + line, e);
       lastCommandError = true;
     }
@@ -1392,7 +1396,7 @@ public class DTCli
       return rmClient.clientRM.getApplications(appsReq).getApplicationList();
     }
     catch (Exception e) {
-      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+      throw new CliException("Error getting application list from resource manager", e);
     }
   }
   /*
@@ -1419,7 +1423,7 @@ public class DTCli
       return rmClient.clientRM.getApplications(appsReq).getApplicationList();
     }
     catch (Exception e) {
-      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+      throw new CliException("Error getting application list from resource manager", e);
     }
   }
 
@@ -1468,10 +1472,10 @@ public class DTCli
       }
     }
     catch (YarnException rmExc) {
-      throw new CliException("Unable to determine application status.", rmExc);
+      throw new CliException("Unable to determine application status", rmExc);
     }
     catch (IOException rmExc) {
-      throw new CliException("Unable to determine application status.", rmExc);
+      throw new CliException("Unable to determine application status", rmExc);
     }
     return r;
   }
@@ -1485,7 +1489,7 @@ public class DTCli
 
     if (StringUtils.isEmpty(appReport.getTrackingUrl()) || appReport.getFinalApplicationStatus() != FinalApplicationStatus.UNDEFINED) {
       appReport = null;
-      throw new CliException("Application terminated.");
+      throw new CliException("Application terminated");
     }
 
     WebServicesClient wsClient = new WebServicesClient();
@@ -1990,7 +1994,7 @@ public class DTCli
         }
         else if (matchingAppFactories.size() > 1) {
 
-          //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list 
+          //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
           TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
           // Display matching applications
           for (int i = 0; i < matchingAppFactories.size(); i++) {
@@ -1999,18 +2003,18 @@ public class DTCli
             if (appAlias != null) {
               appName = appAlias;
             }
-            appNamesInAlphabeticalOrder.put(appName, i);            
+            appNamesInAlphabeticalOrder.put(appName, i);
           }
-          
+
           //Create a mapping between the app display number and original index at matchingAppFactories
           int index = 1;
           HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
-          for(Map.Entry<String,Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {                      
+          for(Map.Entry<String,Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
             //Map display number of the app to original unsorted index
             displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
-            
+
             //Display the app names
-            System.out.printf("%3d. %s\n", index++, entry.getKey());            
+            System.out.printf("%3d. %s\n", index++, entry.getKey());
           }
 
           // Exit if not in interactive mode
@@ -2037,7 +2041,7 @@ public class DTCli
 
             try {
               int option = Integer.parseInt(optionLine);
-              if (0 < option && option <= matchingAppFactories.size()) {          
+              if (0 < option && option <= matchingAppFactories.size()) {
                  int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
                  appFactory = matchingAppFactories.get(appIndex);
               }
@@ -2103,10 +2107,10 @@ public class DTCli
                 while (ar == null && System.currentTimeMillis() <= timeout);
               }
               catch (Exception ex) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help.", ex);
+                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
               }
               if (ar == null) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help.");
+                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
             }
             appId = submitApp.launchApp(appFactory);

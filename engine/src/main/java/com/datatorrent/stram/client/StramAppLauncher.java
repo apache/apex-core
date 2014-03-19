@@ -130,20 +130,6 @@ public class StramAppLauncher
   private void init() throws Exception
   {
     propertiesBuilder.addFromConfiguration(conf);
-    Iterator<Map.Entry<String, String>> iterator = conf.iterator();
-    Map<String, String> newEntries = new HashMap<String, String>();
-    while (iterator.hasNext()) {
-      Map.Entry<String, String> entry = iterator.next();
-      if (entry.getKey().startsWith("stram.")) {
-        String newKey = DAGContext.DT_PREFIX + entry.getKey().substring(6);
-        LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
-        newEntries.put(newKey, entry.getValue());
-      }
-      iterator.remove();
-    }
-    for (Map.Entry<String, String> entry : newEntries.entrySet()) {
-      conf.set(entry.getKey(), entry.getValue());
-    }
 
     File baseDir = StramClientUtils.getSettingsRootDir();
     baseDir = new File(new File(baseDir, "appcache"), jarFile.getName());
