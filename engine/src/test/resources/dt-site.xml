@@ -7,7 +7,7 @@
   <!-- sample for defining DAG in Hadoop configuration format -->
 
   <property>
-    <name>dt.gateway.address</name>
+    <name>dt.gateway.listenAddress</name>
     <value>hostname:9090</value>
   </property>
 
