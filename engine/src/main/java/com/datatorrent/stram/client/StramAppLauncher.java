@@ -175,6 +175,12 @@ public class StramAppLauncher
     URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
     jfc.urls.add(mainJarUrl);
 
+    // add all jar files from same directory
+    Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
+    for (File jarFile : jarFiles) {
+      jfc.urls.add(jarFile.toURI().toURL());
+    }
+
     // resolve dependencies
     List<Resolver> resolvers = Lists.newArrayList();
 
@@ -214,11 +220,6 @@ public class StramAppLauncher
     }
 
     LinkedHashSet<URL> clUrls = jfc.urls;
-    // add all jar files from same directory
-    Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
-    for (File jarFile : jarFiles) {
-      clUrls.add(jarFile.toURI().toURL());
-    }
 
     // add the jar dependencies
 /*
