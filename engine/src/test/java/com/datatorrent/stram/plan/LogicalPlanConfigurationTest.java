@@ -206,8 +206,8 @@ public class LogicalPlanConfigurationTest {
       @Override
       public void populateDAG(DAG dag, Configuration conf)
       {
-        Assert.assertEquals("", "hostname:9090", dag.getValue(DAG.GATEWAY_ADDRESS));
-        dag.setAttribute(DAG.GATEWAY_ADDRESS, "hostname:9091");
+        Assert.assertEquals("", "hostname:9090", dag.getValue(DAG.GATEWAY_CONNECT_ADDRESS));
+        dag.setAttribute(DAG.GATEWAY_CONNECT_ADDRESS, "hostname:9091");
         appInitialized.setValue(true);
       }
     };
@@ -220,7 +220,7 @@ public class LogicalPlanConfigurationTest {
     pb.prepareDAG(dag, app, "testconfig", conf);
 
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
-    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.getValue(DAG.GATEWAY_ADDRESS));
+    Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.getValue(DAG.GATEWAY_CONNECT_ADDRESS));
   }
 
   @Test

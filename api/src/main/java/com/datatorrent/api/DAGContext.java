@@ -124,6 +124,12 @@ public interface DAGContext extends Context
   /**
    * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.address" in the configuration.
    */
+  Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
+  /**
+   * Please use GATEWAY_CONNECT_ADDRESS
+   * @deprecated
+   */
+  @Deprecated
   Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
   /**
    * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
@@ -155,25 +161,21 @@ public interface DAGContext extends Context
    * record interval. If the interval is specified as 0 then no statistics are recorded. The default value is 0.
    */
   Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
-
   /**
    * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
    * equal to the throughput calculation interval. The default value is 10s.
    */
   Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
-
   /**
    * The maximum number of samples to use when calculating throughput. In practice fewer samples may be used
    * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
    */
   Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
-
   /**
    * The string codec map for classes that are to be set or get through properties as strings.
    * Only supports string codecs that have a constructor with no arguments
    */
   Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
-
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
 }
