@@ -1990,6 +1990,8 @@ public class DTCli
         }
         else if (matchingAppFactories.size() > 1) {
 
+          //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list 
+          TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
           // Display matching applications
           for (int i = 0; i < matchingAppFactories.size(); i++) {
             String appName = matchingAppFactories.get(i).getName();
@@ -1997,7 +1999,18 @@ public class DTCli
             if (appAlias != null) {
               appName = appAlias;
             }
-            System.out.printf("%3d. %s\n", i + 1, appName);
+            appNamesInAlphabeticalOrder.put(appName, i);            
+          }
+          
+          //Create a mapping between the app display number and original index at matchingAppFactories
+          int index = 1;
+          HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
+          for(Map.Entry<String,Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {                      
+            //Map display number of the app to original unsorted index
+            displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
+            
+            //Display the app names
+            System.out.printf("%3d. %s\n", index++, entry.getKey());            
           }
 
           // Exit if not in interactive mode
@@ -2024,8 +2037,9 @@ public class DTCli
 
             try {
               int option = Integer.parseInt(optionLine);
-              if (0 < option && option <= matchingAppFactories.size()) {
-                appFactory = matchingAppFactories.get(option - 1);
+              if (0 < option && option <= matchingAppFactories.size()) {          
+                 int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
+                 appFactory = matchingAppFactories.get(appIndex);
               }
             }
             catch (Exception ex) {
