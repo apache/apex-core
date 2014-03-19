@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
 import com.datatorrent.stram.security.StramWSFilter;
@@ -173,9 +172,9 @@ public class StramAgent extends FSAgent
     deleteCachedWebServicesInfo(appid);
   }
 
-  public String getDefaultStramRoot()
+  public String getAppsRoot()
   {
-    return (defaultStramRoot == null) ? (StramClientUtils.getDTRootDir(fs, conf) + "/" + StramClient.DEFAULT_APPNAME) : defaultStramRoot;
+    return (defaultStramRoot == null) ? (StramClientUtils.getDTRootDir(fs, conf) + "/" + StramClientUtils.SUBDIR_APPS) : defaultStramRoot;
   }
 
   public String getAppPath(String appId)
@@ -184,7 +183,7 @@ public class StramAgent extends FSAgent
       return getWebServicesInfo(appId).appPath;
     }
     catch (Exception ex) {
-      return getDefaultStramRoot() + "/" + appId;
+      return getAppsRoot() + "/" + appId;
     }
   }
 

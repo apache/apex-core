@@ -58,7 +58,6 @@ public class StramClient
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
-  public static final String DEFAULT_APPNAME = "DataTorrent";
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
@@ -268,13 +267,13 @@ public class StramClient
     return localJarFiles;
   }
 
-  private String copyFromLocal(FileSystem fs, String pathSuffix, String[] files) throws IOException
+  private String copyFromLocal(FileSystem fs, Path basePath, String[] files) throws IOException
   {
-    StringBuilder csv = new StringBuilder(8 * (pathSuffix.length() + 2 + files.length));
+    StringBuilder csv = new StringBuilder(files.length * (basePath.toString().length() + 16));
     for (String localFile : files) {
       Path src = new Path(localFile);
       String filename = src.getName();
-      Path dst = new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix + "/" + filename);
+      Path dst = new Path(basePath, filename);
       if (localFile.startsWith("hdfs:")) {
         LOG.info("Copy {} from HDFS to {}", localFile, dst);
         FileUtil.copy(fs, src, fs, dst, false, true, conf);
@@ -361,10 +360,6 @@ public class StramClient
       amMemory = maxMem;
     }
 
-    if (dag.getAttributes().get(LogicalPlan.APPLICATION_NAME) == null) {
-      dag.getAttributes().put(LogicalPlan.APPLICATION_NAME, DEFAULT_APPNAME);
-    }
-
     if (dag.getAttributes().get(LogicalPlan.APPLICATION_ID) == null) {
       dag.getAttributes().put(LogicalPlan.APPLICATION_ID, appId.toString());
     }
@@ -376,7 +371,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(dag.getAttributes().get(LogicalPlan.APPLICATION_NAME));
+    appContext.setApplicationName(dag.getValue(LogicalPlan.APPLICATION_NAME));
     appContext.setApplicationType(this.applicationType);
     if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
       //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
@@ -428,7 +423,6 @@ public class StramClient
       amContainer.setTokens(fsTokens);
     }
 
-    String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
     // set local resources for the application master
     // local files or archives as needed
@@ -437,7 +431,9 @@ public class StramClient
 
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.get(conf);
-    String libJarsCsv = copyFromLocal(fs, pathSuffix, localJarFiles.toArray(new String[] {}));
+    Path appPath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS + "/" + appId.toString());
+
+    String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
 
     LOG.info("libjars: {}", libJarsCsv);
     dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
@@ -445,7 +441,7 @@ public class StramClient
 
     if (files != null) {
       String[] localFiles = files.split(",");
-      String filesCsv = copyFromLocal(fs, pathSuffix, localFiles);
+      String filesCsv = copyFromLocal(fs, appPath, localFiles);
       LOG.info("files: {}", filesCsv);
       dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
@@ -453,13 +449,13 @@ public class StramClient
 
     if (archives != null) {
       String[] localFiles = archives.split(",");
-      String archivesCsv = copyFromLocal(fs, pathSuffix, localFiles);
+      String archivesCsv = copyFromLocal(fs, appPath, localFiles);
       LOG.info("archives: {}", archivesCsv);
       dag.getAttributes().put(LogicalPlan.ARCHIVES, archivesCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
     }
 
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix).toString());
+    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
 
     // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
@@ -477,7 +473,7 @@ public class StramClient
     }
 
     // push application configuration to dfs location
-    Path cfgDst = new Path(StramClientUtils.getDTRootDir(fs, conf), pathSuffix + "/" + LogicalPlan.SER_FILE_NAME);
+    Path cfgDst = new Path(appPath, LogicalPlan.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(cfgDst, true);
     LogicalPlan.write(this.dag, outStream);
     outStream.close();

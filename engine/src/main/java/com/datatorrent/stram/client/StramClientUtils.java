@@ -35,6 +35,7 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.stram.license.util.Util;
+
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -59,6 +60,7 @@ public class StramClientUtils
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
   public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
   public static final String DT_CONFIG_STATUS = DAGContext.DT_PREFIX + "configStatus";
+  public static final String SUBDIR_APPS = "apps";
 
   /**
    *
@@ -310,7 +312,7 @@ public class StramClientUtils
 
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
   {
-    return conf.get(DT_DFS_ROOT_DIR) == null ? fs.getHomeDirectory() : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_DFS_ROOT_DIR));
+    return conf.get(DT_DFS_ROOT_DIR) == null ? new Path(fs.getHomeDirectory(), "datatorrent") : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_DFS_ROOT_DIR));
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException

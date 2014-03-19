@@ -39,7 +39,7 @@ public class AlertsAgent extends StramAgent
 
   private String getAlertTemplatesDirectory()
   {
-    return getDefaultStramRoot() + Path.SEPARATOR + "alertTemplates";
+    return getAppsRoot() + Path.SEPARATOR + "alertTemplates";
   }
 
   public void createAlert(String appId, String name, String streamName, String templateName, Map<String, String> parameters) throws AppNotFoundException, IncompatibleVersionException, IOException, JSONException
