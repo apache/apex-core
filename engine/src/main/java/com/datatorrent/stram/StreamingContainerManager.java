@@ -748,7 +748,7 @@ public class StreamingContainerManager implements PlanContext
       oper.failureCount++;
       LOG.warn("Operator failure: {} count: {}", oper, oper.failureCount);
       Integer maxAttempts = oper.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
-      if (oper.failureCount <= maxAttempts) {
+      if (maxAttempts <= 0 || oper.failureCount <= maxAttempts) {
         // restart entire container in attempt to recover operator
         // in the future a more sophisticated recovery strategy could
         // involve initial redeploy attempt(s) of affected operator in
