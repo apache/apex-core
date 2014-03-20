@@ -52,6 +52,7 @@
     <module>jarpath</module>
     <module>stram</module>
     <module>engine</module>
+    <module>flume</module>
     <module>gateway</module>
     <module>certification</module>
   </modules>
@@ -183,7 +184,6 @@
     <profile>
       <id>release</id>
       <modules>
-        <module>flume</module>
         <module>malhar</module>
         <module>dist</module>
       </modules>
