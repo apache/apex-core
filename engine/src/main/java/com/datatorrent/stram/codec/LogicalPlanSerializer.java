@@ -4,36 +4,38 @@
  */
 package com.datatorrent.stram.codec;
 
-import com.datatorrent.api.AttributeMap.Attribute;
 import java.io.IOException;
 import java.util.*;
 
 import javax.ws.rs.Produces;
 import javax.ws.rs.ext.Provider;
 
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
-import java.util.Map.Entry;
-import org.apache.commons.configuration.PropertiesConfiguration;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
 
 /**
  * <p>LogicalPlanSerializer class.</p>
@@ -45,6 +47,8 @@ import org.codehaus.jettison.json.JSONObject;
 @Produces("application/json")
 public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 {
+  private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanSerializer.class);
+
   /**
    *
    * @param dag
@@ -84,23 +88,31 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         Context.OperatorContext.PARTITION_TPS_MAX,
         Context.OperatorContext.PARTITION_TPS_MIN,
         Context.OperatorContext.RECOVERY_ATTEMPTS,
-        Context.OperatorContext.SPIN_MILLIS,
-        }) {
+        Context.OperatorContext.SPIN_MILLIS}) {
         Object attrValue = operatorMeta.getAttributes().get(attrKey);
         if (attrValue != null) {
           attributeMap.put(attrKey.name, attrValue);
         }
       }
-      Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
-      for (Map.Entry<String, Object> entry : operatorProperties.entrySet()) {
-        if (entry.getValue() != null) {
-          propertyMap.put(entry.getKey(), entry.getValue());
+      BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
+      @SuppressWarnings("rawtypes")
+      Iterator entryIterator = operatorProperties.entryIterator();
+      while (entryIterator.hasNext()) {
+        try {
+          @SuppressWarnings("unchecked")
+          Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
+          if (entry.getValue() != null) {
+            propertyMap.put(entry.getKey(), entry.getValue());
+          }
+        }
+        catch (Exception ex) {
+          LOG.warn("Error trying to get a property of operator {}", operatorMeta.getName(), ex);
         }
       }
 
       Operators.PortMappingDescriptor pmd = new Operators.PortMappingDescriptor();
       Operators.describe(operatorMeta.getOperator(), pmd);
-      for (Entry<String, PortContextPair<InputPort<?>>> entry : pmd.inputPorts.entrySet()) {
+      for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : pmd.inputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
         InputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
@@ -119,7 +131,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         }
         portList.add(portDetailMap);
       }
-      for (Entry<String, PortContextPair<OutputPort<?>>> entry : pmd.outputPorts.entrySet()) {
+      for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : pmd.outputPorts.entrySet()) {
         HashMap<String, Object> portDetailMap = new HashMap<String, Object>();
         HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
         OutputPortMeta portMeta = operatorMeta.getMeta(entry.getValue().component);
@@ -177,10 +189,19 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       String operatorKey = LogicalPlanConfiguration.OPERATOR_PREFIX + operatorMeta.getName();
       Operator operator = operatorMeta.getOperator();
       props.setProperty(operatorKey + "." + LogicalPlanConfiguration.OPERATOR_CLASSNAME, operator.getClass().getName());
-      Map<String, Object> operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
-      for (Map.Entry<String, Object> entry : operatorProperties.entrySet()) {
-        if (!entry.getKey().equals("class") && !entry.getKey().equals("name") && entry.getValue() != null) {
-          props.setProperty(operatorKey + "." + entry.getKey(), entry.getValue());
+      BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operator);
+      @SuppressWarnings("rawtypes")
+      Iterator entryIterator = operatorProperties.entryIterator();
+      while (entryIterator.hasNext()) {
+        try {
+          @SuppressWarnings("unchecked")
+          Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
+          if (!entry.getKey().equals("class") && !entry.getKey().equals("name") && entry.getValue() != null) {
+            props.setProperty(operatorKey + "." + entry.getKey(), entry.getValue());
+          }
+        }
+        catch (Exception ex) {
+          LOG.warn("Error trying to get a property of operator {}", operatorMeta.getName(), ex);
         }
       }
     }

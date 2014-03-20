@@ -1124,7 +1124,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   @SuppressWarnings("unchecked")
-  public static Map<String, Object> getOperatorProperties(Operator operator)
+  public static BeanMap getOperatorProperties(Operator operator)
   {
     return new BeanMap(operator);
   }

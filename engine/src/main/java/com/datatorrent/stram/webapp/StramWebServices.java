@@ -64,6 +64,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import org.apache.commons.beanutils.BeanMap;
 
 /**
  *
@@ -614,28 +615,35 @@ public class StramWebServices
   @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
+  public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName) throws IOException, JSONException
   {
     init();
     OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    Map<String, Object> m = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
-    try {
-      if (propertyName == null) {
-        return new JSONObject(objectMapper.writeValueAsString(m));
+
+    BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(logicalOperator.getOperator());
+    Map<String, Object> m = new HashMap<String, Object>();
+    @SuppressWarnings("rawtypes")
+    Iterator entryIterator = operatorProperties.entryIterator();
+    while (entryIterator.hasNext()) {
+      try {
+        @SuppressWarnings("unchecked")
+        Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
+        if (propertyName == null) {
+          m.put(entry.getKey(), entry.getValue());
+        }
+        else if (propertyName.equals(entry.getKey())) {
+          m.put(entry.getKey(), entry.getValue());
+          break;
+        }
       }
-      else {
-        Map<String, Object> m1 = new HashMap<String, Object>();
-        m1.put(propertyName, m.get(propertyName));
-        return new JSONObject(objectMapper.writeValueAsString(m1));
+      catch (Exception ex) {
+        LOG.warn("Caught exception", ex);
       }
     }
-    catch (Exception ex) {
-      LOG.warn("Caught exception", ex);
-      throw new RuntimeException(ex);
-    }
+    return new JSONObject(objectMapper.writeValueAsString(m));
   }
 
   @GET
