@@ -64,6 +64,7 @@ public class StramClientUtils
   public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
   public static final String DT_CONFIG_STATUS = DAGContext.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
+  public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
 
   /**
    *
@@ -299,6 +300,16 @@ public class StramClientUtils
 
     convertDeprecatedProperties(conf);
 
+    //
+    // The ridiculous default RESOURCEMANAGER_CONNECT_MAX_WAIT_MS from hadoop is 15 minutes (!!!!), which actually translates to 20 minutes with the connect interval.
+    // That means if there is anything wrong with YARN or if YARN is not running, the caller has to wait for up to 20 minutes until it gets an error.
+    // We are overriding this to be 10 seconds maximum.
+    //
+
+    int rmConnectMaxWait = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
+    if (rmConnectMaxWait > RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE) {
+      conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
+    }
     return conf;
   }
 

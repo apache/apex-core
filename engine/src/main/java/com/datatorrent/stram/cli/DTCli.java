@@ -2009,7 +2009,7 @@ public class DTCli
           //Create a mapping between the app display number and original index at matchingAppFactories
           int index = 1;
           HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
-          for(Map.Entry<String,Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
+          for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
             //Map display number of the app to original unsorted index
             displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
 
@@ -2042,8 +2042,8 @@ public class DTCli
             try {
               int option = Integer.parseInt(optionLine);
               if (0 < option && option <= matchingAppFactories.size()) {
-                 int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
-                 appFactory = matchingAppFactories.get(appIndex);
+                int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
+                appFactory = matchingAppFactories.get(appIndex);
               }
             }
             catch (Exception ex) {
