@@ -803,7 +803,7 @@ public class StramChild extends YarnContainerMain
       }
 
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
-      logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId));
+      logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
       Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
