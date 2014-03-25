@@ -2955,7 +2955,7 @@ public class DTCli
           classObject.put("name", clazz.getName());
           arr.put(classObject);
         }
-        json.put("operatorClasses", arr);
+        json.put("classes", arr);
         printJson(json);
       }
       finally {
