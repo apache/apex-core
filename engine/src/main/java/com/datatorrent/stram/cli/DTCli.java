@@ -27,11 +27,10 @@ import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
-import java.beans.IntrospectionException;
 
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
+import java.beans.*;
 import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -39,11 +38,11 @@ import javax.ws.rs.core.MediaType;
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
-import org.apache.commons.beanutils.BeanUtils;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -2908,6 +2907,33 @@ public class DTCli
 
   }
 
+  private File copyToLocal(String[] files) throws IOException
+  {
+    File tmpDir = new File("/tmp/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
+    tmpDir.mkdirs();
+    for (int i = 0; i < files.length; i++) {
+      try {
+        URI uri = new URI(files[i]);
+        String scheme = uri.getScheme();
+        if (scheme.equals("file")) {
+          files[i] = uri.getPath();
+        }
+        else if (scheme.equals("hdfs")) {
+          FileSystem fs = FileSystem.get(uri, conf);
+          Path srcPath = new Path(uri.getPath());
+          Path dstPath = new Path(tmpDir.getAbsolutePath(), String.valueOf(i) + srcPath.getName());
+          fs.copyToLocalFile(srcPath, dstPath);
+          files[i] = dstPath.toUri().getPath();
+        }
+      }
+      catch (URISyntaxException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    return tmpDir;
+  }
+
   private class GetJarOperatorClassesCommand implements Command
   {
     @Override
@@ -2918,17 +2944,23 @@ public class DTCli
         parentName = args[2];
       }
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
-      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
-      JSONObject json = new JSONObject();
-      JSONArray arr = new JSONArray();
-      for (Class<? extends Operator> clazz: operatorClasses) {
-        JSONObject classObject = new JSONObject();
-        classObject.put("name", clazz.getName());
-        arr.put(classObject);
+      File tmpDir = copyToLocal(jarFiles);
+      try {
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
+        JSONObject json = new JSONObject();
+        JSONArray arr = new JSONArray();
+        for (Class<? extends Operator> clazz: operatorClasses) {
+          JSONObject classObject = new JSONObject();
+          classObject.put("name", clazz.getName());
+          arr.put(classObject);
+        }
+        json.put("operatorClasses", arr);
+        printJson(json);
       }
-      json.put("operatorClasses", arr);
-      printJson(json);
+      finally {
+        FileUtils.deleteDirectory(tmpDir);
+      }
     }
 
   }
@@ -2959,11 +2991,17 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
-      Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-      JSONObject json = new JSONObject();
-      json.put("properties", getClassProperties(operatorClass));
-      printJson(json);
+      File tmpDir = copyToLocal(jarFiles);
+      try {
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
+        JSONObject json = new JSONObject();
+        json.put("properties", getClassProperties(operatorClass));
+        printJson(json);
+      }
+      finally {
+        FileUtils.deleteDirectory(tmpDir);
+      }
     }
 
   }
