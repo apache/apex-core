@@ -3302,7 +3302,9 @@ public class DTCli
         pagerCommand = null;
       }
       else if (args[1].equals("on")) {
-        pagerCommand = "less -F -X -r";
+        if (consolePresent) {
+          pagerCommand = "less -F -X -r";
+        }
       }
       else {
         throw new CliException("set-pager parameter is either on or off.");
