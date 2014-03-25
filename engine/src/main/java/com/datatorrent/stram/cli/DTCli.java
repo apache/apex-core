@@ -3,12 +3,6 @@
  */
 package com.datatorrent.stram.cli;
 
-import java.io.*;
-import java.net.*;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
-import javax.ws.rs.core.MediaType;
 
 import com.datatorrent.api.*;
 import com.datatorrent.stram.StramClient;
@@ -31,13 +25,21 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
-
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
+import java.beans.IntrospectionException;
 
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.io.*;
+import java.net.*;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import javax.ws.rs.core.MediaType;
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
+import org.apache.commons.beanutils.BeanUtils;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
@@ -462,10 +464,15 @@ public class DTCli
                                                                    "List apps in a jar or show logical plan of an app class",
                                                                    getShowLogicalPlanCommandLineOptions()));
 
-    globalCommands.put("get-operator-classes", new CommandSpec(new GetOperatorClassesCommand(),
-                                                               new Arg[] {new FileArg("jar-files-comma-separated")},
-                                                               new Arg[] {new Arg("parent-class-name")},
-                                                               "List operators in a jar list"));
+    globalCommands.put("get-jar-operator-classes", new CommandSpec(new GetJarOperatorClassesCommand(),
+                                                                   new Arg[] {new FileArg("jar-files-comma-separated")},
+                                                                   new Arg[] {new Arg("parent-class-name")},
+                                                                   "List operators in a jar list"));
+
+    globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(),
+                                                                      new Arg[] {new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
+                                                                      null,
+                                                                      "List properties in specified operator"));
 
     globalCommands.put("alias", new CommandSpec(new AliasCommand(),
                                                 new Arg[] {new Arg("alias-name"), new CommandArg("command")},
@@ -2901,7 +2908,7 @@ public class DTCli
 
   }
 
-  private class GetOperatorClassesCommand implements Command
+  private class GetJarOperatorClassesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
@@ -2926,6 +2933,40 @@ public class DTCli
 
   }
 
+  private class GetJarOperatorPropertiesCommand implements Command
+  {
+    private JSONArray getClassProperties(Class<?> clazz) throws IntrospectionException, JSONException
+    {
+      JSONArray arr = new JSONArray();
+      for (PropertyDescriptor pd: Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
+        if (!pd.getName().equals("class") && (!(pd.getName().equals("up") && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
+          JSONObject propertyObj = new JSONObject();
+          propertyObj.put("name", pd.getName());
+          propertyObj.put("canGet", pd.getReadMethod() != null);
+          propertyObj.put("canSet", pd.getWriteMethod() != null);
+          Class<?> propertyType = pd.getPropertyType();
+          propertyObj.put("type", propertyType.getName());
+          if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang")) {
+            propertyObj.put("properties", getClassProperties(propertyType));
+          }
+          arr.put(propertyObj);
+        }
+      }
+      return arr;
+    }
+
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+      Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
+      JSONObject json = new JSONObject();
+      json.put("properties", getClassProperties(operatorClass));
+      printJson(json);
+    }
+
+  }
 
   private class DumpPropertiesFileCommand implements Command
   {

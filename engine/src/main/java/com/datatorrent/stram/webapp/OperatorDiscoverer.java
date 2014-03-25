@@ -119,7 +119,7 @@ public class OperatorDiscoverer
       parentClass = Operator.class;
     }
     else {
-      parentClass = Class.forName(parent);
+      parentClass = classLoader.loadClass(parent);
       if (!Operator.class.isAssignableFrom(parentClass)) {
         throw new IllegalArgumentException("Argument must be a subclass of Operator class");
       }
@@ -134,6 +134,21 @@ public class OperatorDiscoverer
       }
     }
     return result;
+  }
+
+  @SuppressWarnings("unchecked")
+  public Class<? extends Operator> getOperatorClass(String className) throws ClassNotFoundException
+  {
+    if (operatorClasses.isEmpty()) {
+      init();
+    }
+
+    Class<?> clazz = classLoader.loadClass(className);
+
+    if (!Operator.class.isAssignableFrom(clazz)) {
+      throw new IllegalArgumentException("Argument must be a subclass of Operator class");
+    }
+    return (Class<? extends Operator>)clazz;
   }
 
   List<Class<? extends Operator>> getActionOperatorClasses()
