@@ -21,14 +21,12 @@ import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.util.VersionInfo;
-import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.util.*;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
 
-import java.beans.*;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.*;
@@ -2968,26 +2966,6 @@ public class DTCli
 
   private class GetJarOperatorPropertiesCommand implements Command
   {
-    private JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException, JSONException
-    {
-      JSONArray arr = new JSONArray();
-      for (PropertyDescriptor pd: Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
-        if (!pd.getName().equals("class") && (!(pd.getName().equals("up") && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
-          JSONObject propertyObj = new JSONObject();
-          propertyObj.put("name", pd.getName());
-          propertyObj.put("canGet", pd.getReadMethod() != null);
-          propertyObj.put("canSet", pd.getWriteMethod() != null);
-          Class<?> propertyType = pd.getPropertyType();
-          propertyObj.put("type", propertyType.getName());
-          if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang") && level < MAX_PROPERTY_LEVELS) {
-            propertyObj.put("properties", getClassProperties(propertyType, level+1));
-          }
-          arr.put(propertyObj);
-        }
-      }
-      return arr;
-    }
-
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
@@ -2997,7 +2975,7 @@ public class DTCli
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
         JSONObject json = new JSONObject();
-        json.put("properties", getClassProperties(operatorClass, 0));
+        json.put("properties", OperatorBeanUtils.getClassProperties(operatorClass, 0));
         printJson(json);
       }
       finally {
