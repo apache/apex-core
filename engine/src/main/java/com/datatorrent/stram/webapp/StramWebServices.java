@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 
+import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.http.HttpConfig;
@@ -64,7 +65,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import org.apache.commons.beanutils.BeanMap;
 
 /**
  *
@@ -116,12 +116,11 @@ public class StramWebServices
   Boolean hasAccess(HttpServletRequest request)
   {
     String remoteUser = request.getRemoteUser();
-    UserGroupInformation callerUGI = null;
     if (remoteUser != null) {
-      callerUGI = UserGroupInformation.createRemoteUser(remoteUser);
-    }
-    if (callerUGI != null) {
-      return false;
+      UserGroupInformation callerUGI = UserGroupInformation.createRemoteUser(remoteUser);
+      if (callerUGI != null) {
+        return false;
+      }
     }
     return true;
   }

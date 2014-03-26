@@ -81,6 +81,24 @@ public class CLIProxy
     return issueCommand(sb.toString());
   }
 
+  public JSONObject getJarOperatorClasses(List<String> jarUrls, String parent) throws Exception
+  {
+    StringBuilder sb = new StringBuilder("get-jar-operator-classes \"");
+    sb.append(StringUtils.join(jarUrls, ",")).append("\"");
+    if (parent != null) {
+      sb.append(" \"").append(parent).append("\"");
+    }
+    return issueCommand(sb.toString());
+  }
+
+  public JSONObject getJarOperatorProperties(List<String> jarUrls, String operatorClass) throws Exception
+  {
+    StringBuilder sb = new StringBuilder("get-jar-operator-properties \"");
+    sb.append(StringUtils.join(jarUrls, ","));
+    sb.append("\" \"").append(operatorClass).append("\"");
+    return issueCommand(sb.toString());
+  }
+
   public JSONObject getApplications(String jarUri) throws Exception
   {
     return issueCommand("show-logical-plan \"" + jarUri + "\"");

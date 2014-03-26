@@ -3,68 +3,18 @@
  */
 package com.datatorrent.stram.cli;
 
-import java.io.*;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.*;
 
-import com.datatorrent.stram.license.*;
-import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
-import jline.console.ConsoleReader;
-import jline.console.completer.*;
-import jline.console.history.FileHistory;
-import jline.console.history.History;
-import jline.console.history.MemoryHistory;
-
-import javax.ws.rs.core.MediaType;
-
-import com.google.common.collect.Sets;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.commons.cli.*;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
-import org.apache.hadoop.yarn.client.api.YarnClient;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnException;
-import org.apache.log4j.Appender;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.tools.ant.DirectoryScanner;
-
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
-
+import com.datatorrent.api.*;
 import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.client.RecordingsAgent;
+import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
-import com.datatorrent.stram.client.StramAgent;
-import com.datatorrent.stram.client.StramAppLauncher;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
-import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.*;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
@@ -73,7 +23,42 @@ import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
+import com.google.common.collect.Sets;
+import com.sun.jersey.api.client.*;
+
+import java.beans.*;
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.net.*;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import javax.ws.rs.core.MediaType;
+import jline.console.ConsoleReader;
+import jline.console.completer.*;
+import jline.console.history.*;
+
+import org.apache.commons.cli.*;
+import org.apache.commons.cli.Options;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
+import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.log4j.*;
+import org.apache.tools.ant.DirectoryScanner;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -86,6 +71,7 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
+  private static final int MAX_PROPERTY_LEVELS = 5;
   private Configuration conf;
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -477,6 +463,17 @@ public class DTCli
                                                                    new Arg[] {new Arg("class-name")},
                                                                    "List apps in a jar or show logical plan of an app class",
                                                                    getShowLogicalPlanCommandLineOptions()));
+
+    globalCommands.put("get-jar-operator-classes", new CommandSpec(new GetJarOperatorClassesCommand(),
+                                                                   new Arg[] {new FileArg("jar-files-comma-separated")},
+                                                                   new Arg[] {new Arg("parent-class-name")},
+                                                                   "List operators in a jar list"));
+
+    globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(),
+                                                                      new Arg[] {new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
+                                                                      null,
+                                                                      "List properties in specified operator"));
+
     globalCommands.put("alias", new CommandSpec(new AliasCommand(),
                                                 new Arg[] {new Arg("alias-name"), new CommandArg("command")},
                                                 null,
@@ -2911,6 +2908,105 @@ public class DTCli
 
   }
 
+  private File copyToLocal(String[] files) throws IOException
+  {
+    File tmpDir = new File("/tmp/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
+    tmpDir.mkdirs();
+    for (int i = 0; i < files.length; i++) {
+      try {
+        URI uri = new URI(files[i]);
+        String scheme = uri.getScheme();
+        if (scheme.equals("file")) {
+          files[i] = uri.getPath();
+        }
+        else if (scheme.equals("hdfs")) {
+          FileSystem fs = FileSystem.get(uri, conf);
+          Path srcPath = new Path(uri.getPath());
+          Path dstPath = new Path(tmpDir.getAbsolutePath(), String.valueOf(i) + srcPath.getName());
+          fs.copyToLocalFile(srcPath, dstPath);
+          files[i] = dstPath.toUri().getPath();
+        }
+      }
+      catch (URISyntaxException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    return tmpDir;
+  }
+
+  private class GetJarOperatorClassesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String parentName = Operator.class.getName();
+      if (args.length > 2) {
+        parentName = args[2];
+      }
+      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      File tmpDir = copyToLocal(jarFiles);
+      try {
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
+        JSONObject json = new JSONObject();
+        JSONArray arr = new JSONArray();
+        for (Class<? extends Operator> clazz: operatorClasses) {
+          JSONObject classObject = new JSONObject();
+          classObject.put("name", clazz.getName());
+          arr.put(classObject);
+        }
+        json.put("classes", arr);
+        printJson(json);
+      }
+      finally {
+        FileUtils.deleteDirectory(tmpDir);
+      }
+    }
+
+  }
+
+  private class GetJarOperatorPropertiesCommand implements Command
+  {
+    private JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException, JSONException
+    {
+      JSONArray arr = new JSONArray();
+      for (PropertyDescriptor pd: Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
+        if (!pd.getName().equals("class") && (!(pd.getName().equals("up") && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
+          JSONObject propertyObj = new JSONObject();
+          propertyObj.put("name", pd.getName());
+          propertyObj.put("canGet", pd.getReadMethod() != null);
+          propertyObj.put("canSet", pd.getWriteMethod() != null);
+          Class<?> propertyType = pd.getPropertyType();
+          propertyObj.put("type", propertyType.getName());
+          if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang") && level < MAX_PROPERTY_LEVELS) {
+            propertyObj.put("properties", getClassProperties(propertyType, level+1));
+          }
+          arr.put(propertyObj);
+        }
+      }
+      return arr;
+    }
+
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      File tmpDir = copyToLocal(jarFiles);
+      try {
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
+        JSONObject json = new JSONObject();
+        json.put("properties", getClassProperties(operatorClass, 0));
+        printJson(json);
+      }
+      finally {
+        FileUtils.deleteDirectory(tmpDir);
+      }
+    }
+
+  }
+
   private class DumpPropertiesFileCommand implements Command
   {
     @Override
@@ -3207,7 +3303,9 @@ public class DTCli
         pagerCommand = null;
       }
       else if (args[1].equals("on")) {
-        pagerCommand = "less -F -X -r";
+        if (consolePresent) {
+          pagerCommand = "less -F -X -r";
+        }
       }
       else {
         throw new CliException("set-pager parameter is either on or off.");
