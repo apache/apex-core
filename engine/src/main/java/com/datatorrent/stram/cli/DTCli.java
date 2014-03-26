@@ -71,6 +71,7 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
+  private static final int MAX_PROPERTY_LEVELS = 5;
   private Configuration conf;
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -2967,7 +2968,7 @@ public class DTCli
 
   private class GetJarOperatorPropertiesCommand implements Command
   {
-    private JSONArray getClassProperties(Class<?> clazz) throws IntrospectionException, JSONException
+    private JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException, JSONException
     {
       JSONArray arr = new JSONArray();
       for (PropertyDescriptor pd: Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
@@ -2978,8 +2979,8 @@ public class DTCli
           propertyObj.put("canSet", pd.getWriteMethod() != null);
           Class<?> propertyType = pd.getPropertyType();
           propertyObj.put("type", propertyType.getName());
-          if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang")) {
-            propertyObj.put("properties", getClassProperties(propertyType));
+          if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang") && level < MAX_PROPERTY_LEVELS) {
+            propertyObj.put("properties", getClassProperties(propertyType, level+1));
           }
           arr.put(propertyObj);
         }
@@ -2996,7 +2997,7 @@ public class DTCli
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
         JSONObject json = new JSONObject();
-        json.put("properties", getClassProperties(operatorClass));
+        json.put("properties", getClassProperties(operatorClass, 0));
         printJson(json);
       }
       finally {
