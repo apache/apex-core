@@ -83,8 +83,8 @@ public class CLIProxy
 
   public JSONObject getJarOperatorClasses(List<String> jarUrls, String parent) throws Exception
   {
-    StringBuilder sb = new StringBuilder("get-jar-operator-classes ");
-    sb.append(StringUtils.join(jarUrls, ","));
+    StringBuilder sb = new StringBuilder("get-jar-operator-classes \"");
+    sb.append(StringUtils.join(jarUrls, ",")).append("\"");
     if (parent != null) {
       sb.append(" \"").append(parent).append("\"");
     }
@@ -93,9 +93,9 @@ public class CLIProxy
 
   public JSONObject getJarOperatorProperties(List<String> jarUrls, String operatorClass) throws Exception
   {
-    StringBuilder sb = new StringBuilder("get-jar-operator-properties ");
+    StringBuilder sb = new StringBuilder("get-jar-operator-properties \"");
     sb.append(StringUtils.join(jarUrls, ","));
-    sb.append(" \"").append(operatorClass).append("\"");
+    sb.append("\" \"").append(operatorClass).append("\"");
     return issueCommand(sb.toString());
   }
 
