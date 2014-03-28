@@ -313,13 +313,12 @@ public class StramWebServices
         JSONArray properties = OperatorBeanUtils.getClassProperties(clazz, 0);
 
         Field[] fields = clazz.getFields();
-        Arrays.sort(fields, new Comparator<Field>()
-            {
-              @Override
-              public int compare(Field a, Field b)
-              {
-                return a.getName().compareTo(b.getName());
-              }
+        Arrays.sort(fields, new Comparator<Field>() {
+          @Override
+          public int compare(Field a, Field b)
+          {
+            return a.getName().compareTo(b.getName());
+          }
 
         });
         for (Field field : fields) {
