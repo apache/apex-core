@@ -741,7 +741,7 @@ public class PhysicalPlan implements Serializable
   public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
-      return (Operator)ctx.getStorageAgent().load(oper.id, oper.recoveryCheckpoint.windowId);
+      return (Operator)ctx.getStorageAgent().load(oper.id, oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : oper.recoveryCheckpoint.windowId);
     } catch (IOException e) {
       throw new RuntimeException("Failed to read partition state for " + oper, e);
     }

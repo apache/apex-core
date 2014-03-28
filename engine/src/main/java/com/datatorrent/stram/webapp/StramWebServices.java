@@ -4,9 +4,6 @@
  */
 package com.datatorrent.stram.webapp;
 
-import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -40,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 
+import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.http.HttpConfig;
@@ -64,7 +62,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import org.apache.commons.beanutils.BeanMap;
+import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
  *
@@ -116,12 +114,11 @@ public class StramWebServices
   Boolean hasAccess(HttpServletRequest request)
   {
     String remoteUser = request.getRemoteUser();
-    UserGroupInformation callerUGI = null;
     if (remoteUser != null) {
-      callerUGI = UserGroupInformation.createRemoteUser(remoteUser);
-    }
-    if (callerUGI != null) {
-      return false;
+      UserGroupInformation callerUGI = UserGroupInformation.createRemoteUser(remoteUser);
+      if (callerUGI != null) {
+        return false;
+      }
     }
     return true;
   }
@@ -311,25 +308,12 @@ public class StramWebServices
       Class<?> clazz = Class.forName(className);
       if (OperatorDiscoverer.isInstantiableOperatorClass(clazz)) {
         JSONObject response = new JSONObject();
-        JSONArray properties = new JSONArray();
         JSONArray inputPorts = new JSONArray();
         JSONArray outputPorts = new JSONArray();
-        BeanInfo beanInfo = Introspector.getBeanInfo(clazz);
-        PropertyDescriptor[] pds = beanInfo.getPropertyDescriptors();
-        for (PropertyDescriptor pd : pds) {
-          if (pd.getWriteMethod() != null
-                  && !pd.getWriteMethod().getName().equals("setup")
-                  && !pd.getName().equals("name")) {
-            JSONObject property = new JSONObject();
-            property.put("name", pd.getName());
-            property.put("class", pd.getPropertyType().getName());
-            property.put("description", pd.getShortDescription());
-            properties.put(property);
-          }
-        }
+        JSONArray properties = OperatorBeanUtils.getClassProperties(clazz, 0);
+
         Field[] fields = clazz.getFields();
-        Arrays.sort(fields, new Comparator<Field>()
-        {
+        Arrays.sort(fields, new Comparator<Field>() {
           @Override
           public int compare(Field a, Field b)
           {
@@ -359,14 +343,14 @@ public class StramWebServices
             outputPort.put("name", outputAnnotation.name());
             outputPort.put("optional", outputAnnotation.optional());
             outputPorts.put(outputPort);
-            continue;
+            //continue;
           }
           else if (OutputPort.class.isAssignableFrom(field.getType())) {
             JSONObject outputPort = new JSONObject();
             outputPort.put("name", field.getName());
             outputPort.put("optional", true); // output port that is not annotated is default to be optional
             outputPorts.put(outputPort);
-            continue;
+            //continue;
           }
         }
         response.put("properties", properties);

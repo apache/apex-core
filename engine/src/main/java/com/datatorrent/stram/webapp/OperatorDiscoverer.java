@@ -9,6 +9,9 @@ import com.datatorrent.api.Operator.InputPort;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -32,25 +35,44 @@ public class OperatorDiscoverer
     }
 
   }
-  private Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>(new ClassComparator());
+  private final Set<Class<? extends Operator>> operatorClasses = new TreeSet<Class<? extends Operator>>(new ClassComparator());
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
+  private final List<String> pathsToScan = new ArrayList<String>();
+  private final ClassLoader classLoader;
 
-  @SuppressWarnings("unchecked")
-  private void init()
+  public OperatorDiscoverer()
   {
-    List<String> pathsToScan = new ArrayList<String>();
+    classLoader = ClassLoader.getSystemClassLoader();
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
-    for (String path : paths) {
+    for (String path: paths) {
       if (path.startsWith("./") && path.endsWith(".jar")) {
         pathsToScan.add(path);
       }
     }
+  }
 
+  public OperatorDiscoverer(String[] jars)
+  {
+    URL[] urls = new URL[jars.length];
+    for (int i = 0; i < jars.length; i++) {
+      pathsToScan.add(jars[i]);
+      try {
+        urls[i] = new URL("file://" + jars[i]);
+      }
+      catch (MalformedURLException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+    classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
+  }
+
+  @SuppressWarnings("unchecked")
+  private void init()
+  {
     for (String jarFile : pathsToScan) {
       try {
         JarFile jar = new JarFile(jarFile);
-
         java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
         while (entriesEnum.hasMoreElements()) {
           java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
@@ -59,9 +81,9 @@ public class OperatorDiscoverer
             if (entryName.endsWith(".class")) {
               final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
               try {
-                Class<?> clazz = Class.forName(className);
+                Class<?> clazz = classLoader.loadClass(className);
                 if (isInstantiableOperatorClass(clazz)) {
-                  LOG.info("Adding class {} as an operator", clazz.getName());
+                  LOG.debug("Adding class {} as an operator", clazz.getName());
                   operatorClasses.add((Class<? extends Operator>)clazz);
                 }
               }
@@ -97,7 +119,7 @@ public class OperatorDiscoverer
       parentClass = Operator.class;
     }
     else {
-      parentClass = Class.forName(parent);
+      parentClass = classLoader.loadClass(parent);
       if (!Operator.class.isAssignableFrom(parentClass)) {
         throw new IllegalArgumentException("Argument must be a subclass of Operator class");
       }
@@ -112,6 +134,21 @@ public class OperatorDiscoverer
       }
     }
     return result;
+  }
+
+  @SuppressWarnings("unchecked")
+  public Class<? extends Operator> getOperatorClass(String className) throws ClassNotFoundException
+  {
+    if (operatorClasses.isEmpty()) {
+      init();
+    }
+
+    Class<?> clazz = classLoader.loadClass(className);
+
+    if (!Operator.class.isAssignableFrom(clazz)) {
+      throw new IllegalArgumentException("Argument must be a subclass of Operator class");
+    }
+    return (Class<? extends Operator>)clazz;
   }
 
   List<Class<? extends Operator>> getActionOperatorClasses()
