@@ -1927,7 +1927,7 @@ public class DTCli
       }
 
 
-      String b64EncodedString = GenerateLicenseRequest.getLicenseRequest(Util.getDefaultPublicKey(), infoMap);
+      String b64EncodedString = GenerateLicenseRequest.getLicenseRequest(Util.getDefaultPublicKey(), true, infoMap);
       System.out.println();
       System.out.println("Please send an email with the following to license@datatorrent.com to request this license.");
       System.out.println("-------------------------- Cut from below ------------------------------");
