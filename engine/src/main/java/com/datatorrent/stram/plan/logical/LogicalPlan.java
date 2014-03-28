@@ -844,6 +844,11 @@ public class LogicalPlan implements Serializable, DAG
   {
     return this.getValue(CONTAINER_MEMORY_MB);
   }
+  
+  public String getApplicationDocLink()
+  {    
+    return this.getValue(APPLICATION_DOC_LINK);
+  }
 
   public int getMasterMemoryMB()
   {

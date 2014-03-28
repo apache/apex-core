@@ -36,6 +36,7 @@ public class AppInfo {
 
   protected String appId;
   protected String name;
+  protected String docLink;
   protected String user;
   protected long startTime;
   protected long elapsedTime;
@@ -152,6 +153,7 @@ public class AppInfo {
   public AppInfo(StramAppContext context) {
     this.appId = context.getApplicationID().toString();
     this.name = context.getApplicationName();
+    this.docLink = context.getApplicationDocLink();
     this.user = context.getUser().toString();
     this.startTime = context.getStartTime();
     this.elapsedTime = Times.elapsed(this.startTime, 0);

@@ -295,6 +295,12 @@ public class StramAppMasterService extends CompositeService
     {
       return getValue(LogicalPlan.APPLICATION_NAME);
     }
+    
+    @Override
+    public String getApplicationDocLink()
+    {
+      return getValue(LogicalPlan.APPLICATION_DOC_LINK);
+    }
 
     @Override
     public long getStartTime()

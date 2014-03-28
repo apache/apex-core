@@ -29,6 +29,8 @@ public interface StramAppContext extends Context
   ApplicationAttemptId getApplicationAttemptId();
 
   String getApplicationName();
+  
+  String getApplicationDocLink();
 
   long getStartTime();
 

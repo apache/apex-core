@@ -41,6 +41,11 @@ public interface DAGContext extends Context
    */
   Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
   /**
+   * URL to the application's documentation.
+   * If not set, "app-documentation-unavailable" is the default.
+   */
+  Attribute<String> APPLICATION_DOC_LINK = new Attribute<String>("app-documentation-unavailable");
+  /**
    * Application instance identifier. An application with the same name can run in multiple instances, each with a
    * unique identifier. The identifier is set by the client that submits the application and can be used in operators
    * along with the operator ID to segregate output etc.
@@ -178,4 +183,6 @@ public interface DAGContext extends Context
   Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
+  
+
 }

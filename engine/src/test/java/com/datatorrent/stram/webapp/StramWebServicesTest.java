@@ -133,6 +133,12 @@ public class StramWebServicesTest extends JerseyTest
     }
 
     @Override
+    public String getApplicationDocLink()
+    {
+      return "TestAppDocLink";
+    }
+    
+    @Override
     public long getStartTime()
     {
       return startTime;
