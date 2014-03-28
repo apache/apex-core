@@ -21,7 +21,7 @@ public class OperatorBeanUtils
   public static JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException, JSONException
   {
     JSONArray arr = new JSONArray();
-    for (PropertyDescriptor pd: Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
+    for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
       if (!pd.getName().equals("class") && (!(pd.getName().equals("up") && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
         JSONObject propertyObj = new JSONObject();
         propertyObj.put("name", pd.getName());
