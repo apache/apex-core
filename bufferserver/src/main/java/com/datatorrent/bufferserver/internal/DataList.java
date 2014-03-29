@@ -364,7 +364,7 @@ public class DataList
     }
 
     if (inmemBlockCount >= MAX_COUNT_OF_INMEM_BLOCKS) {
-      logger.debug("InmemBlockCount before releaes {}", inmemBlockCount);
+      //logger.debug("InmemBlockCount before releaes {}", inmemBlockCount);
       for (Block temp = first; temp != null; temp = temp.next) {
         boolean found = false;
         for (DataListIterator iterator : iterators.values()) {
@@ -381,7 +381,7 @@ public class DataList
           }
         }
       }
-      logger.debug("InmemBlockCount after release {}", inmemBlockCount);
+      //logger.debug("InmemBlockCount after release {}", inmemBlockCount);
     }
   }
 
