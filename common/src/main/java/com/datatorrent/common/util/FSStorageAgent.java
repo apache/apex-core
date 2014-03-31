@@ -45,13 +45,18 @@ public class FSStorageAgent implements StorageAgent
   {
     Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     logger.debug("Saving: {}", path);
-    FileSystem fs = FileSystem.get(path.toUri(), conf);
-    FSDataOutputStream stream = fs.create(path);
+    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
     try {
-      store(stream, object);
+      FSDataOutputStream stream = fs.create(path);
+      try {
+        store(stream, object);
+      }
+      finally {
+        stream.close();
+      }
     }
     finally {
-      stream.close();
+      fs.close();
     }
   }
 
@@ -60,13 +65,18 @@ public class FSStorageAgent implements StorageAgent
   {
     Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId + PATH_SEPARATOR + windowId);
     logger.debug("Loading: {}", path);
-    FileSystem fs = FileSystem.get(path.toUri(), conf);
-    FSDataInputStream stream = fs.open(path);
+    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
     try {
-      return retrieve(stream);
+      FSDataInputStream stream = fs.open(path);
+      try {
+        return retrieve(stream);
+      }
+      finally {
+        stream.close();
+      }
     }
     finally {
-      stream.close();
+      fs.close();
     }
   }
 
@@ -75,26 +85,35 @@ public class FSStorageAgent implements StorageAgent
   {
     Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     logger.debug("Deleting: {}", path);
-    FileSystem fs = FileSystem.get(path.toUri(), conf);
-    fs.delete(path, false);
+    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
+    try {
+      fs.delete(path, false);
+    }
+    finally {
+      fs.close();
+    }
   }
 
   @Override
   public long[] getWindowIds(int operatorId) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId);
-    FileSystem fs = FileSystem.get(path.toUri(), conf);
+    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
+    try {
+      FileStatus[] files = fs.listStatus(path);
+      if (files == null || files.length == 0) {
+        throw new IOException("Storage Agent has not saved anything yet!");
+      }
 
-    FileStatus[] files = fs.listStatus(path);
-    if (files == null || files.length == 0) {
-      throw new IOException("Storage Agent has not saved anything yet!");
+      long windowIds[] = new long[files.length];
+      for (int i = files.length; i-- > 0;) {
+        windowIds[i] = Long.parseLong(files[i].getPath().getName());
+      }
+      return windowIds;
     }
-
-    long windowIds[] = new long[files.length];
-    for (int i = files.length; i-- > 0;) {
-      windowIds[i] = Long.parseLong(files[i].getPath().getName());
+    finally {
+      fs.close();
     }
-    return windowIds;
   }
 
   @Override
