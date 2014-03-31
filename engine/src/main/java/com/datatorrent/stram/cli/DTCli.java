@@ -500,10 +500,12 @@ public class DTCli
                                                     new Arg[] {new Arg("on/off")},
                                                     null,
                                                     "Set the pager program for output"));
+    /*
     globalCommands.put("generate-license-request", new CommandSpec(new GenerateLicenseRequestCommand(),
                                                                    null,
                                                                    null,
                                                                    "Generate license request"));
+    */
     globalCommands.put("activate-license", new CommandSpec(new ActivateLicenseCommand(),
                                                            null,
                                                            new Arg[] {new FileArg("license-file")},
