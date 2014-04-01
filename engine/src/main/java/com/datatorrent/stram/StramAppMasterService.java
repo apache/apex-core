@@ -295,7 +295,7 @@ public class StramAppMasterService extends CompositeService
     {
       return getValue(LogicalPlan.APPLICATION_NAME);
     }
-    
+
     @Override
     public String getApplicationDocLink()
     {
@@ -473,7 +473,7 @@ public class StramAppMasterService extends CompositeService
       StringCodecs.loadConverters(codecs);
     }
 
-    LOG.info("Starting application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
+    LOG.info("Starting application with {} operators in {} containers", dnmgr.getPhysicalPlan().getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
 
     if (UserGroupInformation.isSecurityEnabled()) {
       // TODO :- Need to perform token renewal

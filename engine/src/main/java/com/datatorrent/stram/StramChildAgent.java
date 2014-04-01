@@ -119,7 +119,7 @@ public class StramChildAgent {
     }
 
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
-    Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
+    HashSet<PTOperator.PTOutput> publishers = new HashSet<PTOperator.PTOutput>();
 
     for (PTOperator oper : operators) {
       if (oper.getState() != State.PENDING_DEPLOY) {
@@ -168,7 +168,7 @@ public class StramChildAgent {
         }
 
         ndi.outputs.add(portInfo);
-        publishers.put(oper.getId() + "/" + streamMeta.getName(), portInfo);
+        publishers.add(out);
       }
     }
 
@@ -206,9 +206,8 @@ public class StramChildAgent {
 
         if (sourceOutput.source.getContainer() == oper.getContainer()) {
           // both operators in same container
-          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getName());
-          if (outputInfo == null) {
-            throw new AssertionError("No publisher for inline stream " + sourceOutput);
+          if (!publishers.contains(sourceOutput)) {
+            throw new AssertionError("Source not deployed for container local stream " + sourceOutput + " " + in);
           }
           if (streamMeta.getLocality() == Locality.THREAD_LOCAL) {
             inputInfo.locality = Locality.THREAD_LOCAL;
