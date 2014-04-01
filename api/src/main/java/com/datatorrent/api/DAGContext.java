@@ -131,8 +131,7 @@ public interface DAGContext extends Context
    */
   Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
   /**
-   * Please use GATEWAY_CONNECT_ADDRESS
-   * @deprecated
+   * @deprecated Please use GATEWAY_CONNECT_ADDRESS
    */
   @Deprecated
   Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
@@ -183,6 +182,4 @@ public interface DAGContext extends Context
   Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
-  
-
 }

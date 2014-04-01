@@ -163,8 +163,8 @@ public class StramAppLauncher
 
     // add all jar files from same directory
     Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
-    for (File jarFile : jarFiles) {
-      jfc.urls.add(jarFile.toURI().toURL());
+    for (File lJarFile : jarFiles) {
+      jfc.urls.add(lJarFile.toURI().toURL());
     }
 
     // resolve dependencies
