@@ -292,7 +292,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      Object operator = (Operator)new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).load(mergeNodeDI.id, -1);
+      Object operator = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).load(mergeNodeDI.id, -1);
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
@@ -399,6 +399,46 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals(""+sca2.container, 1, countState(sca2.container, PTOperator.State.PENDING_UNDEPLOY));
     Assert.assertEquals(""+sca2.container, 0, countState(sca2.container, PTOperator.State.PENDING_DEPLOY));
 
+  }
+
+  @Test
+  public void testRecoveryUpstreamInline() throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+
+    dag.addStream("o1o3", o1.outport1, o3.inport1);
+    dag.addStream("o2o3", o2.outport1, o3.inport2);
+
+    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = scm.getPhysicalPlan();
+    Assert.assertEquals(2, plan.getContainers().size());
+
+    plan.getOperators(dag.getMeta(o1)).get(0);
+
+    Assert.assertEquals(2, plan.getContainers().size());
+    PTContainer c1 = plan.getContainers().get(0);
+    Assert.assertEquals(Sets.newHashSet(plan.getOperators(dag.getMeta(o1)).get(0), plan.getOperators(dag.getMeta(o3)).get(0)), Sets.newHashSet(c1.getOperators()));
+    PTContainer c2 = plan.getContainers().get(1);
+
+    assignContainer(scm, "c1");
+    assignContainer(scm, "c2");
+
+    for (PTOperator oper : c1.getOperators()) {
+      Assert.assertEquals("state " + oper, PTOperator.State.PENDING_DEPLOY, oper.getState());
+    }
+    scm.scheduleContainerRestart(c2.getExternalId());
+    for (PTOperator oper : c1.getOperators()) {
+      Assert.assertEquals("state " + oper, PTOperator.State.PENDING_UNDEPLOY, oper.getState());
+    }
+
+    System.out.println(plan);
   }
 
   @Test

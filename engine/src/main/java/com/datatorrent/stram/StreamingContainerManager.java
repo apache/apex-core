@@ -538,13 +538,41 @@ public class StreamingContainerManager implements PlanContext
     // resolve dependencies
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
     for (PTOperator oper : cs.container.getOperators()) {
-      // TODO: include container local upstream operators
       updateRecoveryCheckpoints(oper, ctx);
     }
+    includeLocalUpstreamOperators(ctx);
 
     // redeploy cycle for all affected operators
     LOG.info("Affected operators {}", ctx.visited);
     deploy(Collections.<PTContainer>emptySet(), ctx.visited, Sets.newHashSet(cs.container), ctx.visited);
+  }
+
+  /**
+   * Transitively add operators that are container local to the dependency set.
+   * (All downstream operators were traversed during checkpoint update.)
+   * @param ctx
+   */
+  private void includeLocalUpstreamOperators(UpdateCheckpointsContext ctx)
+  {
+    Set<PTOperator> newOperators = Sets.newHashSet();
+    // repeat until no more local upstream operators are found
+    do {
+      newOperators.clear();
+      for (PTOperator oper : ctx.visited) {
+        for (PTInput input : oper.getInputs()) {
+          if (input.source.source.getContainer() == oper.getContainer()) {
+            if (!ctx.visited.contains(input.source.source)) {
+              newOperators.add(input.source.source);
+            }
+          }
+        }
+      }
+      if (!newOperators.isEmpty()) {
+        for (PTOperator oper : newOperators) {
+          updateRecoveryCheckpoints(oper, ctx);
+        }
+      }
+    } while (!newOperators.isEmpty());
   }
 
   public void removeContainerAgent(String containerId)
