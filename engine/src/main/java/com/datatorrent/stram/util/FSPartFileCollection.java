@@ -74,7 +74,7 @@ public class FSPartFileCollection
       localBasePath = basePath.substring(5);
       (new File(localBasePath)).mkdirs();
     }
-    fs = FileSystem.get(new Path(basePath).toUri(), new Configuration());
+    fs = FileSystem.newInstance(new Path(basePath).toUri(), new Configuration());
 
     Path pa = new Path(basePath, META_FILE);
     if (isLocalMode) {
@@ -111,6 +111,7 @@ public class FSPartFileCollection
         writeIndexEnd();
         indexOutStr.close();
       }
+      fs.close();
     }
     catch (IOException ex) {
       logger.error(ex.toString());

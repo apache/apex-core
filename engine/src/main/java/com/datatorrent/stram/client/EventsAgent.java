@@ -71,7 +71,7 @@ public final class EventsAgent extends FSPartFileAgent
     String[] tmp = timeRange.split("-");
     info.startTime = Long.valueOf(tmp[0]);
     info.endTime = Long.valueOf(tmp[1]);
-    cursor = cursor2 + 1;
+    //cursor = cursor2 + 1;
     return info;
   }
 
@@ -93,13 +93,13 @@ public final class EventsAgent extends FSPartFileAgent
           continue;
         }
         if (fromTime != null) {
-          if (fromTime.longValue() > indexLine.endTime) {
+          if (fromTime > indexLine.endTime) {
             continue;
           }
         }
 
         if (toTime != null) {
-          if (toTime.longValue() < indexLine.startTime) {
+          if (toTime < indexLine.startTime) {
             return result;
           }
         }

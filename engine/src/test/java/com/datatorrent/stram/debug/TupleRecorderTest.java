@@ -24,7 +24,6 @@ import org.apache.hadoop.fs.Path;
 import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
-import com.datatorrent.stram.debug.TupleRecorder.RecordInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -72,8 +71,9 @@ public class TupleRecorderTest
   }
 
   @Test
-  public void testRecorder()
+  public void testRecorder() throws IOException
   {
+    FileSystem fs = new LocalFileSystem();
     try {
       TupleRecorder recorder = new TupleRecorder();
       recorder.getStorage().setBytesPerPartFile(4096);
@@ -114,7 +114,6 @@ public class TupleRecorderTest
       recorder.endWindow();
       recorder.teardown();
 
-      FileSystem fs = new LocalFileSystem();
       fs.initialize((new Path(recorder.getStorage().getBasePath()).toUri()), new Configuration());
       Path path;
       FSDataInputStream is;
@@ -130,14 +129,13 @@ public class TupleRecorderTest
       Assert.assertTrue("check index", line.matches("F:part0.txt:\\d+-\\d+:4:T:1000-1000:33:\\{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"\\}"));
 
       path = new Path(recorder.getStorage().getBasePath(), FSPartFileCollection.META_FILE);
-      //fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
       ObjectMapper mapper = new ObjectMapper();
       line = br.readLine();
       Assert.assertEquals("check version", "1.2", line);
-      line = br.readLine(); // RecordInfo
+      br.readLine(); // RecordInfo
       //RecordInfo ri = mapper.readValue(line, RecordInfo.class);
       line = br.readLine();
       PortInfo pi = mapper.readValue(line, PortInfo.class);
@@ -155,11 +153,10 @@ public class TupleRecorderTest
       pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).id, pi.id);
       Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      Assert.assertEquals("port size", recorder.getPortInfoMap().size(), 4);
+      Assert.assertEquals("port size", 4, recorder.getPortInfoMap().size());
       //line = br.readLine();
 
       path = new Path(recorder.getStorage().getBasePath(), "part0.txt");
-      //fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
@@ -190,11 +187,13 @@ public class TupleRecorderTest
     catch (IOException ex) {
       throw new RuntimeException(ex);
     }
-
+    finally {
+      fs.close();
+    }
   }
 
-  private static File testWorkDir = new File("target", TupleRecorderTest.class.getName());
-  private static int testTupleCount = 100;
+  private static final File testWorkDir = new File("target", TupleRecorderTest.class.getName());
+  private static final int testTupleCount = 100;
 
   @Test
   public void testRecordingFlow() throws Exception
@@ -253,7 +252,7 @@ public class TupleRecorderTest
     Assert.assertTrue("meta file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
     line = br.readLine();
-    Assert.assertEquals("version should be 1.2", line, "1.2");
+    Assert.assertEquals("version should be 1.2", "1.2", line);
     line = br.readLine();
     Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
     for (int i = 0; i < numPorts; i++) {

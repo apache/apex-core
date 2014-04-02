@@ -26,6 +26,7 @@ public class FSAgent
   private static final Logger LOG = LoggerFactory.getLogger(FSAgent.class);
   protected FileSystem fs;
   protected Configuration conf;
+  protected boolean ownFS = true;
 
   public FSAgent(Configuration conf)
   {
@@ -35,12 +36,21 @@ public class FSAgent
   public FSAgent(FileSystem fs)
   {
     this.fs = fs;
+    this.ownFS = false;
   }
 
   public void setup() throws IOException
   {
     if (fs == null) {
-      fs = FileSystem.get(conf);
+      fs = FileSystem.newInstance(conf);
+      ownFS = true;
+    }
+  }
+
+  public void tearDown() throws IOException
+  {
+    if (fs != null && ownFS) {
+      fs.close();
     }
   }
 
@@ -85,8 +95,12 @@ public class FSAgent
   {
     DataInputStream is = new DataInputStream(fs.open(path));
     byte[] bytes = new byte[is.available()];
-    is.readFully(bytes);
-    is.close();
+    try {
+      is.readFully(bytes);
+    }
+    finally {
+      is.close();
+    }
     return bytes;
   }
 

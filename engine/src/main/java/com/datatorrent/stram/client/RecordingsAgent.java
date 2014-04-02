@@ -104,7 +104,7 @@ public final class RecordingsAgent extends FSPartFileAgent
   {
     super(conf);
   }
-  
+
   public void setLocalMode(boolean localMode)
   {
     this.localMode = localMode;
@@ -122,8 +122,15 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
     }
     else {
-      fs = FileSystem.get(new Configuration());
+      fs = FileSystem.newInstance(new Configuration());
     }
+    ownFS = true;
+  }
+
+  @Override
+  public void tearDown() throws IOException
+  {
+    super.tearDown();
   }
 
   public String getRecordingsDirectory(String appId, String opId)
@@ -268,7 +275,7 @@ public final class RecordingsAgent extends FSPartFileAgent
             result.addAll(getRecordingInfo(appId, opId));
           }
           catch (NumberFormatException ex) {
-            continue;
+            // ignore
           }
         }
       }
@@ -310,7 +317,7 @@ public final class RecordingsAgent extends FSPartFileAgent
             result.add(getRecordingInfoHelper(appId, opId, startTime, containers));
           }
           catch (NumberFormatException ex) {
-            continue;
+            // ignore
           }
         }
       }

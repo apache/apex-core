@@ -289,19 +289,16 @@ public final class StatsAgent extends FSPartFileAgent
       ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
-        if (indexLine.isEndLine) {
-          continue;
-        }
-        else {
+        if (!indexLine.isEndLine) {
 
           if (startTime != null) {
-            if (startTime.longValue() > indexLine.endTime) {
+            if (startTime > indexLine.endTime) {
               continue;
             }
           }
 
           if (endTime != null) {
-            if (endTime.longValue() < indexLine.startTime) {
+            if (endTime < indexLine.startTime) {
               return result;
             }
           }
@@ -366,13 +363,13 @@ public final class StatsAgent extends FSPartFileAgent
         }
         StatsIndexLine indexLine = parseIndexLine(line);
         if (startTime != null) {
-          if (startTime.longValue() > indexLine.endTime) {
+          if (startTime > indexLine.endTime) {
             continue;
           }
         }
 
         if (endTime != null) {
-          if (endTime.longValue() < indexLine.startTime) {
+          if (endTime < indexLine.startTime) {
             return result;
           }
         }

@@ -397,12 +397,17 @@ public class StramClient
       }
 
       // For now, only getting tokens for the default file-system.
-      FileSystem fs = FileSystem.get(conf);
-      final Token<?> tokens[] = fs.addDelegationTokens(tokenRenewer, credentials);
-      if (tokens != null) {
-        for (Token<?> token : tokens) {
-          LOG.info("Got dt for " + fs.getUri() + "; " + token);
+      FileSystem fs = FileSystem.newInstance(conf);
+      try {
+        final Token<?> tokens[] = fs.addDelegationTokens(tokenRenewer, credentials);
+        if (tokens != null) {
+          for (Token<?> token : tokens) {
+            LOG.info("Got dt for " + fs.getUri() + "; " + token);
+          }
         }
+      }
+      finally {
+        fs.close();
       }
 
       InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
@@ -430,168 +435,169 @@ public class StramClient
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
     // copy required jar files to dfs, to be localized for containers
-    FileSystem fs = FileSystem.get(conf);
-    Path appPath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS + "/" + appId.toString());
+    FileSystem fs = FileSystem.newInstance(conf);
+    try {
+      Path appPath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS + "/" + appId.toString());
 
-    String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
+      String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
 
-    LOG.info("libjars: {}", libJarsCsv);
-    dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
-    LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
+      LOG.info("libjars: {}", libJarsCsv);
+      dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
+      LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
 
-    if (files != null) {
-      String[] localFiles = files.split(",");
-      String filesCsv = copyFromLocal(fs, appPath, localFiles);
-      LOG.info("files: {}", filesCsv);
-      dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
-      LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
-    }
+      if (files != null) {
+        String[] localFiles = files.split(",");
+        String filesCsv = copyFromLocal(fs, appPath, localFiles);
+        LOG.info("files: {}", filesCsv);
+        dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
+      }
 
-    if (archives != null) {
-      String[] localFiles = archives.split(",");
-      String archivesCsv = copyFromLocal(fs, appPath, localFiles);
-      LOG.info("archives: {}", archivesCsv);
-      dag.getAttributes().put(LogicalPlan.ARCHIVES, archivesCsv);
-      LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
-    }
+      if (archives != null) {
+        String[] localFiles = archives.split(",");
+        String archivesCsv = copyFromLocal(fs, appPath, localFiles);
+        LOG.info("archives: {}", archivesCsv);
+        dag.getAttributes().put(LogicalPlan.ARCHIVES, archivesCsv);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
+      }
 
-    dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
+      dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
 
-    // Set the log4j properties if needed
-    if (!log4jPropFile.isEmpty()) {
-      Path log4jSrc = new Path(log4jPropFile);
-      Path log4jDst = new Path(StramClientUtils.getDTRootDir(fs, conf), "log4j.props");
-      fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
-      FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
-      LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
-      log4jRsrc.setType(LocalResourceType.FILE);
-      log4jRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-      log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jDst.toUri()));
-      log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
-      log4jRsrc.setSize(log4jFileStatus.getLen());
-      localResources.put("log4j.properties", log4jRsrc);
-    }
+      // Set the log4j properties if needed
+      if (!log4jPropFile.isEmpty()) {
+        Path log4jSrc = new Path(log4jPropFile);
+        Path log4jDst = new Path(StramClientUtils.getDTRootDir(fs, conf), "log4j.props");
+        fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
+        FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
+        LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
+        log4jRsrc.setType(LocalResourceType.FILE);
+        log4jRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
+        log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jDst.toUri()));
+        log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
+        log4jRsrc.setSize(log4jFileStatus.getLen());
+        localResources.put("log4j.properties", log4jRsrc);
+      }
 
-    // push application configuration to dfs location
-    Path cfgDst = new Path(appPath, LogicalPlan.SER_FILE_NAME);
-    FSDataOutputStream outStream = fs.create(cfgDst, true);
-    LogicalPlan.write(this.dag, outStream);
-    outStream.close();
+      // push application configuration to dfs location
+      Path cfgDst = new Path(appPath, LogicalPlan.SER_FILE_NAME);
+      FSDataOutputStream outStream = fs.create(cfgDst, true);
+      LogicalPlan.write(this.dag, outStream);
+      outStream.close();
 
-    FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
-    LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
-    topologyRsrc.setType(LocalResourceType.FILE);
-    topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-    topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
-    topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
-    topologyRsrc.setSize(topologyFileStatus.getLen());
-    localResources.put(LogicalPlan.SER_FILE_NAME, topologyRsrc);
+      FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
+      LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
+      topologyRsrc.setType(LocalResourceType.FILE);
+      topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
+      topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
+      topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
+      topologyRsrc.setSize(topologyFileStatus.getLen());
+      localResources.put(LogicalPlan.SER_FILE_NAME, topologyRsrc);
 
-    // Set local resource info into app master container launch context
-    amContainer.setLocalResources(localResources);
+      // Set local resource info into app master container launch context
+      amContainer.setLocalResources(localResources);
 
     // Set the necessary security tokens as needed
-    //amContainer.setContainerTokens(containerToken);
-
-    // Set the env variables to be setup in the env where the application master will be run
-    LOG.info("Set the environment for the application master");
-    Map<String, String> env = new HashMap<String, String>();
+      //amContainer.setContainerTokens(containerToken);
+      // Set the env variables to be setup in the env where the application master will be run
+      LOG.info("Set the environment for the application master");
+      Map<String, String> env = new HashMap<String, String>();
 
     // Add application jar(s) location to classpath
-    // At some point we should not be required to add
-    // the hadoop specific classpaths to the env.
-    // It should be provided out of the box.
-    // For now setting all required classpaths including
-    // the classpath to "." for the application jar(s)
-
+      // At some point we should not be required to add
+      // the hadoop specific classpaths to the env.
+      // It should be provided out of the box.
+      // For now setting all required classpaths including
+      // the classpath to "." for the application jar(s)
     // including ${CLASSPATH} will duplicate the class path in app master, removing it for now
-    //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+      //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+      StringBuilder classPathEnv = new StringBuilder("./*");
+      for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+        classPathEnv.append(':');
+        classPathEnv.append(c.trim());
+      }
+      env.put("CLASSPATH", classPathEnv.toString());
 
-    StringBuilder classPathEnv = new StringBuilder("./*");
-    for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
-      classPathEnv.append(':');
-      classPathEnv.append(c.trim());
-    }
-    env.put("CLASSPATH", classPathEnv.toString());
+      amContainer.setEnvironment(env);
 
-    amContainer.setEnvironment(env);
+      // Set the necessary command to execute the application master
+      ArrayList<CharSequence> vargs = new ArrayList<CharSequence>(30);
 
-    // Set the necessary command to execute the application master
-    ArrayList<CharSequence> vargs = new ArrayList<CharSequence>(30);
-
-    // Set java executable command
-    LOG.info("Setting up app master command");
-    vargs.add(javaCmd);
-    if (dag.isDebug()) {
-      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
-    }
+      // Set java executable command
+      LOG.info("Setting up app master command");
+      vargs.add(javaCmd);
+      if (dag.isDebug()) {
+        vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
+      }
     // Set Xmx based on am memory size
-    // default heap size 75% of total memory
-    vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
-    vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
-    vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
-    vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
-    vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
+      // default heap size 75% of total memory
+      vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
+      vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
+      vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
+      vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
+      vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
-    if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
-      vargs.add(LicensingAppMaster.class.getName());
-    } else {
-      vargs.add(StramAppMaster.class.getName());
-    }
+      if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
+        vargs.add(LicensingAppMaster.class.getName());
+      }
+      else {
+        vargs.add(StramAppMaster.class.getName());
+      }
 
-    vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
-    vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
+      vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
+      vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
 
-    // Get final commmand
-    StringBuilder command = new StringBuilder(9 * vargs.size());
-    for (CharSequence str : vargs) {
-      command.append(str).append(" ");
-    }
+      // Get final commmand
+      StringBuilder command = new StringBuilder(9 * vargs.size());
+      for (CharSequence str : vargs) {
+        command.append(str).append(" ");
+      }
 
-    LOG.info("Completed setting up app master command " + command.toString());
-    List<String> commands = new ArrayList<String>();
-    commands.add(command.toString());
-    amContainer.setCommands(commands);
+      LOG.info("Completed setting up app master command " + command.toString());
+      List<String> commands = new ArrayList<String>();
+      commands.add(command.toString());
+      amContainer.setCommands(commands);
 
     // Set up resource type requirements
-    // For now, only memory is supported so we set memory requirements
-    Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(amMemory);
-    appContext.setResource(capability);
+      // For now, only memory is supported so we set memory requirements
+      Resource capability = Records.newRecord(Resource.class);
+      capability.setMemory(amMemory);
+      appContext.setResource(capability);
 
     // Service data is a binary blob that can be passed to the application
-    // Not needed in this scenario
-    // amContainer.setServiceData(serviceData);
+      // Not needed in this scenario
+      // amContainer.setServiceData(serviceData);
+      appContext.setAMContainerSpec(amContainer);
 
-    appContext.setAMContainerSpec(amContainer);
+      // Set the priority for the application master
+      Priority pri = Records.newRecord(Priority.class);
+      pri.setPriority(amPriority);
+      appContext.setPriority(pri);
+      // Set the queue to which this application is to be submitted in the RM
+      appContext.setQueue(amQueue);
 
-    // Set the priority for the application master
-    Priority pri = Records.newRecord(Priority.class);
-    pri.setPriority(amPriority);
-    appContext.setPriority(pri);
-    // Set the queue to which this application is to be submitted in the RM
-    appContext.setQueue(amQueue);
-
-    // Create the request to send to the applications manager
-    SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
-    appRequest.setApplicationSubmissionContext(appContext);
+      // Create the request to send to the applications manager
+      SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
+      appRequest.setApplicationSubmissionContext(appContext);
 
     // Submit the application to the applications manager
-    // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
-    // Ignore the response as either a valid response object is returned on success
-    // or an exception thrown to denote some form of a failure
-    String specStr = Objects.toStringHelper("Submitting application: ")
-            .add("name", appContext.getApplicationName())
-            .add("queue", appContext.getQueue())
-            .add("user", UserGroupInformation.getLoginUser())
-            .add("resource", appContext.getResource())
-            .toString();
-    LOG.info(specStr);
-    if (dag.isDebug()) {
-      //LOG.info("Full submission context: " + appContext);
+      // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
+      // Ignore the response as either a valid response object is returned on success
+      // or an exception thrown to denote some form of a failure
+      String specStr = Objects.toStringHelper("Submitting application: ")
+              .add("name", appContext.getApplicationName())
+              .add("queue", appContext.getQueue())
+              .add("user", UserGroupInformation.getLoginUser())
+              .add("resource", appContext.getResource())
+              .toString();
+      LOG.info(specStr);
+      if (dag.isDebug()) {
+        //LOG.info("Full submission context: " + appContext);
+      }
+      rmClient.clientRM.submitApplication(appRequest);
     }
-    rmClient.clientRM.submitApplication(appRequest);
-
+    finally {
+      fs.close();
+    }
   }
 
   public ApplicationReport getApplicationReport() throws YarnException, IOException

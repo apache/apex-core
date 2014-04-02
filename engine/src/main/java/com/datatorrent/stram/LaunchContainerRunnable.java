@@ -141,17 +141,22 @@ public class LaunchContainerRunnable implements Runnable
     // add resources for child VM
     try {
       // child VM dependencies
-      FileSystem fs = FileSystem.get(nmClient.getConfig());
-      addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
-      String files = dag.getAttributes().get(LogicalPlan.FILES);
-      if (files != null) {
-        addFilesToLocalResources(LocalResourceType.FILE, files, localResources, fs);
+      FileSystem fs = FileSystem.newInstance(nmClient.getConfig());
+      try {
+        addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+        String files = dag.getAttributes().get(LogicalPlan.FILES);
+        if (files != null) {
+          addFilesToLocalResources(LocalResourceType.FILE, files, localResources, fs);
+        }
+        String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
+        if (archives != null) {
+          addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
+        }
+        ctx.setLocalResources(localResources);
       }
-      String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
-      if (archives != null) {
-        addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
+      finally {
+        fs.close();
       }
-      ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
       LOG.error("Failed to prepare local resources.", e);
