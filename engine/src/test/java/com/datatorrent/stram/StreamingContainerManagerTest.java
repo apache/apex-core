@@ -26,7 +26,6 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
@@ -438,7 +437,6 @@ public class StreamingContainerManagerTest {
       Assert.assertEquals("state " + oper, PTOperator.State.PENDING_UNDEPLOY, oper.getState());
     }
 
-    System.out.println(plan);
   }
 
   @Test
