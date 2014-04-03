@@ -9,6 +9,7 @@ package com.datatorrent.stram;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -19,107 +20,123 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.stram.api.Checkpoint;
 
-public class FSStorageAgent implements StorageAgent
+public class FSStorageAgent implements StorageAgent, Serializable
 {
-  private static final String PATH_SEPARATOR = "/";
-  final String checkpointFsPath;
-  final Configuration conf;
+  private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+  public final String path;
+  private final Configuration conf;
+  private transient FileSystem fs;
 
-  FSStorageAgent(Configuration conf, String checkpointFsPath)
+  private FSStorageAgent()
   {
-    this.conf = conf;
-    this.checkpointFsPath = checkpointFsPath;
+    /* this is needed just for serialization with Kryo */
+    conf = null;
+    path = null;
   }
 
-  public FSStorageAgent(String checkpointFsPath)
+  public FSStorageAgent(Configuration conf, String path)
   {
-    conf = new Configuration();
-    this.checkpointFsPath = checkpointFsPath;
+    this.conf = conf;
+    this.path = path;
+  }
+
+  public void initialize() throws IOException
+  {
+    if (fs == null) {
+      Path lPath = new Path(path);
+      fs = FileSystem.newInstance(lPath.toUri(), conf);
+      if (FileSystem.mkdirs(fs, lPath, new FsPermission((short)00755))) {
+        fs.setWorkingDirectory(lPath);
+      }
+    }
   }
 
   @Override
-  public void save(Object object, int id, long windowId) throws IOException
+  @SuppressWarnings("FinalizeDeclaration")
+  protected void finalize() throws Throwable
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
-    logger.debug("Saving: {}", path);
-    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
+    if (fs != null) {
+      fs.close();
+    }
+    super.finalize();
+  }
+
+  @Override
+  public void save(Object object, int operatorId, long windowId) throws IOException
+  {
+    Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
+    logger.debug("Saving: {}", lPath);
+
+    initialize();
+    FSDataOutputStream stream = fs.create(lPath);
     try {
-      FSDataOutputStream stream = fs.create(path);
-      try {
-        store(stream, object);
-      }
-      finally {
-        stream.close();
-      }
+      store(stream, object);
     }
     finally {
-      fs.close();
+      stream.close();
     }
   }
 
   @Override
   public Object load(int operatorId, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId + PATH_SEPARATOR + windowId);
-    logger.debug("Loading: {}", path);
-    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
+    Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
+    logger.debug("Loading: {}", lPath);
+
+    initialize();
+    FSDataInputStream stream = fs.open(lPath);
     try {
-      FSDataInputStream stream = fs.open(path);
-      try {
-        return retrieve(stream);
-      }
-      finally {
-        stream.close();
-      }
+      return retrieve(stream);
     }
     finally {
-      fs.close();
+      stream.close();
     }
   }
 
   @Override
-  public void delete(int id, long windowId) throws IOException
+  public void delete(int operatorId, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
-    logger.debug("Deleting: {}", path);
-    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
-    try {
-      fs.delete(path, false);
-    }
-    finally {
-      fs.close();
-    }
+    Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
+    logger.debug("Deleting: {}", lPath);
+
+    initialize();
+    fs.delete(lPath, false);
   }
 
   @Override
   public long[] getWindowIds(int operatorId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + operatorId);
-    FileSystem fs = FileSystem.newInstance(path.toUri(), conf);
-    try {
-      FileStatus[] files = fs.listStatus(path);
-      if (files == null || files.length == 0) {
-        throw new IOException("Storage Agent has not saved anything yet!");
-      }
+    Path lPath = new Path(String.valueOf(operatorId));
 
-      long windowIds[] = new long[files.length];
-      for (int i = files.length; i-- > 0;) {
-        windowIds[i] = Long.parseLong(files[i].getPath().getName());
-      }
-      return windowIds;
+    initialize();
+    FileStatus[] files = fs.listStatus(lPath);
+    if (files == null || files.length == 0) {
+      throw new IOException("Storage Agent has not saved anything yet!");
     }
-    finally {
-      fs.close();
+
+    long windowIds[] = new long[files.length];
+    for (int i = files.length; i-- > 0;) {
+      String name = files[i].getPath().getName();
+      windowIds[i] = STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : Long.parseLong(name, 16);
     }
+    return windowIds;
   }
 
   @Override
   public String toString()
   {
-    return checkpointFsPath;
+    try {
+      initialize();
+      return fs.toString();
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public static void store(OutputStream stream, Object operator)
@@ -139,5 +156,6 @@ public class FSStorageAgent implements StorageAgent
     return k.readClassAndObject(input);
   }
 
+  private static final long serialVersionUID = 201404031201L;
   private static final Logger logger = LoggerFactory.getLogger(FSStorageAgent.class);
 }
