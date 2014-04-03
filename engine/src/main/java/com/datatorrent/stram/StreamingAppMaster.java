@@ -30,9 +30,9 @@ import com.datatorrent.stram.util.VersionInfo;
  * <p>
  * @since 0.3.2
  */
-public class StramAppMaster extends StramUtils.YarnContainerMain
+public class StreamingAppMaster extends StramUtils.YarnContainerMain
 {
-  private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMaster.class);
 
   /**
    * @param args
@@ -78,9 +78,9 @@ public class StramAppMaster extends StramUtils.YarnContainerMain
     }
 
     boolean result = false;
-    StramAppMasterService appMaster = null;
+    StreamingAppMasterService appMaster = null;
     try {
-      appMaster = new StramAppMasterService(appAttemptID);
+      appMaster = new StreamingAppMasterService(appAttemptID);
       LOG.info("Initializing Application Master.");
 
       Configuration conf = new YarnConfiguration();
@@ -105,7 +105,7 @@ public class StramAppMaster extends StramUtils.YarnContainerMain
     }
   }
 
-  public StramAppMaster()
+  public StreamingAppMaster()
   {
   }
 

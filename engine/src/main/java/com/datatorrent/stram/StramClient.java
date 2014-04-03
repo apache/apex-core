@@ -181,7 +181,7 @@ public class StramClient
       com.datatorrent.common.util.Slice.class,
       com.datatorrent.netlet.EventLoop.class,
       com.datatorrent.bufferserver.server.Server.class,
-      com.datatorrent.stram.StramAppMaster.class,
+      com.datatorrent.stram.StreamingAppMaster.class,
       com.datatorrent.api.StreamCodec.class,
       javax.validation.ConstraintViolationException.class,
       com.ning.http.client.websocket.WebSocketUpgradeHandler.class,
@@ -540,7 +540,7 @@ public class StramClient
         vargs.add(LicensingAppMaster.class.getName());
       }
       else {
-        vargs.add(StramAppMaster.class.getName());
+        vargs.add(StreamingAppMaster.class.getName());
       }
 
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");

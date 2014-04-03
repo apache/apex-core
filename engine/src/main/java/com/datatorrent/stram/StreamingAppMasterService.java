@@ -84,9 +84,9 @@ import com.google.common.collect.Maps;
  *
  * @since 0.3.2
  */
-public class StramAppMasterService extends CompositeService
+public class StreamingAppMasterService extends CompositeService
 {
-  private static final Logger LOG = LoggerFactory.getLogger(StramAppMasterService.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMasterService.class);
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_MAX_LIFETIME = 365 * 24 * 60 * 60 * 1000;
   private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 365 * 24 * 60 * 60 * 1000;
@@ -121,9 +121,9 @@ public class StramAppMasterService extends CompositeService
   private StramDelegationTokenManager delegationTokenManager = null;
   private LicensingAgentClient licenseClient;
 
-  public StramAppMasterService(ApplicationAttemptId appAttemptID)
+  public StreamingAppMasterService(ApplicationAttemptId appAttemptID)
   {
-    super(StramAppMasterService.class.getName());
+    super(StreamingAppMasterService.class.getName());
     this.appAttemptID = appAttemptID;
   }
 
@@ -347,8 +347,8 @@ public class StramAppMasterService extends CompositeService
     @Override
     public String getLicenseId()
     {
-      if (StramAppMasterService.this.licenseClient != null) {
-        return StramAppMasterService.this.licenseClient.getLicenseId();
+      if (StreamingAppMasterService.this.licenseClient != null) {
+        return StreamingAppMasterService.this.licenseClient.getLicenseId();
       }
       return "";
     }
@@ -356,8 +356,8 @@ public class StramAppMasterService extends CompositeService
     @Override
     public long getRemainingLicensedMB()
     {
-      if (StramAppMasterService.this.licenseClient != null) {
-        return StramAppMasterService.this.licenseClient.getRemainingLicensedMB();
+      if (StreamingAppMasterService.this.licenseClient != null) {
+        return StreamingAppMasterService.this.licenseClient.getRemainingLicensedMB();
       }
       return 0;
     }
@@ -365,8 +365,8 @@ public class StramAppMasterService extends CompositeService
     @Override
     public long getTotalLicensedMB()
     {
-      if (StramAppMasterService.this.licenseClient != null) {
-        return StramAppMasterService.this.licenseClient.getTotalLicensedMB();
+      if (StreamingAppMasterService.this.licenseClient != null) {
+        return StreamingAppMasterService.this.licenseClient.getTotalLicensedMB();
       }
       return 0;
     }
@@ -374,8 +374,8 @@ public class StramAppMasterService extends CompositeService
     @Override
     public long getAllocatedMB()
     {
-      if (StramAppMasterService.this.licenseClient != null) {
-        return StramAppMasterService.this.licenseClient.getAllocatedMB();
+      if (StreamingAppMasterService.this.licenseClient != null) {
+        return StreamingAppMasterService.this.licenseClient.getAllocatedMB();
       }
       return 0;
     }
@@ -383,8 +383,8 @@ public class StramAppMasterService extends CompositeService
     @Override
     public long getLicenseInfoLastUpdate()
     {
-      if (StramAppMasterService.this.licenseClient != null) {
-        return StramAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
+      if (StreamingAppMasterService.this.licenseClient != null) {
+        return StreamingAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
       }
       return 0;
     }
@@ -785,19 +785,19 @@ public class StramAppMasterService extends CompositeService
           if (allocatedContainer != null) {
             numFailedContainers.incrementAndGet();
           }
-          if (exitStatus == 1) {
-            // non-recoverable StramChild failure
-            appDone = true;
-            finalStatus = FinalApplicationStatus.FAILED;
-            dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
-            LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
-          }
-          else {
-            // Recoverable failure or process killed (externally or via stop request by AM)
-            // also occurs when a container was released by the application but never assigned/launched
-            LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
-            dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
-          }
+//          if (exitStatus == 1) {
+//            // non-recoverable StramChild failure
+//            appDone = true;
+//            finalStatus = FinalApplicationStatus.FAILED;
+//            dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
+//            LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
+//          }
+//          else {
+          // Recoverable failure or process killed (externally or via stop request by AM)
+          // also occurs when a container was released by the application but never assigned/launched
+          LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
+          dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
+//          }
         }
         else {
           // container completed successfully
@@ -811,7 +811,6 @@ public class StramAppMasterService extends CompositeService
         // record container stop event
         StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
         dnmgr.recordEventAsync(ev);
-
       }
 
       if (licenseClient != null) {

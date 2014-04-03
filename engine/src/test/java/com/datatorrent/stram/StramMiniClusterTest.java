@@ -173,7 +173,7 @@ public class StramMiniClusterTest
       LOG.info("Number containers: {}", nr.getNumContainers());
     }
 
-    String appMasterJar = JarFinder.getJar(StramAppMaster.class);
+    String appMasterJar = JarFinder.getJar(StreamingAppMaster.class);
     LOG.info("appmaster jar: " + appMasterJar);
     String testJar = JarFinder.getJar(StramMiniClusterTest.class);
     LOG.info("testJar: " + testJar);

@@ -51,7 +51,7 @@ import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.stream.*;
 
 /**
- * Object which controls the container process launched by {@link com.datatorrent.stram.StramAppMaster}.
+ * Object which controls the container process launched by {@link com.datatorrent.stram.StreamingAppMaster}.
  *
  * @since 0.3.2
  */
@@ -213,8 +213,6 @@ public class StramChild extends YarnContainerMain
 
     final Configuration defaultConf = new Configuration();
 
-    //String host = args[0];
-    //int port = Integer.parseInt(args[1]);
     String appPath = System.getenv(ENV_APP_PATH);
     if (appPath == null) {
       logger.error("{} not set in container environment.", ENV_APP_PATH);
@@ -229,7 +227,7 @@ public class StramChild extends YarnContainerMain
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
       StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
-      logger.debug("Got context: " + ctx);
+      logger.debug("Container Context = {}", ctx);
       stramChild.setup(ctx);
       try {
         /* main thread enters heartbeat loop */

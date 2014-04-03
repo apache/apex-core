@@ -25,6 +25,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 
 import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 
 /**
  * Heartbeat RPC proxy invocation handler that handles fail over.
@@ -34,11 +36,9 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler, Closeable
 {
   private final static Logger LOG = LoggerFactory.getLogger(RecoverableRpcProxy.class);
-
   public static final String QP_retryTimeoutMillis = "retryTimeoutMillis";
   public static final String QP_retryDelayMillis = "retryDelayMillis";
   public static final String QP_rpcTimeout = "rpcTimeout";
-
   private final Configuration conf;
   private final String appPath;
   private StreamingContainerUmbilicalProtocol umbilical;
@@ -76,9 +76,11 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
       String value = mm.getString(key);
       if (QP_rpcTimeout.equals(key)) {
         this.rpcTimeout = Integer.parseInt(value);
-      } else if (QP_retryTimeoutMillis.equals(key)) {
+      }
+      else if (QP_retryTimeoutMillis.equals(key)) {
         this.retryTimeoutMillis = Long.parseLong(value);
-      } else if (QP_retryDelayMillis.equals(key)) {
+      }
+      else if (QP_retryDelayMillis.equals(key)) {
         this.retryDelayMillis = Long.parseLong(value);
       }
     }
@@ -94,7 +96,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
 
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public Object invoke(Object proxy, Method method, Object[] args) throws InvocationTargetException, InterruptedException
+  public Object invoke(Object proxy, Method method, Object[] args) throws ConnectException, SocketTimeoutException, InterruptedException, IllegalAccessException
   {
     Object result;
     for (;;) {
@@ -108,28 +110,31 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         //long end = System.nanoTime();
         //LOG.info(String.format("%s took %d ns", method.getName(), (end - start)));
         return result;
-      } catch (InvocationTargetException e) {
-        // reconnect on error
+      }
+      catch (InvocationTargetException e) {
         Throwable targetException = e.getTargetException();
-        if (targetException instanceof java.net.ConnectException) {
-          LOG.error("Failed to connect.", targetException);
-        } else if (targetException instanceof java.net.SocketTimeoutException) {
-          LOG.error("RPC timed out.", targetException);
-        } else {
-          LOG.warn("Unexpected RPC error.", targetException);
-        }
+
         long connectMillis = System.currentTimeMillis() - lastCompletedCallTms;
         if (connectMillis < retryTimeoutMillis) {
-          LOG.warn("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis - connectMillis);
+          LOG.warn("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis - connectMillis, targetException);
           close();
           sleep(retryDelayMillis);
-        } else {
-          LOG.error("Giving up RPC connection recovery after {} ms", connectMillis);
-          throw e;
+        }
+        else {
+          LOG.error("Giving up RPC connection recovery after {} ms", connectMillis, targetException);
+          if (targetException instanceof java.net.ConnectException) {
+            throw (java.net.ConnectException)targetException;
+          }
+          else if (targetException instanceof java.net.SocketTimeoutException) {
+            throw (java.net.SocketTimeoutException)targetException;
+          }
+          else {
+            DTThrowable.rethrow(targetException);
+          }
         }
       }
-      catch (Exception e) {
-        DTThrowable.rethrow(e);
+      catch (IOException ex) {
+        throw new RuntimeException(ex);
       }
       finally {
         close();
@@ -156,6 +161,5 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
     query.append(RecoverableRpcProxy.QP_retryTimeoutMillis + '=').append(retryTimeoutMillis);
     return new URI("stram", null, address.getHostName(), address.getPort(), null, query.toString(), null);
   }
-
 
 }
