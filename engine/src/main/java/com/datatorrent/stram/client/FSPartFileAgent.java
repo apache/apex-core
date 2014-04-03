@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public abstract class FSPartFileAgent extends StramAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(FSPartFileAgent.class);
-  private Map<String, String> lastIndexLines = new HashMap<String, String>();
+  private final Map<String, String> lastIndexLines = new HashMap<String, String>();
 
   protected abstract IndexLine parseIndexLine(String line) throws JSONException;
 
@@ -45,7 +45,7 @@ public abstract class FSPartFileAgent extends StramAgent
 
   protected class IndexFileBufferedReader extends BufferedReader
   {
-    private String basePath;
+    private final String basePath;
     private boolean lastLineReturned = false;
     private String lastPartFile;
 
