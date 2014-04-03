@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -12,6 +13,7 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -22,6 +24,7 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
+
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -264,7 +267,7 @@ public class StramChildAgent {
       StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
         String appPath = getInitContext().getValue(LogicalPlan.APPLICATION_PATH);
-        agent = new FSStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+        agent = new FSStorageAgent(new Configuration(false), new File(appPath, LogicalPlan.SUBDIR_CHECKPOINTS).getPath());
       }
       // pick the checkpoint most recently written to HDFS
       // this should be handled differently. What happens to the checkpoint reported?

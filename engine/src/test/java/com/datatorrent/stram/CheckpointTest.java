@@ -15,6 +15,7 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.util.Clock;
@@ -114,7 +115,7 @@ public class CheckpointTest
     sc.setHeartbeatMonitoringEnabled(false);
     sc.run(30000);
 
-    FSStorageAgent fssa = new FSStorageAgent(testMeta.dir + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+    FSStorageAgent fssa = new FSStorageAgent(new Configuration(false), new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS).getPath());
     StreamingContainerManager dnm = sc.dnmgr;
     PhysicalPlan plan = dnm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
@@ -138,8 +139,8 @@ public class CheckpointTest
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
 
     for (Checkpoint cp : o1p1.checkpoints) {
-      File cpFile = new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + o1p1.getId() + "/" + cp.windowId);
-      Assert.assertTrue("checkpoint file not found: " + cpFile, cpFile.exists() && cpFile.isFile());
+      Object load = fssa.load(o1p1.getId(), cp.windowId);
+      Assert.assertEquals("Stored Operator and Saved State", load.getClass(), o1p1.getOperatorMeta().getOperator().getClass());
     }
   }
 

@@ -54,6 +54,8 @@ import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -291,7 +293,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      Object operator = new FSStorageAgent(new Configuration(false), dag.getAttributes().get(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).load(mergeNodeDI.id, -1);
+      Object operator = new FSStorageAgent(new Configuration(false), new File(dag.getAttributes().get(DAGContext.APPLICATION_PATH), LogicalPlan.SUBDIR_CHECKPOINTS).getPath()).load(mergeNodeDI.id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
@@ -311,7 +313,6 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("portName " + node3In, dag.getMeta(node3).getMeta(node3.inport1).getPortName(), node3In.portName);
     Assert.assertNotNull("sourceNodeId " + node3DI, node3In.sourceNodeId);
     Assert.assertEquals("sourcePortName " + node3DI, mergeNodeDI.outputs.get(0).portName, node3In.sourcePortName);
-
   }
 
   @Test
@@ -444,14 +445,7 @@ public class StreamingContainerManagerTest {
     File path =  new File(testMeta.dir);
     FileUtils.deleteDirectory(path.getAbsoluteFile());
 
-    FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getAbsolutePath());
-    try {
-      sa.getWindowIds(1);
-      Assert.fail("There should not be any most recently saved windowId!");
-    }
-    catch (IOException io) {
-      Assert.assertTrue("No State Saved", true);
-    }
+    FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getPath());
 
     long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
@@ -462,6 +456,17 @@ public class StreamingContainerManagerTest {
     long[] windowsIds = sa.getWindowIds(1);
     Arrays.sort(windowsIds);
     Assert.assertArrayEquals("Saved windowIds", windowIds, windowsIds);
+
+    for (long windowId : windowIds) {
+      sa.delete(1, windowId);
+    }
+    try {
+      sa.getWindowIds(1);
+      Assert.fail("There should not be any most recently saved windowId!");
+    }
+    catch (IOException io) {
+      Assert.assertTrue("No State Saved", true);
+    }
   }
 
   @Test
@@ -612,4 +617,5 @@ public class StreamingContainerManagerTest {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(StreamingContainerManagerTest.class);
 }
