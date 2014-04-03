@@ -220,11 +220,11 @@ public class StramChild extends YarnContainerMain
       logger.error("{} not set in container environment.", ENV_APP_PATH);
       System.exit(1);
     }
-    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, defaultConf);
-    final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
 
     int exitStatus = 1; // interpreted as unrecoverable container failure
 
+    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, defaultConf);
+    final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
     final String childId = System.getProperty(DAGContext.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
@@ -241,7 +241,7 @@ public class StramChild extends YarnContainerMain
       }
     }
     catch (Error error) {
-      logger.warn("Error running child", error);
+      logger.error("Fatal error in container!", error);
       /* Report back any failures, for diagnostic purposes */
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       error.printStackTrace(new PrintStream(baos));
@@ -249,7 +249,7 @@ public class StramChild extends YarnContainerMain
       baos.close();
     }
     catch (Exception exception) {
-      logger.warn("Exception running child", exception);
+      logger.error("Fatal exception in container!", exception);
       /* Report back any failures, for diagnostic purposes */
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       exception.printStackTrace(new PrintStream(baos));
@@ -258,13 +258,11 @@ public class StramChild extends YarnContainerMain
     }
     finally {
       rpcProxy.close();
-      //FileSystem.closeAll();
       DefaultMetricsSystem.shutdown();
-      // Shutting down log4j of the child-vm...
-      logger.info("exit status: {}", exitStatus);
       LogManager.shutdown();
     }
 
+    logger.debug("Exit status for container: {}", exitStatus);
     if (exitStatus != 0) {
       System.exit(exitStatus);
     }

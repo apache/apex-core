@@ -11,18 +11,20 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
+import static java.lang.Thread.sleep;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.mortbay.util.MultiMap;
 import org.mortbay.util.UrlEncoded;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+
+import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-import static java.lang.Thread.sleep;
 
 /**
  * Heartbeat RPC proxy invocation handler that handles fail over.
@@ -92,7 +94,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
 
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
+  public Object invoke(Object proxy, Method method, Object[] args) throws InvocationTargetException, InterruptedException
   {
     Object result;
     for (;;) {
@@ -110,30 +112,33 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         // reconnect on error
         Throwable targetException = e.getTargetException();
         if (targetException instanceof java.net.ConnectException) {
-          LOG.error("Failed to connect", targetException);
+          LOG.error("Failed to connect.", targetException);
         } else if (targetException instanceof java.net.SocketTimeoutException) {
-          LOG.error("RPC timeout", targetException);
+          LOG.error("RPC timed out.", targetException);
         } else {
-          LOG.debug("Unexpected RPC error", targetException);
+          LOG.warn("Unexpected RPC error.", targetException);
         }
         long connectMillis = System.currentTimeMillis() - lastCompletedCallTms;
         if (connectMillis < retryTimeoutMillis) {
-          LOG.info("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis-connectMillis);
-          umbilical = null;
+          LOG.warn("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis - connectMillis);
+          close();
           sleep(retryDelayMillis);
         } else {
           LOG.error("Giving up RPC connection recovery after {} ms", connectMillis);
-          throw targetException;
+          throw e;
         }
-      } catch (Exception e) {
-        throw new RuntimeException("unexpected exception: " + e.getMessage(), e);
-      } finally {
+      }
+      catch (Exception e) {
+        DTThrowable.rethrow(e);
+      }
+      finally {
+        close();
       }
     }
   }
 
   @Override
-  public void close() throws IOException
+  public void close()
   {
     if (umbilical != null) {
       RPC.stopProxy(umbilical);
