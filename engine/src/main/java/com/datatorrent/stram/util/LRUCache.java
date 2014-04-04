@@ -11,12 +11,14 @@ import java.util.Map;
  * <p>LRUCache class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @param <K> key
+ * @param <V> value
  * @since 0.3.5
  */
 public class LRUCache<K, V> extends LinkedHashMap<K, V>
 {
   private static final long serialVersionUID = 1L;
-  private int capacity; // Maximum number of items in the cache.
+  private final int capacity; // Maximum number of items in the cache.
 
   public LRUCache(int capacity, boolean accessOrder)
   {
