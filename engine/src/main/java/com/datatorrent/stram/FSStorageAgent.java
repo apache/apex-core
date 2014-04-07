@@ -48,6 +48,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
   public void initialize() throws IOException
   {
     if (fs == null) {
+      logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
       fs = FileSystem.newInstance(lPath.toUri(), conf);
       if (FileSystem.mkdirs(fs, lPath, new FsPermission((short)00755))) {
@@ -61,6 +62,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
   protected void finalize() throws Throwable
   {
     if (fs != null) {
+      logger.debug("Finalize storage agent with {}.", path);
       fs.close();
     }
     super.finalize();
@@ -141,21 +143,24 @@ public class FSStorageAgent implements StorageAgent, Serializable
 
   public static void store(OutputStream stream, Object operator)
   {
-    Output output = new Output(4096, Integer.MAX_VALUE);
-    output.setOutputStream(stream);
-    final Kryo k = new Kryo();
-    k.writeClassAndObject(output, operator);
-    output.flush();
+    synchronized (kryo) {
+      Output output = new Output(4096, Integer.MAX_VALUE);
+      output.setOutputStream(stream);
+      kryo.writeClassAndObject(output, operator);
+      output.flush();
+    }
   }
 
   public static Object retrieve(InputStream stream)
   {
-    final Kryo k = new Kryo();
-    k.setClassLoader(Thread.currentThread().getContextClassLoader());
-    Input input = new Input(stream);
-    return k.readClassAndObject(input);
+    synchronized (kryo) {
+      kryo.setClassLoader(Thread.currentThread().getContextClassLoader());
+      Input input = new Input(stream);
+      return kryo.readClassAndObject(input);
+    }
   }
 
+  private static final Kryo kryo = new Kryo();
   private static final long serialVersionUID = 201404031201L;
   private static final Logger logger = LoggerFactory.getLogger(FSStorageAgent.class);
 }
