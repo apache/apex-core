@@ -4,6 +4,7 @@
  */
 package com.datatorrent.gateway;
 
+import com.datatorrent.gateway.security.AuthenticationException;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -23,6 +24,11 @@ import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
 import com.datatorrent.lib.util.PubSubMessageCodec;
 
 import com.datatorrent.stram.util.LRUCache;
+import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response.Status;
 
 /**
  * <p>PubSubWebSocketServlet class.</p>
@@ -40,9 +46,11 @@ public class PubSubWebSocketServlet extends WebSocketServlet
   private PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
   private InternalMessageHandler internalMessageHandler = null;
   private static final int latestTopicCount = 100;
+  private final DTGateway gateway;
   private final LRUCache<String, Long> latestTopics = new LRUCache<String, Long>(latestTopicCount, false)
   {
     private static final long serialVersionUID = 20140131L;
+
     @Override
     public Long put(String key, Long value)
     {
@@ -58,23 +66,39 @@ public class PubSubWebSocketServlet extends WebSocketServlet
 
   }
 
-  /*
-   private int timeout;
+  public PubSubWebSocketServlet(DTGateway gateway)
+  {
+    this.gateway = gateway;
+  }
 
-   public void setTimeout(int timeout) {
-   this.timeout = timeout;
-   }
-   */
-
-  /*
-   private int timeout;
-   public void setTimeout(int timeout) {
-   this.timeout = timeout;
-   }
-   */
   public void setInternalMessageHandler(InternalMessageHandler internalMessageHandler)
   {
     this.internalMessageHandler = internalMessageHandler;
+  }
+
+  @Override
+  protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+  {
+    if ("simple".equals(gateway.getWebAuthType())) {
+      Cookie[] cookies = request.getCookies();
+      if (cookies != null) {
+        for (Cookie cookie : cookies) {
+          if ("session".equals(cookie.getName())) {
+            try {
+              gateway.getAuthDatabase().authenticateSession(cookie.getValue());
+            }
+            catch (AuthenticationException ex) {
+              throw new WebApplicationException(ex, Status.FORBIDDEN);
+            }
+            super.service(request, response);
+          }
+        }
+      }
+      throw new WebApplicationException(Status.FORBIDDEN);
+    }
+    else {
+      super.service(request, response);
+    }
   }
 
   @Override
