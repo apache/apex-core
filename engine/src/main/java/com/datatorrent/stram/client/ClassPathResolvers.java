@@ -27,6 +27,11 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * <p>ClassPathResolvers class.</p>
+ *
+ * @since 0.9.4
+ */
 public class ClassPathResolvers
 {
   public static final String SCHEME_MANIFEST = "manifest";

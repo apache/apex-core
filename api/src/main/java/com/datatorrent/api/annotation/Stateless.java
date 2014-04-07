@@ -28,6 +28,7 @@ import java.lang.annotation.*;
  * reinstantiate it and used to recover the application from the assumed checkpoint
  * onwards.
  *
+ * @since 0.9.4
  */
 @Documented
 @Target(ElementType.TYPE)

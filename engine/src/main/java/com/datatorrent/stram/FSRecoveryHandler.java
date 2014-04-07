@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHandler
 {
   private final static Logger LOG = LoggerFactory.getLogger(FSRecoveryHandler.class);
-  private final String dir;
+  private final Path basedir;
   private final Path logPath ;
   private final Path logBackupPath;
   private final FileSystem logfs;
@@ -51,23 +51,23 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
   public FSRecoveryHandler(String appDir, Configuration conf) throws IOException
   {
-    this.dir = appDir + "/recovery";
+    this.basedir = new Path(appDir, "recovery");
     
-    logPath = new Path(dir + Path.SEPARATOR + FILE_LOG);
-    logBackupPath = new Path(dir + Path.SEPARATOR + FILE_LOG_BACKUP);
-    snapshotPath = new Path(dir + "/snapshot");
-    snapshotBackupPath = new Path(dir + "/" + FILE_SNAPSHOT_BACKUP);
+    logPath = new Path(basedir, FILE_LOG);
+    logBackupPath = new Path(basedir, FILE_LOG_BACKUP);
+    snapshotPath = new Path(basedir, FILE_SNAPSHOT);
+    snapshotBackupPath = new Path(basedir, FILE_SNAPSHOT_BACKUP);
     
     logfs = FileSystem.newInstance(logPath.toUri(), conf);
     snapshotFs = FileSystem.newInstance(snapshotPath.toUri(), conf);
     
-    heartbeatPath = new Path(dir + "/heartbeatUri");
+    heartbeatPath = new Path(basedir, "heartbeatUri");
     heartbeatFs = FileSystem.newInstance(heartbeatPath.toUri(), conf);
   }
 
   public String getDir()
   {
-    return dir;
+    return basedir.toUri().toString();
   }
 
   @Override
@@ -159,7 +159,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     }
 
     // remove log backup
-    Path logBackup = new Path(dir + Path.SEPARATOR + FILE_LOG_BACKUP);
+    Path logBackup = new Path(basedir + Path.SEPARATOR + FILE_LOG_BACKUP);
     if (snapshotFs.exists(logBackup) && !snapshotFs.delete(logBackup, false)) {
       throw new IOException("Failed to remove " + logBackup);
     }
@@ -177,7 +177,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       fc.rename(snapshotBackupPath, snapshotPath, Rename.OVERWRITE);
 
       // combine logs (w/o append, create new file)
-      Path tmpLogPath = new Path(dir + "/log.combined");
+      Path tmpLogPath = new Path(basedir, "log.combined");
       FSDataOutputStream fsOut = fc.create(tmpLogPath, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE));
       FSDataInputStream fsIn = fc.open(logBackupPath);
       IOUtils.copy(fsIn, fsOut);

@@ -16,8 +16,10 @@ import com.datatorrent.api.StringCodec;
 import com.datatorrent.common.util.DTThrowable;
 
 /**
+ * <p>StringCodecs class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.4
  */
 public class StringCodecs
 {
