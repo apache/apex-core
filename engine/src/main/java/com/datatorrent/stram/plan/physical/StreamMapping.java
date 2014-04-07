@@ -75,8 +75,8 @@ public class StreamMapping implements java.io.Serializable
 
   private PTOperator createUnifier()
   {
-    // create the merge operator
     Unifier<?> unifier = streamMeta.getSource().getUnifier();
+    LOG.debug("User supplied unifier is {}", unifier);
     if (unifier == null) {
       LOG.debug("Using default unifier for {}", streamMeta.getSource());
       unifier = new DefaultUnifier();
