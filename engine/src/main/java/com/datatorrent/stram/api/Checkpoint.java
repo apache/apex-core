@@ -7,8 +7,10 @@ import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.engine.WindowGenerator;
 
 /**
+ * <p>Checkpoint class.</p>
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
+ * @since 0.9.4
  */
 public class Checkpoint implements com.datatorrent.api.Stats.Checkpoint
 {

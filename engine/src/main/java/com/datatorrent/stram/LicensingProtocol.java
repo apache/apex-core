@@ -4,6 +4,8 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 
 /**
  * Created by Pramod Immaneni <pramod@datatorrent.com> on 1/31/14.
+ *
+ * @since 0.9.4
  */
 public interface LicensingProtocol extends VersionedProtocol
 {

@@ -1,5 +1,448 @@
 #Release Notes - Streaming Platform
 
+## Version 0.9.4
+
+## Bug
+* [SPOI-455] - Cleanup maven repository workaround in install.sh
+* [SPOI-1636] - Update all node1 demo to 0.9.3 release
+* [SPOI-1774] - Thread local performance drop from 65M to 40 M tuplesProcessed/sec
+* [SPOI-1775] - MROperator demo applications fail when launched from Sandbox
+* [SPOI-1847] - Intermittent - WebSocket Publishing ignores endWindow
+* [SPOI-1864] - POC partitioned operators not getting correct initial state
+* [SPOI-1866] - Datatorrent applications not starting on CDH5 Vagrant cluster
+* [SPOI-1867] - Investigate InstallAnywhere use for DataTorrent installation
+* [SPOI-1882] - When not able to contact license agent, the application should not die
+* [SPOI-1883] - Stram crashes with Unknown-Container issue
+* [SPOI-1885] - Determine minimum amount of memory needed to run twitter app
+* [SPOI-1886] - Determine minimum amount of memory needed to run mobile app
+* [SPOI-1888] - Install license in the new console configuration
+* [SPOI-1889] - Licensing needs to support eval and free
+* [SPOI-1902] - Dynamic MxN partitioning does not handle scale down to single M instance 
+* [SPOI-1903] - MiniClusterTests fails because ~/.dt/dt-site.xml dependency
+* [SPOI-1906] - history does not get flushed to the history file until the next command prompt
+* [SPOI-1917] - Licensing error
+* [SPOI-1922] - Loading license does not work
+* [SPOI-1923] - Close button does not work in several pop-up windows
+* [SPOI-1936] - No uninstall script available with the installer. 
+* [SPOI-1953] - Installation video on our website should be refreshed to reflect the latest version(s)
+* [SPOI-1960] - application incorrectly marked as succeeded
+* [SPOI-1968] - 404 for logical plan url
+* [SPOI-1970] - Negative requested container count logged by Stram
+* [SPOI-1976] - Fix AdsDimensions in certification 
+* [SPOI-1992] - the latency in the application overview freezes after a container gets killed.
+* [SPOI-1999] - Evaluate Yarn cluster issue
+* [SPOI-2002] - Gateway fails to load properties
+* [SPOI-2037] - Redirect to welcome page on first run / install
+* [SPOI-2039] - DTGateway logs to .dt/logs in service mode
+* [SPOI-2040] - Apache logs application under contrib folder fails to run
+* [SPOI-2047] - dtgateway service not starting when machine boots
+* [SPOI-2049] - Better error message on invalid hadoop directory
+* [SPOI-2051] - RPM install reports install script failure
+* [SPOI-2052] - DTGateway restart fails when running with -service
+* [SPOI-2055] - dtgateway service reports OK on startup failure
+* [SPOI-2056] - LicensingAgentProtocolHelper.getLicensingAgentProtocol gets stuck when YARN is not running
+* [SPOI-2057] - DTCLI is not working after intallation
+* [SPOI-2058] - launch-demos macro not available after installing the platform from self extracting intaller
+* [SPOI-2059] - Show understandable error message if the root hdfs directory could't be created
+* [SPOI-2060] - UI Shows Nan B in Allocated Memory
+* [SPOI-2062] - Gateway needs to check hadoop version
+* [SPOI-2064] - dtgateway-ctl stop doesn't work
+* [SPOI-2065] - Readme File is not udpated
+* [SPOI-2066] - installer not recognizing -l option
+* [SPOI-2070] - Installer: echo_success command doesn't work with Ubuntu
+* [SPOI-2073] - Invalid Ip Address in Installer UI
+* [SPOI-2074] - install script needs to check hadoop version
+* [SPOI-2075] - lauch-local-demos
+* [SPOI-2076] - Licensing agent RPC gives NPE
+* [SPOI-2077] - Installer: we need a separate page for hadoop installation directory 
+* [SPOI-2078] - Change the certification and benchmarking script and code to use the new location of benchmarking apps
+* [SPOI-2083] - install script, when run by rpm, complains about invalid group dtadmin
+* [SPOI-2088] - Map Reduce demo applications still show the classnames when listed using launch-demos
+* [SPOI-2089] - demo applications displayed after running the launch-demos command should be in alphabetical order
+* [SPOI-2090] - Error while requesting evaluation license from Datatorrent.com
+* [SPOI-2094] - Installer throws failed message while stopping gateway 
+* [SPOI-2097] - launch-demos macro not available after installing the platform from self extracting intaller
+* [SPOI-2098] - App names still have full classpath
+* [SPOI-2120] - Installer - Restart Modal is not closed after Restart Failed (Happened Once)
+* [SPOI-2132] - Ensure HDFS does not blow up with millions of files per sec
+* [SPOI-2133] - Delete old files to ensure NN does not crash
+* [SPOI-2134] - Send POC1 to customer
+* [SPOI-2143] - Spelling error and reference to $HOME/.datatorrent
+* [SPOI-2146] - Move Kafka benchmark apps to contrib folder
+* [SPOI-2148] - Installer - Disable Closing Modals on Click
+* [SPOI-2149] - Address the confusion around gateway address.
+* [SPOI-2151] - User is not able to change the defaultFS during installation
+* [SPOI-2153] - Cryptic error message when launching app on node0
+* [SPOI-2157] - Getting logical plan returns error when one of the getters is bad
+* [SPOI-2159] - gateway is polling resourcemanager for appinfo w/o subscriber
+* [SPOI-2163] - Change directory before DTGateway launch
+* [SPOI-2165] - Installer - add reload ability to System screen
+* [SPOI-2170] - DTGateway classpath is duplicated after restart
+* [SPOI-2171] - Remove reload button from System configuration screen
+* [SPOI-2172] - Installer may display invalid port after starting DTGateway
+* [SPOI-2173] - Installer base location change not working
+* [SPOI-2192] - CLI command for getting list of operator classes from a jar
+* [SPOI-2193] - CLI command for getting properties of a operator class from a jar
+* [SPOI-2206] - dag view does not get rendered property in Firefox
+* [SPOI-2227] - (Re)start license agent when license file is uploaded
+* [SPOI-2229] - container local operators not redeployed
+* [SPOI-2238] - Installer complains about sudo running as root
+* [SPOI-2241] - DAG Firefox 28 Support
+
+
+## Improvement
+* [SPOI-1311] - Review platform documentation
+* [SPOI-1567] - Certify against commercial Hadoop distributions
+* [SPOI-1769] - Trying to kill a non dt app can return a better message
+* [SPOI-1844] - Ship project-template with a log4j.properties file with debugging level set to INFO
+* [SPOI-1852] - WebSocket client recovery logging
+* [SPOI-1853] - Create WebSocket clients in containers on demand
+* [SPOI-1854] - Option to retrieve only running and recently-ended apps
+* [SPOI-1856] - Need something that is like LicensingAgentClient but not specific for stram.
+* [SPOI-1857] - Gateway to warn about available licensed memory being low
+* [SPOI-1858] - CLI to directly connect to license agent to get live license info
+* [SPOI-1859] - Gateway to directly connect to license agent to get live license info
+* [SPOI-1861] - Gateway command to restart itself
+* [SPOI-1869] - Add UI build script to dist build file
+* [SPOI-1874] - the first operator that stalls for more than specific period, take it out so as to unclog the processing
+* [SPOI-1899] - Add appmaster container to container list
+* [SPOI-1904] - Updates needed to the README file
+* [SPOI-1911] - Run certification as part of nighty build
+* [SPOI-1915] - Using $DT_HOME in README 
+* [SPOI-1961] - Show the activation date of the license with list-license-agent command 
+* [SPOI-1965] - The file demos.jar should be installed by default by the Installer
+* [SPOI-1978] - Manual eval request (by e-mail) - template  
+* [SPOI-1980] - DT Version in license request and generated license
+* [SPOI-1981] - Approve / update license verification e-mail
+* [SPOI-1997] - Certify against commercial Hadoop distributions
+* [SPOI-2026] - Add support to LogicalPlan for testing dag serialization
+* [SPOI-2150] - Update Readme file for the local install
+* [SPOI-2155] - Installer - Validate Fields on blur event
+* [SPOI-2156] - Installer - Navigation Code Cleanup
+* [SPOI-2158] - Installer - CSS Classes
+* [SPOI-2160] - Installer font size
+* [SPOI-2166] - Configuration screen navigation panel
+* [SPOI-2174] - Notify user with installation location and version
+* [SPOI-2175] - Notify user about local DTGateway management during installation
+* [SPOI-2188] - Installer - Register Instructions
+
+## New Feature
+* [SPOI-328] - Add annotation to declare the operator stateless
+* [SPOI-393] - High Availability for STRAM
+* [SPOI-868] - Setting operator properties as different types
+* [SPOI-1182] - Add Key-based filter functionality to malhar library for Min, Max, SimpleMovingAverage, StandardDeviation like operators
+* [SPOI-1654] - Logstream - aggregate top hits and bytes for URL, geo DMA, IP, URL/status code, url
+* [SPOI-1747] - create a filter operator to output multiple records based on filter
+* [SPOI-1756] - configuration for input adaptor
+* [SPOI-1757] - configuration for filter operator
+* [SPOI-1758] - configuration for dimension operator
+* [SPOI-1759] - configuration for aggreagation operator
+* [SPOI-1760] - configuration for web socket output
+* [SPOI-1849] - add dt HDFS directory in configuration 
+* [SPOI-1907] - Installer: HDFS directory creation attempt via Gateway (as part of config updates) 
+* [SPOI-1909] - Port re-selection by Gateway if 9090, 9091, 9092, etc are taken
+* [SPOI-1913] - Automate verifing the app memory for the demos
+* [SPOI-1928] - gateway needs to be able to start with standalone hadoop jar (without hadoop installation)
+* [SPOI-1929] - /ws/v1/about to include java version and hadoop location
+* [SPOI-1930] - New installation script
+* [SPOI-1966] - dtcli should be enabled to list app names (if available) as opposed to app class path
+* [SPOI-1974] - Add throughput,  totalTuplesProcessed and elapsed time to performance benchmarking
+* [SPOI-1975] - Display throughput, tuplesProcessed per sec and latency in a tabular format.
+* [SPOI-1987] - Copy License to Front-End Distribution
+* [SPOI-2003] - Verify and add all the demos except Machine data to app memory usage automation
+* [SPOI-2011] - Make a separate jar file for performance benchmarking demos
+* [SPOI-2013] - Support for doc link as an attribute for the application
+* [SPOI-2018] - Have a launch-performance command in dtcli
+* [SPOI-2021] - Rename all the apps under contrib to have meaningful names
+* [SPOI-2023] - Make a launch-contrib command available in stram cli
+* [SPOI-2027] - Packaging benchmarking demos
+* [SPOI-2042] - redirect user to welcome screen if dt.configStatus is not "complete"
+* [SPOI-2044] - set property dt.configStatus to "complete" when the user has completed the config wizard
+* [SPOI-2122] - Installer - Offline Email Template
+* [SPOI-2147] - Provide separate dt benchmarking package scripts to throughput and hdfs operators benchmarking
+* [SPOI-2195] - Gateway REST API to return operator classes in a jar given superclass (or not)
+* [SPOI-2196] - Gateway REST API to return properties of an operator in a jar 
+* [SPOI-2200] - Installer - License Flow
+
+## Story
+* [SPOI-1608] - Platform Benchmarking (Platform1 and Platform2)
+
+## Task
+* [SPOI-722] - Document ads demo (add comments to codebase)
+* [SPOI-1403] - HDFS Operator Benchmark
+* [SPOI-1411] - Deprecate old Malhar webdemos once logstream is available
+* [SPOI-1513] - datatorrent.com webapp development - app testing
+* [SPOI-1610] - Develop benchmarking app for AdsDimension App (exactly once semantics) - Platform1
+* [SPOI-1612] - Benchmarking Ads Dimension demo app on Morado cluster (exactly once semantics) - Platform1
+* [SPOI-1618] - Benchmarking Machine Data app with Platform1
+* [SPOI-1694] - Document DT SandBox preparation
+* [SPOI-1730] - Default License in git needs to be replaced by the license cut by the real key 
+* [SPOI-1732] - Create the real public/private key for licenses and store the private key in a safe place.
+* [SPOI-1745] - Document Demo Application Setup
+* [SPOI-1788] - CLI commands for licensing
+* [SPOI-1794] - Create license info as a string 
+* [SPOI-1796] - Soft enforcement for normal paid app. 200% bump?
+* [SPOI-1848] - Gateway to support changing and getting config parameters
+* [SPOI-1851] - Document virtual cluster setup
+* [SPOI-1862] - Working on creating Wire Frames for the Installation of DT Platform
+* [SPOI-1863] - Make installer work w/o Maven
+* [SPOI-1865] - Allow user to configure application classpath
+* [SPOI-1868] - Support Book Keeping in the HDFSStorage
+* [SPOI-1870] - Validate dtcli generate-license-request
+* [SPOI-1872] - Modify generatelicense process
+* [SPOI-1873] - License process via console
+* [SPOI-1876] - Application Developer Guide Improvements
+* [SPOI-1877] - Download and build JDK Standrd Doclet Source as part of DT 
+* [SPOI-1878] - DT Console Web UI Testing on Chrome
+* [SPOI-1879] - DT Console Web UI Testing for Demo Apps on Chrome
+* [SPOI-1884] - Operater developer guide review 
+* [SPOI-1891] - Add allatori documentation
+* [SPOI-1892] - Add automatic build of front components to distribution
+* [SPOI-1893] - Quick Start Guide
+* [SPOI-1914] - cli get-app-info to include info from hadoop
+* [SPOI-1926] - Call license web service and return license file
+* [SPOI-1927] - Returns license request blob for UI to assemble mailto link
+* [SPOI-1939] - Twitter Top Counter Demo Applications Guide
+* [SPOI-1940] - RPM packaging for installer
+* [SPOI-1941] - Include demo UI into installer
+* [SPOI-1942] - Remove Allatori code expiration for GA
+* [SPOI-1943] - include more info in the license request 
+* [SPOI-1945] - Add REST call to gateway to post license file
+* [SPOI-1946] - virtual cluster configuration changes
+* [SPOI-1947] - Create license@datatorrent.com
+* [SPOI-1949] - Java application (with main method) that returns information given a license request blob
+* [SPOI-1956] - License generation key pair expiration / private key protection
+* [SPOI-1963] - Evaluate Doclava Doclet from Google
+* [SPOI-1982] - E-mail verification success web page 
+* [SPOI-1988] - Review Quick Start Guide
+* [SPOI-1989] - AdsDimension - Demo Applications Guide
+* [SPOI-1990] - Twitter Rolling Top Words Counter - Demo Applications Guide
+* [SPOI-2004] - Installer testing for GA
+* [SPOI-2006] - Grant Google Analytics Access To Following People
+* [SPOI-2010] - Configure the apps to use minimum memory as verified by app-memory-usage-automation.
+* [SPOI-2015] - Get Machine data into contrib.jar
+* [SPOI-2016] - Fraud Detection in contrib.jar
+* [SPOI-2017] - Quick Start Guide version 2
+* [SPOI-2019] - List NxN performance apps (different event size vs different stream locality
+* [SPOI-2025] - Getting Start Guide - Launch this copy.
+* [SPOI-2032] - Certify Cloudera CDH 5.0
+* [SPOI-2048] - Uninstall script
+* [SPOI-2050] - Start gateway as service flag
+* [SPOI-2069] - Test Installer
+* [SPOI-2091] - Update installation license agreement
+* [SPOI-2093] - Verify demo UI is bundled with installer
+* [SPOI-2100] - For terms of service box, change "continue" to "accept and continue"
+* [SPOI-2106] - Change the message on 1 yr registration
+* [SPOI-2107] - Change the message on 1 yr registration
+* [SPOI-2108] - Put timeglass and "loading" or spinning.... while Hadoop system properties are being loaded
+* [SPOI-2109] - Gateway down creates bad error message
+* [SPOI-2110] - Remove errors popping on the right hand of console
+* [SPOI-2111] - If gateway outage is discovered add a message to get them back
+* [SPOI-2112] - Change the message on Hadoop screen
+* [SPOI-2114] - Error if HDFS does not exist
+* [SPOI-2115] - Create a list of issues summary screen
+* [SPOI-2116] - Show more instructions on the completed screen
+* [SPOI-2131] - Ingestion POC
+* [SPOI-2136] - Do cartesian products for key, val pair
+* [SPOI-2142] - Allow customization of cartesian product 
+* [SPOI-2161] - prereq message on welcome screen
+* [SPOI-2162] - DFS error message
+* [SPOI-2164] - DFS location validation
+* [SPOI-2167] - Evaluate errors in Cloudera certification
+* [SPOI-2223] - Test if all the applications with reduced container memory sizes run in sandbox 0.9.4.
+* [SPOI-2230] - Uninstaller for RPM
+* [SPOI-2231] - Provide Environment with Running Demos
+* [SPOI-2240] - Set Up DataTorrent Demos on Dev Environment
+
+
+## Sub-task
+* [SPOI-1682] - Too many mbassy threads!!!
+* [SPOI-1718] - Update HA Documentation
+* [SPOI-1729] - Restore operator recovery checkpoints in AM recovery 
+* [SPOI-1786] - Users should be able to generate license at datatorrent.com
+* [SPOI-1931] - Installer - determine OS type and version
+* [SPOI-1932] - installer with sudo/root user creation, service installs
+* [SPOI-1933] - service wrappers for DTGateway
+* [SPOI-1934] - HDFS directory creation during install
+* [SPOI-1935] - Search for hadoop binaries standard paths
+* [SPOI-1958] - Create HDFS Word input operator
+* [SPOI-1962] - Add test to jekins nightly build
+* [SPOI-1971] - Verify launch script for other apps from demo 
+* [SPOI-1972] - When some app fail, the main monitor should still keep looking at the other apps
+* [SPOI-2028] - Provide shell script 'benchmark-throughput' to produce a single summary table 
+* [SPOI-2030] - Provide a list of individual demos used for benchmarking through dtcli benchmarking, so that the user can launch the demos individually.
+* [SPOI-2031] - Package benchmarking suite into the installer and sandbox
+* [SPOI-2046] - Update licenses location in installation script
+* [SPOI-2053] - Certify CDH5.0 as part of Cloudera certification for inclusion in their process
+* [SPOI-2054] - Certify installer on HW
+* [SPOI-2079] - Run certification on bin install
+* [SPOI-2085] - Change the certification resource xml files to contain the certification type.
+
+
+
+
+## Bug
+* [MLHR-729] - Columns in table wrap in Firefox
+* [MLHR-730] - Dev server does not escape double-quotes in error message
+* [MLHR-732] - Links Outline in Firefox
+* [MLHR-754] - JarList and DepJarList headers point to nonexistent text items
+* [MLHR-767] - "FINISHING" has no icon in status
+* [MLHR-785] - NaN in file size column of jar list
+* [MLHR-809] - Inconsistent landing page across browsers
+* [MLHR-814] - Selecting operators in the logical operators widget does not activate any actions
+* [MLHR-816] - Names of partitions in the partitions widget should not be shown as links
+* [MLHR-817] - Clickin on 'outputPort' leads to PageNotFound error
+* [MLHR-824] - Don't show license agent detail when license agent is not running
+* [MLHR-826] - Dep Jars fail to load in specify dep jars modal
+* [MLHR-830] - Optimize RandomWordInput operator used in perfromance benhcmarking to use local final variables to improve performance. 
+* [MLHR-835] - Fix hard-coded file path in com.datatorrent.demos.wordcount.WordCountInputOperator
+* [MLHR-836] - Need AbstractHDFSOutputAdapter
+* [MLHR-863] - Add license headers to AbstractHdfsOutputOperator
+* [MLHR-879] - Installer - Issues Management
+* [MLHR-887] - Input operator that tails a growing log file in a directory
+* [MLHR-899] - Give default name for all demo applications
+* [MLHR-908] - Mark installation complete with dt.configStatus property
+* [MLHR-911] - UI Shows Nan B in Allocated Memory
+* [MLHR-912] - Installer - System Section - Show Field Specific Errors
+* [MLHR-913] - Installer - System Section - Server-Side Error Messages
+* [MLHR-918] - Yahoo finance with Alerts : Modify to accept multiple ticker symbols and remove hard-coded values.
+* [MLHR-920] - Give desciptive names to benchmarking apps
+* [MLHR-924] - Tail Operator should take care of the truncation of file
+* [MLHR-930] - UI container list should not show time for last heartbeat for if the value is "-1"
+* [MLHR-938] - gateway address property change
+* [MLHR-939] - Put GatewayRestart into "actions" hash in settings.js
+* [MLHR-940] - Delete the space in the name
+* [MLHR-943] - Change the method name from isConnected to Connected in the db api
+* [MLHR-991] - DAG Stream Locality
+
+
+## Improvement
+* [MLHR-731] - Compile LESS on the fly in dev environment
+* [MLHR-735] - Remove unused bundling make commands, update README
+* [MLHR-745] - Add icon to left widget manager drawer
+* [MLHR-746] - Use "cores" not % cpu for cluster metric total cpu usage
+* [MLHR-747] - Remove "#" for "number of container", et al labels
+* [MLHR-748] - Only load all applications from RM on demand
+* [MLHR-749] - Improve notification history pane
+* [MLHR-750] - Normalize labels for everything in console
+* [MLHR-751] - Add lock where close dashboard icon would be for default dashboard
+* [MLHR-753] - Remove avg app age in cluster metrics
+* [MLHR-755] - Change "max alloc mem" to "peak alloc mem" in cluster metrics
+* [MLHR-756] - Add memory levels to tooltip of license mem gauge in top right
+* [MLHR-768] - Remove beefy from npm shrinkwrap
+* [MLHR-770] - Clean up BaseUtil, BaseModel, BaseCollection, add tests
+* [MLHR-781] - shorten link to log file in container page
+* [MLHR-798] - Add "config.adsdimensions.redis.dbindex" configuration in webdemo
+* [MLHR-873] - Add equals and hashcode to JdbcOperatorBase
+* [MLHR-931] - ETL: Create a converter api and provide an implementation for Json Object to flat map conversion
+* [MLHR-935] - Have "silentErrors" option for models and collections
+* [MLHR-937] - ETL: Create a unifier for DimensionComputation operator
+* [MLHR-947] - Improve overall look and feel of install wizard
+* [MLHR-948] - Remove mock issues from SummaryView in installer wizard
+* [MLHR-993] - Demo UI - Default Applications Names for Application Discovery
+
+## New Feature
+* [MLHR-688] - Discard Real-Time Updates When Page is not Active
+* [MLHR-757] - Dashboard - Save Widget Width to Local Storage
+* [MLHR-759] - Dashboard - Widget Definitions Collection
+* [MLHR-763] - Line Chart Widget - hAxis options
+* [MLHR-764] - Dashboard App - Meteor Data Source
+* [MLHR-765] - Shutdown Container Interface
+* [MLHR-773] - Configuration wizard page
+* [MLHR-788] - Web Demos - Redis and MongoDB Config
+* [MLHR-789] - Web Demos - Fraud Demo MongoDB Database Name
+* [MLHR-790] - Web Demos - Single Configuration File
+* [MLHR-791] - Web Demos - Start Script
+* [MLHR-792] - Web Demos - Single Page App
+* [MLHR-793] - Web Demos - JS/CSS Bundle
+* [MLHR-794] - Web Demos - WebSocket Pub/Sub
+* [MLHR-795] - Web Demos - Resources Clean Up on Scope Destroy
+* [MLHR-796] - Web Demos - Distribution Files
+* [MLHR-797] - Web Demos - Running Instructions
+* [MLHR-804] - Config Page (Manage Properties)
+* [MLHR-805] - Web Demos - Distribution Package Instructions
+* [MLHR-806] - Installer - License Requests (REST API Calls)
+* [MLHR-807] - Installer - License Text
+* [MLHR-818] - Installer - License Section
+* [MLHR-819] - Installer - System Properties Section
+* [MLHR-820] - Console - Node.js Dev Mode
+* [MLHR-821] - Web Demos - Distribution Package Launch Script
+* [MLHR-831] - Installer - License Flow
+* [MLHR-834] - Installer - License - Registration
+* [MLHR-858] - Installer - Gateway Restart
+* [MLHR-861] - Installer - System Properties - IP List
+* [MLHR-864] - Installer - Handling Hadoop Not Found
+* [MLHR-903] - Installer - WebSocket DataSource Disconnect
+* [MLHR-909] - Installer - Restart Confirmation
+* [MLHR-914] - Installer - Error Messages
+* [MLHR-919] - License Bar
+* [MLHR-923] - Installer - Properties Update "Loading" Indicator
+* [MLHR-925] - Installer Update
+* [MLHR-934] - Allow overrides to $.().modal(options) for Modals
+
+## Story
+* [MLHR-705] - Node.js Pub/Sub Service
+* [MLHR-708] - Evaluate Node.js Pub/Sub Services
+* [MLHR-710] - Pie Chart Data Model
+* [MLHR-712] - Dashboard App - Historical Data Support
+* [MLHR-714] - Dashboard App - MongoDB Integration
+* [MLHR-715] - Create Dashboard from Running App - Widgets Auto Discovery
+* [MLHR-736] - Console Firefox Support
+* [MLHR-737] - Console Safari Support
+* [MLHR-801] - Installer/Config UI
+* [MLHR-802] - Web Demos - Distribution Package
+* [MLHR-803] - Installer (Wizard) Page
+
+## Task
+* [MLHR-349] - Add build script to Malhar/front
+* [MLHR-402] - Logstream - aggregate top hits and bytes for URL, geo DMA, IP, URL/status code, url
+* [MLHR-651] - Use compatible version of jersey/jackson/jetty in Malhar
+* [MLHR-659] - Migrate MongoDB adapters to use the new database adapter interface
+* [MLHR-741] - Web Apps (Demos) Firefox Support
+* [MLHR-744] - Web Apps (Demos) Safari Support
+* [MLHR-760] - Dashboard App - Meteor Integration
+* [MLHR-761] - Dashboard App - Derby.js Integration
+* [MLHR-762] - create install script for ui
+* [MLHR-839] - Review guide on MachineData app
+* [MLHR-842] - Demo guide for Pi Application
+* [MLHR-843] - Demo guide for Twitter Top URL Counter demo application
+* [MLHR-851] - Demo guide for Fraud detection demo application
+* [MLHR-853] - Demo guide for Mobile demo application
+* [MLHR-854] - Demo Guide for Word-Count Application
+* [MLHR-855] - Demo guide for Pi Calculator application
+* [MLHR-856] - Demo guide for Twitter Rolling Top Words Application
+* [MLHR-859] - upgrade kryo to 2.23
+* [MLHR-871] - Demo guide for Twitter Top URL Counter - Launch This Copy.
+* [MLHR-872] - Demo Guide for Word-Count Application - Launch this copy.
+* [MLHR-875] - Demo guide for Yahoo finance application
+* [MLHR-876] - Demo guide for Yahoo finance alerting application
+* [MLHR-877] - Demo guide for Yahoo finance application with Derby SQL
+* [MLHR-892] - ETL logstream application - study the log stream application
+* [MLHR-893] - ETL- Use the generic dimension operator that was created for a POC in Log stream 
+* [MLHR-900] - ETL- Operators used by logstream application need to be generic and moved to library
+* [MLHR-904] - Fix the nightly and trigger builds broken due to removal of api.codec and api.util
+* [MLHR-905] - Dedup: Make deduper and bucket manager part of malhar library
+* [MLHR-910] - Demo guide for Twitter Rolling Top Words Application - Launch This Copy
+* [MLHR-915] - CLONE - Demo guide for Pi Application - Launch this copy
+* [MLHR-916] - CLONE - Demo guide for Pi Calculator application - Launch this copy
+* [MLHR-917] - CLONE - Demo guide for Mobile demo application - Launch this copy
+* [MLHR-936] - Create new Redis Store using Lettuce redis client
+* [MLHR-949] - Add confirmation to DTGateway restart button in System Properties
+* [MLHR-962] - ETL : Create a sifter operator 
+* [MLHR-980] - CLONE - Demo guide for Yahoo finance alerting application - launch this copy
+* [MLHR-981] - CLONE - Demo guide for Yahoo finance application - launch this copy
+* [MLHR-982] - CLONE - Demo guide for Yahoo finance application with Derby SQL - launch this copy
+
+## Sub-task
+* [MLHR-678] - Time Series Forecasting with Simple Linear Regression
+* [MLHR-718] - Time Series Forecasting using Simple/Single Exponential Smoothing
+* [MLHR-726] - Time Series Forecasting Operator using Holt's Linear Trend Model
+* [MLHR-727] - Develop application for a telecom related use case for time series forecasting with Simple Linear Regression and CMA smoothing
+* [MLHR-932] - Create Centered Moving Average Smoothing Operator
+
+
+
+
 ## Version 0.9.3
 
 ## New Feature
@@ -83,69 +526,67 @@
 * [SPOI-1733] - Container heartbeat RPC failover
 
 
-## Malhar - Version 0.9.3
+## New Feature
+* [MLHR-5] - UI component for license information
+* [MLHR-6] - Google Line Chart Widget
+* [MLHR-7] - Gauge Widget
+* [MLHR-8] - Top N Widget
+* [MLHR-9] - Compile Widget from HTML Template
+* [MLHR-10] - Make widgets resizable and renameable in ui-builder
+* [MLHR-11] - Dashboard Component Grunt Tasks
+* [MLHR-653] - Dynamically Connect Widgets to WebSocket Topics
+* [MLHR-655] - Create serializing mechanism for instantiated widgets and dashboard(s)
+* [MLHR-656] - Add/Compile Widgets from templateUrl
+* [MLHR-664] - Support MQTT protocol
+* [MLHR-668] - Set up widget configure dialog
+* [MLHR-669] - Visual Data Demo App
+* [MLHR-671] - Add allocatedMB column in main application list
+* [MLHR-673] - Dashboard App - Notification Service
+* [MLHR-674] - Explicit Saving/Loading of Dash configurations in ui builder
+* [MLHR-687] - Dashboard App - Filter WebSocket Topics
+* [MLHR-689] - Dashboard App - Widget Options Modal
+* [MLHR-690] - Dashboard App - Widgets Schema
+* [MLHR-691] - WebSocket Topics Debugger Widget
+* [MLHR-692] - JSON Widget
+* [MLHR-693] - Progressbar Widget
+* [MLHR-695] - Pie Chart Widget
+* [MLHR-696] - Dashboard App - Development/Production Scripts
+* [MLHR-697] - Dashboard App - Node.js Configuration
+* [MLHR-698] - Dashboard App - WebSocket/REST API Configuration
 
-** New Feature
-    * [MLHR-5] - UI component for license information
-    * [MLHR-6] - Google Line Chart Widget
-    * [MLHR-7] - Gauge Widget
-    * [MLHR-8] - Top N Widget
-    * [MLHR-9] - Compile Widget from HTML Template
-    * [MLHR-10] - Make widgets resizable and renameable in ui-builder
-    * [MLHR-11] - Dashboard Component Grunt Tasks
-    * [MLHR-653] - Dynamically Connect Widgets to WebSocket Topics
-    * [MLHR-655] - Create serializing mechanism for instantiated widgets and dashboard(s)
-    * [MLHR-656] - Add/Compile Widgets from templateUrl
-    * [MLHR-664] - Support MQTT protocol
-    * [MLHR-668] - Set up widget configure dialog
-    * [MLHR-669] - Visual Data Demo App
-    * [MLHR-671] - Add allocatedMB column in main application list
-    * [MLHR-673] - Dashboard App - Notification Service
-    * [MLHR-674] - Explicit Saving/Loading of Dash configurations in ui builder
-    * [MLHR-687] - Dashboard App - Filter WebSocket Topics
-    * [MLHR-689] - Dashboard App - Widget Options Modal
-    * [MLHR-690] - Dashboard App - Widgets Schema
-    * [MLHR-691] - WebSocket Topics Debugger Widget
-    * [MLHR-692] - JSON Widget
-    * [MLHR-693] - Progressbar Widget
-    * [MLHR-695] - Pie Chart Widget
-    * [MLHR-696] - Dashboard App - Development/Production Scripts
-    * [MLHR-697] - Dashboard App - Node.js Configuration
-    * [MLHR-698] - Dashboard App - WebSocket/REST API Configuration
+## Improvement
+* [MLHR-686] - Deglobalize the visibly component
 
-** Improvement
-    * [MLHR-686] - Deglobalize the visibly component
+## Bug
+* [MLHR-4] - Use new livechart module for OpChart Widget
+* [MLHR-13] - Console status column display
+* [MLHR-648] - Update Issues section in README files 
+* [MLHR-650] - Changing metrics on logical dag fails
+* [MLHR-654] - Some widgets' height changes when changing width
+* [MLHR-667] - Add UI version to console
+* [MLHR-670] - Memory leak in console
+* [MLHR-677] - Widgets Data Models
+* [MLHR-680] - Update license information dialog for new REST call info
+* [MLHR-725] - WindowId Formatter
+* [MLHR-739] - Stream Locality Toggle fails for DAG view
 
-** Bug
-    * [MLHR-4] - Use new livechart module for OpChart Widget
-    * [MLHR-13] - Console status column display
-    * [MLHR-648] - Update Issues section in README files 
-    * [MLHR-650] - Changing metrics on logical dag fails
-    * [MLHR-654] - Some widgets' height changes when changing width
-    * [MLHR-667] - Add UI version to console
-    * [MLHR-670] - Memory leak in console
-    * [MLHR-677] - Widgets Data Models
-    * [MLHR-680] - Update license information dialog for new REST call info
-    * [MLHR-725] - WindowId Formatter
-    * [MLHR-739] - Stream Locality Toggle fails for DAG view
+## Story
+* [MLHR-1] - Reusable Dashboard Component with AngularJS
+* [MLHR-2] - Dashboard Widgets
+* [MLHR-3] - Dashboard App
 
-** Story
-    * [MLHR-1] - Reusable Dashboard Component with AngularJS
-    * [MLHR-2] - Dashboard Widgets
-    * [MLHR-3] - Dashboard App
-
-** Task
-    * [MLHR-321] - Directory Scan operator
-    * [MLHR-452] - Create a De-duplication operator
-    * [MLHR-603] - Supports upload of dependency jars
-    * [MLHR-638] - Test streaming application for dynamic partition
-    * [MLHR-645] - More fields in drop down in logicalDAG widget
-    * [MLHR-646] - Document issue tracking location in README
-    * [MLHR-652] - Parallel Simple Linear Regression
-    * [MLHR-657] - Migrate memcache adapters to use the new database adapter interface
-    * [MLHR-662] - Migrate Redis adapters to use the new database adapter interface
-    * [MLHR-663] - Design new DB adapters interface
-    * [MLHR-666] - DB lookup for Cassandra
+## Task
+* [MLHR-321] - Directory Scan operator
+* [MLHR-452] - Create a De-duplication operator
+* [MLHR-603] - Supports upload of dependency jars
+* [MLHR-638] - Test streaming application for dynamic partition
+* [MLHR-645] - More fields in drop down in logicalDAG widget
+* [MLHR-646] - Document issue tracking location in README
+* [MLHR-652] - Parallel Simple Linear Regression
+* [MLHR-657] - Migrate memcache adapters to use the new database adapter interface
+* [MLHR-662] - Migrate Redis adapters to use the new database adapter interface
+* [MLHR-663] - Design new DB adapters interface
+* [MLHR-666] - DB lookup for Cassandra
 
 
 
