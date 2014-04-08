@@ -25,9 +25,9 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 {
   public static final String LAST_INDEX_TOPIC_PREFIX = PubSubMessage.INTERNAL_TOPIC_PREFIX + ".lastIndex";
   private static final Logger LOG = LoggerFactory.getLogger(SharedPubSubWebSocketClient.class);
-  private Map<String, List<Handler>> topicHandlers = new HashMap<String, List<Handler>>();
+  private final Map<String, List<Handler>> topicHandlers = new HashMap<String, List<Handler>>();
   private long lastConnectTryTime;
-  private long minWaitConnectionRetry = 5000;
+  private final long minWaitConnectionRetry = 5000;
 
   public interface Handler
   {
