@@ -15,26 +15,23 @@
  */
 package com.datatorrent.lib.util;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.concurrent.*;
-
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.AsyncHttpClientConfigBean;
-import com.ning.http.client.websocket.WebSocket;
-import com.ning.http.client.websocket.WebSocketTextListener;
-import com.ning.http.client.websocket.WebSocketUpgradeHandler;
-
-import org.codehaus.jackson.map.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
-
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Context;
-
 import com.datatorrent.common.util.NameableThreadFactory;
+import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
+import com.ning.http.client.*;
+import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
+import com.ning.http.client.websocket.*;
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.concurrent.*;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
@@ -49,6 +46,9 @@ public abstract class PubSubWebSocketClient implements Component<Context>
   private final PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
   private URI uri;
   private int ioThreadMultiplier = 1;
+  private String loginUrl;
+  private String userName;
+  private String password;
 
   private class PubSubWebSocket implements WebSocketTextListener
   {
@@ -124,6 +124,21 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     this.ioThreadMultiplier = ioThreadMultiplier;
   }
 
+  public void setLoginUrl(String url)
+  {
+    this.loginUrl = url;
+  }
+
+  public void setUserName(String userName)
+  {
+    this.userName = userName;
+  }
+
+  public void setPassword(String password)
+  {
+    this.password = password;
+  }
+
   /**
    * <p>openConnection.</p>
    *
@@ -135,21 +150,73 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
   {
-    connection = client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build()).get(timeoutMillis, TimeUnit.MILLISECONDS);
+    List<Cookie> cookies = null;
+    if (loginUrl != null && userName != null && password != null) {
+      // get the session key first before attempting web socket
+      JSONObject json = new JSONObject();
+      try {
+        json.put("userName", userName);
+        json.put("password", password);
+      }
+      catch (JSONException ex) {
+        throw new RuntimeException(ex);
+      }
+      Response response = client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(json.toString()).execute().get();
+      cookies = response.getCookies();
+
+    }
+    BoundRequestBuilder brb = client.prepareGet(uri.toString());
+    if (cookies != null) {
+      for (Cookie cookie : cookies) {
+        brb.addCookie(cookie);
+      }
+    }
+    connection = brb.execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build()).get(timeoutMillis, TimeUnit.MILLISECONDS);
   }
 
   public void openConnectionAsync() throws IOException
   {
-    client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()
-    {
-      @Override
-      public void onOpen(WebSocket ws)
-      {
-        connection = ws;
-        super.onOpen(ws);
+    if (loginUrl != null && userName != null && password != null) {
+      // get the session key first before attempting web socket
+      JSONObject json = new JSONObject();
+      try {
+        json.put("userName", userName);
+        json.put("password", password);
       }
+      catch (JSONException ex) {
+        throw new RuntimeException(ex);
+      }
+      client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(json.toString()).execute(new AsyncCompletionHandler<Response>()
+      {
 
-    }).build());
+        @Override
+        public Response onCompleted(Response response) throws Exception
+        {
+          List<Cookie> cookies = response.getCookies();
+          BoundRequestBuilder brb = client.prepareGet(uri.toString());
+          if (cookies != null) {
+            for (Cookie cookie : cookies) {
+              brb.addCookie(cookie);
+            }
+          }
+          connection = brb.execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()).build()).get();
+          return response;
+        }
+
+      });
+    }
+    else {
+      client.prepareGet(uri.toString()).execute(new WebSocketUpgradeHandler.Builder().addWebSocketListener(new PubSubWebSocket()
+      {
+        @Override
+        public void onOpen(WebSocket ws)
+        {
+          connection = ws;
+          super.onOpen(ws);
+        }
+
+      }).build());
+    }
   }
 
   /**
@@ -208,6 +275,9 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void publish(String topic, Object data) throws IOException
   {
+    if (connection == null) {
+      throw new IOException("Connection is not open");
+    }
     connection.sendTextMessage(constructPublishMessage(topic, data, codec));
   }
 
@@ -422,6 +492,9 @@ public abstract class PubSubWebSocketClient implements Component<Context>
   @Override
   public void teardown()
   {
+    if (connection != null) {
+      connection.close();
+    }
     if (client != null) {
       client.close();
     }
