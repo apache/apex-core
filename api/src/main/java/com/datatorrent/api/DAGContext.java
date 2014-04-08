@@ -127,7 +127,7 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
   /**
-   * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.address" in the configuration.
+   * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
    */
   Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
   /**
@@ -135,6 +135,18 @@ public interface DAGContext extends Context
    */
   @Deprecated
   Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
+  /**
+   * Whether or not gateway is expecting SSL connection.
+   */
+  Attribute<Boolean> GATEWAY_USE_SSL = new Attribute<Boolean>(false);
+  /**
+   * The username for logging in to the gateway, if authentication is enabled.
+   */
+  Attribute<String> GATEWAY_USER_NAME = new Attribute<String>(new String2String());
+  /**
+   * The password for logging in to the gateway, if authentication is enabled.
+   */
+  Attribute<String> GATEWAY_PASSWORD = new Attribute<String>(new String2String());
   /**
    * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
    */

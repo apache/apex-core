@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.util;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.lib.util.PubSubMessage;
 import com.datatorrent.lib.util.PubSubWebSocketClient;
 import com.ning.http.client.websocket.WebSocket;
@@ -28,6 +29,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
   private final Map<String, List<Handler>> topicHandlers = new HashMap<String, List<Handler>>();
   private long lastConnectTryTime;
   private final long minWaitConnectionRetry = 5000;
+  private long timeoutMillis;
 
   public interface Handler
   {
@@ -37,10 +39,15 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 
   }
 
-  public SharedPubSubWebSocketClient(String uri, long timeoutMillis) throws URISyntaxException, IOException, ExecutionException, InterruptedException, TimeoutException
+  public SharedPubSubWebSocketClient(String uri, long timeoutMillis) throws URISyntaxException
   {
     this.setUri(new URI(uri));
     lastConnectTryTime = System.currentTimeMillis();
+    this.timeoutMillis = timeoutMillis;
+  }
+
+  public void setup() throws IOException, ExecutionException, InterruptedException, TimeoutException
+  {
     openConnection(timeoutMillis);
   }
 
@@ -60,10 +67,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
   @Override
   public void publish(String topic, Object data) throws IOException
   {
-    if (isConnectionOpen()) {
-      super.publish(topic, data);
-    }
-    else {
+    if (!isConnectionOpen()) {
       try {
         long now = System.currentTimeMillis();
         if (lastConnectTryTime + minWaitConnectionRetry < now) {
@@ -74,6 +78,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
       catch (Exception ex) {
       }
     }
+    super.publish(topic, data);
   }
 
   @Override

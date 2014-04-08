@@ -4,19 +4,21 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.RecordField;
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.lib.codec.JsonStreamCodec;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import com.datatorrent.stram.webapp.ContainerInfo;
+import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
 
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.annotation.RecordField;
-import com.datatorrent.lib.codec.JsonStreamCodec;
-import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
-import com.datatorrent.stram.webapp.ContainerInfo;
-import com.datatorrent.stram.webapp.OperatorInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>FSStatsRecorder class.</p>
@@ -27,14 +29,15 @@ import com.datatorrent.stram.webapp.OperatorInfo;
 public class FSStatsRecorder implements StatsRecorder
 {
   public static final String VERSION = "1.0";
+  private static final Logger LOG = LoggerFactory.getLogger(FSStatsRecorder.class);
   private String basePath = ".";
   private FSPartFileCollection containersStorage;
-  private Map<String, FSPartFileCollection> logicalOperatorStorageMap = new HashMap<String, FSPartFileCollection>();
-  private Map<String, Integer> knownContainers = new HashMap<String, Integer>();
-  private Set<String> knownOperators = new HashSet<String>();
+  private final Map<String, FSPartFileCollection> logicalOperatorStorageMap = new HashMap<String, FSPartFileCollection>();
+  private final Map<String, Integer> knownContainers = new HashMap<String, Integer>();
+  private final Set<String> knownOperators = new HashSet<String>();
   private transient StreamCodec<Object> streamCodec;
-  private Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
-  private Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
+  private final Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
+  private final Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
   private SharedPubSubWebSocketClient wsClient;
 
   public void setBasePath(String basePath)
@@ -95,7 +98,11 @@ public class FSStatsRecorder implements StatsRecorder
       containersStorage.writeDataItem(bos.toByteArray(), true);
       if (!containersStorage.flushData() && wsClient != null) {
         String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + containersStorage.getBasePath();
-        wsClient.publish(topic, containersStorage.getLatestIndexLine());
+        try {
+          wsClient.publish(topic, containersStorage.getLatestIndexLine());
+        } catch (IOException ex) {
+          LOG.warn("Error publishing to the gateway", ex);
+        }
       }
     }
   }
@@ -136,7 +143,12 @@ public class FSStatsRecorder implements StatsRecorder
     for (FSPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
       if (!operatorStorage.flushData() && wsClient != null) {
         String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + operatorStorage.getBasePath();
-        wsClient.publish(topic, operatorStorage.getLatestIndexLine());
+        try {
+          wsClient.publish(topic, operatorStorage.getLatestIndexLine());
+        }
+        catch (IOException ex) {
+          LOG.warn("Error publishing to the gateway", ex);
+        }
       }
     }
   }
@@ -157,8 +169,7 @@ public class FSStatsRecorder implements StatsRecorder
         fieldList = new ArrayList<Field>();
         for (Class<?> c = o.getClass(); c != Object.class; c = c.getSuperclass()) {
           Field[] fields = c.getDeclaredFields();
-          for (int i = 0; i < fields.length; i++) {
-            Field field = fields[i];
+          for (Field field : fields) {
             field.setAccessible(true);
             RecordField rfa = field.getAnnotation(RecordField.class);
             if (rfa != null && rfa.type().equals(type)) {

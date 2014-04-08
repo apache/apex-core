@@ -1176,7 +1176,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
       if (gwConf != null) {
         String gatewayAddress = gwConf.properties.getProperty(GATEWAY_LISTEN_ADDRESS_PROP);
-        if (gatewayAddress !=  null) {
+        if (gatewayAddress != null) {
           dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, gatewayAddress);
           break;
         }

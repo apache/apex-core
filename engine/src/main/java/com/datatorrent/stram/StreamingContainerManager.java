@@ -90,6 +90,7 @@ import org.apache.commons.beanutils.BeanMap;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
+  public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v1/login";
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
@@ -206,9 +207,19 @@ public class StreamingContainerManager implements PlanContext
   private void setupWsClient(AttributeMap attributes)
   {
     String gatewayAddress = attributes.get(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
+    boolean gatewayUseSsl = attributes.get(LogicalPlan.GATEWAY_USE_SSL);
+    String gatewayUserName = attributes.get(LogicalPlan.GATEWAY_USER_NAME);
+    String gatewayPassword = attributes.get(LogicalPlan.GATEWAY_PASSWORD);
+
     if (gatewayAddress != null) {
       try {
-        wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
+        wsClient = new SharedPubSubWebSocketClient((gatewayUseSsl ? "wss://" : "ws://") + gatewayAddress + "/pubsub", 500);
+        if (gatewayUserName != null && gatewayPassword != null) {
+          wsClient.setLoginUrl((gatewayUseSsl ? "https://" : "http://") + gatewayAddress + GATEWAY_LOGIN_URL_PATH);
+          wsClient.setUserName(gatewayUserName);
+          wsClient.setPassword(gatewayPassword);
+        }
+        wsClient.setup();
       }
       catch (Exception ex) {
         LOG.warn("Cannot establish websocket connection to {}", gatewayAddress);

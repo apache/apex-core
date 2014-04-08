@@ -5,16 +5,6 @@
 package com.datatorrent.stram.debug;
 
 import com.datatorrent.api.*;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import net.engio.mbassy.listener.Handler;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.InputPort;
@@ -22,6 +12,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
@@ -36,6 +27,11 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import java.io.IOException;
+import java.util.*;
+import net.engio.mbassy.listener.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>TupleRecorderCollection class.</p>
@@ -46,6 +42,9 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
 {
   private int tupleRecordingPartFileSize;
   private String gatewayAddress;
+  private boolean gatewayUseSsl = false;
+  private String gatewayUserName;
+  private String gatewayPassword;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
   private String containerId; // this should be retired!
@@ -65,6 +64,9 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     tupleRecordingPartFileTimeMillis = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS);
     containerId = ctx.getValue(ContainerContext.IDENTIFIER);
     gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
+    gatewayUseSsl = ctx.getValue(LogicalPlan.GATEWAY_USE_SSL);
+    gatewayUserName = ctx.getValue(LogicalPlan.GATEWAY_USER_NAME);
+    gatewayPassword = ctx.getValue(LogicalPlan.GATEWAY_PASSWORD);
     appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
     codecs = ctx.getAttributes().get(DAGContext.STRING_CODECS);
 
@@ -140,7 +142,13 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         synchronized (this) {
           if (wsClient == null) {
             try {
-              wsClient = new SharedPubSubWebSocketClient("ws://" + gatewayAddress + "/pubsub", 500);
+              wsClient = new SharedPubSubWebSocketClient((gatewayUseSsl ? "wss://" : "ws://") + gatewayAddress + "/pubsub", 500);
+              if (gatewayUserName != null && gatewayPassword != null) {
+                wsClient.setLoginUrl((gatewayUseSsl ? "https://" : "http://") + gatewayAddress + StreamingContainerManager.GATEWAY_LOGIN_URL_PATH);
+                wsClient.setUserName(gatewayUserName);
+                wsClient.setPassword(gatewayPassword);
+              }
+              wsClient.setup();
             }
             catch (Exception ex) {
               logger.warn("Error initializing websocket", ex);
