@@ -1035,9 +1035,11 @@ public class StreamingContainerManager implements PlanContext
           if (statCount != 0) {
             status.cpuPercentageMA.add((double)totalCpuTimeUsed / (totalElapsedMillis * 10000));
           }
+          /*
           else {
             status.cpuPercentageMA.add(0.0);
           }
+          */
           for (PortStatus ps : status.inputPortStatusList.values()) {
             tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
           }
