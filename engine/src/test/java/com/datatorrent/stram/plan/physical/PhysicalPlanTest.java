@@ -20,7 +20,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
@@ -32,6 +31,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.datatorrent.stram.support.StramTestSupport;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
@@ -89,6 +89,7 @@ public class PhysicalPlanTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PartitioningTestOperator node2 = dag.addOperator("node2", PartitioningTestOperator.class);
@@ -129,6 +130,7 @@ public class PhysicalPlanTest {
   @Test
   public void testDefaultPartitioning() {
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -186,6 +188,7 @@ public class PhysicalPlanTest {
     o2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
@@ -275,6 +278,7 @@ public class PhysicalPlanTest {
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
 
@@ -343,6 +347,7 @@ public class PhysicalPlanTest {
     node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
@@ -447,6 +452,7 @@ public class PhysicalPlanTest {
     dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     List<PTOperator> o1Partitions = plan.getOperators(o1Meta);
@@ -642,7 +648,9 @@ public class PhysicalPlanTest {
     dag.addStream("o3_outport1", o3.outport1, partOperator.inport2);
 
     int maxContainers = 4;
-    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new TestPlanContext());
+
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 1, plan.getContainers().get(0).getOperators().size());
@@ -681,7 +689,8 @@ public class PhysicalPlanTest {
             .setLocality(Locality.CONTAINER_LOCAL);
 
     int maxContainers = 5;
-    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new TestPlanContext());
 
     PhysicalPlan deployer = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
@@ -717,6 +726,7 @@ public class PhysicalPlanTest {
 
     int maxContainers = 7;
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new TestPlanContext());
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
@@ -792,6 +802,7 @@ public class PhysicalPlanTest {
 
     int maxContainers = 5;
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new TestPlanContext());
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
@@ -869,6 +880,8 @@ public class PhysicalPlanTest {
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
 
@@ -1067,6 +1080,8 @@ public class PhysicalPlanTest {
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 10);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     Assert.assertEquals("number of containers", 9, plan.getContainers().size());
 
