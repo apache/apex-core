@@ -20,6 +20,7 @@ import java.util.Collection;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
@@ -49,7 +50,6 @@ public interface Context
    * @param key - Attribute to identify the attribute.
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
-
   public <T> T getValue(AttributeMap.Attribute<T> key);
 
   public interface PortContext extends Context
@@ -87,7 +87,18 @@ public interface Context
      * This is a read-only attribute to query that whether the output of the operator from multiple instances is being unified.
      */
     Attribute<Boolean> IS_OUTPUT_UNIFIED = new Attribute<Boolean>(false);
-
+    /**
+     * Provide the codec which can be used to serialize or deserialize the data
+     * that can be received on the port. If it is unspecified the engine may use
+     * a generic codec.
+     */
+    Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<StreamCodec<?>>(new Object2String<StreamCodec<?>>());
+    /**
+     * Merge tuples emitted by multiple upstream instances of the enclosing
+     * operator (partitioned or load balanced).
+     */
+    Attribute<Unifier<?>> UNIFIER = new Attribute<Unifier<?>>(new Object2String<Unifier<?>>());
+    
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
   }
@@ -117,14 +128,12 @@ public interface Context
      * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
-
     /**
      * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning. When this
      * attribute is set and partitioning is enabled if the number of tuples per second falls below the specified rate
      * the physical operators are consolidated into fewer operators till the rate goes above the specified minimum.
      */
     Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
-
     /**
      * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning. When this
      * attribute is set and partitioning is enabled if the number of tuples per second goes above the specified rate new
@@ -135,7 +144,7 @@ public interface Context
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
-    Attribute<Collection<StatsListener>> STATS_LISTENERS  = new Attribute<Collection<StatsListener>>(new Collection2String<StatsListener>(",", new Object2String<StatsListener>(":")));
+    Attribute<Collection<StatsListener>> STATS_LISTENERS = new Attribute<Collection<StatsListener>>(new Collection2String<StatsListener>(",", new Object2String<StatsListener>(":")));
     /**
      * Conveys whether the Operator is stateful or stateless. If the operator is stateless, no checkpointing is required
      * by the engine. The attribute is ignored when the operator was already declared stateless through the
@@ -193,7 +202,6 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     Attribute<Boolean> AUTO_RECORD = new Attribute<Boolean>(false);
-
     /**
      * How the operator distributes its state and share the input can be influenced by setting the Partitioner attribute.
      * If this attribute is set to non null value, the instance of the partitioner is used to partition and merge the
@@ -201,7 +209,7 @@ public interface Context
      * If the attribute is not set and the operator implements Partitioner interface, then the instance of the operator
      * is used otherwise default default partitioning is used.
      */
-    Attribute<Partitioner<? extends Operator>> PARTITIONER  = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
+    Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
 
     /**
      * Return the operator runtime id.

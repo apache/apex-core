@@ -17,7 +17,6 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
@@ -455,7 +454,7 @@ public class PhysicalPlanTest {
     PTOperator o1p1 = o1Partitions.get(0);
     PTOperator p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
     Assert.assertTrue("", p1Doper.getOperatorMeta() == o1Meta);
-    Assert.assertNotNull("unifier ", p1Doper.getUnifier());
+    Assert.assertTrue("unifier ", p1Doper.isUnifier());
 
     Collection<PTOperator> o1Unifiers = plan.getMergeOperators(o1Meta);
     Assert.assertEquals("unifiers " + o1Meta, 1, o1Unifiers.size());
@@ -477,13 +476,13 @@ public class PhysicalPlanTest {
     Assert.assertEquals("unifiers " + o1Meta, 0, o1NewUnifiers.size());
     p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
     Assert.assertTrue("", p1Doper.getOperatorMeta() == dag.getMeta(o2));
-    Assert.assertNull("unifier ", p1Doper.getUnifier());
+    Assert.assertTrue("unifier ", p1Doper.isUnifier());
 
     Assert.assertTrue("removed unifier from deployment " + ctx.undeploy,  ctx.undeploy.containsAll(o1Unifiers));
     Assert.assertFalse("removed unifier from deployment " + ctx.deploy,  ctx.deploy.containsAll(o1Unifiers));
 
     // scale up, ensure unifier is setup at activation checkpoint
-    setActivationCheckpoint(o1NewPartitions.get(0), 3, ctx);
+    setActivationCheckpoint(o1NewPartitions.get(0), 3);
     PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1NewPartitions.get(0).getId(), 1);
     plan.onStatusUpdate(o1NewPartitions.get(0));
     Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
@@ -494,10 +493,10 @@ public class PhysicalPlanTest {
     Assert.assertEquals("unifier activation checkpoint " + o1Meta, 3, o1NewUnifiers.get(0).recoveryCheckpoint.windowId);
   }
 
-  private void setActivationCheckpoint(PTOperator oper, long windowId, TestPlanContext ctx)
+  private void setActivationCheckpoint(PTOperator oper, long windowId)
   {
     try {
-      ctx.getStorageAgent().save(oper.operatorMeta.getOperator(), oper.id, windowId);
+      oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).save(oper.operatorMeta.getOperator(), oper.id, windowId);
       oper.setRecoveryCheckpoint(new Checkpoint(3, 0, 0));
     } catch (Exception e) {
       Assert.fail(e.toString());
@@ -828,7 +827,7 @@ public class PhysicalPlanTest {
     PTContainer container4 = plan.getContainers().get(3);
     Assert.assertEquals("number operators " + container4, 1, container4.getOperators().size());
     Assert.assertEquals("operators " + container4, o4Meta, container4.getOperators().get(0).getOperatorMeta());
-    Assert.assertTrue("unifier " + o4, container4.getOperators().get(0).getUnifier() instanceof Unifier);
+    Assert.assertTrue("unifier " + o4, container4.getOperators().get(0).isUnifier());
     Assert.assertEquals("unifier inputs" + container4.getOperators().get(0).getInputs(), 2, container4.getOperators().get(0).getInputs().size());
     Assert.assertEquals("unifier outputs" + container4.getOperators().get(0).getOutputs(), 1, container4.getOperators().get(0).getOutputs().size());
 
@@ -894,7 +893,7 @@ public class PhysicalPlanTest {
 
       PTOperator pUnifier = actualOperators.get(o1Meta.getName());
       Assert.assertNotNull("" + pUnifier, pUnifier.getContainer());
-      Assert.assertTrue("" + pUnifier, pUnifier.getUnifier() instanceof Unifier);
+      Assert.assertTrue("" + pUnifier, pUnifier.isUnifier());
       // input from each upstream partition
       Assert.assertEquals("" + pUnifier, 2, pUnifier.getInputs().size());
       for (int inputIndex = 0; i < pUnifier.getInputs().size(); i++) {
@@ -1094,7 +1093,7 @@ public class PhysicalPlanTest {
         Assert.assertEquals("sinks " + out, 3, out.sinks.size());
         for (PTInput in : out.sinks) {
           // MxN unifier
-          Assert.assertNotNull(in.target.getUnifier());
+          Assert.assertTrue(in.target.isUnifier());
           Assert.assertEquals(1, in.target.getOutputs().get(0).sinks.size());
         }
       }

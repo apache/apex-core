@@ -27,6 +27,7 @@ import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
+import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -77,7 +78,6 @@ public class StramChild extends YarnContainerMain
   private int heartbeatIntervalMillis = 1000;
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
-  private String checkpointFsPath;
   public static DefaultEventLoop eventloop;
   /**
    * List of listeners interested in listening into the status change of the nodes.
@@ -132,7 +132,6 @@ public class StramChild extends YarnContainerMain
     windowWidthMillis = ctx.getValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
     checkpointWindowCount = ctx.getValue(DAGContext.CHECKPOINT_WINDOW_COUNT);
 
-    checkpointFsPath = ctx.getValue(DAGContext.APPLICATION_PATH) + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(DAGContext.STRING_CODECS);
@@ -786,17 +785,8 @@ public class StramChild extends YarnContainerMain
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
     for (OperatorDeployInfo ndi : nodeList) {
-      StorageAgent backupAgent;
-      if (ndi.contextAttributes == null) {
-        backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
-      }
-      else {
-        backupAgent = ndi.contextAttributes.get(OperatorContext.STORAGE_AGENT);
-        if (backupAgent == null) {
-          backupAgent = new FSStorageAgent(this.conf, this.checkpointFsPath);
-          ndi.contextAttributes.put(OperatorContext.STORAGE_AGENT, backupAgent);
-        }
-      }
+      StorageAgent backupAgent = getValue(OperatorContext.STORAGE_AGENT, ndi);
+      assert(backupAgent != null);
 
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
       logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
@@ -1421,6 +1411,21 @@ public class StramChild extends YarnContainerMain
       }
     }
 
+    if (deployInfo != null) {
+      AttributeMap attributes = deployInfo.contextAttributes;
+      if (attributes != null) {
+        T attr = attributes.get(key);
+        if (attr != null) {
+          return attr;
+        }
+      }
+    }
+
+    return containerContext.getValue(key);
+  }
+
+  private <T> T getValue(Attribute<T> key, OperatorDeployInfo deployInfo)
+  {
     if (deployInfo != null) {
       AttributeMap attributes = deployInfo.contextAttributes;
       if (attributes != null) {
