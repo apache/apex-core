@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
@@ -24,6 +25,7 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -32,11 +34,12 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.FSStorageAgent;
 
+import com.datatorrent.stram.api.Checkpoint;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -57,6 +60,7 @@ public class LogicalPlan implements Serializable, DAG
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlan.class);
   // The name under which the application master expects its configuration.
   public static final String SER_FILE_NAME = "dt-conf.ser";
+  private static final transient AtomicInteger logicalOperatorSequencer = new AtomicInteger();
 
   /**
    * Constant
@@ -108,59 +112,6 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     return val;
-  }
-
-  public static class OperatorProxy implements Serializable
-  {
-    private Operator operator;
-
-    public OperatorProxy(Operator operator) {
-      this.operator = operator;
-    }
-
-    public Operator get() {
-      return this.operator;
-    }
-
-    private void writeObject(ObjectOutputStream out)
-    {
-      FSStorageAgent.store(out, operator);
-    }
-
-    private void readObject(ObjectInputStream input)
-    {
-      operator = (Operator)FSStorageAgent.retrieve(input);
-    }
-
-    @Override
-    public String toString()
-    {
-      return operator.toString();
-    }
-
-    @Override
-    public int hashCode()
-    {
-      return operator.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj)
-    {
-      if (obj == null) {
-        return false;
-      }
-      if (getClass() != obj.getClass()) {
-        return false;
-      }
-      final OperatorProxy other = (OperatorProxy)obj;
-      if (this.operator != other.operator && (this.operator == null || !this.operator.equals(other.operator))) {
-        return false;
-      }
-      return true;
-    }
-
-    private static final long serialVersionUID = 201305221606L;
   }
 
   public LogicalPlan()
@@ -254,9 +205,12 @@ public class LogicalPlan implements Serializable, DAG
     public Operator.Unifier<?> getUnifier() {
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
-          return e.getKey().getUnifier();
+          @SuppressWarnings("deprecation")
+          Unifier<?> unifier = e.getKey().getUnifier();
+          return unifier;
         }
       }
+
       return null;
     }
 
@@ -297,7 +251,9 @@ public class LogicalPlan implements Serializable, DAG
     private Locality locality;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
+    @Deprecated /* use codec instead; feel free to delete the codecClass related code after May 1, 2014 */
     private Class<? extends StreamCodec<?>> codecClass;
+    private StreamCodec<?> streamCodec;
     private final String id;
 
     private StreamMeta(String id)
@@ -325,6 +281,11 @@ public class LogicalPlan implements Serializable, DAG
     public Class<? extends StreamCodec<?>> getCodecClass()
     {
       return codecClass;
+    }
+
+    public StreamCodec<?> getStreamCodec()
+    {
+      return streamCodec;
     }
 
     public OutputPortMeta getSource()
@@ -361,14 +322,24 @@ public class LogicalPlan implements Serializable, DAG
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, om.inputStreams.get(portMeta)));
       }
 
-      // determine codec for the stream based on what was set on the ports
-      Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
-      if (lCodecClass != null) {
-        if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
-          String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", lCodecClass, portMeta, this.codecClass);
-          throw new IllegalArgumentException(msg);
+      StreamCodec<?> value = portMeta.getValue(PortContext.STREAM_CODEC);
+      if (value == null) {
+        // determine codec for the stream based on what was set on the ports
+        @SuppressWarnings("deprecation") /* remove the code in the if block after 1st May 2014 */
+        Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
+        if (lCodecClass != null) {
+          if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
+            String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", lCodecClass, portMeta, this.codecClass);
+            throw new IllegalArgumentException(msg);
+          }
+          this.codecClass = lCodecClass;
         }
-        this.codecClass = lCodecClass;
+      }
+      else {
+        if (!value.equals(streamCodec)) {
+          throw new IllegalArgumentException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
+        }
+        streamCodec = value;
       }
 
       sinks.add(portMeta);
@@ -408,7 +379,15 @@ public class LogicalPlan implements Serializable, DAG
       hash = 31 * hash + (this.locality != null ? this.locality.hashCode() : 0);
       hash = 31 * hash + (this.sinks != null ? this.sinks.hashCode() : 0);
       hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
-      hash = 31 * hash + (this.codecClass != null ? this.codecClass.hashCode() : 0);
+      if (streamCodec != null) {
+        hash = 31 * hash + streamCodec.hashCode();
+      }
+      else if (codecClass != null) {
+        hash = 31 * hash + codecClass.hashCode();
+      }
+      else {
+        hash = 31 * hash;
+      }
       hash = 31 * hash + (this.id != null ? this.id.hashCode() : 0);
       return hash;
     }
@@ -432,6 +411,9 @@ public class LogicalPlan implements Serializable, DAG
       if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
         return false;
       }
+      if (this.streamCodec != other.streamCodec && (this.streamCodec == null || !this.streamCodec.equals(other.streamCodec))) {
+        return false;
+      }
       if (this.codecClass != other.codecClass && (this.codecClass == null || !this.codecClass.equals(other.codecClass))) {
         return false;
       }
@@ -451,11 +433,12 @@ public class LogicalPlan implements Serializable, DAG
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap attributes = new DefaultAttributeMap();
-    private final OperatorProxy operatorProxy;
+    private final int id;
     private final String name;
     private final OperatorAnnotation operatorAnnotation;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
+    private transient Operator operator;
     /*
      * Used for  OIO validation,
      *  value null => node not visited yet
@@ -468,8 +451,9 @@ public class LogicalPlan implements Serializable, DAG
     {
       LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
-      this.operatorProxy = new OperatorProxy(operator);
       this.name = name;
+      this.operator = operator;
+      this.id = logicalOperatorSequencer.decrementAndGet();
     }
 
     @Override
@@ -493,6 +477,28 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       return attr;
+    }
+
+    public <T> T getValue2(AttributeMap.Attribute<T> key)
+    {
+      T attr = attributes.get(key);
+      if (attr == null) {
+        return LogicalPlan.this.getValue(key);
+      }
+
+      return attr;
+    }
+
+    private void writeObject(ObjectOutputStream out) throws IOException
+    {
+      getValue(OperatorContext.STORAGE_AGENT).save(operator, id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      out.defaultWriteObject();
+    }
+
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
+    {
+      input.defaultReadObject();
+      operator = (Operator)getValue(OperatorContext.STORAGE_AGENT).load(id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -592,7 +598,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public Operator getOperator()
     {
-      return this.operatorProxy.operator;
+      return operator;
     }
 
     public LogicalPlan getDAG()
@@ -603,7 +609,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public String toString()
     {
-      return "OperatorMeta{" + "name=" + name + ", operatorProxy=" + operatorProxy + ", attributes=" + attributes + '}';
+      return "OperatorMeta{" + "name=" + name + ", operator=" + operator + ", attributes=" + attributes + '}';
     }
 
     @Override
@@ -627,7 +633,7 @@ public class LogicalPlan implements Serializable, DAG
       if (operatorAnnotation != null ? !operatorAnnotation.equals(that.operatorAnnotation) : that.operatorAnnotation != null) {
         return false;
       }
-      if (operatorProxy != null ? !operatorProxy.equals(that.operatorProxy) : that.operatorProxy != null) {
+      if (operator != null ? !operator.equals(that.operator) : that.operator != null) {
         return false;
       }
 
@@ -638,7 +644,7 @@ public class LogicalPlan implements Serializable, DAG
     public int hashCode()
     {
       int result = attributes != null ? attributes.hashCode() : 0;
-      result = 31 * result + (operatorProxy != null ? operatorProxy.hashCode() : 0);
+      result = 31 * result + (operator != null ? operator.hashCode() : 0);
       result = 31 * result + (name != null ? name.hashCode() : 0);
       result = 31 * result + (operatorAnnotation != null ? operatorAnnotation.hashCode() : 0);
       return result;
@@ -722,17 +728,21 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  @SuppressWarnings({"unchecked"})
+  @SuppressWarnings("unchecked")
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
   {
-    return addStream(id, source, new Operator.InputPort[]{sink1});
+    @SuppressWarnings("rawtypes")
+    InputPort[] ports = new Operator.InputPort[]{sink1};
+    return addStream(id, source, ports);
   }
 
   @Override
-  @SuppressWarnings({"unchecked"})
+  @SuppressWarnings("unchecked")
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2)
   {
-    return addStream(id, source, new Operator.InputPort[] {sink1, sink2});
+    @SuppressWarnings("rawtypes")
+    InputPort[] ports = new Operator.InputPort[] {sink1, sink2};
+    return addStream(id, source, ports);
   }
 
   public StreamMeta getStream(String id)
@@ -823,7 +833,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     // TODO: cache mapping
     for (OperatorMeta o: getAllOperators()) {
-      if (o.operatorProxy.operator == operator) {
+      if (o.operator == operator) {
         return o;
       }
     }
@@ -844,9 +854,9 @@ public class LogicalPlan implements Serializable, DAG
   {
     return this.getValue(CONTAINER_MEMORY_MB);
   }
-  
+
   public String getApplicationDocLink()
-  {    
+  {
     return this.getValue(APPLICATION_DOC_LINK);
   }
 
@@ -879,7 +889,10 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     for (StreamMeta n: this.streams.values()) {
-      if (n.codecClass != null) {
+      if (n.streamCodec != null) {
+        classNames.add(n.streamCodec.getClass().getName());
+      }
+      else if (n.codecClass != null) {
         classNames.add(n.codecClass.getName());
       }
     }

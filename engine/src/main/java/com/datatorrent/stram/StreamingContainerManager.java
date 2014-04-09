@@ -1373,12 +1373,6 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  @Override
-  public StorageAgent getStorageAgent()
-  {
-    return new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
-  }
-
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)
   {
     Map<PTContainer, List<PTOperator>> m = new HashMap<PTContainer, List<PTOperator>>();
@@ -1544,7 +1538,8 @@ public class StreamingContainerManager implements PlanContext
     oi.name = operator.getName();
     oi.className = operator.getOperatorMeta().getOperator().getClass().getName();
     oi.status = operator.getState().toString();
-    oi.unifierClass = (operator.getUnifier() == null) ? null : operator.getUnifier().getClass().getName();
+    //oi.unifierClass = operator.isUnifier() ? null : operator.getUnifier().getClass().getName();
+    oi.unifierClass = null; // this needs to be fixed!
     oi.logicalName = operator.getOperatorMeta().getName();
 
     if (operator.stats != null) {
@@ -1602,7 +1597,7 @@ public class StreamingContainerManager implements PlanContext
           for (PTInput input : output.sinks) {
             StreamInfo.Port p = new StreamInfo.Port();
             p.operatorId = String.valueOf(input.target.getId());
-            if (input.target.getUnifier() != null) {
+            if (input.target.isUnifier()) {
               p.portName = StramChild.getUnifierInputPortName(input.portName, operator.getId(), output.portName);
             }
             else {

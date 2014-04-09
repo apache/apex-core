@@ -35,12 +35,6 @@ public class TestPlanContext implements PlanContext, StorageAgent
   public int backupRequests;
 
   @Override
-  public StorageAgent getStorageAgent()
-  {
-    return this;
-  }
-
-  @Override
   public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy)
   {
     this.undeploy = Sets.newHashSet(undeploy);

@@ -16,6 +16,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.api.StatsListener;
@@ -171,7 +172,8 @@ public class PTOperator implements java.io.Serializable
   final int id;
   private final String name;
   Map<InputPortMeta, PartitionKeys> partitionKeys;
-  LogicalPlan.OperatorProxy unifier;
+  boolean unifier;
+  boolean statelessUnifier;
   List<PTInput> inputs;
   List<PTOutput> outputs;
   public final LinkedList<Checkpoint> checkpoints;
@@ -282,9 +284,9 @@ public class PTOperator implements java.io.Serializable
     this.partitionKeys = OperatorPartitions.convertPartitionKeys(this, keys);
   }
 
-  public Operator getUnifier()
+  public boolean isUnifier()
   {
-    return unifier != null ? unifier.get() : null;
+    return unifier;
   }
 
   public boolean isOperatorStateLess()
@@ -292,8 +294,12 @@ public class PTOperator implements java.io.Serializable
     if (operatorMeta.getDAG().getValue(OperatorContext.STATELESS) || operatorMeta.getValue(OperatorContext.STATELESS)) {
       return true;
     }
-    Operator oper = this.unifier != null ? this.unifier.get() : operatorMeta.getOperator();
-    return oper.getClass().isAnnotationPresent(Stateless.class);
+
+    if (unifier) {
+      return statelessUnifier;
+    }
+
+    return operatorMeta.getOperator().getClass().isAnnotationPresent(Stateless.class);
   }
 
   public Checkpoint addCheckpoint(long windowId, long startTime)

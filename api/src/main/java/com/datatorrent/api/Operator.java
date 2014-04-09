@@ -139,7 +139,6 @@ public interface Operator extends Component<OperatorContext>
      * @return codec if special implementation, null otherwise.
      */
     Class<? extends StreamCodec<T>> getStreamCodec();
-
   }
 
   /**

@@ -122,7 +122,7 @@ public class StramRecoveryTest
   {
     // write checkpoint while AM is out,
     // it needs to be picked up as part of restore
-    StorageAgent sa = scm.getStorageAgent();
+    StorageAgent sa = oper.getOperatorMeta().getValue2(OperatorContext.STORAGE_AGENT);
     sa.save(oper.getOperatorMeta().getOperator(), oper.getId(), checkpoint.windowId);
   }
 

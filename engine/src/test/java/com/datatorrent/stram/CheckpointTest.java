@@ -15,7 +15,6 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.util.Clock;
@@ -113,9 +112,9 @@ public class CheckpointTest
 
     StramLocalCluster sc = new StramLocalCluster(dag);
     sc.setHeartbeatMonitoringEnabled(false);
-    sc.run(30000);
+    sc.run();
 
-    FSStorageAgent fssa = new FSStorageAgent(new Configuration(false), new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS).getPath());
+    StorageAgent fssa = sc.getDAG().getValue(OperatorContext.STORAGE_AGENT);
     StreamingContainerManager dnm = sc.dnmgr;
     PhysicalPlan plan = dnm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
