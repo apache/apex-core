@@ -203,13 +203,6 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     public Operator.Unifier<?> getUnifier() {
-      /* prefer the attribute over the interface */
-      Unifier<?> value = getValue(PortContext.UNIFIER);
-      if (value != null) {
-        return value;
-      }
-
-      /* this for block can be deleted after May 1st 2014 */
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           @SuppressWarnings("deprecation")

@@ -20,7 +20,6 @@ import java.util.Collection;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
@@ -93,12 +92,7 @@ public interface Context
      * a generic codec.
      */
     Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<StreamCodec<?>>(new Object2String<StreamCodec<?>>());
-    /**
-     * Merge tuples emitted by multiple upstream instances of the enclosing
-     * operator (partitioned or load balanced).
-     */
-    Attribute<Unifier<?>> UNIFIER = new Attribute<Unifier<?>>(new Object2String<Unifier<?>>());
-    
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
   }
