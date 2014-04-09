@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.support;
 
+import com.datatorrent.api.StorageAgent;
 import static java.lang.Thread.sleep;
 
 import org.hamcrest.BaseMatcher;
@@ -22,6 +23,9 @@ import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import org.junit.Assert;
 
 /**
@@ -162,5 +166,47 @@ abstract public class StramTestSupport
     }
   };
 
+  public static class MemoryStorageAgent implements StorageAgent
+  {
+    HashMap<String, Object> store = new HashMap<String, Object>();
+
+    @Override
+    public synchronized void save(Object object, int operatorId, long windowId) throws IOException
+    {
+      store.put(operatorId + "." + windowId, object);
+    }
+
+    @Override
+    public synchronized Object load(int operatorId, long windowId) throws IOException
+    {
+      return store.get(operatorId + "." + windowId);
+    }
+
+    @Override
+    public synchronized void delete(int operatorId, long windowId) throws IOException
+    {
+      store.remove(operatorId + "." + windowId);
+    }
+
+    @Override
+    public synchronized long[] getWindowIds(int operatorId) throws IOException
+    {
+      String prefix = operatorId + ".";
+      ArrayList<Long> windowIds = new ArrayList<Long>();
+      for (String key : store.keySet()) {
+        if (key.startsWith(prefix)) {
+          windowIds.add(Long.parseLong(key.substring(prefix.length())));
+        }
+      }
+
+      long[] ret = new long[windowIds.size()];
+      for (int i = ret.length; i-- > 0;) {
+        ret[i] = windowIds.get(i).longValue();
+      }
+
+      return ret;
+    }
+
+  }
 
 }
