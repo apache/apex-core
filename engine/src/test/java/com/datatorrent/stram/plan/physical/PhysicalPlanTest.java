@@ -482,7 +482,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("unifiers " + o1Meta, 0, o1NewUnifiers.size());
     p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
     Assert.assertTrue("", p1Doper.getOperatorMeta() == dag.getMeta(o2));
-    Assert.assertTrue("unifier ", p1Doper.isUnifier());
+    Assert.assertFalse("unifier ", p1Doper.isUnifier());
 
     Assert.assertTrue("removed unifier from deployment " + ctx.undeploy,  ctx.undeploy.containsAll(o1Unifiers));
     Assert.assertFalse("removed unifier from deployment " + ctx.deploy,  ctx.deploy.containsAll(o1Unifiers));
