@@ -15,9 +15,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
@@ -362,7 +359,7 @@ public class PartitioningTest
         Checkpoint checkpoint = new Checkpoint(10L, 0, 0);
         p.checkpoints.add(checkpoint);
         p.setRecoveryCheckpoint(checkpoint);
-        new FSStorageAgent(new Configuration(false), checkpointDir.getPath()).save(inputDeployed, p.getId(), 10L);
+        new FSStorageAgent(checkpointDir.getPath(), null).save(inputDeployed, p.getId(), 10L);
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);

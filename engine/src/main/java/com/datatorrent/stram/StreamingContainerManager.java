@@ -33,7 +33,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
@@ -1318,7 +1317,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    StorageAgent ba = new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
+    StorageAgent ba = new FSStorageAgent(this.vars.checkpointFsPath, null);
     for (Pair<PTOperator, Long> p : purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       if (!operator.isOperatorStateLess()) {

@@ -17,7 +17,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 
@@ -449,7 +448,7 @@ public class StreamingContainerManagerTest {
     File path =  new File(testMeta.dir);
     FileUtils.deleteDirectory(path.getAbsoluteFile());
 
-    FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getPath());
+    FSStorageAgent sa = new FSStorageAgent(path.getPath(), null);
 
     long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
