@@ -55,8 +55,6 @@ import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOper
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -226,7 +224,8 @@ public class StreamingContainerManagerTest {
     LogicalPlan.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
 
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    MemoryStorageAgent msa = new MemoryStorageAgent();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, msa);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
@@ -295,7 +294,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      Object operator = new FSStorageAgent(new Configuration(false), new File(dag.getAttributes().get(DAGContext.APPLICATION_PATH), LogicalPlan.SUBDIR_CHECKPOINTS).getPath()).load(mergeNodeDI.id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      Object operator = msa.load(mergeNodeDI.id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
@@ -623,5 +622,4 @@ public class StreamingContainerManagerTest {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(StreamingContainerManagerTest.class);
 }
