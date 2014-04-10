@@ -73,6 +73,7 @@ public class FSEventRecorder implements EventRecorder
   public FSEventRecorder(String appid)
   {
     LOG.debug("Event recorder created for {}", appid);
+    pubSubTopic = "applications." + appid + ".events";
   }
 
   public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)
