@@ -20,7 +20,6 @@ import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 /**
@@ -36,8 +35,8 @@ public class AlertsManagerTest
   public void testAlertManager() throws JSONException
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
-    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
     dag.addOperator("o", GenericTestOperator.class);
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
