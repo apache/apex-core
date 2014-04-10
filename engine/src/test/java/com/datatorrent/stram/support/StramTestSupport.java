@@ -5,6 +5,7 @@
 package com.datatorrent.stram.support;
 
 import com.datatorrent.api.StorageAgent;
+
 import static java.lang.Thread.sleep;
 
 import org.hamcrest.BaseMatcher;
@@ -23,9 +24,12 @@ import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+
 import org.junit.Assert;
 
 /**
@@ -166,8 +170,9 @@ abstract public class StramTestSupport
     }
   };
 
-  public static class MemoryStorageAgent implements StorageAgent
+  public static class MemoryStorageAgent implements StorageAgent, Serializable
   {
+    private static final long serialVersionUID = 1L;
     HashMap<String, Object> store = new HashMap<String, Object>();
 
     @Override
