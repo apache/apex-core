@@ -28,32 +28,37 @@ import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestStreamCodec;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
-public class HostLocalTest {
-
-  public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator> {
-
-    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
+public class HostLocalTest
+{
+  public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>
+  {
+    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>()
+    {
       @Override
-      public Class<? extends StreamCodec<Object>> getStreamCodec() {
+      public Class<? extends StreamCodec<Object>> getStreamCodec()
+      {
         return PartitioningTestStreamCodec.class;
       }
 
       @Override
-      final public void process(Object payload) {
+      final public void process(Object payload)
+      {
       }
 
     };
 
     @Override
-    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity) {
-      List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(incrementalCapacity+1);
+    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
+    {
+      List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(incrementalCapacity + 1);
       for (int i = 0; i < 1; i++) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
         newPartitions.add(p);
       }
-      for (int i = 1; i < 1 +incrementalCapacity; i++) {
+      for (int i = 1; i < 1 + incrementalCapacity; i++) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
         newPartitions.add(p);
@@ -69,10 +74,12 @@ public class HostLocalTest {
   }
 
   @Test
-  public void testParitionLocality() {
+  public void testPartitionLocality()
+  {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
@@ -89,17 +96,17 @@ public class HostLocalTest {
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+                                               NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+                                    NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem,true);
+      String host = rr.getHost(csr, containerMem, true);
       csr.container.host = host;
       //Assert.assertEquals("Hosts set to host1" , "host1",host);
     }
@@ -107,10 +114,13 @@ public class HostLocalTest {
   }
 
   @Test
-  public void testNodeLocal() {
+  public void testNodeLocal()
+  {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
@@ -126,28 +136,30 @@ public class HostLocalTest {
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+                                               NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+                                    NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem,true);
+      String host = rr.getHost(csr, containerMem, true);
       csr.container.host = host;
-      Assert.assertEquals("Hosts set to host1" , "host1",host);
+      Assert.assertEquals("Hosts set to host1", "host1", host);
     }
 
   }
 
   @Test
-  public void testContainerLocal() {
+  public void testContainerLocal()
+  {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     dag.getMeta(o1).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
@@ -164,19 +176,19 @@ public class HostLocalTest {
     int containerMem = 1000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+                                               NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
     nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
-        NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
+                                    NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
     nodeReports.put(nr.getNodeId().getHost(), nr);
 
     // set resources
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem,true);
+      String host = rr.getHost(csr, containerMem, true);
       csr.container.host = host;
-      Assert.assertEquals("Hosts set to host2" , "host2",host);
+      Assert.assertEquals("Hosts set to host2", "host2", host);
     }
 
   }
