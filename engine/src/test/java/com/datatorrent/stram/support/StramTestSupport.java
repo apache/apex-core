@@ -177,7 +177,7 @@ abstract public class StramTestSupport
 
   public static class MemoryStorageAgent implements StorageAgent, Serializable
   {
-    static class OperatorWindowIdPair
+    static class OperatorWindowIdPair implements Serializable
     {
       final int operatorId;
       final long windowId;
@@ -216,6 +216,7 @@ abstract public class StramTestSupport
         return true;
       }
 
+      private static final long serialVersionUID = 201404091805L;
     }
 
     HashMap<OperatorWindowIdPair, Object> store = new HashMap<OperatorWindowIdPair, Object>();
