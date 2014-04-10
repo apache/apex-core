@@ -1570,8 +1570,8 @@ public class StreamingContainerManager implements PlanContext
         pinfo.name = ps.portName;
         pinfo.type = "input";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA = (long)(ps.tuplesPMSMA.getAvg() * 1000);
-        pinfo.bufferServerBytesPSMA = (long)(ps.bufferServerBytesPMSMA.getAvg() * 1000);
+        pinfo.tuplesPSMA = Math.round(ps.tuplesPMSMA.getAvg() * 1000);
+        pinfo.bufferServerBytesPSMA = Math.round(ps.bufferServerBytesPMSMA.getAvg() * 1000);
         pinfo.recordingStartTime = ps.recordingStartTime;
         oi.addPort(pinfo);
       }
@@ -1580,8 +1580,8 @@ public class StreamingContainerManager implements PlanContext
         pinfo.name = ps.portName;
         pinfo.type = "output";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA = (long)(ps.tuplesPMSMA.getAvg() * 1000);
-        pinfo.bufferServerBytesPSMA = (long)(ps.bufferServerBytesPMSMA.getAvg() * 1000);
+        pinfo.tuplesPSMA = Math.round(ps.tuplesPMSMA.getAvg() * 1000);
+        pinfo.bufferServerBytesPSMA = Math.round(ps.bufferServerBytesPMSMA.getAvg() * 1000);
         pinfo.recordingStartTime = ps.recordingStartTime;
         oi.addPort(pinfo);
       }
