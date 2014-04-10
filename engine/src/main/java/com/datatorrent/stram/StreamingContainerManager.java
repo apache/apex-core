@@ -120,7 +120,9 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
   // (operator id, port name) to timestamp
-  private final Map<Pair<Integer, String>, Long> lastEndWindowTimestamps = new HashMap<Pair<Integer, String>, Long>();
+  private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = new HashMap<Pair<Integer, String>, Long>();
+  private final Map<Integer, Long> operatorLastEndWindowTimestamps = new HashMap<Integer, Long>();
+  private long lastStatsTimestamp = System.currentTimeMillis();
   private long currentEndWindowStatsWindowId;
 
   private static class EndWindowStats
@@ -864,9 +866,10 @@ public class StreamingContainerManager implements PlanContext
     Set<Integer> reportedOperators = Sets.newHashSetWithExpectedSize(sca.container.getOperators().size());
 
     boolean containerIdle = true;
-    long elapsedMillis = 0;
 
     for (OperatorHeartbeat shb : heartbeat.getContainerStats().operators) {
+
+      long maxEndWindowTimestamp = 0;
 
       reportedOperators.add(shb.nodeId);
       PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
@@ -892,7 +895,6 @@ public class StreamingContainerManager implements PlanContext
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
-        long totalElapsedMillis = 0;
         int statCount = 0;
         long maxDequeueTimestamp = -1;
         oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
@@ -942,23 +944,17 @@ public class StreamingContainerManager implements PlanContext
               endWindowStats.dequeueTimestamps.put(s.id, s.endWindowTimestamp);
 
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(oper.getId(), s.id);
-              if (lastEndWindowTimestamps.containsKey(operatorPortName) && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
-                elapsedMillis = s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName);
-              }
-              else {
-                elapsedMillis = s.endWindowTimestamp;
-              }
+              long lastEndWindowTimestamp = operatorPortLastEndWindowTimestamps.containsKey(operatorPortName) ? operatorPortLastEndWindowTimestamps.get(operatorPortName) : lastStatsTimestamp;
+              long portElapsedMillis = Math.max(s.endWindowTimestamp - lastEndWindowTimestamp, 0);
+              ps.tuplesPMSMA.add(s.tupleCount, portElapsedMillis);
+              ps.bufferServerBytesPMSMA.add(s.bufferServerBytes, portElapsedMillis);
 
-              lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
-
+              operatorPortLastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
+              if (maxEndWindowTimestamp < s.endWindowTimestamp) {
+                maxEndWindowTimestamp = s.endWindowTimestamp;
+              }
               if (s.endWindowTimestamp > maxDequeueTimestamp) {
                 maxDequeueTimestamp = s.endWindowTimestamp;
-              }
-
-              if (elapsedMillis > 0) {
-                Long numBytes = s.bufferServerBytes;
-                ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
               }
             }
           }
@@ -980,23 +976,13 @@ public class StreamingContainerManager implements PlanContext
               tuplesEmitted += s.tupleCount;
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(oper.getId(), s.id);
 
-              // the second condition is needed when
-              // 1) the operator is redeployed and is playing back the tuples, or
-              // 2) the operator is catching up very fast and the endWindowTimestamp of subsequent windows is less than one millisecond
-              if (lastEndWindowTimestamps.containsKey(operatorPortName)
-                      && (s.endWindowTimestamp > lastEndWindowTimestamps.get(operatorPortName))) {
-                ps.tuplesPSMA.add(s.tupleCount, s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName));
-                elapsedMillis = s.endWindowTimestamp - lastEndWindowTimestamps.get(operatorPortName);
-              }
-              else {
-                elapsedMillis = s.endWindowTimestamp;
-              }
-
-              lastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
-
-              if (elapsedMillis > 0) {
-                Long numBytes = s.bufferServerBytes;
-                ps.bufferServerBytesPSMA.add(numBytes, elapsedMillis);
+              long lastEndWindowTimestamp = operatorPortLastEndWindowTimestamps.containsKey(operatorPortName) ? operatorPortLastEndWindowTimestamps.get(operatorPortName) : lastStatsTimestamp;
+              long portElapsedMillis = Math.max(s.endWindowTimestamp - lastEndWindowTimestamp, 0);
+              ps.tuplesPMSMA.add(s.tupleCount, portElapsedMillis);
+              ps.bufferServerBytesPMSMA.add(s.bufferServerBytes, portElapsedMillis);
+              operatorPortLastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
+              if (maxEndWindowTimestamp < s.endWindowTimestamp) {
+                maxEndWindowTimestamp = s.endWindowTimestamp;
               }
             }
             if (ports.size() > 0) {
@@ -1015,7 +1001,6 @@ public class StreamingContainerManager implements PlanContext
             status.currentWindowId.set(stats.windowId);
           }
           totalCpuTimeUsed += stats.cpuTimeUsed;
-          totalElapsedMillis += elapsedMillis;
           statCount++;
           if (stats.windowId > currentEndWindowStatsWindowId) {
             Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
@@ -1029,26 +1014,28 @@ public class StreamingContainerManager implements PlanContext
 
         status.totalTuplesProcessed.add(tuplesProcessed);
         status.totalTuplesEmitted.add(tuplesEmitted);
-        if (elapsedMillis > 0) {
+        long lastMaxEndWindowTimestamp = operatorLastEndWindowTimestamps.containsKey(oper.getId()) ? operatorLastEndWindowTimestamps.get(oper.getId()) : lastStatsTimestamp;
+        if (maxEndWindowTimestamp - lastMaxEndWindowTimestamp > 0) {
           long tuplesProcessedPSMA = 0;
           long tuplesEmittedPSMA = 0;
           if (statCount != 0) {
-            status.cpuPercentageMA.add((double)totalCpuTimeUsed / (totalElapsedMillis * 10000));
+            //LOG.debug("CPU for {}: {} / {} - {}", oper.getId(), totalCpuTimeUsed, maxEndWindowTimestamp, lastMaxEndWindowTimestamp);
+            status.cpuNanosPMSMA.add(totalCpuTimeUsed, maxEndWindowTimestamp - lastMaxEndWindowTimestamp);
           }
-          /*
-          else {
-            status.cpuPercentageMA.add(0.0);
-          }
-          */
+
           for (PortStatus ps : status.inputPortStatusList.values()) {
-            tuplesProcessedPSMA += ps.tuplesPSMA.getAvg();
+            tuplesProcessedPSMA += ps.tuplesPMSMA.getAvg() * 1000;
           }
           for (PortStatus ps : status.outputPortStatusList.values()) {
-            tuplesEmittedPSMA += ps.tuplesPSMA.getAvg();
+            tuplesEmittedPSMA += ps.tuplesPMSMA.getAvg() * 1000;
           }
           status.tuplesProcessedPSMA.set(tuplesProcessedPSMA);
           status.tuplesEmittedPSMA.set(tuplesEmittedPSMA);
         }
+        else {
+          //LOG.warn("This timestamp for {} is lower than the previous!! {} < {}", oper.getId(), maxEndWindowTimestamp, lastMaxEndWindowTimestamp);
+        }
+        operatorLastEndWindowTimestamps.put(oper.getId(), maxEndWindowTimestamp);
         if (oper.statsListeners != null) {
           status.listenerStats.add(statsList);
           this.reportStats.put(oper, oper);
@@ -1057,6 +1044,9 @@ public class StreamingContainerManager implements PlanContext
           status.lastWindowedStats = statsList;
         }
         status.statsRevs.commit();
+      }
+      if (lastStatsTimestamp < maxEndWindowTimestamp) {
+        lastStatsTimestamp = maxEndWindowTimestamp;
       }
     }
 
@@ -1567,7 +1557,7 @@ public class StreamingContainerManager implements PlanContext
       oi.totalTuplesEmitted = os.totalTuplesEmitted.get();
       oi.tuplesProcessedPSMA = os.tuplesProcessedPSMA.get();
       oi.tuplesEmittedPSMA = os.tuplesEmittedPSMA.get();
-      oi.cpuPercentageMA = os.cpuPercentageMA.getAvg();
+      oi.cpuPercentageMA = os.cpuNanosPMSMA.getAvg() / 10000;
       oi.latencyMA = os.latencyMA.getAvg();
       oi.failureCount = operator.failureCount;
       oi.recoveryWindowId = toWsWindowId(operator.getRecoveryCheckpoint().windowId);
@@ -1580,8 +1570,8 @@ public class StreamingContainerManager implements PlanContext
         pinfo.name = ps.portName;
         pinfo.type = "input";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA = (long)ps.tuplesPSMA.getAvg();
-        pinfo.bufferServerBytesPSMA = (long)ps.bufferServerBytesPSMA.getAvg();
+        pinfo.tuplesPSMA = (long)(ps.tuplesPMSMA.getAvg() * 1000);
+        pinfo.bufferServerBytesPSMA = (long)(ps.bufferServerBytesPMSMA.getAvg() * 1000);
         pinfo.recordingStartTime = ps.recordingStartTime;
         oi.addPort(pinfo);
       }
@@ -1590,8 +1580,8 @@ public class StreamingContainerManager implements PlanContext
         pinfo.name = ps.portName;
         pinfo.type = "output";
         pinfo.totalTuples = ps.totalTuples;
-        pinfo.tuplesPSMA = (long)ps.tuplesPSMA.getAvg();
-        pinfo.bufferServerBytesPSMA = (long)ps.bufferServerBytesPSMA.getAvg();
+        pinfo.tuplesPSMA = (long)(ps.tuplesPMSMA.getAvg() * 1000);
+        pinfo.bufferServerBytesPSMA = (long)(ps.bufferServerBytesPMSMA.getAvg() * 1000);
         pinfo.recordingStartTime = ps.recordingStartTime;
         oi.addPort(pinfo);
       }

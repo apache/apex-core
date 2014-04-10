@@ -122,7 +122,7 @@ public class MovingAverage
         return 0;
       }
       else {
-        return ((double)sumValues * 1000) / sumTimeIntervals;
+        return ((double)sumValues) / sumTimeIntervals;
       }
     }
   }

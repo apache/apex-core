@@ -37,12 +37,12 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     public String portName;
     public long totalTuples;
     public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-    public final TimedMovingAverageLong tuplesPSMA;
-    public final TimedMovingAverageLong bufferServerBytesPSMA;
+    public final TimedMovingAverageLong tuplesPMSMA;
+    public final TimedMovingAverageLong bufferServerBytesPMSMA;
 
     public PortStatus() {
-      tuplesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
-      bufferServerBytesPSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+      tuplesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+      bufferServerBytesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
     }
   }
 
@@ -55,7 +55,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final VersionedLong tuplesProcessedPSMA = statsRevs.newVersionedLong();
   public final VersionedLong tuplesEmittedPSMA = statsRevs.newVersionedLong();
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-  public final MovingAverageDouble cpuPercentageMA;
+  public final TimedMovingAverageLong cpuNanosPMSMA;
   public final MovingAverageLong latencyMA;
   public final Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
   public final Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
@@ -78,7 +78,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     throughputCalculationMaxSamples = dag.getValue(LogicalPlan.THROUGHPUT_CALCULATION_MAX_SAMPLES);
     int heartbeatInterval = dag.getValue(LogicalPlan.HEARTBEAT_INTERVAL_MILLIS);
 
-    cpuPercentageMA = new MovingAverageDouble(throughputCalculationInterval / heartbeatInterval);
+    cpuNanosPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
     this.windowProcessingTimeoutMillis = dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) * om.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT);
   }
@@ -124,7 +124,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   @Override
   public double getCpuPercentageMA()
   {
-    return this.cpuPercentageMA.getAvg();
+    return this.cpuNanosPMSMA.getAvg();
   }
 
   @Override

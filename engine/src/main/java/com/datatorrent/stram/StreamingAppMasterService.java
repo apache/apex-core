@@ -232,7 +232,7 @@ public class StreamingAppMasterService extends CompositeService
       long result = 0;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
         for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.inputPortStatusList.entrySet()) {
-          result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
+          result += portEntry.getValue().bufferServerBytesPMSMA.getAvg() * 1000;
         }
       }
       return result;
@@ -244,7 +244,7 @@ public class StreamingAppMasterService extends CompositeService
       long result = 0;
       for (Map.Entry<Integer, PTOperator> entry : dnmgr.getPhysicalPlan().getAllOperators().entrySet()) {
         for (Map.Entry<String, PortStatus> portEntry : entry.getValue().stats.outputPortStatusList.entrySet()) {
-          result += portEntry.getValue().bufferServerBytesPSMA.getAvg();
+          result += portEntry.getValue().bufferServerBytesPMSMA.getAvg() * 1000;
         }
       }
       return result;
