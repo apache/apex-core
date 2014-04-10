@@ -4,24 +4,19 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
-
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
-import com.datatorrent.stram.util.MovingAverage.MovingAverageDouble;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * <p>OperatorStatus class.</p>
@@ -57,8 +52,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
   public final TimedMovingAverageLong cpuNanosPMSMA;
   public final MovingAverageLong latencyMA;
-  public final Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
-  public final Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
+  public final Map<String, PortStatus> inputPortStatusList = new ConcurrentHashMap<String, PortStatus>();
+  public final Map<String, PortStatus> outputPortStatusList = new ConcurrentHashMap<String, PortStatus>();
   public List<OperatorStats> lastWindowedStats = Collections.emptyList();
   public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
   public volatile long lastWindowIdChangeTms = 0;
