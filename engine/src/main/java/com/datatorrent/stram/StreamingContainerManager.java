@@ -155,7 +155,7 @@ public class StreamingContainerManager implements PlanContext
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     }
     this.plan = new PhysicalPlan(dag, this);
-    setupRecording(dag.getAttributes(), enableEventRecording);
+    setupRecording(enableEventRecording);
     setupStringCodecs();
   }
 
@@ -166,7 +166,7 @@ public class StreamingContainerManager implements PlanContext
     this.journal = setupJournal();
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
-    setupRecording(this.plan.getDAG().getAttributes(), enableEventRecording);
+    setupRecording(enableEventRecording);
     setupStringCodecs();
   }
 
@@ -178,17 +178,17 @@ public class StreamingContainerManager implements PlanContext
     return lJournal;
   }
 
-  private void setupRecording(AttributeMap attributes, boolean enableEventRecording)
+  private void setupRecording(boolean enableEventRecording)
   {
     if (this.vars.recordStatsInterval > 0 || enableEventRecording) {
-      setupWsClient(attributes);
+      setupWsClient();
       if (this.vars.recordStatsInterval > 0) {
         statsRecorder = new FSStatsRecorder();
         statsRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_STATS);
         statsRecorder.setWebSocketClient(wsClient);
         statsRecorder.setup();
       }
-      eventRecorder = new FSEventRecorder(attributes.get(LogicalPlan.APPLICATION_ID));
+      eventRecorder = new FSEventRecorder(plan.getDAG().getValue(LogicalPlan.APPLICATION_ID));
       eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
       eventRecorder.setWebSocketClient(wsClient);
       eventRecorder.setup();
@@ -204,12 +204,12 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  private void setupWsClient(AttributeMap attributes)
+  private void setupWsClient()
   {
-    String gatewayAddress = attributes.get(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
-    boolean gatewayUseSsl = attributes.get(LogicalPlan.GATEWAY_USE_SSL);
-    String gatewayUserName = attributes.get(LogicalPlan.GATEWAY_USER_NAME);
-    String gatewayPassword = attributes.get(LogicalPlan.GATEWAY_PASSWORD);
+    String gatewayAddress = plan.getDAG().getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
+    boolean gatewayUseSsl = plan.getDAG().getValue(LogicalPlan.GATEWAY_USE_SSL);
+    String gatewayUserName = plan.getDAG().getValue(LogicalPlan.GATEWAY_USER_NAME);
+    String gatewayPassword = plan.getDAG().getValue(LogicalPlan.GATEWAY_PASSWORD);
 
     if (gatewayAddress != null) {
       try {
