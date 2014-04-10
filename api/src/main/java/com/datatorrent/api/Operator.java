@@ -137,9 +137,7 @@ public interface Operator extends Component<OperatorContext>
      * then it can return null, in which case the engine may use a generic codec.
      *
      * @return codec if special implementation, null otherwise.
-     * @deprecated Use port attribute STREAM_CODEC to specify stream codec.
      */
-    @Deprecated
     Class<? extends StreamCodec<T>> getStreamCodec();
   }
 
@@ -166,9 +164,7 @@ public interface Operator extends Component<OperatorContext>
      * operator (partitioned or load balanced).
      *
      * @return unifier object which can merge partitioned streams together into a single stream.
-     * @deprecated Use UNIFIER port attribute instead.
      */
-    @Deprecated
     Unifier<T> getUnifier();
 
   }
