@@ -946,6 +946,7 @@ public class StreamingContainerManager implements PlanContext
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(oper.getId(), s.id);
               long lastEndWindowTimestamp = operatorPortLastEndWindowTimestamps.containsKey(operatorPortName) ? operatorPortLastEndWindowTimestamps.get(operatorPortName) : lastStatsTimestamp;
               long portElapsedMillis = Math.max(s.endWindowTimestamp - lastEndWindowTimestamp, 0);
+              //LOG.debug("=== PROCESSED TUPLE COUNT for {}: {}, {}, {}, {}", operatorPortName, s.tupleCount, portElapsedMillis, operatorPortLastEndWindowTimestamps.get(operatorPortName), lastStatsTimestamp);
               ps.tuplesPMSMA.add(s.tupleCount, portElapsedMillis);
               ps.bufferServerBytesPMSMA.add(s.bufferServerBytes, portElapsedMillis);
 
@@ -978,6 +979,7 @@ public class StreamingContainerManager implements PlanContext
 
               long lastEndWindowTimestamp = operatorPortLastEndWindowTimestamps.containsKey(operatorPortName) ? operatorPortLastEndWindowTimestamps.get(operatorPortName) : lastStatsTimestamp;
               long portElapsedMillis = Math.max(s.endWindowTimestamp - lastEndWindowTimestamp, 0);
+              //LOG.debug("=== EMITTED TUPLE COUNT for {}: {}, {}, {}, {}", operatorPortName, s.tupleCount, portElapsedMillis, operatorPortLastEndWindowTimestamps.get(operatorPortName), lastStatsTimestamp);
               ps.tuplesPMSMA.add(s.tupleCount, portElapsedMillis);
               ps.bufferServerBytesPMSMA.add(s.bufferServerBytes, portElapsedMillis);
               operatorPortLastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
@@ -1015,22 +1017,22 @@ public class StreamingContainerManager implements PlanContext
         status.totalTuplesProcessed.add(tuplesProcessed);
         status.totalTuplesEmitted.add(tuplesEmitted);
         long lastMaxEndWindowTimestamp = operatorLastEndWindowTimestamps.containsKey(oper.getId()) ? operatorLastEndWindowTimestamps.get(oper.getId()) : lastStatsTimestamp;
-        if (maxEndWindowTimestamp - lastMaxEndWindowTimestamp > 0) {
-          long tuplesProcessedPSMA = 0;
-          long tuplesEmittedPSMA = 0;
+        if (maxEndWindowTimestamp >= lastMaxEndWindowTimestamp) {
+          double tuplesProcessedPMSMA = 0.0;
+          double tuplesEmittedPMSMA = 0.0;
           if (statCount != 0) {
             //LOG.debug("CPU for {}: {} / {} - {}", oper.getId(), totalCpuTimeUsed, maxEndWindowTimestamp, lastMaxEndWindowTimestamp);
             status.cpuNanosPMSMA.add(totalCpuTimeUsed, maxEndWindowTimestamp - lastMaxEndWindowTimestamp);
           }
 
           for (PortStatus ps : status.inputPortStatusList.values()) {
-            tuplesProcessedPSMA += ps.tuplesPMSMA.getAvg() * 1000;
+            tuplesProcessedPMSMA += ps.tuplesPMSMA.getAvg();
           }
           for (PortStatus ps : status.outputPortStatusList.values()) {
-            tuplesEmittedPSMA += ps.tuplesPMSMA.getAvg() * 1000;
+            tuplesEmittedPMSMA += ps.tuplesPMSMA.getAvg();
           }
-          status.tuplesProcessedPSMA.set(tuplesProcessedPSMA);
-          status.tuplesEmittedPSMA.set(tuplesEmittedPSMA);
+          status.tuplesProcessedPSMA.set(Math.round(tuplesProcessedPMSMA * 1000));
+          status.tuplesEmittedPSMA.set(Math.round(tuplesEmittedPMSMA * 1000));
         }
         else {
           //LOG.warn("This timestamp for {} is lower than the previous!! {} < {}", oper.getId(), maxEndWindowTimestamp, lastMaxEndWindowTimestamp);
