@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.PartitionKeys;
-import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -90,8 +89,7 @@ public class StreamMapping implements java.io.Serializable
     OperatorMeta om = streamMeta.getSource().getOperatorWrapper();
     PTOperator pu = plan.newOperator(om, om.getName() + "#merge#" + streamMeta.getSource().getPortName());
 
-    pu.unifier = true;
-    pu.statelessUnifier = unifier.getClass().isAnnotationPresent(Stateless.class);
+    pu.unifierClass = unifier.getClass();
     pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
     plan.newOpers.put(pu, unifier);
     return pu;

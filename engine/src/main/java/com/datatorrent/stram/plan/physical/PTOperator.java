@@ -14,9 +14,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.api.StatsListener;
@@ -172,8 +170,7 @@ public class PTOperator implements java.io.Serializable
   final int id;
   private final String name;
   Map<InputPortMeta, PartitionKeys> partitionKeys;
-  boolean unifier;
-  boolean statelessUnifier;
+  Class<?> unifierClass;
   List<PTInput> inputs;
   List<PTOutput> outputs;
   public final LinkedList<Checkpoint> checkpoints;
@@ -286,7 +283,12 @@ public class PTOperator implements java.io.Serializable
 
   public boolean isUnifier()
   {
-    return unifier;
+    return unifierClass != null;
+  }
+
+  public Class<?> getUnifierClass()
+  {
+    return unifierClass;
   }
 
   public boolean isOperatorStateLess()
@@ -295,8 +297,8 @@ public class PTOperator implements java.io.Serializable
       return true;
     }
 
-    if (unifier) {
-      return statelessUnifier;
+    if (unifierClass != null) {
+      return unifierClass.isAnnotationPresent(Stateless.class);
     }
 
     return operatorMeta.getOperator().getClass().isAnnotationPresent(Stateless.class);

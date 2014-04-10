@@ -1537,8 +1537,7 @@ public class StreamingContainerManager implements PlanContext
     oi.name = operator.getName();
     oi.className = operator.getOperatorMeta().getOperator().getClass().getName();
     oi.status = operator.getState().toString();
-    //oi.unifierClass = operator.isUnifier() ? null : operator.getUnifier().getClass().getName();
-    oi.unifierClass = null; // this needs to be fixed!
+    oi.unifierClass = operator.getUnifierClass().getName();
     oi.logicalName = operator.getOperatorMeta().getName();
 
     if (operator.stats != null) {
