@@ -926,8 +926,8 @@ public class StreamingContainerManager implements PlanContext
           // calculate the stats related to end window
           EndWindowStats endWindowStats = new EndWindowStats(); // end window stats for a particular window id for a particular node
           Collection<ContainerStats.OperatorStats.PortStats> ports = stats.inputPorts;
-          Set<String> currentInputPortSet = new HashSet<String>();
           if (ports != null) {
+            Set<String> currentInputPortSet = Sets.newHashSetWithExpectedSize(ports.size());
             for (ContainerStats.OperatorStats.PortStats s : ports) {
               currentInputPortSet.add(s.id);
               PortStatus ps = status.inputPortStatusList.get(s.id);
@@ -960,19 +960,19 @@ public class StreamingContainerManager implements PlanContext
                 maxDequeueTimestamp = s.endWindowTimestamp;
               }
             }
-          }
-
-          // need to remove dead ports, for unifiers
-          Iterator<Map.Entry<String, PortStatus>> it = status.inputPortStatusList.entrySet().iterator();
-          while (it.hasNext()) {
-            Map.Entry<String, PortStatus> entry = it.next();
-            if (!currentInputPortSet.contains(entry.getKey())) {
-              it.remove();
+            // need to remove dead ports, for unifiers
+            Iterator<Map.Entry<String, PortStatus>> it = status.inputPortStatusList.entrySet().iterator();
+            while (it.hasNext()) {
+              Map.Entry<String, PortStatus> entry = it.next();
+              if (!currentInputPortSet.contains(entry.getKey())) {
+                it.remove();
+              }
             }
           }
+
           ports = stats.outputPorts;
-          Set<String> currentOutputPortSet = new HashSet<String>();
           if (ports != null) {
+            Set<String> currentOutputPortSet = Sets.newHashSetWithExpectedSize(ports.size());
             for (ContainerStats.OperatorStats.PortStats s : ports) {
               currentOutputPortSet.add(s.id);
               PortStatus ps = status.outputPortStatusList.get(s.id);
@@ -1002,15 +1002,16 @@ public class StreamingContainerManager implements PlanContext
             if (ports.size() > 0) {
               endWindowStats.emitTimestamp = ports.iterator().next().endWindowTimestamp;
             }
-          }
-          // need to remove dead ports, for unifiers
-          it = status.outputPortStatusList.entrySet().iterator();
-          while (it.hasNext()) {
-            Map.Entry<String, PortStatus> entry = it.next();
-            if (!currentOutputPortSet.contains(entry.getKey())) {
-              it.remove();
+            // need to remove dead ports, for unifiers
+            Iterator<Map.Entry<String, PortStatus>> it = status.outputPortStatusList.entrySet().iterator();
+            while (it.hasNext()) {
+              Map.Entry<String, PortStatus> entry = it.next();
+              if (!currentOutputPortSet.contains(entry.getKey())) {
+                it.remove();
+              }
             }
           }
+
           // for output operator, just take the maximum dequeue time for emit timestamp.
           // (we don't know the latency for output operators because they don't emit tuples)
           if (endWindowStats.emitTimestamp < 0) {
