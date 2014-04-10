@@ -5,6 +5,7 @@
 package com.datatorrent.stram;
 
 import com.datatorrent.api.*;
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -77,6 +78,7 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+
 import com.google.common.collect.Maps;
 
 /**
@@ -606,6 +608,7 @@ public class StreamingAppMasterService extends CompositeService
     int numTotalContainers = 0;
     // keep track of already requested containers to not request them again while waiting for allocation
     int numRequestedContainers = 0;
+    int numReleasedContainers = 0;
     int nextRequestPriority = 0;
     ResourceRequestHandler resourceRequestor = new ResourceRequestHandler();
 
@@ -660,7 +663,7 @@ public class StreamingAppMasterService extends CompositeService
         boolean requestResources = true;
         if (licenseClient != null) {
           // ensure enough memory is left to request new container
-          licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+          licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
           availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
           int requiredMemory = dnmgr.containerStartRequests.size() * containerMemory;
           if (requiredMemory > availableLicensedMemory) {
@@ -733,6 +736,8 @@ public class StreamingAppMasterService extends CompositeService
         if (alreadyAllocated) {
           LOG.info("Releasing {} as resource with priority {} was already assigned", allocatedContainer.getId(), allocatedContainer.getPriority());
           releasedContainers.add(allocatedContainer.getId());
+          numReleasedContainers++;
+          numRequestedContainers++;
           continue;
         }
         if (csr != null) {
@@ -816,7 +821,7 @@ public class StreamingAppMasterService extends CompositeService
       if (licenseClient != null) {
         if (!(amResp.getCompletedContainersStatuses().isEmpty() && amResp.getAllocatedContainers().isEmpty())) {
           // update license agent on allocated container changes
-          licenseClient.reportAllocatedMemory((int)stats.getTotalMemoryAllocated());
+          licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
         }
         availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
       }
@@ -832,7 +837,7 @@ public class StreamingAppMasterService extends CompositeService
         appDone = true;
       }
 
-      LOG.debug("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" + numTotalContainers + ", requested=" + numRequestedContainers + ", completed=" + numCompletedContainers + ", failed=" + numFailedContainers + ", currentAllocated=" + allAllocatedContainers.size());
+      LOG.debug("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" + numTotalContainers + ", requested=" + numRequestedContainers + ", released=" + numReleasedContainers + ", completed=" + numCompletedContainers + ", failed=" + numFailedContainers + ", currentAllocated=" + allAllocatedContainers.size());
 
       // monitor child containers
       dnmgr.monitorHeartbeat();
@@ -883,8 +888,7 @@ public class StreamingAppMasterService extends CompositeService
   /**
    * Ask RM to allocate given no. of containers to this Application Master
    *
-   * @param requestedContainers
-   * Containers to ask for from RM
+   * @param requestedContainers Containers to ask for from RM
    * @return Response from RM to AM with allocated containers
    * @throws YarnRemoteException
    */
