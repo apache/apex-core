@@ -25,7 +25,6 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -38,7 +37,7 @@ import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
+import com.datatorrent.stram.FSStorageAgent;
 import com.datatorrent.stram.api.Checkpoint;
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -491,14 +490,17 @@ public class LogicalPlan implements Serializable, DAG
 
     private void writeObject(ObjectOutputStream out) throws IOException
     {
-      getValue(OperatorContext.STORAGE_AGENT).save(operator, id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      //getValue2(OperatorContext.STORAGE_AGENT).save(operator, id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
       out.defaultWriteObject();
+      FSStorageAgent.store(out, operator);
     }
 
     private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
     {
       input.defaultReadObject();
-      operator = (Operator)getValue(OperatorContext.STORAGE_AGENT).load(id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      // TODO: not working because - we don't have the storage agent in parent attribuet map
+      //operator = (Operator)getValue2(OperatorContext.STORAGE_AGENT).load(id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      operator = (Operator)FSStorageAgent.retrieve(input);
     }
 
     private class PortMapping implements Operators.OperatorDescriptor

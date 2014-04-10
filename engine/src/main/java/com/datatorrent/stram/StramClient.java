@@ -468,7 +468,8 @@ public class StramClient
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
         Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
-        dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(conf, checkpointPath.toString()));
+        // use conf client side to pickup any proxy settings from dt-site.xml
+        dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(checkpointPath.toString(), conf));
       }
 
       // Set the log4j properties if needed

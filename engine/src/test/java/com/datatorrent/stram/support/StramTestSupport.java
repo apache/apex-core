@@ -5,6 +5,7 @@
 package com.datatorrent.stram.support;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import static java.lang.Thread.sleep;
@@ -174,7 +175,7 @@ abstract public class StramTestSupport
 
   };
 
-  public static class MemoryStorageAgent implements StorageAgent
+  public static class MemoryStorageAgent implements StorageAgent, Serializable
   {
     static class OperatorWindowIdPair
     {
@@ -255,6 +256,7 @@ abstract public class StramTestSupport
       return ret;
     }
 
+    private static final long serialVersionUID = 201404091747L;
   }
 
 }

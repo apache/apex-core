@@ -266,7 +266,7 @@ public class StramLocalCluster implements Runnable, Controller
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, pathUri);
     }
     if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) {
-      dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(new Configuration(false), new Path(pathUri, LogicalPlan.SUBDIR_CHECKPOINTS).toString()));
+      dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(new Path(pathUri, LogicalPlan.SUBDIR_CHECKPOINTS).toString(), null));
     }
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();

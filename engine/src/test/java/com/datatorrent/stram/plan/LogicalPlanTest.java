@@ -23,6 +23,7 @@ import com.esotericsoftware.kryo.serializers.JavaSerializer;
 
 import org.junit.Assert;
 import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -34,14 +35,15 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+
 import java.util.*;
 
 public class LogicalPlanTest {
@@ -119,6 +121,7 @@ public class LogicalPlanTest {
   public void testLogicalPlanSerialization() throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     ValidationOperator validationNode = dag.addOperator("validationNode", ValidationOperator.class);
     CounterOperator countGoodNode = dag.addOperator("countGoodNode", CounterOperator.class);
