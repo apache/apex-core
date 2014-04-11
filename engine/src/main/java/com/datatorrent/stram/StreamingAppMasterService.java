@@ -815,6 +815,7 @@ public class StreamingAppMasterService extends CompositeService
 
         // record container stop event
         StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
+        ev.setReason(containerStatus.getDiagnostics());
         dnmgr.recordEventAsync(ev);
       }
 
