@@ -63,14 +63,14 @@ public final class StatsAgent extends FSPartFileAgent
     public long count;
   }
 
-  public static class OperatorStats
+  public static class OperatorStatsInfo
   {
     public int operatorId;
     public long timestamp;
     public ObjectMapperString stats;
   }
 
-  public static class ContainerStats
+  public static class ContainerStatsInfo
   {
     public int containerId;
     public long timestamp;
@@ -275,9 +275,9 @@ public final class StatsAgent extends FSPartFileAgent
     return info;
   }
 
-  public List<OperatorStats> getOperatorsStats(String appId, String opName, Long startTime, Long endTime)
+  public List<OperatorStatsInfo> getOperatorsStats(String appId, String opName, Long startTime, Long endTime)
   {
-    List<OperatorStats> result = new ArrayList<OperatorStats>();
+    List<OperatorStatsInfo> result = new ArrayList<OperatorStatsInfo>();
     String dir = getOperatorStatsDirectory(appId, opName);
     if (dir == null) {
       return null;
@@ -308,7 +308,7 @@ public final class StatsAgent extends FSPartFileAgent
             String partLine;
             // advance until offset is reached
             while ((partLine = partBr.readLine()) != null) {
-              OperatorStats os = new OperatorStats();
+              OperatorStatsInfo os = new OperatorStatsInfo();
               int cursor = 0;
               int cursor2;
               cursor2 = partLine.indexOf(':', cursor);
@@ -344,9 +344,9 @@ public final class StatsAgent extends FSPartFileAgent
     return result;
   }
 
-  public List<ContainerStats> getContainersStats(String appId, Long startTime, Long endTime)
+  public List<ContainerStatsInfo> getContainersStats(String appId, Long startTime, Long endTime)
   {
-    List<ContainerStats> result = new ArrayList<ContainerStats>();
+    List<ContainerStatsInfo> result = new ArrayList<ContainerStatsInfo>();
     String dir = getContainerStatsDirectory(appId);
     if (dir == null) {
       return null;
@@ -378,7 +378,7 @@ public final class StatsAgent extends FSPartFileAgent
         try {
           String partLine;
           while ((partLine = partBr.readLine()) != null) {
-            ContainerStats cs = new ContainerStats();
+            ContainerStatsInfo cs = new ContainerStatsInfo();
             int cursor = 0;
             int cursor2;
             cursor2 = partLine.indexOf(':', cursor);

@@ -4,26 +4,23 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.lib.codec.JsonStreamCodec;
+import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.client.EventsAgent;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
+import net.engio.mbassy.listener.Handler;
+import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.beanutils.BeanUtils;
-
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.lib.codec.JsonStreamCodec;
-import com.datatorrent.common.util.Slice;
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
-
-import net.engio.mbassy.listener.Handler;
 
 /**
  * <p>FSEventRecorder class.</p>
@@ -135,7 +132,11 @@ public class FSEventRecorder implements EventRecorder
     bos.write("\n".getBytes());
     storage.writeDataItem(bos.toByteArray(), true);
     if (numSubscribers > 0) {
-      wsClient.publish(pubSubTopic, event);
+      EventsAgent.EventInfo eventInfo = new EventsAgent.EventInfo();
+      eventInfo.timestamp = event.getTimestamp();
+      eventInfo.type = event.getType();
+      eventInfo.data = data;
+      wsClient.publish(pubSubTopic, eventInfo);
     }
   }
 
@@ -157,7 +158,7 @@ public class FSEventRecorder implements EventRecorder
       }
 
     });
-    
+
   }
 
   public void requestSync()

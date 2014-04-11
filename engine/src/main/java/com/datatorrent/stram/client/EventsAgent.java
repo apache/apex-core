@@ -32,7 +32,7 @@ public final class EventsAgent extends FSPartFileAgent
     public long endTime;
   }
 
-  public static class Event
+  public static class EventInfo
   {
     public long timestamp;
     public String type;
@@ -76,9 +76,9 @@ public final class EventsAgent extends FSPartFileAgent
   }
 
   @SuppressWarnings("unchecked")
-  public List<Event> getEvents(String appId, Long fromTime, Long toTime)
+  public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime)
   {
-    List<Event> result = new ArrayList<Event>();
+    List<EventInfo> result = new ArrayList<EventInfo>();
     String dir = getEventsDirectory(appId);
     if (dir == null) {
       return null;
@@ -108,7 +108,7 @@ public final class EventsAgent extends FSPartFileAgent
         try {
           String partLine;
           while ((partLine = partBr.readLine()) != null) {
-            Event ev = new Event();
+            EventInfo ev = new EventInfo();
             int cursor = 0;
             int cursor2;
             cursor2 = partLine.indexOf(':', cursor);
