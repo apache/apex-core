@@ -42,7 +42,7 @@ public class FSEventRecorder implements EventRecorder
   private final URI pubSubUrl = null;
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
-  private String pubSubTopic;
+  private final String pubSubTopic;
 
   private class EventRecorderThread extends Thread
   {
@@ -157,6 +157,7 @@ public class FSEventRecorder implements EventRecorder
       }
 
     });
+    
   }
 
   public void requestSync()

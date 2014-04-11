@@ -62,6 +62,14 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
       topicHandlers.put(topic, handlers);
     }
     handlers.add(handler);
+    try {
+      if (isConnectionOpen()) {
+        subscribe(topic);
+      }
+    }
+    catch (IOException ex) {
+      LOG.warn("Cannot subscribe to {}", topic);
+    }
   }
 
   @Override
