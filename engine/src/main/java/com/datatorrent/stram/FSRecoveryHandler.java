@@ -52,15 +52,15 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public FSRecoveryHandler(String appDir, Configuration conf) throws IOException
   {
     this.basedir = new Path(appDir, "recovery");
-    
+
     logPath = new Path(basedir, FILE_LOG);
     logBackupPath = new Path(basedir, FILE_LOG_BACKUP);
     snapshotPath = new Path(basedir, FILE_SNAPSHOT);
     snapshotBackupPath = new Path(basedir, FILE_SNAPSHOT_BACKUP);
-    
+
     logfs = FileSystem.newInstance(logPath.toUri(), conf);
     snapshotFs = FileSystem.newInstance(snapshotPath.toUri(), conf);
-    
+
     heartbeatPath = new Path(basedir, "heartbeatUri");
     heartbeatFs = FileSystem.newInstance(heartbeatPath.toUri(), conf);
   }
@@ -194,7 +194,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       // we have log backup, but no checkpoint backup
       // failure between log rotation and writing checkpoint
       if (fc.util().exists(logBackupPath)) {
-        LOG.warn("Found {}, did checkpointing fail?");
+        LOG.warn("Found {}, did checkpointing fail?", logBackupPath);
         fc.rename(logBackupPath, logPath, Rename.OVERWRITE);
       }
 
@@ -231,7 +231,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     LOG.info("Connect address: {} from {} ", uri, heartbeatPath);
     return uri;
   }
-  
+
   @Override
   protected void finalize() throws Throwable
   {

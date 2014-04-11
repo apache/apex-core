@@ -257,10 +257,10 @@ public class StramChild extends YarnContainerMain
     finally {
       rpcProxy.close();
       DefaultMetricsSystem.shutdown();
+      logger.info("Exit status for container: {}", exitStatus);
       LogManager.shutdown();
     }
 
-    logger.debug("Exit status for container: {}", exitStatus);
     if (exitStatus != 0) {
       System.exit(exitStatus);
     }
