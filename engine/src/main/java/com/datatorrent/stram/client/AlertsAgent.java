@@ -32,9 +32,9 @@ public class AlertsAgent extends StramAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(AlertsAgent.class);
 
-  public AlertsAgent(Configuration conf)
+  public AlertsAgent(FileSystem fs, Configuration conf)
   {
-    super(conf);
+    super(fs, conf);
   }
 
   private String getAlertTemplatesDirectory()
@@ -145,8 +145,8 @@ public class AlertsAgent extends StramAgent
   {
     String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
-    fs.mkdirs(path);
-    FileStatus fileStatus = fs.getFileStatus(path);
+    fileSystem.mkdirs(path);
+    FileStatus fileStatus = fileSystem.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
     }
@@ -158,7 +158,7 @@ public class AlertsAgent extends StramAgent
     String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
 
-    FileStatus fileStatus = fs.getFileStatus(path);
+    FileStatus fileStatus = fileSystem.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
     }
@@ -174,7 +174,7 @@ public class AlertsAgent extends StramAgent
 
     FileStatus fileStatus;
     try {
-      fileStatus = fs.getFileStatus(path);
+      fileStatus = fileSystem.getFileStatus(path);
     }
     catch (FileNotFoundException ex) {
       return map;
@@ -183,10 +183,10 @@ public class AlertsAgent extends StramAgent
     if (!fileStatus.isDirectory()) {
       return map;
     }
-    RemoteIterator<LocatedFileStatus> it = fs.listFiles(path, false);
+    RemoteIterator<LocatedFileStatus> it = fileSystem.listFiles(path, false);
     while (it.hasNext()) {
       LocatedFileStatus lfs = it.next();
-      FSDataInputStream is = fs.open(lfs.getPath());
+      FSDataInputStream is = fileSystem.open(lfs.getPath());
       byte[] bytes = new byte[is.available()];
       is.readFully(bytes);
       String content = new String(bytes);
@@ -200,11 +200,11 @@ public class AlertsAgent extends StramAgent
     String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
 
-    FileStatus fileStatus = fs.getFileStatus(path);
+    FileStatus fileStatus = fileSystem.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
     }
-    FSDataInputStream is = fs.open(new Path(path, name));
+    FSDataInputStream is = fileSystem.open(new Path(path, name));
     byte[] bytes = new byte[is.available()];
     is.readFully(bytes);
     return new String(bytes);

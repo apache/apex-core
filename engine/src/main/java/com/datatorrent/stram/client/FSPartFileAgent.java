@@ -4,12 +4,11 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.codehaus.jettison.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +26,9 @@ public abstract class FSPartFileAgent extends StramAgent
 
   protected abstract IndexLine parseIndexLine(String line) throws JSONException;
 
-  public FSPartFileAgent(Configuration conf)
+  public FSPartFileAgent(FileSystem fs, Configuration conf)
   {
-    super(conf);
+    super(fs, conf);
   }
 
   public void setLastIndexLine(String basePath, String line)

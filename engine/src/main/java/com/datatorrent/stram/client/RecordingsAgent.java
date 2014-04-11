@@ -7,7 +7,6 @@ package com.datatorrent.stram.client;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URI;
 import java.util.*;
 
 import javax.ws.rs.WebApplicationException;
@@ -45,7 +44,6 @@ public final class RecordingsAgent extends FSPartFileAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(RecordingsAgent.class);
   private static final long MAX_LIMIT_TUPLES = 1000;
-  private boolean localMode = false;
 
   public static class RecordingInfo
   {
@@ -100,37 +98,9 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   }
 
-  public RecordingsAgent(Configuration conf)
+  public RecordingsAgent(FileSystem fs, Configuration conf)
   {
-    super(conf);
-  }
-
-  public void setLocalMode(boolean localMode)
-  {
-    this.localMode = localMode;
-  }
-
-  @Override
-  public void setup() throws IOException
-  {
-    if (localMode) {
-      fs = new RawLocalFileSystem();
-      try {
-        fs.initialize(new URI("file:/test"), new Configuration());
-      }
-      catch (Exception ex) {
-      }
-    }
-    else {
-      fs = FileSystem.newInstance(new Configuration());
-    }
-    ownFS = true;
-  }
-
-  @Override
-  public void tearDown() throws IOException
-  {
-    super.tearDown();
+    super(fs, conf);
   }
 
   public String getRecordingsDirectory(String appId, String opId)
@@ -261,12 +231,12 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     Path path = new Path(dir);
     try {
-      FileStatus fileStatus = fs.getFileStatus(path);
+      FileStatus fileStatus = fileSystem.getFileStatus(path);
 
       if (!fileStatus.isDirectory()) {
         return result;
       }
-      RemoteIterator<LocatedFileStatus> ri = fs.listLocatedStatus(path);
+      RemoteIterator<LocatedFileStatus> ri = fileSystem.listLocatedStatus(path);
       while (ri.hasNext()) {
         LocatedFileStatus lfs = ri.next();
         if (lfs.isDirectory()) {
@@ -303,12 +273,12 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     Path path = new Path(dir);
     try {
-      FileStatus fileStatus = fs.getFileStatus(path);
+      FileStatus fileStatus = fileSystem.getFileStatus(path);
 
       if (!fileStatus.isDirectory()) {
         return result;
       }
-      RemoteIterator<LocatedFileStatus> ri = fs.listLocatedStatus(path);
+      RemoteIterator<LocatedFileStatus> ri = fileSystem.listLocatedStatus(path);
       while (ri.hasNext()) {
         LocatedFileStatus lfs = ri.next();
         if (lfs.isDirectory()) {
@@ -353,14 +323,14 @@ public final class RecordingsAgent extends FSPartFileAgent
       Path path = new Path(dir);
       JSONObject json;
 
-      FileStatus fileStatus = fs.getFileStatus(path);
+      FileStatus fileStatus = fileSystem.getFileStatus(path);
       HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>();
       if (!fileStatus.isDirectory()) {
         throw new Exception(path + " is not a directory");
       }
 
       // META file processing
-      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
+      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.2")) {
@@ -400,7 +370,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
       long prevHiWindowId = -1;
       RecordingsIndexLine indexLine;
@@ -489,7 +459,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     IndexFileBufferedReader ifbr = null;
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       long currentOffset = 0;
       boolean readPartFile = false;
       if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
@@ -547,7 +517,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         }
 
         if (readPartFile) {
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
           try {
             String partLine;
             long tmpOffset = currentOffset;

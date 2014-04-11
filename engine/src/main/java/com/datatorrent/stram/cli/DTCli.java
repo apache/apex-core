@@ -1088,8 +1088,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(conf);
-    recordingsAgent.setup();
+    recordingsAgent = new RecordingsAgent(FileSystem.newInstance(conf), conf);
   }
 
   public void run() throws IOException
