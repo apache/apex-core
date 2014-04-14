@@ -1088,7 +1088,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(FileSystem.newInstance(conf), conf);
+    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf), conf);
   }
 
   public void run() throws IOException
