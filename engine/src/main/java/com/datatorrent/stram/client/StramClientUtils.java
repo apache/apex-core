@@ -370,7 +370,7 @@ public class StramClientUtils
     else {
       try {
         URI uri = new URI(dfsRootDir);
-        if (uri.getScheme() != null) {
+        if (uri.isAbsolute()) {
           return new Path(uri);
         }
       }
