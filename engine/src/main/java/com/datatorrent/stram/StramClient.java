@@ -397,7 +397,7 @@ public class StramClient
       }
 
       // For now, only getting tokens for the default file-system.
-      FileSystem fs = FileSystem.newInstance(conf);
+      FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
       try {
         final Token<?> tokens[] = fs.addDelegationTokens(tokenRenewer, credentials);
         if (tokens != null) {
@@ -435,7 +435,7 @@ public class StramClient
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
     // copy required jar files to dfs, to be localized for containers
-    FileSystem fs = FileSystem.newInstance(conf);
+    FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
     try {
       Path appPath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS + "/" + appId.toString());
 

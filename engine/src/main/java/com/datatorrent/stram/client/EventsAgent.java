@@ -39,9 +39,9 @@ public final class EventsAgent extends FSPartFileAgent
     public Map<String, Object> data;
   }
 
-  public EventsAgent(Configuration conf)
+  public EventsAgent(FileSystem fs, Configuration conf)
   {
-    super(conf);
+    super(fs, conf);
   }
 
   private String getEventsDirectory(String appId)
@@ -85,7 +85,7 @@ public final class EventsAgent extends FSPartFileAgent
     }
     IndexFileBufferedReader ifbr = null;
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       EventsIndexLine indexLine;
 
       while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
@@ -104,7 +104,7 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
 
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
         try {
           String partLine;
           while ((partLine = partBr.readLine()) != null) {

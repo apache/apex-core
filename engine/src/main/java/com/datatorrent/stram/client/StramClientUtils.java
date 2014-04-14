@@ -4,47 +4,34 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import java.io.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
-
-import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-
+import java.net.*;
+import java.net.URL;
+import java.util.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.*;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-
-import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -357,9 +344,41 @@ public class StramClientUtils
     return resource;
   }
 
+  public static FileSystem newFileSystemInstance(Configuration conf) throws IOException
+  {
+    String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
+    if (dfsRootDir == null) {
+      return FileSystem.newInstance(conf);
+    }
+    else {
+      try {
+        return FileSystem.newInstance(new URI(dfsRootDir), conf);
+      }
+      catch (URISyntaxException ex) {
+        LOG.warn("{} is not a valid URI. Returning the default filesystem", dfsRootDir, ex);
+        return FileSystem.newInstance(conf);
+      }
+    }
+  }
+
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
   {
-    return conf.get(DT_DFS_ROOT_DIR) == null ? new Path(fs.getHomeDirectory(), "datatorrent") : new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), conf.get(DT_DFS_ROOT_DIR));
+    String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
+    if (dfsRootDir == null) {
+      return new Path(fs.getHomeDirectory(), "datatorrent");
+    }
+    else {
+      try {
+        URI uri = new URI(dfsRootDir);
+        if (uri.isAbsolute()) {
+          return new Path(uri);
+        }
+      }
+      catch (URISyntaxException ex) {
+        LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
+      }
+      return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
+    }
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException

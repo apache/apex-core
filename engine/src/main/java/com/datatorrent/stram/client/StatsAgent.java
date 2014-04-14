@@ -77,9 +77,9 @@ public final class StatsAgent extends FSPartFileAgent
     public ObjectMapperString stats;
   }
 
-  public StatsAgent(Configuration conf)
+  public StatsAgent(FileSystem fs, Configuration conf)
   {
-    super(conf);
+    super(fs, conf);
   }
 
   public String getOperatorStatsDirectory(String appId, String opName)
@@ -140,13 +140,13 @@ public final class StatsAgent extends FSPartFileAgent
     BufferedReader br = null;
     IndexFileBufferedReader ifbr = null;
     try {
-      FileStatus fileStatus = fs.getFileStatus(path);
+      FileStatus fileStatus = fileSystem.getFileStatus(path);
       if (!fileStatus.isDirectory()) {
         return null;
       }
 
       // META file processing
-      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
+      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.0")) {
@@ -164,7 +164,7 @@ public final class StatsAgent extends FSPartFileAgent
         info.containers.put(index, containerInfo);
       }
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
 
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
@@ -220,13 +220,13 @@ public final class StatsAgent extends FSPartFileAgent
     IndexFileBufferedReader ifbr = null;
 
     try {
-      FileStatus fileStatus = fs.getFileStatus(path);
+      FileStatus fileStatus = fileSystem.getFileStatus(path);
       if (!fileStatus.isDirectory()) {
         return null;
       }
 
       // META file processing
-      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.META_FILE))));
+      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.0")) {
@@ -238,7 +238,7 @@ public final class StatsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
@@ -286,7 +286,7 @@ public final class StatsAgent extends FSPartFileAgent
     IndexFileBufferedReader ifbr = null;
 
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (!indexLine.isEndLine) {
@@ -303,7 +303,7 @@ public final class StatsAgent extends FSPartFileAgent
             }
           }
 
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
           try {
             String partLine;
             // advance until offset is reached
@@ -354,7 +354,7 @@ public final class StatsAgent extends FSPartFileAgent
     BufferedReader br = null;
 
     try {
-      br = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
+      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
       String line;
 
       while ((line = br.readLine()) != null) {
@@ -374,7 +374,7 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
 
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(fs.open(new Path(dir, indexLine.partFile))));
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
         try {
           String partLine;
           while ((partLine = partBr.readLine()) != null) {

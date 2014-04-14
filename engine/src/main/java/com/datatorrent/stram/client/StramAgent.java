@@ -7,22 +7,19 @@ package com.datatorrent.stram.client;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
 import com.datatorrent.stram.security.StramWSFilter;
-import com.datatorrent.stram.util.HeaderClientFilter;
-import com.datatorrent.stram.util.LRUCache;
-import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.util.*;
 import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.*;
 
 import java.util.Map;
-
+import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.NewCookie;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.core.Cookie;
-import javax.ws.rs.core.NewCookie;
-import org.apache.hadoop.conf.Configuration;
 
 /**
  * <p>Abstract StramAgent class.</p>
@@ -75,6 +72,7 @@ public class StramAgent extends FSAgent
   protected static String resourceManagerWebappAddress;
   private static final Map<String, StramWebServicesInfo> webServicesInfoMap = new LRUCache<String, StramWebServicesInfo>(100, true);
   protected static String defaultStramRoot = null;
+  protected Configuration conf;
 
   public class AppNotFoundException extends Exception
   {
@@ -94,9 +92,10 @@ public class StramAgent extends FSAgent
 
   }
 
-  public StramAgent(Configuration conf)
+  public StramAgent(FileSystem fs, Configuration conf)
   {
-    super(conf);
+    super(fs);
+    this.conf = conf;
   }
 
   public static void setResourceManagerWebappAddress(String addr)
@@ -174,7 +173,7 @@ public class StramAgent extends FSAgent
 
   public String getAppsRoot()
   {
-    return (defaultStramRoot == null) ? (StramClientUtils.getDTRootDir(fs, conf) + "/" + StramClientUtils.SUBDIR_APPS) : defaultStramRoot;
+    return (defaultStramRoot == null) ? (StramClientUtils.getDTRootDir(fileSystem, conf) + "/" + StramClientUtils.SUBDIR_APPS) : defaultStramRoot;
   }
 
   public String getAppPath(String appId)

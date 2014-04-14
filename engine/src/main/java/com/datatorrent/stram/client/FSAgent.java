@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,34 +23,11 @@ import org.slf4j.LoggerFactory;
 public class FSAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(FSAgent.class);
-  protected FileSystem fs;
-  protected Configuration conf;
-  protected boolean ownFS = true;
-
-  public FSAgent(Configuration conf)
-  {
-    this.conf = conf;
-  }
+  protected FileSystem fileSystem;
 
   public FSAgent(FileSystem fs)
   {
-    this.fs = fs;
-    this.ownFS = false;
-  }
-
-  public void setup() throws IOException
-  {
-    if (fs == null) {
-      fs = FileSystem.newInstance(conf);
-      ownFS = true;
-    }
-  }
-
-  public void tearDown() throws IOException
-  {
-    if (fs != null && ownFS) {
-      fs.close();
-    }
+    this.fileSystem = fs;
   }
 
   public void createFile(String path, byte[] content) throws IOException
@@ -61,22 +37,22 @@ public class FSAgent
 
   public FileSystem getFileSystem()
   {
-    return fs;
+    return fileSystem;
   }
 
-  public Configuration getConf()
+  public void setFileSystem(FileSystem fileSystem)
   {
-    return conf;
+    this.fileSystem = fileSystem;
   }
 
   public void createDirectory(Path path) throws IOException
   {
-    fs.mkdirs(path);
+    fileSystem.mkdirs(path);
   }
 
   public void createFile(Path path, byte[] content) throws IOException
   {
-    FSDataOutputStream os = fs.create(path);
+    FSDataOutputStream os = fileSystem.create(path);
     os.write(content);
     os.close();
   }
@@ -88,12 +64,12 @@ public class FSAgent
 
   public void deleteFile(Path path) throws IOException
   {
-    fs.delete(path, false);
+    fileSystem.delete(path, false);
   }
 
   public byte[] readFullFileContent(Path path) throws IOException
   {
-    DataInputStream is = new DataInputStream(fs.open(path));
+    DataInputStream is = new DataInputStream(fileSystem.open(path));
     byte[] bytes = new byte[is.available()];
     try {
       is.readFully(bytes);
@@ -106,7 +82,7 @@ public class FSAgent
 
   public InputStreamReader openInputStreamReader(Path path) throws IOException
   {
-    return new InputStreamReader(fs.open(path));
+    return new InputStreamReader(fileSystem.open(path));
   }
 
   public List<String> listFiles(String dir) throws IOException
@@ -114,11 +90,11 @@ public class FSAgent
     List<String> files = new ArrayList<String>();
     Path path = new Path(dir);
 
-    FileStatus fileStatus = fs.getFileStatus(path);
+    FileStatus fileStatus = fileSystem.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
     }
-    RemoteIterator<LocatedFileStatus> it = fs.listFiles(path, false);
+    RemoteIterator<LocatedFileStatus> it = fileSystem.listFiles(path, false);
     while (it.hasNext()) {
       LocatedFileStatus lfs = it.next();
       files.add(lfs.getPath().getName());
@@ -131,11 +107,11 @@ public class FSAgent
     List<LocatedFileStatus> files = new ArrayList<LocatedFileStatus>();
     Path path = new Path(dir);
 
-    FileStatus fileStatus = fs.getFileStatus(path);
+    FileStatus fileStatus = fileSystem.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
     }
-    RemoteIterator<LocatedFileStatus> it = fs.listFiles(path, false);
+    RemoteIterator<LocatedFileStatus> it = fileSystem.listFiles(path, false);
     while (it.hasNext()) {
       LocatedFileStatus lfs = it.next();
       files.add(lfs);

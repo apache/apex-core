@@ -1088,8 +1088,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(conf);
-    recordingsAgent.setup();
+    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf), conf);
   }
 
   public void run() throws IOException
@@ -1561,8 +1560,11 @@ public class DTCli
       }
       else {
         List<AppFactory> result = new ArrayList<AppFactory>();
+        matchString = matchString.toLowerCase();
         for (AppFactory ac : cfgList) {
-          if (ac.getName().toLowerCase().contains(matchString.toLowerCase())) {
+          String appName = ac.getName();
+          String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
+          if (appName.toLowerCase().contains(matchString) || (appAlias != null && appAlias.toLowerCase().contains(matchString))) {
             result.add(ac);
           }
         }
