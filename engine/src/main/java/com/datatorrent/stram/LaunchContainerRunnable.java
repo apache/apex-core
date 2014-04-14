@@ -39,6 +39,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
@@ -64,8 +65,7 @@ public class LaunchContainerRunnable implements Runnable
    * @param lcontainer Allocated container
    * @param nmClient
    * @param dag
-   * @param delegationTokenManager
-   * @param heartbeatAddress
+   * @param tokens
    */
   public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, LogicalPlan dag, ByteBuffer tokens)
   {
@@ -141,7 +141,7 @@ public class LaunchContainerRunnable implements Runnable
     // add resources for child VM
     try {
       // child VM dependencies
-      FileSystem fs = FileSystem.newInstance(nmClient.getConfig());
+      FileSystem fs = StramClientUtils.newFileSystemInstance(nmClient.getConfig());
       try {
         addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
         String files = dag.getAttributes().get(LogicalPlan.FILES);
@@ -184,7 +184,7 @@ public class LaunchContainerRunnable implements Runnable
    * Build the command to launch the child VM in the container
    *
    * @param jvmID
-   * @return List<CharSequence>
+   * @return
    */
   public List<CharSequence> getChildVMCommand(String jvmID)
   {
@@ -213,7 +213,7 @@ public class LaunchContainerRunnable implements Runnable
       params.put("containerId", Integer.toString(container.getId().getId()));
       StrSubstitutor sub = new StrSubstitutor(params, "%(", ")");
       vargs.add(sub.replace(jvmOpts));
-      if (dag.isDebug() && jvmOpts.indexOf("-agentlib:jdwp=") == -1) {
+      if (dag.isDebug() && !jvmOpts.contains("-agentlib:jdwp=")) {
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
     }
