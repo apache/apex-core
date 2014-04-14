@@ -1560,8 +1560,11 @@ public class DTCli
       }
       else {
         List<AppFactory> result = new ArrayList<AppFactory>();
+        matchString = matchString.toLowerCase();
         for (AppFactory ac : cfgList) {
-          if (ac.getName().toLowerCase().contains(matchString.toLowerCase())) {
+          String appName = ac.getName();
+          String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
+          if (appName.toLowerCase().contains(matchString) || appAlias.toLowerCase().contains(matchString)) {
             result.add(ac);
           }
         }
