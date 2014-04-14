@@ -107,7 +107,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       @Override
       public void close() throws IOException
       {
-        LOG.info("Closing {}", logPath);
+        LOG.debug("Closing {}", logPath);
         super.close();
       }
     };
@@ -124,7 +124,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     }
 
     if (logfs.exists(logPath)) {
-      LOG.info("Opening existing log ({})", logPath);
+      LOG.debug("Opening existing log ({})", logPath);
       return logfs.open(logPath);
     } else {
       LOG.debug("No existing log ({})", logPath);
@@ -219,7 +219,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     DataOutputStream out = heartbeatFs.create(heartbeatPath, true);
     out.write(uri.getBytes());
     out.close();
-    LOG.info("Connect address: {} written to {} ", uri, heartbeatPath);
+    LOG.debug("Connect address: {} written to {} ", uri, heartbeatPath);
   }
 
   public String readConnectUri() throws IOException
@@ -228,7 +228,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     byte[] bytes = IOUtils.toByteArray(in);
     in.close();
     String uri = new String(bytes);
-    LOG.info("Connect address: {} from {} ", uri, heartbeatPath);
+    LOG.debug("Connect address: {} from {} ", uri, heartbeatPath);
     return uri;
   }
 
