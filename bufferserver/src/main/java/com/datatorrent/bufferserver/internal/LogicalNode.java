@@ -103,7 +103,7 @@ public class LogicalNode implements DataListener
    */
   public void removeChannel(AbstractLengthPrependerClient client)
   {
-    for (PhysicalNode pn: physicalNodes) {
+    for (PhysicalNode pn : physicalNodes) {
       if (pn.getClient() == client) {
         physicalNodes.remove(pn);
         break;
@@ -127,7 +127,7 @@ public class LogicalNode implements DataListener
   {
     if (!ready) {
       ready = true;
-      for (PhysicalNode pn: physicalNodes) {
+      for (PhysicalNode pn : physicalNodes) {
         if (pn.isBlocked()) {
           ready = pn.unblock() & ready;
         }
@@ -144,9 +144,10 @@ public class LogicalNode implements DataListener
   public void catchUp()
   {
     if (baseSeconds <= 0) {
+      logger.debug("Getting the base seconds from the iterator");
       baseSeconds = (long)iterator.getBaseSeconds() << 32;
-      logger.debug("Set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
     }
+    logger.debug("Set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
     int intervalMillis;
 
     if (isReady()) {
@@ -201,6 +202,8 @@ public class LogicalNode implements DataListener
         addedData();
       }
     }
+
+    logger.debug("Exiting catch up because caughtup = {}", caughtup);
   }
 
   @SuppressWarnings("fallthrough")
@@ -243,7 +246,7 @@ public class LogicalNode implements DataListener
                 case MessageType.PAYLOAD_VALUE:
                   Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
                   int value = tuple.getPartition();
-                  for (BitVector bv: partitions) {
+                  for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
                       ready = policy.distribute(physicalNodes, data);
                       break;
@@ -307,7 +310,7 @@ public class LogicalNode implements DataListener
 
   public void boot(EventLoop eventloop)
   {
-    for (PhysicalNode pn: physicalNodes) {
+    for (PhysicalNode pn : physicalNodes) {
       eventloop.disconnect(pn.getClient());
       physicalNodes.clear();
     }

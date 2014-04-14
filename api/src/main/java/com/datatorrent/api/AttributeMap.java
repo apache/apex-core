@@ -25,6 +25,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.datatorrent.api.StringCodec.*;
+import com.datatorrent.common.util.DTThrowable;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
@@ -297,7 +298,7 @@ public interface AttributeMap
         }
       }
       catch (Exception ex) {
-        throw new RuntimeException(ex);
+        DTThrowable.rethrow(ex);
       }
       map.put(clazz, set);
       return (long)clazz.getModifiers() << 32 | clazz.hashCode();
