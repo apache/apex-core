@@ -1564,7 +1564,7 @@ public class DTCli
         for (AppFactory ac : cfgList) {
           String appName = ac.getName();
           String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
-          if (appName.toLowerCase().contains(matchString) || appAlias.toLowerCase().contains(matchString)) {
+          if (appName.toLowerCase().contains(matchString) || (appAlias != null && appAlias.toLowerCase().contains(matchString))) {
             result.add(ac);
           }
         }
