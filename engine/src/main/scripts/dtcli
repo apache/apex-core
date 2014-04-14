@@ -1,9 +1,21 @@
 #!/bin/bash
 
 echoerr() { echo "$@" 1>&2; }
+real_dir() {
+  SOURCE="${1:-${BASH_SOURCE[0]}}"
+  while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+    SOURCE_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$SOURCE_DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+  SOURCE_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  echo "$SOURCE_DIR"
+}
+script_dir=$(real_dir "${BASH_SOURCE[0]}")
+
 
 # Load DataTorrent environment settings
-for conf_dir in "/etc/datatorrent" "$HOME/.dt/conf" "$HOME/.dt"; do
+for conf_dir in "${script_dir}/../conf" "$HOME/.dt"; do
     [[ -f "${conf_dir}/dt-env.sh" ]] && . "${conf_dir}/dt-env.sh"
 done
 
@@ -39,7 +51,7 @@ else
     echoerr "Hadoop installation not found. Please set HADOOP_PREFIX or include hadoop in PATH."
     exit 1;
   fi
-  BASEDIR=$( cd $(dirname `readlink -e $0`); cd ..; pwd -P )
+  BASEDIR=$( cd ${script_dir}/..; pwd -P )
   DT_CLASSPATH=$BASEDIR/lib'/*'":${DT_CLASSPATH}"
 fi
 
