@@ -18,7 +18,9 @@ package com.datatorrent.api;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +138,7 @@ public class BaseOperator implements Operator, Serializable
       }
     }
     catch (NoSuchMethodException snme) {
-      logger.debug("No copy constructor detected, trying default constructor...");
+      logger.debug("No copy constructor detected for class {}, trying default constructor.", this.getClass().getSimpleName());
       try {
         BaseOperator newInstance = this.getClass().newInstance();
         transferStateTo(newInstance);
@@ -155,10 +157,46 @@ public class BaseOperator implements Operator, Serializable
    * Copy over non final and non transient values from src to dest object.
    *
    * @param dest The object to which values are copied.
-   * @param src The object from which values are copied.
    */
   public void transferStateTo(Object dest)
   {
+    for (Class<?> clazz = getClass(); !clazz.equals(Object.class); clazz = clazz.getSuperclass()) {
+      Field[] fields = clazz.getDeclaredFields();
+      for (int i = 0; i < fields.length; i++) {
+        final Field field = fields[i];
+        final int modifiers = field.getModifiers();
+        if (!(Modifier.isFinal(modifiers) && Modifier.isTransient(modifiers) || Modifier.isStatic(modifiers))) {
+          try {
+            field.setAccessible(true);
+          }
+          catch (SecurityException ex) {
+            logger.warn("Cannot set field {} accessible.", field, ex);
+          }
+
+          try {
+            field.set(dest, field.get(this));
+          }
+          catch (IllegalArgumentException ex) {
+            throw new RuntimeException("Getter/Setter argument failed using reflection on " + field, ex);
+          }
+          catch (IllegalAccessException ex) {
+            throw new RuntimeException("Getter/Setter access failed using reflection on " + field, ex);
+          }
+
+          if (!field.getType().isPrimitive()) {
+            try {
+              field.set(this, null);
+            }
+            catch (IllegalArgumentException ex) {
+              logger.warn("Failed to set field {} to null; generally it's harmless, but with reference counted data structure this may be an issue.", field, ex);
+            }
+            catch (IllegalAccessException ex) {
+              logger.warn("Failed to set field {} to null; generally it's harmless, but with reference counted data structure this may be an issue.", field, ex);
+            }
+          }
+        }
+      }
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BaseOperator.class);
