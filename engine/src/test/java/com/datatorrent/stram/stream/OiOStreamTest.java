@@ -27,6 +27,7 @@ import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.engine.RecoverableInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
 /**
  *
@@ -429,6 +430,8 @@ public class OiOStreamTest
   public void validateOiOImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
     ThreadIdValidatingInputOperator io = lp.addOperator("Input Operator", new ThreadIdValidatingInputOperator());
     ThreadIdValidatingOutputOperator go = lp.addOperator("Output Operator", new ThreadIdValidatingOutputOperator());
     StreamMeta stream = lp.addStream("Stream", io.output, go.input);
@@ -453,6 +456,8 @@ public class OiOStreamTest
   public void validateOiOiOImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
     ThreadIdValidatingInputOperator inputOperator = lp.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator = lp.addOperator("intermediateOperator", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingOutputOperator outputOperator = lp.addOperator("outputOperator", new ThreadIdValidatingOutputOperator());
@@ -485,6 +490,8 @@ public class OiOStreamTest
   public void validateOiOiODiamondImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
     ThreadIdValidatingInputOperator inputOperator = lp.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = lp.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = lp.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
@@ -538,6 +545,8 @@ public class OiOStreamTest
   public void validateOiOiOTreeImplementation() throws Exception
   {
     LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
     ThreadIdValidatingInputOperator inputOperator1 = lp.addOperator("inputOperator1", new ThreadIdValidatingInputOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperatorfromInputOper1 = lp.addOperator("intermediateOperatorfromInputOper1", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperatorfromInterOper11 = lp.addOperator("intermediateOperatorfromInterOper11", new ThreadIdValidatingGenericIntermediateOperator());

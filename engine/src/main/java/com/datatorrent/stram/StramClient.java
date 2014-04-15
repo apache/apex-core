@@ -14,6 +14,7 @@ import com.google.common.collect.Lists;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
@@ -36,8 +37,10 @@ import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
@@ -147,7 +150,7 @@ public class StramClient
 
     if (amMemory < 0) {
       throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
-              + " Specified memory=" + amMemory);
+                                         + " Specified memory=" + amMemory);
     }
 
     int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "" + dag.getContainerMemoryMB()));
@@ -155,8 +158,8 @@ public class StramClient
 
     if (containerMemory < 0 || dag.getMaxContainerCount() < 1) {
       throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
-              + " Specified containerMemory=" + containerMemory
-              + ", numContainer=" + containerCount);
+                                         + " Specified containerMemory=" + containerMemory
+                                         + ", numContainer=" + containerCount);
     }
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, containerCount);
@@ -314,18 +317,18 @@ public class StramClient
     GetClusterMetricsRequest clusterMetricsReq = Records.newRecord(GetClusterMetricsRequest.class);
     GetClusterMetricsResponse clusterMetricsResp = rmClient.clientRM.getClusterMetrics(clusterMetricsReq);
     LOG.info("Got Cluster metric info from ASM"
-            + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
+             + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
 
     GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
     GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
     LOG.info("Got Cluster node info from ASM");
     for (NodeReport node : clusterNodesResp.getNodeReports()) {
       LOG.info("Got node report from ASM for"
-              + ", nodeId=" + node.getNodeId()
-              + ", nodeAddress" + node.getHttpAddress()
-              + ", nodeRackName" + node.getRackName()
-              + ", nodeNumContainers" + node.getNumContainers()
-              + ", nodeHealthStatus" + node.getHealthReport());
+               + ", nodeId=" + node.getNodeId()
+               + ", nodeAddress" + node.getHttpAddress()
+               + ", nodeRackName" + node.getRackName()
+               + ", nodeNumContainers" + node.getNumContainers()
+               + ", nodeHealthStatus" + node.getHealthReport());
     }
     /*
      * This is NPE in 2.0-alpha as request needs to provide specific queue name GetQueueInfoRequest queueInfoReq = Records.newRecord(GetQueueInfoRequest.class);
@@ -340,8 +343,8 @@ public class StramClient
     for (QueueUserACLInfo aclInfo : listAclInfo) {
       for (QueueACL userAcl : aclInfo.getUserAcls()) {
         LOG.info("User ACL Info for Queue"
-                + ", queueName=" + aclInfo.getQueueName()
-                + ", userAcl=" + userAcl.name());
+                 + ", queueName=" + aclInfo.getQueueName()
+                 + ", userAcl=" + userAcl.name());
       }
     }
 
@@ -355,13 +358,13 @@ public class StramClient
     int amMemory = dag.getMasterMemoryMB();
     if (amMemory > maxMem) {
       LOG.info("AM memory specified above max threshold of cluster. Using max value."
-              + ", specified=" + amMemory
-              + ", max=" + maxMem);
+               + ", specified=" + amMemory
+               + ", max=" + maxMem);
       amMemory = maxMem;
     }
 
     if (dag.getAttributes().get(LogicalPlan.APPLICATION_ID) == null) {
-      dag.getAttributes().put(LogicalPlan.APPLICATION_ID, appId.toString());
+      dag.setAttribute(LogicalPlan.APPLICATION_ID, appId.toString());
     }
 
     // Create launch context for app master
@@ -375,7 +378,8 @@ public class StramClient
     appContext.setApplicationType(this.applicationType);
     if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
       //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
-    } else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
+    }
+    else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
       LOG.debug("Attempts capped at {} ({})", conf.get(YarnConfiguration.RM_AM_MAX_ATTEMPTS), YarnConfiguration.RM_AM_MAX_ATTEMPTS);
     }
 
@@ -462,6 +466,11 @@ public class StramClient
       }
 
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
+      if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
+        Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
+        // use conf client side to pickup any proxy settings from dt-site.xml
+        dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(checkpointPath.toString(), conf));
+      }
 
       // Set the log4j properties if needed
       if (!log4jPropFile.isEmpty()) {
@@ -496,19 +505,19 @@ public class StramClient
       // Set local resource info into app master container launch context
       amContainer.setLocalResources(localResources);
 
-    // Set the necessary security tokens as needed
+      // Set the necessary security tokens as needed
       //amContainer.setContainerTokens(containerToken);
       // Set the env variables to be setup in the env where the application master will be run
       LOG.info("Set the environment for the application master");
       Map<String, String> env = new HashMap<String, String>();
 
-    // Add application jar(s) location to classpath
+      // Add application jar(s) location to classpath
       // At some point we should not be required to add
       // the hadoop specific classpaths to the env.
       // It should be provided out of the box.
       // For now setting all required classpaths including
       // the classpath to "." for the application jar(s)
-    // including ${CLASSPATH} will duplicate the class path in app master, removing it for now
+      // including ${CLASSPATH} will duplicate the class path in app master, removing it for now
       //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
       StringBuilder classPathEnv = new StringBuilder("./*");
       for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
@@ -528,7 +537,7 @@ public class StramClient
       if (dag.isDebug()) {
         vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
       }
-    // Set Xmx based on am memory size
+      // Set Xmx based on am memory size
       // default heap size 75% of total memory
       vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
       vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
@@ -557,13 +566,13 @@ public class StramClient
       commands.add(command.toString());
       amContainer.setCommands(commands);
 
-    // Set up resource type requirements
+      // Set up resource type requirements
       // For now, only memory is supported so we set memory requirements
       Resource capability = Records.newRecord(Resource.class);
       capability.setMemory(amMemory);
       appContext.setResource(capability);
 
-    // Service data is a binary blob that can be passed to the application
+      // Service data is a binary blob that can be passed to the application
       // Not needed in this scenario
       // amContainer.setServiceData(serviceData);
       appContext.setAMContainerSpec(amContainer);
@@ -579,7 +588,7 @@ public class StramClient
       SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
       appRequest.setApplicationSubmissionContext(appContext);
 
-    // Submit the application to the applications manager
+      // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
       // Ignore the response as either a valid response object is returned on success
       // or an exception thrown to denote some form of a failure
@@ -630,17 +639,17 @@ public class StramClient
       public boolean exitLoop(ApplicationReport report)
       {
         LOG.info("Got application report from ASM for"
-                + ", appId=" + appId.getId()
-                + ", clientToken=" + report.getClientToAMToken()
-                + ", appDiagnostics=" + report.getDiagnostics()
-                + ", appMasterHost=" + report.getHost()
-                + ", appQueue=" + report.getQueue()
-                + ", appMasterRpcPort=" + report.getRpcPort()
-                + ", appStartTime=" + report.getStartTime()
-                + ", yarnAppState=" + report.getYarnApplicationState().toString()
-                + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-                + ", appTrackingUrl=" + report.getTrackingUrl()
-                + ", appUser=" + report.getUser());
+                 + ", appId=" + appId.getId()
+                 + ", clientToken=" + report.getClientToAMToken()
+                 + ", appDiagnostics=" + report.getDiagnostics()
+                 + ", appMasterHost=" + report.getHost()
+                 + ", appQueue=" + report.getQueue()
+                 + ", appMasterRpcPort=" + report.getRpcPort()
+                 + ", appStartTime=" + report.getStartTime()
+                 + ", yarnAppState=" + report.getYarnApplicationState().toString()
+                 + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
+                 + ", appTrackingUrl=" + report.getTrackingUrl()
+                 + ", appUser=" + report.getUser());
         return false;
       }
 

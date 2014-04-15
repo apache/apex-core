@@ -143,12 +143,6 @@ public class PhysicalPlan implements Serializable
   public interface PlanContext {
 
     /**
-     * Dynamic partitioning requires access to operator state for split or merge.
-     * @return
-     */
-    public StorageAgent getStorageAgent();
-
-    /**
      * Record an event in the event log
      *
      * @param ev The event
@@ -727,7 +721,7 @@ public class PhysicalPlan implements Serializable
     try {
       LOG.debug("Writing activation checkpoint {} {} {}", checkpoint, oper, oo);
       long windowId = oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : checkpoint.windowId;
-      ctx.getStorageAgent().save(oo, oper.id, windowId);
+      oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).save(oo, oper.id, windowId);
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + oper, e);
@@ -741,7 +735,7 @@ public class PhysicalPlan implements Serializable
   public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
-      return (Operator)ctx.getStorageAgent().load(oper.id, oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : oper.recoveryCheckpoint.windowId);
+      return (Operator)oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).load(oper.id, oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : oper.recoveryCheckpoint.windowId);
     } catch (IOException e) {
       throw new RuntimeException("Failed to read partition state for " + oper, e);
     }
@@ -950,7 +944,7 @@ public class PhysicalPlan implements Serializable
     try {
       synchronized (oper.checkpoints) {
         for (Checkpoint checkpoint : oper.checkpoints) {
-          ctx.getStorageAgent().delete(oper.id, checkpoint.windowId);
+          oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).delete(oper.id, checkpoint.windowId);
         }
       }
     } catch (IOException e) {
@@ -1251,7 +1245,7 @@ public class PhysicalPlan implements Serializable
   public void syncCheckpoints(long startTime, long currentTime) throws IOException
   {
     for (PTOperator oper : getAllOperators().values()) {
-      StorageAgent sa = ctx.getStorageAgent();
+      StorageAgent sa = oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT);
       long[] windowIds = sa.getWindowIds(oper.getId());
       Arrays.sort(windowIds);
       oper.checkpoints.clear();

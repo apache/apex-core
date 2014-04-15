@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -14,7 +13,6 @@ import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 
@@ -33,7 +31,6 @@ import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorContext;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -147,7 +144,7 @@ public class StramChildAgent {
 
         boolean outputUnified = false;
         for (PTOperator.PTInput input : out.sinks) {
-          if (input.target.getUnifier() != null) {
+          if (input.target.isUnifier()) {
             outputUnified = true;
             break;
           }
@@ -253,7 +250,7 @@ public class StramChildAgent {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     Operator operator = oper.getOperatorMeta().getOperator();
     ndi.type = (operator instanceof InputOperator && oper.getInputs().isEmpty()) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
-    if (oper.getUnifier() != null) {
+    if (oper.isUnifier()) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
 
@@ -266,8 +263,7 @@ public class StramChildAgent {
       // whenever new checkpoint is written.
       StorageAgent agent = oper.getOperatorMeta().getAttributes().get(OperatorContext.STORAGE_AGENT);
       if (agent == null) {
-        String appPath = getInitContext().getValue(LogicalPlan.APPLICATION_PATH);
-        agent = new FSStorageAgent(new Configuration(false), new File(appPath, LogicalPlan.SUBDIR_CHECKPOINTS).getPath());
+        agent = initCtx.getValue(OperatorContext.STORAGE_AGENT);
       }
       // pick the checkpoint most recently written to HDFS
       // this should be handled differently. What happens to the checkpoint reported?

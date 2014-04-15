@@ -24,6 +24,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.stream.OiOEndWindowTest.TestInputOperator;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
 /**
  *
@@ -39,6 +40,7 @@ public class OutputUnifiedTest
   public void testManyToOnePartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
@@ -70,6 +72,7 @@ public class OutputUnifiedTest
   public void testMxNPartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
@@ -103,6 +106,7 @@ public class OutputUnifiedTest
   public void testParallelPartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);

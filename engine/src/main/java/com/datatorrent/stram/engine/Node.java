@@ -348,7 +348,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   void checkpoint(long windowId)
   {
     if (!context.stateless) {
-      StorageAgent ba = context.getAttributes().get(OperatorContext.STORAGE_AGENT);
+      StorageAgent ba = context.getValue(OperatorContext.STORAGE_AGENT);
       if (ba != null) {
         try {
           ba.save(operator, id, windowId);

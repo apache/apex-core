@@ -17,7 +17,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 
@@ -52,10 +51,9 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -130,7 +128,7 @@ public class StreamingContainerManagerTest {
       .setLocality(Locality.THREAD_LOCAL);
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
-
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
     Assert.assertEquals("number operators", 4, dag.getAllOperators().size());
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
 
@@ -225,6 +223,8 @@ public class StreamingContainerManagerTest {
     LogicalPlan.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
 
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
+    MemoryStorageAgent msa = new MemoryStorageAgent();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, msa);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
@@ -293,7 +293,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      Object operator = new FSStorageAgent(new Configuration(false), new File(dag.getAttributes().get(DAGContext.APPLICATION_PATH), LogicalPlan.SUBDIR_CHECKPOINTS).getPath()).load(mergeNodeDI.id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      Object operator = msa.load(mergeNodeDI.id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
@@ -325,6 +325,7 @@ public class StreamingContainerManagerTest {
 
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
@@ -365,6 +366,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     Assert.assertEquals(""+scm.containerStartRequests, 2, scm.containerStartRequests.size());
@@ -415,6 +417,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("o2o3", o2.outport1, o3.inport2);
 
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();
@@ -445,7 +448,7 @@ public class StreamingContainerManagerTest {
     File path =  new File(testMeta.dir);
     FileUtils.deleteDirectory(path.getAbsoluteFile());
 
-    FSStorageAgent sa = new FSStorageAgent(new Configuration(), path.getPath());
+    FSStorageAgent sa = new FSStorageAgent(path.getPath(), null);
 
     long[] windowIds = new long[]{123L, 345L, 234L};
     for (long windowId : windowIds) {
@@ -479,6 +482,7 @@ public class StreamingContainerManagerTest {
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
      dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();
@@ -617,5 +621,4 @@ public class StreamingContainerManagerTest {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(StreamingContainerManagerTest.class);
 }

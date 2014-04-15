@@ -28,6 +28,7 @@ import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
 public class LocalityTest {
 
@@ -36,6 +37,7 @@ public class LocalityTest {
 
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", LocalityTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 

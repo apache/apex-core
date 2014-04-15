@@ -73,6 +73,7 @@ public class StramRecoveryTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     ByteArrayOutputStream  bos = new ByteArrayOutputStream();
@@ -122,7 +123,7 @@ public class StramRecoveryTest
   {
     // write checkpoint while AM is out,
     // it needs to be picked up as part of restore
-    StorageAgent sa = scm.getStorageAgent();
+    StorageAgent sa = oper.getOperatorMeta().getValue2(OperatorContext.STORAGE_AGENT);
     sa.save(oper.getOperatorMeta().getOperator(), oper.getId(), checkpoint.windowId);
   }
 
@@ -137,6 +138,7 @@ public class StramRecoveryTest
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
     StatsListeningOperator o1 = dag.addOperator("o1", StatsListeningOperator.class);
 
@@ -242,6 +244,8 @@ public class StramRecoveryTest
     final MutableInt flushCount = new MutableInt();
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
+
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();

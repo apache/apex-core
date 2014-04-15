@@ -33,7 +33,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
@@ -1343,7 +1342,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    StorageAgent ba = new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
+    StorageAgent ba = new FSStorageAgent(this.vars.checkpointFsPath, null);
     for (Pair<PTOperator, Long> p : purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       if (!operator.isOperatorStateLess()) {
@@ -1396,12 +1395,6 @@ public class StreamingContainerManager implements PlanContext
     for (StramChildAgent cs : this.containers.values()) {
       cs.shutdownRequested = true;
     }
-  }
-
-  @Override
-  public StorageAgent getStorageAgent()
-  {
-    return new FSStorageAgent(new Configuration(), this.vars.checkpointFsPath);
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)
@@ -1569,7 +1562,7 @@ public class StreamingContainerManager implements PlanContext
     oi.name = operator.getName();
     oi.className = operator.getOperatorMeta().getOperator().getClass().getName();
     oi.status = operator.getState().toString();
-    oi.unifierClass = (operator.getUnifier() == null) ? null : operator.getUnifier().getClass().getName();
+    oi.unifierClass = operator.getUnifierClass().getName();
     oi.logicalName = operator.getOperatorMeta().getName();
 
     if (operator.stats != null) {
@@ -1627,7 +1620,7 @@ public class StreamingContainerManager implements PlanContext
           for (PTInput input : output.sinks) {
             StreamInfo.Port p = new StreamInfo.Port();
             p.operatorId = String.valueOf(input.target.getId());
-            if (input.target.getUnifier() != null) {
+            if (input.target.isUnifier()) {
               p.portName = StramChild.getUnifierInputPortName(input.portName, operator.getId(), output.portName);
             }
             else {

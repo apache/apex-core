@@ -8,7 +8,6 @@ import java.util.concurrent.FutureTask;
 import javax.validation.ValidationException;
 
 import org.junit.Assert;
-
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -16,6 +15,7 @@ import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -45,6 +45,7 @@ public class LogicalPlanModificationTest
     dag.addStream("o2.outport1", o2.outport1, o3.inport1);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
@@ -77,6 +78,7 @@ public class LogicalPlanModificationTest
     OperatorMeta o1Meta = dag.getMeta(o1);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
@@ -113,6 +115,7 @@ public class LogicalPlanModificationTest
     LogicalPlan.StreamMeta s2 = dag.addStream("o2.outport1", o2.outport1, o3.inport1);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
@@ -179,6 +182,7 @@ public class LogicalPlanModificationTest
     LogicalPlan.StreamMeta s1 = dag.addStream("o1.outport1", o1.outport1, o2.inport1, o3.inport1).setLocality(Locality.CONTAINER_LOCAL);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
     ctx.deploy.clear();
     ctx.undeploy.clear();
@@ -216,6 +220,7 @@ public class LogicalPlanModificationTest
     dag.addStream("o1.outport1", o1.outport1, o2.inport1);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     PlanModifier pm = new PlanModifier(plan);
@@ -235,6 +240,7 @@ public class LogicalPlanModificationTest
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
     TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
     List<PTOperator> o1Instances = plan.getOperators(dag.getMeta(o1));
@@ -273,6 +279,7 @@ public class LogicalPlanModificationTest
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals(""+dnm.containerStartRequests, dnm.containerStartRequests.size(), 0);

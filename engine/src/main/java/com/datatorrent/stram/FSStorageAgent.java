@@ -18,7 +18,6 @@ import com.esotericsoftware.kryo.io.Output;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -29,28 +28,28 @@ public class FSStorageAgent implements StorageAgent, Serializable
 {
   private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
   public final String path;
-  private final Configuration conf;
   private transient FileSystem fs;
+  private transient Configuration conf; // not serializable and will be used client side only
 
+  @SuppressWarnings("unused")
   private FSStorageAgent()
   {
     /* this is needed just for serialization with Kryo */
-    conf = null;
     path = null;
   }
 
-  public FSStorageAgent(Configuration conf, String path)
+  public FSStorageAgent(String path, Configuration conf)
   {
-    this.conf = conf;
     this.path = path;
+    this.conf = conf;
   }
 
-  public void initialize() throws IOException
+  private void initialize() throws IOException
   {
     if (fs == null) {
       logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
-      fs = FileSystem.newInstance(lPath.toUri(), conf);
+      fs = FileSystem.newInstance(lPath.toUri(), conf != null ? conf : new Configuration());
       if (FileSystem.mkdirs(fs, lPath, new FsPermission((short)00755))) {
         fs.setWorkingDirectory(lPath);
       }

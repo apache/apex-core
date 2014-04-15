@@ -15,7 +15,6 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.util.Clock;
@@ -36,6 +35,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 /**
@@ -113,9 +113,9 @@ public class CheckpointTest
 
     StramLocalCluster sc = new StramLocalCluster(dag);
     sc.setHeartbeatMonitoringEnabled(false);
-    sc.run(30000);
+    sc.run();
 
-    FSStorageAgent fssa = new FSStorageAgent(new Configuration(false), new File(testMeta.dir, LogicalPlan.SUBDIR_CHECKPOINTS).getPath());
+    StorageAgent fssa = sc.getDAG().getValue(OperatorContext.STORAGE_AGENT);
     StreamingContainerManager dnm = sc.dnmgr;
     PhysicalPlan plan = dnm.getPhysicalPlan();
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
@@ -155,6 +155,7 @@ public class CheckpointTest
     Clock clock = new SystemClock();
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -254,6 +255,7 @@ public class CheckpointTest
     MockClock clock = new MockClock();
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
     dag.setAttribute(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 1);
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
@@ -318,6 +320,7 @@ public class CheckpointTest
     MockClock clock = new MockClock();
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -383,6 +386,7 @@ public class CheckpointTest
     MockClock clock = new MockClock();
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     dag.setAttribute(o1, OperatorContext.TIMEOUT_WINDOW_COUNT, 2);
