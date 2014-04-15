@@ -265,7 +265,7 @@ public class Block
 
   synchronized void release(final Storage storage, boolean wait)
   {
-    if (refCount == 1 && storage != null) {
+    if (refCount >= 1 && storage != null) {
       Runnable r = new Runnable()
       {
         @Override
