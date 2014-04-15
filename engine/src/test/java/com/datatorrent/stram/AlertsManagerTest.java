@@ -37,7 +37,7 @@ public class AlertsManagerTest
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0)));
 
-    new Thread()
+    Thread t = new Thread()
     {
       @Override
       public void run()
@@ -56,7 +56,9 @@ public class AlertsManagerTest
         }
       }
 
-    }.start();
+    };
+
+    t.start();
 
     AlertsManager alertsManager = dnm.getAlertsManager();
     JSONObject json = new JSONObject();
@@ -81,21 +83,29 @@ public class AlertsManagerTest
     // create the alert
     alertsManager.createAlert("alertName", json.toString());
     JSONObject alerts = alertsManager.listAlerts();
-    Assert.assertEquals("alert name should match", alerts.getJSONArray("alerts").getJSONObject(0).getString("name"), "alertName");
+    Assert.assertEquals("alert name should match", "alertName", alerts.getJSONArray("alerts").getJSONObject(0).getString("name"));
     Assert.assertNotNull(alertsManager.getAlert("alertName"));
 
     // make sure we have the operators
-    Assert.assertEquals("there should be 4 operators", dag.getAllOperators().size(), 4);
-    Assert.assertEquals("there should be 3 streams", dag.getAllStreams().size(), 3);
+    Assert.assertEquals("there should be 4 operators", 4, dag.getAllOperators().size());
+    Assert.assertEquals("there should be 3 streams", 3, dag.getAllStreams().size());
 
     // delete the alert
     alertsManager.deleteAlert("alertName");
     alerts = alertsManager.listAlerts();
-    Assert.assertEquals("there should be no more alerts after delete", alerts.getJSONArray("alerts").length(), 0);
+    Assert.assertEquals("there should be no more alerts after delete", 0, alerts.getJSONArray("alerts").length());
 
     // make sure the operators are removed
-    Assert.assertEquals("there should be 1 operator", dag.getAllOperators().size(), 1);
-    Assert.assertEquals("there should be 0 stream", dag.getAllStreams().size(), 0);
+    Assert.assertEquals("there should be 1 operator", 1, dag.getAllOperators().size());
+    Assert.assertEquals("there should be 0 stream", 0, dag.getAllStreams().size());
+
+    t.interrupt();
+    try {
+      t.join();
+    }
+    catch (InterruptedException ex) {
+      // ignore
+    }
   }
 
 }
