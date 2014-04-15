@@ -122,14 +122,6 @@ public class DataListIterator implements Iterator<SerializedData>
     }
   }
 
-  @Override
-  @SuppressWarnings("FinalizeDeclaration")
-  protected void finalize() throws Throwable
-  {
-    da.release(storage, false);
-    super.finalize();
-  }
-
   /**
    *
    * @return {@link com.datatorrent.bufferserver.util.SerializedData}
