@@ -13,8 +13,12 @@ import com.datatorrent.bufferserver.packet.ResetWindowTuple;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.NameableThreadFactory;
 import com.datatorrent.common.util.SerializedData;
 import com.datatorrent.common.util.VarInt;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>Block class.</p>
@@ -57,6 +61,10 @@ public class Block
    * how count of references to this block.
    */
   int refCount;
+  /**
+   * Executor which takes care of storing and retrieving blocks from the storage.
+   */
+  private ScheduledExecutorService executor;
 
   public Block(String id, int size)
   {
@@ -68,6 +76,16 @@ public class Block
     identifier = id;
     data = array;
     refCount = 1;
+  }
+
+  @Override
+  @SuppressWarnings("FinalizeDeclaration")
+  protected void finalize() throws Throwable
+  {
+    super.finalize();
+    if (executor != null) {
+      executor.shutdown();
+    }
   }
 
   void getNextData(SerializedData current)
@@ -207,7 +225,12 @@ public class Block
     }
   }
 
-  void acquire(final Storage storage, boolean wait)
+  private void initExecutor()
+  {
+    executor = Executors.newSingleThreadScheduledExecutor(new NameableThreadFactory("StorageExecutor(" + identifier + ')'));
+  }
+
+  synchronized void acquire(final Storage storage, boolean wait)
   {
     refCount++;
     if (data == null && storage != null) {
@@ -216,6 +239,11 @@ public class Block
         @Override
         public void run()
         {
+          synchronized (Block.this) {
+            if (data != null) {
+              return;
+            }
+          }
           data = storage.retrieve(identifier, uniqueIdentifier);
           readingOffset = 0;
           writingOffset = data.length;
@@ -227,20 +255,28 @@ public class Block
         r.run();
       }
       else {
-        new Thread(r).start();
+        if (executor == null) {
+          initExecutor();
+        }
+        executor.schedule(r, 0, TimeUnit.MILLISECONDS);
       }
     }
   }
 
-  void release(final Storage storage, boolean wait)
+  synchronized void release(final Storage storage, boolean wait)
   {
-    refCount--;
-    if (refCount == 0 && storage != null) {
+    if (refCount >= 1 && storage != null) {
       Runnable r = new Runnable()
       {
         @Override
         public void run()
         {
+          synchronized (Block.this) {
+            if (--refCount != 0) {
+              return;
+            }
+          }
+
           try {
             int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
             if (i == 0) {
@@ -262,7 +298,10 @@ public class Block
         r.run();
       }
       else {
-        new Thread(r).start();
+        if (executor == null) {
+          initExecutor();
+        }
+        executor.schedule(r, 0, TimeUnit.MILLISECONDS);
       }
     }
   }
