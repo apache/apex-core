@@ -304,7 +304,8 @@ public class StramClient
     Object snapshot = recoveryHandler.restore();
     InputStream logIs = recoveryHandler.getLog();
 
-    // TODO: modify snapshot state to switch app id
+    // modify snapshot state to switch app id
+    ((StreamingContainerManager.Snapshot)snapshot).setApplicationId(newAppId, newAppDir, conf);
 
     // write snapshot to new location
     recoveryHandler = new FSRecoveryHandler(newAppDir, conf);

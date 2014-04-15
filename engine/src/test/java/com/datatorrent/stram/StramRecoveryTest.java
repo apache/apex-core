@@ -45,7 +45,6 @@ import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.CreateStreamRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
@@ -306,11 +305,13 @@ public class StramRecoveryTest
   }
 
   @Test
-  public void testResumeApp() throws Exception
+  public void testRestartApp() throws Exception
   {
     FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
-    String appPath1 = testMeta.dir + "/app1";
-    String appPath2 = testMeta.dir + "/app2";
+    String appId1 = "app1";
+    String appId2 = "app2";
+    String appPath1 = testMeta.dir + "/" + appId1;
+    String appPath2 = testMeta.dir + "/" + appId2;
 
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
@@ -337,13 +338,15 @@ public class StramRecoveryTest
     scm.writeJournal(SetContainerState.newInstance(o1p1.getContainer()));
 
     StramClient sc = new StramClient(new Configuration(false));
-    sc.copyInitialState(testMeta.dir, "app1", "app2");
+    sc.copyInitialState(testMeta.dir, appId1, appId2);
 
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     plan = scm.getPhysicalPlan();
     dag = plan.getDAG();
+    Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
+    Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
 
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);

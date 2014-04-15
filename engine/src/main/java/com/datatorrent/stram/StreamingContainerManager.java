@@ -2085,16 +2085,55 @@ public class StreamingContainerManager implements PlanContext
       this.recordStatsInterval = dag.getValue(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
     }
 
+    private FinalVars(FinalVars other, LogicalPlan dag)
+    {
+      this.windowStartMillis = other.windowStartMillis;
+      this.heartbeatTimeoutMillis = other.heartbeatTimeoutMillis;
+      this.maxWindowsBehindForStats = other.maxWindowsBehindForStats;
+      this.recordStatsInterval = other.recordStatsInterval;
+      this.appPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
+      this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+    }
+
+  }
+
+  interface Snapshot
+  {
+    public void setApplicationId(String appId, String appPath, Configuration conf);
   }
 
   /**
-   * The state the can be saved and used to recover the manager.
+   * The state that can be saved and used to recover the manager.
    */
-  private static class CheckpointState implements Serializable
+  private static class CheckpointState implements Snapshot, Serializable
   {
     private static final long serialVersionUID = 3827310557521807024L;
     private FinalVars finals;
     private PhysicalPlan physicalPlan;
+
+    /**
+     * Modify previously saved state to allow for re-launch of application.
+     */
+    @Override
+    public void setApplicationId(String appId, String appPath, Configuration conf)
+    {
+      LogicalPlan lp = physicalPlan.getDAG();
+      String oldAppId = lp.getValue(LogicalPlan.APPLICATION_ID);
+
+      lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
+      lp.setAttribute(LogicalPlan.APPLICATION_PATH, appPath);
+      this.finals = new FinalVars(finals, lp);
+      StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
+      if (sa instanceof FSStorageAgent) {
+        // replace the default storage agent, if present
+        FSStorageAgent fssa = (FSStorageAgent)sa;
+        if (fssa.path.contains(oldAppId)) {
+          fssa = new FSStorageAgent(conf, fssa.path.replace(oldAppId, appId));
+          lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
+        }
+      }
+    }
+
   }
 
   public interface RecoveryHandler
