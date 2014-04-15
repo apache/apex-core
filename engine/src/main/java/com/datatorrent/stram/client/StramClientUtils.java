@@ -347,7 +347,7 @@ public class StramClientUtils
   public static FileSystem newFileSystemInstance(Configuration conf) throws IOException
   {
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
-    if (dfsRootDir == null) {
+    if (StringUtils.isBlank(dfsRootDir)) {
       return FileSystem.newInstance(conf);
     }
     else {
@@ -364,7 +364,7 @@ public class StramClientUtils
   public static Path getDTRootDir(FileSystem fs, Configuration conf)
   {
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
-    if (dfsRootDir == null) {
+    if (StringUtils.isBlank(dfsRootDir)) {
       return new Path(fs.getHomeDirectory(), "datatorrent");
     }
     else {
@@ -381,20 +381,37 @@ public class StramClientUtils
     }
   }
 
-  public static byte[] getLicense(Configuration conf) throws IOException
+  public static byte[] getLicense(Configuration conf) throws IOException, URISyntaxException
   {
     String dtLicenseFile = conf.get(DT_LICENSE_FILE);
     if (StringUtils.isBlank(dtLicenseFile)) {
       return Util.getDefaultLicense();
     }
     else {
-      return getLicense(dtLicenseFile);
+      return getLicense(dtLicenseFile, conf);
     }
   }
 
-  public static byte[] getLicense(String filePath) throws IOException
+  public static byte[] getLicense(String uriString, Configuration conf) throws IOException, URISyntaxException
   {
-    return IOUtils.toByteArray(new FileInputStream(filePath));
+    URI uri = new URI(uriString);
+    InputStream is = null;
+    FileSystem fs = null;
+
+    try {
+      if (uri.getScheme() == null || uri.getScheme().equals("file")) {
+        is = new FileInputStream(uri.getPath());
+      }
+      else {
+        fs = FileSystem.newInstance(uri, conf);
+        is = fs.open(new Path(uri));
+      }
+      return IOUtils.toByteArray(is);
+    }
+    finally {
+      IOUtils.closeQuietly(is);
+      IOUtils.closeQuietly(fs);
+    }
   }
 
   public static int getLicenseMasterMemory(Configuration conf)
