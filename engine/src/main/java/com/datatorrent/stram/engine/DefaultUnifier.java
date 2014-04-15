@@ -8,6 +8,7 @@ import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.annotation.Stateless;
 
 /**
  * Default unifier passes through all tuples received. Used when an operator has
@@ -15,6 +16,7 @@ import com.datatorrent.api.Operator.Unifier;
  *
  * @since 0.3.2
  */
+@Stateless
 public class DefaultUnifier extends BaseOperator implements Unifier<Object>
 {
   @OutputPortFieldAnnotation(name = "outputPort")

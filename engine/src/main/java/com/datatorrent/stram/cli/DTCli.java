@@ -1686,7 +1686,7 @@ public class DTCli
   {
     byte[] licenseBytes;
     if (file != null) {
-      licenseBytes = StramClientUtils.getLicense(file);
+      licenseBytes = StramClientUtils.getLicense(file, conf);
     }
     else {
       licenseBytes = StramClientUtils.getLicense(conf);
@@ -1814,7 +1814,7 @@ public class DTCli
   {
     byte[] licenseBytes;
     if (licenseFile != null) {
-      licenseBytes = StramClientUtils.getLicense(licenseFile);
+      licenseBytes = StramClientUtils.getLicense(licenseFile, conf);
     }
     else {
       licenseBytes = StramClientUtils.getLicense(conf);
@@ -2061,7 +2061,7 @@ public class DTCli
 
           byte[] licenseBytes;
           if (commandLineInfo.licenseFile != null) {
-            licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile);
+            licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile, conf);
           }
           else {
             licenseBytes = StramClientUtils.getLicense(conf);

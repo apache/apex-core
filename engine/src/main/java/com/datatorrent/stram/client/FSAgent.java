@@ -53,8 +53,12 @@ public class FSAgent
   public void createFile(Path path, byte[] content) throws IOException
   {
     FSDataOutputStream os = fileSystem.create(path);
-    os.write(content);
-    os.close();
+    try {
+      os.write(content);
+    }
+    finally {
+      os.close();
+    }
   }
 
   public void deleteFile(String path) throws IOException
