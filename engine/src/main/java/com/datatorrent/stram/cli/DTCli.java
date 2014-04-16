@@ -71,7 +71,6 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
-  private static final int MAX_PROPERTY_LEVELS = 5;
   private Configuration conf;
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;

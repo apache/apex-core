@@ -37,7 +37,7 @@ public class ContainersInfo
 
   /**
    *
-   * @return ArrayList<ContainerInfo>
+   * @return collection of container info
    *
    */
   public Collection<ContainerInfo> getContainers()

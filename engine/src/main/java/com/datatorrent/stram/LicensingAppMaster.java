@@ -62,7 +62,7 @@ public class LicensingAppMaster extends StramUtils.YarnContainerMain
       }
     }
 
-    if (appMaster.getFinalStatus() == FinalApplicationStatus.SUCCEEDED) {
+    if (appMaster != null && appMaster.getFinalStatus() == FinalApplicationStatus.SUCCEEDED) {
       LOG.info("Application Master completed. exiting");
       System.exit(0);
     }
