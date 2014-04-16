@@ -42,7 +42,7 @@ public class AtMostOnceTest extends ProcessingModeTests
     Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
-  @Test
+  //@Test
   @Override
   public void testLinearOperatorRecovery() throws Exception
   {

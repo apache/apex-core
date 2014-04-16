@@ -11,9 +11,6 @@ import com.datatorrent.api.Operator.ProcessingMode;
 
 
 /**
- // make a determination of the commented out assertTrues below as to what
- // should happen. Right now it's left undecided since we do not know the
- // implementation of recovery checkpoint in the stram.
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  */
@@ -24,7 +21,7 @@ public class ExactlyOnceTest extends ProcessingModeTests
     super(ProcessingMode.EXACTLY_ONCE);
   }
 
-  @Test
+  //@Test
   @Override
   public void testLinearInputOperatorRecovery() throws Exception
   {
@@ -34,7 +31,7 @@ public class ExactlyOnceTest extends ProcessingModeTests
     for (long tuple : RecoverableInputOperator.emittedTuples) {
       Assert.assertEquals("Emitted tuple: ", tuple, idx++);
     }
-    //Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
+    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
   @Test
@@ -43,7 +40,7 @@ public class ExactlyOnceTest extends ProcessingModeTests
   {
     super.testLinearOperatorRecovery();
     Assert.assertEquals("Generated Outputs", maxTuples, CollectorOperator.collection.size());
-    //Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
+    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 
   //@Test
@@ -52,6 +49,6 @@ public class ExactlyOnceTest extends ProcessingModeTests
   {
     super.testLinearInlineOperatorsRecovery();
     Assert.assertEquals("Generated Outputs", maxTuples, CollectorOperator.collection.size());
-    //Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
+    Assert.assertTrue("No Duplicates", CollectorOperator.duplicates.isEmpty());
   }
 }
