@@ -5,6 +5,8 @@
 package com.datatorrent.stram;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -18,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -81,6 +84,7 @@ public class StramClient
   private String libjars;
   private String files;
   private String archives;
+  private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
 
   /**
@@ -293,6 +297,49 @@ public class StramClient
     return csv.toString();
   }
 
+  public void copyInitialState(Path basePath, String origAppId, String newAppId) throws IOException
+  {
+    // locate previous snapshot
+    String origAppDir = basePath.toString() + Path.SEPARATOR_CHAR + origAppId;
+    String newAppDir = basePath.toString() + Path.SEPARATOR_CHAR + newAppId;
+
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(origAppDir, conf);
+    // read snapshot against new dependencies
+    Object snapshot = recoveryHandler.restore();
+    if (snapshot == null) {
+      throw new IllegalArgumentException("No previous application state found in " + origAppDir);
+    }
+    InputStream logIs = recoveryHandler.getLog();
+
+    // modify snapshot state to switch app id
+    ((StreamingContainerManager.Snapshot)snapshot).setApplicationId(newAppId, newAppDir, conf);
+
+    // write snapshot to new location
+    recoveryHandler = new FSRecoveryHandler(newAppDir, conf);
+    recoveryHandler.save(snapshot);
+    OutputStream logOs = recoveryHandler.rotateLog();
+    IOUtils.copy(logIs, logOs);
+    logOs.flush();
+    logOs.close();
+    logIs.close();
+
+    // copy sub directories that are not present in target
+    FileSystem fs = FileSystem.newInstance(basePath.toUri(), conf);
+    FileStatus[] files = fs.listStatus(new Path(origAppDir));
+    for (FileStatus f : files) {
+      if (f.isDirectory()) {
+        String targetPath = f.getPath().toString().replace(origAppDir, newAppDir);
+        if (!fs.exists(new Path(targetPath))) {
+          LOG.debug("Copying {} to {}", f.getPath(), targetPath);
+          FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
+        } else {
+          LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
+        }
+      }
+    }
+
+  }
+
   /**
    * Launch application for the dag represented by this client.
    *
@@ -330,13 +377,6 @@ public class StramClient
                + ", nodeNumContainers" + node.getNumContainers()
                + ", nodeHealthStatus" + node.getHealthReport());
     }
-    /*
-     * This is NPE in 2.0-alpha as request needs to provide specific queue name GetQueueInfoRequest queueInfoReq = Records.newRecord(GetQueueInfoRequest.class);
-     * GetQueueInfoResponse queueInfoResp = rmClient.getQueueInfo(queueInfoReq); QueueInfo queueInfo = queueInfoResp.getQueueInfo(); LOG.info("Queue
-     * info" + ", queueName=" + queueInfo.getQueueName() + ", queueCurrentCapacity=" + queueInfo.getCurrentCapacity() + ", queueMaxCapacity=" +
-     * queueInfo.getMaximumCapacity() + ", queueApplicationCount=" + queueInfo.getApplications().size() + ", queueChildQueueCount=" +
-     * queueInfo.getChildQueues().size());
-     */
     GetQueueUserAclsInfoRequest queueUserAclsReq = Records.newRecord(GetQueueUserAclsInfoRequest.class);
     GetQueueUserAclsInfoResponse queueUserAclsResp = rmClient.clientRM.getQueueUserAcls(queueUserAclsReq);
     List<QueueUserACLInfo> listAclInfo = queueUserAclsResp.getUserAclsInfoList();
@@ -441,7 +481,13 @@ public class StramClient
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
     try {
-      Path appPath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS + "/" + appId.toString());
+      Path appsBasePath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+      Path appPath = new Path(appsBasePath, appId.toString());
+
+      if (originalAppId != null) {
+        LOG.info("Restart of {}", this.originalAppId);
+        copyInitialState(appsBasePath, this.originalAppId, appPath.getName());
+      }
 
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
 
@@ -487,7 +533,7 @@ public class StramClient
         localResources.put("log4j.properties", log4jRsrc);
       }
 
-      // push application configuration to dfs location
+      // push logical plan to DFS location
       Path cfgDst = new Path(appPath, LogicalPlan.SER_FILE_NAME);
       FSDataOutputStream outStream = fs.create(cfgDst, true);
       LogicalPlan.write(this.dag, outStream);
@@ -555,7 +601,7 @@ public class StramClient
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
       vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
 
-      // Get final commmand
+      // Get final command
       StringBuilder command = new StringBuilder(9 * vargs.size());
       for (CharSequence str : vargs) {
         command.append(str).append(" ");
@@ -689,6 +735,11 @@ public class StramClient
   public void setApplicationType(String type)
   {
     this.applicationType = type;
+  }
+
+  public void setOriginalAppId(String appId)
+  {
+    this.originalAppId = appId;
   }
 
 }

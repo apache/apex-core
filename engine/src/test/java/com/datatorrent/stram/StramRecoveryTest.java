@@ -11,6 +11,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.Assert;
 
 import com.google.common.collect.Lists;
@@ -21,10 +22,10 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
@@ -33,7 +34,6 @@ import org.apache.hadoop.test.MockitoUtil;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
@@ -306,6 +306,59 @@ public class StramRecoveryTest
     Assert.assertEquals(addr1, c1.bufferServerAddress);
     Assert.assertEquals(1, c1.getRequiredMemoryMB());
     Assert.assertEquals(2, c1.getAllocatedMemoryMB());
+
+  }
+
+  @Test
+  public void testRestartApp() throws Exception
+  {
+    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
+    String appId1 = "app1";
+    String appId2 = "app2";
+    String appPath1 = testMeta.dir + "/" + appId1;
+    String appPath2 = testMeta.dir + "/" + appId2;
+
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
+    dag.addOperator("o1", StatsListeningOperator.class);
+
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
+    StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
+
+    // test restore initial snapshot + log
+    dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
+    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
+    PhysicalPlan plan = scm.getPhysicalPlan();
+    dag = plan.getDAG(); // original plan
+
+    Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
+    PTOperator o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
+    long[] ids = new FSStorageAgent(new Configuration(false), appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).getWindowIds(o1p1.getId());
+    Assert.assertArrayEquals(new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
+
+    Assert.assertNull(o1p1.getContainer().getExternalId());
+    // trigger journal write
+    o1p1.getContainer().setExternalId("cid1");
+    scm.writeJournal(SetContainerState.newInstance(o1p1.getContainer()));
+
+    StramClient sc = new StramClient(new Configuration(false));
+    sc.copyInitialState(new Path(testMeta.dir), appId1, appId2);
+
+    dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
+    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
+    plan = scm.getPhysicalPlan();
+    dag = plan.getDAG();
+    Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
+    Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
+
+    Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
+    o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
+    Assert.assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());
+
+    ids = new FSStorageAgent(new Configuration(false), appPath2 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS).getWindowIds(o1p1.getId());
+    Assert.assertArrayEquals("checkpoints copied", new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
 
   }
 

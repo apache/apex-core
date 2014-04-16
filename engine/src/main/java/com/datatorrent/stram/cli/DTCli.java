@@ -31,7 +31,9 @@ import java.lang.management.ManagementFactory;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
 import javax.ws.rs.core.MediaType;
+
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
@@ -448,7 +450,7 @@ public class DTCli
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
                                                         new Arg[] {new FileArg("jar-file")},
                                                         new Arg[] {new Arg("class-name/property-file")},
-                                                        "Launch an app", getLaunchCommandLineOptions()));
+                                                        "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
                                                        new Arg[] {new Arg("app-id")},
                                                        null,
@@ -1970,6 +1972,9 @@ public class DTCli
         commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
         config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
       }
+      if (commandLineInfo.origAppId != null) {
+        config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
+      }
       if (commandLineInfo.licenseFile != null) {
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
@@ -3431,37 +3436,37 @@ public class DTCli
   }
 
   @SuppressWarnings("static-access")
-  public static Options getLaunchCommandLineOptions()
+  public static class LaunchCommandLineOptions
   {
-    Options options = new Options();
-    Option local = new Option("local", "Run application in local mode.");
-    Option configFile = OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf");
-    Option defProperty = OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D");
-    Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
-    Option files = OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files");
-    Option archives = OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives");
-    Option license = OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license");
-    Option ignorePom = new Option("ignorepom", "Do not run maven to find the dependency");
-    options.addOption(local);
-    options.addOption(configFile);
-    options.addOption(defProperty);
-    options.addOption(libjars);
-    options.addOption(files);
-    options.addOption(archives);
-    options.addOption(license);
-    options.addOption(ignorePom);
-    return options;
+    final Options options = new Options();
+    final Option local = add(new Option("local", "Run application in local mode."));
+    final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf"));
+    final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
+    final Option libjars = add(OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars"));
+    final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files"));
+    final Option archives = add(OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives"));
+    final Option license = add(OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license"));
+    final Option ignorePom = add(new Option("ignorepom", "Do not run maven to find the dependency"));
+    final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg().withDescription("Specify original application identifier for restart.").create("originalAppId"));
+
+    private Option add(Option opt)
+    {
+      this.options.addOption(opt);
+      return opt;
+    }
   }
+
+  private static LaunchCommandLineOptions LAUNCH_OPTIONS = new LaunchCommandLineOptions();
 
   private static LaunchCommandLineInfo getLaunchCommandLineInfo(String[] args) throws ParseException
   {
     CommandLineParser parser = new PosixParser();
     LaunchCommandLineInfo result = new LaunchCommandLineInfo();
-    CommandLine line = parser.parse(getLaunchCommandLineOptions(), args);
-    result.localMode = line.hasOption("local");
-    result.configFile = line.getOptionValue("conf");
-    result.ignorePom = line.hasOption("ignorepom");
-    String[] defs = line.getOptionValues("D");
+    CommandLine line = parser.parse(LAUNCH_OPTIONS.options, args);
+    result.localMode = line.hasOption(LAUNCH_OPTIONS.local.getOpt());
+    result.configFile = line.getOptionValue(LAUNCH_OPTIONS.configFile.getOpt());
+    result.ignorePom = line.hasOption(LAUNCH_OPTIONS.ignorePom.getOpt());
+    String[] defs = line.getOptionValues(LAUNCH_OPTIONS.defProperty.getOpt());
     if (defs != null) {
       result.overrideProperties = new HashMap<String, String>();
       for (String def : defs) {
@@ -3474,11 +3479,12 @@ public class DTCli
         }
       }
     }
-    result.libjars = line.getOptionValue("libjars");
-    result.files = line.getOptionValue("files");
-    result.archives = line.getOptionValue("archives");
-    result.licenseFile = line.getOptionValue("license");
+    result.libjars = line.getOptionValue(LAUNCH_OPTIONS.libjars.getOpt());
+    result.files = line.getOptionValue(LAUNCH_OPTIONS.files.getOpt());
+    result.archives = line.getOptionValue(LAUNCH_OPTIONS.archives.getOpt());
+    result.licenseFile = line.getOptionValue(LAUNCH_OPTIONS.license.getOpt());
     result.args = line.getArgs();
+    result.origAppId = line.getOptionValue(LAUNCH_OPTIONS.originalAppID.getOpt());
     return result;
   }
 
@@ -3492,6 +3498,7 @@ public class DTCli
     String files;
     String archives;
     String licenseFile;
+    String origAppId;
     String[] args;
   }
 

@@ -197,7 +197,6 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
         LOG.warn("Found {}, did checkpointing fail?", logBackupPath);
         fc.rename(logBackupPath, logPath, Rename.OVERWRITE);
       }
-
     }
 
     if (!fc.util().exists(snapshotPath)) {
@@ -211,6 +210,8 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       return ois.readObject();
     } catch (ClassNotFoundException cnfe) {
       throw new IOException("Failed to read checkpointed state", cnfe);
+    } finally {
+      ois.close();
     }
   }
 
