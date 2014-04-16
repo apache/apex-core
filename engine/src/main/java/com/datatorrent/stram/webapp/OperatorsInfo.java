@@ -40,7 +40,7 @@ public class OperatorsInfo {
 
   /**
    *
-   * @return List<OperatorInfo>
+   * @return list of operator info
    *
    */
   public List<OperatorInfo> getOperators() {

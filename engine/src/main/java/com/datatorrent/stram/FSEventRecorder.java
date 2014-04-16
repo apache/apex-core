@@ -14,7 +14,6 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 import net.engio.mbassy.listener.Handler;

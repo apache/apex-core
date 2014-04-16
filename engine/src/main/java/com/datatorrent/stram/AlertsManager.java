@@ -31,7 +31,7 @@ public class AlertsManager
 {
   private static final Logger LOG = LoggerFactory.getLogger(AlertsManager.class);
   private final Map<String, AlertInfo> alerts = new HashMap<String, AlertInfo>();
-  private StreamingContainerManager dagManager;
+  private final StreamingContainerManager dagManager;
 
   private static class AlertInfo
   {

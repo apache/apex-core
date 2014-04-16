@@ -1369,13 +1369,13 @@ public class StramChild extends YarnContainerMain
       if (temp == null) {
         temp = containerContext.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
       }
-      int appWindowCount = (int)(windowCount % temp.intValue());
+      int appWindowCount = (int)(windowCount % temp);
 
       temp = ndi.contextAttributes.get(OperatorContext.CHECKPOINT_WINDOW_COUNT);
       if (temp == null) {
         temp = containerContext.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
       }
-      int lCheckpointWindowCount = (int)(windowCount % temp.intValue());
+      int lCheckpointWindowCount = (int)(windowCount % temp);
       checkpoint = new Checkpoint(WindowGenerator.getWindowId(now, firstWindowMillis, windowWidthMillis), appWindowCount, lCheckpointWindowCount);
       logger.debug("using at most once on {} at {}", ndi.name, checkpoint);
     }
