@@ -184,6 +184,7 @@ public class ProcessingModeTests
       }
     }
 
+    private static final long serialVersionUID = 201404161447L;
   }
 
   public static class MultiInputOperator implements Operator
