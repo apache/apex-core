@@ -81,6 +81,7 @@ public class StramClient
   private String libjars;
   private String files;
   private String archives;
+  private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
 
   /**
@@ -293,15 +294,18 @@ public class StramClient
     return csv.toString();
   }
 
-  public void copyInitialState(String basePath, String origAppId, String newAppId) throws IOException
+  public void copyInitialState(Path basePath, String origAppId, String newAppId) throws IOException
   {
     // locate previous snapshot
-    String origAppDir = basePath + Path.SEPARATOR_CHAR + origAppId;
-    String newAppDir = basePath + Path.SEPARATOR_CHAR + newAppId;
+    String origAppDir = basePath.toString() + Path.SEPARATOR_CHAR + origAppId;
+    String newAppDir = basePath.toString() + Path.SEPARATOR_CHAR + newAppId;
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(origAppDir, conf);
     // read snapshot against new dependencies
     Object snapshot = recoveryHandler.restore();
+    if (snapshot == null) {
+      throw new IllegalArgumentException("No previous application state found in " + origAppDir);
+    }
     InputStream logIs = recoveryHandler.getLog();
 
     // modify snapshot state to switch app id
@@ -317,7 +321,7 @@ public class StramClient
     logIs.close();
 
     // copy sub directories that are not present in target
-    FileSystem fs = FileSystem.newInstance(new Path(basePath).toUri(), conf);
+    FileSystem fs = FileSystem.newInstance(basePath.toUri(), conf);
     FileStatus[] files = fs.listStatus(new Path(origAppDir));
     for (FileStatus f : files) {
       if (f.isDirectory()) {
@@ -473,7 +477,13 @@ public class StramClient
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.newInstance(conf);
     try {
-      Path appPath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS + "/" + appId.toString());
+      Path appsBasePath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+      Path appPath = new Path(appsBasePath, appId.toString());
+
+      if (originalAppId != null) {
+        LOG.info("Restart of {}", this.originalAppId);
+        copyInitialState(appsBasePath, this.originalAppId, appPath.getName());
+      }
 
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
 
@@ -582,7 +592,7 @@ public class StramClient
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
       vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
 
-      // Get final commmand
+      // Get final command
       StringBuilder command = new StringBuilder(9 * vargs.size());
       for (CharSequence str : vargs) {
         command.append(str).append(" ");
@@ -716,6 +726,11 @@ public class StramClient
   public void setApplicationType(String type)
   {
     this.applicationType = type;
+  }
+
+  public void setOriginalAppId(String appId)
+  {
+    this.originalAppId = appId;
   }
 
 }

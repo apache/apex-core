@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
@@ -338,7 +339,7 @@ public class StramRecoveryTest
     scm.writeJournal(SetContainerState.newInstance(o1p1.getContainer()));
 
     StramClient sc = new StramClient(new Configuration(false));
-    sc.copyInitialState(testMeta.dir, appId1, appId2);
+    sc.copyInitialState(new Path(testMeta.dir), appId1, appId2);
 
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);

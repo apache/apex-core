@@ -53,6 +53,7 @@ public class StramAppLauncher
   public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
+  public static final String ORIGINAL_APP_ID = "tmpOriginalAppId";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private final File jarFile;
@@ -64,13 +65,11 @@ public class StramAppLauncher
   private final StringWriter mvnBuildClasspathOutput = new StringWriter();
   private boolean ignorePom = false;
 
-
   public static interface AppFactory
   {
     StreamingApplication createApp(Configuration conf);
 
     String getName();
-
   }
 
   public static class PropertyFileAppFactory implements AppFactory
@@ -375,7 +374,6 @@ public class StramAppLauncher
    */
   public ApplicationId launchApp(AppFactory appConfig) throws Exception
   {
-
     loadDependencies();
     conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
     LogicalPlan dag = prepareDAG(appConfig);
@@ -385,6 +383,7 @@ public class StramAppLauncher
     client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
     client.setFiles(conf.get(FILES_CONF_KEY_NAME));
     client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
+    client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
     client.startApplication();
     return client.getApplicationReport().getApplicationId();
   }
