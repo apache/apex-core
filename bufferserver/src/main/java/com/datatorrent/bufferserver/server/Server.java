@@ -48,7 +48,8 @@ public class Server implements ServerListener
   private Storage storage;
   private EventLoop eventloop;
   private InetSocketAddress address;
-  private final ScheduledExecutorService executor;
+  private final ExecutorService serverHelperExecutor;
+  private final ExecutorService storageHelperExecutor;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port
@@ -63,7 +64,8 @@ public class Server implements ServerListener
     this.port = port;
     this.blockSize = blocksize;
     this.numberOfCacheBlocks = numberOfCacheBlocks;
-    executor = Executors.newSingleThreadScheduledExecutor(new NameableThreadFactory("ServerHelper"));
+    serverHelperExecutor = Executors.newSingleThreadExecutor(new NameableThreadFactory("ServerHelper"));
+    storageHelperExecutor = Executors.newSingleThreadExecutor(new NameableThreadFactory("StorageHelper"));
   }
 
   public void setSpoolStorage(Storage storage)
@@ -83,9 +85,10 @@ public class Server implements ServerListener
   @Override
   public void unregistered(SelectionKey key)
   {
-    executor.shutdown();
+    serverHelperExecutor.shutdown();
+    storageHelperExecutor.shutdown();
     try {
-      executor.awaitTermination(5000, TimeUnit.MILLISECONDS);
+      serverHelperExecutor.awaitTermination(5000, TimeUnit.MILLISECONDS);
     }
     catch (InterruptedException ex) {
       logger.debug("Executor Termination", ex);
@@ -158,7 +161,7 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    executor.submit(new Runnable()
+    serverHelperExecutor.submit(new Runnable()
     {
       @Override
       public void run()
@@ -190,7 +193,7 @@ public class Server implements ServerListener
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    executor.submit(new Runnable()
+    serverHelperExecutor.submit(new Runnable()
     {
       @Override
       public void run()
@@ -301,7 +304,7 @@ public class Server implements ServerListener
       dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize, numberOfCacheBlocks) : new DataList(identifier, blockSize, numberOfCacheBlocks);
       publisherBuffers.put(identifier, dl);
     }
-    dl.setSecondaryStorage(storage);
+    dl.setSecondaryStorage(storage, storageHelperExecutor);
 
     return dl;
   }
@@ -351,7 +354,7 @@ public class Server implements ServerListener
           PublishRequestTuple publisherRequest = (PublishRequestTuple)request;
 
           DataList dl = handlePublisherRequest(publisherRequest, this);
-          dl.setAutoflush(executor);
+          dl.setAutoflushExecutor(serverHelperExecutor);
 
           Publisher publisher;
           if (publisherRequest.getVersion().equals(Tuple.FAST_VERSION)) {
@@ -420,7 +423,7 @@ public class Server implements ServerListener
           subscriber.registered(key);
 
           final LogicalNode logicalNode = handleSubscriberRequest(subscriberRequest, subscriber);
-          executor.submit(new Runnable()
+          serverHelperExecutor.submit(new Runnable()
           {
             @Override
             public void run()
@@ -667,7 +670,7 @@ public class Server implements ServerListener
     {
       teardown();
 
-      if (cce instanceof RejectedExecutionException && executor.isTerminated()) {
+      if (cce instanceof RejectedExecutionException && serverHelperExecutor.isTerminated()) {
         logger.warn("Terminated Executor.", cce);
         el.disconnect(this);
       }

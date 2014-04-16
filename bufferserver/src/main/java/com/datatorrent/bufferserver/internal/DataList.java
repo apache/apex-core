@@ -7,12 +7,14 @@ package com.datatorrent.bufferserver.internal;
 import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.ResetWindowTuple;
 import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.bufferserver.util.BitVector;
@@ -30,7 +32,7 @@ import com.datatorrent.common.util.VarInt.MutableInt;
  */
 public class DataList
 {
-  private static final Logger logger = LoggerFactory.getLogger(DataList.class);
+  private final int MAX_COUNT_OF_INMEM_BLOCKS;
   protected final String identifier;
   private final Integer blocksize;
   private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
@@ -38,8 +40,8 @@ public class DataList
   protected Block first;
   protected Block last;
   protected Storage storage;
-  protected ScheduledExecutorService executor;
-  private final int MAX_COUNT_OF_INMEM_BLOCKS;
+  protected ExecutorService autoflushExecutor;
+  protected ExecutorService storageExecutor;
 
   public int getBlockSize()
   {
@@ -58,7 +60,7 @@ public class DataList
           last = temp;
         }
 
-        this.baseSeconds = temp.rewind(longWindowId, false, storage);
+        this.baseSeconds = temp.rewind(longWindowId);
         processingOffset = temp.writingOffset;
         size = 0;
       }
@@ -97,7 +99,7 @@ public class DataList
           first = temp;
         }
 
-        first.purge(longWindowId, false, storage);
+        first.purge(longWindowId);
         break;
       }
 
@@ -206,7 +208,7 @@ public class DataList
 
     last.writingOffset = writeOffset;
 
-    executor.submit(new Runnable()
+    autoflushExecutor.submit(new Runnable()
     {
       @Override
       public void run()
@@ -219,14 +221,15 @@ public class DataList
     });
   }
 
-  public void setAutoflush(final ScheduledExecutorService es)
+  public void setAutoflushExecutor(final ExecutorService es)
   {
-    executor = es;
+    autoflushExecutor = es;
   }
 
-  public void setSecondaryStorage(Storage storage)
+  public void setSecondaryStorage(Storage storage, ExecutorService es)
   {
     this.storage = storage;
+    storageExecutor = es;
   }
 
   /*
@@ -234,19 +237,24 @@ public class DataList
    */
   protected final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
 
+  public DataListIterator getIterator(Block block)
+  {
+    return new DataListIterator(block);
+  }
+
   public Iterator<SerializedData> newIterator(String identifier, long windowId)
   {
     //logger.debug("request for a new iterator {} and {}", identifier, windowId);
     for (Block temp = first; temp != null; temp = temp.next) {
       if (temp.starting_window >= windowId || temp.ending_window > windowId) {
-        DataListIterator dli = new DataListIterator(temp, storage);
+        DataListIterator dli = getIterator(temp);
         iterators.put(identifier, dli);
         //logger.debug("returning new iterator on temp = {}", temp);
         return dli;
       }
     }
 
-    DataListIterator dli = new DataListIterator(last, storage);
+    DataListIterator dli = getIterator(last);
     iterators.put(identifier, dli);
     //logger.debug("returning new iterator on last = {}", last);
     return dli;
@@ -267,32 +275,11 @@ public class DataList
         if (e.getValue() == dli) {
           iterators.remove(e.getKey());
           released = true;
-          dli.da.release(storage, false);
-          dli.da = null;
           break;
         }
       }
     }
     return released;
-  }
-
-  /**
-   *
-   * @return the currentOffset of iterators
-   */
-  public int clearIterators()
-  {
-    int count = 0;
-
-    for (DataListIterator dli : iterators.values()) {
-      count++;
-      dli.da.release(storage, false);
-      dli.da = null;
-    }
-
-    iterators.clear();
-
-    return count;
   }
 
   public void addDataListener(DataListener dl)
@@ -375,7 +362,7 @@ public class DataList
         }
 
         if (!found && temp.data != null) {
-          temp.release(storage, false);
+          temp.release(false);
           if (--inmemBlockCount < MAX_COUNT_OF_INMEM_BLOCKS) {
             break;
           }
@@ -456,4 +443,414 @@ public class DataList
     return status;
   }
 
+  /**
+   * <p>Block class.</p>
+   *
+   * @author Chetan Narsude <chetan@datatorrent.com>
+   * @since 0.3.2
+   */
+  public class Block
+  {
+    final String identifier;
+    /**
+     * actual data - stored as length followed by actual data.
+     */
+    byte data[];
+    /**
+     * readingOffset is the offset of the first valid byte in the array.
+     */
+    int readingOffset;
+    /**
+     * writingOffset is the offset of the first available byte to write into.
+     */
+    int writingOffset;
+    /**
+     * The starting window which is available in this data array.
+     */
+    long starting_window = -1;
+    /**
+     * the ending window which is available in this data array
+     */
+    long ending_window;
+    /**
+     * when the data is null, uniqueIdentifier is the identifier in the backup storage to retrieve the object.
+     */
+    int uniqueIdentifier;
+    /**
+     * the next in the chain.
+     */
+    Block next;
+    /**
+     * how count of references to this block.
+     */
+    int refCount;
+
+    public Block(String id, int size)
+    {
+      this(id, new byte[size]);
+    }
+
+    public Block(String id, byte[] array)
+    {
+      identifier = id;
+      data = array;
+      refCount = 1;
+    }
+
+    void getNextData(SerializedData current)
+    {
+      if (current.offset < writingOffset) {
+        VarInt.read(current);
+        if (current.offset + current.size > writingOffset) {
+          current.size = 0;
+        }
+      }
+      else {
+        current.size = 0;
+      }
+    }
+
+    public long rewind(long windowId)
+    {
+      long bs = starting_window & 0x7fffffff00000000L;
+      DataListIterator dli = getIterator(this);
+      done:
+      while (dli.hasNext()) {
+        SerializedData sd = dli.next();
+        switch (sd.bytes[sd.dataOffset]) {
+          case MessageType.RESET_WINDOW_VALUE:
+            ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            bs = (long)rwt.getBaseSeconds() << 32;
+            if (bs > windowId) {
+              writingOffset = sd.offset;
+              break done;
+            }
+            break;
+
+          case MessageType.BEGIN_WINDOW_VALUE:
+            BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            if ((bs | bwt.getWindowId()) >= windowId) {
+              writingOffset = sd.offset;
+              break done;
+            }
+            break;
+        }
+      }
+
+      if (starting_window == -1) {
+        starting_window = windowId;
+        ending_window = windowId;
+        //logger.debug("assigned both window id {}", this);
+      }
+      else if (windowId < ending_window) {
+        ending_window = windowId;
+        //logger.debug("assigned end window id {}", this);
+      }
+
+      return bs;
+    }
+
+    public void purge(long longWindowId)
+    {
+//    logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
+//                 new Object[] {VarInt.getStringWindowId(starting_window), VarInt.getStringWindowId(longWindowId), VarInt.getStringWindowId(ending_window)});
+      boolean found = false;
+      long bs = starting_window & 0xffffffff00000000L;
+      SerializedData lastReset = null;
+
+      DataListIterator dli =  getIterator(this);
+      done:
+      while (dli.hasNext()) {
+        SerializedData sd = dli.next();
+        switch (sd.bytes[sd.dataOffset]) {
+          case MessageType.RESET_WINDOW_VALUE:
+            ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            bs = (long)rwt.getBaseSeconds() << 32;
+            lastReset = sd;
+            break;
+
+          case MessageType.BEGIN_WINDOW_VALUE:
+            BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            if ((bs | bwt.getWindowId()) > longWindowId) {
+              found = true;
+              if (lastReset != null) {
+                /*
+                 * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
+                 */
+                if (sd.offset >= lastReset.size) {
+                  sd.offset -= lastReset.size;
+                  if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
+                    System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
+                  }
+                }
+
+                this.starting_window = bs | bwt.getWindowId();
+                this.readingOffset = sd.offset;
+                //logger.debug("assigned starting window id {}", this);
+              }
+
+              break done;
+            }
+        }
+      }
+
+      /**
+       * If we ended up purging all the data from the current Block then,
+       * it also makes sense to start all over.
+       * It helps with better utilization of the RAM.
+       */
+      if (!found) {
+        //logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
+        if (lastReset != null && lastReset.offset != 0) {
+          this.readingOffset = this.writingOffset - lastReset.size;
+          System.arraycopy(lastReset.bytes, lastReset.offset, this.data, this.readingOffset, lastReset.size);
+          this.starting_window = this.ending_window = bs;
+          //logger.debug("=20140220= reassign the windowids {}", this);
+        }
+        else {
+          this.readingOffset = this.writingOffset;
+          this.starting_window = this.ending_window = longWindowId;
+          //logger.debug("=20140220= avoid the windowids {}", this);
+        }
+
+
+        SerializedData sd = new SerializedData(this.data, readingOffset, 0);
+
+        // the rest of it is just a copy from beginWindow case here to wipe the data - refactor
+        int i = 1;
+        while (i < VarInt.getSize(sd.offset - i)) {
+          i++;
+        }
+
+        if (i <= sd.offset) {
+          sd.size = sd.offset;
+          sd.offset = 0;
+          sd.dataOffset = VarInt.write(sd.size - i, sd.bytes, sd.offset, i);
+          sd.bytes[sd.dataOffset] = MessageType.NO_MESSAGE_VALUE;
+        }
+        else {
+          logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
+        }
+      }
+    }
+
+    synchronized void acquire(boolean wait)
+    {
+      refCount++;
+      if (data == null && storage != null) {
+        Runnable r = new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            synchronized (Block.this) {
+              if (data != null) {
+                return;
+              }
+            }
+            data = storage.retrieve(identifier, uniqueIdentifier);
+            readingOffset = 0;
+            writingOffset = data.length;
+          }
+
+        };
+
+        if (wait) {
+          r.run();
+        }
+        else {
+          storageExecutor.submit(r);
+        }
+      }
+    }
+
+    synchronized void release(boolean wait)
+    {
+      if (refCount >= 1 && storage != null) {
+        Runnable r = new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            synchronized (Block.this) {
+              if (--refCount != 0) {
+                return;
+              }
+            }
+
+            try {
+              int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
+              if (i == 0) {
+                logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
+              }
+              else {
+                uniqueIdentifier = i;
+                data = null;
+              }
+            }
+            catch (RuntimeException ex) {
+              logger.warn("Storage failed!", ex);
+            }
+          }
+
+        };
+
+        if (wait) {
+          r.run();
+        }
+        else {
+          storageExecutor.submit(r);
+        }
+      }
+    }
+
+    @Override
+    public String toString()
+    {
+      return "Block{" + "identifier=" + identifier + ", data=" + (data == null ? "null" : data.length)
+             + ", readingOffset=" + readingOffset + ", writingOffset=" + writingOffset
+             + ", starting_window=" + Codec.getStringWindowId(starting_window) + ", ending_window=" + Codec.getStringWindowId(ending_window)
+             + ", uniqueIdentifier=" + uniqueIdentifier + ", next=" + (next == null ? "null" : next.identifier)
+             + ", refCount=" + refCount + '}';
+    }
+
+  }
+
+  /**
+   * <p>DataListIterator class.</p>
+   *
+   * @author chetan
+   * @since 0.3.2
+   */
+  public class DataListIterator implements Iterator<SerializedData>
+  {
+    Block da;
+    SerializedData current;
+    protected byte[] buffer;
+    protected int readOffset;
+    MutableInt nextOffset = new MutableInt();
+    int size;
+
+    /**
+     *
+     * @param da
+     */
+    DataListIterator(Block da)
+    {
+      da.acquire(true);
+      this.da = da;
+      buffer = da.data;
+      readOffset = da.readingOffset;
+    }
+
+    // this is a hack! Get rid of it.
+    public int getBaseSeconds()
+    {
+      return da == null ? 0 : (int)(da.starting_window >> 32);
+    }
+
+    public int getReadOffset()
+    {
+      return readOffset;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    @Override
+    public synchronized boolean hasNext()
+    {
+      while (size == 0) {
+        size = VarInt.read(buffer, readOffset, da.writingOffset, nextOffset);
+        switch (nextOffset.integer) {
+          case -5:
+            throw new RuntimeException("problemo!");
+
+          case -4:
+          case -3:
+          case -2:
+          case -1:
+          case 0:
+            if (da.writingOffset == buffer.length) {
+              if (da.next == null) {
+                return false;
+              }
+
+              da.release(false);
+              da.next.acquire(true);
+              da = da.next;
+              size = 0;
+              buffer = da.data;
+              readOffset = da.readingOffset;
+            }
+            else {
+              return false;
+            }
+        }
+      }
+
+      while (true) {
+        if (nextOffset.integer + size <= da.writingOffset) {
+          current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
+          current.dataOffset = nextOffset.integer;
+          //if (buffer[current.dataOffset] == MessageType.BEGIN_WINDOW_VALUE || buffer[current.dataOffset] == MessageType.END_WINDOW_VALUE) {
+          //  Tuple t = Tuple.getTuple(current.bytes, current.dataOffset, current.size - current.dataOffset + current.offset);
+          //  logger.debug("next t = {}", t);
+          //}
+          return true;
+        }
+        else {
+          if (da.writingOffset == buffer.length) {
+            if (da.next == null) {
+              return false;
+            }
+            else {
+              da.release(false);
+              da.next.acquire(true);
+              da = da.next;
+              size = 0;
+              readOffset = nextOffset.integer = da.readingOffset;
+              buffer = da.data;
+            }
+          }
+          else {
+            return false;
+          }
+        }
+      }
+    }
+
+    /**
+     *
+     * @return {@link com.datatorrent.bufferserver.util.SerializedData}
+     */
+    @Override
+    public SerializedData next()
+    {
+      readOffset = current.offset + current.size;
+      size = 0;
+      return current;
+    }
+
+    /**
+     * Removes from the underlying collection the last element returned by the iterator (optional operation). This method can be called only once per call to
+     * next. The behavior of an iterator is unspecified if the underlying collection is modified while the iteration is in progress in any way other than by
+     * calling this method.
+     */
+    @Override
+    public void remove()
+    {
+      current.bytes[current.dataOffset] = MessageType.NO_MESSAGE_VALUE;
+    }
+
+    void rewind(int processingOffset)
+    {
+      readOffset = processingOffset;
+      size = 0;
+    }
+
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(DataList.class);
 }
