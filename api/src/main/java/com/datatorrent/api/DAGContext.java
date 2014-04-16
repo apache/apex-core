@@ -103,6 +103,17 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
+   * The amount of memory each buffer server will try to use at maximum. There is a buffer server in each container,
+   * so the memory allocated here directly affects the RAM available for the rest of the operators running in the container.
+   * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
+   * not be adhered to.
+   */
+  Attribute<Integer> BUFFER_SERVER_MEMORY_MB = new Attribute<Integer>(8 * 64);
+  /**
+   * Where to spool the data once the buffer server capacity is reached.
+   */
+  Attribute<Boolean> EXPERIMENTAL_BUFFER_SPOOLING = new Attribute<Boolean>(true);
+  /**
    * The streaming window size to use for the application. It is specified in milliseconds. Default value is 500ms.
    */
   Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);
