@@ -312,7 +312,7 @@ public class StramClient
     InputStream logIs = recoveryHandler.getLog();
 
     // modify snapshot state to switch app id
-    ((StreamingContainerManager.Snapshot)snapshot).setApplicationId(newAppId, newAppDir, conf);
+    ((StreamingContainerManager.CheckpointState)snapshot).setApplicationId(newAppId, newAppDir, conf);
 
     // write snapshot to new location
     recoveryHandler = new FSRecoveryHandler(newAppDir, conf);

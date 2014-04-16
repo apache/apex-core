@@ -5,6 +5,7 @@
 package com.datatorrent.stram;
 
 import com.datatorrent.api.*;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -33,6 +34,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
@@ -72,6 +74,7 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import com.datatorrent.stram.webapp.PortInfo;
 import com.datatorrent.stram.webapp.StreamInfo;
+
 import org.apache.commons.beanutils.BeanMap;
 
 /**
@@ -2092,15 +2095,10 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
-  interface Snapshot
-  {
-    public void setApplicationId(String appId, String appPath, Configuration conf);
-  }
-
   /**
    * The state that can be saved and used to recover the manager.
    */
-  private static class CheckpointState implements Snapshot, Serializable
+  static class CheckpointState implements Serializable
   {
     private static final long serialVersionUID = 3827310557521807024L;
     private FinalVars finals;
@@ -2109,11 +2107,13 @@ public class StreamingContainerManager implements PlanContext
     /**
      * Modify previously saved state to allow for re-launch of application.
      */
-    @Override
     public void setApplicationId(String appId, String appPath, Configuration conf)
     {
       LogicalPlan lp = physicalPlan.getDAG();
       String oldAppId = lp.getValue(LogicalPlan.APPLICATION_ID);
+      if (oldAppId == null) {
+        throw new AssertionError("Missing original application id");
+      }
 
       lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
       lp.setAttribute(LogicalPlan.APPLICATION_PATH, appPath);
@@ -2123,7 +2123,7 @@ public class StreamingContainerManager implements PlanContext
         // replace the default storage agent, if present
         FSStorageAgent fssa = (FSStorageAgent)sa;
         if (fssa.path.contains(oldAppId)) {
-          fssa = new FSStorageAgent(conf, fssa.path.replace(oldAppId, appId));
+          fssa = new FSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
           lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
         }
       }
