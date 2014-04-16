@@ -19,8 +19,14 @@ public class NameableThreadFactory implements ThreadFactory
   private final ThreadGroup group;
   private final AtomicInteger threadNumber = new AtomicInteger(1);
   private final String namePrefix;
+  private final boolean isDaemon;
 
   public NameableThreadFactory(String groupname)
+  {
+    this(groupname, false);
+  }
+
+  public NameableThreadFactory(String groupname, boolean isDaemon)
   {
     SecurityManager s = java.lang.System.getSecurityManager();
     group = (s != null) ? s.getThreadGroup()
@@ -29,6 +35,7 @@ public class NameableThreadFactory implements ThreadFactory
             + "-"
             + poolNumber.getAndIncrement()
             + "-";
+    this.isDaemon = isDaemon;
   }
 
   @Override
@@ -37,8 +44,8 @@ public class NameableThreadFactory implements ThreadFactory
     Thread t = new Thread(group, r,
                           namePrefix + threadNumber.getAndIncrement(),
                           0);
-    if (t.isDaemon()) {
-      t.setDaemon(false);
+    if (t.isDaemon() != this.isDaemon) {
+      t.setDaemon(isDaemon);
     }
     if (t.getPriority() != Thread.NORM_PRIORITY) {
       t.setPriority(Thread.NORM_PRIORITY);

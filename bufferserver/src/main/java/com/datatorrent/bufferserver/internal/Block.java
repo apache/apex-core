@@ -227,7 +227,7 @@ public class Block
 
   private void initExecutor()
   {
-    executor = Executors.newSingleThreadScheduledExecutor(new NameableThreadFactory("StorageExecutor(" + identifier + ')'));
+    executor = Executors.newSingleThreadScheduledExecutor(new NameableThreadFactory("StorageExecutor(" + identifier + ')', true));
   }
 
   synchronized void acquire(final Storage storage, boolean wait)
