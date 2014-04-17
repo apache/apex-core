@@ -13,6 +13,13 @@ real_dir() {
 }
 script_dir=$(real_dir "${BASH_SOURCE[0]}")
 
+# Create missing clirc file for current user
+if [ ! -f "${HOME}/.dt/clirc" ]; then
+  mkdir -p "${HOME}/.dt"
+  cat >${HOME}/.dt/clirc <<EOF
+# User editable dtcli settings
+EOF
+fi
 
 # Load DataTorrent environment settings
 for conf_dir in "${script_dir}/../conf" "$HOME/.dt"; do
