@@ -58,7 +58,7 @@ import com.datatorrent.stram.stream.*;
  */
 public class StramChild extends YarnContainerMain
 {
-  public static final String ENV_APP_PATH = "DT_APP_PATH";
+  public static final String ENV_APP_PATH = DAGContext.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
