@@ -139,7 +139,7 @@ public class Server implements ServerListener
   }
 
   private final HashMap<String, DataList> publisherBuffers = new HashMap<String, DataList>();
-  private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
+  private final ConcurrentHashMap<String, LogicalNode> subscriberGroups = new ConcurrentHashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
   private final ConcurrentHashMap<String, AbstractLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, AbstractLengthPrependerClient>();
   private final int blockSize;
@@ -671,7 +671,7 @@ public class Server implements ServerListener
       teardown();
 
       if (cce instanceof RejectedExecutionException && serverHelperExecutor.isTerminated()) {
-        logger.warn("Terminated Executor.", cce);
+        logger.warn("Terminated Executor Exception for {}.", this, cce);
         el.disconnect(this);
       }
       else {
