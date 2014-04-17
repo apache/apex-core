@@ -239,7 +239,7 @@ public class StramClient
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
     if (dag.isDebug()) {
-      LOG.info("Deploy dependencies: {}", jarClasses);
+      LOG.debug("Deploy dependencies: {}", jarClasses);
     }
 
     LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
@@ -297,13 +297,12 @@ public class StramClient
     return csv.toString();
   }
 
-  public void copyInitialState(Path basePath, String origAppId, String newAppId) throws IOException
+  public void copyInitialState(Path origAppDir) throws IOException
   {
     // locate previous snapshot
-    String origAppDir = basePath.toString() + Path.SEPARATOR_CHAR + origAppId;
-    String newAppDir = basePath.toString() + Path.SEPARATOR_CHAR + newAppId;
+    String newAppDir = this.dag.assertAppPath();
 
-    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(origAppDir, conf);
+    FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(origAppDir.toString(), conf);
     // read snapshot against new dependencies
     Object snapshot = recoveryHandler.restore();
     if (snapshot == null) {
@@ -312,7 +311,7 @@ public class StramClient
     InputStream logIs = recoveryHandler.getLog();
 
     // modify snapshot state to switch app id
-    ((StreamingContainerManager.CheckpointState)snapshot).setApplicationId(newAppId, newAppDir, conf);
+    ((StreamingContainerManager.CheckpointState)snapshot).setApplicationId(this.dag, conf);
 
     // write snapshot to new location
     recoveryHandler = new FSRecoveryHandler(newAppDir, conf);
@@ -324,11 +323,11 @@ public class StramClient
     logIs.close();
 
     // copy sub directories that are not present in target
-    FileSystem fs = FileSystem.newInstance(basePath.toUri(), conf);
-    FileStatus[] files = fs.listStatus(new Path(origAppDir));
+    FileSystem fs = FileSystem.newInstance(origAppDir.toUri(), conf);
+    FileStatus[] files = fs.listStatus(origAppDir);
     for (FileStatus f : files) {
       if (f.isDirectory()) {
-        String targetPath = f.getPath().toString().replace(origAppDir, newAppDir);
+        String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
@@ -484,11 +483,6 @@ public class StramClient
       Path appsBasePath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
       Path appPath = new Path(appsBasePath, appId.toString());
 
-      if (originalAppId != null) {
-        LOG.info("Restart of {}", this.originalAppId);
-        copyInitialState(appsBasePath, this.originalAppId, appPath.getName());
-      }
-
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
 
       LOG.info("libjars: {}", libJarsCsv);
@@ -521,7 +515,7 @@ public class StramClient
       // Set the log4j properties if needed
       if (!log4jPropFile.isEmpty()) {
         Path log4jSrc = new Path(log4jPropFile);
-        Path log4jDst = new Path(StramClientUtils.getDTRootDir(fs, conf), "log4j.props");
+        Path log4jDst = new Path(appPath, "log4j.props");
         fs.copyFromLocalFile(false, true, log4jSrc, log4jDst);
         FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
         LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
@@ -531,6 +525,12 @@ public class StramClient
         log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
         log4jRsrc.setSize(log4jFileStatus.getLen());
         localResources.put("log4j.properties", log4jRsrc);
+      }
+
+      if (originalAppId != null) {
+        Path origAppPath = new Path(appsBasePath, this.originalAppId);
+        LOG.info("Restart from {}", origAppPath);
+        copyInitialState(origAppPath);
       }
 
       // push logical plan to DFS location

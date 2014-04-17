@@ -25,7 +25,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 
 import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-import com.esotericsoftware.minlog.Log;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
