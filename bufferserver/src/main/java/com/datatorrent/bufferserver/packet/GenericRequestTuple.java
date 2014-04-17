@@ -9,6 +9,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.VarInt;
 import static com.datatorrent.bufferserver.packet.Tuple.CLASSIC_VERSION;
 import static com.datatorrent.bufferserver.packet.Tuple.writeString;
@@ -89,7 +90,7 @@ public class GenericRequestTuple extends RequestTuple
       windowId = readVarInt(dataOffset, limit);
       while (buffer[dataOffset++] < 0) {
       }
-      
+
       valid = true;
     }
     catch (NumberFormatException nfe) {
@@ -152,7 +153,7 @@ public class GenericRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + '}';
+    return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(GenericRequestTuple.class);

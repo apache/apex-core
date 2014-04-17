@@ -10,6 +10,7 @@ import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.VarInt;
 
 /**
@@ -275,7 +276,7 @@ public class SubscribeRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(SubscribeRequestTuple.class);
