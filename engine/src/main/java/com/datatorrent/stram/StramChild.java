@@ -58,7 +58,7 @@ import com.datatorrent.stram.stream.*;
  */
 public class StramChild extends YarnContainerMain
 {
-  public static final String ENV_APP_PATH = DAGContext.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
+  public static final String PROP_APP_PATH = DAGContext.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
@@ -225,9 +225,9 @@ public class StramChild extends YarnContainerMain
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
-    String appPath = System.getenv(ENV_APP_PATH);
+    String appPath = System.getProperty(PROP_APP_PATH);
     if (appPath == null) {
-      logger.error("{} not set in container environment.", ENV_APP_PATH);
+      logger.error("{} not set in container environment.", PROP_APP_PATH);
       System.exit(1);
     }
 

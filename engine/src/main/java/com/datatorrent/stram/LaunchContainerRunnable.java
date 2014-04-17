@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.api.DAGContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -129,7 +130,6 @@ public class LaunchContainerRunnable implements Runnable
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
 
     setClasspath(containerEnv);
-    containerEnv.put(StramChild.ENV_APP_PATH, dag.assertAppPath());
     // Set the environment
     ctx.setEnvironment(containerEnv);
     ctx.setTokens(tokens);
@@ -167,7 +167,7 @@ public class LaunchContainerRunnable implements Runnable
     List<CharSequence> vargs = getChildVMCommand(container.getId().toString());
 
     // Get final command
-    StringBuilder command = new StringBuilder();
+    StringBuilder command = new StringBuilder(1024);
     for (CharSequence str : vargs) {
       command.append(str).append(" ");
     }
@@ -220,8 +220,9 @@ public class LaunchContainerRunnable implements Runnable
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
+    vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
-    vargs.add("-Ddt.cid=" + jvmID);
+    vargs.add(String.format("-D%scid=%s", DAGContext.DT_PREFIX, jvmID));
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
@@ -232,7 +233,7 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
 
     // Final commmand
-    StringBuilder mergedCommand = new StringBuilder();
+    StringBuilder mergedCommand = new StringBuilder(256);
     for (CharSequence str : vargs) {
       mergedCommand.append(str).append(" ");
     }
