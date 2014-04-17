@@ -11,13 +11,13 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
+
 import static java.lang.Thread.sleep;
 
 import org.mortbay.util.MultiMap;
 import org.mortbay.util.UrlEncoded;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.net.NetUtils;
@@ -25,6 +25,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 
 import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.esotericsoftware.minlog.Log;
+
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 
@@ -112,8 +114,8 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         return result;
       }
       catch (InvocationTargetException e) {
+        // handle RPC failure
         Throwable targetException = e.getTargetException();
-
         long connectMillis = System.currentTimeMillis() - lastCompletedCallTms;
         if (connectMillis < retryTimeoutMillis) {
           LOG.warn("RPC failure, attempting reconnect after {} ms (remaining {} ms)", retryDelayMillis, retryTimeoutMillis - connectMillis, targetException);
@@ -134,10 +136,8 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         }
       }
       catch (IOException ex) {
-        throw new RuntimeException(ex);
-      }
-      finally {
         close();
+        throw new RuntimeException(ex);
       }
     }
   }
@@ -145,6 +145,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
   @Override
   public void close()
   {
+    LOG.debug("Closing RPC connection {}", lastConnectURI);
     if (umbilical != null) {
       RPC.stopProxy(umbilical);
       umbilical = null;

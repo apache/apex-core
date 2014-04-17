@@ -366,17 +366,17 @@ public class StramClient
     LOG.info("Got Cluster metric info from ASM"
              + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
 
-    GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
-    GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
-    LOG.info("Got Cluster node info from ASM");
-    for (NodeReport node : clusterNodesResp.getNodeReports()) {
-      LOG.info("Got node report from ASM for"
-               + ", nodeId=" + node.getNodeId()
-               + ", nodeAddress" + node.getHttpAddress()
-               + ", nodeRackName" + node.getRackName()
-               + ", nodeNumContainers" + node.getNumContainers()
-               + ", nodeHealthStatus" + node.getHealthReport());
-    }
+    //GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
+    //GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
+    //LOG.info("Got Cluster node info from ASM");
+    //for (NodeReport node : clusterNodesResp.getNodeReports()) {
+    //  LOG.info("Got node report from ASM for"
+    //           + ", nodeId=" + node.getNodeId()
+    //           + ", nodeAddress" + node.getHttpAddress()
+    //           + ", nodeRackName" + node.getRackName()
+    //           + ", nodeNumContainers" + node.getNumContainers()
+    //           + ", nodeHealthStatus" + node.getHealthReport());
+    //}
     GetQueueUserAclsInfoRequest queueUserAclsReq = Records.newRecord(GetQueueUserAclsInfoRequest.class);
     GetQueueUserAclsInfoResponse queueUserAclsResp = rmClient.clientRM.getQueueUserAcls(queueUserAclsReq);
     List<QueueUserACLInfo> listAclInfo = queueUserAclsResp.getUserAclsInfoList();
