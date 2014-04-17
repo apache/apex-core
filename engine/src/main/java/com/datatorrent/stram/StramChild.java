@@ -61,7 +61,6 @@ public class StramChild extends YarnContainerMain
   public static final String ENV_APP_PATH = "DT_APP_PATH";
   private final transient String jvmName;
   private final String containerId;
-  private final Configuration conf;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
   protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
@@ -104,7 +103,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
-  protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
+  protected StramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
     this.components = new HashSet<Component<ContainerContext>>();
@@ -115,7 +114,6 @@ public class StramChild extends YarnContainerMain
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
     this.containerId = containerId;
-    this.conf = conf;
   }
 
   @SuppressWarnings("unchecked")
@@ -142,9 +140,26 @@ public class StramChild extends YarnContainerMain
     try {
       if (ctx.deployBufferServer) {
         eventloop.start();
+
+        int bufferServerRAM = ctx.getValue(DAGContext.BUFFER_SERVER_MEMORY_MB);
+        int blockCount;
+        int blocksize;
+        if (bufferServerRAM < DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
+          blockCount = 8;
+          blocksize = bufferServerRAM / blockCount;
+          if (blocksize < 1) {
+            blocksize = 1;
+          }
+        }
+        else {
+          blocksize = 64;
+          blockCount = bufferServerRAM / blocksize;
+        }
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, 64 * 1024 * 1024, 8);
-        bufferServer.setSpoolStorage(new DiskStorage());
+        bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount);
+        if (ctx.getValue(DAGContext.EXPERIMENTAL_BUFFER_SPOOLING)) {
+          bufferServer.setSpoolStorage(new DiskStorage());
+        }
         SocketAddress bindAddr = bufferServer.run(eventloop);
         logger.debug("Buffer server started: {}", bindAddr);
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
@@ -210,8 +225,6 @@ public class StramChild extends YarnContainerMain
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
-    final Configuration defaultConf = new Configuration();
-
     String appPath = System.getenv(ENV_APP_PATH);
     if (appPath == null) {
       logger.error("{} not set in container environment.", ENV_APP_PATH);
@@ -220,12 +233,12 @@ public class StramChild extends YarnContainerMain
 
     int exitStatus = 1; // interpreted as unrecoverable container failure
 
-    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, defaultConf);
+    RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, new Configuration());
     final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
     final String childId = System.getProperty(DAGContext.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
-      StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
+      StramChild stramChild = new StramChild(childId, umbilical);
       logger.debug("Container Context = {}", ctx);
       stramChild.setup(ctx);
       try {
@@ -786,7 +799,7 @@ public class StramChild extends YarnContainerMain
   {
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent = getValue(OperatorContext.STORAGE_AGENT, ndi);
-      assert(backupAgent != null);
+      assert (backupAgent != null);
 
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
       logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);

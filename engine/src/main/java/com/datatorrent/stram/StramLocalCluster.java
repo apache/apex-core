@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.ProtocolSignature;
@@ -133,7 +132,7 @@ public class StramLocalCluster implements Runnable, Controller
 
     public LocalStramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical, WindowGenerator winGen)
     {
-      super(containerId, new Configuration(), umbilical);
+      super(containerId, umbilical);
       this.windowGenerator = winGen;
     }
 
