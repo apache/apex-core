@@ -38,7 +38,6 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.FSStorageAgent;
-import com.datatorrent.stram.api.Checkpoint;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
