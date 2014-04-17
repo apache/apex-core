@@ -37,12 +37,10 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   private final Path basedir;
   private final Path logPath ;
   private final Path logBackupPath;
-  private final FileSystem logfs;
+  private final FileSystem fs;
   private final Path snapshotPath;
   private final Path snapshotBackupPath;
-  private final FileSystem snapshotFs;
   private final Path heartbeatPath;
-  private final FileSystem heartbeatFs;
 
   public static final String FILE_LOG = "log";
   public static final String FILE_LOG_BACKUP = "log0";
@@ -52,17 +50,13 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public FSRecoveryHandler(String appDir, Configuration conf) throws IOException
   {
     this.basedir = new Path(appDir, "recovery");
+    fs = FileSystem.newInstance(this.basedir.toUri(), conf);
 
     logPath = new Path(basedir, FILE_LOG);
     logBackupPath = new Path(basedir, FILE_LOG_BACKUP);
     snapshotPath = new Path(basedir, FILE_SNAPSHOT);
     snapshotBackupPath = new Path(basedir, FILE_SNAPSHOT_BACKUP);
-
-    logfs = FileSystem.newInstance(logPath.toUri(), conf);
-    snapshotFs = FileSystem.newInstance(snapshotPath.toUri(), conf);
-
     heartbeatPath = new Path(basedir, "heartbeatUri");
-    heartbeatFs = FileSystem.newInstance(heartbeatPath.toUri(), conf);
   }
 
   public String getDir()
@@ -74,26 +68,26 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public DataOutputStream rotateLog() throws IOException
   {
 
-    if (logfs.exists(logBackupPath)) {
+    if (fs.exists(logBackupPath)) {
       // log backup is purged on snapshot/restore
       throw new AssertionError("Snapshot state prior to log rotation: " + logBackupPath);
     }
 
-    if (logfs.exists(logPath)) {
+    if (fs.exists(logPath)) {
       LOG.debug("Creating log backup {}", logBackupPath);
-      if (!logfs.rename(logPath, logBackupPath)) {
+      if (!fs.rename(logPath, logBackupPath)) {
         throw new IOException("Failed to rotate log: " + logPath);
       }
     }
 
     LOG.info("Creating {}", logPath);
     final FSDataOutputStream fsOutputStream;
-    if (logfs.getScheme().equals("file")) {
+    if (fs.getScheme().equals("file")) {
       // local FS does not support hflush and does not flush native stream
-      logfs.mkdirs(logPath.getParent());
+      fs.mkdirs(logPath.getParent());
       fsOutputStream = new FSDataOutputStream(new FileOutputStream(Path.getPathWithoutSchemeAndAuthority(logPath).toString()), null);
     } else {
-      fsOutputStream = logfs.create(logPath);
+      fsOutputStream = fs.create(logPath);
     }
 
     DataOutputStream osWrapper = new DataOutputStream(fsOutputStream) {
@@ -118,14 +112,14 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public DataInputStream getLog() throws IOException
   {
 
-    if (logfs.exists(logBackupPath)) {
+    if (fs.exists(logBackupPath)) {
       // restore state prior to log replay
       throw new AssertionError("Restore state prior to reading log: " + logBackupPath);
     }
 
-    if (logfs.exists(logPath)) {
+    if (fs.exists(logPath)) {
       LOG.debug("Opening existing log ({})", logPath);
-      return logfs.open(logPath);
+      return fs.open(logPath);
     } else {
       LOG.debug("No existing log ({})", logPath);
       return new DataInputStream(new ByteArrayInputStream(new byte[] {}));
@@ -137,30 +131,30 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public void save(Object state) throws IOException
   {
 
-    if (snapshotFs.exists(snapshotBackupPath)) {
+    if (fs.exists(snapshotBackupPath)) {
       throw new IllegalStateException("Found previous backup " + snapshotBackupPath);
     }
 
-    if (snapshotFs.exists(snapshotPath)) {
+    if (fs.exists(snapshotPath)) {
       LOG.debug("Backup {} to {}", snapshotPath, snapshotBackupPath);
-      snapshotFs.rename(snapshotPath, snapshotBackupPath);
+      fs.rename(snapshotPath, snapshotBackupPath);
     }
 
     LOG.debug("Writing checkpoint to {}", snapshotPath);
-    final FSDataOutputStream fsOutputStream = snapshotFs.create(snapshotPath);
+    final FSDataOutputStream fsOutputStream = fs.create(snapshotPath);
     ObjectOutputStream oos = new ObjectOutputStream(fsOutputStream);
     oos.writeObject(state);
     oos.close();
     fsOutputStream.close();
 
     // remove snapshot backup
-    if (snapshotFs.exists(snapshotBackupPath) && !snapshotFs.delete(snapshotBackupPath, false)) {
+    if (fs.exists(snapshotBackupPath) && !fs.delete(snapshotBackupPath, false)) {
       throw new IOException("Failed to remove " + snapshotBackupPath);
     }
 
     // remove log backup
     Path logBackup = new Path(basedir + Path.SEPARATOR + FILE_LOG_BACKUP);
-    if (snapshotFs.exists(logBackup) && !snapshotFs.delete(logBackup, false)) {
+    if (fs.exists(logBackup) && !fs.delete(logBackup, false)) {
       throw new IOException("Failed to remove " + logBackup);
     }
 
@@ -169,7 +163,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   @Override
   public Object restore() throws IOException
   {
-    FileContext fc = FileContext.getFileContext(snapshotFs.getUri());
+    FileContext fc = FileContext.getFileContext(fs.getUri());
 
     // recover from wherever it was left
     if (fc.util().exists(snapshotBackupPath)) {
@@ -217,7 +211,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
   public void writeConnectUri(String uri) throws IOException
   {
-    DataOutputStream out = heartbeatFs.create(heartbeatPath, true);
+    DataOutputStream out = fs.create(heartbeatPath, true);
     out.write(uri.getBytes());
     out.close();
     LOG.debug("Connect address: {} written to {} ", uri, heartbeatPath);
@@ -225,7 +219,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
   public String readConnectUri() throws IOException
   {
-    DataInputStream in = heartbeatFs.open(heartbeatPath);
+    DataInputStream in = fs.open(heartbeatPath);
     byte[] bytes = IOUtils.toByteArray(in);
     in.close();
     String uri = new String(bytes);
@@ -236,10 +230,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   @Override
   protected void finalize() throws Throwable
   {
-    super.finalize();
-    logfs.close();
-    snapshotFs.close();
-    heartbeatFs.close();
+    fs.close();
   }
 
 }

@@ -322,6 +322,7 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId1);
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null));
+    dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars1");
     dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
@@ -344,16 +345,18 @@ public class StramRecoveryTest
     o1p1.getContainer().setExternalId("cid1");
     scm.writeJournal(SetContainerState.newInstance(o1p1.getContainer()));
 
-    StramClient sc = new StramClient(new Configuration(false));
-    sc.copyInitialState(new Path(testMeta.dir), appId1, appId2);
-
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
+    dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
+    dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars2");
+    StramClient sc = new StramClient(new Configuration(false), dag);
+    sc.copyInitialState(new Path(appPath1));
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     plan = scm.getPhysicalPlan();
     dag = plan.getDAG();
     Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
     Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
+    Assert.assertEquals("modified libjars", "libjars2", dag.getValue(LogicalPlan.LIBRARY_JARS));
 
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);

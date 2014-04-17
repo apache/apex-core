@@ -2107,16 +2107,21 @@ public class StreamingContainerManager implements PlanContext
     /**
      * Modify previously saved state to allow for re-launch of application.
      */
-    public void setApplicationId(String appId, String appPath, Configuration conf)
+    public void setApplicationId(LogicalPlan newApp, Configuration conf)
     {
       LogicalPlan lp = physicalPlan.getDAG();
+      String appId = newApp.getValue(LogicalPlan.APPLICATION_ID);
       String oldAppId = lp.getValue(LogicalPlan.APPLICATION_ID);
       if (oldAppId == null) {
         throw new AssertionError("Missing original application id");
       }
 
       lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
-      lp.setAttribute(LogicalPlan.APPLICATION_PATH, appPath);
+      lp.setAttribute(LogicalPlan.APPLICATION_PATH, newApp.assertAppPath());
+      lp.setAttribute(LogicalPlan.LIBRARY_JARS, newApp.getValue(LogicalPlan.LIBRARY_JARS));
+      lp.setAttribute(LogicalPlan.FILES, newApp.getValue(LogicalPlan.LIBRARY_JARS));
+      lp.setAttribute(LogicalPlan.ARCHIVES, newApp.getValue(LogicalPlan.ARCHIVES));
+
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
       if (sa instanceof FSStorageAgent) {
