@@ -494,7 +494,6 @@ public class DataList
     {
       identifier = id;
       data = array;
-      refCount = 1;
     }
 
     void getNextData(SerializedData current)
@@ -547,6 +546,11 @@ public class DataList
         //logger.debug("assigned end window id {}", this);
       }
 
+      if (uniqueIdentifier != 0) {
+        storage.discard(identifier, uniqueIdentifier);
+        uniqueIdentifier = 0;
+      }
+
       return bs;
     }
 
@@ -558,7 +562,7 @@ public class DataList
       long bs = starting_window & 0xffffffff00000000L;
       SerializedData lastReset = null;
 
-      DataListIterator dli =  getIterator(this);
+      DataListIterator dli = getIterator(this);
       done:
       while (dli.hasNext()) {
         SerializedData sd = dli.next();
@@ -631,75 +635,90 @@ public class DataList
         else {
           logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
         }
+
+        if (uniqueIdentifier != 0) {
+          storage.discard(identifier, uniqueIdentifier);
+          uniqueIdentifier = 0;
+        }
       }
+    }
+
+    private Runnable getRetriever(final int uniqueIdentifier, final Storage storage)
+    {
+      return new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          byte[] lData = storage.retrieve(identifier, uniqueIdentifier);
+          synchronized (Block.this) {
+            data = lData;
+            readingOffset = 0;
+            writingOffset = data.length;
+            if (refCount > 1) {
+              Block.this.notifyAll();
+            }
+          }
+        }
+
+      };
     }
 
     synchronized void acquire(boolean wait)
     {
-      refCount++;
-      if (data == null && storage != null) {
-        Runnable r = new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            synchronized (Block.this) {
-              if (data != null) {
-                return;
-              }
-            }
-            data = storage.retrieve(identifier, uniqueIdentifier);
-            readingOffset = 0;
-            writingOffset = data.length;
-          }
-
-        };
-
+      if (refCount++ == 0 && uniqueIdentifier > 0 && storage != null) {
+        assert (data == null);
         if (wait) {
-          r.run();
+          getRetriever(uniqueIdentifier, storage).run();
         }
         else {
-          storageExecutor.submit(r);
+          storageExecutor.submit(getRetriever(uniqueIdentifier, storage));
+        }
+      }
+      else if (wait && data == null) {
+        try {
+          wait();
+        }
+        catch (InterruptedException ex) {
+          throw new RuntimeException("Interrupted while waiting for data to be loaded!", ex);
         }
       }
     }
 
-    synchronized void release(boolean wait)
+    private Runnable getStorer(final int uniqueIdentifier,
+            final byte[] data, final int readingOffset, final int writingOffset,
+            final Storage storage)
     {
-      if (refCount >= 1 && storage != null) {
-        Runnable r = new Runnable()
+      return new Runnable()
+      {
+        @Override
+        public void run()
         {
-          @Override
-          public void run()
-          {
+          int i = storage.store(identifier, data, readingOffset, writingOffset);
+          if (i == 0) {
+            logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
+          }
+          else {
             synchronized (Block.this) {
-              if (--refCount != 0) {
-                return;
+              Block.this.uniqueIdentifier = i;
+              if (--refCount == 0) {
+                Block.this.data = null;
               }
-            }
-
-            try {
-              int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
-              if (i == 0) {
-                logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
-              }
-              else {
-                uniqueIdentifier = i;
-                data = null;
-              }
-            }
-            catch (RuntimeException ex) {
-              logger.warn("Storage failed!", ex);
             }
           }
+        }
 
-        };
+      };
+    }
 
+    synchronized void release(boolean wait)
+    {
+      if (refCount == 1 && storage != null && uniqueIdentifier == 0) {
         if (wait) {
-          r.run();
+          getStorer(uniqueIdentifier, data, readingOffset, writingOffset, storage).run();
         }
         else {
-          storageExecutor.submit(r);
+          storageExecutor.submit(getStorer(uniqueIdentifier, data, readingOffset, writingOffset, storage));
         }
       }
     }
@@ -711,7 +730,7 @@ public class DataList
              + ", readingOffset=" + readingOffset + ", writingOffset=" + writingOffset
              + ", starting_window=" + Codec.getStringWindowId(starting_window) + ", ending_window=" + Codec.getStringWindowId(ending_window)
              + ", uniqueIdentifier=" + uniqueIdentifier + ", next=" + (next == null ? "null" : next.identifier)
-             + ", refCount=" + refCount + '}';
+             + '}';
     }
 
   }

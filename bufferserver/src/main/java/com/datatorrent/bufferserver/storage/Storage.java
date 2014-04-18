@@ -40,7 +40,6 @@ public interface Storage
    * @param Identifier - application specific Id, this identifies the data source. The platform will determine the
    * value of the value of thie param. Identifier is typically the OperatorId.Portname where OperatorId is numerical
    * Id of the operator whose port named Portname is generating the data. The platform
-   * @param uniqueIdentifier - unique identifier of the block that needs to be stored. If this identifier is zero,
    * the instance is free to assign it a unique id. If non zero, the instance should use that id to store the block
    * and return it.
    * @param bytes - memory represented as byte array
@@ -48,7 +47,7 @@ public interface Storage
    * @param end - the offset of the last byte in the array.
    * @return unique identifier for the stored block.
    */
-  public int store(String Identifier, int uniqueIdentifier, byte[] bytes, int start, int end);
+  public int store(String Identifier, byte[] bytes, int start, int end);
 
   /**
    *

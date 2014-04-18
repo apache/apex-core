@@ -37,6 +37,7 @@ public class DiskStorage implements Storage
     logger.info("using {} as the basepath for spooling temporary files.", basePath);
   }
 
+  @Override
   public Storage getInstance() throws IOException
   {
     return new DiskStorage(basePath);
@@ -44,7 +45,7 @@ public class DiskStorage implements Storage
 
   public static String normalizeFileName(String name)
   {
-    StringBuilder sb = new StringBuilder();
+    StringBuilder sb = new StringBuilder(1024);
     for (int i = 0; i < name.length(); i++) {
       Character c = name.charAt(i);
       if (Character.isLetterOrDigit(c)) {
@@ -59,8 +60,9 @@ public class DiskStorage implements Storage
   }
 
   @Override
-  public int store(String identifier, int uniqueIdentifier, byte[] bytes, int startingOffset, int endingOffset)
+  public int store(String identifier, byte[] bytes, int startingOffset, int endingOffset)
   {
+    int lUniqueIdentifier;
     String normalizedFileName = normalizeFileName(identifier);
     File directory = new File(basePath, normalizedFileName);
     if (directory.exists()) {
@@ -69,10 +71,8 @@ public class DiskStorage implements Storage
         try {
           byte[] stored = Files.toByteArray(identityFile);
           if (Arrays.equals(stored, identifier.getBytes())) {
-            if (uniqueIdentifier == 0) {
-              synchronized (this) {
-                uniqueIdentifier = ++this.uniqueIdentifier;
-              }
+            synchronized (this) {
+              lUniqueIdentifier = ++this.uniqueIdentifier;
             }
           }
           else {
@@ -101,12 +101,13 @@ public class DiskStorage implements Storage
         throw new RuntimeException("directory " + directory.getAbsolutePath() + " could not be created!");
       }
 
-      uniqueIdentifier = ++this.uniqueIdentifier;
+      lUniqueIdentifier = ++this.uniqueIdentifier;
     }
 
-    return writeFile(bytes, startingOffset, endingOffset, directory, uniqueIdentifier);
+    return writeFile(bytes, startingOffset, endingOffset, directory, lUniqueIdentifier);
   }
 
+  @Override
   public void discard(String identifier, int uniqueIdentifier)
   {
     String normalizedFilename = normalizeFileName(identifier);
@@ -144,6 +145,7 @@ public class DiskStorage implements Storage
     }
   }
 
+  @Override
   public byte[] retrieve(String identifier, int uniqueIdentifier)
   {
     String normalizedFilename = normalizeFileName(identifier);
