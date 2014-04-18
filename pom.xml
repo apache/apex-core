@@ -193,9 +193,8 @@
         <maven.deploy.skip>true</maven.deploy.skip>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
-        <distMgmtStagingUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtStagingUrl>
-        <distMgmtSnapshotUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories/snapshots/</distMgmtSnapshotUrl>
-        <distMgmtReleaseUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories/releases/</distMgmtReleaseUrl>
+        <distMgmtDevUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtDevUrl>
+        <distMgmtUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories</distMgmtUrl>
         <package.prefix>/opt/datatorrent</package.prefix>
         <package.groupname>dtorrent</package.groupname>
       </properties>
@@ -203,12 +202,12 @@
         <repository>
           <id>releases</id>
           <name>DataTorrent Repository</name>
-          <url>${distMgmtReleaseUrl}</url>
+          <url>${distMgmtUrl}/${maven.deploy.repo.classifier}releases/</url>
         </repository>
         <snapshotRepository>
           <id>snapshots</id>
           <name>DataTorrent Snapshots</name>
-          <url>${distMgmtSnapshotUrl}</url>
+          <url>${distMgmtUrl}/${maven.deploy.repo.classifier}snapshots/</url>
         </snapshotRepository>
       </distributionManagement>
       <build>
