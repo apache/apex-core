@@ -494,6 +494,7 @@ public class DataList
     {
       identifier = id;
       data = array;
+      refCount = 1;
     }
 
     void getNextData(SerializedData current)
