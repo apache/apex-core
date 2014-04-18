@@ -199,7 +199,9 @@ public class StramClient
       net.engio.mbassy.bus.MBassador.class,
       org.codehaus.jackson.annotate.JsonUnwrapped.class,
       org.codehaus.jackson.map.ser.std.RawSerializer.class,
-      org.apache.commons.beanutils.BeanUtils.class
+      org.apache.commons.beanutils.BeanUtils.class,
+      org.apache.http.client.utils.URLEncodedUtils.class,
+      org.apache.http.message.BasicHeaderValueParser.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 
