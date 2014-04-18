@@ -120,14 +120,17 @@ public class ClassPathResolvers
       // read crc and classpath file, if it exists
       // (we won't run mvn again if pom didn't change)
       if (cpFile.exists()) {
+        DataInputStream dis = null;
         try {
-          DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
+          dis = new DataInputStream(new FileInputStream(pomCrcFile));
           pomCrc = dis.readLong();
-          dis.close();
           cp = FileUtils.readFileToString(cpFile, "UTF-8");
         }
         catch (Exception e) {
           LOG.error("Cannot read CRC from {}", pomCrcFile);
+        }
+        finally {
+          IOUtils.closeQuietly(dis);
         }
       }
 
@@ -152,8 +155,12 @@ public class ClassPathResolvers
         }
         if (cp != null) {
           DataOutputStream dos = new DataOutputStream(new FileOutputStream(pomCrcFile));
-          dos.writeLong(pomCrc);
-          dos.close();
+          try {
+            dos.writeLong(pomCrc);
+          }
+          finally {
+            dos.close();
+          }
           // wasn't the path already written to the file by mvn?
           FileUtils.writeStringToFile(cpFile, cp, false);
           String[] pathList = org.apache.commons.lang.StringUtils.splitByWholeSeparator(cp, ":");

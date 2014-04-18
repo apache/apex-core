@@ -10,8 +10,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.codehaus.jackson.map.ser.std.ToStringSerializer;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -39,8 +42,11 @@ public final class StatsAgent extends FSPartFileAgent
   {
     public String appId;
     public Map<Integer, ContainerInfo> containers;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long startTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long endTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long count;
     public boolean ended;
   }
@@ -50,22 +56,29 @@ public final class StatsAgent extends FSPartFileAgent
     public String appId;
     public String operatorName;
     public List<Integer> operatorIds;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long startTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long endTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long count;
     public boolean ended;
   }
 
   private static class StatsIndexLine extends IndexLine
   {
+    @JsonSerialize(using = ToStringSerializer.class)
     public long startTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long endTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long count;
   }
 
   public static class OperatorStatsInfo
   {
     public int operatorId;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long timestamp;
     public ObjectMapperString stats;
   }
@@ -73,6 +86,7 @@ public final class StatsAgent extends FSPartFileAgent
   public static class ContainerStatsInfo
   {
     public int containerId;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long timestamp;
     public ObjectMapperString stats;
   }
@@ -187,17 +201,8 @@ public final class StatsAgent extends FSPartFileAgent
       return null;
     }
     finally {
-      try {
-        if (br != null) {
-          br.close();
-        }
-        if (ifbr != null) {
-          ifbr.close();
-        }
-      }
-      catch (IOException ex) {
-        // ignore
-      }
+      IOUtils.closeQuietly(br);
+      IOUtils.closeQuietly(ifbr);
     }
 
     return info;
@@ -260,16 +265,8 @@ public final class StatsAgent extends FSPartFileAgent
       return null;
     }
     finally {
-      try {
-        if (ifbr != null) {
-          ifbr.close();
-        }
-        if (br != null) {
-          br.close();
-        }
-      }
-      catch (IOException ex) {
-      }
+      IOUtils.closeQuietly(ifbr);
+      IOUtils.closeQuietly(br);
     }
 
     return info;
@@ -288,9 +285,10 @@ public final class StatsAgent extends FSPartFileAgent
     try {
       ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
+      String lastProcessPartFile = null;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (!indexLine.isEndLine) {
-
+          lastProcessPartFile = indexLine.partFile;
           if (startTime != null) {
             if (startTime > indexLine.endTime) {
               continue;
@@ -305,43 +303,63 @@ public final class StatsAgent extends FSPartFileAgent
 
           BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
           try {
-            String partLine;
-            // advance until offset is reached
-            while ((partLine = partBr.readLine()) != null) {
-              OperatorStatsInfo os = new OperatorStatsInfo();
-              int cursor = 0;
-              int cursor2;
-              cursor2 = partLine.indexOf(':', cursor);
-              os.operatorId = Integer.valueOf(partLine.substring(cursor, cursor2));
-              cursor = cursor2 + 1;
-              cursor2 = partLine.indexOf(':', cursor);
-              os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-              cursor = cursor2 + 1;
-              os.stats = new ObjectMapperString(partLine.substring(cursor));
-              if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
-                result.add(os);
-              }
-            }
+            processOperatorPartFile(partBr, startTime, endTime, result);
           }
           finally {
             partBr.close();
           }
         }
       }
+
+      BufferedReader partBr = null;
+      try {
+        String extraPartFile = null;
+        if (lastProcessPartFile == null) {
+          extraPartFile = "part0.txt";
+        }
+        else if (lastProcessPartFile.startsWith("part") && lastProcessPartFile.endsWith(".txt")) {
+          extraPartFile = "part" + (Integer.valueOf(lastProcessPartFile.substring(4, lastProcessPartFile.length() - 4)) + 1) + ".txt";
+        }
+        if (extraPartFile != null) {
+          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          processOperatorPartFile(partBr, startTime, endTime, result);
+        }
+      }
+      catch (Exception ex) {
+        // ignore
+      }
+      finally {
+        IOUtils.closeQuietly(partBr);
+      }
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading operators stats", ex);
     }
     finally {
-      try {
-        if (ifbr != null) {
-          ifbr.close();
-        }
-      }
-      catch (IOException ex) {
-      }
+      IOUtils.closeQuietly(ifbr);
     }
     return result;
+  }
+
+  private void processOperatorPartFile(BufferedReader partBr, Long startTime, Long endTime, List<OperatorStatsInfo> result) throws IOException
+  {
+    String partLine;
+    // advance until offset is reached
+    while ((partLine = partBr.readLine()) != null) {
+      OperatorStatsInfo os = new OperatorStatsInfo();
+      int cursor = 0;
+      int cursor2;
+      cursor2 = partLine.indexOf(':', cursor);
+      os.operatorId = Integer.valueOf(partLine.substring(cursor, cursor2));
+      cursor = cursor2 + 1;
+      cursor2 = partLine.indexOf(':', cursor);
+      os.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+      cursor = cursor2 + 1;
+      os.stats = new ObjectMapperString(partLine.substring(cursor));
+      if ((startTime != null || os.timestamp >= startTime) && (endTime != null || os.timestamp <= endTime)) {
+        result.add(os);
+      }
+    }
   }
 
   public List<ContainerStatsInfo> getContainersStats(String appId, Long startTime, Long endTime)
@@ -352,7 +370,7 @@ public final class StatsAgent extends FSPartFileAgent
       return null;
     }
     BufferedReader br = null;
-
+    String lastProcessPartFile = null;
     try {
       br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
       String line;
@@ -362,6 +380,7 @@ public final class StatsAgent extends FSPartFileAgent
           continue;
         }
         StatsIndexLine indexLine = parseIndexLine(line);
+        lastProcessPartFile = indexLine.partFile;
         if (startTime != null) {
           if (startTime > indexLine.endTime) {
             continue;
@@ -376,41 +395,60 @@ public final class StatsAgent extends FSPartFileAgent
 
         BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
         try {
-          String partLine;
-          while ((partLine = partBr.readLine()) != null) {
-            ContainerStatsInfo cs = new ContainerStatsInfo();
-            int cursor = 0;
-            int cursor2;
-            cursor2 = partLine.indexOf(':', cursor);
-            cs.containerId = Integer.valueOf(partLine.substring(cursor, cursor2));
-            cursor = cursor2 + 1;
-            cursor2 = partLine.indexOf(':', cursor);
-            cs.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
-            cursor = cursor2 + 1;
-            cs.stats = new ObjectMapperString(partLine.substring(cursor));
-            if ((startTime == null || cs.timestamp >= startTime) && (endTime == null || cs.timestamp <= endTime)) {
-              result.add(cs);
-            }
-          }
+          processContainerPartFile(partBr, startTime, endTime, result);
         }
         finally {
           partBr.close();
         }
+      }
+      BufferedReader partBr = null;
+      try {
+        String extraPartFile = null;
+        if (lastProcessPartFile == null) {
+          extraPartFile = "part0.txt";
+        }
+        else if (lastProcessPartFile.startsWith("part") && lastProcessPartFile.endsWith(".txt")) {
+          extraPartFile = "part" + (Integer.valueOf(lastProcessPartFile.substring(4, lastProcessPartFile.length() - 4)) + 1) + ".txt";
+        }
+        if (extraPartFile != null) {
+          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          processContainerPartFile(partBr, startTime, endTime, result);
+        }
+      }
+      catch (Exception ex) {
+        // ignore
+      }
+      finally {
+        IOUtils.closeQuietly(partBr);
       }
     }
     catch (Exception ex) {
       LOG.warn("Got exception when reading containers stats", ex);
     }
     finally {
-      try {
-        if (br != null) {
-          br.close();
-        }
-      }
-      catch (IOException ex) {
-      }
+      IOUtils.closeQuietly(br);
     }
     return result;
+  }
+
+  private void processContainerPartFile(BufferedReader partBr, Long startTime, Long endTime, List<ContainerStatsInfo> result) throws IOException
+  {
+    String partLine;
+    while ((partLine = partBr.readLine()) != null) {
+      ContainerStatsInfo cs = new ContainerStatsInfo();
+      int cursor = 0;
+      int cursor2;
+      cursor2 = partLine.indexOf(':', cursor);
+      cs.containerId = Integer.valueOf(partLine.substring(cursor, cursor2));
+      cursor = cursor2 + 1;
+      cursor2 = partLine.indexOf(':', cursor);
+      cs.timestamp = Long.valueOf(partLine.substring(cursor, cursor2));
+      cursor = cursor2 + 1;
+      cs.stats = new ObjectMapperString(partLine.substring(cursor));
+      if ((startTime == null || cs.timestamp >= startTime) && (endTime == null || cs.timestamp <= endTime)) {
+        result.add(cs);
+      }
+    }
   }
 
 }

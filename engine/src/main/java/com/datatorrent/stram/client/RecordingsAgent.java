@@ -4,35 +4,31 @@
  */
 package com.datatorrent.stram.client;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import com.datatorrent.lib.util.ObjectMapperString;
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
+import com.datatorrent.stram.debug.TupleRecorder;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.StramWebServices;
+import com.sun.jersey.api.client.WebResource;
+import java.io.*;
 import java.util.*;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlType;
-
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.sun.jersey.api.client.WebResource;
-
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 
-import com.datatorrent.lib.util.ObjectMapperString;
-import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
-
-import com.datatorrent.stram.debug.TupleRecorder;
-import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.util.WebServicesClient;
-import com.datatorrent.stram.webapp.StramWebServices;
+import org.apache.hadoop.fs.FileSystem;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.codehaus.jackson.map.ser.std.ToStringSerializer;
+import org.codehaus.jettison.json.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>RecordingsAgent class.</p>
@@ -47,10 +43,12 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   public static class RecordingInfo
   {
+    @JsonSerialize(using = ToStringSerializer.class)
     public long startTime;
     public String containerId;
     public String appId;
     public String operatorId;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long totalTuples = 0;
     public List<PortInfo> ports;
     public boolean ended = false;
@@ -61,8 +59,11 @@ public final class RecordingsAgent extends FSPartFileAgent
   private static class RecordingsIndexLine extends IndexLine
   {
     public List<TupleRecorder.Range> windowIdRanges;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long fromTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long toTime;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long tupleCount;
     public Map<String, MutableLong> portTupleCount;
   }
@@ -70,17 +71,20 @@ public final class RecordingsAgent extends FSPartFileAgent
   @XmlType(name = "port_info") // not really used, but this is to shut jackson up for conflicting xml names with TupleRecorder.PortInfo
   public static class PortInfo extends TupleRecorder.PortInfo
   {
+    @JsonSerialize(using = ToStringSerializer.class)
     public long tupleCount = 0;
   }
 
   public static class WindowTuplesInfo
   {
+    @JsonSerialize(using = ToStringSerializer.class)
     public long windowId;
     public List<TupleInfo> tuples = new ArrayList<TupleInfo>();
   }
 
   public static class TuplesInfo
   {
+    @JsonSerialize(using = ToStringSerializer.class)
     public long startOffset;
     public List<WindowTuplesInfo> tuples = new ArrayList<WindowTuplesInfo>();
   }
@@ -414,16 +418,8 @@ public final class RecordingsAgent extends FSPartFileAgent
       return null;
     }
     finally {
-      try {
-        if (ifbr != null) {
-          ifbr.close();
-        }
-        if (br != null) {
-          br.close();
-        }
-      }
-      catch (IOException ex) {
-      }
+      IOUtils.closeQuietly(ifbr);
+      IOUtils.closeQuietly(br);
     }
 
     return info;
@@ -465,15 +461,16 @@ public final class RecordingsAgent extends FSPartFileAgent
       if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
         limit = MAX_LIMIT_TUPLES;
       }
-      long numRemainingTuples = limit;
-      long currentTimestamp = 0;
+      MutableLong numRemainingTuples = new MutableLong(limit);
+      MutableLong currentTimestamp = new MutableLong();
       RecordingsIndexLine indexLine;
+      String lastProcessPartFile = null;
       while ((indexLine = (RecordingsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
           continue;
         }
-        long currentWindowLow;
-        long currentWindowHigh;
+        MutableLong currentWindowLow = new MutableLong();
+        MutableLong currentWindowHigh = new MutableLong();
         long numTuples = 0;
 
         if (ports == null || ports.length == 0) {
@@ -489,15 +486,15 @@ public final class RecordingsAgent extends FSPartFileAgent
             }
           }
         }
-        currentWindowLow = indexLine.windowIdRanges.get(0).low;
-        currentWindowHigh = indexLine.windowIdRanges.get(indexLine.windowIdRanges.size() - 1).high;
+        currentWindowLow.setValue(indexLine.windowIdRanges.get(0).low);
+        currentWindowHigh.setValue(indexLine.windowIdRanges.get(indexLine.windowIdRanges.size() - 1).high);
 
         if (!readPartFile) {
           if (queryType == QueryType.WINDOW) {
-            if (currentWindowLow > low) {
+            if (currentWindowLow.longValue() > low) {
               break;
             }
-            else if (currentWindowLow <= low && low <= currentWindowHigh) {
+            else if (currentWindowLow.longValue() <= low && low <= currentWindowHigh.longValue()) {
               readPartFile = true;
             }
           }
@@ -517,96 +514,119 @@ public final class RecordingsAgent extends FSPartFileAgent
         }
 
         if (readPartFile) {
+          lastProcessPartFile = indexLine.partFile;
           BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
           try {
-            String partLine;
-            long tmpOffset = currentOffset;
-            // advance until offset is reached
-            while ((partLine = partBr.readLine()) != null) {
-              int partCursor = 2;
-              if (partLine.startsWith("B:")) {
-                int partCursor2 = partLine.indexOf(':', partCursor);
-                currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
-                partCursor = partCursor2 + 1;
-                currentWindowLow = Long.valueOf(partLine.substring(partCursor));
-                if (limit != numRemainingTuples) {
-                  WindowTuplesInfo wtinfo;
-                  wtinfo = new WindowTuplesInfo();
-                  wtinfo.windowId = currentWindowLow;
-                  info.tuples.add(wtinfo);
-                }
-              }
-              else if (partLine.startsWith("T:")) {
-                int partCursor2 = partLine.indexOf(':', partCursor);
-                currentTimestamp = Long.valueOf(partLine.substring(partCursor, partCursor2));
-                partCursor = partCursor2 + 1;
-                partCursor2 = partLine.indexOf(':', partCursor);
-                String port = partLine.substring(partCursor, partCursor2);
-                boolean portMatch = (ports == null) || (ports.length == 0) || Arrays.asList(ports).contains(port);
-                partCursor = partCursor2 + 1;
-
-                if (portMatch
-                        && ((queryType == QueryType.WINDOW && currentWindowLow >= low)
-                        || (queryType == QueryType.OFFSET && tmpOffset >= low)
-                        || (queryType == QueryType.TIME && currentTimestamp >= low))) {
-
-                  if (numRemainingTuples > 0) {
-                    if (info.startOffset == -1) {
-                      info.startOffset = tmpOffset;
-                    }
-                    WindowTuplesInfo wtinfo;
-                    if (info.tuples.isEmpty() || info.tuples.get(info.tuples.size() - 1).windowId != currentWindowLow) {
-                      wtinfo = new WindowTuplesInfo();
-                      wtinfo.windowId = currentWindowLow;
-                      info.tuples.add(wtinfo);
-                    }
-                    else {
-                      wtinfo = info.tuples.get(info.tuples.size() - 1);
-                    }
-
-                    partCursor2 = partLine.indexOf(':', partCursor);
-                    int size = Integer.valueOf(partLine.substring(partCursor, partCursor2));
-                    partCursor = partCursor2 + 1;
-                    //partCursor2 = partCursor + size;
-                    String tupleValue = partLine.substring(partCursor);
-                    wtinfo.tuples.add(new TupleInfo(port, tupleValue));
-                    numRemainingTuples--;
-                  }
-                  else {
-                    return info;
-                  }
-                }
-                if (portMatch) {
-                  tmpOffset++;
-                }
-              }
-            }
+            processPartFile(partBr, queryType, low, high, limit, ports,
+                            numRemainingTuples, currentTimestamp, currentWindowLow, currentOffset, info);
           }
           finally {
             partBr.close();
           }
         }
         currentOffset += numTuples;
-        if (numRemainingTuples == 0 || (queryType == QueryType.TIME && currentTimestamp > high)) {
+        if (numRemainingTuples.longValue() <= 0 || (queryType == QueryType.TIME && currentTimestamp.longValue() > high)) {
           return info;
         }
       }
+      BufferedReader partBr = null;
+      try {
+        String extraPartFile = null;
+        if (lastProcessPartFile == null) {
+          extraPartFile = "part0.txt";
+        }
+        else if (lastProcessPartFile.startsWith("part") && lastProcessPartFile.endsWith(".txt")) {
+          extraPartFile = "part" + (Integer.valueOf(lastProcessPartFile.substring(4, lastProcessPartFile.length() - 4)) + 1) + ".txt";
+        }
+        if (extraPartFile != null) {
+          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          processPartFile(partBr, queryType, low, high, limit, ports,
+                          numRemainingTuples, currentTimestamp, new MutableLong(), currentOffset, info);
+        }
+      }
+      catch (Exception ex) {
+        // ignore
+      }
+      finally {
+        IOUtils.closeQuietly(partBr);
+      }
+
     }
     catch (Exception ex) {
       LOG.warn("Got exception when getting tuples info", ex);
       return null;
     }
     finally {
-      try {
-        if (ifbr != null) {
-          ifbr.close();
-        }
-      }
-      catch (IOException ex) {
-      }
+      IOUtils.closeQuietly(ifbr);
     }
 
     return info;
+  }
+
+  private void processPartFile(BufferedReader partBr, QueryType queryType, long low, long high, long limit, String[] ports, MutableLong numRemainingTuples, MutableLong currentTimestamp, MutableLong currentWindowLow, long currentOffset, TuplesInfo info) throws IOException
+  {
+    String partLine;
+    long tmpOffset = currentOffset;
+    // advance until offset is reached
+    while ((partLine = partBr.readLine()) != null) {
+      int partCursor = 2;
+      if (partLine.startsWith("B:")) {
+        int partCursor2 = partLine.indexOf(':', partCursor);
+        currentTimestamp.setValue(Long.valueOf(partLine.substring(partCursor, partCursor2)));
+        partCursor = partCursor2 + 1;
+        currentWindowLow.setValue(Long.valueOf(partLine.substring(partCursor)));
+        if (limit != numRemainingTuples.longValue()) {
+          WindowTuplesInfo wtinfo;
+          wtinfo = new WindowTuplesInfo();
+          wtinfo.windowId = currentWindowLow.longValue();
+          info.tuples.add(wtinfo);
+        }
+      }
+      else if (partLine.startsWith("T:")) {
+        int partCursor2 = partLine.indexOf(':', partCursor);
+        currentTimestamp.setValue(Long.valueOf(partLine.substring(partCursor, partCursor2)));
+        partCursor = partCursor2 + 1;
+        partCursor2 = partLine.indexOf(':', partCursor);
+        String port = partLine.substring(partCursor, partCursor2);
+        boolean portMatch = (ports == null) || (ports.length == 0) || Arrays.asList(ports).contains(port);
+        partCursor = partCursor2 + 1;
+
+        if (portMatch
+                && ((queryType == QueryType.WINDOW && currentWindowLow.longValue() >= low)
+                || (queryType == QueryType.OFFSET && tmpOffset >= low)
+                || (queryType == QueryType.TIME && currentTimestamp.longValue() >= low))) {
+
+          if (numRemainingTuples.longValue() > 0) {
+            if (info.startOffset == -1) {
+              info.startOffset = tmpOffset;
+            }
+            WindowTuplesInfo wtinfo;
+            if (info.tuples.isEmpty() || info.tuples.get(info.tuples.size() - 1).windowId != currentWindowLow.longValue()) {
+              wtinfo = new WindowTuplesInfo();
+              wtinfo.windowId = currentWindowLow.longValue();
+              info.tuples.add(wtinfo);
+            }
+            else {
+              wtinfo = info.tuples.get(info.tuples.size() - 1);
+            }
+
+            partCursor2 = partLine.indexOf(':', partCursor);
+            int size = Integer.valueOf(partLine.substring(partCursor, partCursor2));
+            partCursor = partCursor2 + 1;
+            //partCursor2 = partCursor + size;
+            String tupleValue = partLine.substring(partCursor);
+            wtinfo.tuples.add(new TupleInfo(port, tupleValue));
+            numRemainingTuples.decrement();
+          }
+          else {
+            break;
+          }
+        }
+        if (portMatch) {
+          tmpOffset++;
+        }
+      }
+    }
   }
 
   public String startRecording(String appId, String opId, String portName) throws IncompatibleVersionException
