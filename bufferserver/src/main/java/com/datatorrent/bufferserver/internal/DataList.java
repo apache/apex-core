@@ -685,9 +685,7 @@ public class DataList
       }
     }
 
-    private Runnable getStorer(final int uniqueIdentifier,
-            final byte[] data, final int readingOffset, final int writingOffset,
-            final Storage storage)
+    private Runnable getStorer(final byte[] data, final int readingOffset, final int writingOffset, final Storage storage)
     {
       return new Runnable()
       {
@@ -715,10 +713,10 @@ public class DataList
     {
       if (refCount == 1 && storage != null && uniqueIdentifier == 0) {
         if (wait) {
-          getStorer(uniqueIdentifier, data, readingOffset, writingOffset, storage).run();
+          getStorer(data, readingOffset, writingOffset, storage).run();
         }
         else {
-          storageExecutor.submit(getStorer(uniqueIdentifier, data, readingOffset, writingOffset, storage));
+          storageExecutor.submit(getStorer(data, readingOffset, writingOffset, storage));
         }
       }
     }
