@@ -16,11 +16,11 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Thread.sleep;
@@ -78,7 +78,6 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
-
 import com.google.common.collect.Maps;
 
 /**
@@ -108,12 +107,10 @@ public class StreamingAppMasterService extends CompositeService
   // Counter for completed containers ( complete denotes successful or failed )
   private final AtomicInteger numCompletedContainers = new AtomicInteger();
   // Containers that the RM has allocated to us
-  private final Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
+  private final ConcurrentMap<String, AllocatedContainer> allocatedContainers = Maps.newConcurrentMap();
   // Count of failed containers
   private final AtomicInteger numFailedContainers = new AtomicInteger();
   private final ConcurrentLinkedQueue<Runnable> pendingTasks = new ConcurrentLinkedQueue<Runnable>();
-  // Launch threads
-  // private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
   private StreamingContainerParent heartbeatListener;
   private StreamingContainerManager dnmgr;
@@ -137,7 +134,7 @@ public class StreamingAppMasterService extends CompositeService
     @Override
     public int getAllocatedContainers()
     {
-      return allAllocatedContainers.size();
+      return allocatedContainers.size();
     }
 
     @Override
@@ -708,7 +705,7 @@ public class StreamingAppMasterService extends CompositeService
       }
       releasedContainers.clear();
 
-      // CDH reporting incorrect resources, see SPOI-1846. Workaround for now.
+      // CDH reporting incorrect resources, see SPOI-1846, YARN-1959. Workaround for now.
       //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       int availableMemory = availableLicensedMemory;
       dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
@@ -754,7 +751,7 @@ public class StreamingAppMasterService extends CompositeService
           releasedContainers.add(allocatedContainer.getId());
         }
         else {
-          this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
+          this.allocatedContainers.put(allocatedContainer.getId().toString(), new AllocatedContainer(allocatedContainer));
           ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
           LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
@@ -781,9 +778,8 @@ public class StreamingAppMasterService extends CompositeService
 
         // non complete containers should not be here
         assert (containerStatus.getState() == ContainerState.COMPLETE);
-        Container allocatedContainer = allAllocatedContainers.remove(containerStatus.getContainerId().toString());
 
-        // increment counters for completed/failed containers
+        AllocatedContainer allocatedContainer = allocatedContainers.remove(containerStatus.getContainerId().toString());
         int exitStatus = containerStatus.getExitStatus();
         LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
         if (0 != exitStatus) {
@@ -800,7 +796,7 @@ public class StreamingAppMasterService extends CompositeService
 //          else {
           // Recoverable failure or process killed (externally or via stop request by AM)
           // also occurs when a container was released by the application but never assigned/launched
-          LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
+          LOG.debug("Container {} failed or killed.", containerStatus.getContainerId());
           dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
 //          }
         }
@@ -832,13 +828,13 @@ public class StreamingAppMasterService extends CompositeService
         finalStatus = FinalApplicationStatus.FAILED;
         appDone = true;
       }
-      else if (allAllocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
+      else if (allocatedContainers.isEmpty() && numRequestedContainers == 0 && dnmgr.containerStartRequests.isEmpty()) {
         LOG.debug("Exiting as no more containers are allocated or requested");
         finalStatus = FinalApplicationStatus.SUCCEEDED;
         appDone = true;
       }
 
-      LOG.debug("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" + numTotalContainers + ", requested=" + numRequestedContainers + ", released=" + numReleasedContainers + ", completed=" + numCompletedContainers + ", failed=" + numFailedContainers + ", currentAllocated=" + allAllocatedContainers.size());
+      LOG.debug("Current application state: loop=" + loopCounter + ", appDone=" + appDone + ", total=" + numTotalContainers + ", requested=" + numRequestedContainers + ", released=" + numReleasedContainers + ", completed=" + numCompletedContainers + ", failed=" + numFailedContainers + ", currentAllocated=" + allocatedContainers.size());
 
       // monitor child containers
       dnmgr.monitorHeartbeat();
@@ -849,7 +845,7 @@ public class StreamingAppMasterService extends CompositeService
     finishReq.setFinalApplicationStatus(finalStatus);
 
     if (finalStatus != FinalApplicationStatus.SUCCEEDED) {
-      String diagnostics = "Diagnostics." + ", total=" + numTotalContainers + ", completed=" + numCompletedContainers.get() + ", allocated=" + allAllocatedContainers.size() + ", failed=" + numFailedContainers.get();
+      String diagnostics = "Diagnostics." + ", total=" + numTotalContainers + ", completed=" + numCompletedContainers.get() + ", allocated=" + allocatedContainers.size() + ", failed=" + numFailedContainers.get();
       if (!StringUtils.isEmpty(dnmgr.shutdownDiagnosticsMessage)) {
         diagnostics += "\n";
         diagnostics += dnmgr.shutdownDiagnosticsMessage;
@@ -879,7 +875,7 @@ public class StreamingAppMasterService extends CompositeService
       Resource resource = Resource.newInstance(ca.container.getAllocatedMemoryMB(), 1);
       Priority priority = Priority.newInstance(ca.container.getResourceRequestPriority());
       Container yarnContainer = Container.newInstance(containerId, nodeId, ca.container.nodeHttpAddress, resource, priority, containerToken);
-      this.allAllocatedContainers.put(containerId.toString(), yarnContainer);
+      this.allocatedContainers.put(containerId.toString(), new AllocatedContainer(yarnContainer));
 
       // check the status
       nmClient.getContainerStatusAsync(containerId, nodeId);
@@ -909,10 +905,11 @@ public class StreamingAppMasterService extends CompositeService
     }
 
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
-      Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
-      if (allocatedContainer != null) {
-        nmClient.stopContainerAsync(allocatedContainer.getId(), allocatedContainer.getNodeId());
+      AllocatedContainer allocatedContainer = this.allocatedContainers.get(containerIdStr);
+      if (allocatedContainer != null && !allocatedContainer.stopRequested) {
+        nmClient.stopContainerAsync(allocatedContainer.container.getId(), allocatedContainer.container.getNodeId());
         LOG.info("Requested stop container {}", containerIdStr);
+        allocatedContainer.stopRequested = true;
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
@@ -929,15 +926,13 @@ public class StreamingAppMasterService extends CompositeService
     @Override
     public void onContainerStopped(ContainerId containerId)
     {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Succeeded to stop Container " + containerId);
-      }
+      LOG.debug("Succeeded to stop Container {}", containerId);
     }
 
     @Override
     public void onContainerStatusReceived(ContainerId containerId, ContainerStatus containerStatus)
     {
-      LOG.debug("Container Status: id=" + containerId + ", status=" + containerStatus);
+      LOG.debug("Container Status: id={}, status={}", containerId, containerStatus);
       if (containerStatus.getState() != ContainerState.RUNNING) {
         recoverContainer(containerId);
       }
@@ -946,29 +941,27 @@ public class StreamingAppMasterService extends CompositeService
     @Override
     public void onContainerStarted(ContainerId containerId, Map<String, ByteBuffer> allServiceResponse)
     {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Succeeded to start Container " + containerId);
-      }
+      LOG.debug("Succeeded to start Container {}", containerId);
     }
 
     @Override
     public void onStartContainerError(ContainerId containerId, Throwable t)
     {
-      LOG.error("Start container failed for: containerId={}" + containerId, t);
+      LOG.error("Start container failed for: containerId={}", containerId, t);
     }
 
     @Override
     public void onGetContainerStatusError(ContainerId containerId, Throwable t)
     {
-      LOG.error("Failed to query the status of " + containerId, t);
-      // if the NM is not reachable, consider container lost and recover
+      LOG.error("Failed to query the status of {}", containerId, t);
+      // if the NM is not reachable, consider container lost and recover (occurs during AM recovery)
       recoverContainer(containerId);
     }
 
     @Override
     public void onStopContainerError(ContainerId containerId, Throwable t)
     {
-      LOG.warn("Failed to stop container {}", containerId);
+      LOG.debug("Failed to stop container {}", containerId);
       // container could not be stopped, we won't receive a stop event from AM heartbeat
       // short circuit and schedule recovery directly
       recoverContainer(containerId);
@@ -981,14 +974,24 @@ public class StreamingAppMasterService extends CompositeService
         @Override
         public void run()
         {
-          LOG.info("Lost container {}", containerId);
           dnmgr.scheduleContainerRestart(containerId.toString());
-          allAllocatedContainers.remove(containerId.toString());
+          allocatedContainers.remove(containerId.toString());
         }
 
       });
     }
 
+  }
+
+  private class AllocatedContainer
+  {
+    final private Container container;
+    private boolean stopRequested;
+
+    private AllocatedContainer(Container c)
+    {
+      container = c;
+    }
   }
 
 }
