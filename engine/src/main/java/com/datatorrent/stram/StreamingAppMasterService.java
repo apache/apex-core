@@ -774,14 +774,13 @@ public class StreamingAppMasterService extends CompositeService
       List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
       // LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
       for (ContainerStatus containerStatus : completedContainers) {
-        LOG.info("Got container status for containerID= " + containerStatus.getContainerId() + ", state=" + containerStatus.getState() + ", exitStatus=" + containerStatus.getExitStatus() + ", diagnostics=" + containerStatus.getDiagnostics());
+        LOG.info("Completed containerId=" + containerStatus.getContainerId() + ", state=" + containerStatus.getState() + ", exitStatus=" + containerStatus.getExitStatus() + ", diagnostics=" + containerStatus.getDiagnostics());
 
         // non complete containers should not be here
         assert (containerStatus.getState() == ContainerState.COMPLETE);
 
         AllocatedContainer allocatedContainer = allocatedContainers.remove(containerStatus.getContainerId().toString());
         int exitStatus = containerStatus.getExitStatus();
-        LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
         if (0 != exitStatus) {
           if (allocatedContainer != null) {
             numFailedContainers.incrementAndGet();
