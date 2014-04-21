@@ -49,7 +49,7 @@ public class PlanModifier {
   public PlanModifier(PhysicalPlan plan)
   {
     this.physicalPlan = plan;
-    this.logicalPlan = plan.getDAG();
+    this.logicalPlan = plan.getLogicalPlan();
     init();
   }
 

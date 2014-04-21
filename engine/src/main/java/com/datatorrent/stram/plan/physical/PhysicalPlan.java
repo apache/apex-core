@@ -964,7 +964,7 @@ public class PhysicalPlan implements Serializable
     return ctx;
   }
 
-  public LogicalPlan getDAG() {
+  public LogicalPlan getLogicalPlan() {
     return this.dag;
   }
 

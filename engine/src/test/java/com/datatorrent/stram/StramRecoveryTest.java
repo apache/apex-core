@@ -88,7 +88,7 @@ public class StramRecoveryTest
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     plan = (PhysicalPlan)new ObjectInputStream(bis).readObject();
 
-    dag = plan.getDAG();
+    dag = plan.getLogicalPlan();
 
     Field f = PhysicalPlan.class.getDeclaredField("ctx");
     f.setAccessible(true);
@@ -333,7 +333,7 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();
-    dag = plan.getDAG(); // original plan
+    dag = plan.getLogicalPlan(); // original plan
 
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     PTOperator o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
@@ -353,7 +353,7 @@ public class StramRecoveryTest
     sc.copyInitialState(new Path(appPath1));
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     plan = scm.getPhysicalPlan();
-    dag = plan.getDAG();
+    dag = plan.getLogicalPlan();
     Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
     Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
     Assert.assertEquals("modified libjars", "libjars2", dag.getValue(LogicalPlan.LIBRARY_JARS));

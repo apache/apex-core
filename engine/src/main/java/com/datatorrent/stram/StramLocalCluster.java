@@ -292,7 +292,7 @@ public class StramLocalCluster implements Runnable, Controller
 
   public DAG getDAG()
   {
-    return dnmgr.getPhysicalPlan().getDAG();
+    return dnmgr.getPhysicalPlan().getLogicalPlan();
   }
 
   public StramLocalCluster(LogicalPlan dag, MockComponentFactory mcf) throws Exception

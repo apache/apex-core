@@ -960,7 +960,7 @@ public class StreamingAppMasterService extends CompositeService
     @Override
     public void onStopContainerError(ContainerId containerId, Throwable t)
     {
-      LOG.debug("Failed to stop container {}", containerId);
+      LOG.warn("Failed to stop container {}", containerId, t);
       // container could not be stopped, we won't receive a stop event from AM heartbeat
       // short circuit and schedule recovery directly
       recoverContainer(containerId);

@@ -192,7 +192,7 @@ public class StreamingContainerManager implements PlanContext
         statsRecorder.setWebSocketClient(wsClient);
         statsRecorder.setup();
       }
-      eventRecorder = new FSEventRecorder(plan.getDAG().getValue(LogicalPlan.APPLICATION_ID));
+      eventRecorder = new FSEventRecorder(plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ID));
       eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
       eventRecorder.setWebSocketClient(wsClient);
       eventRecorder.setup();
@@ -202,7 +202,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupStringCodecs()
   {
-    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = this.plan.getDAG().getAttributes().get(DAGContext.STRING_CODECS);
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = this.plan.getLogicalPlan().getAttributes().get(DAGContext.STRING_CODECS);
     if (codecs != null) {
       StringCodecs.loadConverters(codecs);
     }
@@ -210,10 +210,10 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupWsClient()
   {
-    String gatewayAddress = plan.getDAG().getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
-    boolean gatewayUseSsl = plan.getDAG().getValue(LogicalPlan.GATEWAY_USE_SSL);
-    String gatewayUserName = plan.getDAG().getValue(LogicalPlan.GATEWAY_USER_NAME);
-    String gatewayPassword = plan.getDAG().getValue(LogicalPlan.GATEWAY_PASSWORD);
+    String gatewayAddress = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
+    boolean gatewayUseSsl = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_USE_SSL);
+    String gatewayUserName = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_USER_NAME);
+    String gatewayPassword = plan.getLogicalPlan().getValue(LogicalPlan.GATEWAY_PASSWORD);
 
     if (gatewayAddress != null) {
       try {
@@ -266,7 +266,7 @@ public class StreamingContainerManager implements PlanContext
     // look for resource allocation timeout
     if (!pendingAllocation.isEmpty()) {
       // look for resource allocation timeout
-      if (lastResourceRequest + plan.getDAG().getValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS) < currentTms) {
+      if (lastResourceRequest + plan.getLogicalPlan().getValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS) < currentTms) {
         String msg = String.format("Shutdown due to resource allocation timeout (%s ms) waiting for %s containers", currentTms - lastResourceRequest, pendingAllocation.size());
         LOG.warn(msg);
         for (PTContainer c : pendingAllocation) {
@@ -352,7 +352,7 @@ public class StreamingContainerManager implements PlanContext
           }
           else {
             // collected data from all operators for this window id.  start latency calculation
-            List<OperatorMeta> rootOperatorMetas = plan.getDAG().getRootOperators();
+            List<OperatorMeta> rootOperatorMetas = plan.getLogicalPlan().getRootOperators();
             Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
             Set<PTOperator> leafOperators = new HashSet<PTOperator>();
             for (OperatorMeta root : rootOperatorMetas) {
@@ -683,7 +683,7 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getDAG());
+    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getLogicalPlan());
     scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.vars.windowStartMillis;
 
@@ -1314,7 +1314,7 @@ public class StreamingContainerManager implements PlanContext
   private long updateCheckpoints(boolean recovery)
   {
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock, recovery);
-    for (OperatorMeta logicalOperator : plan.getDAG().getRootOperators()) {
+    for (OperatorMeta logicalOperator : plan.getLogicalPlan().getRootOperators()) {
       //LOG.debug("Updating checkpoints for operator {}", logicalOperator.getName());
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
@@ -1755,7 +1755,7 @@ public class StreamingContainerManager implements PlanContext
 
   public void setOperatorProperty(String operatorName, String propertyName, String propertyValue)
   {
-    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorName);
+    OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Unknown operator " + operatorName);
     }
@@ -1845,7 +1845,7 @@ public class StreamingContainerManager implements PlanContext
 
   public AttributeMap getOperatorAttributes(String operatorId)
   {
-    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
@@ -1854,7 +1854,7 @@ public class StreamingContainerManager implements PlanContext
 
   public AttributeMap getPortAttributes(String operatorId, String portName)
   {
-    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
@@ -1876,7 +1876,7 @@ public class StreamingContainerManager implements PlanContext
 
   public LogicalPlan getLogicalPlan()
   {
-    return plan.getDAG();
+    return plan.getLogicalPlan();
   }
 
   /**
@@ -1910,7 +1910,7 @@ public class StreamingContainerManager implements PlanContext
     {
       // clone logical plan, for dry run and validation
       LOG.info("Begin plan changes: {}", requests);
-      LogicalPlan lp = plan.getDAG();
+      LogicalPlan lp = plan.getLogicalPlan();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       LogicalPlan.write(lp, bos);
       bos.flush();
@@ -2109,7 +2109,7 @@ public class StreamingContainerManager implements PlanContext
      */
     public void setApplicationId(LogicalPlan newApp, Configuration conf)
     {
-      LogicalPlan lp = physicalPlan.getDAG();
+      LogicalPlan lp = physicalPlan.getLogicalPlan();
       String appId = newApp.getValue(LogicalPlan.APPLICATION_ID);
       String oldAppId = lp.getValue(LogicalPlan.APPLICATION_ID);
       if (oldAppId == null) {
