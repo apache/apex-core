@@ -97,7 +97,7 @@ public class LaunchContainerRunnable implements Runnable
 
   public static void addFilesToLocalResources(LocalResourceType type, String commaSeparatedFileNames, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
   {
-    String[] files = StringUtils.splitByWholeSeparator(commaSeparatedFileNames, ",");
+    String[] files = StringUtils.splitByWholeSeparator(commaSeparatedFileNames, StramClient.LIB_JARS_SEP);
     for (String file : files) {
       Path dst = new Path(file);
       // Create a local resource to point to the destination jar path
