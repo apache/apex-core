@@ -1074,12 +1074,12 @@ public class DTCli
 
   private void setupHistory(ConsoleReader reader)
   {
-    File historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history");
+    File historyFile = new File(StramClientUtils.getUserDTDirectory(), "cli_history");
     historyFile.getParentFile().mkdirs();
     try {
       topLevelHistory = new FileHistory(historyFile);
       reader.setHistory(topLevelHistory);
-      historyFile = new File(StramClientUtils.getSettingsRootDir(), "cli_history_clp");
+      historyFile = new File(StramClientUtils.getUserDTDirectory(), "cli_history_clp");
       changingLogicalPlanHistory = new FileHistory(historyFile);
     }
     catch (IOException ex) {
@@ -1103,7 +1103,7 @@ public class DTCli
       // ignore
     }
     try {
-      processSourceFile(StramClientUtils.getSettingsRootDir() + "/clirc", reader);
+      processSourceFile(StramClientUtils.getUserDTDirectory() + "/clirc", reader);
     }
     catch (Exception ex) {
       // ignore

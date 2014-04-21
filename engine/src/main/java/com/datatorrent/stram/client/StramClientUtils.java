@@ -246,7 +246,7 @@ public class StramClientUtils
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
 
-  public static File getSettingsRootDir()
+  public static File getUserDTDirectory()
   {
     return new File(FileUtils.getUserDirectory(), ".dt");
   }
@@ -256,7 +256,7 @@ public class StramClientUtils
     URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
     try {
       if (resource == null) {
-        return getSettingsRootDir();
+        return getUserDTDirectory();
       }
       return new File(resource.toURI()).getParentFile();
     }
@@ -279,7 +279,7 @@ public class StramClientUtils
   {
     conf.addResource(DT_DEFAULT_XML_FILE);
     conf.addResource(DT_SITE_XML_FILE);
-    File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.DT_SITE_XML_FILE);
+    File cfgResource = new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE);
     if (cfgResource.exists()) {
       LOG.info("Loading settings: " + cfgResource.toURI());
       conf.addResource(new Path(cfgResource.toURI()));
@@ -332,16 +332,13 @@ public class StramClientUtils
 
   public static URL getDTSiteXmlFile()
   {
-    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_SITE_XML_FILE);
-    if (resource == null) {
-      try {
-        resource = new URL("file:" + System.getProperty("user.home") + "/.dt/dt-site.xml");
-      }
-      catch (MalformedURLException ex) {
-        LOG.error("Caught exception: ", ex);
-      }
+    File cfgResource = new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE);
+    try {
+      return cfgResource.toURI().toURL();
     }
-    return resource;
+    catch (MalformedURLException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public static FileSystem newFileSystemInstance(Configuration conf) throws IOException
@@ -431,7 +428,7 @@ public class StramClientUtils
   {
     URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
     if (resource == null) {
-      File envFile = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.DT_ENV_SH_FILE);
+      File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_ENV_SH_FILE);
       FileOutputStream out = new FileOutputStream(envFile);
       try {
         out.write(("export " + key + "=\"" + value + "\"\n").getBytes());
