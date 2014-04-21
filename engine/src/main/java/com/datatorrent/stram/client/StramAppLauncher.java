@@ -34,6 +34,7 @@ import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -62,6 +63,7 @@ public class StramAppLauncher
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
+  private LinkedHashSet<File> deployJars;
   private final StringWriter mvnBuildClasspathOutput = new StringWriter();
   private boolean ignorePom = false;
 
@@ -134,7 +136,6 @@ public class StramAppLauncher
     baseDir = new File(new File(baseDir, "appcache"), jarFile.getName());
     baseDir.mkdirs();
 
-    //java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
     JarFileContext jfc = new JarFileContext(new java.util.jar.JarFile(jarFile), mvnBuildClasspathOutput);
     jfc.cacheDir = baseDir;
 
@@ -160,10 +161,14 @@ public class StramAppLauncher
     URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
     jfc.urls.add(mainJarUrl);
 
+    deployJars = Sets.newLinkedHashSet();
     // add all jar files from same directory
     Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
     for (File lJarFile : jarFiles) {
-      jfc.urls.add(lJarFile.toURI().toURL());
+      if (!lJarFile.equals(jarFile)) {
+        jfc.urls.add(lJarFile.toURI().toURL());
+        deployJars.add(lJarFile);
+      }
     }
 
     // resolve dependencies
@@ -380,7 +385,16 @@ public class StramAppLauncher
     byte[] licenseBytes = StramClientUtils.getLicense(conf);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(conf, dag);
-    client.setLibJars(conf.get(LIBJARS_CONF_KEY_NAME));
+    LinkedHashSet<String> libjars = Sets.newLinkedHashSet();
+    String libjarsCsv = conf.get(LIBJARS_CONF_KEY_NAME);
+    if (libjarsCsv != null) {
+      String[] jars = StringUtils.splitByWholeSeparator(libjarsCsv, StramClient.LIB_JARS_SEP);
+      libjars.addAll(Arrays.asList(jars));
+    }
+    for (File deployJar : deployJars) {
+      libjars.add(deployJar.getAbsolutePath());
+    }
+    client.setLibJars(libjars);
     client.setFiles(conf.get(FILES_CONF_KEY_NAME));
     client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
     client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));

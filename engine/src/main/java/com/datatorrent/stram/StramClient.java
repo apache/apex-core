@@ -64,6 +64,8 @@ public class StramClient
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
   public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
+  public static final String LIB_JARS_SEP = ",";
+
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
@@ -81,7 +83,7 @@ public class StramClient
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  private String libjars;
+  private LinkedHashSet<String> libjars;
   private String files;
   private String archives;
   private String originalAppId;
@@ -268,7 +270,7 @@ public class StramClient
 
     String libJarsPath = dag.getValue(LogicalPlan.LIBRARY_JARS);
     if (!StringUtils.isEmpty(libJarsPath)) {
-      String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
+      String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, LIB_JARS_SEP);
       localJarFiles.addAll(Arrays.asList(libJars));
     }
     LOG.info("Local jar file dependencies: " + localJarFiles);
@@ -292,7 +294,7 @@ public class StramClient
         fs.copyFromLocalFile(false, true, src, dst);
       }
       if (csv.length() > 0) {
-        csv.append(",");
+        csv.append(LIB_JARS_SEP);
       }
       csv.append(dst.toString());
     }
@@ -353,7 +355,7 @@ public class StramClient
     LinkedHashSet<String> localJarFiles = findJars(dag);
 
     if (libjars != null) {
-      localJarFiles.addAll(Arrays.asList(libjars.split(",")));
+      localJarFiles.addAll(libjars);
     }
 
     // Connect to ResourceManager
@@ -724,7 +726,7 @@ public class StramClient
     this.files = files;
   }
 
-  public void setLibJars(String libjars)
+  public void setLibJars(LinkedHashSet<String> libjars)
   {
     this.libjars = libjars;
   }
