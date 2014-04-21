@@ -112,7 +112,7 @@ public class StramAppLauncher
 
   public StramAppLauncher(FileSystem fs, Path path, Configuration conf, boolean ignorePom) throws Exception
   {
-    File jarsDir = new File(StramClientUtils.getSettingsRootDir(), "jars");
+    File jarsDir = new File(StramClientUtils.getUserDTDirectory(), "jars");
     jarsDir.mkdirs();
     File localJarFile = new File(jarsDir, path.getName());
     this.fs = fs;
@@ -132,7 +132,7 @@ public class StramAppLauncher
   {
     propertiesBuilder.addFromConfiguration(conf);
 
-    File baseDir = StramClientUtils.getSettingsRootDir();
+    File baseDir = StramClientUtils.getUserDTDirectory();
     baseDir = new File(new File(baseDir, "appcache"), jarFile.getName());
     baseDir.mkdirs();
 
@@ -255,7 +255,7 @@ public class StramAppLauncher
       else if (scheme.equals("hdfs")) {
         if (fs != null) {
           Path path = new Path(libjar);
-          File dependencyJarsDir = new File(StramClientUtils.getSettingsRootDir(), "dependencyJars");
+          File dependencyJarsDir = new File(StramClientUtils.getUserDTDirectory(), "dependencyJars");
           dependencyJarsDir.mkdirs();
           File localJarFile = new File(dependencyJarsDir, path.getName());
           fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
