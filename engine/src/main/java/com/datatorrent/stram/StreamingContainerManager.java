@@ -683,7 +683,8 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getLogicalPlan());
+    //StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getLogicalPlan());
+    StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
     scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.vars.windowStartMillis;
 
