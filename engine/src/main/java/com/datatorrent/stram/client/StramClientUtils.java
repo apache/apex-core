@@ -265,7 +265,7 @@ public class StramClientUtils
     }
   }
 
-  private static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
+  public static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
   public static final String DT_ENV_SH_FILE = "dt-env.sh";
 
@@ -278,12 +278,8 @@ public class StramClientUtils
   public static Configuration addDTSiteResources(Configuration conf)
   {
     conf.addResource(DT_DEFAULT_XML_FILE);
-    conf.addResource(DT_SITE_XML_FILE);
-    File cfgResource = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
-    if (cfgResource.exists()) {
-      LOG.info("Loading settings: " + cfgResource.toURI());
-      conf.addResource(new Path(cfgResource.toURI()));
-    }
+    addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+    addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
 
     convertDeprecatedProperties(conf);
 
@@ -296,6 +292,16 @@ public class StramClientUtils
     int rmConnectMaxWait = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
     if (rmConnectMaxWait > RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE) {
       conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
+    }
+    return conf;
+  }
+
+  private static Configuration addDTSiteResources(Configuration conf, File confFile)
+  {
+    File cfgResource = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
+    if (cfgResource.exists()) {
+      LOG.info("Loading settings: " + cfgResource.toURI());
+      conf.addResource(new Path(cfgResource.toURI()));
     }
     return conf;
   }
