@@ -279,7 +279,7 @@ public class StramClientUtils
   {
     conf.addResource(DT_DEFAULT_XML_FILE);
     conf.addResource(DT_SITE_XML_FILE);
-    File cfgResource = new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE);
+    File cfgResource = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
     if (cfgResource.exists()) {
       LOG.info("Loading settings: " + cfgResource.toURI());
       conf.addResource(new Path(cfgResource.toURI()));
