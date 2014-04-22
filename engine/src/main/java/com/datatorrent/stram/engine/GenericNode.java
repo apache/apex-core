@@ -139,6 +139,7 @@ public class GenericNode extends Node<Operator>
     }
 
     if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+      checkpointWindowCount = 0;
       if (doCheckpoint) {
         checkpoint(currentWindowId);
         lastCheckpointedWindowId = currentWindowId;
@@ -148,7 +149,6 @@ public class GenericNode extends Node<Operator>
         checkpoint(currentWindowId);
         lastCheckpointedWindowId = currentWindowId;
       }
-      checkpointWindowCount = 0;
     }
 
     ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
@@ -540,10 +540,10 @@ public class GenericNode extends Node<Operator>
       }
 
       if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+        checkpointWindowCount = 0;
         if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
         }
-        checkpointWindowCount = 0;
       }
 
       ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();

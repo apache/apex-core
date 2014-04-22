@@ -120,6 +120,7 @@ public class InputNode extends Node<InputOperator>
               controlTupleCount++;
 
               if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+                checkpointWindowCount = 0;
                 if (doCheckpoint) {
                   checkpoint(currentWindowId);
                   doCheckpoint = false;
@@ -127,7 +128,6 @@ public class InputNode extends Node<InputOperator>
                 else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                   checkpoint(currentWindowId);
                 }
-                checkpointWindowCount = 0;
               }
 
               ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
@@ -205,10 +205,10 @@ public class InputNode extends Node<InputOperator>
         applicationWindowCount = 0;
       }
       if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+        checkpointWindowCount = 0;
         if (doCheckpoint || PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
           checkpoint(currentWindowId);
         }
-        checkpointWindowCount = 0;
       }
 
       ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
