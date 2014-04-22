@@ -23,10 +23,10 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.datatorrent.api.StorageAgent;
-import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.api.annotation.Stateless;
 public class FSStorageAgent implements StorageAgent, Serializable
 {
-  private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+  private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
   private transient FileSystem fs;
   private transient Configuration conf; // not serializable and will be used client side only
@@ -123,7 +123,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
     long windowIds[] = new long[files.length];
     for (int i = files.length; i-- > 0;) {
       String name = files[i].getPath().getName();
-      windowIds[i] = STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : Long.parseLong(name, 16);
+      windowIds[i] = STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Stateless.WINDOW_ID : Long.parseLong(name, 16);
     }
     return windowIds;
   }
