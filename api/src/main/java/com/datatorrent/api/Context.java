@@ -23,6 +23,7 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Collection2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
+import com.datatorrent.api.annotation.Stateless;
 
 /**
  *
@@ -92,13 +93,19 @@ public interface Context
      * a generic codec.
      */
     Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<StreamCodec<?>>(new Object2String<StreamCodec<?>>());
-
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
   }
 
   public interface OperatorContext extends Context
   {
+    /**
+     * The windowId at which the operator's current run got activated.
+     * When the operator is deployed the first time during it's activation, this value is the default value
+     * of the operator. On subsequent run, it's the windowId of the checkpoint from which the operator state
+     * is recovered.
+     */
+    Attribute<Long> ACTIVATION_WINDOW_ID = new Attribute<Long>(Stateless.WINDOW_ID);
     /**
      * Poll period in milliseconds when there are no tuples available on any of the input ports of the operator.
      * Default value is 10 milliseconds.

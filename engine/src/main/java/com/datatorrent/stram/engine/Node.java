@@ -423,6 +423,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
 
+    if (CHECKPOINT_WINDOW_COUNT % APPLICATION_WINDOW_COUNT != 0) {
+      logger.warn("{} is not exact multiple of {} for operator {}. This may cause side effects such as processing to begin without beginWindow preceding it in the first window after activation.",
+                  OperatorContext.CHECKPOINT_WINDOW_COUNT,
+                  OperatorContext.APPLICATION_WINDOW_COUNT,
+                  operator);
+    }
+
     PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
       logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
