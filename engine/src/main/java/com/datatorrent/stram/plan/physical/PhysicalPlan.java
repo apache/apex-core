@@ -27,6 +27,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -720,7 +721,7 @@ public class PhysicalPlan implements Serializable
   {
     try {
       LOG.debug("Writing activation checkpoint {} {} {}", checkpoint, oper, oo);
-      long windowId = oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : checkpoint.windowId;
+      long windowId = oper.isOperatorStateLess() ? Stateless.WINDOW_ID : checkpoint.windowId;
       oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).save(oo, oper.id, windowId);
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
@@ -735,7 +736,7 @@ public class PhysicalPlan implements Serializable
   public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
-      return (Operator)oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).load(oper.id, oper.isOperatorStateLess() ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : oper.recoveryCheckpoint.windowId);
+      return (Operator)oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).load(oper.id, oper.isOperatorStateLess() ? Stateless.WINDOW_ID : oper.recoveryCheckpoint.windowId);
     } catch (IOException e) {
       throw new RuntimeException("Failed to read partition state for " + oper, e);
     }
@@ -1250,7 +1251,7 @@ public class PhysicalPlan implements Serializable
       Arrays.sort(windowIds);
       oper.checkpoints.clear();
       for (long wid : windowIds) {
-        if (wid != Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID) {
+        if (wid != Stateless.WINDOW_ID) {
           oper.addCheckpoint(wid, startTime);
         }
       }

@@ -56,7 +56,7 @@ public class InputNode extends Node<InputOperator>
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
 
-    boolean insideWindow = false;
+    boolean insideWindow = applicationWindowCount != 0;
     boolean doCheckpoint = false;
 
     try {

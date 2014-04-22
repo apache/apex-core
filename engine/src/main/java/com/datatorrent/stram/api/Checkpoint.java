@@ -3,8 +3,8 @@
  */
 package com.datatorrent.stram.api;
 
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.engine.WindowGenerator;
 
 /**
  * <p>Checkpoint class.</p>
@@ -17,7 +17,6 @@ public class Checkpoint implements com.datatorrent.api.Stats.Checkpoint
   /**
    * WindowId used to store the state of the operator which has not processed a single tuple.
    */
-  public static final long STATELESS_CHECKPOINT_WINDOW_ID = WindowGenerator.MIN_WINDOW_ID - 1;
   public final long windowId;
   public final int applicationWindowCount;
   public final int checkpointWindowCount;
@@ -90,6 +89,6 @@ public class Checkpoint implements com.datatorrent.api.Stats.Checkpoint
   }
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-  public static final Checkpoint INITIAL_CHECKPOINT = new Checkpoint(STATELESS_CHECKPOINT_WINDOW_ID, 0, 0);
+  public static final Checkpoint INITIAL_CHECKPOINT = new Checkpoint(Stateless.WINDOW_ID, 0, 0);
   private static final long serialVersionUID = 201402152116L;
 }

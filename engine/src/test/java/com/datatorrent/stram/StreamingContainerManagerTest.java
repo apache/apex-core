@@ -28,6 +28,7 @@ import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
@@ -293,7 +294,7 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      Object operator = msa.load(mergeNodeDI.id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
+      Object operator = msa.load(mergeNodeDI.id, Stateless.WINDOW_ID);
       Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {

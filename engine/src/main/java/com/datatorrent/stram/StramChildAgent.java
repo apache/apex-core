@@ -22,6 +22,7 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
+import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -269,7 +270,7 @@ public class StramChildAgent {
       // this should be handled differently. What happens to the checkpoint reported?
       try {
         long[] windowIds = agent.getWindowIds(oper.getId());
-        long checkpointId = Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID;
+        long checkpointId = Stateless.WINDOW_ID;
         for (long windowId : windowIds) {
           if (windowId > checkpointId) {
             checkpointId = windowId;

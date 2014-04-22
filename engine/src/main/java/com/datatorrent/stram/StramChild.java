@@ -33,6 +33,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
@@ -802,8 +803,9 @@ public class StramChild extends YarnContainerMain
       assert (backupAgent != null);
 
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
+      ctx.attributes.put(OperatorContext.ACTIVATION_WINDOW_ID, ndi.checkpoint.windowId);
       logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
-      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
+      Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Stateless.WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
 

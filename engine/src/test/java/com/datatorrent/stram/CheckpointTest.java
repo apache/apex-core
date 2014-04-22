@@ -88,6 +88,7 @@ public class CheckpointTest
     public void emitTuples()
     {
     }
+    private static final long serialVersionUID = 201404211648L;
   }
 
   /**
@@ -126,7 +127,7 @@ public class CheckpointTest
       checkpoints.add(windowId);
     }
     Assert.assertEquals("number checkpoints " + checkpoints, 3, checkpoints.size());
-    Assert.assertTrue("contains " + checkpoints + " " + Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID, checkpoints.contains(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID));
+    Assert.assertTrue("contains " + checkpoints + " " + Stateless.WINDOW_ID, checkpoints.contains(Stateless.WINDOW_ID));
 
     PTOperator o2p1 = plan.getOperators(dag.getMeta(o2)).get(0);
     checkpoints = Sets.newHashSet();
@@ -134,7 +135,7 @@ public class CheckpointTest
       checkpoints.add(windowId);
     }
     Assert.assertEquals("number checkpoints " + checkpoints, 1, checkpoints.size());
-    Assert.assertEquals("checkpoints " + o2p1, Sets.newHashSet(Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID), checkpoints);
+    Assert.assertEquals("checkpoints " + o2p1, Sets.newHashSet(Stateless.WINDOW_ID), checkpoints);
 
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
 

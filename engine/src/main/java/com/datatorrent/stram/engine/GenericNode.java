@@ -173,6 +173,13 @@ public class GenericNode extends Node<Operator>
   boolean doCheckpoint;
   long lastCheckpointedWindowId;
 
+  @Override
+  public void activate()
+  {
+    super.activate();
+    insideWindow = applicationWindowCount != 0;
+  }
+
   /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
@@ -183,7 +190,6 @@ public class GenericNode extends Node<Operator>
   public final void run()
   {
     lastCheckpointedWindowId = 0;
-    insideWindow = false;
     doCheckpoint = false;
 
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);

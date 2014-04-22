@@ -35,4 +35,9 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Stateless
 {
+  /**
+   * WindowId of the unaltered state of an operator.
+   * The first windowId during which data may be given to the operator is zero.
+   */
+  long WINDOW_ID = -1;
 }
