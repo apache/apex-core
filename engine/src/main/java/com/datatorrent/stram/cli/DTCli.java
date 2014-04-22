@@ -577,7 +577,7 @@ public class DTCli
                                                                      new Arg[] {new Arg("property-name")},
                                                                      "Get properties of an operator"));
     connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
-                                                                              new Arg[] {new Arg("operator-name")},
+                                                                              new Arg[] {new Arg("operator-id")},
                                                                               new Arg[] {new Arg("property-name")},
                                                                               "Get properties of an operator"));
 
