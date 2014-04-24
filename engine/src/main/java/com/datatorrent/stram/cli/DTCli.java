@@ -1994,14 +1994,22 @@ public class DTCli
           LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
         }
         if (ar != null) {
-          if (ar.getFinalApplicationStatus() != null) {
-            throw new CliException("Cannot relaunch application that is running: " + commandLineInfo.origAppId);
+          if (ar.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
+            throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " " + ar.getYarnApplicationState());
           }
           if (matchString == null) {
             // skip selection if we can match application name from previous run
             List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName());
-            if (matchingAppFactories.size() == 1) {
-              appFactory = matchingAppFactories.get(0);
+            for (AppFactory af : matchingAppFactories) {
+              String appName = submitApp.getLogicalPlanConfiguration().getAppAlias(af.getName());
+              if (appName == null) {
+                appName = af.getName();
+              }
+              // limit to exact match
+              if (appName.equals(ar.getName())) {
+                appFactory = af;
+                break;
+              }
             }
           }
         }
