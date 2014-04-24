@@ -201,7 +201,7 @@ public class StramClient
       org.codehaus.jackson.map.ser.std.RawSerializer.class,
       org.apache.commons.beanutils.BeanUtils.class,
       org.apache.http.client.utils.URLEncodedUtils.class,
-      org.apache.http.message.BasicHeaderValueParser.class,
+      org.apache.http.message.BasicHeaderValueParser.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 
@@ -326,14 +326,15 @@ public class StramClient
 
     // copy sub directories that are not present in target
     FileSystem fs = FileSystem.newInstance(origAppDir.toUri(), conf);
-    FileStatus[] files = fs.listStatus(origAppDir);
-    for (FileStatus f : files) {
+    FileStatus[] lFiles = fs.listStatus(origAppDir);
+    for (FileStatus f : lFiles) {
       if (f.isDirectory()) {
         String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
-        } else {
+        }
+        else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
         }
       }
@@ -592,6 +593,7 @@ public class StramClient
       vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
       vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
       vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
+      vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
 
       if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         vargs.add(LicensingAppMaster.class.getName());
