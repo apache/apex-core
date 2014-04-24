@@ -44,6 +44,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
@@ -1981,7 +1982,33 @@ public class DTCli
       StramAppLauncher submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
       submitApp.loadDependencies();
       AppFactory appFactory = null;
-      if (commandLineInfo.args.length >= 2) {
+      String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
+
+      if (commandLineInfo.origAppId != null) {
+        // ensure app is not running
+        ApplicationReport ar = null;
+        try {
+          ar = rmClient.getApplicationReport(commandLineInfo.origAppId);
+        } catch (Exception e) {
+          // application (no longer) in the RM history, does not prevent restart from state in DFS
+          LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
+        }
+        if (ar != null) {
+          if (ar.getFinalApplicationStatus() != null) {
+            throw new CliException("Cannot relaunch application that is running: " + commandLineInfo.origAppId);
+          }
+          if (matchString == null) {
+            // skip selection if we can match application name from previous run
+            List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName());
+            if (matchingAppFactories.size() == 1) {
+              appFactory = matchingAppFactories.get(0);
+            }
+          }
+        }
+      }
+
+      if (appFactory == null && matchString != null) {
+        // attempt to interpret argument as property file - do we still need it?
         File file = new File(commandLineInfo.args[1]);
         if (file.exists()) {
           appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
@@ -1989,8 +2016,6 @@ public class DTCli
       }
 
       if (appFactory == null) {
-        String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
-
         List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
           throw new CliException("No matching applications bundled in jar.");
