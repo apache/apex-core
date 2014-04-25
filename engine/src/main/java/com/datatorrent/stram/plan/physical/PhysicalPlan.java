@@ -987,6 +987,11 @@ public class PhysicalPlan implements Serializable
     return this.logicalToPTOperator.get(logicalOperator).partitions;
   }
 
+  public Collection<PTOperator> getAllOperators(OperatorMeta logicalOperator)
+  {
+    return this.logicalToPTOperator.get(logicalOperator).getAllOperators();
+  }
+
   public boolean hasMapping(OperatorMeta om) {
     return this.logicalToPTOperator.containsKey(om);
   }

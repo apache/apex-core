@@ -4,78 +4,58 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
-
-import javax.annotation.Nullable;
-
-import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.util.Clock;
-import org.apache.hadoop.yarn.util.SystemClock;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
-import com.datatorrent.stram.api.Checkpoint;
-import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.OperatorDeployInfo;
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.api.*;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.physical.OperatorStatus;
+import com.datatorrent.stram.plan.physical.*;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
-import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
-import com.datatorrent.stram.webapp.OperatorInfo;
-import com.datatorrent.stram.webapp.PortInfo;
-import com.datatorrent.stram.webapp.StreamInfo;
+import com.datatorrent.stram.webapp.*;
+import com.google.common.base.Predicate;
+import com.google.common.collect.*;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.annotation.Nullable;
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.util.SystemClock;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -797,6 +777,7 @@ public class StreamingContainerManager implements PlanContext
     if (oper.getState() == PTOperator.State.ACTIVE) {
       oper.setState(PTOperator.State.INACTIVE);
       oper.failureCount++;
+      oper.getOperatorMeta().getStatus().failureCount++;
       LOG.warn("Operator failure: {} count: {}", oper, oper.failureCount);
       Integer maxAttempts = oper.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
       if (maxAttempts <= 0 || oper.failureCount <= maxAttempts) {
@@ -1037,6 +1018,12 @@ public class StreamingContainerManager implements PlanContext
 
         status.totalTuplesProcessed.add(tuplesProcessed);
         status.totalTuplesEmitted.add(tuplesEmitted);
+        OperatorMeta logicalOperator = oper.getOperatorMeta();
+        LogicalOperatorStatus logicalStatus = logicalOperator.getStatus();
+        if (!oper.isUnifier()) {
+          logicalStatus.totalTuplesProcessed += tuplesProcessed;
+          logicalStatus.totalTuplesEmitted += tuplesEmitted;
+        }
         long lastMaxEndWindowTimestamp = operatorLastEndWindowTimestamps.containsKey(oper.getId()) ? operatorLastEndWindowTimestamps.get(oper.getId()) : lastStatsTimestamp;
         if (maxEndWindowTimestamp >= lastMaxEndWindowTimestamp) {
           double tuplesProcessedPMSMA = 0.0;
@@ -1530,7 +1517,7 @@ public class StreamingContainerManager implements PlanContext
     for (PTContainer container : this.plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
         if (operatorId.equals(Integer.toString(operator.getId()))) {
-          return fillOperatorInfo(operator);
+          return fillPhysicalOperatorInfo(operator);
         }
       }
     }
@@ -1543,8 +1530,27 @@ public class StreamingContainerManager implements PlanContext
 
     for (PTContainer container : this.plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
-        infoList.add(fillOperatorInfo(operator));
+        infoList.add(fillPhysicalOperatorInfo(operator));
       }
+    }
+    return infoList;
+  }
+
+  public LogicalOperatorInfo getLogicalOperatorInfo(String operatorName)
+  {
+    OperatorMeta operatorMeta = getLogicalPlan().getOperatorMeta(operatorName);
+    if (operatorMeta == null) {
+      return null;
+    }
+    return fillLogicalOperatorInfo(operatorMeta);
+  }
+
+  public List<LogicalOperatorInfo> getLogicalOperatorInfoList()
+  {
+    List<LogicalOperatorInfo> infoList = new ArrayList<LogicalOperatorInfo>();
+    Collection<OperatorMeta> allOperators = getLogicalPlan().getAllOperators();
+    for (OperatorMeta operatorMeta : allOperators) {
+      infoList.add(fillLogicalOperatorInfo(operatorMeta));
     }
     return infoList;
   }
@@ -1555,7 +1561,7 @@ public class StreamingContainerManager implements PlanContext
     return windowId < 0 ? 0 : windowId;
   }
 
-  private OperatorInfo fillOperatorInfo(PTOperator operator)
+  private OperatorInfo fillPhysicalOperatorInfo(PTOperator operator)
   {
     OperatorInfo oi = new OperatorInfo();
     oi.container = operator.getContainer().getExternalId();
@@ -1606,6 +1612,79 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     return oi;
+  }
+
+  private LogicalOperatorInfo fillLogicalOperatorInfo(OperatorMeta operator)
+  {
+    LogicalOperatorInfo loi = new LogicalOperatorInfo();
+    loi.name = operator.getName();
+    loi.className = operator.getOperator().getClass().getName();
+    loi.totalTuplesEmitted = operator.getStatus().totalTuplesEmitted;
+    loi.totalTuplesProcessed = operator.getStatus().totalTuplesProcessed;
+    loi.failureCount = operator.getStatus().failureCount;
+    loi.status = new HashMap<String, MutableInt>();
+    loi.partitions = new TreeSet<Integer>();
+    loi.unifiers = new TreeSet<Integer>();
+    loi.containerIds = new TreeSet<String>();
+    loi.hosts = new TreeSet<String>();
+    Collection<PTOperator> physicalOperators = getPhysicalPlan().getAllOperators(operator);
+    for (PTOperator physicalOperator : physicalOperators) {
+      OperatorStatus os = physicalOperator.stats;
+      if (physicalOperator.isUnifier()) {
+        loi.unifiers.add(physicalOperator.getId());
+      }
+      else {
+        loi.partitions.add(physicalOperator.getId());
+
+        // exclude unifier, not sure if we should include it in the future
+        loi.tuplesEmittedPSMA += os.tuplesEmittedPSMA.get();
+        loi.tuplesProcessedPSMA += os.tuplesProcessedPSMA.get();
+
+        // calculate maximum latency for all partitions
+        long latency = calculateLatency(physicalOperator);
+        if (latency > loi.latencyMA) {
+          loi.latencyMA = latency;
+        }
+      }
+      loi.cpuPercentageMA += os.cpuNanosPMSMA.getAvg() / 10000;
+      if (os.lastHeartbeat != null && (loi.lastHeartbeat == 0 || loi.lastHeartbeat > os.lastHeartbeat.getGeneratedTms())) {
+        loi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
+      }
+      long currentWindowId = toWsWindowId(os.currentWindowId.get());
+      if (loi.currentWindowId == 0 || loi.currentWindowId > currentWindowId) {
+        loi.currentWindowId = currentWindowId;
+      }
+      MutableInt count = loi.status.get(physicalOperator.getState().toString());
+      if (count == null) {
+        count = new MutableInt();
+        loi.status.put(physicalOperator.getState().toString(), count);
+      }
+      count.increment();
+      long recoveryWindowId = toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId);
+      if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
+        loi.recoveryWindowId = recoveryWindowId;
+      }
+      loi.containerIds.add(physicalOperator.getContainer().getExternalId());
+      loi.hosts.add(physicalOperator.getContainer().host);
+    }
+    return loi;
+  }
+
+  private long calculateLatency(PTOperator operator)
+  {
+    long latency = operator.stats.latencyMA.getAvg();
+    long maxUnifierLatency = 0;
+    for (PTOutput output : operator.getOutputs()) {
+      for (PTInput input : output.sinks) {
+        if (input.target.isUnifier()) {
+          long thisUnifierLatency = calculateLatency(input.target);
+          if (maxUnifierLatency < thisUnifierLatency) {
+            maxUnifierLatency = thisUnifierLatency;
+          }
+        }
+      }
+    }
+    return latency + maxUnifierLatency;
   }
 
   public List<StreamInfo> getStreamInfoList()

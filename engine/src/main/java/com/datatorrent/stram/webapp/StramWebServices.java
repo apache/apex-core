@@ -506,14 +506,38 @@ public class StramWebServices
     return response;
   }
 
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getLogicalOperators() throws Exception
+  {
+    LogicalOperatorsInfo nodeList = new LogicalOperatorsInfo();
+    nodeList.operators = dagManager.getLogicalOperatorInfoList();
+    return new JSONObject(objectMapper.writeValueAsString(nodeList));
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getLogicalOperator(@PathParam("operatorName") String operatorName) throws Exception
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+
+    LogicalOperatorInfo logicalOperatorInfo = dagManager.getLogicalOperatorInfo(operatorName);
+    return new JSONObject(objectMapper.writeValueAsString(logicalOperatorInfo));
+  }
+
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject setOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
+  public JSONObject setOperatorProperties(JSONObject request, @PathParam("operatorName") String operatorName)
   {
     init();
-    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
@@ -524,8 +548,8 @@ public class StramWebServices
       while (keys.hasNext()) {
         String key = keys.next();
         String val = request.getString(key);
-        LOG.debug("Setting property for {}: {}={}", operatorId, key, val);
-        dagManager.setOperatorProperty(operatorId, key, val);
+        LOG.debug("Setting property for {}: {}={}", operatorName, key, val);
+        dagManager.setOperatorProperty(operatorName, key, val);
       }
     }
     catch (JSONException ex) {
@@ -562,16 +586,16 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/attributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorAttributes(@PathParam("operatorId") String operatorId, @QueryParam("attributeName") String attributeName)
+  public JSONObject getOperatorAttributes(@PathParam("operatorName") String operatorName, @QueryParam("attributeName") String attributeName)
   {
-    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
     HashMap<String, Object> map = new HashMap<String, Object>();
-    for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorId).entrySet()) {
+    for (Entry<Attribute<?>, Object> entry : dagManager.getOperatorAttributes(operatorName).entrySet()) {
       if (attributeName == null || entry.getKey().name.equals(attributeName)) {
         map.put(entry.getKey().name, entry.getValue());
       }
@@ -594,16 +618,16 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/{portName}/attributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/{portName}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPortAttributes(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
+  public JSONObject getPortAttributes(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
-    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
     HashMap<String, Object> map = new HashMap<String, Object>();
-    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorId, portName).entrySet()) {
+    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorName, portName).entrySet()) {
       if (attributeName == null || entry.getKey().name.equals(attributeName)) {
         map.put(entry.getKey().name, entry.getValue());
       }
@@ -612,12 +636,12 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/properties")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName) throws IOException, JSONException
+  public JSONObject getOperatorProperties(@PathParam("operatorName") String operatorName, @QueryParam("propertyName") String propertyName) throws IOException, JSONException
   {
     init();
-    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
     if (logicalOperator == null) {
       throw new NotFoundException();
     }

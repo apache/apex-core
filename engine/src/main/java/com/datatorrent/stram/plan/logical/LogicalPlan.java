@@ -434,6 +434,7 @@ public class LogicalPlan implements Serializable, DAG
     private final int id;
     private final String name;
     private final OperatorAnnotation operatorAnnotation;
+    private final LogicalOperatorStatus status;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
     private transient Operator operator;
@@ -452,6 +453,7 @@ public class LogicalPlan implements Serializable, DAG
       this.name = name;
       this.operator = operator;
       this.id = logicalOperatorSequencer.decrementAndGet();
+      this.status = new LogicalOperatorStatus(name);
     }
 
     @Override
@@ -485,6 +487,11 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       return attr;
+    }
+
+    public LogicalOperatorStatus getStatus()
+    {
+      return status;
     }
 
     private void writeObject(ObjectOutputStream out) throws IOException
@@ -824,9 +831,9 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public OperatorMeta getOperatorMeta(String operatorId)
+  public OperatorMeta getOperatorMeta(String operatorName)
   {
-    return this.operators.get(operatorId);
+    return this.operators.get(operatorName);
   }
 
   @Override
