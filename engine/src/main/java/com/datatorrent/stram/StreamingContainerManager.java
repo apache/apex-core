@@ -339,6 +339,7 @@ public class StreamingContainerManager implements PlanContext
               List<PTOperator> rootOperators = plan.getOperators(root);
               for (PTOperator rootOperator : rootOperators) {
                 // DFS for visiting the operators for latency calculation
+                LOG.debug("Calculating latency starting from operator {}", rootOperator.getId());
                 calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited, leafOperators);
               }
             }
@@ -393,7 +394,7 @@ public class StreamingContainerManager implements PlanContext
 
     if (upstreamMaxEmitTimestamp > 0) {
       if (upstreamMaxEmitTimestamp < endWindowStats.emitTimestamp) {
-        //LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
+        LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
         operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
       }
       else if (upstreamMaxEmitTimestamp != endWindowStats.emitTimestamp) {
