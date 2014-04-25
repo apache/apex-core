@@ -472,7 +472,6 @@ public class StramChild extends YarnContainerMain
 
   private synchronized void undeploy(List<Integer> nodeList)
   {
-    logger.info("got undeploy request {}", nodeList);
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
@@ -1261,6 +1260,10 @@ public class StramChild extends YarnContainerMain
             }
 
             node.run(); /* this is a blocking call */
+          }
+          catch (Error error) {
+            logger.error("Voluntary container termination due to an error in operator set {}.", currentdi == null ? setOperators : currentdi, error);
+            System.exit(1);
           }
           catch (Exception ex) {
             if (currentdi == null) {
