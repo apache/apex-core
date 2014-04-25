@@ -316,6 +316,11 @@ public class StramClient
 
     // modify snapshot state to switch app id
     ((StreamingContainerManager.CheckpointState)snapshot).setApplicationId(this.dag, conf);
+    Path checkpointPath = new Path(newAppDir, LogicalPlan.SUBDIR_CHECKPOINTS);
+
+    FileSystem fs = FileSystem.newInstance(origAppDir.toUri(), conf);
+    // remove the path that was created by the storage agent during deserialization and replacement
+    fs.delete(checkpointPath, true);
 
     // write snapshot to new location
     recoveryHandler = new FSRecoveryHandler(newAppDir, conf);
@@ -327,7 +332,6 @@ public class StramClient
     logIs.close();
 
     // copy sub directories that are not present in target
-    FileSystem fs = FileSystem.newInstance(origAppDir.toUri(), conf);
     FileStatus[] lFiles = fs.listStatus(origAppDir);
     for (FileStatus f : lFiles) {
       if (f.isDirectory()) {
