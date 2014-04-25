@@ -1,4 +1,3 @@
-
 /**
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
@@ -7,10 +6,7 @@
  */
 package com.datatorrent.stram;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.*;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -18,41 +14,44 @@ import com.esotericsoftware.kryo.io.Output;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
+
 public class FSStorageAgent implements StorageAgent, Serializable
 {
   private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
-  private transient FileSystem fs;
-  private transient Configuration conf; // not serializable and will be used client side only
+  private final transient FileSystem fs;
+  private static final transient Kryo kryo;
+
+  static {
+    kryo = new Kryo();
+  }
 
   @SuppressWarnings("unused")
   private FSStorageAgent()
   {
-    /* this is needed just for serialization with Kryo */
-    path = null;
+    this(null, null);
   }
 
   public FSStorageAgent(String path, Configuration conf)
   {
     this.path = path;
-    this.conf = conf;
-  }
-
-  private void initialize() throws IOException
-  {
-    if (fs == null) {
+    try {
       logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
-      fs = FileSystem.newInstance(lPath.toUri(), conf != null ? conf : new Configuration());
+      fs = FileSystem.newInstance(lPath.toUri(), conf == null ? new Configuration() : conf);
       if (FileSystem.mkdirs(fs, lPath, new FsPermission((short)00755))) {
         fs.setWorkingDirectory(lPath);
       }
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
     }
   }
 
@@ -73,7 +72,6 @@ public class FSStorageAgent implements StorageAgent, Serializable
     Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
     logger.debug("Saving: {}", lPath);
 
-    initialize();
     FSDataOutputStream stream = fs.create(lPath);
     try {
       store(stream, object);
@@ -89,7 +87,6 @@ public class FSStorageAgent implements StorageAgent, Serializable
     Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
     logger.debug("Loading: {}", lPath);
 
-    initialize();
     FSDataInputStream stream = fs.open(lPath);
     try {
       return retrieve(stream);
@@ -105,7 +102,6 @@ public class FSStorageAgent implements StorageAgent, Serializable
     Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
     logger.debug("Deleting: {}", lPath);
 
-    initialize();
     fs.delete(lPath, false);
   }
 
@@ -114,7 +110,6 @@ public class FSStorageAgent implements StorageAgent, Serializable
   {
     Path lPath = new Path(String.valueOf(operatorId));
 
-    initialize();
     FileStatus[] files = fs.listStatus(lPath);
     if (files == null || files.length == 0) {
       throw new IOException("Storage Agent has not saved anything yet!");
@@ -131,13 +126,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
   @Override
   public String toString()
   {
-    try {
-      initialize();
-      return fs.toString();
-    }
-    catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    return fs.toString();
   }
 
   public static void store(OutputStream stream, Object operator)
@@ -159,7 +148,11 @@ public class FSStorageAgent implements StorageAgent, Serializable
     }
   }
 
-  private static final Kryo kryo = new Kryo();
+  public Object readResolve() throws ObjectStreamException
+  {
+    return new FSStorageAgent(this.path, null);
+  }
+
   private static final long serialVersionUID = 201404031201L;
   private static final Logger logger = LoggerFactory.getLogger(FSStorageAgent.class);
 }

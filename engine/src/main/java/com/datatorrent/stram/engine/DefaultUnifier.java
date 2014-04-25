@@ -29,5 +29,5 @@ public class DefaultUnifier extends BaseOperator implements Unifier<Object>
 
   @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(DefaultUnifier.class);
-  private static final long serialVersionUID = 201404151351L;
+  private static final long serialVersionUID = 201404141917L;
 }
