@@ -39,7 +39,6 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -683,12 +682,10 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    //StreamingContainerContext scc = new StreamingContainerContext(new DefaultAttributeMap(), plan.getLogicalPlan());
     StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
     scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.vars.windowStartMillis;
-
-
+    
     return scc;
   }
 
