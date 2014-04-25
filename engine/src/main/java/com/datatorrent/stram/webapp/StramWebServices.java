@@ -483,7 +483,8 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      throw new UnsupportedOperationException();
+      LOG.info("Received a kill request on application master container. Exiting.");
+      System.exit(1);
     }
     else {
       dagManager.stopContainer(containerId);
