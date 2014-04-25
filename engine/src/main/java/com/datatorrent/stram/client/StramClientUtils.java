@@ -298,10 +298,9 @@ public class StramClientUtils
 
   private static Configuration addDTSiteResources(Configuration conf, File confFile)
   {
-    File cfgResource = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
-    if (cfgResource.exists()) {
-      LOG.info("Loading settings: " + cfgResource.toURI());
-      conf.addResource(new Path(cfgResource.toURI()));
+    if (confFile.exists()) {
+      LOG.info("Loading settings: " + confFile.toURI());
+      conf.addResource(new Path(confFile.toURI()));
     }
     return conf;
   }
