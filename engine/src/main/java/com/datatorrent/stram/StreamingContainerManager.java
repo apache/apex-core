@@ -685,7 +685,7 @@ public class StreamingContainerManager implements PlanContext
     StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
     scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
     scc.startWindowMillis = this.vars.windowStartMillis;
-    
+
     return scc;
   }
 
@@ -798,7 +798,7 @@ public class StreamingContainerManager implements PlanContext
       oper.failureCount++;
       LOG.warn("Operator failure: {} count: {}", oper, oper.failureCount);
       Integer maxAttempts = oper.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
-      if (maxAttempts <= 0 || oper.failureCount <= maxAttempts) {
+      if (maxAttempts == 0 || oper.failureCount <= maxAttempts) {
         // restart entire container in attempt to recover operator
         // in the future a more sophisticated recovery strategy could
         // involve initial redeploy attempt(s) of affected operator in
