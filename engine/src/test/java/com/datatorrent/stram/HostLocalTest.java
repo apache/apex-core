@@ -27,28 +27,12 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestStreamCodec;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
 public class HostLocalTest
 {
   public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>
   {
-    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>()
-    {
-      @Override
-      public Class<? extends StreamCodec<Object>> getStreamCodec()
-      {
-        return PartitioningTestStreamCodec.class;
-      }
-
-      @Override
-      final public void process(Object payload)
-      {
-      }
-
-    };
-
     @Override
     public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
     {

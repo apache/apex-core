@@ -33,22 +33,23 @@ import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.support.StramTestSupport;
 
-public class PhysicalPlanTest {
-  public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
+public class PhysicalPlanTest
+{
+
+  private static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
     @Override
     public int getPartition(Object o) {
-      return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length];
+      return 0;
     }
-
   }
 
   public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>
   {
-    final public static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     public Integer[] partitionKeys = {0, 1, 2};
     public String pks;
     public transient Map<Integer, Partition<PartitioningTestOperator>> partitions;
+    private boolean fixedCapacity = true;
 
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
@@ -66,6 +67,12 @@ public class PhysicalPlanTest {
     @Override
     public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
     {
+      if (!fixedCapacity) {
+        partitionKeys = new Integer[partitions.size()+incrementalCapacity];
+        for (int i=0; i<partitionKeys.length; i++) {
+          partitionKeys[i] = i;
+        }
+      }
       List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(this.partitionKeys.length);
       for (Integer partitionKey: partitionKeys) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
@@ -98,7 +105,7 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
-    dag.getMeta(node2).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.getMeta(node2).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, node2.partitionKeys.length);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
@@ -110,13 +117,13 @@ public class PhysicalPlanTest {
     Assert.assertEquals("partition map " + node2.partitions, 3, node2.partitions.size());
 
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
-    Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
-    for (int i = 0; i < PartitioningTestOperator.PARTITION_KEYS.length; i++) {
+    Assert.assertEquals("partition instances " + n2Instances, node2.partitionKeys.length, n2Instances.size());
+    for (int i = 0; i < n2Instances.size(); i++) {
       PTOperator po = n2Instances.get(i);
       Map<String, PTInput> inputsMap = new HashMap<String, PTInput>();
       for (PTInput input: po.getInputs()) {
         inputsMap.put(input.portName, input);
-        Assert.assertEquals("partitions " + input, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), input.partitions.partitions);
+        Assert.assertEquals("partitions " + input, Sets.newHashSet(node2.partitionKeys[i]), input.partitions.partitions);
         Assert.assertEquals("codec " + input.logicalStream, PartitioningTestStreamCodec.class, input.logicalStream.getCodecClass());
       }
       Assert.assertEquals("number inputs " + inputsMap, Sets.newHashSet(PartitioningTestOperator.IPORT1, PartitioningTestOperator.INPORT_WITH_CODEC), inputsMap.keySet());
@@ -777,7 +784,8 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_PARALLEL, true);
 
     // parallel partition two downstream operators
-    GenericTestOperator o3_1 = dag.addOperator("o3_1", GenericTestOperator.class);
+    PartitioningTestOperator o3_1 = dag.addOperator("o3_1", PartitioningTestOperator.class);
+    o3_1.fixedCapacity = false;
     dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o3_1Meta = dag.getMeta(o3_1);
 
@@ -851,6 +859,15 @@ public class PhysicalPlanTest {
     Assert.assertEquals("" + o5Instances, 1, o5Instances.size());
     Assert.assertEquals("inputs" + container5.getOperators().get(0).getInputs(), 1, container5.getOperators().get(0).getInputs().size());
     Assert.assertEquals("inputs" + container5.getOperators().get(0).getInputs(), container4.getOperators().get(0), container5.getOperators().get(0).getInputs().get(0).source.source);
+
+    // verify partitioner was called for parallel partition
+    Assert.assertNotNull("partitioner called " + o3_1, o3_1.partitions);
+    for (PTOperator p : plan.getOperators(o3_1Meta)) {
+      Assert.assertEquals("inputs " + p, 1, p.getInputs().size());
+      for (PTInput pti : p.getInputs()) {
+        Assert.assertNull("partition keys " + pti, pti.partitions);
+      }
+    }
 
   }
 
