@@ -378,6 +378,7 @@ public class StreamingContainerManager implements PlanContext
 
     // find the maximum end window emit time from all input ports
     long upstreamMaxEmitTimestamp = -1;
+    PTOperator upstreamMaxEmitTimestampOperator = null;
     for (PTOperator.PTInput input : oper.getInputs()) {
       if (input.source.source instanceof PTOperator) {
         PTOperator upstreamOp = input.source.source;
@@ -388,6 +389,7 @@ public class StreamingContainerManager implements PlanContext
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
           upstreamMaxEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
+          upstreamMaxEmitTimestampOperator = upstreamOp;
         }
       }
     }
@@ -398,8 +400,9 @@ public class StreamingContainerManager implements PlanContext
         operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
       }
       else if (upstreamMaxEmitTimestamp != endWindowStats.emitTimestamp) {
-        LOG.warn("Cannot add to latency MA because upstreamMaxEmitTimestamp is greater than emitTimestamp ({} > {})", upstreamMaxEmitTimestamp, endWindowStats.emitTimestamp);
-        LOG.warn("for operator {}. Please verify that the system clocks are in sync in your cluster.", oper);
+        LOG.warn("Cannot calculate latency for this operator because upstream timestamp is greater than this operator's end window time: {} ({}) > {} ({})",
+                 upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, endWindowStats.emitTimestamp, oper);
+        LOG.warn("Please verify that the system clocks are in sync in your cluster.", oper);
       }
     }
 
@@ -1664,8 +1667,13 @@ public class StreamingContainerManager implements PlanContext
       if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
         loi.recoveryWindowId = recoveryWindowId;
       }
-      loi.containerIds.add(physicalOperator.getContainer().getExternalId());
-      loi.hosts.add(physicalOperator.getContainer().host);
+      String externalId = physicalOperator.getContainer().getExternalId();
+      if (externalId != null) {
+        loi.containerIds.add(physicalOperator.getContainer().getExternalId());
+      }
+      if (physicalOperator.getContainer().host != null) {
+        loi.hosts.add(physicalOperator.getContainer().host);
+      }
     }
     return loi;
   }
