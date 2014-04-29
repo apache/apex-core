@@ -98,7 +98,7 @@ public class FSUtil
   {
     FileStatus contents[] = fs.listStatus(dst);
     for (int i = 0; i < contents.length; i++) {
-      setPermission(fs, contents[i].getPath(), permission);
+      fs.setPermission(contents[i].getPath(), permission);
     }
     fs.setPermission(dst, permission);
   }
