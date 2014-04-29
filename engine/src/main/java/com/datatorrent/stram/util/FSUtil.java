@@ -69,7 +69,13 @@ public class FSUtil
     }
 
     // TODO: change group and limit write to group
-    dstFS.setPermission(dst, new FsPermission("777"));
+    if (srcStatus.isDirectory()) {
+      dstFS.setPermission(dst, new FsPermission((short) 0775));
+    } else {
+      dstFS.setPermission(dst, new FsPermission("ug+w"));
+    }
+    dstFS.setOwner(dst, null, srcStatus.getGroup());
+
 /*
     try {
       // transfer owner

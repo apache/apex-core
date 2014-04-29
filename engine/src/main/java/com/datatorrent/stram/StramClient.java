@@ -341,7 +341,7 @@ public class StramClient
         }
         else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
-          FSUtil.setPermission(fs, new Path(targetPath), new FsPermission("777"));
+          FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0775));
         }
       }
     }
