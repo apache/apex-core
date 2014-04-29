@@ -14,7 +14,6 @@ import java.net.URL;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
-import org.junit.Assert;
 import static java.lang.Thread.sleep;
 
 import javax.ws.rs.core.MediaType;
@@ -26,6 +25,7 @@ import com.sun.jersey.api.client.WebResource;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -62,7 +62,9 @@ import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -183,28 +185,28 @@ public class StramMiniClusterTest
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put(DAGContext.DT_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
-    dagProps.put(DAGContext.DT_PREFIX + "operator.numGen.maxTuples", "1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
     //props.put(DAGContext.DT_PREFIX + "stream.output.classname", HDFSOutputStream.class.getName());
     //props.put(DAGContext.DT_PREFIX + "stream.output.inputNode", "module2");
     //props.put(DAGContext.DT_PREFIX + "stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put(DAGContext.DT_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(DAGContext.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(DAGContext.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
-    dagProps.put(DAGContext.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
 
-    dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.source", "module1.output1");
-    dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.output1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINER_MEMORY_MB.getName(), "512");
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINER_MEMORY_MB.getName(), "512");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
     tb.addFromProperties(dagProps);
 
     Properties tplgProperties = tb.getProperties();
@@ -242,9 +244,9 @@ public class StramMiniClusterTest
 
     // single container topology of inline input and module
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
-    props.put(DAGContext.DT_PREFIX + "stream.input.outputNode", "module1");
-    props.put(DAGContext.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
+    props.put(StreamingApplication.DT_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
+    props.put(StreamingApplication.DT_PREFIX + "stream.input.outputNode", "module1");
+    props.put(StreamingApplication.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
     File tmpFile = createTmpPropFile(props);
 

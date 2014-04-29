@@ -4,10 +4,6 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import java.io.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +11,10 @@ import java.io.IOException;
 import java.net.*;
 import java.net.URL;
 import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -30,8 +30,12 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.StreamingApplication;
+
+import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  *
@@ -48,8 +52,8 @@ public class StramClientUtils
 {
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
-  public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
-  public static final String DT_CONFIG_STATUS = DAGContext.DT_PREFIX + "configStatus";
+  public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
+  public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
 
@@ -308,18 +312,18 @@ public class StramClientUtils
     while (iterator.hasNext()) {
       Map.Entry<String, String> entry = iterator.next();
       if (entry.getKey().startsWith("stram.")) {
-        String newKey = DAGContext.DT_PREFIX + entry.getKey().substring(6);
+        String newKey = StreamingApplication.DT_PREFIX + entry.getKey().substring(6);
         LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
         newEntries.put(newKey, entry.getValue());
         iterator.remove();
       }
-      else if (entry.getKey().equals(DAGContext.DT_PREFIX + LogicalPlan.GATEWAY_ADDRESS.getName())) {
-        String newKey = DAGContext.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName();
+      else if (entry.getKey().equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_ADDRESS.getName())) {
+        String newKey = StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName();
         newEntries.put(newKey, entry.getValue());
         LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
         iterator.remove();
       }
-      else if (entry.getKey().equals(DAGContext.DT_PREFIX + "gateway.address")) {
+      else if (entry.getKey().equals(StreamingApplication.DT_PREFIX + "gateway.address")) {
         String newKey = LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS;
         newEntries.put(newKey, entry.getValue());
         iterator.remove();
@@ -442,7 +446,7 @@ public class StramClientUtils
         File cfgResource = new File(resource.toURI());
         synchronized (StramClientUtils.class) {
           BufferedReader br = new BufferedReader(new FileReader(cfgResource));
-          StringBuilder sb = new StringBuilder();
+          StringBuilder sb = new StringBuilder(1024);
           try {
             String line;
             boolean changed = false;

@@ -4,12 +4,30 @@
  */
 package com.datatorrent.stram.plan;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.util.*;
+
+import com.google.common.collect.Sets;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import static org.junit.Assert.*;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.hadoop.conf.Configuration;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
+
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -19,21 +37,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
-import com.google.common.collect.Sets;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.util.*;
-
-import static org.junit.Assert.*;
 
 public class LogicalPlanConfigurationTest {
 
@@ -181,10 +184,10 @@ public class LogicalPlanConfigurationTest {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + DAG.CONTAINER_MEMORY_MB.getName(), "123");
-    props.put(DAGContext.DT_PREFIX + DAG.APPLICATION_PATH.getName(), "/defaultdir");
-    props.put(DAGContext.DT_PREFIX + "application." + appName + "." + DAG.APPLICATION_PATH.getName(), "/otherdir");
-    props.put(DAGContext.DT_PREFIX + "application." + appName + "." + DAG.STREAMING_WINDOW_SIZE_MILLIS.getName(), "1000");
+    props.put(StreamingApplication.DT_PREFIX + DAG.CONTAINER_MEMORY_MB.getName(), "123");
+    props.put(StreamingApplication.DT_PREFIX + DAG.APPLICATION_PATH.getName(), "/defaultdir");
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.APPLICATION_PATH.getName(), "/otherdir");
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.STREAMING_WINDOW_SIZE_MILLIS.getName(), "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -229,20 +232,20 @@ public class LogicalPlanConfigurationTest {
     Properties props = new Properties();
 
     // match operator by name
-    props.put(DAGContext.DT_PREFIX + "template.matchId1.matchIdRegExp", ".*operator1.*");
-    props.put(DAGContext.DT_PREFIX + "template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
-    props.put(DAGContext.DT_PREFIX + "template.matchId1.nested.property", "nested.propertyValue-matchId1");
+    props.put(StreamingApplication.DT_PREFIX + "template.matchId1.matchIdRegExp", ".*operator1.*");
+    props.put(StreamingApplication.DT_PREFIX + "template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
+    props.put(StreamingApplication.DT_PREFIX + "template.matchId1.nested.property", "nested.propertyValue-matchId1");
 
     // match class name, lower priority
-    props.put(DAGContext.DT_PREFIX + "template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
-    props.put(DAGContext.DT_PREFIX + "template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
+    props.put(StreamingApplication.DT_PREFIX + "template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
+    props.put(StreamingApplication.DT_PREFIX + "template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
 
     // match class name
-    props.put(DAGContext.DT_PREFIX + "template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
-    props.put(DAGContext.DT_PREFIX + "template.t2.myStringProperty", "myStringPropertyValue");
+    props.put(StreamingApplication.DT_PREFIX + "template.t2.matchClassNameRegExp", ".*"+GenericTestOperator.class.getSimpleName());
+    props.put(StreamingApplication.DT_PREFIX + "template.t2.myStringProperty", "myStringPropertyValue");
 
     // direct setting
-    props.put(DAGContext.DT_PREFIX + "operator.operator3.emitFormat", "emitFormatValue");
+    props.put(StreamingApplication.DT_PREFIX + "operator.operator3.emitFormat", "emitFormatValue");
 
     LogicalPlan dag = new LogicalPlan();
     Operator operator1 = dag.addOperator("operator1", new ValidationTestOperator());
@@ -272,8 +275,8 @@ public class LogicalPlanConfigurationTest {
   public void testSetOperatorProperties() {
 
     Configuration conf = new Configuration(false);
-    conf.set(DAGContext.DT_PREFIX + "operator.o1.myStringProperty", "myStringPropertyValue");
-    conf.set(DAGContext.DT_PREFIX + "operator.o2.stringArrayField", "a,b,c");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o1.myStringProperty", "myStringPropertyValue");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.stringArrayField", "a,b,c");
 
     LogicalPlan dag = new LogicalPlan();
     GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
@@ -306,7 +309,7 @@ public class LogicalPlanConfigurationTest {
     LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
 
     Properties properties = new Properties();
-    properties.put(DAGContext.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
+    properties.put(StreamingApplication.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
 
     builder.addFromProperties(properties);
 
@@ -346,10 +349,10 @@ public class LogicalPlanConfigurationTest {
     };
 
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
-    props.put(DAGContext.DT_PREFIX + "operator.*." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "2");
-    props.put(DAGContext.DT_PREFIX + "operator.*." + OperatorContext.STATS_LISTENERS.getName(), PartitionLoadWatch.class.getName());
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "20");
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "2");
+    props.put(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.STATS_LISTENERS.getName(), PartitionLoadWatch.class.getName());
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "20");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -383,12 +386,12 @@ public class LogicalPlanConfigurationTest {
     };
 
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator1.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
-    props.put(DAGContext.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -428,7 +431,7 @@ public class LogicalPlanConfigurationTest {
     // attribute that cannot be configured
 
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "attr.NOT_CONFIGURABLE", "value");
+    props.put(StreamingApplication.DT_PREFIX + "attr.NOT_CONFIGURABLE", "value");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);
@@ -444,7 +447,7 @@ public class LogicalPlanConfigurationTest {
 
     // invalid attribute name
     props = new Properties();
-    String invalidAttribute = DAGContext.DT_PREFIX + "attr.INVALID_NAME";
+    String invalidAttribute = StreamingApplication.DT_PREFIX + "attr.INVALID_NAME";
     props.put(invalidAttribute, "value");
 
     try {
