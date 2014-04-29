@@ -12,6 +12,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,13 +68,17 @@ public class FSUtil
       }
     }
 
+    dstFS.setPermission(dst, new FsPermission("777"));
+/*
     try {
       // transfer owner
+      // DOES NOT WORK only super user can change file owner
       dstFS.setOwner(dst, srcStatus.getOwner(), srcStatus.getGroup());
-    } catch (Exception e) {
+    } catch (IOException e) {
       LOG.warn("Failed to change owner on {} to {}", dst, srcStatus.getOwner(), e);
+      throw e;
     }
-
+*/
     if (deleteSource) {
       return srcFS.delete(src, true);
     } else {
