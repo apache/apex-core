@@ -198,6 +198,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       return null;
     }
 
+    LOG.debug("Reading checkpoint {}", snapshotPath);
     InputStream is = fc.open(snapshotPath);
     ObjectInputStream ois = new ObjectInputStream(is);
     try {
