@@ -74,7 +74,7 @@ public class FSUtil
     } else {
       dstFS.setPermission(dst, new FsPermission("ugo+w"));
     }
-    dstFS.setOwner(dst, null, srcStatus.getGroup());
+    //dstFS.setOwner(dst, null, srcStatus.getGroup());
 
 /*
     try {
