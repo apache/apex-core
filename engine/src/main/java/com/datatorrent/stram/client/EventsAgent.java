@@ -81,7 +81,7 @@ public final class EventsAgent extends FSPartFileAgent
     return info;
   }
 
-  public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime)
+  public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime, Long offset, Integer limit)
   {
     List<EventInfo> result = new ArrayList<EventInfo>();
     String dir = getEventsDirectory(appId);
@@ -112,7 +112,8 @@ public final class EventsAgent extends FSPartFileAgent
 
         BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
         try {
-          processPartFile(partBr, fromTime, toTime, result);
+          offset = processPartFile(partBr, fromTime, toTime, offset, limit, result);
+          limit -= result.size();
         }
         finally {
           partBr.close();
@@ -127,9 +128,9 @@ public final class EventsAgent extends FSPartFileAgent
         else if (lastProcessPartFile.startsWith("part") && lastProcessPartFile.endsWith(".txt")) {
           extraPartFile = "part" + (Integer.valueOf(lastProcessPartFile.substring(4, lastProcessPartFile.length() - 4)) + 1) + ".txt";
         }
-        if (extraPartFile != null) {
+        if (extraPartFile != null && limit > 0) {
           partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
-          processPartFile(partBr, fromTime, toTime, result);
+          processPartFile(partBr, fromTime, toTime, offset, limit, result);
         }
       }
       catch (Exception ex) {
@@ -149,7 +150,7 @@ public final class EventsAgent extends FSPartFileAgent
   }
 
   @SuppressWarnings("unchecked")
-  private void processPartFile(BufferedReader partBr, Long fromTime, Long toTime, List<EventInfo> result) throws IOException
+  private long processPartFile(BufferedReader partBr, Long fromTime, Long toTime, long offset, int limit, List<EventInfo> result) throws IOException
   {
     String partLine;
     while ((partLine = partBr.readLine()) != null) {
@@ -163,9 +164,15 @@ public final class EventsAgent extends FSPartFileAgent
       ev.type = partLine.substring(cursor, cursor2);
       cursor = cursor2 + 1;
       if ((fromTime == null || ev.timestamp >= fromTime) && (toTime == null || ev.timestamp <= toTime)) {
-        ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
-        result.add(ev);
+        if (offset > 0) {
+          offset--;
+        }
+        else if (limit-- > 0) {
+          ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
+          result.add(ev);
+        }
       }
     }
+    return offset;
   }
 }

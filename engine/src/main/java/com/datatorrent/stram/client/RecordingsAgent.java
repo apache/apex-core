@@ -458,9 +458,6 @@ public final class RecordingsAgent extends FSPartFileAgent
       ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       long currentOffset = 0;
       boolean readPartFile = false;
-      if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
-        limit = MAX_LIMIT_TUPLES;
-      }
       MutableLong numRemainingTuples = new MutableLong(limit);
       MutableLong currentTimestamp = new MutableLong();
       RecordingsIndexLine indexLine;
