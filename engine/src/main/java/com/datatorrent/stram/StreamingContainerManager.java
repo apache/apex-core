@@ -1669,9 +1669,7 @@ public class StreamingContainerManager implements PlanContext
       }
       String externalId = physicalOperator.getContainer().getExternalId();
       if (externalId != null) {
-        loi.containerIds.add(physicalOperator.getContainer().getExternalId());
-      }
-      if (physicalOperator.getContainer().host != null) {
+        loi.containerIds.add(externalId);
         loi.hosts.add(physicalOperator.getContainer().host);
       }
     }
@@ -2140,7 +2138,6 @@ public class StreamingContainerManager implements PlanContext
     private final long windowStartMillis;
     private final int heartbeatTimeoutMillis;
     private final String appPath;
-    private final String checkpointFsPath;
     private final int maxWindowsBehindForStats;
     private final int recordStatsInterval;
 
@@ -2155,7 +2152,6 @@ public class StreamingContainerManager implements PlanContext
       }
 
       this.appPath = attributes.get(LogicalPlan.APPLICATION_PATH);
-      this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
 
       if (attributes.get(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) == null) {
         attributes.put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 500);
@@ -2176,7 +2172,6 @@ public class StreamingContainerManager implements PlanContext
       this.maxWindowsBehindForStats = other.maxWindowsBehindForStats;
       this.recordStatsInterval = other.recordStatsInterval;
       this.appPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
-      this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     }
 
   }
