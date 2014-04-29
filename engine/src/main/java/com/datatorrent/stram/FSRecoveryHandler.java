@@ -199,6 +199,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       return null;
     }
 
+    LOG.debug("Reading checkpoint {}", snapshotPath);
     InputStream is = fc.open(snapshotPath);
     // indeterministic class loading behavior
     // http://stackoverflow.com/questions/9110677/readresolve-not-working-an-instance-of-guavas-serializedform-appears
