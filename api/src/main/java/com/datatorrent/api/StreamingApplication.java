@@ -34,14 +34,28 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @since 0.3.2
  */
-public interface StreamingApplication {
-    /** Constant <code>LAUNCHMODE_YARN="yarn"</code> */
-    public static final String LAUNCHMODE_YARN = "yarn";
-    /** Constant <code>LAUNCHMODE_LOCAL="local"</code> */
-    public static final String LAUNCHMODE_LOCAL = "local";
+public interface StreamingApplication
+{
+  String DT_PREFIX = "dt.";
+  /**
+   * Constant
+   * <code>LAUNCHMODE_YARN="yarn"</code>
+   */
+  String LAUNCHMODE_YARN = "yarn";
+  /**
+   * Constant
+   * <code>LAUNCHMODE_LOCAL="local"</code>
+   */
+  String LAUNCHMODE_LOCAL = "local";
+  /**
+   * Launch mode for the application.
+   * Used in the client to set configuration depending on how the DAG is executed.
+   */
+  String LAUNCH_MODE = DT_PREFIX + "launchmode";
 
-    /**
-     * <p>populateDAG.</p>
-     */
-    void populateDAG(DAG dag, Configuration conf);
+  /**
+   * <p>populateDAG.</p>
+   */
+  void populateDAG(DAG dag, Configuration conf);
+
 }

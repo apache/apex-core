@@ -4,32 +4,6 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.google.common.base.CaseFormat;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.validation.ValidationException;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +11,35 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
+
+import javax.validation.ValidationException;
+
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+
+import com.datatorrent.api.*;
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
+
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  *
@@ -51,18 +54,18 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
-  public static final String GATEWAY_PREFIX = DAGContext.DT_PREFIX + "gateway.";
+  public static final String GATEWAY_PREFIX = StreamingApplication.DT_PREFIX + "gateway.";
   public static final String GATEWAY_LISTEN_ADDRESS_PROP = "listenAddress";
   public static final String GATEWAY_LISTEN_ADDRESS = GATEWAY_PREFIX + GATEWAY_LISTEN_ADDRESS_PROP;
 
-  public static final String STREAM_PREFIX = DAGContext.DT_PREFIX + "stream.";
-  public static final String LICENSE_PREFIX = DAGContext.DT_PREFIX + "license.";
+  public static final String STREAM_PREFIX = StreamingApplication.DT_PREFIX + "stream.";
+  public static final String LICENSE_PREFIX = StreamingApplication.DT_PREFIX + "license.";
   public static final String STREAM_SOURCE = "source";
   public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_LOCALITY = "locality";
 
-  public static final String OPERATOR_PREFIX =  DAGContext.DT_PREFIX + "operator.";
+  public static final String OPERATOR_PREFIX =  StreamingApplication.DT_PREFIX + "operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
@@ -728,7 +731,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
-    addFromProperties(toProperties(conf, DAGContext.DT_PREFIX));
+    addFromProperties(toProperties(conf, StreamingApplication.DT_PREFIX));
   }
 
   public static Properties toProperties(Configuration conf, String prefix) {
@@ -787,7 +790,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
       this.properties.setProperty(propertyName, propertyValue);
-      if (propertyName.startsWith(DAGContext.DT_PREFIX)) {
+      if (propertyName.startsWith(StreamingApplication.DT_PREFIX)) {
         String[] keyComps = propertyName.split("\\.");
         parseStramPropertyTokens(keyComps, 1, propertyName, propertyValue, stramConf);
       }
