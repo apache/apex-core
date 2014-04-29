@@ -10,8 +10,12 @@ import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.NotImplementedException;
@@ -21,10 +25,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
@@ -33,8 +36,6 @@ import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
 import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -355,7 +356,7 @@ public class StramAppLauncher
   {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    conf.set(StreamingApplication.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
+    conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
     StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig));
     lc.run();
   }
@@ -378,7 +379,7 @@ public class StramAppLauncher
   public ApplicationId launchApp(AppFactory appConfig) throws Exception
   {
     loadDependencies();
-    conf.set(StreamingApplication.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
+    conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = prepareDAG(appConfig);
     byte[] licenseBytes = StramClientUtils.getLicense(conf);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
