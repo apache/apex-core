@@ -72,7 +72,7 @@ public class FSUtil
     if (srcStatus.isDirectory()) {
       dstFS.setPermission(dst, new FsPermission((short) 0777));
     } else {
-      dstFS.setPermission(dst, new FsPermission("ugo+w"));
+      dstFS.setPermission(dst, new FsPermission((short) 0777)/*"ugo+w"*/);
     }
     //dstFS.setOwner(dst, null, srcStatus.getGroup());
 
