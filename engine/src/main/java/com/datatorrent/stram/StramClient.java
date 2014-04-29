@@ -16,7 +16,6 @@ import com.google.common.collect.Lists;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
@@ -26,6 +25,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -43,12 +43,12 @@ import org.apache.hadoop.yarn.util.Records;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
-
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.FSUtil;
 
 /**
  *
@@ -336,10 +336,12 @@ public class StramClient
         String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
-          FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
+          //FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
+          FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
         }
         else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
+          FSUtil.setPermission(fs, new Path(targetPath), new FsPermission("777"));
         }
       }
     }
