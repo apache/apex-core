@@ -4,6 +4,7 @@
 package com.datatorrent.stram.cli;
 
 import com.datatorrent.api.*;
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
@@ -33,7 +34,6 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
-
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
@@ -89,7 +89,7 @@ public class DTCli
   private String jsonp;
   private boolean raw = false;
   private RecordingsAgent recordingsAgent;
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JacksonObjectMapperProvider().getContext(null);
   private String pagerCommand;
   private Process pagerProcess;
   private int verboseLevel = 0;

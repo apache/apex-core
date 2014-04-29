@@ -4,38 +4,32 @@
  */
 package com.datatorrent.stram.codec;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.ws.rs.Produces;
-import javax.ws.rs.ext.Provider;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.configuration.PropertiesConfiguration;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.lib.util.ObjectMapperString;
+import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
+import java.io.IOException;
+import java.util.*;
+import javax.ws.rs.Produces;
+import javax.ws.rs.ext.Provider;
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.configuration.PropertiesConfiguration;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.annotate.JsonTypeInfo;
+import org.codehaus.jackson.map.*;
+import org.codehaus.jettison.json.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>LogicalPlanSerializer class.</p>
@@ -68,12 +62,15 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     //
 
     Collection<OperatorMeta> allOperators = dag.getAllOperators();
+    ObjectMapper propertyObjectMapper = new ObjectMapper();
+    propertyObjectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+    propertyObjectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+    propertyObjectMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
 
     for (OperatorMeta operatorMeta : allOperators) {
       HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
       ArrayList<Map<String, Object>> portList = new ArrayList<Map<String, Object>>();
       HashMap<String, Object> attributeMap = new HashMap<String, Object>();
-      HashMap<String, Object> propertyMap = new HashMap<String, Object>();
 
       String operatorName = operatorMeta.getName();
       operatorArray.add(operatorDetailMap);
@@ -81,7 +78,6 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       operatorDetailMap.put("ports", portList);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
-      operatorDetailMap.put("properties", propertyMap);
       for (Attribute<?> attrKey : new Attribute<?>[] {
         Context.OperatorContext.APPLICATION_WINDOW_COUNT,
         Context.OperatorContext.INITIAL_PARTITION_COUNT,
@@ -94,21 +90,16 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           attributeMap.put(attrKey.name, attrValue);
         }
       }
-      BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
-      @SuppressWarnings("rawtypes")
-      Iterator entryIterator = operatorProperties.entryIterator();
-      while (entryIterator.hasNext()) {
-        try {
-          @SuppressWarnings("unchecked")
-          Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
-          if (entry.getValue() != null) {
-            propertyMap.put(entry.getKey(), entry.getValue());
-          }
-        }
-        catch (Exception ex) {
-          LOG.warn("Error trying to get a property of operator {}", operatorMeta.getName(), ex);
-        }
+
+      ObjectMapperString str;
+
+      try {
+        str = new ObjectMapperString(propertyObjectMapper.writeValueAsString(operatorMeta.getOperator()));
       }
+      catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+      operatorDetailMap.put("properties", str);
 
       Operators.PortMappingDescriptor pmd = new Operators.PortMappingDescriptor();
       Operators.describe(operatorMeta.getOperator(), pmd);

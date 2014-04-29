@@ -53,6 +53,7 @@ import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StramChildAgent;
@@ -100,15 +101,13 @@ public class StramWebServices
   @Nullable
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
 
   @Inject
   public StramWebServices(final StramAppContext context)
   {
     this.appCtx = context;
-    objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
-    objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
   }
 
   Boolean hasAccess(HttpServletRequest request)
