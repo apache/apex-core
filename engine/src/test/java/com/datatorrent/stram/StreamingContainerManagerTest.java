@@ -502,7 +502,7 @@ public class StreamingContainerManagerTest {
     ContainerStats cstats = new ContainerStats(containerId);
     ContainerHeartbeat hb = new ContainerHeartbeat();
     hb.setContainerStats(cstats);
-
+    
     ContainerHeartbeatResponse chr = scm.processHeartbeat(hb); // get deploy request
     Assert.assertNotNull(chr.deployRequest);
     Assert.assertEquals(""+chr.deployRequest, 1, chr.deployRequest.size());
