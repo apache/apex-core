@@ -25,6 +25,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -340,6 +341,7 @@ public class StramClient
         }
         else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
+          FSUtil.setPermission(fs, new Path(targetPath), new FsPermission("777"));
         }
       }
     }

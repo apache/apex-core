@@ -68,6 +68,7 @@ public class FSUtil
       }
     }
 
+    // TODO: change group and limit write to group
     dstFS.setPermission(dst, new FsPermission("777"));
 /*
     try {
@@ -85,6 +86,14 @@ public class FSUtil
       return true;
     }
 
+  }
+
+  public static void setPermission(FileSystem fs, Path dst, FsPermission permission) throws IOException
+  {
+    FileStatus contents[] = fs.listStatus(dst);
+    for (int i = 0; i < contents.length; i++) {
+      fs.setPermission(contents[i].getPath(), permission);
+    }
   }
 
 }
