@@ -12,12 +12,15 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  */
 public class FSUtil
 {
+  private static final Logger LOG = LoggerFactory.getLogger(FSUtil.class);
 
   /**
    * Copied from FileUtil to transfer ownership
@@ -64,8 +67,12 @@ public class FSUtil
       }
     }
 
-    // transfer owner
-    dstFS.setOwner(dst, srcStatus.getOwner(), srcStatus.getGroup());
+    try {
+      // transfer owner
+      dstFS.setOwner(dst, srcStatus.getOwner(), srcStatus.getGroup());
+    } catch (Exception e) {
+      LOG.warn("Failed to change owner on {} to {}", dst, srcStatus.getOwner(), e);
+    }
 
     if (deleteSource) {
       return srcFS.delete(src, true);
