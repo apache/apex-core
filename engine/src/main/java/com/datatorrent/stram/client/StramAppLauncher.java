@@ -50,7 +50,7 @@ import com.google.common.collect.Sets;
  */
 public class StramAppLauncher
 {
-  public static final String CLASSPATH_RESOLVERS_KEY_NAME = DAGContext.DT_PREFIX + "classpath.resolvers";
+  public static final String CLASSPATH_RESOLVERS_KEY_NAME = StreamingApplication.DT_PREFIX + "classpath.resolvers";
   public static final String LIBJARS_CONF_KEY_NAME = "tmplibjars";
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
@@ -355,7 +355,7 @@ public class StramAppLauncher
   {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
+    conf.set(StreamingApplication.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_LOCAL);
     StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig));
     lc.run();
   }
@@ -378,7 +378,7 @@ public class StramAppLauncher
   public ApplicationId launchApp(AppFactory appConfig) throws Exception
   {
     loadDependencies();
-    conf.set(DAG.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
+    conf.set(StreamingApplication.LAUNCH_MODE, StreamingApplication.LAUNCHMODE_YARN);
     LogicalPlan dag = prepareDAG(appConfig);
     byte[] licenseBytes = StramClientUtils.getLicense(conf);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
