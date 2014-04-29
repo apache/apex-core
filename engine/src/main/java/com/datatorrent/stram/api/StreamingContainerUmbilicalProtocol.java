@@ -201,6 +201,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public ContainerStats stats;
 
+    public long sentTms = System.currentTimeMillis();
+
     public ContainerStats getContainerStats() {
       return stats;
     }

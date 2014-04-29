@@ -147,6 +147,11 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
     // -- TODO
     // Change to use some sort of a annotation that developers can use to specify secure code
     // For now using SecureExecutor work load. Also change sig to throw Exception
+    long now = System.currentTimeMillis();
+    if (msg.sentTms > now) {
+      LOG.warn("Child container heartbeat sent time for {} ({}) is greater than the receive timestamp in AM ({}). Please make sure the clocks are in sync", msg.getContainerId(), msg.sentTms, now);
+    }
+    LOG.debug("RPC latency from child container {} is {} ms (according to system clocks)", msg.getContainerId(), now - msg.sentTms);
     try {
       final ContainerHeartbeat fmsg = msg;
       return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>() {

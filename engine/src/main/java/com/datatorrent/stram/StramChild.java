@@ -575,7 +575,6 @@ public class StramChild extends YarnContainerMain
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-
       msg.jvmName = jvmName;
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
@@ -615,6 +614,7 @@ public class StramChild extends YarnContainerMain
 
         // heartbeat call and follow-up processing
         //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
+        msg.sentTms = System.currentTimeMillis();
         rsp = umbilical.processHeartbeat(msg);
         processHeartbeatResponse(rsp);
         if (rsp.hasPendingRequests) {
