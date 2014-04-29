@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.util.EnumSet;
 
 import org.apache.commons.io.IOUtils;
@@ -199,7 +200,17 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     }
 
     InputStream is = fc.open(snapshotPath);
-    ObjectInputStream ois = new ObjectInputStream(is);
+    // indeterministic class loading behavior
+    // http://stackoverflow.com/questions/9110677/readresolve-not-working-an-instance-of-guavas-serializedform-appears
+    final ClassLoader loader = Thread.currentThread().getContextClassLoader();
+    ObjectInputStream ois = new ObjectInputStream(is) {
+      @Override
+      protected Class<?> resolveClass(ObjectStreamClass objectStreamClass)
+              throws IOException, ClassNotFoundException {
+          return Class.forName(objectStreamClass.getName(), true, loader);
+      }
+    };
+    //ObjectInputStream ois = new ObjectInputStream(is);
     try {
       return ois.readObject();
     } catch (ClassNotFoundException cnfe) {
