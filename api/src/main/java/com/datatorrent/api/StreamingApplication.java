@@ -38,20 +38,21 @@ public interface StreamingApplication
 {
   String DT_PREFIX = "dt.";
   /**
-   * Constant
-   * <code>LAUNCHMODE_YARN="yarn"</code>
-   */
-  String LAUNCHMODE_YARN = "yarn";
-  /**
-   * Constant
-   * <code>LAUNCHMODE_LOCAL="local"</code>
-   */
-  String LAUNCHMODE_LOCAL = "local";
-  /**
    * Launch mode for the application.
    * Used in the client to set configuration depending on how the DAG is executed.
    */
-  String LAUNCH_MODE = DT_PREFIX + "launchmode";
+  String ENVIRONMENT = DT_PREFIX + "environment";
+
+  /**
+   * Streaming Application code would be executing in one of these environments.
+   * ENVIRONMENT key in conf is set to LOCAL when the application is running in local mode.
+   * It's set to CLUSTER when the application is running in distributed mode.
+   */
+  enum Environment
+  {
+    LOCAL,
+    CLUSTER
+  };
 
   /**
    * <p>populateDAG.</p>
