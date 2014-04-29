@@ -59,7 +59,7 @@ import com.datatorrent.stram.stream.*;
  */
 public class StramChild extends YarnContainerMain
 {
-  public static final String PROP_APP_PATH = DAGContext.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
+  public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
@@ -236,7 +236,7 @@ public class StramChild extends YarnContainerMain
 
     RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, new Configuration());
     final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
-    final String childId = System.getProperty(DAGContext.DT_PREFIX + "cid");
+    final String childId = System.getProperty(StreamingApplication.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
       StramChild stramChild = new StramChild(childId, umbilical);
