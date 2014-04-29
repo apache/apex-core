@@ -152,6 +152,7 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
       LOG.warn("Child container heartbeat sent time for {} ({}) is greater than the receive timestamp in AM ({}). Please make sure the clocks are in sync", msg.getContainerId(), msg.sentTms, now);
     }
     LOG.debug("RPC latency from child container {} is {} ms (according to system clocks)", msg.getContainerId(), now - msg.sentTms);
+    dagManager.updateRPCLatency(msg.getContainerId(), now - msg.sentTms);
     try {
       final ContainerHeartbeat fmsg = msg;
       return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>() {

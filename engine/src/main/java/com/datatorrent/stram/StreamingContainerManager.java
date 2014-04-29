@@ -31,6 +31,7 @@ import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
+import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
 import com.google.common.base.Predicate;
@@ -106,6 +107,7 @@ public class StreamingContainerManager implements PlanContext
   private final Map<Integer, Long> operatorLastEndWindowTimestamps = new HashMap<Integer, Long>();
   private long lastStatsTimestamp = System.currentTimeMillis();
   private long currentEndWindowStatsWindowId;
+  private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
 
   private static class EndWindowStats
   {
@@ -152,6 +154,19 @@ public class StreamingContainerManager implements PlanContext
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupRecording(enableEventRecording);
     setupStringCodecs();
+  }
+
+  public void updateRPCLatency(String containerId, long latency)
+  {
+    MovingAverageLong latencyMA = rpcLatencies.get(containerId);
+    if (latencyMA == null) {
+      final MovingAverageLong val = new MovingAverageLong(10);
+      latencyMA = rpcLatencies.putIfAbsent(containerId, val);
+      if (latencyMA == null) {
+        latencyMA = val;
+      }
+    }
+    latencyMA.add(latency);
   }
 
   private Journal setupJournal()
@@ -387,19 +402,21 @@ public class StreamingContainerManager implements PlanContext
           LOG.info("End window stats is null for operator {}", oper);
           return;
         }
-        if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
-          upstreamMaxEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
+        long adjustedEndWindowEmitTimestamp = upstreamEndWindowStats.emitTimestamp + rpcLatencies.get(upstreamOp.getContainer().getExternalId()).getAvg();
+        if (adjustedEndWindowEmitTimestamp > upstreamMaxEmitTimestamp) {
+          upstreamMaxEmitTimestamp = adjustedEndWindowEmitTimestamp;
           upstreamMaxEmitTimestampOperator = upstreamOp;
         }
       }
     }
 
     if (upstreamMaxEmitTimestamp > 0) {
-      if (upstreamMaxEmitTimestamp < endWindowStats.emitTimestamp) {
-        LOG.debug("Adding {} to latency MA for {}", endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp, oper);
-        operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
+      long adjustedEndWindowEmitTimestamp = endWindowStats.emitTimestamp + rpcLatencies.get(oper.getContainer().getExternalId()).getAvg();
+      if (upstreamMaxEmitTimestamp < adjustedEndWindowEmitTimestamp) {
+        LOG.debug("Adding {} to latency MA for {}", adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp, oper);
+        operatorStatus.latencyMA.add(adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp);
       }
-      else if (upstreamMaxEmitTimestamp != endWindowStats.emitTimestamp) {
+      else if (upstreamMaxEmitTimestamp != adjustedEndWindowEmitTimestamp) {
         LOG.warn("Cannot calculate latency for this operator because upstream timestamp is greater than this operator's end window time: {} ({}) > {} ({})",
                  upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, endWindowStats.emitTimestamp, oper);
         LOG.warn("Please verify that the system clocks are in sync in your cluster.", oper);
