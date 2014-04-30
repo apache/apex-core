@@ -1,3 +1,4 @@
+
 /**
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
@@ -21,7 +22,6 @@ import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
-
 public class FSStorageAgent implements StorageAgent, Serializable
 {
   private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
