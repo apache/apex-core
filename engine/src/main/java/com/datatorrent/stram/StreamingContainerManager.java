@@ -855,7 +855,7 @@ public class StreamingContainerManager implements PlanContext
       oper.getOperatorMeta().getStatus().failureCount++;
       LOG.warn("Operator failure: {} count: {}", oper, oper.failureCount);
       Integer maxAttempts = oper.getOperatorMeta().getValue(OperatorContext.RECOVERY_ATTEMPTS);
-      if (maxAttempts == 0 || oper.failureCount <= maxAttempts) {
+      if (maxAttempts < 0 || oper.failureCount <= maxAttempts) {
         // restart entire container in attempt to recover operator
         // in the future a more sophisticated recovery strategy could
         // involve initial redeploy attempt(s) of affected operator in
@@ -971,6 +971,7 @@ public class StreamingContainerManager implements PlanContext
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
               addCheckpoint(oper, (Checkpoint)stats.checkpoint);
+              oper.failureCount = 0;
             }
           }
 

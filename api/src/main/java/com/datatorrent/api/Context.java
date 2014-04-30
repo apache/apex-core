@@ -114,9 +114,9 @@ public interface Context
     /**
      * The maximum number of attempts to restart a failing operator before shutting down the application.
      * When an operator fails to start it is re-spawned in a new container. If it continues to fail after the number of restart
-     * attempts reaches this limit the application is shutdown. The default value is 5 attempts.
+     * attempts reaches this limit the application is shutdown.
      */
-    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(0);
+    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(Integer.MAX_VALUE);
     /**
      * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
