@@ -448,11 +448,11 @@ public class StreamingContainerManager implements PlanContext
           LOG.info("End window stats is null for operator {}", oper);
           return;
         }
-        long adjustedEndWindowEmitTimestamp = upstreamEndWindowStats.emitTimestamp + rpcLatencies.get(upstreamOp.getContainer().getExternalId()).getAvg();
-        if (adjustedEndWindowEmitTimestamp > upstreamMaxEmitTimestamp) {
-          upstreamMaxEmitTimestamp = adjustedEndWindowEmitTimestamp;
-          upstreamMaxEmitTimestampOperator = upstreamOp;
-        }
+        //long adjustedEndWindowEmitTimestamp = upstreamEndWindowStats.emitTimestamp + rpcLatencies.get(upstreamOp.getContainer().getExternalId()).getAvg();
+        //if (adjustedEndWindowEmitTimestamp > upstreamMaxEmitTimestamp) {
+        //  upstreamMaxEmitTimestamp = adjustedEndWindowEmitTimestamp;
+        //  upstreamMaxEmitTimestampOperator = upstreamOp;
+        //}
       }
     }
 
