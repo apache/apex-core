@@ -7,8 +7,10 @@ package com.datatorrent.stram.plan.logical;
 import java.io.Serializable;
 
 /**
+ * <p>LogicalOperatorStatus class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.5
  */
 public class LogicalOperatorStatus implements Serializable
 {
