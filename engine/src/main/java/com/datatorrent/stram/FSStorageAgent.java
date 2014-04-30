@@ -46,7 +46,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
       logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
       fs = FileSystem.newInstance(lPath.toUri(), conf == null ? new Configuration() : conf);
-      if (FileSystem.mkdirs(fs, lPath, new FsPermission((short)00777))) {
+      if (fs.mkdirs(lPath)) {
         fs.setWorkingDirectory(lPath);
       }
     }
