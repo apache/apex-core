@@ -27,6 +27,10 @@ import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.codehaus.jackson.map.*;
+import org.codehaus.jackson.map.ObjectMapper.DefaultTypeResolverBuilder;
+import org.codehaus.jackson.map.ObjectMapper.DefaultTyping;
+import org.codehaus.jackson.map.jsontype.impl.StdTypeResolverBuilder;
+import org.codehaus.jackson.type.JavaType;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,30 @@ import org.slf4j.LoggerFactory;
 @Produces("application/json")
 public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 {
+  private static class PropertyTypeResolverBuilder extends DefaultTypeResolverBuilder
+  {
+    PropertyTypeResolverBuilder()
+    {
+      super(DefaultTyping.NON_FINAL);
+    }
+
+    @Override
+    public boolean useForType(JavaType t)
+    {
+      if (t.getRawClass() == Object.class) {
+        return true;
+      }
+      if (t.getRawClass().getName().startsWith("java.")) {
+        return false;
+      }
+      if (t.isArrayType()) {
+        return false;
+      }
+      return super.useForType(t);
+    }
+
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanSerializer.class);
 
   /**
@@ -65,7 +93,11 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     ObjectMapper propertyObjectMapper = new ObjectMapper();
     propertyObjectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     propertyObjectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    propertyObjectMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+
+    StdTypeResolverBuilder typer = new PropertyTypeResolverBuilder();
+    typer.init(JsonTypeInfo.Id.CLASS, null);
+    typer = typer.inclusion(JsonTypeInfo.As.PROPERTY);
+    propertyObjectMapper.setDefaultTyping(typer);
 
     for (OperatorMeta operatorMeta : allOperators) {
       HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
