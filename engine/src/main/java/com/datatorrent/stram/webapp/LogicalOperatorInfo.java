@@ -10,8 +10,10 @@ import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 
 /**
- * @since 0.9.6
+ * <p>LogicalOperatorInfo class.</p>
+ *
  * @author David Yan <david@datatorrent.com>
+ * @since 0.9.5
  */
 @XmlRootElement(name = "logicalOperator")
 @XmlAccessorType(XmlAccessType.FIELD)
