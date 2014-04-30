@@ -132,6 +132,12 @@ public class LaunchContainerRunnable implements Runnable
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
 
     setClasspath(containerEnv);
+    try {
+      // propagate to replace node managers user name (effective in non-secure mode)
+      containerEnv.put("HADOOP_USER_NAME", UserGroupInformation.getLoginUser().getUserName());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve principal name", e);
+    }
     // Set the environment
     ctx.setEnvironment(containerEnv);
     ctx.setTokens(tokens);

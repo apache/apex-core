@@ -580,6 +580,8 @@ public class StramClient
         classPathEnv.append(c.trim());
       }
       env.put("CLASSPATH", classPathEnv.toString());
+      // propagate to replace node managers user name (effective in non-secure mode)
+      env.put("HADOOP_USER_NAME", UserGroupInformation.getLoginUser().getUserName());
 
       amContainer.setEnvironment(env);
 
