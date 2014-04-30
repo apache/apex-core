@@ -402,7 +402,11 @@ public class StreamingContainerManager implements PlanContext
           LOG.info("End window stats is null for operator {}", oper);
           return;
         }
-        long adjustedEndWindowEmitTimestamp = upstreamEndWindowStats.emitTimestamp + rpcLatencies.get(upstreamOp.getContainer().getExternalId()).getAvg();
+        long adjustedEndWindowEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
+        MovingAverageLong rpcLatency = rpcLatencies.get(upstreamOp.getContainer().getExternalId());
+        if (rpcLatency != null) {
+          adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
+        }
         if (adjustedEndWindowEmitTimestamp > upstreamMaxEmitTimestamp) {
           upstreamMaxEmitTimestamp = adjustedEndWindowEmitTimestamp;
           upstreamMaxEmitTimestampOperator = upstreamOp;
@@ -411,7 +415,11 @@ public class StreamingContainerManager implements PlanContext
     }
 
     if (upstreamMaxEmitTimestamp > 0) {
-      long adjustedEndWindowEmitTimestamp = endWindowStats.emitTimestamp + rpcLatencies.get(oper.getContainer().getExternalId()).getAvg();
+      long adjustedEndWindowEmitTimestamp = endWindowStats.emitTimestamp;
+      MovingAverageLong rpcLatency = rpcLatencies.get(oper.getContainer().getExternalId());
+      if (rpcLatency != null) {
+        adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
+      }
       if (upstreamMaxEmitTimestamp < adjustedEndWindowEmitTimestamp) {
         LOG.debug("Adding {} to latency MA for {}", adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp, oper);
         operatorStatus.latencyMA.add(adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp);
