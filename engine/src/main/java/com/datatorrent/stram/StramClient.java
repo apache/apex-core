@@ -336,12 +336,12 @@ public class StramClient
         String targetPath = f.getPath().toString().replace(origAppDir.toString(), newAppDir);
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
-          //FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
-          FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
+          FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
+          //FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
         }
         else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
-          FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
+          //FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
         }
       }
     }
