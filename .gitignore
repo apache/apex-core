@@ -6,6 +6,7 @@
 target/
 node_modules/
 /malhar
+/malhar-ui-console
 *.iml
 .idea/
 *~
