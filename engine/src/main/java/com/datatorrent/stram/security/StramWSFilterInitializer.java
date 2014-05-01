@@ -5,6 +5,7 @@ import org.apache.hadoop.http.FilterContainer;
 import org.apache.hadoop.http.FilterInitializer;
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.util.WebAppUtils;
 
 import java.util.HashMap;
@@ -31,7 +32,7 @@ public class StramWSFilterInitializer extends FilterInitializer
     String[] parts = proxy.split(":");
     params.put(StramWSFilter.PROXY_HOST, parts[0]);
     params.put(StramWSFilter.PROXY_URI_BASE,
-            ConfigUtils.getSchemePrefix(new Configuration()) + proxy +
+            ConfigUtils.getSchemePrefix(new YarnConfiguration()) + proxy +
                     System.getenv(ApplicationConstants.APPLICATION_WEB_PROXY_BASE_ENV));
     container.addFilter(FILTER_NAME, FILTER_CLASS, params);
   }

@@ -21,6 +21,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
@@ -435,7 +436,7 @@ public class StramWebServices
     ci.numOperators = 0;
     ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
     ci.lastHeartbeat = -1;
-    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new Configuration()) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new YarnConfiguration()) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
 
     return ci;
   }

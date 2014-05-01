@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.google.common.collect.Sets;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -311,7 +312,7 @@ public class StramChildAgent {
     // commented out because free memory is misleading because of GC, may want to revisit this
     //ci.memoryMBFree = this.memoryMBFree;
     if (this.container.nodeHttpAddress != null) {
-      ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new Configuration()) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+      ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new YarnConfiguration()) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
     }
     return ci;
   }

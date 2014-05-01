@@ -40,7 +40,7 @@ public class ConfigUtils
     return principal;
   }
 
-  public static String getSchemePrefix(Configuration conf)
+  public static String getSchemePrefix(YarnConfiguration conf)
   {
     if( HttpConfig.Policy.HTTPS_ONLY == HttpConfig.Policy.fromString(conf
       .get(YarnConfiguration.YARN_HTTP_POLICY_KEY, YarnConfiguration.YARN_HTTP_POLICY_DEFAULT))){
