@@ -27,7 +27,7 @@
     <netbeans.hint.license>datatorrent-inc</netbeans.hint.license>
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
-    <hadoop.version>2.4.0</hadoop.version>
+    <hadoop.version>2.2.0</hadoop.version>
     <github.global.server>github</github.global.server>
     <jackson.version>1.9.2</jackson.version>
     <jersey.version>1.9</jersey.version>
