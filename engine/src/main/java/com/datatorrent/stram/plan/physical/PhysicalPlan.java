@@ -355,6 +355,9 @@ public class PhysicalPlan implements Serializable
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
+          if (!container.operators.isEmpty()) {
+            LOG.warn("Operator {} shares container without locality contraint due to insufficient resources.", oper);
+          }
           Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet();
           if (!inlineSet.isEmpty()) {
             // process inline operators

@@ -199,8 +199,8 @@ public class LaunchContainerRunnable implements Runnable
 
     List<CharSequence> vargs = new ArrayList<CharSequence>(8);
 
-    //vargs.add("exec");
-    if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.$()))) {
+    if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.key()))) {
+      // node manager provides JAVA_HOME
       vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
     }
     else {
