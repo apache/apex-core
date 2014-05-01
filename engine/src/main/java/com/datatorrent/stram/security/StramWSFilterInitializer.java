@@ -10,6 +10,8 @@ import org.apache.hadoop.yarn.webapp.util.WebAppUtils;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.datatorrent.stram.util.ConfigUtils;
+
 /**
  * Created by pramod on 12/17/13.
  * Borrowed from org.apache.hadoop.yarn.server.webproxy.amfilter.AmFilterIntializer
@@ -29,7 +31,7 @@ public class StramWSFilterInitializer extends FilterInitializer
     String[] parts = proxy.split(":");
     params.put(StramWSFilter.PROXY_HOST, parts[0]);
     params.put(StramWSFilter.PROXY_URI_BASE,
-            HttpConfig.getSchemePrefix() + proxy +
+            ConfigUtils.getSchemePrefix(new Configuration()) + proxy +
                     System.getenv(ApplicationConstants.APPLICATION_WEB_PROXY_BASE_ENV));
     container.addFilter(FILTER_NAME, FILTER_CLASS, params);
   }

@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.google.common.collect.Sets;
 
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
 
 /**
@@ -309,7 +311,7 @@ public class StramChildAgent {
     // commented out because free memory is misleading because of GC, may want to revisit this
     //ci.memoryMBFree = this.memoryMBFree;
     if (this.container.nodeHttpAddress != null) {
-      ci.containerLogsUrl = HttpConfig.getSchemePrefix() + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+      ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new Configuration()) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
     }
     return ci;
   }
