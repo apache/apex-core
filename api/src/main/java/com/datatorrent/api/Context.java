@@ -21,6 +21,7 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Collection2String;
+import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
@@ -113,10 +114,12 @@ public interface Context
     Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
     /**
      * The maximum number of attempts to restart a failing operator before shutting down the application.
-     * When an operator fails to start it is re-spawned in a new container. If it continues to fail after the number of restart
-     * attempts reaches this limit the application is shutdown.
+     * Until this number is reached, when an operator fails to start it is re-spawned in a new container. Once all the
+     * attempts are exhausted, the application is shutdown. The default value for this attribute is null or unset and
+     * is equivalent to infinity; The operator hence will be attempted to be recovered indefinitely unless this value
+     * is set to anything else.
      */
-    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(Integer.MAX_VALUE);
+    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(new Integer2String());
     /**
      * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
