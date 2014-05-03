@@ -33,6 +33,7 @@
     <jersey.version>1.9</jersey.version>
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
+    <maven.deploy.repo.classifier></maven.deploy.repo.classifier>
   </properties>
 
   <dependencies>
