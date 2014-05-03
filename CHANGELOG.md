@@ -2,10 +2,9 @@
 
 ## Version 0.9.5
 
-** Sub-task
+## Sub-task
 * [SPOI-1692] - Certify fault tolerance for multiple containers failure
 * [SPOI-1693] - Develop automated test scenario for StrAM failure to certify one of high availability aspects. 
-* [SPOI-1901] - Verify dynamic property set survives AM restart 
 * [SPOI-2008] - Setup virtual cluster for high availability certification
 * [SPOI-2009] - WordCount app to be used in certification of high availability
 * [SPOI-2127] - Error/Warning message not clear - nightly build installer (datatorrent-dist-0.9.4-SNAPSHOT.bin) if executed as non-root user.
@@ -18,13 +17,12 @@
 * [SPOI-2277] - Support HTTPS and auth in pubsub connection from stram to Gateway
 * [SPOI-2291] - Copy GW configurations to HDFS on every write
 
-** Technical task
+## Technical task
 * [SPOI-2005] - Verify and add Machine demo to app memory usage automation
 
-** Bug
+## Bug
 * [SPOI-1801] - Mobile app has two logical input gen - Need to handle containers on servers with two diff clocks
 * [SPOI-1890] - Application behavior when resources are not available
-* [SPOI-1952] - Operation and Install guide review
 * [SPOI-1954] - Incorrect Processed Stats
 * [SPOI-1995] - Sandbox instructions are outdated
 * [SPOI-1998] - Killing of node manager on node running License AM
@@ -32,7 +30,7 @@
 * [SPOI-2152] - Stabillity of mobile demo
 * [SPOI-2194] - Gateway start script prints out repetitive message
 * [SPOI-2205] - Make generate license tool work with web tool to generate 1TB license in the new flow
-* [SPOI-2207] - Deduper showed high latency and crashed in poc staging environment.
+* [SPOI-2207] - Deduper showed high latency and crashed in staging environment.
 * [SPOI-2221] - Analyze FileSystem.get calls and if necessary replace them with FileSystem.newInstance
 * [SPOI-2278] - Relative hdfs path should be created under application directory
 * [SPOI-2283] - Do not make assumption about FSStorageAgent being the StorageAgent or the default configuration for it being the configuration the user set
@@ -58,7 +56,6 @@
 * [SPOI-2329] - Amla - asof showed twice when selected
 * [SPOI-2330] - Amla - Time range is changing
 * [SPOI-2336] - Amla POC UI - Handle Inactive Page
-* [SPOI-2340] - License Agent is persisting state in a wrong location
 * [SPOI-2342] - DTCLI ignoring annotated Application Names
 * [SPOI-2343] - Amla - eCPM seems wrong
 * [SPOI-2344] - dtcli fails to load dt-env.sh
@@ -83,29 +80,30 @@
 * [SPOI-2398] - Extra directory created by gateway in user home
 * [SPOI-2400] - An operator exits normally when there is OutOfMemory error 
 * [SPOI-2401] - The AppMaster finishes after retrying 6 times to deploy input operator
+* [SPOI-2412] - App restart HDFS file permission issue on CDH cluster
 * [SPOI-2417] - DTGateway dt-site.xml backup location
+* [SPOI-2419] - Ensure principal name propagates to containers in non-secure mode
+* [SPOI-2435] - Latest changes to latency calculation break tests.
 
 
-** Improvement
+## Improvement
 * [SPOI-1376] - Have app specific configuration to stram-site.xml in sandbox
 * [SPOI-1855] - Ability to continue/shutdown application
 * [SPOI-1986] - In Logical View do not include the unifier stats
 * [SPOI-2001] - Update Release Process document (GDrive)
-* [SPOI-2036] - Ensure that definePartitions and partitioned are called for Parallel partitioned operators if they express intereset
 * [SPOI-2222] - Constraint format in license file to be in JSON
 * [SPOI-2287] - Allow specifying a complete list of dependencies while deploying the application
 * [SPOI-2335] - Make BaseOperator Java Serializable
 * [SPOI-2367] - Create service wrapper for demos server
-* [SPOI-2385] - Improve the performance of HDFSStorage
+* [SPOI-2385] - Improve the performance of HDFSStorage for POC
+* [SPOI-2404] - Reset the Application Failure Count upon successful recovery
 * [SPOI-2405] - Add more params to /ws/v1/applications/{appid}/events call
 * [SPOI-2407] - Need ability to supply the class name representing the property
 
-** New Feature
+## New Feature
 * [SPOI-91] - Design and implement a socket adapter operator
 * [SPOI-2007] - Automation to certify High Availability
 * [SPOI-2012] - Run the app-memory-usage with lower container sizes starting from 128M to 512M when the grid is restarted.
-* [SPOI-2029] - Provide shell script and change certification code to take tupleSize, streamLocality and containerSize from configuration file while launching the app.
-* [SPOI-2080] - Application to certify installation
 * [SPOI-2249] - Simple user authentication / authorization support in the UI
 * [SPOI-2275] - Amla POC - WebSocket Topics Spec
 * [SPOI-2276] - Amla POC UI - Connect Widgets to WebSocket Data Source
@@ -116,15 +114,13 @@
 * [SPOI-2386] - REST call to retrieve the datatorrent conf directory
 * [SPOI-2399] - Starter Web Application
 
-** Story
+## Story
 * [SPOI-2215] - Password protect the dashboard
 * [SPOI-2254] - Amla Dimensions UI
 
-** Task
+## Task
 * [SPOI-746] - DT Phome home customer side work
-* [SPOI-1206] - Review Licensing of Third Party Libraries
 * [SPOI-1642] - Certify support for node failure
-* [SPOI-1745] - Document Demo Application Setup
 * [SPOI-2045] - Discuss license cleanup/improvements
 * [SPOI-2099] - Show mandatory fields with '*' in the installer
 * [SPOI-2101] - Say "Terms of Service" on the text
@@ -143,7 +139,6 @@
 * [SPOI-2184] - Aggregate revenue per site id for Amla
 * [SPOI-2185] - Create repo for Amla
 * [SPOI-2186] - Add Kafka adapter to Olive project
-* [SPOI-2187] - Define file api
 * [SPOI-2189] - Compute 5 dimensions nC1 for Amla
 * [SPOI-2190] - Create web page (navigator and table view) for 5 dimensions and 2 computations
 * [SPOI-2191] - Create web socket input for query on Amla
@@ -205,7 +200,6 @@
 * [SPOI-2334] - Amla - Add proprietary tag
 * [SPOI-2337] - Amla - Change column headers
 * [SPOI-2338] - The "#" in the boxes should not change
-* [SPOI-2348] - Amla - Enable checkpoint for aggregator operator
 * [SPOI-2351] - Bundle the default passwd file (with admin/admin) in the installer
 * [SPOI-2362] - Create service wrappers for Apache Hadoop on Sandbox
 * [SPOI-2363] - Update dtdemo sandbox script to work with Hadoop/DTGateway service wrappers
@@ -215,9 +209,8 @@
 * [SPOI-2421] - Update end-user documentation
 
 
-** Sub-task
+## Sub-task
 * [MLHR-726] - Time Series Forecasting Operator using Holt's Linear Trend Model
-* [MLHR-774] - Terms of service license
 * [MLHR-933] - Time Series Forecasting using Holt-Winters' Seasonal Method
 * [MLHR-965] - create non transactional output operator
 * [MLHR-966] - create transactional output operator
@@ -226,7 +219,7 @@
 * [MLHR-1040] - Develop incremental model creation for Holt-Winters' Multiplicative Method Time-Series Forecasting
 
 
-** Bug
+## Bug
 * [MLHR-778] - Logical Operators list has no palette
 * [MLHR-857] - Machinedata demo stop working with new Redis operator
 * [MLHR-963] - create output operator to add historical data to supplied datastore
@@ -236,7 +229,6 @@
 * [MLHR-978] - create resource leak for the hdfs input/output operators
 * [MLHR-979] - AdsDimension: Redis operator shows high latency
 * [MLHR-986] - Page Not Found errors from the web-site
-* [MLHR-998] - Compilation error while using UniqueValueCount operator.
 * [MLHR-1000] - Invalid IP address selected by default during upgrade
 * [MLHR-1005] - CPU column on logical view
 * [MLHR-1008] - twitter application failed with exception
@@ -253,9 +245,13 @@
 * [MLHR-1055] - Unnecessary gateway restart requested during installation navigation
 * [MLHR-1057] - Overview in dag widget not accurate to visible area
 * [MLHR-1058] - Change install wizard from widget in a page to just a page
+* [MLHR-1066] - Install Wizard tab order and auto-focus
+* [MLHR-1067] - Install Wizard invalid DFS directory check
+* [MLHR-1072] - Socket input operator test fail
+* [MLHR-1074] - Remove stram events page/widget from 0.9.5
 
 
-** Improvement
+## Improvement
 * [MLHR-721] - Migrate database cache lookup to the new db framework
 * [MLHR-985] - AdsDimension: Plug-in Dimension Unifier 
 * [MLHR-1010] - Remove info icon from installer text
@@ -265,10 +261,10 @@
 * [MLHR-1035] - Remove darker grey background from console
 * [MLHR-1046] - Operators/Containers not being subscribed to on App Page
 * [MLHR-1062] - Install Wizard examples of Hadoop and DFS path
+* [MLHR-1069] - License summary section in Install Wizard
 
-** New Feature
+## New Feature
 * [MLHR-684] - Invalidate dashboard state from previous versions
-* [MLHR-784] - WidgetOutputOperator - Schema Update
 * [MLHR-881] - ETL Web App - Packaging
 * [MLHR-882] - ETL Web App - Dashboard
 * [MLHR-885] - ETL Web App - Sample Data Generation
@@ -277,29 +273,19 @@
 * [MLHR-1052] - Bar Chart Widget
 * [MLHR-1053] - Widget Library - Demo Application
 
-** Story
+## Story
 * [MLHR-703] - Logstream UI
 * [MLHR-709] - Widgets Library as Independent Project
-* [MLHR-719] - Time Series Forecasting
 
-** Task
+## Task
 * [MLHR-661] - Migrate JDBC adapters to use the new database adapter interface
-* [MLHR-700] - Develop operator for calculating Coefficient of Determination (RSquare)
-* [MLHR-833] - Add required documentation tags to the class level comments.
-* [MLHR-841] - Demo guide for machine data application
-* [MLHR-850] - Demo guide for Ads Dimension demo
-* [MLHR-852] - Demo guide for Twitter (rolling topwards) demo application
 * [MLHR-866] - Annotate all stateless operators in Malhar as such
 * [MLHR-868] - Demo Guide for Map-Reduce Operator - LogsCountApplication
 * [MLHR-869] - Demo guide for Map-Reduce Operator - NewWordCountApplication.
 * [MLHR-870] - Demo guide for Map-Reduce Operator - InvertedIndexApplication.
-* [MLHR-874] - Demo guide for charting demo - Yahoo finance
-* [MLHR-896] - widget output operator - widget type should not be decided in backend
 * [MLHR-922] - Machine data demo is using deprecated attributes. Gives warnings on launch
-* [MLHR-950] - Create a demo for distributed distinct
 * [MLHR-951] - Remove deprecated warnings from demos
 * [MLHR-954] - Need to debug older demos
-* [MLHR-960] - Create a Tableau output adapter
 * [MLHR-961] - Develop a Goldengate input adapter
 * [MLHR-970] - Re-create the application that we build for iAd Poc in Malhar
 * [MLHR-1006] - In Logical View do not include the unifier stats
@@ -312,6 +298,9 @@
 * [MLHR-1027] - Remove external upgrade link from licensing screen
 * [MLHR-1041] - ETL : Consolidate input operator properties in json format
 * [MLHR-1044] - ETL: Add input operator to ETL Application in ETL branch
+* [MLHR-1071] - Create stateless deduper - aka deduper which forgets its state upon failure or repartitioning
+
+
 
 
 
