@@ -250,6 +250,16 @@ public class StramClientUtils
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
 
+  public static String getHostName()
+  {
+    try {
+      return java.net.InetAddress.getLocalHost().getHostName();
+    }
+    catch (UnknownHostException ex) {
+      return null;
+    }
+  }
+
   public static File getUserDTDirectory()
   {
     return new File(FileUtils.getUserDirectory(), ".dt");
@@ -269,9 +279,21 @@ public class StramClientUtils
     }
   }
 
+  public static boolean isDevelopmentMode()
+  {
+    return getUserDTDirectory().equals(getConfigDir());
+  }
+
+  public static File getBackupsDirectory()
+  {
+    return new File(getConfigDir(), BACKUPS_DIRECTORY);
+  }
+
   public static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
+  public static final String DT_SITE_GLOBAL_XML_FILE = "dt-site-global.xml";
   public static final String DT_ENV_SH_FILE = "dt-env.sh";
+  public static final String BACKUPS_DIRECTORY = "backups";
 
   public static Configuration addDTDefaultResources(Configuration conf)
   {
@@ -284,6 +306,23 @@ public class StramClientUtils
     conf.addResource(DT_DEFAULT_XML_FILE);
     addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
+
+    try {
+      // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
+      FileSystem fs = newFileSystemInstance(conf);
+      // load global settings from DFS
+      File targetGlobalFile = new File(StramClientUtils.getBackupsDirectory(), StramClientUtils.DT_SITE_GLOBAL_XML_FILE);
+      fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
+                         new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
+      addDTSiteResources(conf, targetGlobalFile);
+      // load node local config file
+      addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+      // load user config file
+      addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
+    }
+    catch (IOException ex) {
+      // ignore
+    }
 
     convertDeprecatedProperties(conf);
 
@@ -367,7 +406,7 @@ public class StramClientUtils
     }
   }
 
-  public static Path getDTRootDir(FileSystem fs, Configuration conf)
+  public static Path getDTDFSRootDir(FileSystem fs, Configuration conf)
   {
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
     if (StringUtils.isBlank(dfsRootDir)) {
@@ -385,6 +424,11 @@ public class StramClientUtils
       }
       return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
     }
+  }
+
+  public static Path getDTDFSConfigDir(FileSystem fs, Configuration conf)
+  {
+    return new Path(getDTDFSRootDir(fs, conf), "conf");
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException, URISyntaxException

@@ -57,6 +57,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String GATEWAY_PREFIX = StreamingApplication.DT_PREFIX + "gateway.";
   public static final String GATEWAY_LISTEN_ADDRESS_PROP = "listenAddress";
   public static final String GATEWAY_LISTEN_ADDRESS = GATEWAY_PREFIX + GATEWAY_LISTEN_ADDRESS_PROP;
+  public static final String GATEWAY_STATIC_RESOURCE_DIRECTORY = GATEWAY_PREFIX + "staticResourceDirectory";
 
   public static final String STREAM_PREFIX = StreamingApplication.DT_PREFIX + "stream.";
   public static final String LICENSE_PREFIX = StreamingApplication.DT_PREFIX + "license.";
@@ -88,7 +89,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private enum StramElement {
     APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"),STREAM("stream"), PORT("port"), INPUT_PORT("inputport"),OUTPUT_PORT("outputport"),
     ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path");
-    private String value;
+    private final String value;
 
     StramElement(String value) {
       this.value = value;
@@ -1089,17 +1090,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         // directly assigned applies last
         tm.put(1, t);
         continue;
-      } else*/ if ((t.idRegExp != null && ow.getName().matches(t.idRegExp))) {
+      } else*/
+      if ((t.idRegExp != null && ow.getName().matches(t.idRegExp))) {
         tm.put(1, t);
-        continue;
       } else if (appName != null && t.appNameRegExp != null
           && appName.matches(t.appNameRegExp)) {
         tm.put(2, t);
-        continue;
       } else if (t.classNameRegExp != null
           && ow.getOperator().getClass().getName().matches(t.classNameRegExp)) {
         tm.put(3, t);
-        continue;
       }
     }
     return tm;

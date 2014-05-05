@@ -491,7 +491,7 @@ public class StramClient
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
     try {
-      Path appsBasePath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+      Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
       Path appPath = new Path(appsBasePath, appId.toString());
 
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
