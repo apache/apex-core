@@ -35,6 +35,7 @@ import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import jline.console.ConsoleReader;
+import jline.console.UserInterruptException;
 import jline.console.completer.*;
 import jline.console.history.*;
 
@@ -59,6 +60,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 /**
  *
@@ -96,6 +99,8 @@ public class DTCli
   private final Tokenizer tokenizer = new Tokenizer();
   private final Map<String, String> variableMap = new HashMap<String, String>();
   private static boolean lastCommandError = false;
+  private Thread commandThread;
+  private String prompt;
 
   private static class FileLineReader extends ConsoleReader
   {
@@ -855,6 +860,20 @@ public class DTCli
 
   public void init(String[] args) throws IOException
   {
+    Signal.handle(new Signal("INT"), new SignalHandler() {
+      @Override
+      public void handle(Signal sig)
+      {
+        System.out.println("^C");
+        if (commandThread != null) {
+          commandThread.interrupt();
+        }
+        else {
+          System.out.print(prompt);
+          System.out.flush();
+        }
+      }
+    });
     consolePresent = (System.console() != null);
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
@@ -1114,6 +1133,7 @@ public class DTCli
       //printLicenseStatus();
       setupCompleter(reader);
       setupHistory(reader);
+      //reader.setHandleUserInterrupt(true);
     }
     setupAgents();
     String line;
@@ -1192,13 +1212,18 @@ public class DTCli
     return s.substring(i);
   }
 
-  private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
+  private void processLine(String line, final ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
       if (reader.isHistoryEnabled()) {
         History history = reader.getHistory();
         if (history instanceof FileHistory) {
-          ((FileHistory)history).flush();
+          try {
+            ((FileHistory)history).flush();
+          }
+          catch (IOException ex) {
+            // ignore
+          }
         }
       }
       //LOG.debug("line: \"{}\"", line);
@@ -1206,7 +1231,7 @@ public class DTCli
       if (commands == null) {
         return;
       }
-      for (String[] args : commands) {
+      for (final String[] args : commands) {
         if (args.length == 0 || StringUtils.isBlank(args[0])) {
           continue;
         }
@@ -1259,25 +1284,49 @@ public class DTCli
             cs.printUsage(args[0]);
             throw ex;
           }
-          cs.command.execute(args, reader);
-          lastCommandError = false;
+          final Command command = cs.command;
+          commandThread = new Thread()
+          {
+            @Override
+            public void run()
+            {
+              try {
+                command.execute(args, reader);
+                lastCommandError = false;
+              }
+              catch (Exception e) {
+                handleException(e);
+              }
+            }
+
+          };
+          commandThread.start();
+          try {
+            commandThread.join();
+          }
+          catch (InterruptedException ex) {
+            System.err.println("Interrupted");
+          }
+          commandThread = null;
         }
       }
     }
-    catch (CliException e) {
-      String msg = e.getMessage();
-      if (e.getCause() != null) {
-        msg += ": " + e.getCause().getMessage();
-      }
-      System.err.println(msg);
-      LOG.debug("Error processing line: " + line, e);
-      lastCommandError = true;
-    }
     catch (Exception e) {
-      System.err.println("Unexpected error: " + e);
-      LOG.error("Error processing line: {}", line, e);
-      lastCommandError = true;
+      handleException(e);
     }
+  }
+
+  private void handleException(Exception e)
+  {
+    String msg = e.getMessage();
+    if (e.getCause() != null && e.getCause().getMessage() != null) {
+      msg += ": " + e.getCause().getMessage();
+    }
+    if (msg != null) {
+      System.err.println(msg);
+    }
+    LOG.debug("Exception caught: ", e);
+    lastCommandError = true;
   }
 
   private void printWelcomeMessage()
@@ -1368,7 +1417,7 @@ public class DTCli
   private String readLine(ConsoleReader reader)
           throws IOException
   {
-    String prompt = "";
+    prompt = "";
     if (consolePresent) {
       if (changingLogicalPlan) {
         prompt = "logical-plan-change";
@@ -2071,13 +2120,19 @@ public class DTCli
             for (Completer c : completers) {
               reader.removeCompleter(c);
             }
-            String optionLine = reader.readLine("Choose application: ");
-            reader.setHistoryEnabled(useHistory);
-            reader.setHistory(previousHistory);
-            for (Completer c : completers) {
-              reader.addCompleter(c);
+            reader.setHandleUserInterrupt(true);
+            String optionLine;
+            try {
+              optionLine = reader.readLine("Choose application: ");
             }
-
+            finally {
+              reader.setHandleUserInterrupt(false);
+              reader.setHistoryEnabled(useHistory);
+              reader.setHistory(previousHistory);
+              for (Completer c : completers) {
+                reader.addCompleter(c);
+              }
+            }
             try {
               int option = Integer.parseInt(optionLine);
               if (0 < option && option <= matchingAppFactories.size()) {
