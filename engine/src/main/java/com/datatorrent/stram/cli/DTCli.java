@@ -35,7 +35,6 @@ import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import jline.console.ConsoleReader;
-import jline.console.UserInterruptException;
 import jline.console.completer.*;
 import jline.console.history.*;
 
