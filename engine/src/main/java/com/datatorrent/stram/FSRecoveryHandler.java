@@ -83,7 +83,13 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
     LOG.info("Creating {}", logPath);
     final FSDataOutputStream fsOutputStream;
-    if (fs.getScheme().equals("file")) {
+    String scheme = null;
+    try{
+      scheme = fs.getScheme();
+    }catch(UnsupportedOperationException e){
+      LOG.warn("{} doesn't implement getScheme() method", fs.getClass().getName());
+    }
+    if ("file".equals(scheme)) {
       // local FS does not support hflush and does not flush native stream
       fs.mkdirs(logPath.getParent());
       fsOutputStream = new FSDataOutputStream(new FileOutputStream(Path.getPathWithoutSchemeAndAuthority(logPath).toString()), null);
