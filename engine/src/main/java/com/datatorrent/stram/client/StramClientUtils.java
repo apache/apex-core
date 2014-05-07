@@ -304,7 +304,9 @@ public class StramClientUtils
   public static Configuration addDTSiteResources(Configuration conf)
   {
     conf.addResource(DT_DEFAULT_XML_FILE);
-    addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+    if (!isDevelopmentMode()) {
+      addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+    }
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
 
     try {
@@ -315,13 +317,16 @@ public class StramClientUtils
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
                          new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
-      // load node local config file
-      addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+      if (!isDevelopmentMode()) {
+        // load node local config file
+        addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+      }
       // load user config file
       addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
     }
     catch (IOException ex) {
       // ignore
+      LOG.debug("Caught exception when loading configuration", ex);
     }
 
     convertDeprecatedProperties(conf);
@@ -344,6 +349,9 @@ public class StramClientUtils
     if (confFile.exists()) {
       LOG.info("Loading settings: " + confFile.toURI());
       conf.addResource(new Path(confFile.toURI()));
+    }
+    else {
+      LOG.info("Configuration file {} is not found. Skipping...", confFile.toURI());
     }
     return conf;
   }
