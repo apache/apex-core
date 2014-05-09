@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -81,6 +82,17 @@ public class StramLocalCluster implements Runnable, Controller
             long clientVersion, int clientMethodsHash) throws IOException
     {
       throw new UnsupportedOperationException("not implemented in local mode");
+    }
+
+    @Override
+    public void reportError(String containerId, int[] operators, String msg)
+    {
+      try {
+        log(containerId, msg);
+      }
+      catch (IOException ex) {
+        // ignore
+      }
     }
 
     @Override

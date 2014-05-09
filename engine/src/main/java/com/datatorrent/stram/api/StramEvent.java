@@ -5,6 +5,7 @@
 package com.datatorrent.stram.api;
 
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import java.util.List;
 
 /**
  * <p>Abstract StramEvent class.</p>
@@ -384,6 +385,57 @@ public abstract class StramEvent
     public void setRequest(LogicalPlanRequest request)
     {
       this.request = request;
+    }
+
+  }
+
+  public static class ContainerErrorEvent extends StramEvent
+  {
+    String containerId;
+    List<Integer> operators;
+    String errorMessage;
+
+    public ContainerErrorEvent(String containerId, List<Integer> operators, String errorMessage)
+    {
+      this.containerId = containerId;
+      this.operators = operators;
+      this.errorMessage = errorMessage;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "ContainerError";
+    }
+
+    public String getContainerId()
+    {
+      return containerId;
+    }
+
+    public void setContainerId(String containerId)
+    {
+      this.containerId = containerId;
+    }
+
+    public List<Integer> getOperators()
+    {
+      return operators;
+    }
+
+    public void setOperators(List<Integer> operators)
+    {
+      this.operators = operators;
+    }
+
+    public String getErrorMessage()
+    {
+      return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage)
+    {
+      this.errorMessage = errorMessage;
     }
 
   }

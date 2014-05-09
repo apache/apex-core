@@ -86,7 +86,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
-     * @return ArrayList<OperatorStats>
+     * @return
      */
     public ArrayList<ContainerStats.OperatorStats> getOperatorStatsContainer() {
       return windowStats;
@@ -344,15 +344,35 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Context will provide all information to initialize and prepare it for operator deployment<br>
    *
    * @param containerId
+   * @return
    * @throws IOException
    * <br>
    */
   StreamingContainerContext getInitContext(String containerId) throws IOException;
 
+  /**
+   * Log to app master's log by child container
+   *
+   * @param containerId
+   * @param msg
+   * @throws IOException
+   */
   void log(String containerId, String msg) throws IOException;
 
   /**
+   * Reports an error to the app master by child container
+   *
+   * @param containerId
+   * @param operators
+   * @param msg
+   */
+  void reportError(String containerId, int[] operators, String msg);
+
+  /**
    * To be called periodically by child for heartbeat protocol.
+   *
+   * @param msg
+   * @return
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
 

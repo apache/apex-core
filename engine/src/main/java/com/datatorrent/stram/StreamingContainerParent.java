@@ -4,14 +4,15 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.api.StramEvent.ContainerErrorEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.util.SecureExecutor;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-
+import java.util.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.ipc.ProtocolSignature;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.ipc.Server;
+import org.apache.hadoop.ipc.*;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.security.authorize.Service;
@@ -20,9 +21,6 @@ import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-import com.datatorrent.stram.util.SecureExecutor;
 
 /**
  *
@@ -132,6 +130,22 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   @Override
   public void log(String containerId, String msg) throws IOException {
     LOG.info("child msg: {} context: {}", msg, dagManager.getContainerAgent(containerId).container);
+  }
+
+  @Override
+  public void reportError(String containerId, int[] operators, String msg)
+  {
+    List<Integer> operatorList = new ArrayList<Integer>(operators.length);
+    for (int operator : operators) {
+      operatorList.add(operator);
+    }
+    dagManager.recordEventAsync(new ContainerErrorEvent(containerId, operatorList, msg));
+    try {
+      log(containerId, msg);
+    }
+    catch (IOException ex) {
+      // ignore
+    }
   }
 
   @Override
