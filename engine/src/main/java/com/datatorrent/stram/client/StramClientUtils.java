@@ -326,7 +326,7 @@ public class StramClientUtils
     }
     catch (IOException ex) {
       // ignore
-      LOG.debug("Caught exception when loading configuration", ex);
+      LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     }
 
     convertDeprecatedProperties(conf);
