@@ -533,6 +533,10 @@ public class DTCli
                                                               null,
                                                               new Arg[] {new FileArg("license-file")},
                                                               "Show the status of the license"));
+    globalCommands.put("get-config-parameter", new CommandSpec(new GetConfigParameterCommand(),
+                                                              null,
+                                                              new Arg[] {new FileArg("parameter-name")},
+                                                              "Get the configuration parameter"));
 
     //
     // Connected command specification starts here
@@ -2227,6 +2231,26 @@ public class DTCli
         System.err.println("No application specified.");
       }
 
+    }
+
+  }
+
+  private class GetConfigParameterCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (args.length == 1) {
+        for (Map.Entry<String, String> entry : conf) {
+          System.out.println(entry.getKey() + "=" + entry.getValue());
+        }
+      }
+      else {
+        String value = conf.get(args[1]);
+        if (value != null) {
+          System.out.println(value);
+        }
+      }
     }
 
   }

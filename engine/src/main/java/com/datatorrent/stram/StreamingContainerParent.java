@@ -136,7 +136,7 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   @Override
   public void reportError(String containerId, int[] operators, String msg)
   {
-    if (operators == null) {
+    if (operators == null || operators.length == 0) {
       dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg));
     }
     else {
