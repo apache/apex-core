@@ -5,11 +5,12 @@
 package com.datatorrent.stram;
 
 import com.datatorrent.stram.api.StramEvent.ContainerErrorEvent;
+import com.datatorrent.stram.api.StramEvent.OperatorErrorEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.util.SecureExecutor;
+import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.*;
@@ -135,11 +136,17 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   @Override
   public void reportError(String containerId, int[] operators, String msg)
   {
-    List<Integer> operatorList = new ArrayList<Integer>(operators.length);
-    for (int operator : operators) {
-      operatorList.add(operator);
+    if (operators == null) {
+      dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg));
     }
-    dagManager.recordEventAsync(new ContainerErrorEvent(containerId, operatorList, msg));
+    else {
+      for (int operator : operators) {
+        OperatorInfo operatorInfo = dagManager.getOperatorInfo(operator);
+        if (operatorInfo != null) {
+          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg));
+        }
+      }
+    }
     try {
       log(containerId, msg);
     }

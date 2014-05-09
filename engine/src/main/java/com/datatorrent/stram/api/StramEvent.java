@@ -8,7 +8,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import java.util.List;
 
 /**
- * <p>Abstract StramEvent class.</p>
+ * <p>
+ * Abstract StramEvent class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.9.2
@@ -389,16 +390,54 @@ public abstract class StramEvent
 
   }
 
-  public static class ContainerErrorEvent extends StramEvent
+  public static class OperatorErrorEvent extends PhysicalOperatorEvent
   {
-    String containerId;
-    List<Integer> operators;
-    String errorMessage;
+    private String containerId;
+    private String errorMessage;
 
-    public ContainerErrorEvent(String containerId, List<Integer> operators, String errorMessage)
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
+    {
+      super(operatorName, operatorId);
+      this.containerId = containerId;
+      this.errorMessage = errorMessage;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "OperatorError";
+    }
+
+    public String getContainerId()
+    {
+      return containerId;
+    }
+
+    public void setContainerId(String containerId)
     {
       this.containerId = containerId;
-      this.operators = operators;
+    }
+
+    public String getErrorMessage()
+    {
+      return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage)
+    {
+      this.errorMessage = errorMessage;
+    }
+
+  }
+
+  public static class ContainerErrorEvent extends StramEvent
+  {
+    private String containerId;
+    private String errorMessage;
+
+    public ContainerErrorEvent(String containerId, String errorMessage)
+    {
+      this.containerId = containerId;
       this.errorMessage = errorMessage;
     }
 
@@ -416,16 +455,6 @@ public abstract class StramEvent
     public void setContainerId(String containerId)
     {
       this.containerId = containerId;
-    }
-
-    public List<Integer> getOperators()
-    {
-      return operators;
-    }
-
-    public void setOperators(List<Integer> operators)
-    {
-      this.operators = operators;
     }
 
     public String getErrorMessage()

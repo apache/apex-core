@@ -1587,11 +1587,11 @@ public class StreamingContainerManager implements PlanContext
     this.eventQueue.add(r);
   }
 
-  public OperatorInfo getOperatorInfo(String operatorId)
+  public OperatorInfo getOperatorInfo(int operatorId)
   {
     for (PTContainer container : this.plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
-        if (operatorId.equals(Integer.toString(operator.getId()))) {
+        if (operatorId == operator.getId()) {
           return fillPhysicalOperatorInfo(operator);
         }
       }

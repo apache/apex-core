@@ -20,13 +20,11 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
@@ -42,7 +40,6 @@ import com.google.inject.Inject;
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 
@@ -219,7 +216,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorInfo(@PathParam("operatorId") String operatorId) throws Exception
+  public JSONObject getOperatorInfo(@PathParam("operatorId") int operatorId) throws Exception
   {
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
@@ -232,7 +229,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId) throws Exception
+  public JSONObject getPortsInfo(@PathParam("operatorId") int operatorId) throws Exception
   {
     init();
     Map<String, Object> map = new HashMap<String, Object>();
@@ -247,7 +244,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports/{portName}")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
+  public JSONObject getPortsInfo(@PathParam("operatorId") int operatorId, @PathParam("portName") String portName) throws Exception
   {
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
