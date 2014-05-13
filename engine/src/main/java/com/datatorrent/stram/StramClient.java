@@ -285,13 +285,13 @@ public class StramClient
       Path src = new Path(localFile);
       String filename = src.getName();
       Path dst = new Path(basePath, filename);
-      if (localFile.startsWith("hdfs:")) {
-        LOG.info("Copy {} from HDFS to {}", localFile, dst);
-        FileUtil.copy(fs, src, fs, dst, false, true, conf);
-      }
-      else {
+      if (localFile.startsWith("file:")) {
         LOG.info("Copy {} from local filesystem to {}", localFile, dst);
         fs.copyFromLocalFile(false, true, src, dst);
+      }
+      else {
+        LOG.info("Copy {} from HDFS to {}", localFile, dst);
+        FileUtil.copy(fs, src, fs, dst, false, true, conf);
       }
       if (csv.length() > 0) {
         csv.append(LIB_JARS_SEP);

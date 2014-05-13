@@ -242,7 +242,7 @@ public class StramAppLauncher
   private void processLibJars(String libjars, Set<URL> clUrls) throws Exception
   {
     for (String libjar : libjars.split(",")) {
-      // if hdfs, copy from hdfs to local
+      // if hadoop file system, copy from hadoop file system to local
       URI uri = new URI(libjar);
       String scheme = uri.getScheme();
       if (scheme == null) {
@@ -251,7 +251,7 @@ public class StramAppLauncher
       else if (scheme.equals("file")) {
         clUrls.add(new URL(libjar));
       }
-      else if (scheme.equals("hdfs")) {
+      else {
         if (fs != null) {
           Path path = new Path(libjar);
           File dependencyJarsDir = new File(StramClientUtils.getUserDTDirectory(), "dependencyJars");
@@ -261,11 +261,8 @@ public class StramAppLauncher
           clUrls.add(new URL("file:" + localJarFile.getAbsolutePath()));
         }
         else {
-          throw new NotImplementedException("Jar file needs to be from HDFS also in order for the dependency jars to be in HDFS");
+          throw new NotImplementedException("Jar file needs to be from Hadoop File System also in order for the dependency jars to be in Hadoop File System");
         }
-      }
-      else {
-        throw new NotImplementedException("Scheme '" + scheme + "' in libjars not supported");
       }
     }
   }
