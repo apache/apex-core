@@ -373,14 +373,19 @@ public class StreamingContainerManager implements PlanContext
   private void calculateEndWindowStats()
   {
     if (!endWindowStatsOperatorMap.isEmpty()) {
+      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
+
       if (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
         LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", this.vars.maxWindowsBehindForStats);
         while (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
+          LOG.debug("Removing incomplete end window stats for window id {}. Collected operator set: {}. Complete set: {}",
+                    endWindowStatsOperatorMap.firstKey(),
+                    endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(),
+                    allCurrentOperators);
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
 
-      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
       int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
@@ -415,6 +420,7 @@ public class StreamingContainerManager implements PlanContext
         else {
           // the old stats contains operators that do not exist any more
           // this is probably right after a partition happens.
+          LOG.debug("Stats for non-existent operators detected. Disregarding end window stats for window {}", windowId);
           endWindowStatsOperatorMap.remove(windowId);
         }
         windowId = endWindowStatsOperatorMap.higherKey(windowId);
