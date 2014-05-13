@@ -39,6 +39,11 @@ public class Tuple
     return windowId;
   }
 
+  public final int getBaseSeconds()
+  {
+    return (int)(windowId >> 32);
+  }
+
   /**
    * @return the type
    */

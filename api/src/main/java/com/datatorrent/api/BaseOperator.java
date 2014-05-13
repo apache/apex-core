@@ -38,8 +38,7 @@ public class BaseOperator implements Operator, Serializable
   private String name;
 
   /**
-   * <p>Getter for the field
-   * <code>name</code>.</p>
+   * @return the name property of the operator.
    */
   public String getName()
   {
@@ -47,8 +46,8 @@ public class BaseOperator implements Operator, Serializable
   }
 
   /**
-   * <p>Setter for the field
-   * <code>name</code>.</p>
+   * Set the name property of the operator.
+   * @param name
    */
   public void setName(String name)
   {

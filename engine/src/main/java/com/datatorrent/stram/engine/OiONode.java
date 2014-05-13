@@ -75,14 +75,15 @@ public class OiONode extends GenericNode
           break;
 
         case CHECKPOINT:
-          if (lastCheckpointedWindowId < currentWindowId && !doCheckpoint) {
+          if (lastCheckpointWindowId < t.getWindowId() && !doCheckpoint) {
             if (checkpointWindowCount == 0) {
-              checkpoint(currentWindowId);
-              lastCheckpointedWindowId = currentWindowId;
+              checkpoint(t.getWindowId());
+              lastCheckpointWindowId = t.getWindowId();
             }
             else {
               doCheckpoint = true;
             }
+
             for (int s = sinks.length; s-- > 0;) {
               sinks[s].put(t);
             }
