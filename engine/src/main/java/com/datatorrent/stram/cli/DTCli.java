@@ -2985,11 +2985,31 @@ public class DTCli
           throw new CliException("More than one application in jar file match '" + appName + "'");
         }
         else {
-          AppFactory appFactory = matchingAppFactories.get(0);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
           Map<String, Object> map = new HashMap<String, Object>();
-          map.put("applicationName", appFactory.getName());
-          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          PrintStream originalStream = System.out;
+          AppFactory appFactory = matchingAppFactories.get(0);
+          try {
+            if (raw) {
+              PrintStream dummyStream = new PrintStream(new OutputStream()
+              {
+                @Override
+                public void write(int b)
+                {
+                  // no-op
+                }
+
+              });
+              System.setOut(dummyStream);
+            }
+            LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+            map.put("applicationName", appFactory.getName());
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          }
+          finally {
+            if (raw) {
+              System.setOut(originalStream);
+            }
+          }
           printJson(map);
         }
       }
