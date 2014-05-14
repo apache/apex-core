@@ -297,14 +297,20 @@ public class GenericNode extends Node<Operator>
               case CHECKPOINT:
                 activePort.remove();
                 long checkpointWindow = t.getWindowId();
-                if (lastCheckpointWindowId < checkpointWindow && !doCheckpoint) {
-                  if (checkpointWindowCount == 0) {
-                    checkpoint(checkpointWindow);
+                if (lastCheckpointWindowId < checkpointWindow) {
+                  if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
                     lastCheckpointWindowId = checkpointWindow;
                   }
-                  else {
-                    doCheckpoint = true;
+                  else if (!doCheckpoint) {
+                    if (checkpointWindowCount == 0) {
+                      checkpoint(checkpointWindow);
+                      lastCheckpointWindowId = checkpointWindow;
+                    }
+                    else {
+                      doCheckpoint = true;
+                    }
                   }
+                  
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
