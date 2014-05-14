@@ -17,11 +17,11 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
+import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
-import com.datatorrent.stram.tuple.ResetWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -142,12 +142,10 @@ public class GenericNode extends Node<Operator>
       checkpointWindowCount = 0;
       if (doCheckpoint) {
         checkpoint(currentWindowId);
-        lastCheckpointedWindowId = currentWindowId;
         doCheckpoint = false;
       }
       else if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE) {
         checkpoint(currentWindowId);
-        lastCheckpointedWindowId = currentWindowId;
       }
     }
 
@@ -156,12 +154,12 @@ public class GenericNode extends Node<Operator>
     handleRequests(currentWindowId);
   }
 
-  class ResetTupleTracker
+  class TupleTracker
   {
-    final ResetWindowTuple tuple;
+    final Tuple tuple;
     SweepableReservoir[] ports;
 
-    ResetTupleTracker(ResetWindowTuple base, int count)
+    TupleTracker(Tuple base, int count)
     {
       tuple = base;
       ports = new SweepableReservoir[count];
@@ -171,7 +169,7 @@ public class GenericNode extends Node<Operator>
 
   boolean insideWindow;
   boolean doCheckpoint;
-  long lastCheckpointedWindowId;
+  long lastCheckpointWindowId = Stateless.WINDOW_ID;
 
   @Override
   public void activate()
@@ -189,7 +187,6 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings({"SleepWhileInLoop", "UseSpecificCatch", "BroadCatchBlock", "TooBroadCatch"})
   public final void run()
   {
-    lastCheckpointedWindowId = 0;
     doCheckpoint = false;
 
     long spinMillis = context.getValue(OperatorContext.SPIN_MILLIS);
@@ -201,7 +198,9 @@ public class GenericNode extends Node<Operator>
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
-    LinkedList<ResetTupleTracker> resetTupleTracker = new LinkedList<ResetTupleTracker>();
+
+    TupleTracker tracker;
+    LinkedList<TupleTracker> resetTupleTracker = new LinkedList<TupleTracker>();
 
     try {
       do {
@@ -298,10 +297,10 @@ public class GenericNode extends Node<Operator>
               case CHECKPOINT:
                 activePort.remove();
                 long checkpointWindow = t.getWindowId();
-                if (lastCheckpointedWindowId < checkpointWindow && !doCheckpoint) {
+                if (lastCheckpointWindowId < checkpointWindow && !doCheckpoint) {
                   if (checkpointWindowCount == 0) {
                     checkpoint(checkpointWindow);
-                    lastCheckpointedWindowId = checkpointWindow;
+                    lastCheckpointWindowId = checkpointWindow;
                   }
                   else {
                     doCheckpoint = true;
@@ -320,40 +319,38 @@ public class GenericNode extends Node<Operator>
                 activePort.remove();
                 buffers.remove();
 
-                int baseSeconds = ((ResetWindowTuple)t).getBaseSeconds();
-                ResetTupleTracker tracker = null;
-
-                Iterator<ResetTupleTracker> iterator = resetTupleTracker.iterator();
-                while (iterator.hasNext()) {
-                  tracker = iterator.next();
+                int baseSeconds = t.getBaseSeconds();
+                tracker = null;
+                Iterator<TupleTracker> trackerIterator = resetTupleTracker.iterator();
+                while (trackerIterator.hasNext()) {
+                  tracker = trackerIterator.next();
                   if (tracker.tuple.getBaseSeconds() == baseSeconds) {
                     break;
                   }
                 }
 
                 if (tracker == null) {
-                  tracker = new ResetTupleTracker((ResetWindowTuple)t, totalQueues);
+                  tracker = new TupleTracker(t, totalQueues);
                   resetTupleTracker.add(tracker);
                 }
-
-                int index = 0;
-                while (index < tracker.ports.length) {
-                  if (tracker.ports[index] == null) {
-                    tracker.ports[index++] = activePort;
+                int trackerIndex = 0;
+                while (trackerIndex < tracker.ports.length) {
+                  if (tracker.ports[trackerIndex] == null) {
+                    tracker.ports[trackerIndex++] = activePort;
                     break;
                   }
-                  else if (tracker.ports[index] == activePort) {
+                  else if (tracker.ports[trackerIndex] == activePort) {
                     break;
                   }
 
-                  index++;
+                  trackerIndex++;
                 }
 
-                if (index == totalQueues) {
-                  iterator = resetTupleTracker.iterator();
-                  while (iterator.hasNext()) {
-                    if (iterator.next().tuple.getBaseSeconds() <= baseSeconds) {
-                      iterator.remove();
+                if (trackerIndex == totalQueues) {
+                  trackerIterator = resetTupleTracker.iterator();
+                  while (trackerIterator.hasNext()) {
+                    if (trackerIterator.next().tuple.getBaseSeconds() <= baseSeconds) {
+                      trackerIterator.remove();
                     }
                   }
                   for (int s = sinks.length; s-- > 0;) {
@@ -426,28 +423,28 @@ public class GenericNode extends Node<Operator>
                  * from the list of tracked reservoirs. If the current input port has not delivered the reset tuple, and
                  * it's the only one which has not, then we consider it delivered and release the reset tuple downstream.
                  */
-                ResetWindowTuple tuple = null;
-                for (iterator = resetTupleTracker.iterator(); iterator.hasNext();) {
-                  tracker = iterator.next();
+                Tuple tuple = null;
+                for (trackerIterator = resetTupleTracker.iterator(); trackerIterator.hasNext();) {
+                  tracker = trackerIterator.next();
 
-                  index = 0;
-                  while (index < tracker.ports.length) {
-                    if (tracker.ports[index] == activePort) {
+                  trackerIndex = 0;
+                  while (trackerIndex < tracker.ports.length) {
+                    if (tracker.ports[trackerIndex] == activePort) {
                       SweepableReservoir[] ports = new SweepableReservoir[totalQueues];
-                      System.arraycopy(tracker.ports, 0, ports, 0, index);
-                      if (index < totalQueues) {
-                        System.arraycopy(tracker.ports, index + 1, ports, index, tracker.ports.length - index - 1);
+                      System.arraycopy(tracker.ports, 0, ports, 0, trackerIndex);
+                      if (trackerIndex < totalQueues) {
+                        System.arraycopy(tracker.ports, trackerIndex + 1, ports, trackerIndex, tracker.ports.length - trackerIndex - 1);
                       }
                       tracker.ports = ports;
                       break;
                     }
-                    else if (tracker.ports[index] == null) {
-                      if (index == totalQueues) { /* totalQueues is already adjusted above */
+                    else if (tracker.ports[trackerIndex] == null) {
+                      if (trackerIndex == totalQueues) { /* totalQueues is already adjusted above */
                         if (tuple == null || tuple.getBaseSeconds() < tracker.tuple.getBaseSeconds()) {
                           tuple = tracker.tuple;
                         }
 
-                        iterator.remove();
+                        trackerIterator.remove();
                       }
                       break;
                     }
@@ -455,7 +452,7 @@ public class GenericNode extends Node<Operator>
                       tracker.ports = Arrays.copyOf(tracker.ports, totalQueues);
                     }
 
-                    index++;
+                    trackerIndex++;
                   }
                 }
 

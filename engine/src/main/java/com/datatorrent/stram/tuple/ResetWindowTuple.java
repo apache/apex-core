@@ -27,11 +27,6 @@ public class ResetWindowTuple extends Tuple
     return super.windowId & 0xffffffff00000000L;
   }
 
-  public final int getBaseSeconds()
-  {
-    return (int)(super.windowId >> 32);
-  }
-
   public final int getIntervalMillis()
   {
     return (int)super.windowId;
