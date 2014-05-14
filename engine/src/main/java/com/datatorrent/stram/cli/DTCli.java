@@ -332,13 +332,13 @@ public class DTCli
     StramAppLauncher appLauncher = null;
     if (scheme == null || scheme.equals("file")) {
       File jf = new File(uri.getPath());
-      appLauncher = new StramAppLauncher(jf, config, ignorePom);
+      appLauncher = new StramAppLauncher(jf, config);
     }
     else {
       FileSystem fs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
-        appLauncher = new StramAppLauncher(fs, path, config, ignorePom);
+        appLauncher = new StramAppLauncher(fs, path, config);
       }
       finally {
         fs.close();
