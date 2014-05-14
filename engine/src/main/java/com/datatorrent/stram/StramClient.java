@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -19,8 +21,10 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
+import org.apache.commons.httpclient.util.URIUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.math.distribution.Distribution;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -285,12 +289,17 @@ public class StramClient
       Path src = new Path(localFile);
       String filename = src.getName();
       Path dst = new Path(basePath, filename);
-      if (localFile.startsWith("file:")) {
+      URI localFileURI = null;
+      try {
+        localFileURI = new URI(localFile);
+      } catch (URISyntaxException e) {
+        throw new IOException(e);
+      }
+      if (localFileURI.getScheme() == null || localFileURI.getScheme().startsWith("file")) {
         LOG.info("Copy {} from local filesystem to {}", localFile, dst);
         fs.copyFromLocalFile(false, true, src, dst);
-      }
-      else {
-        LOG.info("Copy {} from HDFS to {}", localFile, dst);
+      } else {
+        LOG.info("Copy {} from DFS to {}", localFile, dst);
         FileUtil.copy(fs, src, fs, dst, false, true, conf);
       }
       if (csv.length() > 0) {
@@ -604,6 +613,9 @@ public class StramClient
       vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
       vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
       vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
+      if (dag.isDebug()) {
+        vargs.add("-Dlog4j.debug=true");
+      }
 
       if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         vargs.add(LicensingAppMaster.class.getName());

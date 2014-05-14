@@ -66,7 +66,6 @@ public class StramAppLauncher
   private LinkedHashSet<URL> launchDependencies;
   private LinkedHashSet<File> deployJars;
   private final StringWriter mvnBuildClasspathOutput = new StringWriter();
-  private boolean ignorePom = false;
 
   public static interface AppFactory
   {
@@ -103,15 +102,14 @@ public class StramAppLauncher
 
   }
 
-  public StramAppLauncher(File appJarFile, Configuration conf, boolean ignorePom) throws Exception
+  public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
   {
     this.jarFile = appJarFile;
     this.conf = conf;
-    this.ignorePom = ignorePom;
     init();
   }
 
-  public StramAppLauncher(FileSystem fs, Path path, Configuration conf, boolean ignorePom) throws Exception
+  public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception
   {
     File jarsDir = new File(StramClientUtils.getUserDTDirectory(), "jars");
     jarsDir.mkdirs();
@@ -120,7 +118,6 @@ public class StramAppLauncher
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
     this.conf = conf;
-    this.ignorePom = ignorePom;
     init();
   }
 
@@ -187,9 +184,6 @@ public class StramAppLauncher
         } else {
           LOG.warn("Ignoring manifest attribute {} because {} does not exist.", ManifestResolver.ATTR_NAME, repoRoot);
         }
-      } else if (!ignorePom) {
-        // support jar files built w/o manifest attribute prior to 0.9.3
-        resolvers.add(new ClassPathResolvers.MavenResolver());
       }
     }
 
