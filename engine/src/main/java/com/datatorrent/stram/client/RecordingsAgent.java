@@ -528,13 +528,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
       BufferedReader partBr = null;
       try {
-        String extraPartFile = null;
-        if (lastProcessPartFile == null) {
-          extraPartFile = "part0.txt";
-        }
-        else if (lastProcessPartFile.startsWith("part") && lastProcessPartFile.endsWith(".txt")) {
-          extraPartFile = "part" + (Integer.valueOf(lastProcessPartFile.substring(4, lastProcessPartFile.length() - 4)) + 1) + ".txt";
-        }
+        String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
           partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
           processPartFile(partBr, queryType, low, high, limit, ports,
