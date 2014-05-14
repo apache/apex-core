@@ -153,6 +153,7 @@ public class StreamingContainerManager implements PlanContext
   private final Map<Integer, Long> operatorLastEndWindowTimestamps = new HashMap<Integer, Long>();
   private long lastStatsTimestamp = System.currentTimeMillis();
   private long currentEndWindowStatsWindowId;
+  private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
 
   private static class EndWindowStats
@@ -394,7 +395,13 @@ public class StreamingContainerManager implements PlanContext
 
         if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
-            break;
+            if (windowId < completeEndWindowStatsWindowId) {
+              LOG.debug("Disregarding stale end window stats for window {}", windowId);
+              endWindowStatsOperatorMap.remove(windowId);
+            }
+            else {
+              break;
+            }
           }
           else {
             // collected data from all operators for this window id.  start latency calculation
@@ -802,14 +809,12 @@ public class StreamingContainerManager implements PlanContext
               };
               dispatch(r);
               sca.undeployOpers.add(oper.getId());
-              endWindowStatsOperatorMap.clear();
               // record operator stop event
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
               break;
             case FAILED:
               processOperatorFailure(oper);
               sca.undeployOpers.add(oper.getId());
-              endWindowStatsOperatorMap.clear();
               recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
               break;
             case ACTIVE:
@@ -820,7 +825,6 @@ public class StreamingContainerManager implements PlanContext
       case PENDING_UNDEPLOY:
         if (ds == null) {
           // operator no longer deployed in container
-          endWindowStatsOperatorMap.clear();
           recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
           oper.setState(State.PENDING_DEPLOY);
           sca.deployOpers.add(oper);
@@ -842,7 +846,6 @@ public class StreamingContainerManager implements PlanContext
           oper.setState(PTOperator.State.ACTIVE);
           oper.stats.lastHeartbeat = null; // reset on redeploy
           oper.stats.lastWindowIdChangeTms = clock.getTime();
-          endWindowStatsOperatorMap.clear();
           recordEventAsync(new StramEvent.StartOperatorEvent(oper.getName(), oper.getId(), container.getExternalId()));
         }
         break;
@@ -851,7 +854,6 @@ public class StreamingContainerManager implements PlanContext
         if (ds != null) {
           // operator was removed and needs to be undeployed from container
           sca.undeployOpers.add(oper.getId());
-          endWindowStatsOperatorMap.clear();
           recordEventAsync(new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), oper.getContainer().getExternalId()));
         }
     }
@@ -1100,6 +1102,12 @@ public class StreamingContainerManager implements PlanContext
               endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
             }
             endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
+
+            Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
+            int numOperators = plan.getAllOperators().size();
+            if (allCurrentOperators.containsAll(endWindowStatsMap.keySet()) && endWindowStatsMap.size() == numOperators) {
+              completeEndWindowStatsWindowId = stats.windowId;
+            }
           }
         }
 
