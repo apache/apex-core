@@ -153,6 +153,7 @@ public class StreamingContainerManager implements PlanContext
   private final Map<Integer, Long> operatorLastEndWindowTimestamps = new HashMap<Integer, Long>();
   private long lastStatsTimestamp = System.currentTimeMillis();
   private long currentEndWindowStatsWindowId;
+  private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
 
   private static class EndWindowStats
@@ -373,14 +374,19 @@ public class StreamingContainerManager implements PlanContext
   private void calculateEndWindowStats()
   {
     if (!endWindowStatsOperatorMap.isEmpty()) {
+      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
+
       if (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
         LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", this.vars.maxWindowsBehindForStats);
         while (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
+          LOG.debug("Removing incomplete end window stats for window id {}. Collected operator set: {}. Complete set: {}",
+                    endWindowStatsOperatorMap.firstKey(),
+                    endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(),
+                    allCurrentOperators);
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
 
-      Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
       int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
@@ -389,7 +395,13 @@ public class StreamingContainerManager implements PlanContext
 
         if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
-            break;
+            if (windowId < completeEndWindowStatsWindowId) {
+              LOG.debug("Disregarding stale end window stats for window {}", windowId);
+              endWindowStatsOperatorMap.remove(windowId);
+            }
+            else {
+              break;
+            }
           }
           else {
             // collected data from all operators for this window id.  start latency calculation
@@ -415,6 +427,7 @@ public class StreamingContainerManager implements PlanContext
         else {
           // the old stats contains operators that do not exist any more
           // this is probably right after a partition happens.
+          LOG.debug("Stats for non-existent operators detected. Disregarding end window stats for window {}", windowId);
           endWindowStatsOperatorMap.remove(windowId);
         }
         windowId = endWindowStatsOperatorMap.higherKey(windowId);
@@ -1085,10 +1098,16 @@ public class StreamingContainerManager implements PlanContext
           if (stats.windowId > currentEndWindowStatsWindowId) {
             Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
             if (endWindowStatsMap == null) {
-              endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
+              endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentSkipListMap<Integer, EndWindowStats>());
               endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
             }
             endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
+
+            Set<Integer> allCurrentOperators = plan.getAllOperators().keySet();
+            int numOperators = plan.getAllOperators().size();
+            if (allCurrentOperators.containsAll(endWindowStatsMap.keySet()) && endWindowStatsMap.size() == numOperators) {
+              completeEndWindowStatsWindowId = stats.windowId;
+            }
           }
         }
 

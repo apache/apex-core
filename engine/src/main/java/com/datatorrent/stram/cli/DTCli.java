@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
+
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
@@ -59,6 +60,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -322,6 +324,7 @@ public class DTCli
 
   }
 
+  @SuppressWarnings("unused")
   private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config, boolean ignorePom) throws Exception
   {
     URI uri = new URI(jarfileUri);
@@ -331,7 +334,7 @@ public class DTCli
       File jf = new File(uri.getPath());
       appLauncher = new StramAppLauncher(jf, config, ignorePom);
     }
-    else if (scheme.equals("hdfs")) {
+    else {
       FileSystem fs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
@@ -2985,11 +2988,31 @@ public class DTCli
           throw new CliException("More than one application in jar file match '" + appName + "'");
         }
         else {
-          AppFactory appFactory = matchingAppFactories.get(0);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
           Map<String, Object> map = new HashMap<String, Object>();
-          map.put("applicationName", appFactory.getName());
-          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          PrintStream originalStream = System.out;
+          AppFactory appFactory = matchingAppFactories.get(0);
+          try {
+            if (raw) {
+              PrintStream dummyStream = new PrintStream(new OutputStream()
+              {
+                @Override
+                public void write(int b)
+                {
+                  // no-op
+                }
+
+              });
+              System.setOut(dummyStream);
+            }
+            LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+            map.put("applicationName", appFactory.getName());
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          }
+          finally {
+            if (raw) {
+              System.setOut(originalStream);
+            }
+          }
           printJson(map);
         }
       }
@@ -3039,7 +3062,7 @@ public class DTCli
         if (scheme.equals("file")) {
           files[i] = uri.getPath();
         }
-        else if (scheme.equals("hdfs")) {
+        else {
           FileSystem fs = FileSystem.newInstance(uri, conf);
           try {
             Path srcPath = new Path(uri.getPath());
