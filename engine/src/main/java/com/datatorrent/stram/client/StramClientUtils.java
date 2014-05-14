@@ -369,7 +369,7 @@ public class StramClientUtils
         newEntries.put(newKey, entry.getValue());
         iterator.remove();
       }
-      else if (entry.getKey().equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_ADDRESS.getName())) {
+      else if (entry.getKey().equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName())) {
         String newKey = StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName();
         newEntries.put(newKey, entry.getValue());
         LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);

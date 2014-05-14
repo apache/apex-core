@@ -15,12 +15,13 @@
  */
 package com.datatorrent.api;
 
+import java.util.Map;
+
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.StringCodec.Class2String;
 import com.datatorrent.api.StringCodec.Map2String;
 import com.datatorrent.api.StringCodec.String2String;
-import java.util.Map;
 
 /**
  * <p>DAGContext interface.</p>
@@ -135,11 +136,6 @@ public interface DAGContext extends Context
    * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
    */
   Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
-  /**
-   * @deprecated Please use GATEWAY_CONNECT_ADDRESS
-   */
-  @Deprecated
-  Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
   /**
    * Whether or not gateway is expecting SSL connection.
    */
