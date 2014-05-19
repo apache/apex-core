@@ -25,6 +25,7 @@ import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
+import java.io.Serializable;
 
 /**
  *
@@ -52,6 +53,26 @@ public interface Context
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
   public <T> T getValue(AttributeMap.Attribute<T> key);
+
+  /**
+   * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
+   * current window, reset at window boundary.
+   *
+   * @param counters
+   */
+  void setCounters(Counters counters);
+
+  /**
+   * Custom operator stats that can be defined by an operator implementation to communicate information from the
+   * execution environment to the application master. Treated by the engine as opaque object.
+   * <p>
+   * Implementation needs to be {@link java.io.Serializable} and, if desired, can implement
+   * {@link java.io.Externalizable} to use an alternative serialization mechanism.
+   */
+  @SuppressWarnings("MarkerInterface")
+  interface Counters
+  {
+  }
 
   public interface PortContext extends Context
   {
@@ -221,14 +242,6 @@ public interface Context
      * @return The id
      */
     int getId();
-
-    /**
-     * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
-     * current window, reset at window boundary.
-     *
-     * @param stats
-     */
-    void setCustomStats(Stats.OperatorStats.CustomStats stats);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);

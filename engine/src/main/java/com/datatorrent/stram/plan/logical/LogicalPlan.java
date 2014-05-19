@@ -116,6 +116,12 @@ public class LogicalPlan implements Serializable, DAG
   {
   }
 
+  @Override
+  public void setCounters(Counters counters)
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
   public final class InputPortMeta implements DAG.InputPortMeta, Serializable
   {
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
@@ -169,6 +175,12 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       return attr;
+    }
+
+    @Override
+    public void setCounters(Counters counters)
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
   }
 
@@ -237,6 +249,12 @@ public class LogicalPlan implements Serializable, DAG
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
+    }
+
+    @Override
+    public void setCounters(Counters counters)
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
   }
 
@@ -507,6 +525,12 @@ public class LogicalPlan implements Serializable, DAG
       // TODO: not working because - we don't have the storage agent in parent attribuet map
       //operator = (Operator)getValue2(OperatorContext.STORAGE_AGENT).load(id, Checkpoint.STATELESS_CHECKPOINT_WINDOW_ID);
       operator = (Operator)FSStorageAgent.retrieve(input);
+    }
+
+    @Override
+    public void setCounters(Counters counters)
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     private class PortMapping implements Operators.OperatorDescriptor

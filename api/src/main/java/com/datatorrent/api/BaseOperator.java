@@ -33,7 +33,7 @@ import com.datatorrent.api.Context.OperatorContext;
  *
  * @since 0.3.2
  */
-public class BaseOperator implements Operator, Serializable
+public class BaseOperator implements Operator
 {
   private String name;
 

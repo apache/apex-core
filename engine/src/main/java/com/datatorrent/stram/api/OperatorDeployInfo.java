@@ -25,7 +25,8 @@ public class OperatorDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
 
-  public enum OperatorType {
+  public enum OperatorType
+  {
     INPUT, UNIFIER, GENERIC, OIO
   }
 
@@ -35,48 +36,38 @@ public class OperatorDeployInfo implements Serializable
   public static class InputDeployInfo implements Serializable, PortContext
   {
     public Locality locality;
-
     /**
      * Port name matching the operator's port declaration
      */
     public String portName;
-
     /**
      * Name of stream declared in logical topology
      */
     public String declaredStreamId;
-
     /**
      * If inline connection, id of source node in same container.
      * For buffer server, upstream publisher node id.
      */
     public int sourceNodeId;
-
     /**
      * Port of the upstream node from where this input stream originates.
      * Required to uniquely identify publisher end point.
      */
     public String sourcePortName;
-
     /**
      * Buffer server subscriber info, set only when upstream operator not in same container.
      */
     public String bufferServerHost;
-
     public int bufferServerPort;
-
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
     public String serDeClassName;
-
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
     public Set<Integer> partitionKeys;
     public int partitionMask;
-
-
     /**
      * Context attributes for input port
      */
@@ -85,15 +76,15 @@ public class OperatorDeployInfo implements Serializable
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-                .append("portName", this.portName)
-                .append("streamId", this.declaredStreamId)
-                .append("sourceNodeId", this.sourceNodeId)
-                .append("sourcePortName", this.sourcePortName)
-                .append("locality", this.locality)
-                .append("partitionMask", this.partitionMask)
-                .append("partitionKeys", this.partitionKeys)
-                .toString();
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+              .append("portName", this.portName)
+              .append("streamId", this.declaredStreamId)
+              .append("sourceNodeId", this.sourceNodeId)
+              .append("sourcePortName", this.sourcePortName)
+              .append("locality", this.locality)
+              .append("partitionMask", this.partitionMask)
+              .append("partitionKeys", this.partitionKeys)
+              .toString();
     }
 
     @Override
@@ -113,6 +104,12 @@ public class OperatorDeployInfo implements Serializable
       return get;
     }
 
+    @Override
+    public void setCounters(Counters counters)
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201208271957L;
   }
@@ -129,24 +126,19 @@ public class OperatorDeployInfo implements Serializable
      * Port name matching the node's port declaration
      */
     public String portName;
-
     /**
      * Name of stream declared in logical topology
      */
     public String declaredStreamId;
-
     /**
      * Buffer server publisher info, set when stream not inline.
      */
     public String bufferServerHost;
-
     public int bufferServerPort;
-
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
     public String serDeClassName;
-
     /**
      * Context attributes for output port
      */
@@ -155,11 +147,11 @@ public class OperatorDeployInfo implements Serializable
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-                .append("portName", this.portName)
-                .append("streamId", this.declaredStreamId)
-                .append("bufferServer", this.bufferServerHost)
-                .toString();
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+              .append("portName", this.portName)
+              .append("streamId", this.declaredStreamId)
+              .append("bufferServer", this.bufferServerHost)
+              .toString();
     }
 
     @Override
@@ -179,6 +171,12 @@ public class OperatorDeployInfo implements Serializable
       return attr;
     }
 
+    @Override
+    public void setCounters(Counters counters)
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201208271958L;
   }
@@ -187,34 +185,28 @@ public class OperatorDeployInfo implements Serializable
    * Unique id in the DAG, assigned by the master and immutable (restart/recovery)
    */
   public int id;
-
-	/**
-	 * Type of the operator. Required as single class
-	 * may implement regular operator and unifier.
-	 */
+  /**
+   * Type of the operator. Required as single class
+   * may implement regular operator and unifier.
+   */
   public OperatorType type;
-
   /**
    * Logical operator name from DAG.
    */
   public String name;
-
   /**
    * The checkpoint window identifier.
    * Used to restore state and incoming streams as part of recovery.
    */
   public Checkpoint checkpoint;
-
   /**
    * Inputs to node, either from socket stream or inline from other node(s).
    */
   public List<InputDeployInfo> inputs;
-
   /**
    * Outputs from node, either to socket stream or inline to other node(s).
    */
   public List<OutputDeployInfo> outputs;
-
   /**
    * Context attributes for operator
    */

@@ -23,6 +23,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
    */
   public final AttributeMap attributes;
   public final Context parentContext; // may be we do not need to serialize parentContext!
+  public Counters counters;
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
@@ -44,6 +45,12 @@ public class BaseContext extends AbstractWritableAdapter implements Context
       return attr;
     }
     return parentContext == null ? key.defaultValue : parentContext.getValue(key);
+  }
+
+  @Override
+  public void setCounters(Counters counters)
+  {
+    this.counters = counters;
   }
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")

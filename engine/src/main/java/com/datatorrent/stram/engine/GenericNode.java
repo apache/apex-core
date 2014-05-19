@@ -310,7 +310,7 @@ public class GenericNode extends Node<Operator>
                       doCheckpoint = true;
                     }
                   }
-                  
+
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
