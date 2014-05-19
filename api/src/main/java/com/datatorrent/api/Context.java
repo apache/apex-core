@@ -15,6 +15,7 @@
  */
 package com.datatorrent.api;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -25,7 +26,6 @@ import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
-import java.io.Serializable;
 
 /**
  *
