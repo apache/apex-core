@@ -87,6 +87,11 @@ public interface StatsListener
      */
     public List<OperatorCommand> operatorCommands;
 
+    /**
+     * Aggregated counters of physical partitions.
+     */
+    public Context.Counters aggregatedCounters;
+
     private static final long serialVersionUID = 201401201506L;
   }
 
