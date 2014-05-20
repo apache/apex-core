@@ -64,6 +64,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.OperatorBeanUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  *
@@ -441,15 +442,32 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject listContainers() throws Exception
+  public JSONObject listContainers(@QueryParam("states") String states) throws Exception
   {
     init();
-    Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
+    Set<String> stateSet = null;
+    if (states != null) {
+      stateSet = new HashSet<String>();
+      stateSet.addAll(Arrays.asList(StringUtils.split(states, ',')));
+    }
     ContainersInfo ci = new ContainersInfo();
+    for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {
+      if (stateSet == null || stateSet.contains(containerInfo.state)) {
+        ci.add(containerInfo);
+      }
+    }
+
+    Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     // add itself (app master container)
-    ci.add(getAppMasterContainerInfo());
+    ContainerInfo appMasterContainerInfo = getAppMasterContainerInfo();
+    if (stateSet == null || stateSet.contains(appMasterContainerInfo.state)) {
+      ci.add(appMasterContainerInfo);
+    }
     for (StramChildAgent sca : containerAgents) {
-      ci.add(sca.getContainerInfo());
+      ContainerInfo containerInfo = sca.getContainerInfo();
+      if (stateSet == null || stateSet.contains(containerInfo.state)) {
+        ci.add(containerInfo);
+      }
     }
     // To get around the nasty JAXB problem for lists
     return new JSONObject(objectMapper.writeValueAsString(ci));
@@ -461,16 +479,23 @@ public class StramWebServices
   public JSONObject getContainer(@PathParam("containerId") String containerId) throws Exception
   {
     init();
-    ContainerInfo ci;
+    ContainerInfo ci = null;
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
       ci = getAppMasterContainerInfo();
     }
     else {
-      StramChildAgent sca = dagManager.getContainerAgent(containerId);
-      if (sca == null) {
-        throw new NotFoundException();
+      for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {
+        if (containerInfo.id.equals(containerId)) {
+          ci = containerInfo;
+        }
       }
-      ci = sca.getContainerInfo();
+      if (ci == null) {
+        StramChildAgent sca = dagManager.getContainerAgent(containerId);
+        if (sca == null) {
+          throw new NotFoundException();
+        }
+        ci = sca.getContainerInfo();
+      }
     }
     return new JSONObject(objectMapper.writeValueAsString(ci));
   }

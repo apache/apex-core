@@ -95,10 +95,7 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
 import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
-import com.datatorrent.stram.webapp.LogicalOperatorInfo;
-import com.datatorrent.stram.webapp.OperatorInfo;
-import com.datatorrent.stram.webapp.PortInfo;
-import com.datatorrent.stram.webapp.StreamInfo;
+import com.datatorrent.stram.webapp.*;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -155,6 +152,7 @@ public class StreamingContainerManager implements PlanContext
   private long currentEndWindowStatsWindowId;
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
+  private final List<ContainerInfo> completedContainers = new ArrayList<ContainerInfo>();
 
   private static class EndWindowStats
   {
@@ -668,7 +666,15 @@ public class StreamingContainerManager implements PlanContext
         StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId);
         recordEventAsync(ev);
       }
+      // Record for historical container
+      // We may want to consider putting this in HDFS in the future since this may grow indefinitely, although the data is small.
+      completedContainers.add(containerAgent.getContainerInfo());
     }
+  }
+
+  public List<ContainerInfo> getCompletedContainerInfo()
+  {
+    return completedContainers;
   }
 
   public static class ContainerResource
