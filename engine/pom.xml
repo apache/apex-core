@@ -80,6 +80,29 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- Extend packaged default_license term for 120 days since build -->
+      <plugin>
+        <artifactId>exec-maven-plugin</artifactId>
+        <groupId>org.codehaus.mojo</groupId>
+        <executions>
+          <execution>
+            <id>update-default-license-term</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <!-- <goal>exec</goal> -->
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>com.datatorrent.stram.license.DefaultLicense</mainClass>
+              <commandlineArgs>-propertiesFile src/main/license/default_license_properties -outputFile target/classes/com/datatorrent/stram/license/default_license</commandlineArgs>
+              <!-- <executable>src/main/license/generatedefaultlicense</executable>
+              <commandlineArgs>-propertiesFile src/main/license/default_license_properties -outputFile target/classes/com/datatorrent/stram/license/default_license</commandlineArgs> -->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-eclipse-plugin</artifactId>
