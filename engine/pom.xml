@@ -90,17 +90,26 @@
             <id>update-default-license-term</id>
             <phase>prepare-package</phase>
             <goals>
-              <!-- <goal>exec</goal> -->
-              <goal>java</goal>
+              <goal>exec</goal>
             </goals>
-            <configuration>
-              <mainClass>com.datatorrent.stram.license.DefaultLicense</mainClass>
-              <commandlineArgs>-propertiesFile src/main/license/default_license_properties -outputFile target/classes/com/datatorrent/stram/license/default_license</commandlineArgs>
-              <!-- <executable>src/main/license/generatedefaultlicense</executable>
-              <commandlineArgs>-propertiesFile src/main/license/default_license_properties -outputFile target/classes/com/datatorrent/stram/license/default_license</commandlineArgs> -->
-            </configuration>
           </execution>
         </executions>
+
+        <configuration>
+          <workingDirectory>${basedir}</workingDirectory>
+          <executable>java</executable>
+          <arguments>
+            <argument>-classpath</argument>
+            <!-- automatically creates the classpath using all project dependencies,
+                 also adding the project build directory -->
+            <classpath/>
+            <argument>com.datatorrent.stram.license.DefaultLicense</argument>
+            <argument>-propertiesFile</argument>
+            <argument>${basedir}/src/main/license/default_license_properties</argument>
+            <argument>-outputFile</argument>
+            <argument>${project.build.directory}/classes/com/datatorrent/stram/license/default_license</argument>
+          </arguments>
+        </configuration>
       </plugin>
 
       <plugin>
