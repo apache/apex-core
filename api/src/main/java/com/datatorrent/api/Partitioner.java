@@ -55,13 +55,10 @@ public interface Partitioner<T>
    * If an operator implements this interface but still wants the framework to
    * use the default partitioning, this method should return null.
    *
-   * @param partitions
-   *                            - Current set of partitions
-   * @param incrementalCapacity -
-   *                            The count of more instances of this operator can the
-   *                            infrastructure support. If this number is positive,
+   * @param partitions - Current set of partitions
+   * @param incrementalCapacity - The count of more instances of this operator can the infrastructure support. If this number is positive,
    * @return New partitioning. Partitions from input list which should not be
-   *         changed can be returned as they are.
+   * changed can be returned as they are.
    */
   public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
 
@@ -73,7 +70,7 @@ public interface Partitioner<T>
    * @see StatsListener
    * @see Partitioner#definePartitions
    */
-    void partitioned(Map<Integer, Partition<T>> partitions);
+  void partitioned(Map<Integer, Partition<T>> partitions);
 
   public class PartitionKeys implements java.io.Serializable
   {
