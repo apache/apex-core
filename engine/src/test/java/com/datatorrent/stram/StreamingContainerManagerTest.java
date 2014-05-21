@@ -338,16 +338,16 @@ public class StreamingContainerManagerTest {
 
     Assert.assertEquals("number of partitions", 3,o1Partitions.size());
     PTOperator o = o1Partitions.get(0);
-    Map<String,Object> m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+    Map<String,Object> m = dnm.getPhysicalOperatorProperty(o.getId());
     int origionalValue = ((Integer)m.get("maxTuples")).intValue();
 
-    dnm.setPhysicalOperatorProperty(o.getId()+"", "maxTuples","2" );
-    m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+    dnm.setPhysicalOperatorProperty(o.getId(), "maxTuples","2" );
+    m = dnm.getPhysicalOperatorProperty(o.getId());
     int newVal = Integer.valueOf(m.get("maxTuples").toString());
     Assert.assertEquals(2,newVal);
     for(int i = 1; i< 3;i++){
       o = o1Partitions.get(i);
-      m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+      m = dnm.getPhysicalOperatorProperty(o.getId());
       Assert.assertEquals(origionalValue,((Integer)m.get("maxTuples")).intValue());
     }
 
@@ -502,7 +502,7 @@ public class StreamingContainerManagerTest {
     ContainerStats cstats = new ContainerStats(containerId);
     ContainerHeartbeat hb = new ContainerHeartbeat();
     hb.setContainerStats(cstats);
-    
+
     ContainerHeartbeatResponse chr = scm.processHeartbeat(hb); // get deploy request
     Assert.assertNotNull(chr.deployRequest);
     Assert.assertEquals(""+chr.deployRequest, 1, chr.deployRequest.size());

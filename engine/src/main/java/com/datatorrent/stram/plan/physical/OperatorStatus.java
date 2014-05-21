@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import com.datatorrent.api.Context.Counters;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
@@ -63,6 +64,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
   public int loadIndicator = 0;
+  public Counters counters;
 
   public OperatorStatus(int operatorId, LogicalPlan.OperatorMeta om)
   {

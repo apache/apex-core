@@ -4,67 +4,48 @@
  */
 package com.datatorrent.stram.webapp;
 
+import com.datatorrent.api.Context.Counters;
+import com.datatorrent.api.*;
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
+import com.datatorrent.stram.*;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.util.ConfigUtils;
+import com.datatorrent.stram.util.OperatorBeanUtils;
+import com.google.inject.Inject;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
+import java.util.concurrent.*;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.Version;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.codehaus.jackson.*;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-
+import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.inject.Inject;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.StringCodec;
-import com.datatorrent.stram.StringCodecs;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
-
-import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.StramChildAgent;
-import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.util.ConfigUtils;
-import com.datatorrent.stram.util.OperatorBeanUtils;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  *
@@ -85,11 +66,11 @@ public class StramWebServices
   public static final String PATH_PHYSICAL_PLAN = "physicalPlan";
   public static final String PATH_PHYSICAL_PLAN_OPERATORS = PATH_PHYSICAL_PLAN + "/operators";
   public static final String PATH_PHYSICAL_PLAN_STREAMS = PATH_PHYSICAL_PLAN + "/streams";
+  public static final String PATH_PHYSICAL_PLAN_CONTAINERS = PATH_PHYSICAL_PLAN + "/containers";
   public static final String PATH_SHUTDOWN = "shutdown";
   public static final String PATH_RECORDINGS = "recordings";
   public static final String PATH_RECORDINGS_START = PATH_RECORDINGS + "/start";
   public static final String PATH_RECORDINGS_STOP = PATH_RECORDINGS + "/stop";
-  public static final String PATH_PHYSICAL_PLAN_CONTAINERS = PATH_PHYSICAL_PLAN + "/containers";
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
@@ -405,22 +386,22 @@ public class StramWebServices
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject stopRecording(@PathParam("opId") String opId)
+  public JSONObject stopRecording(@PathParam("opId") int opId)
   {
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
-    dagManager.stopRecording(Integer.valueOf(opId), null);
+    dagManager.stopRecording(opId, null);
     return response;
   }
 
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject stopRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
+  public JSONObject stopRecording(@PathParam("opId") int opId, @PathParam("portName") String portName)
   {
     LOG.debug("Stop recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
-    dagManager.stopRecording(Integer.valueOf(opId), portName);
+    dagManager.stopRecording(opId, portName);
     return response;
   }
 
@@ -586,11 +567,23 @@ public class StramWebServices
     return response;
   }
 
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/counters")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getLogicalOperatorCounters(@PathParam("operatorName") String operatorName) throws IOException, JSONException
+  {
+    OperatorMeta operatorMeta = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (operatorMeta == null) {
+      throw new NotFoundException("Logical operator " + operatorName + " does not exist");
+    }
+    return new JSONObject(objectMapper.writeValueAsString(operatorMeta.getStatus().counters));
+  }
+
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
+  public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") int operatorId)
   {
     init();
     JSONObject response = new JSONObject();
@@ -696,7 +689,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
+  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") int operatorId, @QueryParam("propertyName") String propertyName)
   {
     Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
 
@@ -714,6 +707,15 @@ public class StramWebServices
       LOG.warn("Caught exception", ex);
       throw new RuntimeException(ex);
     }
+  }
+
+  @GET
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/counters")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPhysicalOperatorCounters(@PathParam("operatorId") int operatorId) throws JSONException, IOException
+  {
+    Counters counters = dagManager.getOperatorCounters(operatorId);
+    return new JSONObject(objectMapper.writeValueAsString(counters));
   }
 
   @GET

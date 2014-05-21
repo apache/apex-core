@@ -1241,6 +1241,7 @@ public class PhysicalPlan implements Serializable
             ctx.dispatch(r);
           }
         }
+        oper.getOperatorMeta().getStatus().counters = rsp.aggregatedCounters;
       }
     }
   }
