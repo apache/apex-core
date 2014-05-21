@@ -20,7 +20,14 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.apache.log4j.LogManager;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
@@ -31,17 +38,10 @@ import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAGContext;
@@ -49,14 +49,14 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StringCodec;
-import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StramChildAgent;
 import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -64,7 +64,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.OperatorBeanUtils;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  *
@@ -94,6 +93,8 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_ALERTS = "alerts";
+  public static final String PATH_LOGGERS = "loggers";
+
   //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
@@ -826,4 +827,11 @@ public class StramWebServices
    return response;
    }
    */
+  @GET
+  @Path(PATH_LOGGERS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object listLoggers() throws JSONException, IOException
+  {
+    return LogManager.getCurrentLoggers();
+  }
 }
