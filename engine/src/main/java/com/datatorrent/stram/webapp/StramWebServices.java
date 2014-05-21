@@ -576,7 +576,11 @@ public class StramWebServices
     if (operatorMeta == null) {
       throw new NotFoundException("Logical operator " + operatorName + " does not exist");
     }
-    return new JSONObject(objectMapper.writeValueAsString(operatorMeta.getStatus().counters));
+    Counters counters = operatorMeta.getStatus().counters;
+    if (counters == null) {
+      throw new NotFoundException("This logical operator " + operatorName + " does not have counters");
+    }
+    return new JSONObject(objectMapper.writeValueAsString(counters));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -715,6 +719,9 @@ public class StramWebServices
   public JSONObject getPhysicalOperatorCounters(@PathParam("operatorId") int operatorId) throws JSONException, IOException
   {
     Counters counters = dagManager.getOperatorCounters(operatorId);
+    if (counters == null) {
+      throw new NotFoundException("Counters not found for this physical operator " + operatorId);
+    }
     return new JSONObject(objectMapper.writeValueAsString(counters));
   }
 
