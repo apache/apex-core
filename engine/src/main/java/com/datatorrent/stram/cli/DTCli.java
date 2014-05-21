@@ -537,9 +537,9 @@ public class DTCli
                                                               new Arg[] {new FileArg("license-file")},
                                                               "Show the status of the license"));
     globalCommands.put("get-config-parameter", new CommandSpec(new GetConfigParameterCommand(),
-                                                              null,
-                                                              new Arg[] {new FileArg("parameter-name")},
-                                                              "Get the configuration parameter"));
+                                                               null,
+                                                               new Arg[] {new FileArg("parameter-name")},
+                                                               "Get the configuration parameter"));
 
     //
     // Connected command specification starts here
@@ -2044,7 +2044,8 @@ public class DTCli
         ApplicationReport ar = null;
         try {
           ar = rmClient.getApplicationReport(commandLineInfo.origAppId);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           // application (no longer) in the RM history, does not prevent restart from state in DFS
           LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
         }
@@ -2244,7 +2245,11 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       if (args.length == 1) {
+        Map<String, String> sortedMap = new TreeMap<String, String>();
         for (Map.Entry<String, String> entry : conf) {
+          sortedMap.put(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, String> entry : sortedMap.entrySet()) {
           System.out.println(entry.getKey() + "=" + entry.getValue());
         }
       }
@@ -3587,6 +3592,7 @@ public class DTCli
       this.options.addOption(opt);
       return opt;
     }
+
   }
 
   private static LaunchCommandLineOptions LAUNCH_OPTIONS = new LaunchCommandLineOptions();
