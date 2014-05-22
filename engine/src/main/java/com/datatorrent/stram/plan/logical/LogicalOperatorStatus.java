@@ -6,6 +6,8 @@ package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.api.Context.Counters;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * <p>LogicalOperatorStatus class.</p>
@@ -25,5 +27,5 @@ public class LogicalOperatorStatus implements Serializable
   public long totalTuplesProcessed = 0;
   public long totalTuplesEmitted = 0;
   public long failureCount = 0;
-  public Counters counters;
+  public List<Counters> counters = new ArrayList<Counters>();
 }

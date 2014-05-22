@@ -576,11 +576,17 @@ public class StramWebServices
     if (operatorMeta == null) {
       throw new NotFoundException("Logical operator " + operatorName + " does not exist");
     }
-    Counters counters = operatorMeta.getStatus().counters;
+    List<Counters> counters = operatorMeta.getStatus().counters;
     if (counters == null) {
       throw new NotFoundException("This logical operator " + operatorName + " does not have counters");
     }
-    return new JSONObject(objectMapper.writeValueAsString(counters));
+    JSONObject result = new JSONObject();
+    JSONArray arr = new JSONArray();
+    for (Counters counter : counters) {
+      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
+    }
+    result.put("counters", arr);
+    return result;
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly

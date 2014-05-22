@@ -1217,6 +1217,7 @@ public class PhysicalPlan implements Serializable
 
   public void onStatusUpdate(PTOperator oper)
   {
+    oper.getOperatorMeta().getStatus().counters.clear();
     for (StatsListener l : oper.statsListeners) {
       StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
@@ -1241,7 +1242,7 @@ public class PhysicalPlan implements Serializable
             ctx.dispatch(r);
           }
         }
-        oper.getOperatorMeta().getStatus().counters = rsp.aggregatedCounters;
+        oper.getOperatorMeta().getStatus().counters.add(rsp.aggregatedCounters);
       }
     }
   }
