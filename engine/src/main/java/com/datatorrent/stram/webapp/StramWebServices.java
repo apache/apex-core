@@ -4,33 +4,22 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.api.Context.Counters;
-import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
-import com.datatorrent.stram.*;
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.plan.logical.*;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.util.ConfigUtils;
-import com.datatorrent.stram.util.OperatorBeanUtils;
-import com.google.inject.Inject;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -38,14 +27,43 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.codehaus.jackson.*;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
-import org.codehaus.jettison.json.*;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.inject.Inject;
+
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Context.Counters;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.StringCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.StringCodecs;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.util.ConfigUtils;
+import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
  *
@@ -724,11 +742,17 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPhysicalOperatorCounters(@PathParam("operatorId") int operatorId) throws JSONException, IOException
   {
-    Counters counters = dagManager.getOperatorCounters(operatorId);
-    if (counters == null) {
+    List<Counters> countersList = dagManager.getOperatorCounters(operatorId);
+    if (countersList == null || countersList.isEmpty()) {
       throw new NotFoundException("Counters not found for this physical operator " + operatorId);
     }
-    return new JSONObject(objectMapper.writeValueAsString(counters));
+    JSONObject result = new JSONObject();
+    JSONArray arr = new JSONArray();
+    for (Counters counters : countersList) {
+      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
+    }
+    result.put("counters", arr);
+    return result;
   }
 
   @GET

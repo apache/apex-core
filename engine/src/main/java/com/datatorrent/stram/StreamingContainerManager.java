@@ -947,13 +947,6 @@ public class StreamingContainerManager implements PlanContext
         for (Map.Entry<String, PortStatus> entry : status.outputPortStatusList.entrySet()) {
           entry.getValue().recordingStartTime = Stats.INVALID_TIME_MILLIS;
         }
-
-        for (OperatorStats operatorStatus : oper.stats.lastWindowedStats) {
-          if (operatorStatus.counters != null) {
-            status.counters = operatorStatus.counters;
-          }
-        }
-
         for (ContainerStats.OperatorStats stats : statsList) {
 
           /* report checkpointedWindowId status of the operator */
@@ -1588,10 +1581,19 @@ public class StreamingContainerManager implements PlanContext
     return o == null ? null : fillPhysicalOperatorInfo(o);
   }
 
-  public Counters getOperatorCounters(int operatorId)
+  public List<Counters> getOperatorCounters(int operatorId)
   {
     PTOperator o = this.plan.getAllOperators().get(operatorId);
-    return o == null ? null : o.stats.counters;
+    if (o == null) {
+      return null;
+    }
+    List<Counters> countersList = Lists.newArrayList();
+    for (OperatorStats stats : o.stats.lastWindowedStats) {
+      if (stats.counters != null) {
+        countersList.add(stats.counters);
+      }
+    }
+    return countersList;
   }
 
   public List<OperatorInfo> getOperatorInfoList()

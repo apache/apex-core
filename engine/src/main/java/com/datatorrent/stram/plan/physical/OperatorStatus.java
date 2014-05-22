@@ -4,10 +4,16 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import com.datatorrent.api.Context.Counters;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.OperatorContext;
@@ -15,9 +21,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * <p>OperatorStatus class.</p>
@@ -64,7 +67,6 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
   public int loadIndicator = 0;
-  public Counters counters;
 
   public OperatorStatus(int operatorId, LogicalPlan.OperatorMeta om)
   {
