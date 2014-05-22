@@ -440,12 +440,17 @@ public class StramLocalCluster implements Runnable, Controller
         appDone = true;
       }
 
+      if (Thread.interrupted()) {
+        break;
+      }
+
       if (!appDone) {
         try {
           Thread.sleep(1000);
         }
         catch (InterruptedException e) {
           logger.info("Sleep interrupted " + e.getMessage());
+          break;
         }
       }
     }
