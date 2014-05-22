@@ -4,16 +4,16 @@
  */
 package com.datatorrent.stram.api;
 
-import java.io.Serializable;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.StreamCodec;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -62,7 +62,12 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
+    @Deprecated
     public String serDeClassName;
+    /**
+     * The SerDe object.
+     */
+    public StreamCodec streamCodec;
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -138,7 +143,12 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
+    @Deprecated
     public String serDeClassName;
+    /**
+     * The SerDe object.
+     */
+    public StreamCodec streamCodec;
     /**
      * Context attributes for output port
      */

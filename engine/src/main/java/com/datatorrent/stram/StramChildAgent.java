@@ -166,7 +166,9 @@ public class StramChildAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
-          if (streamMeta.getCodecClass() != null) {
+          if (streamMeta.getStreamCodec() != null) {
+            portInfo.streamCodec = streamMeta.getStreamCodec();
+          } else if (streamMeta.getCodecClass() != null) {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
         }
@@ -230,7 +232,9 @@ public class StramChildAgent {
           inputInfo.bufferServerPort = addr.getPort();
         }
 
-        if (streamMeta.getCodecClass() != null) {
+        if (streamMeta.getStreamCodec() != null) {
+          inputInfo.streamCodec = streamMeta.getStreamCodec();
+        } else if (streamMeta.getCodecClass() != null) {
           inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
         }
         ndi.inputs.add(inputInfo);
