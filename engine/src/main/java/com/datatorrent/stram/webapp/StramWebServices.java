@@ -12,6 +12,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -41,6 +42,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -104,12 +106,14 @@ public class StramWebServices
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
+  private final Map<String, org.apache.log4j.Logger> classLoggers;
   private boolean initialized = false;
 
   @Inject
   public StramWebServices(final StramAppContext context)
   {
     this.appCtx = context;
+    this.classLoggers = Maps.newHashMap();
   }
 
   Boolean hasAccess(HttpServletRequest request)
@@ -155,6 +159,12 @@ public class StramWebServices
         objectMapper.registerModule(sm);
       }
       initialized = true;
+
+      Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
+      while (loggerEnumeration.hasMoreElements()) {
+        org.apache.log4j.Logger logger = loggerEnumeration.nextElement();
+        classLoggers.put(logger.getName(), logger);
+      }
     }
   }
 
@@ -839,11 +849,47 @@ public class StramWebServices
       org.apache.log4j.Logger logger = loggerEnumeration.nextElement();
       JSONObject loggerJson = new JSONObject();
       loggerJson.put("name", logger.getName());
-      loggerJson.put("class", logger.getClass());
       loggerJson.put("level", logger.getLevel() == null ? "" : logger.getLevel().toString());
       loggerArray.put(loggerJson);
     }
     response.put("loggers", loggerArray);
+    return response;
+  }
+
+  @POST
+  @Path(PATH_LOGGERS)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject setLoggersLevel(JSONObject request)
+  {
+    init();
+    JSONObject response = new JSONObject();
+    Map<String, String> changedLoggers = Maps.newHashMap();
+
+    try {
+      @SuppressWarnings("unchecked")
+      Iterator<String> keys = request.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        String level = request.getString(key);
+        key.replaceAll(".", "\\.");
+        key.replaceAll("\\*", ".*");
+        LOG.debug("Setting logger level for {} to {}", key, level);
+        Pattern pattern = Pattern.compile(key);
+        for (String className : classLoggers.keySet()) {
+          if (pattern.matcher(className).matches()) {
+            if (classLoggers.get(className).getLevel() == null || classLoggers.get(className).getLevel().toString().equalsIgnoreCase(level)) {
+              LOG.debug("logger to change : {}", className);
+              changedLoggers.put(className, level);
+            }
+          }
+        }
+
+      }
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
     return response;
   }
 }
