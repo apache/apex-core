@@ -27,7 +27,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
@@ -835,30 +834,13 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     JSONArray loggerArray = new JSONArray();
-
-    Enumeration<Logger> loggerEnumeration = LogManager.getCurrentLoggers();
+    Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
     while (loggerEnumeration.hasMoreElements()) {
-      Logger logger = loggerEnumeration.nextElement();
+      org.apache.log4j.Logger logger = loggerEnumeration.nextElement();
       JSONObject loggerJson = new JSONObject();
       loggerJson.put("name", logger.getName());
       loggerJson.put("class", logger.getClass());
-      Level level = Level.OFF;
-      if (logger.isTraceEnabled()) {
-        level = Level.TRACE;
-      }
-      else if (logger.isDebugEnabled()) {
-        level = Level.DEBUG;
-      }
-      else if (logger.isInfoEnabled()) {
-        level = Level.INFO;
-      }
-      else if (logger.isWarnEnabled()) {
-        level = Level.WARN;
-      }
-      else if (logger.isErrorEnabled()) {
-        level = Level.ERROR;
-      }
-      loggerJson.put("level", level.toString());
+      loggerJson.put("level", logger.getLevel().toString());
       loggerArray.put(loggerJson);
     }
     response.put("loggers", loggerArray);
