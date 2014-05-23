@@ -862,7 +862,6 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject setLoggersLevel(JSONObject request)
   {
-    init();
     JSONObject response = new JSONObject();
     Map<String, String> changedLoggers = Maps.newHashMap();
 
