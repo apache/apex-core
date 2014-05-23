@@ -2188,7 +2188,7 @@ public class DTCli
             if (ar == null) {
               try {
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
-                activateLicense(null);
+                activateLicense(commandLineInfo.licenseFile);
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
                 boolean waitMessagePrinted = false;
                 do {
