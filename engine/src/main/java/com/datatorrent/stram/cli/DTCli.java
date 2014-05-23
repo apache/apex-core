@@ -1331,7 +1331,7 @@ public class DTCli
     if (msg != null) {
       System.err.println(msg);
     }
-    LOG.debug("Exception caught: ", e);
+    LOG.error("Exception caught: ", e);
     lastCommandError = true;
   }
 
