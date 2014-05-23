@@ -1566,17 +1566,16 @@ public class DTCli
     r = r.path(resourcePath);
 
     try {
-      return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
-                      {
-                        @Override
-                        public ClientResponse process(WebResource webResource, Class<ClientResponse> clazz)
-                        {
-                          ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-                          if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
-                            throw new CliException("Unexpected response type " + response.getType());
-                          }
-                          return response;
-                        }
+      return wsClient.process(r.getRequestBuilder(), ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>() {
+        @Override
+        public ClientResponse process(WebResource.Builder webResource, Class<ClientResponse> clazz)
+        {
+          ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+          if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
+            throw new CliException("Unexpected response type " + response.getType());
+          }
+          return response;
+        }
 
       });
     }
@@ -2291,13 +2290,12 @@ public class DTCli
       for (ApplicationReport app : apps) {
         WebResource r = getStramWebResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
         try {
-          JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                  {
-                                                    @Override
-                                                    public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                    {
-                                                      return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
-                                                    }
+          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+            @Override
+            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+            {
+              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
+            }
 
           });
           if (consolePresent) {
@@ -2584,13 +2582,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
       try {
-        printJson(webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                    {
-                                      @Override
-                                      public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                      {
-                                        return webResource.accept(MediaType.APPLICATION_JSON).get(clazz);
-                                      }
+        printJson(webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(clazz);
+          }
 
         }));
       }
@@ -2613,13 +2610,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(containerLongId).path("kill");
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
+          }
 
         });
         if (consolePresent) {
@@ -2743,13 +2739,12 @@ public class DTCli
         r = r.queryParam("attributeName", args[1]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2775,13 +2770,12 @@ public class DTCli
         r = r.queryParam("attributeName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2807,13 +2801,12 @@ public class DTCli
         r = r.queryParam("attributeName", args[3]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2839,13 +2832,12 @@ public class DTCli
         r = r.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2871,13 +2863,12 @@ public class DTCli
         r = r.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2912,13 +2903,12 @@ public class DTCli
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+          }
 
         });
         printJson(response);
@@ -2940,13 +2930,12 @@ public class DTCli
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       final JSONObject request = new JSONObject();
       request.put(args[2], args[3]);
-      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                              {
-                                                @Override
-                                                public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                {
-                                                  return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
-                                                }
+      JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        @Override
+        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+        }
 
       });
       printJson(response);
@@ -3041,13 +3030,12 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -3177,13 +3165,12 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         File file = new File(outfilename);
@@ -3355,13 +3342,12 @@ public class DTCli
         m.put("requests", logicalPlanRequestQueue);
         final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
 
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, jsonRequest);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, jsonRequest);
+          }
 
         });
         printJson(response);
@@ -3472,13 +3458,12 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
 
-        response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                     {
-                                       @Override
-                                       public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                       {
-                                         return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                       }
+        response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
       }
@@ -3517,13 +3502,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
+          }
 
         });
         printJson(response);
@@ -3543,13 +3527,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
+          }
 
         });
         printJson(response);

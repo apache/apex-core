@@ -88,14 +88,14 @@ public class WebServicesClient
 
   public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException {
     WebResource wr = client.resource(url);
-    return process(wr, clazz, handler);
+    return process(wr.getRequestBuilder(), clazz, handler);
   }
   public <T> Future<T> process(String url, final ITypeListener<T> listener, WebServicesAsyncHandler<T> handler) throws IOException {
     AsyncWebResource wr = client.asyncResource(url);
     return process(wr, listener, handler);
   }
 
-  public <T> T process(final WebResource wr, final Class<T> clazz, final WebServicesHandler<T> handler) throws IOException {
+  public <T> T process(final WebResource.Builder wr, final Class<T> clazz, final WebServicesHandler<T> handler) throws IOException {
     return SecureExecutor.execute(new SecureExecutor.WorkLoad<T>(){
       @Override
       public T run()
@@ -120,7 +120,7 @@ public class WebServicesClient
    * @param <T>
    */
   public static abstract class WebServicesHandler<T> {
-    public abstract T process(WebResource webResource, Class<T> clazz);
+    public abstract T process(WebResource.Builder webResource, Class<T> clazz);
 
     @Override
     public String toString()
@@ -146,7 +146,7 @@ public class WebServicesClient
   public static class GetWebServicesHandler<T> extends WebServicesHandler<T> {
 
     @Override
-    public T process(WebResource webResource, Class<T> clazz)
+    public T process(WebResource.Builder webResource, Class<T> clazz)
     {
       return webResource.get(clazz);
     }
@@ -165,7 +165,7 @@ public class WebServicesClient
   public static class DeleteWebServicesHandler<T> extends WebServicesHandler<T>
   {
     @Override
-    public T process(WebResource webResource, Class<T> clazz)
+    public T process(WebResource.Builder webResource, Class<T> clazz)
     {
       return webResource.delete(clazz);
     }
