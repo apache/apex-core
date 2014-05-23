@@ -60,11 +60,11 @@ public class AlertsAgent extends StramAgent
     tmplJson.put("createFrom", createFrom);
     final JSONObject json = tmplJson;
     LOG.debug("Sending create alert to {}: {}", wr.path(StramWebServices.PATH_ALERTS).path(name).toString(), json.toString());
-    webServicesClient.process(wr.path(StramWebServices.PATH_ALERTS).path(name), String.class,
+    webServicesClient.process(wr.path(StramWebServices.PATH_ALERTS).path(name).getRequestBuilder(), String.class,
                               new WebServicesClient.WebServicesHandler<String>()
     {
       @Override
-      public String process(WebResource webResource, Class<String> clazz)
+      public String process(WebResource.Builder webResource, Class<String> clazz)
       {
         return webResource.type(MediaType.APPLICATION_JSON).put(clazz, json.toString());
       }
@@ -129,11 +129,11 @@ public class AlertsAgent extends StramAgent
       throw new AppNotFoundException(appId);
     }
 
-    webServicesClient.process(wr.path(StramWebServices.PATH_ALERTS).path(name), String.class,
+    webServicesClient.process(wr.path(StramWebServices.PATH_ALERTS).path(name).getRequestBuilder(), String.class,
                               new WebServicesClient.WebServicesHandler<String>()
     {
       @Override
-      public String process(WebResource webResource, Class<String> clazz)
+      public String process(WebResource.Builder webResource, Class<String> clazz)
       {
         return webResource.delete(clazz);
       }
