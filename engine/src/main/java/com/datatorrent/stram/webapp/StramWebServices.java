@@ -840,7 +840,7 @@ public class StramWebServices
       JSONObject loggerJson = new JSONObject();
       loggerJson.put("name", logger.getName());
       loggerJson.put("class", logger.getClass());
-      loggerJson.put("level", logger.getLevel().toString());
+      loggerJson.put("level", logger.getLevel() == null ? "" : logger.getLevel().toString());
       loggerArray.put(loggerJson);
     }
     response.put("loggers", loggerArray);
