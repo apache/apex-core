@@ -1,5 +1,35 @@
 #Release Notes - Streaming Platform
 
+## Version 1.0.0
+
+## Bug
+* [SPOI-2086] - creation of logs directory under .dt folder of user
+* [SPOI-2497] - Remove hard-coded "hdfs" scheme 
+* [SPOI-2577] - After installation, I cannot launch license agent
+
+## Improvement
+* [SPOI-2522] - Replace InputPort.getStreamCodec method with an attribute on InputPort called StreamCodec
+* [SPOI-2576] - Change local install from .datatorrent to datatorrent directory
+
+## Task
+* [SPOI-2520] - Change the name of the CustomStats to Counters
+* [SPOI-2578] - Check dir before mkdir call (MapR requirement)
+* [SPOI-2579] - Take out launch from gateway webservice spec document
+
+## Bug
+* [MLHR-1101] - Install errors formatting
+* [MLHR-1103] - Change installer instructions for DFS directory path
+
+
+## Version 0.9.5.1
+
+## Bug
+* [SPOI-2554] - Third party libraries which are required for demos are missing from /opt/datatorrent/releases/version/lib/
+* [MLHR-1113] - AdsDimension demo fails to launch
+* [MLHR-1114] - FraudDetect demo fails to launch
+* [MLHR-1115] - MachineData demo fails to launch
+
+
 ## Version 0.9.5
 
 ## Sub-task
