@@ -873,8 +873,8 @@ public class StramWebServices
       while (keys.hasNext()) {
         String key = keys.next();
         String level = request.getString(key);
-        key = key.replaceAll(".", "\\.");
-        key = key.replaceAll("\\*", ".*");
+        key = key.replaceAll("\\.", "\\\\.");
+        key = key.replaceAll("\\*", "\\.\\*");
         LOG.debug("Setting logger level for {} to {}", key, level);
         Pattern pattern = Pattern.compile(key);
         for (String className : classLoggers.keySet()) {
