@@ -28,6 +28,7 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
@@ -862,6 +863,7 @@ public class StramWebServices
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject setLoggersLevel(JSONObject request)
   {
+    init();
     JSONObject response = new JSONObject();
     Map<String, String> changedLoggers = Maps.newHashMap();
 
@@ -871,15 +873,17 @@ public class StramWebServices
       while (keys.hasNext()) {
         String key = keys.next();
         String level = request.getString(key);
-        key.replaceAll(".", "\\.");
-        key.replaceAll("\\*", ".*");
+        key = key.replaceAll(".", "\\.");
+        key = key.replaceAll("\\*", ".*");
         LOG.debug("Setting logger level for {} to {}", key, level);
         Pattern pattern = Pattern.compile(key);
         for (String className : classLoggers.keySet()) {
           if (pattern.matcher(className).matches()) {
-            if (classLoggers.get(className).getLevel() == null || classLoggers.get(className).getLevel().toString().equalsIgnoreCase(level)) {
+            org.apache.log4j.Logger logger = classLoggers.get(className);
+            if (logger.getLevel() == null || !logger.getLevel().toString().equalsIgnoreCase(level)) {
               LOG.debug("logger to change : {}", className);
               changedLoggers.put(className, level);
+              logger.setLevel(Level.toLevel(level));
             }
           }
         }
