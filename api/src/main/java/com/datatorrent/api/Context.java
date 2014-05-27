@@ -17,6 +17,11 @@ package com.datatorrent.api;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Maps;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
@@ -72,6 +77,88 @@ public interface Context
   @SuppressWarnings("MarkerInterface")
   interface Counters
   {
+  }
+
+  class NumericCounters implements Counters, Map<String, Number>, Serializable
+  {
+    protected Map<String, Number> countersMap;
+
+    public NumericCounters()
+    {
+      countersMap = Maps.newHashMap();
+    }
+
+    @Override
+    public int size()
+    {
+      return countersMap.size();
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+      return countersMap.isEmpty();
+    }
+
+    @Override
+    public boolean containsKey(Object o)
+    {
+      return countersMap.containsKey(o);
+    }
+
+    @Override
+    public boolean containsValue(Object o)
+    {
+      return countersMap.containsValue(o);
+    }
+
+    @Override
+    public Number get(Object o)
+    {
+      return countersMap.get(o);
+    }
+
+    @Override
+    public Number put(String s, Number number)
+    {
+      return countersMap.put(s, number);
+    }
+
+    @Override
+    public Number remove(Object o)
+    {
+      return countersMap.remove(o);
+    }
+
+    @Override
+    public void putAll(Map<? extends String, ? extends Number> map)
+    {
+      countersMap.putAll(map);
+    }
+
+    @Override
+    public void clear()
+    {
+      countersMap.clear();
+    }
+
+    @Override
+    public Set<String> keySet()
+    {
+      return countersMap.keySet();
+    }
+
+    @Override
+    public Collection<Number> values()
+    {
+      return countersMap.values();
+    }
+
+    @Override
+    public Set<Entry<String, Number>> entrySet()
+    {
+      return countersMap.entrySet();
+    }
   }
 
   public interface PortContext extends Context
