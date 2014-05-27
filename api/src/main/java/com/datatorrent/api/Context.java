@@ -79,86 +79,9 @@ public interface Context
   {
   }
 
-  class NumericCounters implements Counters, Map<String, Number>, Serializable
+  interface NumericCounters extends Counters
   {
-    protected Map<String, Number> countersMap;
-
-    public NumericCounters()
-    {
-      countersMap = Maps.newHashMap();
-    }
-
-    @Override
-    public int size()
-    {
-      return countersMap.size();
-    }
-
-    @Override
-    public boolean isEmpty()
-    {
-      return countersMap.isEmpty();
-    }
-
-    @Override
-    public boolean containsKey(Object o)
-    {
-      return countersMap.containsKey(o);
-    }
-
-    @Override
-    public boolean containsValue(Object o)
-    {
-      return countersMap.containsValue(o);
-    }
-
-    @Override
-    public Number get(Object o)
-    {
-      return countersMap.get(o);
-    }
-
-    @Override
-    public Number put(String s, Number number)
-    {
-      return countersMap.put(s, number);
-    }
-
-    @Override
-    public Number remove(Object o)
-    {
-      return countersMap.remove(o);
-    }
-
-    @Override
-    public void putAll(Map<? extends String, ? extends Number> map)
-    {
-      countersMap.putAll(map);
-    }
-
-    @Override
-    public void clear()
-    {
-      countersMap.clear();
-    }
-
-    @Override
-    public Set<String> keySet()
-    {
-      return countersMap.keySet();
-    }
-
-    @Override
-    public Collection<Number> values()
-    {
-      return countersMap.values();
-    }
-
-    @Override
-    public Set<Entry<String, Number>> entrySet()
-    {
-      return countersMap.entrySet();
-    }
+    Map<String, Number> getCounters();
   }
 
   public interface PortContext extends Context

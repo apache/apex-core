@@ -594,14 +594,20 @@ public class StramWebServices
     if (operatorMeta == null) {
       throw new NotFoundException("Logical operator " + operatorName + " does not exist");
     }
-    List<Counters> counters = operatorMeta.getStatus().counters;
-    if (counters == null) {
+    List<Counters> countersList = operatorMeta.getStatus().counters;
+    if (countersList == null) {
       throw new NotFoundException("This logical operator " + operatorName + " does not have counters");
     }
     JSONObject result = new JSONObject();
     JSONArray arr = new JSONArray();
-    for (Counters counter : counters) {
-      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
+    for (Counters counters : countersList) {
+      if (counters instanceof com.datatorrent.api.Context.NumericCounters) {
+        com.datatorrent.api.Context.NumericCounters numericCounters = (com.datatorrent.api.Context.NumericCounters) counters;
+        arr.put(new JSONObject(objectMapper.writeValueAsString(numericCounters.getCounters())));
+      }
+      else {
+        arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
+      }
     }
     result.put("counters", arr);
     return result;
@@ -749,7 +755,13 @@ public class StramWebServices
     JSONObject result = new JSONObject();
     JSONArray arr = new JSONArray();
     for (Counters counters : countersList) {
-      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
+      if (counters instanceof com.datatorrent.api.Context.NumericCounters) {
+        com.datatorrent.api.Context.NumericCounters numericCounters = (com.datatorrent.api.Context.NumericCounters) counters;
+        arr.put(new JSONObject(objectMapper.writeValueAsString(numericCounters.getCounters())));
+      }
+      else {
+        arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
+      }
     }
     result.put("counters", arr);
     return result;
