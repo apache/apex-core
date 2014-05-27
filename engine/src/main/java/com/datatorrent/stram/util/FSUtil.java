@@ -44,7 +44,7 @@ public class FSUtil
     //dst = checkDest(src.getName(), dstFS, dst, overwrite);
     if (srcStatus.isDirectory()) {
       //checkDependencies(srcFS, src, dstFS, dst);
-      if (!dstFS.mkdirs(dst)) {
+      if (!mkdirs(dstFS, dst)) {
         return false;
       }
 
@@ -101,6 +101,20 @@ public class FSUtil
       fs.setPermission(contents[i].getPath(), permission);
     }
     fs.setPermission(dst, permission);
+  }
+  
+  
+  public static boolean mkdirs(FileSystem fs, Path dest) throws IOException {
+    try {
+      return fs.mkdirs(dest);
+    } catch (IOException e) {
+      // some file system (MapR) throw exception if folder exists
+      if (!fs.exists(dest)) {
+        throw e;
+      } else {
+        return false;
+      }
+    }
   }
 
 }

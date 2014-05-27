@@ -5,6 +5,7 @@
 package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
+import com.datatorrent.stram.util.FSUtil;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.WebResource;
@@ -145,7 +146,7 @@ public class AlertsAgent extends StramAgent
   {
     String dir = getAlertTemplatesDirectory();
     Path path = new Path(dir);
-    fileSystem.mkdirs(path);
+    FSUtil.mkdirs(fileSystem, path);
     FileStatus fileStatus = fileSystem.getFileStatus(path);
     if (!fileStatus.isDirectory()) {
       throw new FileNotFoundException("Cannot read directory " + dir);
