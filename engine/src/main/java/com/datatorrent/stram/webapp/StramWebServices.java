@@ -601,13 +601,7 @@ public class StramWebServices
     JSONObject result = new JSONObject();
     JSONArray arr = new JSONArray();
     for (Counters counters : countersList) {
-      if (counters instanceof com.datatorrent.api.Context.NumericCounters) {
-        com.datatorrent.api.Context.NumericCounters numericCounters = (com.datatorrent.api.Context.NumericCounters) counters;
-        arr.put(new JSONObject(objectMapper.writeValueAsString(numericCounters.getCounters())));
-      }
-      else {
-        arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
-      }
+      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
     }
     result.put("counters", arr);
     return result;
@@ -755,13 +749,7 @@ public class StramWebServices
     JSONObject result = new JSONObject();
     JSONArray arr = new JSONArray();
     for (Counters counters : countersList) {
-      if (counters instanceof com.datatorrent.api.Context.NumericCounters) {
-        com.datatorrent.api.Context.NumericCounters numericCounters = (com.datatorrent.api.Context.NumericCounters) counters;
-        arr.put(new JSONObject(objectMapper.writeValueAsString(numericCounters.getCounters())));
-      }
-      else {
-        arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
-      }
+      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
     }
     result.put("counters", arr);
     return result;
