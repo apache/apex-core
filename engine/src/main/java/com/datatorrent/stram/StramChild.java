@@ -6,24 +6,25 @@ package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.lang.Thread.State;
-import java.net.*;
-import java.util.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.apache.log4j.Level;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 
@@ -1482,15 +1483,7 @@ public class StramChild extends YarnContainerMain
   private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
   {
     logger.debug("handle change logger request");
-    Map<String, org.apache.log4j.Logger> classLoggers = LoggersUtil.getCurrentLoggers();
-    Map<String, String> changedLoggers = request.getChangedLogLevels();
-    for(String className : changedLoggers.keySet()){
-      org.apache.log4j.Logger lLogger = classLoggers.get(className);
-      if(lLogger!=null){
-        logger.debug("change logger level of {}", className);
-        lLogger.setLevel(Level.toLevel(changedLoggers.get(className)));
-      }
-    }
+    LoggersUtil.changeCurrentLoggers(request.getTargetChanges());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);

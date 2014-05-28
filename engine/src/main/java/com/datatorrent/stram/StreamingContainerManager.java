@@ -1959,7 +1959,7 @@ public class StreamingContainerManager implements PlanContext
   {
     LOG.debug("change logger request");
     StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest();
-    request.setChangedLogLevels(changedLoggers);
+    request.setTargetChanges(changedLoggers);
     for(StramChildAgent stramChildAgent : containers.values()) {
       stramChildAgent.addOperatorRequest(request);
     }

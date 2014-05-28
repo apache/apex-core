@@ -16,10 +16,16 @@
 package com.datatorrent.stram.util;
 
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.regex.Pattern;
 
+import javax.annotation.Nonnull;
+
+import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 
@@ -36,4 +42,31 @@ public class LoggersUtil
     }
     return classLoggers;
   }
+
+  public static void changeCurrentLoggers(@Nonnull Map<String, String> targetChanges)
+  {
+    Map<String, Logger> currentLoggers = getCurrentLoggers();
+
+    for (Map.Entry<String, String> entry : targetChanges.entrySet()) {
+      String target = entry.getKey();
+      String level = entry.getValue();
+      Pattern pattern = Pattern.compile(target);
+
+      for (Iterator<Map.Entry<String, Logger>> currentLoggersIter = currentLoggers.entrySet().iterator();
+           currentLoggersIter.hasNext(); ) {
+        Map.Entry<String, Logger> currentLogger = currentLoggersIter.next();
+
+        if (pattern.matcher(currentLogger.getKey()).matches()) {
+          Logger lLogger = currentLogger.getValue();
+          if (lLogger.getLevel() == null || !lLogger.getLevel().toString().equalsIgnoreCase(level)) {
+            LOG.debug("Setting logger level for {} to {}", currentLogger.getKey(), level);
+            lLogger.setLevel(Level.toLevel(level));
+          }
+          currentLoggersIter.remove();
+        }
+      }
+    }
+  }
+
+  private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(LoggersUtil.class);
 }

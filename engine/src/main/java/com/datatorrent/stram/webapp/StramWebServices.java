@@ -12,7 +12,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -28,7 +27,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
@@ -860,7 +858,7 @@ public class StramWebServices
   {
     init();
     JSONObject response = new JSONObject();
-    Map<String, String> changedLoggers = Maps.newHashMap();
+    Map<String, String> targetChanges = Maps.newHashMap();
     Map<String, org.apache.log4j.Logger> classLoggers = LoggersUtil.getCurrentLoggers();
 
     try {
@@ -872,28 +870,15 @@ public class StramWebServices
         String level = loggerNode.getString("logLevel");
         target = target.replaceAll("\\.", "\\\\.");
         target = target.replaceAll("\\*", "\\.\\*");
-        LOG.debug("Setting logger level for {} to {}", target, level);
-        Pattern pattern = Pattern.compile(target);
-        for (String className : classLoggers.keySet()) {
-          if (pattern.matcher(className).matches()) {
-            org.apache.log4j.Logger llogger = classLoggers.get(className);
-            if (llogger.getLevel() == null || !llogger.getLevel().toString().equalsIgnoreCase(level)) {
-              LOG.debug("logger to change : {}", className);
-              changedLoggers.put(className, level);
-            }
-          }
-        }
+
+        LOG.debug("change logger level for {} to {}", target, level);
+        targetChanges.put(target, level);
       }
 
-      if (!changedLoggers.isEmpty()) {
-        dagManager.setLoggersLevel(Collections.unmodifiableMap(changedLoggers));
+      if (!targetChanges.isEmpty()) {
+        dagManager.setLoggersLevel(Collections.unmodifiableMap(targetChanges));
         //Changing the levels on Stram after sending the message to all containers.
-        for (String className : changedLoggers.keySet()) {
-          org.apache.log4j.Logger llogger = classLoggers.get(className);
-          if (llogger != null) {
-            llogger.setLevel(Level.toLevel(changedLoggers.get(className)));
-          }
-        }
+        LoggersUtil.changeCurrentLoggers(targetChanges);
       }
     }
     catch (JSONException ex) {

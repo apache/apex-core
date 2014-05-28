@@ -20,21 +20,21 @@ import java.util.Map;
 
 public class StramToNodeChangeLoggersRequest extends StreamingContainerUmbilicalProtocol.StramToNodeRequest implements Serializable
 {
-  private Map<String, String> changedLogLevels;
+  private Map<String, String> targetChanges;
 
   public StramToNodeChangeLoggersRequest()
   {
     requestType = RequestType.SET_LOG_LEVEL;
   }
 
-  public void setChangedLogLevels(Map<String, String> changedLogLevels)
+  public void setTargetChanges(Map<String, String> targetChanges)
   {
-    this.changedLogLevels = changedLogLevels;
+    this.targetChanges = targetChanges;
   }
 
-  public Map<String, String> getChangedLogLevels()
+  public Map<String, String> getTargetChanges()
   {
-    return this.changedLogLevels;
+    return this.targetChanges;
   }
 
   private static final long serialVersionUID = 201405271034L;
