@@ -50,6 +50,8 @@ public class PTContainer implements java.io.Serializable
   public InetSocketAddress bufferServerAddress;
   public String nodeHttpAddress;
   int restartAttempts;
+  private long startedTime = -1;
+  private long finishedTime = -1;
 
   PTContainer(PhysicalPlan plan) {
     this.plan = plan;
@@ -106,6 +108,26 @@ public class PTContainer implements java.io.Serializable
 
   public void setExternalId(String id) {
     this.containerId = id;
+  }
+
+  public long getStartedTime()
+  {
+    return startedTime;
+  }
+
+  public void setStartedTime(long startedTime)
+  {
+    this.startedTime = startedTime;
+  }
+
+  public long getFinishedTime()
+  {
+    return finishedTime;
+  }
+
+  public void setFinishedTime(long finishedTime)
+  {
+    this.finishedTime = finishedTime;
   }
 
   public String toIdStateString() {

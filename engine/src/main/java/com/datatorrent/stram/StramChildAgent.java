@@ -311,6 +311,8 @@ public class StramChildAgent {
     ci.lastHeartbeat = lastHeartbeatMillis;
     // commented out because free memory is misleading because of GC, may want to revisit this
     //ci.memoryMBFree = this.memoryMBFree;
+    ci.startedTime = container.getStartedTime();
+    ci.finishedTime = container.getFinishedTime();
     if (this.container.nodeHttpAddress != null) {
       YarnConfiguration conf = new YarnConfiguration();
       ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());

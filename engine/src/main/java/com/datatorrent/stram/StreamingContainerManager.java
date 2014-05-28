@@ -49,10 +49,10 @@ import javax.annotation.Nullable;
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -116,8 +116,26 @@ public class StreamingContainerManager implements PlanContext
   private long currentEndWindowStatsWindowId;
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
-  private final List<ContainerInfo> completedContainers = new ArrayList<ContainerInfo>();
+
+  private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>() {
+    private static final long serialVersionUID = 201405281500L;
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<String, ContainerInfo> eldest)
+    {
+      long expireTime = System.currentTimeMillis() - 30 * 60 * 60;
+      Iterator<Map.Entry<String, ContainerInfo>> iterator = entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<String, ContainerInfo> entry = iterator.next();
+        if (entry.getValue().finishedTime < expireTime) {
+          iterator.remove();
+        }
+      }
+      return false;
+    }
+  };
+
   private FSJsonLineFile containerFile;
+  private long startTime = System.currentTimeMillis();
 
   private static class EndWindowStats
   {
@@ -194,7 +212,8 @@ public class StreamingContainerManager implements PlanContext
     String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
     ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
     ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
-
+    ci.startedTime = startTime;
+    ci.finishedTime = -1;
     return ci;
   }
 
@@ -663,15 +682,15 @@ public class StreamingContainerManager implements PlanContext
         StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId);
         recordEventAsync(ev);
       }
-      // Record for historical container
-      // We may want to consider putting this in HDFS in the future since this may grow indefinitely, although the data is small.
-      completedContainers.add(containerAgent.getContainerInfo());
+      long now = System.currentTimeMillis();
+      containerAgent.container.setFinishedTime(System.currentTimeMillis());
+      completedContainers.put(containerId, containerAgent.getContainerInfo());
     }
   }
 
-  public List<ContainerInfo> getCompletedContainerInfo()
+  public Collection<ContainerInfo> getCompletedContainerInfo()
   {
-    return Collections.unmodifiableList(completedContainers);
+    return Collections.unmodifiableCollection(completedContainers.values());
   }
 
   public static class ContainerResource
@@ -744,6 +763,8 @@ public class StreamingContainerManager implements PlanContext
     container.bufferServerAddress = bufferServerAddr;
     container.nodeHttpAddress = resource.nodeHttpAddress;
     container.setAllocatedMemoryMB(resource.memoryMB);
+    container.setStartedTime(-1);
+    container.setFinishedTime(-1);
     writeJournal(SetContainerState.newInstance(container));
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext(resource.containerId), this);
@@ -920,6 +941,8 @@ public class StreamingContainerManager implements PlanContext
         LOG.info("Container {} buffer server: {}", sca.container.getExternalId(), sca.container.bufferServerAddress);
       }
       sca.container.setState(PTContainer.State.ACTIVE);
+      sca.container.setStartedTime(System.currentTimeMillis());
+      sca.container.setFinishedTime(-1);
       sca.jvmName = heartbeat.jvmName;
       try {
         containerFile.append(sca.getContainerInfo());
