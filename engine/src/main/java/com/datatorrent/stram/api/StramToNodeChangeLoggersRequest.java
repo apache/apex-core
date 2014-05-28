@@ -18,11 +18,11 @@ package com.datatorrent.stram.api;
 import java.io.Serializable;
 import java.util.Map;
 
-public class StramToNodeLogLevelRequest extends StreamingContainerUmbilicalProtocol.StramToNodeRequest implements Serializable
+public class StramToNodeChangeLoggersRequest extends StreamingContainerUmbilicalProtocol.StramToNodeRequest implements Serializable
 {
   private Map<String, String> changedLogLevels;
 
-  public StramToNodeLogLevelRequest()
+  public StramToNodeChangeLoggersRequest()
   {
     requestType = RequestType.SET_LOG_LEVEL;
   }

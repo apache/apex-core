@@ -15,6 +15,7 @@ import java.util.concurrent.CountDownLatch;
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 
+import org.apache.log4j.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +24,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
+
+import com.google.common.collect.Maps;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -49,6 +52,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.stream.*;
+import com.datatorrent.stram.util.LoggersUtil;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StreamingAppMaster}.
@@ -102,6 +106,8 @@ public class StramChild extends YarnContainerMain
     }
   }
 
+  private final Map<String, org.apache.log4j.Logger> classLoggers;
+
   protected StramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
@@ -113,6 +119,7 @@ public class StramChild extends YarnContainerMain
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
     this.containerId = containerId;
+    this.classLoggers = Maps.newHashMap();
   }
 
   @SuppressWarnings("unchecked")
@@ -637,6 +644,10 @@ public class StramChild extends YarnContainerMain
   {
     for (StramToNodeRequest req : nodeRequests) {
       if (req.isDeleted()) {
+        continue;
+      }
+      if(req.requestType == StramToNodeRequest.RequestType.SET_LOG_LEVEL){
+        handleChangeLoggersRequest((StramToNodeChangeLoggersRequest) req);
         continue;
       }
       Node<?> node = nodes.get(req.getOperatorId());
@@ -1466,6 +1477,19 @@ public class StramChild extends YarnContainerMain
     }
 
     return containerContext.getValue(key);
+  }
+
+  private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
+  {
+    logger.debug("change logger levels");
+    Map<String, org.apache.log4j.Logger> classLoggers = LoggersUtil.getCurrentLoggers();
+    Map<String, String> changedLoggers = request.getChangedLogLevels();
+    for(String className : changedLoggers.keySet()){
+      org.apache.log4j.Logger logger = classLoggers.get(className);
+      if(logger!=null){
+        logger.setLevel(Level.toLevel(changedLoggers.get(className)));
+      }
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);

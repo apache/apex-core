@@ -4,39 +4,17 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.FutureTask;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.Nullable;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -50,56 +28,37 @@ import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Component;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.StorageAgent;
-import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
-import com.datatorrent.stram.api.Checkpoint;
-import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.OperatorDeployInfo;
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.api.*;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.physical.OperatorStatus;
+import com.datatorrent.stram.plan.physical.*;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
-import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  *
@@ -1990,6 +1949,20 @@ public class StreamingContainerManager implements PlanContext
     // but right now, the operators do not give confirmation for the requests. so record it here for now.
     recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, id, propertyName, propertyValue));
 
+  }
+
+  /**
+   * Send requests to change logger levels to all containers
+   * @param changedLoggers
+   */
+  public void setLoggersLevel( Map<String, String> changedLoggers)
+  {
+    LOG.debug("change logger request");
+    StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest();
+    request.setChangedLogLevels(changedLoggers);
+    for(StramChildAgent stramChildAgent : containers.values()) {
+      stramChildAgent.addOperatorRequest(request);
+    }
   }
 
   public Map<String, Object> getPhysicalOperatorProperty(String operatorId)

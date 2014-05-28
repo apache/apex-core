@@ -66,6 +66,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigUtils;
+import com.datatorrent.stram.util.LoggersUtil;
 import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
@@ -107,14 +108,12 @@ public class StramWebServices
   private StreamingContainerManager dagManager;
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
-  private final Map<String, org.apache.log4j.Logger> classLoggers;
   private boolean initialized = false;
 
   @Inject
   public StramWebServices(final StramAppContext context)
   {
     this.appCtx = context;
-    this.classLoggers = Maps.newHashMap();
   }
 
   Boolean hasAccess(HttpServletRequest request)
@@ -161,11 +160,7 @@ public class StramWebServices
       }
       initialized = true;
 
-      Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
-      while (loggerEnumeration.hasMoreElements()) {
-        org.apache.log4j.Logger logger = loggerEnumeration.nextElement();
-        classLoggers.put(logger.getName(), logger);
-      }
+
     }
   }
 
@@ -866,17 +861,19 @@ public class StramWebServices
     init();
     JSONObject response = new JSONObject();
     Map<String, String> changedLoggers = Maps.newHashMap();
+    Map<String, org.apache.log4j.Logger> classLoggers = LoggersUtil.getCurrentLoggers();
 
     try {
       @SuppressWarnings("unchecked")
-      Iterator<String> keys = request.keys();
-      while (keys.hasNext()) {
-        String key = keys.next();
-        String level = request.getString(key);
-        key = key.replaceAll("\\.", "\\\\.");
-        key = key.replaceAll("\\*", "\\.\\*");
-        LOG.debug("Setting logger level for {} to {}", key, level);
-        Pattern pattern = Pattern.compile(key);
+      JSONArray loggerArray = request.getJSONArray("loggers");
+      for (int i = 0; i < loggerArray.length(); i++) {
+        JSONObject loggerNode = loggerArray.getJSONObject(i);
+        String target = loggerNode.getString("target");
+        String level = loggerNode.getString("logLevel");
+        target = target.replaceAll("\\.", "\\\\.");
+        target = target.replaceAll("\\*", "\\.\\*");
+        LOG.debug("Setting logger level for {} to {}", target, level);
+        Pattern pattern = Pattern.compile(target);
         for (String className : classLoggers.keySet()) {
           if (pattern.matcher(className).matches()) {
             org.apache.log4j.Logger logger = classLoggers.get(className);
@@ -887,7 +884,10 @@ public class StramWebServices
             }
           }
         }
+      }
 
+      if(!changedLoggers.isEmpty()){
+        dagManager.setLoggersLevel(Collections.unmodifiableMap(changedLoggers));
       }
     }
     catch (JSONException ex) {
