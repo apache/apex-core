@@ -159,6 +159,8 @@ public interface Context
     {
       return countersMap.entrySet();
     }
+
+    private static final long serialVersionUID = 201405271739L;
   }
 
   public interface PortContext extends Context
