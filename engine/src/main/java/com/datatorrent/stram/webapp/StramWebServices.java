@@ -27,7 +27,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.log4j.LogManager;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
@@ -831,24 +830,6 @@ public class StramWebServices
    return response;
    }
    */
-  @GET
-  @Path(PATH_LOGGERS)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Object listLoggers() throws JSONException, IOException
-  {
-    JSONObject response = new JSONObject();
-    JSONArray loggerArray = new JSONArray();
-    Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
-    while (loggerEnumeration.hasMoreElements()) {
-      org.apache.log4j.Logger logger = loggerEnumeration.nextElement();
-      JSONObject loggerJson = new JSONObject();
-      loggerJson.put("name", logger.getName());
-      loggerJson.put("level", logger.getLevel() == null ? "" : logger.getLevel().toString());
-      loggerArray.put(loggerJson);
-    }
-    response.put("loggers", loggerArray);
-    return response;
-  }
 
   @POST
   @Path(PATH_LOGGERS)
@@ -859,8 +840,6 @@ public class StramWebServices
     init();
     JSONObject response = new JSONObject();
     Map<String, String> targetChanges = Maps.newHashMap();
-    Map<String, org.apache.log4j.Logger> classLoggers = LoggersUtil.getCurrentLoggers();
-
     try {
       @SuppressWarnings("unchecked")
       JSONArray loggerArray = request.getJSONArray("loggers");
