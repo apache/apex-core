@@ -17,7 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>FSUtil class.</p>
  *
+ * @since 1.0.1
  */
 public class FSUtil
 {
