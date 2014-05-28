@@ -876,18 +876,24 @@ public class StramWebServices
         Pattern pattern = Pattern.compile(target);
         for (String className : classLoggers.keySet()) {
           if (pattern.matcher(className).matches()) {
-            org.apache.log4j.Logger logger = classLoggers.get(className);
-            if (logger.getLevel() == null || !logger.getLevel().toString().equalsIgnoreCase(level)) {
+            org.apache.log4j.Logger llogger = classLoggers.get(className);
+            if (llogger.getLevel() == null || !llogger.getLevel().toString().equalsIgnoreCase(level)) {
               LOG.debug("logger to change : {}", className);
               changedLoggers.put(className, level);
-              logger.setLevel(Level.toLevel(level));
             }
           }
         }
       }
 
-      if(!changedLoggers.isEmpty()){
+      if (!changedLoggers.isEmpty()) {
         dagManager.setLoggersLevel(Collections.unmodifiableMap(changedLoggers));
+        //Changing the levels on Stram after sending the message to all containers.
+        for (String className : changedLoggers.keySet()) {
+          org.apache.log4j.Logger llogger = classLoggers.get(className);
+          if (llogger != null) {
+            llogger.setLevel(Level.toLevel(changedLoggers.get(className)));
+          }
+        }
       }
     }
     catch (JSONException ex) {

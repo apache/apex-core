@@ -1487,7 +1487,7 @@ public class StramChild extends YarnContainerMain
     for(String className : changedLoggers.keySet()){
       org.apache.log4j.Logger lLogger = classLoggers.get(className);
       if(lLogger!=null){
-        this.logger.debug("change logger level of {}", className);
+        logger.debug("change logger level of {}", className);
         lLogger.setLevel(Level.toLevel(changedLoggers.get(className)));
       }
     }
