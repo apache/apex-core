@@ -5,7 +5,6 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
@@ -25,7 +24,6 @@ import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
@@ -62,7 +60,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.LoggersUtil;
 import com.datatorrent.stram.util.OperatorBeanUtils;
 
@@ -428,21 +425,6 @@ public class StramWebServices
     return response;
   }
 
-  ContainerInfo getAppMasterContainerInfo()
-  {
-    ContainerInfo ci = new ContainerInfo();
-    ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
-    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
-    ci.state = "ACTIVE";
-    ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
-    ci.numOperators = 0;
-    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
-    ci.lastHeartbeat = -1;
-    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new YarnConfiguration()) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
-
-    return ci;
-  }
-
   @GET
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
   @Produces(MediaType.APPLICATION_JSON)
@@ -463,7 +445,7 @@ public class StramWebServices
 
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     // add itself (app master container)
-    ContainerInfo appMasterContainerInfo = getAppMasterContainerInfo();
+    ContainerInfo appMasterContainerInfo = dagManager.getAppMasterContainerInfo();
     if (stateSet == null || stateSet.contains(appMasterContainerInfo.state)) {
       ci.add(appMasterContainerInfo);
     }
@@ -485,7 +467,7 @@ public class StramWebServices
     init();
     ContainerInfo ci = null;
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      ci = getAppMasterContainerInfo();
+      ci = dagManager.getAppMasterContainerInfo();
     }
     else {
       for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {

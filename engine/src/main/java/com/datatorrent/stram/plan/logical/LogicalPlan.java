@@ -294,6 +294,7 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
+    @Deprecated
     public Class<? extends StreamCodec<?>> getCodecClass()
     {
       return codecClass;
@@ -352,7 +353,10 @@ public class LogicalPlan implements Serializable, DAG
         }
       }
       else {
-        if (!value.equals(streamCodec)) {
+        if (port.getStreamCodec() != null) {
+          throw new IllegalArgumentException(String.format("Both stream codec attribute %s and stream codec class %s were set on input port (%s). Please specify only the stream codec attribute",
+                                                              value, port.getStreamCodec(), portMeta));
+        } else if (streamCodec != null && !value.equals(streamCodec)) {
           throw new IllegalArgumentException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
         }
         streamCodec = value;
@@ -397,6 +401,8 @@ public class LogicalPlan implements Serializable, DAG
       hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
       if (streamCodec != null) {
         hash = 31 * hash + streamCodec.hashCode();
+      } else if (streamCodec != null) {
+        hash = 31 * hash + streamCodec.hashCode();
       }
       else if (codecClass != null) {
         hash = 31 * hash + codecClass.hashCode();
@@ -425,6 +431,9 @@ public class LogicalPlan implements Serializable, DAG
         return false;
       }
       if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
+        return false;
+      }
+      if (this.streamCodec != other.streamCodec && (this.streamCodec == null || !this.streamCodec.equals(other.streamCodec))) {
         return false;
       }
       if (this.streamCodec != other.streamCodec && (this.streamCodec == null || !this.streamCodec.equals(other.streamCodec))) {
@@ -922,6 +931,8 @@ public class LogicalPlan implements Serializable, DAG
     }
     for (StreamMeta n: this.streams.values()) {
       if (n.streamCodec != null) {
+        classNames.add(n.streamCodec.getClass().getName());
+      } else if (n.streamCodec != null) {
         classNames.add(n.streamCodec.getClass().getName());
       }
       else if (n.codecClass != null) {

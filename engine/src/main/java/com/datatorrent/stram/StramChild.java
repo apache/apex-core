@@ -26,8 +26,6 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Maps;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAG.Locality;
@@ -107,8 +105,6 @@ public class StramChild extends YarnContainerMain
     }
   }
 
-  private final Map<String, org.apache.log4j.Logger> classLoggers;
-
   protected StramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
@@ -120,7 +116,6 @@ public class StramChild extends YarnContainerMain
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
     this.containerId = containerId;
-    this.classLoggers = Maps.newHashMap();
   }
 
   @SuppressWarnings("unchecked")
@@ -647,10 +642,6 @@ public class StramChild extends YarnContainerMain
       if (req.isDeleted()) {
         continue;
       }
-      if(req.requestType == StramToNodeRequest.RequestType.SET_LOG_LEVEL){
-        handleChangeLoggersRequest((StramToNodeChangeLoggersRequest) req);
-        continue;
-      }
       Node<?> node = nodes.get(req.getOperatorId());
       if (node == null) {
         logger.warn("Node for operator {} is not found, probably not deployed yet", req.getOperatorId());
@@ -833,7 +824,11 @@ public class StramChild extends YarnContainerMain
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(finishedWindowId);
-    bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    if (nodi.streamCodec != null) {
+      bssc.put(StreamContext.CODEC, nodi.streamCodec);
+    } else {
+      bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    }
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
@@ -1008,7 +1003,11 @@ public class StramChild extends YarnContainerMain
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            if (nidi.streamCodec != null) {
+              context.put(StreamContext.CODEC, nidi.streamCodec);
+            } else {
+              context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            }
             context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
@@ -1087,7 +1086,11 @@ public class StramChild extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, stream);
+              StreamCodec<Object> streamCodec = nidi.streamCodec;
+              if (streamCodec == null) {
+                streamCodec = StramUtils.getSerdeInstance(nidi.serDeClassName);
+              }
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
