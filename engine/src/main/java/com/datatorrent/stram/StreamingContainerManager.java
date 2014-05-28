@@ -4,72 +4,18 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.annotation.Nullable;
-
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.commons.lang3.mutable.MutableInt;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.util.Clock;
-import org.apache.hadoop.yarn.util.SystemClock;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Component;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.StorageAgent;
-import com.datatorrent.api.StringCodec;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
-import com.datatorrent.stram.api.Checkpoint;
-import com.datatorrent.stram.api.ContainerContext;
-import com.datatorrent.stram.api.OperatorDeployInfo;
-import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
@@ -77,29 +23,47 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.Operators;
-import com.datatorrent.stram.plan.physical.OperatorStatus;
+import com.datatorrent.stram.plan.physical.*;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
-import com.datatorrent.stram.plan.physical.PlanModifier;
+import com.datatorrent.stram.util.ConfigUtils;
+import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
 import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.annotation.Nullable;
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.util.SystemClock;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -153,6 +117,7 @@ public class StreamingContainerManager implements PlanContext
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
   private final List<ContainerInfo> completedContainers = new ArrayList<ContainerInfo>();
+  private FSJsonLineFile containerFile;
 
   private static class EndWindowStats
   {
@@ -188,6 +153,13 @@ public class StreamingContainerManager implements PlanContext
     this.plan = new PhysicalPlan(dag, this);
     setupRecording(enableEventRecording);
     setupStringCodecs();
+    try {
+      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short)0644));
+      this.containerFile.append(getAppMasterContainerInfo());
+    }
+    catch (IOException ex) {
+      LOG.error("Caught exception when instantiating for container info file", ex);
+    }
   }
 
   private StreamingContainerManager(CheckpointState checkpointedState, boolean enableEventRecording)
@@ -199,6 +171,31 @@ public class StreamingContainerManager implements PlanContext
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupRecording(enableEventRecording);
     setupStringCodecs();
+    try {
+      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short)0644));
+      this.containerFile.append(getAppMasterContainerInfo());
+    }
+    catch (IOException ex) {
+      LOG.error("Caught exception when instantiating for container info file", ex);
+    }
+  }
+
+  public final ContainerInfo getAppMasterContainerInfo()
+  {
+    ContainerInfo ci = new ContainerInfo();
+    ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
+    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
+    ci.state = "ACTIVE";
+    ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
+    ci.numOperators = 0;
+    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
+    ci.lastHeartbeat = -1;
+    YarnConfiguration conf = new YarnConfiguration();
+    String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
+    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+    ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
+
+    return ci;
   }
 
   public void updateRPCLatency(String containerId, long latency)
@@ -674,7 +671,7 @@ public class StreamingContainerManager implements PlanContext
 
   public List<ContainerInfo> getCompletedContainerInfo()
   {
-    return completedContainers;
+    return Collections.unmodifiableList(completedContainers);
   }
 
   public static class ContainerResource
@@ -924,6 +921,12 @@ public class StreamingContainerManager implements PlanContext
       }
       sca.container.setState(PTContainer.State.ACTIVE);
       sca.jvmName = heartbeat.jvmName;
+      try {
+        containerFile.append(sca.getContainerInfo());
+      }
+      catch (IOException ex) {
+        LOG.warn("Cannot write to container file");
+      }
     }
 
     if (heartbeat.restartRequested) {

@@ -424,21 +424,6 @@ public class StramWebServices
     return response;
   }
 
-  ContainerInfo getAppMasterContainerInfo()
-  {
-    ContainerInfo ci = new ContainerInfo();
-    ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
-    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
-    ci.state = "ACTIVE";
-    ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
-    ci.numOperators = 0;
-    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
-    ci.lastHeartbeat = -1;
-    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new YarnConfiguration()) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
-
-    return ci;
-  }
-
   @GET
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
   @Produces(MediaType.APPLICATION_JSON)
@@ -459,7 +444,7 @@ public class StramWebServices
 
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     // add itself (app master container)
-    ContainerInfo appMasterContainerInfo = getAppMasterContainerInfo();
+    ContainerInfo appMasterContainerInfo = dagManager.getAppMasterContainerInfo();
     if (stateSet == null || stateSet.contains(appMasterContainerInfo.state)) {
       ci.add(appMasterContainerInfo);
     }
@@ -481,7 +466,7 @@ public class StramWebServices
     init();
     ContainerInfo ci = null;
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      ci = getAppMasterContainerInfo();
+      ci = dagManager.getAppMasterContainerInfo();
     }
     else {
       for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {
