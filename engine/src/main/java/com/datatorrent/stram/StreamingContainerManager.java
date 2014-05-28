@@ -2018,6 +2018,20 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
+  /**
+   * Send requests to change logger levels to all containers
+   * @param changedLoggers
+   */
+  public void setLoggersLevel( Map<String, String> changedLoggers)
+  {
+    LOG.debug("change logger request");
+    StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest();
+    request.setTargetChanges(changedLoggers);
+    for(StramChildAgent stramChildAgent : containers.values()) {
+      stramChildAgent.addOperatorRequest(request);
+    }
+  }
+
   public Map<String, Object> getPhysicalOperatorProperty(String operatorId)
   {
     int id = Integer.valueOf(operatorId);
