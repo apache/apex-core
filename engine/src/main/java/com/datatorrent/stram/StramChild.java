@@ -1481,13 +1481,14 @@ public class StramChild extends YarnContainerMain
 
   private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
   {
-    logger.debug("change logger levels");
+    logger.debug("handle change logger request");
     Map<String, org.apache.log4j.Logger> classLoggers = LoggersUtil.getCurrentLoggers();
     Map<String, String> changedLoggers = request.getChangedLogLevels();
     for(String className : changedLoggers.keySet()){
-      org.apache.log4j.Logger logger = classLoggers.get(className);
-      if(logger!=null){
-        logger.setLevel(Level.toLevel(changedLoggers.get(className)));
+      org.apache.log4j.Logger lLogger = classLoggers.get(className);
+      if(lLogger!=null){
+        this.logger.debug("change logger level of {}", className);
+        lLogger.setLevel(Level.toLevel(changedLoggers.get(className)));
       }
     }
   }
