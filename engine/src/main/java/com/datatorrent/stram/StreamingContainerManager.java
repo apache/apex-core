@@ -83,7 +83,6 @@ public class StreamingContainerManager implements PlanContext
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
-  private long lastRecordStatsTime = 0;
   private SharedPubSubWebSocketClient wsClient;
   private FSStatsRecorder statsRecorder;
   private FSEventRecorder eventRecorder;
@@ -239,19 +238,21 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupRecording(boolean enableEventRecording)
   {
-    if (this.vars.recordStatsInterval > 0 || enableEventRecording) {
+    if (this.vars.enableStatsRecording || enableEventRecording) {
       setupWsClient();
-      if (this.vars.recordStatsInterval > 0) {
+      if (this.vars.enableStatsRecording) {
         statsRecorder = new FSStatsRecorder();
         statsRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_STATS);
         statsRecorder.setWebSocketClient(wsClient);
         statsRecorder.setup();
       }
-      eventRecorder = new FSEventRecorder(plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ID));
-      eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
-      eventRecorder.setWebSocketClient(wsClient);
-      eventRecorder.setup();
-      eventBus.subscribe(eventRecorder);
+      if (enableEventRecording) {
+        eventRecorder = new FSEventRecorder(plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ID));
+        eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
+        eventRecorder.setWebSocketClient(wsClient);
+        eventRecorder.setup();
+        eventBus.subscribe(eventRecorder);
+      }
     }
   }
 
@@ -367,7 +368,7 @@ public class StreamingContainerManager implements PlanContext
 
     committedWindowId = updateCheckpoints(false);
     calculateEndWindowStats();
-    if (this.vars.recordStatsInterval > 0 && (lastRecordStatsTime + this.vars.recordStatsInterval <= currentTms)) {
+    if (this.vars.enableStatsRecording) {
       recordStats(currentTms);
     }
   }
@@ -377,7 +378,6 @@ public class StreamingContainerManager implements PlanContext
     try {
       statsRecorder.recordContainers(containers, currentTms);
       statsRecorder.recordOperators(getOperatorInfoList(), currentTms);
-      lastRecordStatsTime = clock.getTime();
     }
     catch (Exception ex) {
       LOG.warn("Exception caught when recording stats", ex);
@@ -1745,6 +1745,7 @@ public class StreamingContainerManager implements PlanContext
         oi.addPort(pinfo);
       }
     }
+    oi.counters = getOperatorCounters(operator.getId());
     return oi;
   }
 
@@ -1804,6 +1805,7 @@ public class StreamingContainerManager implements PlanContext
         loi.hosts.add(physicalOperator.getContainer().host);
       }
     }
+    loi.counters = operator.getStatus().counters;
     return loi;
   }
 
@@ -2282,7 +2284,7 @@ public class StreamingContainerManager implements PlanContext
     private final int heartbeatTimeoutMillis;
     private final String appPath;
     private final int maxWindowsBehindForStats;
-    private final int recordStatsInterval;
+    private final boolean enableStatsRecording;
 
     private FinalVars(LogicalPlan dag, long tms)
     {
@@ -2305,7 +2307,7 @@ public class StreamingContainerManager implements PlanContext
 
       this.heartbeatTimeoutMillis = dag.getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
       this.maxWindowsBehindForStats = dag.getValue(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
-      this.recordStatsInterval = dag.getValue(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS);
+      this.enableStatsRecording = dag.getValue(LogicalPlan.ENABLE_STATS_RECORDING);
     }
 
     private FinalVars(FinalVars other, LogicalPlan dag)
@@ -2313,7 +2315,7 @@ public class StreamingContainerManager implements PlanContext
       this.windowStartMillis = other.windowStartMillis;
       this.heartbeatTimeoutMillis = other.heartbeatTimeoutMillis;
       this.maxWindowsBehindForStats = other.maxWindowsBehindForStats;
-      this.recordStatsInterval = other.recordStatsInterval;
+      this.enableStatsRecording = other.enableStatsRecording;
       this.appPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
     }
 

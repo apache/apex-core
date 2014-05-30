@@ -174,10 +174,9 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
   /**
-   * The time interval for recording statistics. The statistics are periodically recorded with interval equal to the stats
-   * record interval. If the interval is specified as 0 then no statistics are recorded. The default value is 0.
+   * Whether or not we record statistics. The statistics are recorded for each heartbeat if enabled.  The default value is false.
    */
-  Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
+  Attribute<Boolean> ENABLE_STATS_RECORDING = new Attribute<Boolean>(false);
   /**
    * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
    * equal to the throughput calculation interval. The default value is 10s.

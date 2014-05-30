@@ -4,16 +4,11 @@
  */
 package com.datatorrent.stram.webapp;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
-
+import com.datatorrent.api.Context.Counters;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.annotation.RecordField;
+import java.util.*;
+import javax.xml.bind.annotation.*;
 
 /**
  *
@@ -50,10 +45,11 @@ public class OperatorInfo
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
-  @RecordField(type="stats") public ArrayList<PortInfo> ports = new ArrayList<PortInfo>();
+  @RecordField(type="stats") public List<PortInfo> ports = new ArrayList<PortInfo>();
   @RecordField(type="meta") public String unifierClass;
   @RecordField(type="meta") public String logicalName;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
+  @RecordField(type="stats") public List<Counters> counters;
 
   /**
    *
@@ -66,7 +62,7 @@ public class OperatorInfo
 
   /**
    *
-   * @return ArrayList<ContainerInfo>
+   * @return
    *
    */
   public Collection<PortInfo> getPorts()

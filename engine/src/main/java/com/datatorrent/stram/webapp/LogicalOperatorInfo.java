@@ -4,8 +4,8 @@
 
 package com.datatorrent.stram.webapp;
 
-import java.util.Map;
-import java.util.Set;
+import com.datatorrent.api.Context.Counters;
+import java.util.*;
 import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 
@@ -36,4 +36,5 @@ public class LogicalOperatorInfo
   public Set<Integer> partitions;
   public Set<Integer> unifiers;
   public Set<String> hosts;
+  public List<Counters> counters;
 }

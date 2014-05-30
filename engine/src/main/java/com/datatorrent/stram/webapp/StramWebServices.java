@@ -573,28 +573,6 @@ public class StramWebServices
     return response;
   }
 
-  @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/counters")
-  @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getLogicalOperatorCounters(@PathParam("operatorName") String operatorName) throws IOException, JSONException
-  {
-    OperatorMeta operatorMeta = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
-    if (operatorMeta == null) {
-      throw new NotFoundException("Logical operator " + operatorName + " does not exist");
-    }
-    List<Counters> countersList = operatorMeta.getStatus().counters;
-    if (countersList == null) {
-      throw new NotFoundException("This logical operator " + operatorName + " does not have counters");
-    }
-    JSONObject result = new JSONObject();
-    JSONArray arr = new JSONArray();
-    for (Counters counters : countersList) {
-      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
-    }
-    result.put("counters", arr);
-    return result;
-  }
-
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
@@ -723,24 +701,6 @@ public class StramWebServices
       LOG.warn("Caught exception", ex);
       throw new RuntimeException(ex);
     }
-  }
-
-  @GET
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/counters")
-  @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPhysicalOperatorCounters(@PathParam("operatorId") int operatorId) throws JSONException, IOException
-  {
-    List<Counters> countersList = dagManager.getOperatorCounters(operatorId);
-    if (countersList == null || countersList.isEmpty()) {
-      throw new NotFoundException("Counters not found for this physical operator " + operatorId);
-    }
-    JSONObject result = new JSONObject();
-    JSONArray arr = new JSONArray();
-    for (Counters counters : countersList) {
-      arr.put(new JSONObject(objectMapper.writeValueAsString(counters)));
-    }
-    result.put("counters", arr);
-    return result;
   }
 
   @GET
