@@ -1,3 +1,4 @@
+
 /**
  * Copyright (c) 2012-2013 DataTorrent, Inc.
  * All rights reserved.
@@ -21,7 +22,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
-
+import com.datatorrent.stram.util.FSUtil;
 public class FSStorageAgent implements StorageAgent, Serializable
 {
   private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
@@ -46,7 +47,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
       logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
       fs = FileSystem.newInstance(lPath.toUri(), conf == null ? new Configuration() : conf);
-      if (fs.mkdirs(lPath)) {
+      if (FSUtil.mkdirs(fs, lPath)) {
         fs.setWorkingDirectory(lPath);
       }
     }

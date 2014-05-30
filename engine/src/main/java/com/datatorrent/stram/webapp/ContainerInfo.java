@@ -24,5 +24,8 @@ public class ContainerInfo {
   @RecordField(type="meta") public int memoryMBAllocated;
   // commented out because free memory is misleading because of GC. may want to revisit this.
   //  @RecordField(type="stats") public int memoryMBFree;
-  @RecordField(type="meta") public String containerLogsUrl;
+  public String containerLogsUrl;
+  public long startedTime = -1;
+  public long finishedTime = -1;
+  @RecordField(type="meta") public String rawContainerLogsUrl;
 }

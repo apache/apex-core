@@ -27,6 +27,8 @@ import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.util.FSUtil;
+
 /**
  * <p>FSRecoveryHandler class.</p>
  *
@@ -91,7 +93,7 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     }
     if ("file".equals(scheme)) {
       // local FS does not support hflush and does not flush native stream
-      fs.mkdirs(logPath.getParent());
+      FSUtil.mkdirs(fs, logPath.getParent());
       fsOutputStream = new FSDataOutputStream(new FileOutputStream(Path.getPathWithoutSchemeAndAuthority(logPath).toString()), null);
     } else {
       fsOutputStream = fs.create(logPath);

@@ -6,23 +6,25 @@ package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.lang.Thread.State;
-import java.net.*;
-import java.util.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -49,6 +51,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.stream.*;
+import com.datatorrent.stram.util.LoggersUtil;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StreamingAppMaster}.
@@ -821,7 +824,11 @@ public class StramChild extends YarnContainerMain
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(finishedWindowId);
-    bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    if (nodi.streamCodec != null) {
+      bssc.put(StreamContext.CODEC, nodi.streamCodec);
+    } else {
+      bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    }
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
@@ -996,7 +1003,11 @@ public class StramChild extends YarnContainerMain
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            if (nidi.streamCodec != null) {
+              context.put(StreamContext.CODEC, nidi.streamCodec);
+            } else {
+              context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            }
             context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
@@ -1075,7 +1086,11 @@ public class StramChild extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, stream);
+              StreamCodec<Object> streamCodec = nidi.streamCodec;
+              if (streamCodec == null) {
+                streamCodec = StramUtils.getSerdeInstance(nidi.serDeClassName);
+              }
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
@@ -1466,6 +1481,12 @@ public class StramChild extends YarnContainerMain
     }
 
     return containerContext.getValue(key);
+  }
+
+  private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
+  {
+    logger.debug("handle change logger request");
+    LoggersUtil.changeCurrentLoggers(request.getTargetChanges());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);

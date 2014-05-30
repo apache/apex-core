@@ -202,7 +202,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         return result;
       }
       WebResource path = wr.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
-      JSONObject response = new JSONObject(webServicesClient.process(path, String.class, new WebServicesClient.GetWebServicesHandler<String>()));
+      JSONObject response = new JSONObject(webServicesClient.process(path.getRequestBuilder(), String.class, new WebServicesClient.GetWebServicesHandler<String>()));
       Object containersObj = response.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
@@ -635,11 +635,11 @@ public final class RecordingsAgent extends FSPartFileAgent
         path += "/ports/" + portName;
       }
       path += "/" + StramWebServices.PATH_RECORDINGS_START;
-      return webServicesClient.process(wr.path(path), String.class,
+      return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
-        public String process(WebResource webResource, Class<String> clazz)
+        public String process(WebResource.Builder webResource, Class<String> clazz)
         {
           return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
         }
@@ -666,11 +666,11 @@ public final class RecordingsAgent extends FSPartFileAgent
         path += "/ports/" + portName;
       }
       path += "/" + StramWebServices.PATH_RECORDINGS_STOP;
-      return webServicesClient.process(wr.path(path), String.class,
+      return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
-        public String process(WebResource webResource, Class<String> clazz)
+        public String process(WebResource.Builder webResource, Class<String> clazz)
         {
           return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
         }

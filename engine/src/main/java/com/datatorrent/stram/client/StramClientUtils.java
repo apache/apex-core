@@ -468,7 +468,7 @@ public class StramClientUtils
 
   public static int getLicenseMasterMemory(Configuration conf)
   {
-    return conf.getInt(DT_LICENSE_MASTER_MEMORY, 256);
+    return conf.getInt(DT_LICENSE_MASTER_MEMORY, 512);
   }
 
   /**

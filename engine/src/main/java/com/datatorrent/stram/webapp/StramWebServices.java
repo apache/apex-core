@@ -5,7 +5,6 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
@@ -25,7 +24,6 @@ import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
@@ -40,6 +38,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -62,7 +61,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.util.ConfigUtils;
+import com.datatorrent.stram.util.LoggersUtil;
 import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
@@ -93,6 +92,8 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_ALERTS = "alerts";
+  public static final String PATH_LOGGERS = "loggers";
+
   //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
@@ -153,6 +154,8 @@ public class StramWebServices
         objectMapper.registerModule(sm);
       }
       initialized = true;
+
+
     }
   }
 
@@ -423,21 +426,6 @@ public class StramWebServices
     return response;
   }
 
-  ContainerInfo getAppMasterContainerInfo()
-  {
-    ContainerInfo ci = new ContainerInfo();
-    ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
-    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
-    ci.state = "ACTIVE";
-    ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
-    ci.numOperators = 0;
-    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
-    ci.lastHeartbeat = -1;
-    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new YarnConfiguration()) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
-
-    return ci;
-  }
-
   @GET
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
   @Produces(MediaType.APPLICATION_JSON)
@@ -458,7 +446,7 @@ public class StramWebServices
 
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     // add itself (app master container)
-    ContainerInfo appMasterContainerInfo = getAppMasterContainerInfo();
+    ContainerInfo appMasterContainerInfo = dagManager.getAppMasterContainerInfo();
     if (stateSet == null || stateSet.contains(appMasterContainerInfo.state)) {
       ci.add(appMasterContainerInfo);
     }
@@ -480,7 +468,7 @@ public class StramWebServices
     init();
     ContainerInfo ci = null;
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      ci = getAppMasterContainerInfo();
+      ci = dagManager.getAppMasterContainerInfo();
     }
     else {
       for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {
@@ -865,4 +853,39 @@ public class StramWebServices
    return response;
    }
    */
+
+  @POST
+  @Path(PATH_LOGGERS)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject setLoggersLevel(JSONObject request)
+  {
+    init();
+    JSONObject response = new JSONObject();
+    Map<String, String> targetChanges = Maps.newHashMap();
+    try {
+      @SuppressWarnings("unchecked")
+      JSONArray loggerArray = request.getJSONArray("loggers");
+      for (int i = 0; i < loggerArray.length(); i++) {
+        JSONObject loggerNode = loggerArray.getJSONObject(i);
+        String target = loggerNode.getString("target");
+        String level = loggerNode.getString("logLevel");
+        target = target.replaceAll("\\.", "\\\\.");
+        target = target.replaceAll("\\*", "\\.\\*");
+
+        LOG.debug("change logger level for {} to {}", target, level);
+        targetChanges.put(target, level);
+      }
+
+      if (!targetChanges.isEmpty()) {
+        dagManager.setLoggersLevel(Collections.unmodifiableMap(targetChanges));
+        //Changing the levels on Stram after sending the message to all containers.
+        LoggersUtil.changeCurrentLoggers(targetChanges);
+      }
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
+    return response;
+  }
 }

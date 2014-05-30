@@ -14,6 +14,8 @@ import org.apache.hadoop.fs.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.util.FSUtil;
+
 /**
  * <p>FSAgent class.</p>
  *
@@ -47,7 +49,7 @@ public class FSAgent
 
   public void createDirectory(Path path) throws IOException
   {
-    fileSystem.mkdirs(path);
+    FSUtil.mkdirs(fileSystem, path);
   }
 
   public void createFile(Path path, byte[] content) throws IOException

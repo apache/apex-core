@@ -4,28 +4,15 @@
  */
 package com.datatorrent.stram;
 
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
-import com.google.common.collect.Sets;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.http.HttpConfig;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.*;
 
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -34,6 +21,7 @@ import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -41,6 +29,14 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
+import com.google.common.collect.Sets;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -166,7 +162,9 @@ public class StramChildAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
-          if (streamMeta.getCodecClass() != null) {
+          if (streamMeta.getStreamCodec() != null) {
+            portInfo.streamCodec = streamMeta.getStreamCodec();
+          } else if (streamMeta.getCodecClass() != null) {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
         }
@@ -230,7 +228,9 @@ public class StramChildAgent {
           inputInfo.bufferServerPort = addr.getPort();
         }
 
-        if (streamMeta.getCodecClass() != null) {
+        if (streamMeta.getStreamCodec() != null) {
+          inputInfo.streamCodec = streamMeta.getStreamCodec();
+        } else if (streamMeta.getCodecClass() != null) {
           inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
         }
         ndi.inputs.add(inputInfo);
@@ -311,8 +311,12 @@ public class StramChildAgent {
     ci.lastHeartbeat = lastHeartbeatMillis;
     // commented out because free memory is misleading because of GC, may want to revisit this
     //ci.memoryMBFree = this.memoryMBFree;
+    ci.startedTime = container.getStartedTime();
+    ci.finishedTime = container.getFinishedTime();
     if (this.container.nodeHttpAddress != null) {
-      ci.containerLogsUrl = ConfigUtils.getSchemePrefix(new YarnConfiguration()) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+      YarnConfiguration conf = new YarnConfiguration();
+      ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + this.container.nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+      ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, container.nodeHttpAddress, container.getPlan().getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
     }
     return ci;
   }
