@@ -182,16 +182,23 @@
 ## Bug
 * [SPOI-2086] - creation of logs directory under .dt folder of user
 * [SPOI-2497] - Remove hard-coded "hdfs" scheme 
+* [SPOI-2501] - dt.log not written under CDH5 GA
 * [SPOI-2577] - After installation, I cannot launch license agent
+* [SPOI-2604] - The example DFS directory should be changed from /home/... to /user/...
+* [SPOI-2607] - Install page should only list error (not warnings) issues
+* [SPOI-2609] - When yarn.scheduler.minimum-allocation-mb is set to 256, PiDemo fails with NPE
 
 ## Improvement
 * [SPOI-2522] - Replace InputPort.getStreamCodec method with an attribute on InputPort called StreamCodec
 * [SPOI-2576] - Change local install from .datatorrent to datatorrent directory
+* [SPOI-2603] - installer complains about gateway has trouble starting but it actually runs OK
+* [SPOI-2637] - Improve the Getting Started Guide
 
 ## Task
 * [SPOI-2520] - Change the name of the CustomStats to Counters
 * [SPOI-2578] - Check dir before mkdir call (MapR requirement)
 * [SPOI-2579] - Take out launch from gateway webservice spec document
+* [SPOI-2649] - Update software license
 
 ## Bug
 * [MLHR-1101] - Install errors formatting
