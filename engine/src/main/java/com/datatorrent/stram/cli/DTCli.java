@@ -2243,21 +2243,23 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      PrintStream os = getOutputPrintStream();
       if (args.length == 1) {
         Map<String, String> sortedMap = new TreeMap<String, String>();
         for (Map.Entry<String, String> entry : conf) {
           sortedMap.put(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, String> entry : sortedMap.entrySet()) {
-          System.out.println(entry.getKey() + "=" + entry.getValue());
+          os.println(entry.getKey() + "=" + entry.getValue());
         }
       }
       else {
         String value = conf.get(args[1]);
         if (value != null) {
-          System.out.println(value);
+          os.println(value);
         }
       }
+      closeOutputPrintStream(os);
     }
 
   }
