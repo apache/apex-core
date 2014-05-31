@@ -88,7 +88,7 @@ public class LaunchContainerRunnable implements Runnable
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("./*");
     for (String c : nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
-      if (c.equals("HADOOP_CLIENT_CONF_DIR")) {
+      if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {
         // SPOI-2501
         continue;
       }

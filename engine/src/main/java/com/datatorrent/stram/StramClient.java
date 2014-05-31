@@ -583,7 +583,7 @@ public class StramClient
       //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
       StringBuilder classPathEnv = new StringBuilder("./*");
       for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
-        if (c.equals("HADOOP_CLIENT_CONF_DIR")) {
+        if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {
           // SPOI-2501
           continue;
         }
