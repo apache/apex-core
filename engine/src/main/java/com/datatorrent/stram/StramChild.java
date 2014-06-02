@@ -823,7 +823,7 @@ public class StramChild extends YarnContainerMain
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(finishedWindowId);
     if (nodi.streamCodec != null) {
-      bssc.put(StreamContext.CODEC, nodi.streamCodec);
+      bssc.put(StreamContext.CODEC, (StreamCodec<Object>)nodi.streamCodec);
     } else {
       bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
     }
