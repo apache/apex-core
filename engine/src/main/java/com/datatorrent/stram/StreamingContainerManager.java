@@ -1745,7 +1745,10 @@ public class StreamingContainerManager implements PlanContext
         oi.addPort(pinfo);
       }
     }
-    oi.counters = getOperatorCounters(operator.getId());
+    List<Counters> operatorCounters = getOperatorCounters(operator.getId());
+    if (!operatorCounters.isEmpty()) {
+      oi.counters = operatorCounters;
+    }
     return oi;
   }
 
