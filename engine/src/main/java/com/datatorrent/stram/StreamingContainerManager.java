@@ -178,7 +178,7 @@ public class StreamingContainerManager implements PlanContext
       this.containerFile.append(getAppMasterContainerInfo());
     }
     catch (IOException ex) {
-      LOG.error("Caught exception when instantiating for container info file", ex);
+      LOG.warn("Caught exception when instantiating for container info file. Ignoring", ex);
     }
   }
 
