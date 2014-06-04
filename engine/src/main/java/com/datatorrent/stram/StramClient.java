@@ -13,9 +13,18 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseObject;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocol;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
+import com.datatorrent.stram.license.agent.protocol.request.GetLicenseDelegationTokenRequest;
+import com.datatorrent.stram.license.agent.protocol.response.GetLicenseDelegationTokenResponse;
+import com.datatorrent.stram.license.security.LicenseDelegationTokenIdentifier;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 
+import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.cli.CommandLine;
@@ -88,6 +97,7 @@ public class StramClient
   private String archives;
   private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
+  private int licenseRPCTimeout = 10000;
 
   /**
    *
@@ -480,6 +490,25 @@ public class StramClient
       org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
       Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
       credentials.addToken(rmToken.getService(), rmToken);
+
+      // Get the license manager delegation token
+      if (!YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
+        try {
+          String license = dag.getValue(LogicalPlan.LICENSE);
+          byte[] licenseBytes = Base64.decodeBase64(license);
+          LicenseObject licenseObject = License.getLicenseObject(licenseBytes);
+          String licenseId = licenseObject.getLicenseId();
+          LicensingAgentProtocolHelper.LicensingAgentProtocolInfo licensingAgentProtocolInfo = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, licenseRPCTimeout);
+          LicensingAgentProtocol protocol = licensingAgentProtocolInfo.protocol;
+          GetLicenseDelegationTokenRequest request = new GetLicenseDelegationTokenRequest();
+          request.setUser(UserGroupInformation.getLoginUser().getUserName());
+          GetLicenseDelegationTokenResponse response = protocol.getLicenseDelegationToken(request);
+          Token<LicenseDelegationTokenIdentifier> licenseToken = response.getDelegationToken();
+          credentials.addToken(licenseToken.getService(), licenseToken);
+        } catch (Exception e) {
+          throw new YarnException(e);
+        }
+      }
 
       DataOutputBuffer dob = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dob);
