@@ -33,6 +33,7 @@ import com.datatorrent.stram.util.VersionInfo;
  */
 public class StreamingAppMaster extends StramUtils.YarnContainerMain
 {
+  public static final String DT_LOGGERS_LEVEL = "dt.loggers.level";
   private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMaster.class);
 
   /**
@@ -42,6 +43,7 @@ public class StreamingAppMaster extends StramUtils.YarnContainerMain
    */
   public static void main(final String[] args) throws Throwable
   {
+    LOG.info("loggers levels {}", System.getProperty(DT_LOGGERS_LEVEL));
     StdOutErrLog.tieSystemOutAndErrToLog();
     LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 

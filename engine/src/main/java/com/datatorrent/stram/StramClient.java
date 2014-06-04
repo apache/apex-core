@@ -646,6 +646,10 @@ public class StramClient
         vargs.add("-Dlog4j.debug=true");
       }
 
+      String loggersLevel = conf.get(StreamingAppMaster.DT_LOGGERS_LEVEL);
+      if (loggersLevel != null) {
+        vargs.add(String.format("-D%s=%s", StreamingAppMaster.DT_LOGGERS_LEVEL, loggersLevel));
+      }
       if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         vargs.add(LicensingAppMaster.class.getName());
       }
