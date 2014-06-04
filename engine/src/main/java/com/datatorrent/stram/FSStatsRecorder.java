@@ -9,7 +9,6 @@ import com.datatorrent.api.annotation.RecordField;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.lib.codec.JsonStreamCodec;
 import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.ContainerInfo;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
@@ -38,16 +37,10 @@ public class FSStatsRecorder implements StatsRecorder
   private transient StreamCodec<Object> streamCodec;
   private final Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
   private final Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
-  private SharedPubSubWebSocketClient wsClient;
 
   public void setBasePath(String basePath)
   {
     this.basePath = basePath;
-  }
-
-  public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)
-  {
-    this.wsClient = wsClient;
   }
 
   public void setup()
@@ -96,14 +89,7 @@ public class FSStatsRecorder implements StatsRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
       containersStorage.writeDataItem(bos.toByteArray(), true);
-      if (!containersStorage.flushData() && wsClient != null) {
-        String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + containersStorage.getBasePath();
-        try {
-          wsClient.publish(topic, containersStorage.getLatestIndexLine());
-        } catch (IOException ex) {
-          LOG.warn("Error publishing to the gateway", ex);
-        }
-      }
+      containersStorage.flushData();
     }
   }
 
@@ -141,15 +127,7 @@ public class FSStatsRecorder implements StatsRecorder
       operatorStorage.writeDataItem(bos.toByteArray(), true);
     }
     for (FSPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
-      if (!operatorStorage.flushData() && wsClient != null) {
-        String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + operatorStorage.getBasePath();
-        try {
-          wsClient.publish(topic, operatorStorage.getLatestIndexLine());
-        }
-        catch (IOException ex) {
-          LOG.warn("Error publishing to the gateway", ex);
-        }
-      }
+      operatorStorage.flushData();
     }
   }
 

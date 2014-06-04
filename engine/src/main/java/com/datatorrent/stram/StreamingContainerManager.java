@@ -238,21 +238,18 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupRecording(boolean enableEventRecording)
   {
-    if (this.vars.enableStatsRecording || enableEventRecording) {
+    if (this.vars.enableStatsRecording) {
+      statsRecorder = new FSStatsRecorder();
+      statsRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_STATS);
+      statsRecorder.setup();
+    }
+    if (enableEventRecording) {
       setupWsClient();
-      if (this.vars.enableStatsRecording) {
-        statsRecorder = new FSStatsRecorder();
-        statsRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_STATS);
-        statsRecorder.setWebSocketClient(wsClient);
-        statsRecorder.setup();
-      }
-      if (enableEventRecording) {
-        eventRecorder = new FSEventRecorder(plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ID));
-        eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
-        eventRecorder.setWebSocketClient(wsClient);
-        eventRecorder.setup();
-        eventBus.subscribe(eventRecorder);
-      }
+      eventRecorder = new FSEventRecorder(plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ID));
+      eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
+      eventRecorder.setWebSocketClient(wsClient);
+      eventRecorder.setup();
+      eventBus.subscribe(eventRecorder);
     }
   }
 
