@@ -4,39 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.*;
-import com.datatorrent.api.Context.Counters;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.annotation.Stateless;
-import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.Journal.RecoverableOperation;
-import com.datatorrent.stram.Journal.SetContainerState;
-import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
-import com.datatorrent.stram.api.*;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.plan.logical.*;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.physical.*;
-import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
-import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
-import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.datatorrent.stram.plan.physical.PTOperator.State;
-import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
-import com.datatorrent.stram.util.*;
-import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
-import com.datatorrent.stram.webapp.*;
-import com.google.common.base.Predicate;
-import com.google.common.collect.*;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -44,7 +11,9 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import javax.annotation.Nullable;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 import org.apache.commons.beanutils.BeanMap;
@@ -63,6 +32,41 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.*;
+import com.datatorrent.api.Context.Counters;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.api.annotation.Stateless;
+
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.Journal.RecoverableOperation;
+import com.datatorrent.stram.Journal.SetContainerState;
+import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.api.*;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.*;
+import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
+import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
+import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.datatorrent.stram.plan.physical.PTOperator.State;
+import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
+import com.datatorrent.stram.util.ConfigUtils;
+import com.datatorrent.stram.util.FSJsonLineFile;
+import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import com.datatorrent.stram.webapp.*;
 
 /**
  *
@@ -564,6 +568,15 @@ public class StreamingContainerManager implements PlanContext
         }
       }
       o.stats.lastWindowedStats = stats;
+      if (o.stats.lastWindowedStats != null) {
+        for (int i = o.stats.lastWindowedStats.size() - 1; i >= 0; i--) {
+          Counters counters = o.stats.lastWindowedStats.get(i).counters;
+          if (counters != null) {
+            o.lastSeenCounters = counters;
+            break;
+          }
+        }
+      }
       plan.onStatusUpdate(o);
       reportStats.remove(o);
     }
@@ -1640,21 +1653,6 @@ public class StreamingContainerManager implements PlanContext
     return o == null ? null : fillPhysicalOperatorInfo(o);
   }
 
-  public List<Counters> getOperatorCounters(int operatorId)
-  {
-    PTOperator o = this.plan.getAllOperators().get(operatorId);
-    if (o == null) {
-      return null;
-    }
-    List<Counters> countersList = Lists.newArrayList();
-    for (OperatorStats stats : o.stats.lastWindowedStats) {
-      if (stats.counters != null) {
-        countersList.add(stats.counters);
-      }
-    }
-    return countersList;
-  }
-
   public List<OperatorInfo> getOperatorInfoList()
   {
     List<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
@@ -1742,10 +1740,7 @@ public class StreamingContainerManager implements PlanContext
         oi.addPort(pinfo);
       }
     }
-    List<Counters> operatorCounters = getOperatorCounters(operator.getId());
-    if (!operatorCounters.isEmpty()) {
-      oi.counters = operatorCounters;
-    }
+    oi.counters = operator.lastSeenCounters;
     return oi;
   }
 
