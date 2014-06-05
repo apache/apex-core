@@ -845,19 +845,17 @@ public class StramWebServices
     return response;
   }
 
-  @POST
+  @GET
   @Path(PATH_LOGGERS + "/search")
-  @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject searchLoggersLevel(JSONObject request)
+  public JSONObject searchLoggersLevel(@QueryParam("search") String search)
   {
     init();
     JSONObject response = new JSONObject();
     JSONArray loggersArray = new JSONArray();
     try {
-      String searchKey = request.getString("target");
-      if (searchKey != null) {
-        Map<String, String> matches = DTLoggerFactory.get().getClassesMatching(searchKey);
+      if (search != null) {
+        Map<String, String> matches = DTLoggerFactory.get().getClassesMatching(search);
         for (Entry<String, String> match : matches.entrySet()) {
           JSONObject node = new JSONObject();
           node.put("name", match.getKey());
