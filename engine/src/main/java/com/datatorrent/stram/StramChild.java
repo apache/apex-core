@@ -4,6 +4,32 @@
  */
 package com.datatorrent.stram;
 
+import java.io.IOException;
+import java.lang.Thread.State;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.impl.DTLoggerFactory;
+
+import com.google.common.base.Strings;
+import com.google.common.collect.Maps;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAG.Locality;
@@ -12,6 +38,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
@@ -28,28 +55,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.stream.*;
-import com.datatorrent.stram.util.LoggersUtil;
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.lang.Thread.State;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.UnknownHostException;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StreamingAppMaster}.
@@ -221,6 +226,16 @@ public class StramChild extends YarnContainerMain
    */
   public static void main(String[] args) throws Throwable
   {
+    String loggersLevel = System.getProperty(StreamingAppMaster.DT_LOGGERS_LEVEL);
+    if (!Strings.isNullOrEmpty(loggersLevel)) {
+      Map<String, String> targetChanges = Maps.newHashMap();
+      String targets[] = loggersLevel.split(",");
+      for (String target : targets) {
+        String parts[] = target.split(":");
+        targetChanges.put(parts[0], parts[1]);
+      }
+      DTLoggerFactory.get().changeLoggersLevel(targetChanges);
+    }
     StdOutErrLog.tieSystemOutAndErrToLog();
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
@@ -1484,7 +1499,7 @@ public class StramChild extends YarnContainerMain
   private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
   {
     logger.debug("handle change logger request");
-    LoggersUtil.changeCurrentLoggers(request.getTargetChanges());
+    DTLoggerFactory.get().changeLoggersLevel(request.getTargetChanges());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);

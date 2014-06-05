@@ -37,12 +37,12 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.impl.DTLoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
 import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.Context.Counters;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -61,7 +61,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.util.LoggersUtil;
 import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
@@ -840,7 +839,7 @@ public class StramWebServices
       if (!targetChanges.isEmpty()) {
         dagManager.setLoggersLevel(Collections.unmodifiableMap(targetChanges));
         //Changing the levels on Stram after sending the message to all containers.
-        LoggersUtil.changeCurrentLoggers(targetChanges);
+        DTLoggerFactory.get().changeLoggersLevel(targetChanges);
       }
     }
     catch (JSONException ex) {
