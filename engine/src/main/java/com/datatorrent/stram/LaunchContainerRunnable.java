@@ -238,6 +238,10 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
+    String loggersLevel = System.getProperty(StreamingAppMaster.DT_LOGGERS_LEVEL);
+    if (loggersLevel != null) {
+      vargs.add(String.format("-D%s=%s", StreamingAppMaster.DT_LOGGERS_LEVEL, loggersLevel));
+    }
     // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child
 
