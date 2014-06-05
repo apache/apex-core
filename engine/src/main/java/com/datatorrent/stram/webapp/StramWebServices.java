@@ -863,7 +863,7 @@ public class StramWebServices
           loggersArray.put(node);
         }
       }
-      response.put("matches", loggersArray);
+      response.put("loggers", loggersArray);
     }
     catch (JSONException ex) {
       LOG.warn("Got JSON Exception: ", ex);
