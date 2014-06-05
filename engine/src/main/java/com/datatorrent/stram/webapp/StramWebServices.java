@@ -829,9 +829,6 @@ public class StramWebServices
         JSONObject loggerNode = loggerArray.getJSONObject(i);
         String target = loggerNode.getString("target");
         String level = loggerNode.getString("logLevel");
-        target = target.replaceAll("\\.", "\\\\.");
-        target = target.replaceAll("\\*", "\\.\\*");
-
         LOG.debug("change logger level for {} to {}", target, level);
         targetChanges.put(target, level);
       }
@@ -841,6 +838,34 @@ public class StramWebServices
         //Changing the levels on Stram after sending the message to all containers.
         DTLoggerFactory.get().changeLoggersLevel(targetChanges);
       }
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
+    return response;
+  }
+
+  @POST
+  @Path(PATH_LOGGERS + "/search")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject searchLoggersLevel(JSONObject request)
+  {
+    init();
+    JSONObject response = new JSONObject();
+    JSONArray loggersArray = new JSONArray();
+    try {
+      String searchKey = request.getString("target");
+      if (searchKey != null) {
+        Map<String, String> matches = DTLoggerFactory.get().getClassesMatching(searchKey);
+        for (Entry<String, String> match : matches.entrySet()) {
+          JSONObject node = new JSONObject();
+          node.put("name", match.getKey());
+          node.put("level", match.getValue());
+          loggersArray.put(node);
+        }
+      }
+      response.put("matches", loggersArray);
     }
     catch (JSONException ex) {
       LOG.warn("Got JSON Exception: ", ex);

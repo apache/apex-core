@@ -591,7 +591,12 @@ public final class DTLoggerAdapter extends MarkerIgnoringBase implements
     logger.log(callerFQCN, log4jLevel, msg, t);
   }
 
-  public void setLogLevel(Level level)
+  Level getLogLevel()
+  {
+    return logger.getLevel();
+  }
+
+  void setLogLevel(Level level)
   {
     logger.setLevel(level);
   }

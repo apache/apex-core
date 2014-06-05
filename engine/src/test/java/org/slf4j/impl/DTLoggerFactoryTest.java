@@ -33,6 +33,9 @@ import com.datatorrent.stram.client.DTConfiguration;
 public class DTLoggerFactoryTest
 {
 
+  public static class Dummy
+  {
+  }
   @Test
   public void test()
   {
@@ -49,6 +52,7 @@ public class DTLoggerFactoryTest
     LoggerFactory.getLogger(DTConfiguration.class);
     LoggerFactory.getLogger(StramEvent.class);
     LoggerFactory.getLogger(StreamingAppMaster.class);
+    LoggerFactory.getLogger(Dummy.class);
 
     org.apache.log4j.Logger dtConfigLogger = LogManager.getLogger(DTConfiguration.class);
     Assert.assertEquals(dtConfigLogger.getLevel(), Level.INFO);
@@ -58,5 +62,9 @@ public class DTLoggerFactoryTest
 
     org.apache.log4j.Logger streamingAppMasterLogger = LogManager.getLogger(StreamingAppMaster.class);
     Assert.assertNull(streamingAppMasterLogger.getLevel());
+
+    org.apache.log4j.Logger dummyLogger = LogManager.getLogger(Dummy.class);
+    Assert.assertNull(dummyLogger);
+
   }
 }

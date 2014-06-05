@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.*;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,11 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 
+import com.google.common.base.Preconditions;
+
 import com.datatorrent.api.StreamingApplication;
 
+import com.datatorrent.stram.StreamingAppMaster;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -328,7 +332,16 @@ public class StramClientUtils
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     }
-
+    //Validate loggers-level settings
+    String loggersLevel = conf.get(StreamingAppMaster.DT_LOGGERS_LEVEL);
+    if(loggersLevel!=null){
+      String targets[] = loggersLevel.split(",");
+      Preconditions.checkArgument(targets.length>0, "zero loggers level");
+      for(String target : targets){
+        String parts[] = target.split(":");
+        Preconditions.checkArgument(parts.length == 2, "incorrect " + target);
+      }
+    }
     convertDeprecatedProperties(conf);
 
     //

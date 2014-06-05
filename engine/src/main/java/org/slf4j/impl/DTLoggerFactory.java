@@ -14,6 +14,7 @@ import org.apache.log4j.LogManager;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
 /**
@@ -103,5 +104,18 @@ public class DTLoggerFactory implements ILoggerFactory
       return patternLevel.get(longestPatternKey);
     }
     return null;
+  }
+
+  public ImmutableMap<String, String> getClassesMatching(@Nonnull String searchKey)
+  {
+    Pattern searchPattern = Pattern.compile(searchKey);
+    Map<String, String> matchedClasses = Maps.newHashMap();
+    for (DTLoggerAdapter loggerAdapter : loggerMap.values()) {
+      if (searchPattern.matcher(loggerAdapter.getName()).matches()) {
+        Level level = loggerAdapter.getLogLevel();
+        matchedClasses.put(loggerAdapter.getName(), level == null ? "" : level.toString());
+      }
+    }
+    return ImmutableMap.copyOf(matchedClasses);
   }
 }
