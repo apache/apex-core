@@ -52,10 +52,10 @@ public class DTLoggerFactory implements ILoggerFactory
     }
 
     if (!patternLevel.isEmpty()) {
-      for (Logger classLogger : loggerMap.values()) {
+      for (DTLoggerAdapter classLogger : loggerMap.values()) {
         Level level = getLevelFor(classLogger.getName());
         if(level!=null){
-          loggerMap.get(classLogger).setLogLevel(level);
+          classLogger.setLogLevel(level);
         }
       }
     }
