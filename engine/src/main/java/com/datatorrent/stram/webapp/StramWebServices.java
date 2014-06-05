@@ -848,14 +848,14 @@ public class StramWebServices
   @GET
   @Path(PATH_LOGGERS + "/search")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject searchLoggersLevel(@QueryParam("search") String search)
+  public JSONObject searchLoggersLevel(@QueryParam("pattern") String pattern)
   {
     init();
     JSONObject response = new JSONObject();
     JSONArray loggersArray = new JSONArray();
     try {
-      if (search != null) {
-        Map<String, String> matches = DTLoggerFactory.get().getClassesMatching(search);
+      if (pattern != null) {
+        Map<String, String> matches = DTLoggerFactory.get().getClassesMatching(pattern);
         for (Entry<String, String> match : matches.entrySet()) {
           JSONObject node = new JSONObject();
           node.put("name", match.getKey());
