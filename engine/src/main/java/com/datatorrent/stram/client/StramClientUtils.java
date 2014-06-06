@@ -31,6 +31,7 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.impl.DTLoggerFactory;
 
 import com.google.common.base.Preconditions;
 
@@ -333,7 +334,7 @@ public class StramClientUtils
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     }
     //Validate loggers-level settings
-    String loggersLevel = conf.get(StreamingAppMaster.DT_LOGGERS_LEVEL);
+    String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
     if(loggersLevel!=null){
       String targets[] = loggersLevel.split(",");
       Preconditions.checkArgument(targets.length>0, "zero loggers level");

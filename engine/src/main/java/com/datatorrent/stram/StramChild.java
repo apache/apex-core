@@ -27,9 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.DTLoggerFactory;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Maps;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAG.Locality;
@@ -226,16 +223,7 @@ public class StramChild extends YarnContainerMain
    */
   public static void main(String[] args) throws Throwable
   {
-    String loggersLevel = System.getProperty(StreamingAppMaster.DT_LOGGERS_LEVEL);
-    if (!Strings.isNullOrEmpty(loggersLevel)) {
-      Map<String, String> targetChanges = Maps.newHashMap();
-      String targets[] = loggersLevel.split(",");
-      for (String target : targets) {
-        String parts[] = target.split(":");
-        targetChanges.put(parts[0], parts[1]);
-      }
-      DTLoggerFactory.get().changeLoggersLevel(targetChanges);
-    }
+    DTLoggerFactory.getInstance().initialize();
     StdOutErrLog.tieSystemOutAndErrToLog();
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
@@ -1499,7 +1487,7 @@ public class StramChild extends YarnContainerMain
   private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
   {
     logger.debug("handle change logger request");
-    DTLoggerFactory.get().changeLoggersLevel(request.getTargetChanges());
+    DTLoggerFactory.getInstance().changeLoggersLevel(request.getTargetChanges());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);

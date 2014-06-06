@@ -836,7 +836,7 @@ public class StramWebServices
       if (!targetChanges.isEmpty()) {
         dagManager.setLoggersLevel(Collections.unmodifiableMap(targetChanges));
         //Changing the levels on Stram after sending the message to all containers.
-        DTLoggerFactory.get().changeLoggersLevel(targetChanges);
+        DTLoggerFactory.getInstance().changeLoggersLevel(targetChanges);
       }
     }
     catch (JSONException ex) {
@@ -855,7 +855,7 @@ public class StramWebServices
     JSONArray loggersArray = new JSONArray();
     try {
       if (pattern != null) {
-        Map<String, String> matches = DTLoggerFactory.get().getClassesMatching(pattern);
+        Map<String, String> matches = DTLoggerFactory.getInstance().getClassesMatching(pattern);
         for (Entry<String, String> match : matches.entrySet()) {
           JSONObject node = new JSONObject();
           node.put("name", match.getKey());

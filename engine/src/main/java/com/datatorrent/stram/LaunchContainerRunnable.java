@@ -39,6 +39,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.impl.DTLoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
 
@@ -238,9 +239,9 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
-    String loggersLevel = System.getProperty(StreamingAppMaster.DT_LOGGERS_LEVEL);
+    String loggersLevel = System.getProperty(DTLoggerFactory.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
-      vargs.add(String.format("-D%s=%s", StreamingAppMaster.DT_LOGGERS_LEVEL, loggersLevel));
+      vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
     }
     // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child

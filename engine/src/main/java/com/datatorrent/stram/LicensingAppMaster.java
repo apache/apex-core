@@ -14,9 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.DTLoggerFactory;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Maps;
-
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.license.LicensingAppMasterService;
 import com.datatorrent.stram.util.VersionInfo;
@@ -35,16 +32,7 @@ public class LicensingAppMaster extends StramUtils.YarnContainerMain
    */
   public static void main(final String[] args) throws Throwable
   {
-    String loggersLevel = System.getProperty(StreamingAppMaster.DT_LOGGERS_LEVEL);
-    if (!Strings.isNullOrEmpty(loggersLevel)) {
-      Map<String, String> targetChanges = Maps.newHashMap();
-      String targets[] = loggersLevel.split(",");
-      for (String target : targets) {
-        String parts[] = target.split(":");
-        targetChanges.put(parts[0], parts[1]);
-      }
-      DTLoggerFactory.get().changeLoggersLevel(targetChanges);
-    }
+    DTLoggerFactory.getInstance().initialize();
     StdOutErrLog.tieSystemOutAndErrToLog();
     LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 

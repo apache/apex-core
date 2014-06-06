@@ -49,6 +49,7 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.impl.DTLoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StreamingApplication;
@@ -646,9 +647,9 @@ public class StramClient
         vargs.add("-Dlog4j.debug=true");
       }
 
-      String loggersLevel = conf.get(StreamingAppMaster.DT_LOGGERS_LEVEL);
+      String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
       if (loggersLevel != null) {
-        vargs.add(String.format("-D%s=%s", StreamingAppMaster.DT_LOGGERS_LEVEL, loggersLevel));
+        vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
       }
       if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         vargs.add(LicensingAppMaster.class.getName());
