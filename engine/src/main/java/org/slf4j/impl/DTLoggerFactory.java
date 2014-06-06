@@ -13,6 +13,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -37,9 +38,9 @@ public class DTLoggerFactory implements ILoggerFactory
     return SINGLETON;
   }
 
-  ConcurrentMap<String, DTLoggerAdapter> loggerMap;
-  Map<String, Level> patternLevel;
-  Map<String, Pattern> patterns;
+  private final ConcurrentMap<String, DTLoggerAdapter> loggerMap;
+  private final Map<String, Level> patternLevel;
+  private final Map<String, Pattern> patterns;
 
   private DTLoggerFactory()
   {
@@ -74,6 +75,7 @@ public class DTLoggerFactory implements ILoggerFactory
       for (DTLoggerAdapter classLogger : loggerMap.values()) {
         Level level = getLevelFor(classLogger.getName());
         if (level != null) {
+          LOG.info("changing level of {} to {}", classLogger.getName(), level);
           classLogger.setLogLevel(level);
         }
       }
@@ -136,4 +138,6 @@ public class DTLoggerFactory implements ILoggerFactory
     }
     return ImmutableMap.copyOf(matchedClasses);
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(DTLoggerFactory.class);
 }

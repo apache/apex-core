@@ -50,9 +50,5 @@ public class DTLoggerFactoryTest
 
     org.apache.log4j.Logger streamingAppMasterLogger = LogManager.getLogger(StreamingAppMaster.class);
     Assert.assertNull(streamingAppMasterLogger.getLevel());
-
-    org.apache.log4j.Logger dummyLogger = LogManager.getLogger(Dummy.class);
-    Assert.assertNull(dummyLogger);
-
   }
 }
