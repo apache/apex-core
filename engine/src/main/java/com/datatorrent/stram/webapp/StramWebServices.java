@@ -829,7 +829,7 @@ public class StramWebServices
         JSONObject loggerNode = loggerArray.getJSONObject(i);
         String target = loggerNode.getString("target");
         String level = loggerNode.getString("logLevel");
-        LOG.debug("change logger level for {} to {}", target, level);
+        LOG.info("changing logger level for {} to {}", target, level);
         targetChanges.put(target, level);
       }
 

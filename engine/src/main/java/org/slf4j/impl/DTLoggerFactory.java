@@ -3,6 +3,7 @@
  */
 package org.slf4j.impl;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -13,7 +14,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -41,6 +41,7 @@ public class DTLoggerFactory implements ILoggerFactory
   private final ConcurrentMap<String, DTLoggerAdapter> loggerMap;
   private final Map<String, Level> patternLevel;
   private final Map<String, Pattern> patterns;
+  private boolean initialized = false;
 
   private DTLoggerFactory()
   {
@@ -51,20 +52,57 @@ public class DTLoggerFactory implements ILoggerFactory
 
   public synchronized void initialize()
   {
-    String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
-    if (!Strings.isNullOrEmpty(loggersLevel)) {
-      Map<String, String> targetChanges = Maps.newHashMap();
-      String targets[] = loggersLevel.split(",");
-      for (String target : targets) {
-        String parts[] = target.split(":");
-        targetChanges.put(parts[0], parts[1]);
+    if (!initialized) {
+      String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
+      if (!Strings.isNullOrEmpty(loggersLevel)) {
+        Map<String, String> targetChanges = Maps.newHashMap();
+        String targets[] = loggersLevel.split(",");
+        for (String target : targets) {
+          String parts[] = target.split(":");
+          targetChanges.put(parts[0], parts[1]);
+        }
+        changeLoggersLevel(targetChanges);
       }
-      changeLoggersLevel(targetChanges);
+      initialized = true;
+    }
+    else {
+      LOG.warn("DT Logger Factory already initialized.");
     }
   }
 
   public synchronized void changeLoggersLevel(@Nonnull Map<String, String> targetChanges)
   {
+    /*remove existing patterns which are subsets of new patterns. for eg. if x.y.z.* will be removed if
+    there is x.y.* in the target changes.
+    */
+    for (Map.Entry<String, String> changeEntry : targetChanges.entrySet()) {
+      Iterator<Map.Entry<String, Pattern>> patternsIterator = patterns.entrySet().iterator();
+      while ((patternsIterator.hasNext())) {
+        Map.Entry<String, Pattern> entry = patternsIterator.next();
+        String finer = entry.getKey();
+        String wider = changeEntry.getKey();
+        if (finer.length() < wider.length()) {
+          continue;
+        }
+        boolean remove = false;
+        for (int i = 0; i < wider.length(); i++) {
+          if (wider.charAt(i) == '*') {
+            remove = true;
+            break;
+          }
+          if (wider.charAt(i) != finer.charAt(i)) {
+            break;
+          }
+          else if (i == wider.length() - 1) {
+            remove = true;
+          }
+        }
+        if (remove) {
+          patternsIterator.remove();
+          patternLevel.remove(finer);
+        }
+      }
+    }
     for (Map.Entry<String, String> loggerEntry : targetChanges.entrySet()) {
       String target = loggerEntry.getKey();
       patternLevel.put(target, Level.toLevel(loggerEntry.getValue()));
@@ -75,7 +113,7 @@ public class DTLoggerFactory implements ILoggerFactory
       for (DTLoggerAdapter classLogger : loggerMap.values()) {
         Level level = getLevelFor(classLogger.getName());
         if (level != null) {
-          LOG.info("changing level of {} to {}", classLogger.getName(), level);
+          LOG.info("changing level of " + classLogger.getName() + " to " + level);
           classLogger.setLogLevel(level);
         }
       }
@@ -108,7 +146,7 @@ public class DTLoggerFactory implements ILoggerFactory
     }
   }
 
-  private Level getLevelFor(String name)
+  private synchronized Level getLevelFor(String name)
   {
     if (patternLevel.isEmpty()) {
       return null;
@@ -139,5 +177,5 @@ public class DTLoggerFactory implements ILoggerFactory
     return ImmutableMap.copyOf(matchedClasses);
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(DTLoggerFactory.class);
+  private static final org.apache.log4j.Logger LOG = LogManager.getLogger(DTLoggerFactory.class);
 }

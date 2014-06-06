@@ -643,6 +643,10 @@ public class StramChild extends YarnContainerMain
       if (req.isDeleted()) {
         continue;
       }
+      if(req instanceof StramToNodeChangeLoggersRequest){
+        handleChangeLoggersRequest((StramToNodeChangeLoggersRequest)req);
+        continue;
+      }
       Node<?> node = nodes.get(req.getOperatorId());
       if (node == null) {
         logger.warn("Node for operator {} is not found, probably not deployed yet", req.getOperatorId());
