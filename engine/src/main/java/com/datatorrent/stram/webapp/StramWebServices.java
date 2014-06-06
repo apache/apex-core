@@ -61,6 +61,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.util.ConfigValidator;
 import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
@@ -843,8 +844,13 @@ public class StramWebServices
         JSONObject loggerNode = loggerArray.getJSONObject(i);
         String target = loggerNode.getString("target");
         String level = loggerNode.getString("logLevel");
-        LOG.info("changing logger level for {} to {}", target, level);
-        targetChanges.put(target, level);
+        if (ConfigValidator.validateLoggersLevel(target, level)) {
+          LOG.info("changing logger level for {} to {}", target, level);
+          targetChanges.put(target, level);
+        }
+        else {
+          LOG.warn("incorrect logger settings {}:{}", target, level);
+        }
       }
 
       if (!targetChanges.isEmpty()) {

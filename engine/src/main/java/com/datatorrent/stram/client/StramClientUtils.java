@@ -41,6 +41,7 @@ import com.datatorrent.stram.StreamingAppMaster;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigValidator;
 
 /**
  *
@@ -335,12 +336,13 @@ public class StramClientUtils
     }
     //Validate loggers-level settings
     String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
-    if(loggersLevel!=null){
+    if (loggersLevel != null) {
       String targets[] = loggersLevel.split(",");
-      Preconditions.checkArgument(targets.length>0, "zero loggers level");
-      for(String target : targets){
+      Preconditions.checkArgument(targets.length > 0, "zero loggers level");
+      for (String target : targets) {
         String parts[] = target.split(":");
         Preconditions.checkArgument(parts.length == 2, "incorrect " + target);
+        Preconditions.checkArgument(ConfigValidator.validateLoggersLevel(parts[0], parts[1]), "incorrect " + target);
       }
     }
     convertDeprecatedProperties(conf);
