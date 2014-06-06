@@ -540,6 +540,20 @@ public class StramWebServices
     return new JSONObject(objectMapper.writeValueAsString(logicalOperatorInfo));
   }
 
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/aggregation")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getOperatorAggregation(@PathParam("operatorName") String operatorName) throws Exception
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+
+    OperatorAggregationInfo operatorAggregationInfo = dagManager.getOperatorAggregationInfo(operatorName);
+    return new JSONObject(objectMapper.writeValueAsString(operatorAggregationInfo));
+  }
+
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/properties")
   @Consumes(MediaType.APPLICATION_JSON)

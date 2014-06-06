@@ -67,6 +67,7 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
+import com.datatorrent.stram.webapp.OperatorAggregationInfo.Type;
 
 /**
  *
@@ -178,7 +179,7 @@ public class StreamingContainerManager implements PlanContext
       this.containerFile.append(getAppMasterContainerInfo());
     }
     catch (IOException ex) {
-      LOG.error("Caught exception when instantiating for container info file", ex);
+      LOG.warn("Caught exception when instantiating for container info file. Ignoring", ex);
     }
   }
 
@@ -1684,6 +1685,15 @@ public class StreamingContainerManager implements PlanContext
     return infoList;
   }
 
+  public OperatorAggregationInfo getOperatorAggregationInfo(String operatorName)
+  {
+    OperatorMeta operatorMeta = getLogicalPlan().getOperatorMeta(operatorName);
+    if (operatorMeta == null) {
+      return null;
+    }
+    return fillOperatorAggregationInfo(operatorMeta);
+  }
+
   public static long toWsWindowId(long windowId)
   {
     // until console handles -1
@@ -1802,6 +1812,101 @@ public class StreamingContainerManager implements PlanContext
     }
     loi.counters = operator.getStatus().counters;
     return loi;
+  }
+
+  private OperatorAggregationInfo fillOperatorAggregationInfo(OperatorMeta operator)
+  {
+    OperatorAggregationInfo oai = new OperatorAggregationInfo();
+
+    Collection<PTOperator> physicalOperators = getPhysicalPlan().getAllOperators(operator);
+    if (physicalOperators.isEmpty()) {
+      return null;
+    }
+    oai.name = operator.getName();
+
+    int count = 0;
+    long latencyTotal = 0;
+    double cpuTotal = 0;
+    long failureCountTotal = 0;
+    long tuplesEmittedPSMATotal = 0;
+    long tuplesProcessedPSMATotal = 0;
+
+    for (PTOperator physicalOperator : physicalOperators) {
+      if (!physicalOperator.isUnifier()) {
+        count++;
+        OperatorStatus os = physicalOperator.stats;
+
+        long latency = os.latencyMA.getAvg();
+        latencyTotal += latency;
+        if (!oai.latencyMA.containsKey(Type.MAX) || latency > oai.latencyMA.get(Type.MAX)) {
+          oai.latencyMA.put(Type.MAX, latency);
+        }
+        if (!oai.latencyMA.containsKey(Type.MIN) || latency < oai.latencyMA.get(Type.MIN)) {
+          oai.latencyMA.put(Type.MIN, latency);
+        }
+
+        double cpu = os.cpuNanosPMSMA.getAvg() / 10000;
+        cpuTotal += cpu;
+        if (!oai.cpuPercentageMA.containsKey(Type.MAX) || latency > oai.cpuPercentageMA.get(Type.MAX)) {
+          oai.cpuPercentageMA.put(Type.MAX, cpu);
+        }
+        if (!oai.cpuPercentageMA.containsKey(Type.MIN) || latency < oai.cpuPercentageMA.get(Type.MIN)) {
+          oai.cpuPercentageMA.put(Type.MIN, cpu);
+        }
+
+        long tuplesEmittedPSMA = os.tuplesEmittedPSMA.get();
+        tuplesEmittedPSMATotal += tuplesEmittedPSMA;
+        if (!oai.tuplesEmittedPSMA.containsKey(Type.MAX) || latency > oai.tuplesEmittedPSMA.get(Type.MAX)) {
+          oai.tuplesEmittedPSMA.put(Type.MAX, tuplesEmittedPSMA);
+        }
+        if (!oai.tuplesEmittedPSMA.containsKey(Type.MIN) || latency < oai.tuplesEmittedPSMA.get(Type.MIN)) {
+          oai.tuplesEmittedPSMA.put(Type.MIN, tuplesEmittedPSMA);
+        }
+
+        long tuplesProcessedPSMA = os.tuplesProcessedPSMA.get();
+        tuplesProcessedPSMATotal += tuplesProcessedPSMA;
+        if (!oai.tuplesProcessedPSMA.containsKey(Type.MAX) || latency > oai.tuplesProcessedPSMA.get(Type.MAX)) {
+          oai.tuplesProcessedPSMA.put(Type.MAX, tuplesProcessedPSMA);
+        }
+        if (!oai.tuplesProcessedPSMA.containsKey(Type.MIN) || latency < oai.tuplesProcessedPSMA.get(Type.MIN)) {
+          oai.tuplesProcessedPSMA.put(Type.MIN, tuplesProcessedPSMA);
+        }
+
+        long currentWindowId = os.currentWindowId.get();
+        if (!oai.currentWindowId.containsKey(Type.MAX) || latency > oai.currentWindowId.get(Type.MAX)) {
+          oai.currentWindowId.put(Type.MAX, currentWindowId);
+        }
+        if (!oai.currentWindowId.containsKey(Type.MIN) || latency < oai.currentWindowId.get(Type.MIN)) {
+          oai.currentWindowId.put(Type.MIN, currentWindowId);
+        }
+
+        long recoveryWindowId = toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId);
+        if (!oai.recoveryWindowId.containsKey(Type.MAX) || latency > oai.recoveryWindowId.get(Type.MAX)) {
+          oai.recoveryWindowId.put(Type.MAX, recoveryWindowId);
+        }
+        if (!oai.recoveryWindowId.containsKey(Type.MIN) || latency < oai.recoveryWindowId.get(Type.MIN)) {
+          oai.recoveryWindowId.put(Type.MIN, recoveryWindowId);
+        }
+
+        long lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
+        if (!oai.lastHeartbeat.containsKey(Type.MAX) || latency > oai.lastHeartbeat.get(Type.MAX)) {
+          oai.lastHeartbeat.put(Type.MAX, lastHeartbeat);
+        }
+        if (!oai.lastHeartbeat.containsKey(Type.MIN) || latency < oai.lastHeartbeat.get(Type.MIN)) {
+          oai.lastHeartbeat.put(Type.MIN, lastHeartbeat);
+        }
+      }
+    }
+    oai.latencyMA.put(Type.AVG, Math.round((double)latencyTotal / count));
+    oai.cpuPercentageMA.put(Type.AVG, cpuTotal / count);
+    oai.cpuPercentageMA.put(Type.SUM, cpuTotal);
+    oai.failureCount.put(Type.AVG, Math.round((double)failureCountTotal / count));
+    oai.failureCount.put(Type.SUM, failureCountTotal);
+    oai.tuplesEmittedPSMA.put(Type.AVG, Math.round((double)tuplesEmittedPSMATotal / count));
+    oai.tuplesEmittedPSMA.put(Type.SUM, tuplesEmittedPSMATotal);
+    oai.tuplesProcessedPSMA.put(Type.AVG, Math.round((double)tuplesProcessedPSMATotal / count));
+    oai.tuplesProcessedPSMA.put(Type.SUM, tuplesProcessedPSMATotal);
+    return oai;
   }
 
   private long calculateLatency(PTOperator operator)
