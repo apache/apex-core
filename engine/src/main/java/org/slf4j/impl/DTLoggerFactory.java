@@ -16,7 +16,6 @@ import org.apache.log4j.LogManager;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -116,8 +115,9 @@ public class DTLoggerFactory implements ILoggerFactory
       Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
       while (loggerEnumeration.hasMoreElements()) {
         org.apache.log4j.Logger classLogger = loggerEnumeration.nextElement();
+        Level oldLevel = classLogger.getLevel();
         Level newLevel = getLevelFor(classLogger.getName());
-        if (!Objects.equal(classLogger.getLevel(), newLevel)) {
+        if (newLevel != null && (oldLevel == null || !newLevel.equals(oldLevel))) {
           LOG.info("changing level of " + classLogger.getName() + " to " + newLevel);
           classLogger.setLevel(newLevel);
         }
