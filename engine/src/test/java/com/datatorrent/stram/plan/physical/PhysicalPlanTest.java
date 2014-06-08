@@ -1157,4 +1157,27 @@ public class PhysicalPlanTest {
 
   }
 
+  @Test
+  public void testContainerSize()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+
+    dag.setAttribute(o2, OperatorContext.MEMORY_MB, 4000);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+    Assert.assertEquals("memory container 1", 2048, plan.getContainers().get(0).getRequiredMemoryMB());
+    Assert.assertEquals("memory container 2", 4000, plan.getContainers().get(1).getRequiredMemoryMB());
+  }
+
 }

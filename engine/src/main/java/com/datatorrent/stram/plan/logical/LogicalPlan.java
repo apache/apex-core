@@ -293,7 +293,7 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
-    @Deprecated
+    //@Deprecated
     public Class<? extends StreamCodec<?>> getCodecClass()
     {
       return codecClass;
