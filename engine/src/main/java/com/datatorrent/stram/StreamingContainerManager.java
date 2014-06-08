@@ -138,7 +138,7 @@ public class StreamingContainerManager implements PlanContext
   };
 
   private FSJsonLineFile containerFile;
-  private long startTime = System.currentTimeMillis();
+  private final long startTime = System.currentTimeMillis();
 
   private static class EndWindowStats
   {
@@ -692,7 +692,6 @@ public class StreamingContainerManager implements PlanContext
         StramEvent ev = new StramEvent.StopOperatorEvent(oper.getName(), oper.getId(), containerId);
         recordEventAsync(ev);
       }
-      long now = System.currentTimeMillis();
       containerAgent.container.setFinishedTime(System.currentTimeMillis());
       completedContainers.put(containerId, containerAgent.getContainerInfo());
     }

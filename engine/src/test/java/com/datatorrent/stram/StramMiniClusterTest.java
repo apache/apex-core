@@ -149,15 +149,6 @@ public class StramMiniClusterTest
     }
   }
 
-  private File createTmpPropFile(Properties props) throws IOException
-  {
-    File tmpFile = File.createTempFile("dt-junit", ".properties");
-    tmpFile.deleteOnExit();
-    props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
-    LOG.info("topology: " + tmpFile);
-    return tmpFile;
-  }
-
   @Test
   public void testSetupShutdown() throws Exception
   {
@@ -181,7 +172,6 @@ public class StramMiniClusterTest
     LOG.info("testJar: " + testJar);
 
     // create test application
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
@@ -204,32 +194,32 @@ public class StramMiniClusterTest
     dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
 
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
-    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINER_MEMORY_MB.getName(), "512");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.MEMORY_MB.getName(), "512");
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
-    tb.addFromProperties(dagProps);
-
-    Properties tplgProperties = tb.getProperties();
-    File tmpFile = createTmpPropFile(tplgProperties);
-
-    String[] args = {
-      "--topologyProperties",
-      tmpFile.getAbsolutePath()
-    };
 
     LOG.info("Initializing Client");
-    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()));
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    tb.addFromProperties(dagProps);
+    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }
-    boolean initSuccess = client.init(args);
-    Assert.assertTrue(initSuccess);
     LOG.info("Running client");
     client.startApplication();
     boolean result = client.monitorApplication();
 
     LOG.info("Client run completed. Result=" + result);
     Assert.assertTrue(result);
+  }
+
+  private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    Configuration appConf = new Configuration(false);
+    lpc.prepareDAG(dag, lpc, "test", appConf);
+    dag.validate();
+    return dag;
   }
 
   /**
@@ -248,20 +238,14 @@ public class StramMiniClusterTest
     props.put(StreamingApplication.DT_PREFIX + "stream.input.outputNode", "module1");
     props.put(StreamingApplication.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
-    File tmpFile = createTmpPropFile(props);
-
-    String[] args = {
-      "--topologyProperties",
-      tmpFile.getAbsolutePath()
-    };
-
     LOG.info("Initializing Client");
-    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()));
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    tb.addFromProperties(props);
+
+    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }
-    boolean initSuccess = client.init(args);
-    Assert.assertTrue(initSuccess);
 
     client.startApplication();
 

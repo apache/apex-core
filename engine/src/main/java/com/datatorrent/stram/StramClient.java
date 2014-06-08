@@ -13,7 +13,6 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseObject;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocol;
@@ -27,9 +26,6 @@ import com.google.common.collect.Lists;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.Options;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -52,13 +48,11 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.impl.DTLoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  *
@@ -82,15 +76,15 @@ public class StramClient
   private ClientRMHelper rmClient;
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
-  private int amPriority = 0;
+  private final int amPriority = 0;
   // Queue for App master
-  private String amQueue = "default";
+  private final String amQueue = "default";
   private ApplicationId appId;
-  private LogicalPlan dag;
+  private final LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
-  private String log4jPropFile = "";
+  private final String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   private LinkedHashSet<String> libjars;
@@ -98,99 +92,13 @@ public class StramClient
   private String archives;
   private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
-  private int licenseRPCTimeout = 10000;
-
-  /**
-   *
-   * @param conf
-   * @throws Exception
-   */
-  StramClient(Configuration conf) throws Exception
-  {
-    this.conf = conf;
-  }
+  private final int licenseRPCTimeout = 10000;
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
-    this(conf);
+    this.conf = conf;
     this.dag = dag;
     dag.validate();
-  }
-
-  /**
-   * Parse command line options
-   *
-   * @param args Parsed command line options
-   * @return Whether the init was successful to run the client
-   * @throws Exception
-   */
-  boolean init(String[] args) throws Exception
-  {
-
-    Options opts = new Options();
-    opts.addOption("appname", true, "Application Name. Default value - Stram");
-    opts.addOption("priority", true, "Application Priority. Default 0");
-    opts.addOption("queue", true, "RM Queue in which this application is to be submitted");
-    opts.addOption("user", true, "User to run the application as");
-    opts.addOption("timeout", true, "Application timeout in milliseconds");
-    opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
-    opts.addOption("topologyProperties", true, "Property file defining the dag");
-    opts.addOption("container_memory", true, "Amount of memory in MB per child container");
-    opts.addOption("num_containers", true, "No. of containers to use for dag");
-    opts.addOption("log_properties", true, "log4j.properties file");
-    opts.addOption("debug", false, "Dump out debug information");
-    CommandLine cliParser = new GnuParser().parse(opts, args);
-
-    if (args.length == 0) {
-      throw new IllegalArgumentException("No args specified for client to initialize");
-    }
-
-    // dag properties
-    String propertyFileName = cliParser.getOptionValue("topologyProperties");
-    if (propertyFileName == null) {
-      throw new IllegalArgumentException("No dag property file specified, exiting.");
-    }
-    LOG.info("Configuration: " + propertyFileName);
-
-    dag = new LogicalPlan();
-    Configuration appConf = new Configuration(false);
-    StreamingApplication app = LogicalPlanConfiguration.create(appConf, propertyFileName);
-    app.populateDAG(dag, appConf);
-    dag.validate();
-    if (cliParser.hasOption("debug")) {
-      dag.getAttributes().put(LogicalPlan.DEBUG, true);
-    }
-
-    amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
-    amQueue = cliParser.getOptionValue("queue", amQueue);
-    int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", "" + dag.getMasterMemoryMB()));
-
-    if (amMemory < 0) {
-      throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
-                                         + " Specified memory=" + amMemory);
-    }
-
-    int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "" + dag.getContainerMemoryMB()));
-    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", "" + dag.getMaxContainerCount()));
-
-    if (containerMemory < 0 || dag.getMaxContainerCount() < 1) {
-      throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
-                                         + " Specified containerMemory=" + containerMemory
-                                         + ", numContainer=" + containerCount);
-    }
-
-    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, containerCount);
-    dag.getAttributes().put(LogicalPlan.MASTER_MEMORY_MB, amMemory);
-    dag.getAttributes().put(LogicalPlan.CONTAINER_MEMORY_MB, containerMemory);
-
-    clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
-    if (clientTimeout == 0) {
-      clientTimeout = Long.MAX_VALUE;
-    }
-
-    log4jPropFile = cliParser.getOptionValue("log_properties", "");
-
-    return true;
   }
 
   public static LinkedHashSet<String> findJars(LogicalPlan dag)

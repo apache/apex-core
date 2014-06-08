@@ -15,13 +15,7 @@
  */
 package com.datatorrent.api;
 
-import java.io.Serializable;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import com.google.common.collect.Maps;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
@@ -149,12 +143,12 @@ public interface Context
     /**
      * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
-     * Default partitioning (operator does not implement {@link Partitionable}):<br>
+     * Default partitioning (operator does not implement {@link Partitioner}):<br>
      * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
      * Default partitioning does not consider operator state on split or merge.
      * <p>
-     * Operator implements {@link Partitionable}:<br>
-     * Value given as initial capacity hint to {@link Partitionable#definePartitions(java.util.Collection, int)}
+     * Operator implements {@link Partitioner}:<br>
+     * Value given as initial capacity hint to {@link Partitioner#definePartitions(java.util.Collection, int)}
      * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
@@ -182,9 +176,9 @@ public interface Context
      */
     Attribute<Boolean> STATELESS = new Attribute<Boolean>(false);
     /**
-     * Attribute of the operator that suggests the ideal RAM that the operator may need for optimal functioning.
+     * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement for containers.
      */
-    //public static final Attribute<Integer> MEMORY_MB = new Attribute<Integer>("memoryMB");
+    Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */

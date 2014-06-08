@@ -215,7 +215,6 @@ public class LogicalPlan implements Serializable, DAG
     public Operator.Unifier<?> getUnifier() {
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
-          @SuppressWarnings("deprecation")
           Unifier<?> unifier = e.getKey().getUnifier();
           return unifier;
         }
@@ -342,7 +341,6 @@ public class LogicalPlan implements Serializable, DAG
       StreamCodec<?> value = portMeta.getValue(PortContext.STREAM_CODEC);
       if (value == null) {
         // determine codec for the stream based on what was set on the ports
-        @SuppressWarnings("deprecation") /* remove the code in the if block after 1st May 2014 */
         Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
         if (lCodecClass != null) {
           if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
@@ -458,6 +456,7 @@ public class LogicalPlan implements Serializable, DAG
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap attributes = new DefaultAttributeMap();
+    @SuppressWarnings("unused")
     private final int id;
     private final String name;
     private final OperatorAnnotation operatorAnnotation;
@@ -891,16 +890,6 @@ public class LogicalPlan implements Serializable, DAG
     return this.getValue(DEBUG);
   }
 
-  public int getContainerMemoryMB()
-  {
-    return this.getValue(CONTAINER_MEMORY_MB);
-  }
-
-  public String getApplicationDocLink()
-  {
-    return this.getValue(APPLICATION_DOC_LINK);
-  }
-
   public int getMasterMemoryMB()
   {
     return this.getValue(MASTER_MEMORY_MB);
@@ -1059,6 +1048,16 @@ public class LogicalPlan implements Serializable, DAG
       validateProcessingMode(om, visited);
     }
 
+    handleDeprecation();
+  }
+
+  @SuppressWarnings("deprecation")
+  private void handleDeprecation()
+  {
+    if (attributes.contains(DAGContext.CONTAINER_MEMORY_MB)) {
+      LOG.warn("{} is deprecated, use {} instead", DAGContext.CONTAINER_MEMORY_MB, OperatorContext.MEMORY_MB);
+      attributes.put(OperatorContext.MEMORY_MB, attributes.get(CONTAINER_MEMORY_MB));
+    }
   }
 
   /*

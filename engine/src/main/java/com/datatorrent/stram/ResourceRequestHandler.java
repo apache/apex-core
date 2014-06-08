@@ -44,16 +44,16 @@ public class ResourceRequestHandler
   /**
    * Setup the request(s) that will be sent to the RM for the container ask.
    */
-  public ContainerRequest createContainerRequest(ContainerStartRequest csr, int memory, boolean first)
+  public ContainerRequest createContainerRequest(ContainerStartRequest csr, boolean first)
   {
     int priority = csr.container.getResourceRequestPriority();
     // check for node locality constraint
     String[] nodes = null;
     String[] racks = null;
 
-    String host = getHost(csr, memory, first);
+    String host = getHost(csr, csr.container.getRequiredMemoryMB(), first);
     Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(memory);
+    capability.setMemory(csr.container.getRequiredMemoryMB());
 
     if (host != null) {
       nodes = new String[] { host };
@@ -79,7 +79,7 @@ public class ResourceRequestHandler
   /**
    * Tracks update to available resources. Resource availability is used to make decisions about where to request new
    * containers.
-   * 
+   *
    * @param nodeReports
    */
   public void updateNodeReports(List<NodeReport> nodeReports)
@@ -98,7 +98,7 @@ public class ResourceRequestHandler
   {
     String host = null;
     PTContainer c = csr.container;
-    if (first) {            
+    if (first) {
       for (PTOperator oper : c.getOperators()) {
         HostOperatorSet grpObj = oper.getNodeLocalOperators();
         host = nodeLocalMapping.get(grpObj.getOperatorSet());

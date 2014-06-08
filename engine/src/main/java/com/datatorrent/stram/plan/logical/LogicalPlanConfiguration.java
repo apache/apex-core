@@ -924,10 +924,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     // add all operators first
     for (Map.Entry<String, OperatorConf> nodeConfEntry : operators.entrySet()) {
       OperatorConf nodeConf = nodeConfEntry.getValue();
-      Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
-      Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
-      setOperatorProperties(nd, nodeConf.getProperties());
-      nodeMap.put(nodeConf, nd);
+      if (!WILDCARD.equals(nodeConf.id)) {
+        Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
+        Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
+        setOperatorProperties(nd, nodeConf.getProperties());
+        nodeMap.put(nodeConf, nd);
+      }
     }
 
     Map<String, StreamConf> streams = appConf.getChildren(StramElement.STREAM);

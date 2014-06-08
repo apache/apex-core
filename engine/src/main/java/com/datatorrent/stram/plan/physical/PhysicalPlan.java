@@ -272,7 +272,8 @@ public class PhysicalPlan implements Serializable
       }
     }
 
-    @SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart; you don't be an idiot! */
+    // if netbeans is not smart, don't produce warnings in other IDE
+    //@SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart; you don't be an idiot! */
     void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
@@ -394,6 +395,8 @@ public class PhysicalPlan implements Serializable
         container.operators.add(mEntry.getValue());
       }
     }
+    int memoryMB = pOperator.getOperatorMeta().getValue2(OperatorContext.MEMORY_MB);
+    container.setRequiredMemoryMB(container.getRequiredMemoryMB() + memoryMB);
   }
 
   private void initPartitioning(PMapping m)
@@ -523,7 +526,11 @@ public class PhysicalPlan implements Serializable
       return;
     }
 
-    int requiredMemoryMB = (newPartitions.size() - currentPartitions.size()) * dag.getContainerMemoryMB();
+    int memoryPerPartition = currentMapping.logicalOperator.getValue2(OperatorContext.MEMORY_MB);
+    for (OperatorMeta pp : currentMapping.parallelPartitions) {
+      memoryPerPartition += pp.getValue2(OperatorContext.MEMORY_MB);
+    }
+    int requiredMemoryMB = (newPartitions.size() - currentPartitions.size()) * memoryPerPartition;
     if (requiredMemoryMB > availableMemoryMB) {
       LOG.warn("Insufficient headroom for repartitioning: available {}m required {}m", availableMemoryMB, requiredMemoryMB);
       return;
@@ -687,7 +694,7 @@ public class PhysicalPlan implements Serializable
       }
 
       PTContainer newContainer = null;
-      // check for existing inline set
+      // handle container locality
       for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;

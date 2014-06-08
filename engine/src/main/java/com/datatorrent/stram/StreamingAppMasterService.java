@@ -590,12 +590,6 @@ public class StreamingAppMasterService extends CompositeService
     int maxMem = response.getMaximumResourceCapability().getMemory();
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
 
-    int containerMemory = dag.getContainerMemoryMB();
-    if (containerMemory > maxMem) {
-      LOG.info("Container memory specified above max threshold of cluster. Using max value." + ", specified=" + containerMemory + ", max=" + maxMem);
-      containerMemory = maxMem;
-    }
-
     // for locality relaxation fall back
     Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
 
@@ -668,18 +662,26 @@ public class StreamingAppMasterService extends CompositeService
           // ensure enough memory is left to request new container
           licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
           availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
-          int requiredMemory = dnmgr.containerStartRequests.size() * containerMemory;
+          Iterator<StramChildAgent.ContainerStartRequest> it = dnmgr.containerStartRequests.iterator();
+          int requiredMemory = 0;
+          while (it.hasNext()) {
+            requiredMemory += it.next().container.getRequiredMemoryMB();
+          }
           if (requiredMemory > availableLicensedMemory) {
-            LOG.warn("Insufficient licensed memory to request resources required {}m available {}m", requiredMemory, availableLicensedMemory);
+            LOG.warn("Insufficient licensed memory to request resources: required {}m available {}m", requiredMemory, availableLicensedMemory);
             requestResources = false;
           }
         }
         if (requestResources) {
           StramChildAgent.ContainerStartRequest csr;
           while ((csr = dnmgr.containerStartRequests.poll()) != null) {
+            if (csr.container.getRequiredMemoryMB() > maxMem) {
+              LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
+              csr.container.setRequiredMemoryMB(maxMem);
+            }
             csr.container.setResourceRequestPriority(nextRequestPriority++);
             requestedResources.put(csr, loopCounter);
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory, true));
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, true));
           }
         }
       }
@@ -690,7 +692,7 @@ public class StreamingAppMasterService extends CompositeService
           if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
             entry.setValue(loopCounter);
             StramChildAgent.ContainerStartRequest csr = entry.getKey();
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory, false));
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, false));
           }
         }
       }

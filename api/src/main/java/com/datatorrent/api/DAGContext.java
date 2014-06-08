@@ -84,9 +84,9 @@ public interface DAGContext extends Context
    */
   Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
   /**
-   * The amount of memory to be requested for streaming containers. Not used in local mode.
-   * Default value is 1GB.
+   * @deprecated  As of release 1.0.2, replaced by {@link OperatorContext#MEMORY_MB}
    */
+  @Deprecated
   Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
    * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
