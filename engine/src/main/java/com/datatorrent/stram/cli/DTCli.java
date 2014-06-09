@@ -100,6 +100,7 @@ public class DTCli
   private final Tokenizer tokenizer = new Tokenizer();
   private final Map<String, String> variableMap = new HashMap<String, String>();
   private static boolean lastCommandError = false;
+  private Thread mainThread;
   private Thread commandThread;
   private String prompt;
 
@@ -873,6 +874,7 @@ public class DTCli
         System.out.println("^C");
         if (commandThread != null) {
           commandThread.interrupt();
+          mainThread.interrupt();
         }
         else {
           System.out.print(prompt);
@@ -1221,6 +1223,8 @@ public class DTCli
   private void processLine(String line, final ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
+      // clear interrupt flag
+      Thread.interrupted();
       if (reader.isHistoryEnabled()) {
         History history = reader.getHistory();
         if (history instanceof FileHistory) {
@@ -1306,6 +1310,7 @@ public class DTCli
             }
 
           };
+          mainThread = Thread.currentThread();
           commandThread.start();
           try {
             commandThread.join();
@@ -1838,13 +1843,12 @@ public class DTCli
       try {
         JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> licList = getLicenseAgentList();
-        Collections.sort(licList, new Comparator<ApplicationReport>()
-                 {
-                   @Override
-                   public int compare(ApplicationReport o1, ApplicationReport o2)
-                   {
-                     return o1.getApplicationId().getId() - o2.getApplicationId().getId();
-                   }
+        Collections.sort(licList, new Comparator<ApplicationReport>() {
+          @Override
+          public int compare(ApplicationReport o1, ApplicationReport o2)
+          {
+            return o1.getApplicationId().getId() - o2.getApplicationId().getId();
+          }
 
         });
 
