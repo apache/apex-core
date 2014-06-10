@@ -1450,7 +1450,7 @@ public class StreamingContainerManager implements PlanContext
     for (PTOperator oper : ctx.blocked) {
       String containerId = oper.getContainer().getExternalId();
       if (containerId != null) {
-        LOG.info("Blocked operator {} container {}", oper, oper.getContainer().toIdStateString());
+        LOG.info("Blocked operator {} container {} time {}ms", oper, oper.getContainer().toIdStateString(), ctx.currentTms - oper.stats.lastWindowIdChangeTms);
         this.containerStopRequests.put(containerId, containerId);
       }
     }
