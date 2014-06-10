@@ -4,29 +4,6 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-import javax.validation.Validation;
-import javax.validation.ValidationException;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -34,10 +11,19 @@ import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OperatorAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.FSStorageAgent;
+import com.google.common.collect.Sets;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -395,7 +381,6 @@ public class LogicalPlan implements Serializable, DAG
     {
       int hash = 7;
       hash = 31 * hash + (this.locality != null ? this.locality.hashCode() : 0);
-      hash = 31 * hash + (this.sinks != null ? this.sinks.hashCode() : 0);
       hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
       if (streamCodec != null) {
         hash = 31 * hash + streamCodec.hashCode();
@@ -415,6 +400,9 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public boolean equals(Object obj)
     {
+      if (this == obj) {
+        return true;
+      }
       if (obj == null) {
         return false;
       }
@@ -458,6 +446,7 @@ public class LogicalPlan implements Serializable, DAG
     private final AttributeMap attributes = new DefaultAttributeMap();
     @SuppressWarnings("unused")
     private final int id;
+    @NotNull
     private final String name;
     private final OperatorAnnotation operatorAnnotation;
     private final LogicalOperatorStatus status;
@@ -667,7 +656,7 @@ public class LogicalPlan implements Serializable, DAG
       if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
         return false;
       }
-      if (name != null ? !name.equals(that.name) : that.name != null) {
+      if (!name.equals(that.name)) {
         return false;
       }
       if (operatorAnnotation != null ? !operatorAnnotation.equals(that.operatorAnnotation) : that.operatorAnnotation != null) {
@@ -683,11 +672,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public int hashCode()
     {
-      int result = attributes != null ? attributes.hashCode() : 0;
-      result = 31 * result + (operator != null ? operator.hashCode() : 0);
-      result = 31 * result + (name != null ? name.hashCode() : 0);
-      result = 31 * result + (operatorAnnotation != null ? operatorAnnotation.hashCode() : 0);
-      return result;
+      return name.hashCode();
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
