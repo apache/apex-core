@@ -14,8 +14,8 @@ import java.nio.charset.Charset;
 
 import static java.lang.Thread.sleep;
 
-import org.mortbay.util.MultiMap;
-import org.mortbay.util.UrlEncoded;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -28,6 +28,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.util.List;
 
 /**
  * Heartbeat RPC proxy invocation handler that handles fail over.
@@ -69,20 +70,23 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
     URI heartbeatUri = URI.create(uriStr);
 
     String queryStr = heartbeatUri.getQuery();
-    MultiMap mm = new MultiMap();
+    List<NameValuePair> queryList = null;
     if (queryStr != null) {
-      UrlEncoded.decodeTo(queryStr, mm, Charset.defaultCharset().name());
+      queryList = URLEncodedUtils.parse(queryStr, Charset.defaultCharset());
     }
-    for (Object key : mm.keySet()) {
-      String value = mm.getString(key);
-      if (QP_rpcTimeout.equals(key)) {
-        this.rpcTimeout = Integer.parseInt(value);
-      }
-      else if (QP_retryTimeoutMillis.equals(key)) {
-        this.retryTimeoutMillis = Long.parseLong(value);
-      }
-      else if (QP_retryDelayMillis.equals(key)) {
-        this.retryDelayMillis = Long.parseLong(value);
+    if (queryList != null) {
+      for (NameValuePair pair : queryList) {
+        String value = pair.getValue();
+        String key = pair.getName();
+        if (QP_rpcTimeout.equals(key)) {
+          this.rpcTimeout = Integer.parseInt(value);
+        }
+        else if (QP_retryTimeoutMillis.equals(key)) {
+          this.retryTimeoutMillis = Long.parseLong(value);
+        }
+        else if (QP_retryDelayMillis.equals(key)) {
+          this.retryDelayMillis = Long.parseLong(value);
+        }
       }
     }
     InetSocketAddress address = NetUtils.createSocketAddrForHost(heartbeatUri.getHost(), heartbeatUri.getPort());
@@ -91,7 +95,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
 
   public StreamingContainerUmbilicalProtocol getProxy()
   {
-    StreamingContainerUmbilicalProtocol recoverableProxy = (StreamingContainerUmbilicalProtocol)java.lang.reflect.Proxy.newProxyInstance(umbilical.getClass().getClassLoader(), umbilical.getClass().getInterfaces(), this);
+    StreamingContainerUmbilicalProtocol recoverableProxy = (StreamingContainerUmbilicalProtocol) java.lang.reflect.Proxy.newProxyInstance(umbilical.getClass().getClassLoader(), umbilical.getClass().getInterfaces(), this);
     return recoverableProxy;
   }
 
@@ -100,7 +104,7 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
   public Object invoke(Object proxy, Method method, Object[] args) throws ConnectException, SocketTimeoutException, InterruptedException, IllegalAccessException
   {
     Object result;
-    for (;;) {
+    for (; ; ) {
       try {
         if (umbilical == null) {
           connect();
@@ -124,10 +128,10 @@ public class RecoverableRpcProxy implements java.lang.reflect.InvocationHandler,
         else {
           LOG.error("Giving up RPC connection recovery after {} ms", connectMillis, targetException);
           if (targetException instanceof java.net.ConnectException) {
-            throw (java.net.ConnectException)targetException;
+            throw (java.net.ConnectException) targetException;
           }
           else if (targetException instanceof java.net.SocketTimeoutException) {
-            throw (java.net.SocketTimeoutException)targetException;
+            throw (java.net.SocketTimeoutException) targetException;
           }
           else {
             DTThrowable.rethrow(targetException);

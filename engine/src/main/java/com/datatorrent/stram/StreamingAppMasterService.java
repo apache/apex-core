@@ -78,6 +78,7 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+
 import com.google.common.collect.Maps;
 
 /**
@@ -519,6 +520,13 @@ public class StreamingAppMasterService extends CompositeService
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
+    }
+    catch (Throwable throwable) {
+      // SPOI-2687. As part of Pivotal Certification, we need to catch ClassNotFoundException as Pivotal was using Jetty 7 where as other distros are using Jetty 6.
+     // LOG.error("can't set the log to null: ", throwable);
+    }
+
+    try {
       Configuration config = getConfig();
       if (UserGroupInformation.isSecurityEnabled()) {
         config = new Configuration(config);
