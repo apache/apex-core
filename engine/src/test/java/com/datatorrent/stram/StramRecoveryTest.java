@@ -350,7 +350,13 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
     dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars2");
     StramClient sc = new StramClient(new Configuration(false), dag);
-    sc.copyInitialState(new Path(appPath1));
+    try {
+      sc.start();
+      sc.copyInitialState(new Path(appPath1));
+    }
+    finally {
+      sc.stop();
+    }
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     plan = scm.getPhysicalPlan();
     dag = plan.getLogicalPlan();

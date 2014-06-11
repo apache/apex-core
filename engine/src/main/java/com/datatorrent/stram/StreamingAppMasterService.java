@@ -617,18 +617,21 @@ public class StreamingAppMasterService extends CompositeService
     int nextRequestPriority = 0;
     ResourceRequestHandler resourceRequestor = new ResourceRequestHandler();
 
+    YarnClient clientRMService = YarnClient.createYarnClient();
+
     try {
       // YARN-435
       // we need getClusterNodes to populate the initial node list,
       // subsequent updates come through the heartbeat response
-      YarnClient clientRMService = YarnClient.createYarnClient();
       clientRMService.init(getConfig());
       clientRMService.start();
       resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
-      clientRMService.stop();
     }
     catch (Exception e) {
       throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
+    }
+    finally {
+      clientRMService.stop();
     }
 
     // check for previously allocated containers

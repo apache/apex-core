@@ -4,15 +4,10 @@
  */
 package com.datatorrent.stram;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.util.*;
-
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.annotation.ShipContainingJars;
+import com.datatorrent.stram.client.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseObject;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocol;
@@ -20,39 +15,39 @@ import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper
 import com.datatorrent.stram.license.agent.protocol.request.GetLicenseDelegationTokenRequest;
 import com.datatorrent.stram.license.agent.protocol.response.GetLicenseDelegationTokenResponse;
 import com.datatorrent.stram.license.security.LicenseDelegationTokenIdentifier;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
-
+import java.io.*;
+import java.net.*;
+import java.nio.ByteBuffer;
+import java.util.*;
 import org.apache.commons.codec.binary.Base64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.client.api.YarnClientApplication;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.impl.DTLoggerFactory;
-
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.annotation.ShipContainingJars;
-import com.datatorrent.stram.client.StramClientUtils;
-import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  *
@@ -74,6 +69,7 @@ public class StramClient
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
   private ClientRMHelper rmClient;
+  private final YarnClient yarnClient = YarnClient.createYarnClient();
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
   private final int amPriority = 0;
@@ -99,6 +95,17 @@ public class StramClient
     this.conf = conf;
     this.dag = dag;
     dag.validate();
+    yarnClient.init(conf);
+  }
+
+  public void start()
+  {
+    yarnClient.start();
+  }
+
+  public void stop()
+  {
+    yarnClient.stop();
   }
 
   public static LinkedHashSet<String> findJars(LogicalPlan dag)
@@ -207,13 +214,15 @@ public class StramClient
       URI localFileURI = null;
       try {
         localFileURI = new URI(localFile);
-      } catch (URISyntaxException e) {
+      }
+      catch (URISyntaxException e) {
         throw new IOException(e);
       }
       if (localFileURI.getScheme() == null || localFileURI.getScheme().startsWith("file")) {
         LOG.info("Copy {} from local filesystem to {}", localFile, dst);
         fs.copyFromLocalFile(false, true, src, dst);
-      } else {
+      }
+      else {
         LOG.info("Copy {} from DFS to {}", localFile, dst);
         FileUtil.copy(fs, src, fs, dst, false, true, conf);
       }
@@ -288,17 +297,10 @@ public class StramClient
     if (libjars != null) {
       localJarFiles.addAll(libjars);
     }
-
-    // Connect to ResourceManager
-    YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
-    assert (rmClient.clientRM != null);
-
-    // Use ClientRMProtocol handle to general cluster information
-    GetClusterMetricsRequest clusterMetricsReq = Records.newRecord(GetClusterMetricsRequest.class);
-    GetClusterMetricsResponse clusterMetricsResp = rmClient.clientRM.getClusterMetrics(clusterMetricsReq);
+    YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
-             + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
+            + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
 
     //GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
     //GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
@@ -311,29 +313,27 @@ public class StramClient
     //           + ", nodeNumContainers" + node.getNumContainers()
     //           + ", nodeHealthStatus" + node.getHealthReport());
     //}
-    GetQueueUserAclsInfoRequest queueUserAclsReq = Records.newRecord(GetQueueUserAclsInfoRequest.class);
-    GetQueueUserAclsInfoResponse queueUserAclsResp = rmClient.clientRM.getQueueUserAcls(queueUserAclsReq);
-    List<QueueUserACLInfo> listAclInfo = queueUserAclsResp.getUserAclsInfoList();
+    List<QueueUserACLInfo> listAclInfo = yarnClient.getQueueAclsInfo();
     for (QueueUserACLInfo aclInfo : listAclInfo) {
       for (QueueACL userAcl : aclInfo.getUserAcls()) {
         LOG.info("User ACL Info for Queue"
-                 + ", queueName=" + aclInfo.getQueueName()
-                 + ", userAcl=" + userAcl.name());
+                + ", queueName=" + aclInfo.getQueueName()
+                + ", userAcl=" + userAcl.name());
       }
     }
 
     // Get a new application id
-    GetNewApplicationResponse newApp = getNewApplication();
-    appId = newApp.getApplicationId();
+    YarnClientApplication newApp = yarnClient.createApplication();
+    appId = newApp.getNewApplicationResponse().getApplicationId();
 
     // Dump out information about cluster capability as seen by the resource manager
-    int maxMem = newApp.getMaximumResourceCapability().getMemory();
+    int maxMem = newApp.getNewApplicationResponse().getMaximumResourceCapability().getMemory();
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
     int amMemory = dag.getMasterMemoryMB();
     if (amMemory > maxMem) {
       LOG.info("AM memory specified above max threshold of cluster. Using max value."
-               + ", specified=" + amMemory
-               + ", max=" + maxMem);
+              + ", specified=" + amMemory
+              + ", max=" + maxMem);
       amMemory = maxMem;
     }
 
@@ -393,10 +393,7 @@ public class StramClient
                                                        YarnConfiguration.DEFAULT_RM_PORT);
 
       // Get the ResourceManager delegation rmToken
-      GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
-      gdtr.setRenewer(tokenRenewer);
-      GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
-      org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
+      org.apache.hadoop.yarn.api.records.Token rmDelToken = yarnClient.getRMDelegationToken(new Text(tokenRenewer));
       Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
       credentials.addToken(rmToken.getService(), rmToken);
 
@@ -414,7 +411,8 @@ public class StramClient
           GetLicenseDelegationTokenResponse response = protocol.getLicenseDelegationToken(request);
           Token<LicenseDelegationTokenIdentifier> licenseToken = response.getDelegationToken();
           credentials.addToken(licenseToken.getService(), licenseToken);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           throw new YarnException(e);
         }
       }
@@ -424,7 +422,6 @@ public class StramClient
       ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
       amContainer.setTokens(fsTokens);
     }
-
 
     // set local resources for the application master
     // local files or archives as needed
@@ -598,10 +595,6 @@ public class StramClient
       // Set the queue to which this application is to be submitted in the RM
       appContext.setQueue(amQueue);
 
-      // Create the request to send to the applications manager
-      SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
-      appRequest.setApplicationSubmissionContext(appContext);
-
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
       // Ignore the response as either a valid response object is returned on success
@@ -616,7 +609,7 @@ public class StramClient
       if (dag.isDebug()) {
         //LOG.info("Full submission context: " + appContext);
       }
-      rmClient.clientRM.submitApplication(appRequest);
+      yarnClient.submitApplication(appContext);
     }
     finally {
       fs.close();
@@ -625,12 +618,12 @@ public class StramClient
 
   public ApplicationReport getApplicationReport() throws YarnException, IOException
   {
-    return this.rmClient.getApplicationReport(this.appId);
+    return yarnClient.getApplicationReport(this.appId);
   }
 
   public void killApplication() throws YarnException, IOException
   {
-    this.rmClient.killApplication(this.appId);
+    yarnClient.killApplication(this.appId);
   }
 
   public void setClientTimeout(long timeoutMillis)
@@ -653,36 +646,22 @@ public class StramClient
       public boolean exitLoop(ApplicationReport report)
       {
         LOG.info("Got application report from ASM for"
-                 + ", appId=" + appId.getId()
-                 + ", clientToken=" + report.getClientToAMToken()
-                 + ", appDiagnostics=" + report.getDiagnostics()
-                 + ", appMasterHost=" + report.getHost()
-                 + ", appQueue=" + report.getQueue()
-                 + ", appMasterRpcPort=" + report.getRpcPort()
-                 + ", appStartTime=" + report.getStartTime()
-                 + ", yarnAppState=" + report.getYarnApplicationState().toString()
-                 + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-                 + ", appTrackingUrl=" + report.getTrackingUrl()
-                 + ", appUser=" + report.getUser());
+                + ", appId=" + appId.getId()
+                + ", clientToken=" + report.getClientToAMToken()
+                + ", appDiagnostics=" + report.getDiagnostics()
+                + ", appMasterHost=" + report.getHost()
+                + ", appQueue=" + report.getQueue()
+                + ", appMasterRpcPort=" + report.getRpcPort()
+                + ", appStartTime=" + report.getStartTime()
+                + ", yarnAppState=" + report.getYarnApplicationState().toString()
+                + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
+                + ", appTrackingUrl=" + report.getTrackingUrl()
+                + ", appUser=" + report.getUser());
         return false;
       }
 
     };
     return rmClient.waitForCompletion(appId, callback, clientTimeout);
-  }
-
-  /**
-   * Get a new application from the ASM
-   *
-   * @return New Application
-   * @throws YarnRemoteException
-   */
-  private GetNewApplicationResponse getNewApplication() throws YarnException, IOException
-  {
-    GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);
-    GetNewApplicationResponse response = rmClient.clientRM.getNewApplication(request);
-    LOG.info("Got new application id=" + response.getApplicationId());
-    return response;
   }
 
   public void setFiles(String files)

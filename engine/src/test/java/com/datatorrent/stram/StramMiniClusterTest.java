@@ -202,15 +202,21 @@ public class StramMiniClusterTest
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     tb.addFromProperties(dagProps);
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-    }
-    LOG.info("Running client");
-    client.startApplication();
-    boolean result = client.monitorApplication();
+    try {
+      client.start();
+      if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
+        client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
+      }
+      LOG.info("Running client");
+      client.startApplication();
+      boolean result = client.monitorApplication();
 
-    LOG.info("Client run completed. Result=" + result);
-    Assert.assertTrue(result);
+      LOG.info("Client run completed. Result=" + result);
+      Assert.assertTrue(result);
+    }
+    finally {
+      client.stop();
+    }
   }
 
   private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
@@ -246,13 +252,12 @@ public class StramMiniClusterTest
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }
-
-    client.startApplication();
-
-    // attempt web service connection
-    ApplicationReport appReport = client.getApplicationReport();
-
     try {
+      client.start();
+      client.startApplication();
+
+      // attempt web service connection
+      ApplicationReport appReport = client.getApplicationReport();
       Thread.sleep(5000); // delay to give web service time to fully initialize
       Client wsClient = Client.create();
       wsClient.setFollowRedirects(true);
@@ -264,15 +269,12 @@ public class StramMiniClusterTest
       LOG.info("Got response: " + json.toString());
       assertEquals("incorrect number of elements", 1, json.length());
       assertEquals("appId", appReport.getApplicationId().toString(), json.get("id"));
-
-
       r = wsClient.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS);
       LOG.info("Requesting: " + r.getURI());
       response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
       json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
-
 
     }
     finally {
@@ -282,6 +284,7 @@ public class StramMiniClusterTest
       //}
       //boolean result = client.monitorApplication();
       client.killApplication();
+      client.stop();
     }
 
   }
@@ -359,20 +362,25 @@ public class StramMiniClusterTest
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }
+    try {
+      client.start();
+      client.startApplication();
+      client.setClientTimeout(120000);
 
-    client.startApplication();
-    client.setClientTimeout(120000);
+      boolean result = client.monitorApplication();
 
-    boolean result = client.monitorApplication();
+      LOG.info("Client run completed. Result=" + result);
+      Assert.assertFalse("should fail", result);
 
-    LOG.info("Client run completed. Result=" + result);
-    Assert.assertFalse("should fail", result);
-
-    ApplicationReport ar = client.getApplicationReport();
-    Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
+      ApplicationReport ar = client.getApplicationReport();
+      Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
     // unable to get the diagnostics message set by the AM here - see YARN-208
-    // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
-    //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
+      // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
+      //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
+    }
+    finally {
+      client.stop();
+    }
   }
 
   @ShipContainingJars(classes = {javax.jms.Message.class})

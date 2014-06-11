@@ -4,6 +4,11 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigValidator;
+import com.google.common.base.Preconditions;
 import java.io.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,11 +16,6 @@ import java.io.IOException;
 import java.net.*;
 import java.net.URL;
 import java.util.*;
-import java.util.regex.Pattern;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -26,22 +26,15 @@ import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.impl.DTLoggerFactory;
-
-import com.google.common.base.Preconditions;
-
-import com.datatorrent.api.StreamingApplication;
-
-import com.datatorrent.stram.StreamingAppMaster;
-import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.util.ConfigValidator;
 
 /**
  *
@@ -137,54 +130,11 @@ public class StramClientUtils
   public static class ClientRMHelper
   {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
-    public final ApplicationClientProtocol clientRM;
+    public final YarnClient clientRM;
 
-    public ClientRMHelper(YarnClientHelper yarnClient) throws IOException
+    public ClientRMHelper(YarnClient yarnClient) throws IOException
     {
-      this.clientRM = yarnClient.connectToASM();
-    }
-
-    public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnException, IOException
-    {
-      // Get application report for the appId we are interested in
-      GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
-      reportRequest.setApplicationId(appId);
-      GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
-      ApplicationReport report = reportResponse.getApplicationReport();
-      return report;
-    }
-
-    public List<ApplicationReport> getAllApplicationReports() throws IOException, YarnException
-    {
-      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
-      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
-      return applicationsResponse.getApplicationList();
-    }
-
-    public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
-    {
-      ApplicationId applicationId = ConverterUtils.toApplicationId(appId);
-      return getApplicationReport(applicationId);
-    }
-
-    /**
-     * Kill a submitted application by sending a call to the ASM
-     *
-     * @param appId Application Id to be killed.
-     * @throws YarnException
-     * @throws IOException
-     */
-    public void killApplication(ApplicationId appId) throws YarnException, IOException
-    {
-      KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);
-      // TODO clarify whether multiple jobs with the same app id can be submitted and be running at
-      // the same time.
-      // If yes, can we kill a particular attempt only?
-      request.setApplicationId(appId);
-      // KillApplicationResponse response = applicationsManager.forceKillApplication(request);
-      // Response can be ignored as it is non-null on success or
-      // throws an exception in case of failures
-      clientRM.forceKillApplication(request);
+      this.clientRM = yarnClient;
     }
 
     public static interface AppStatusCallback
@@ -217,7 +167,7 @@ public class StramClientUtils
           LOG.debug("Thread sleep in monitoring loop interrupted");
         }
 
-        ApplicationReport report = getApplicationReport(appId);
+        ApplicationReport report = clientRM.getApplicationReport(appId);
         if (callback.exitLoop(report) == true) {
           return true;
         }
@@ -246,7 +196,7 @@ public class StramClientUtils
 
         if (System.currentTimeMillis() - startMillis > timeoutMillis) {
           LOG.info("Reached specified timeout. Killing application");
-          killApplication(appId);
+          clientRM.killApplication(appId);
           return false;
         }
       }

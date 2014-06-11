@@ -10,7 +10,6 @@ import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.license.*;
@@ -26,19 +25,15 @@ import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
-
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
 import javax.ws.rs.core.MediaType;
-
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
-
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
@@ -49,7 +44,6 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
@@ -60,7 +54,6 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -77,7 +70,7 @@ public class DTCli
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
   private Configuration conf;
-  private ClientRMHelper rmClient;
+  private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
   private String[] commandsToExecute;
@@ -970,8 +963,9 @@ public class DTCli
     // Need to initialize security before starting RPC for the credentials to
     // take effect
     StramUserLogin.attemptAuthentication(conf);
-    YarnClientHelper yarnClient = new YarnClientHelper(conf);
-    rmClient = new ClientRMHelper(yarnClient);
+    yarnClient.init(conf);
+    yarnClient.start();
+    LOG.debug("Yarn Client initialized and started");
     String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
     if (socks != null) {
       int colon = socks.indexOf(':');
@@ -1457,36 +1451,17 @@ public class DTCli
   private List<ApplicationReport> getApplicationList()
   {
     try {
-      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
-      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
     }
     catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
     }
   }
-  /*
-   private List<ApplicationReport> getRunningApplicationList()
-   {
-   try {
-   GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-   appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
-   appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
-   return rmClient.clientRM.getApplications(appsReq).getApplicationList();
-   }
-   catch (Exception e) {
-   throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
-   }
-   }
-   */
 
   private List<ApplicationReport> getLicenseAgentList()
   {
     try {
-      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE));
-      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
-      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE), EnumSet.of(YarnApplicationState.RUNNING));
     }
     catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
@@ -1530,7 +1505,7 @@ public class DTCli
   {
     ApplicationReport r;
     try {
-      r = rmClient.getApplicationReport(app.getApplicationId());
+      r = yarnClient.getApplicationReport(app.getApplicationId());
       if (r.getYarnApplicationState() != YarnApplicationState.RUNNING) {
         String msg = String.format("Application %s not running (status %s)",
                                    r.getApplicationId().getId(), r.getYarnApplicationState());
@@ -1764,8 +1739,14 @@ public class DTCli
     int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
     lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
     StramClient client = new StramClient(conf, lp);
-    client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
-    client.startApplication();
+    try {
+      client.start();
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
+    }
+    finally {
+      client.stop();
+    }
     return licenseId;
   }
 
@@ -1784,21 +1765,12 @@ public class DTCli
         licenseId = License.getLicenseID(licenseBytes);
         License.validateLicense(licenseBytes);
       }
-      // TODO: migrate CLI to use YarnClient and this here won't be needed
-      YarnClient clientRMService = YarnClient.createYarnClient();
-      try {
-        clientRMService.init(conf);
-        clientRMService.start();
-        ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
-        if (ar == null) {
-          throw new CliException("License not activated: " + licenseId);
-        }
-        rmClient.killApplication(ar.getApplicationId());
-        System.out.println("Stopped license agent for " + licenseId);
+      ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
+      if (ar == null) {
+        throw new CliException("License not activated: " + licenseId);
       }
-      finally {
-        clientRMService.stop();
-      }
+      yarnClient.killApplication(ar.getApplicationId());
+      System.out.println("Stopped license agent for " + licenseId);
     }
 
   }
@@ -2050,7 +2022,7 @@ public class DTCli
         // ensure app is not running
         ApplicationReport ar = null;
         try {
-          ar = rmClient.getApplicationReport(commandLineInfo.origAppId);
+          ar = getApplication(commandLineInfo.origAppId);
         }
         catch (Exception e) {
           // application (no longer) in the RM history, does not prevent restart from state in DFS
@@ -2175,7 +2147,6 @@ public class DTCli
           // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
           PrintStream originalStream = System.out;
           ApplicationId appId = null;
-          YarnClient clientRMService = YarnClient.createYarnClient();
           try {
             if (raw) {
               PrintStream dummyStream = new PrintStream(new OutputStream()
@@ -2190,9 +2161,7 @@ public class DTCli
               System.setOut(dummyStream);
             }
             String licenseId = License.getLicenseID(licenseBytes);
-            clientRMService.init(conf);
-            clientRMService.start();
-            ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
+            ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
               try {
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
@@ -2201,7 +2170,7 @@ public class DTCli
                 boolean waitMessagePrinted = false;
                 do {
                   Thread.sleep(1000);
-                  ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
+                  ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
                   if (ar == null) {
                     if (!raw && !waitMessagePrinted) {
                       System.out.println("Waiting for license agent to start...");
@@ -2222,10 +2191,9 @@ public class DTCli
               }
             }
             appId = submitApp.launchApp(appFactory);
-            currentApp = rmClient.getApplicationReport(appId);
+            currentApp = yarnClient.getApplicationReport(appId);
           }
           finally {
-            clientRMService.stop();
             if (raw) {
               System.setOut(originalStream);
             }
@@ -2405,7 +2373,7 @@ public class DTCli
         }
         else {
           try {
-            rmClient.killApplication(currentApp.getApplicationId());
+            yarnClient.killApplication(currentApp.getApplicationId());
             currentApp = null;
           }
           catch (YarnException e) {
@@ -2426,7 +2394,7 @@ public class DTCli
           if (app == null) {
             throw new CliException("Streaming application with id " + args[i] + " is not found.");
           }
-          rmClient.killApplication(app.getApplicationId());
+          yarnClient.killApplication(app.getApplicationId());
           if (app == currentApp) {
             currentApp = null;
           }
@@ -2669,7 +2637,8 @@ public class DTCli
       };
 
       try {
-        boolean result = rmClient.waitForCompletion(currentApp.getApplicationId(), cb, timeout * 1000);
+        ClientRMHelper clientRMHelper = new ClientRMHelper(yarnClient);
+        boolean result = clientRMHelper.waitForCompletion(currentApp.getApplicationId(), cb, timeout * 1000);
         if (!result) {
           System.err.println("Application terminated unsucessful.");
         }
@@ -3460,7 +3429,7 @@ public class DTCli
           throw new CliException("No application selected");
         }
         // refresh the state in currentApp
-        currentApp = rmClient.getApplicationReport(currentApp.getApplicationId());
+        currentApp = yarnClient.getApplicationReport(currentApp.getApplicationId());
         appReport = currentApp;
       }
       JSONObject response;

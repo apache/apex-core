@@ -375,21 +375,27 @@ public class StramAppLauncher
     byte[] licenseBytes = StramClientUtils.getLicense(conf);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(conf, dag);
-    LinkedHashSet<String> libjars = Sets.newLinkedHashSet();
-    String libjarsCsv = conf.get(LIBJARS_CONF_KEY_NAME);
-    if (libjarsCsv != null) {
-      String[] jars = StringUtils.splitByWholeSeparator(libjarsCsv, StramClient.LIB_JARS_SEP);
-      libjars.addAll(Arrays.asList(jars));
+    try {
+      client.start();
+      LinkedHashSet<String> libjars = Sets.newLinkedHashSet();
+      String libjarsCsv = conf.get(LIBJARS_CONF_KEY_NAME);
+      if (libjarsCsv != null) {
+        String[] jars = StringUtils.splitByWholeSeparator(libjarsCsv, StramClient.LIB_JARS_SEP);
+        libjars.addAll(Arrays.asList(jars));
+      }
+      for (File deployJar : deployJars) {
+        libjars.add(deployJar.getAbsolutePath());
+      }
+      client.setLibJars(libjars);
+      client.setFiles(conf.get(FILES_CONF_KEY_NAME));
+      client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
+      client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
+      client.startApplication();
+      return client.getApplicationReport().getApplicationId();
     }
-    for (File deployJar : deployJars) {
-      libjars.add(deployJar.getAbsolutePath());
+    finally {
+      client.stop();
     }
-    client.setLibJars(libjars);
-    client.setFiles(conf.get(FILES_CONF_KEY_NAME));
-    client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
-    client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
-    client.startApplication();
-    return client.getApplicationReport().getApplicationId();
   }
 
   public List<AppFactory> getBundledTopologies()
