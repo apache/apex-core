@@ -65,6 +65,21 @@
             </configuration>
           </execution>
           <execution>
+            <id>create-client-mvn-generated-classpath-no-hadoop</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>build-classpath</goal>
+            </goals>
+            <configuration>
+              <!--
+              generate runtime classpath for running client in dev environment with no hadoop jars
+              -->
+              <outputFile>${project.build.directory}/mvn-generated-runtime-classpath-no-hadoop</outputFile>
+              <includeScope>runtime</includeScope>
+              <excludeGroupIds>org.apache.hadoop</excludeGroupIds>
+            </configuration>
+          </execution>
+          <execution>
             <id>create-mvn-generated-classpath</id>
             <phase>generate-test-resources</phase>
             <goals>
