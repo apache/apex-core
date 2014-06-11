@@ -4,8 +4,7 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import java.util.List;
+import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 
 /**
  * <p>
@@ -144,7 +143,7 @@ public abstract class StramEvent
 
   public abstract static class PhysicalOperatorEvent extends OperatorEvent
   {
-    private int operatorId;
+    private final int operatorId;
 
     public PhysicalOperatorEvent(String operatorName, int operatorId)
     {

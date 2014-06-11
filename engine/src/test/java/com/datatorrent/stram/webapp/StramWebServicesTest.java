@@ -7,10 +7,10 @@ package com.datatorrent.stram.webapp;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
+import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.requests.SetOperatorPropertyRequest;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.webapp.StramWebApp.JAXBContextResolver;
 import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
@@ -137,7 +137,7 @@ public class StramWebServicesTest extends JerseyTest
     {
       return "TestAppDocLink";
     }
-    
+
     @Override
     public long getStartTime()
     {

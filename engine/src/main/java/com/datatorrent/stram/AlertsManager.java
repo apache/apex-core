@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
-import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 

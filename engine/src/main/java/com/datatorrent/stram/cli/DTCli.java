@@ -19,6 +19,7 @@ import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricRepor
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
 import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.*;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;

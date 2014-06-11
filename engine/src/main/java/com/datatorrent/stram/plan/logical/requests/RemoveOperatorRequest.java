@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram.plan.logical;
+package com.datatorrent.stram.plan.logical.requests;
 
 import com.datatorrent.stram.plan.physical.PlanModifier;
 
