@@ -50,6 +50,10 @@ if [ -f "$MVN_GENERATED_PATH" ]; then
     echoerr "Error: Cannot find $DT_CORE_JAR";
     exit 1;
   fi
+  if [ ! -x "$HADOOP_PREFIX/bin/hadoop" ]; then
+    echoerror "In development mode, HADOOP_PREFIX environment variable must be set and must point to a hadoop installation";
+    exit 1;
+  fi
   DT_CLASSPATH="$DT_CLASSPATH:$DT_CORE_JAR"
   DT_CLASSPATH=$DT_CLASSPATH:`cat $MVN_GENERATED_PATH`
 else
