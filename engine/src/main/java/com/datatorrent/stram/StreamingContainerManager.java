@@ -694,6 +694,7 @@ public class StreamingContainerManager implements PlanContext
         recordEventAsync(ev);
       }
       containerAgent.container.setFinishedTime(System.currentTimeMillis());
+      containerAgent.container.setState(PTContainer.State.KILLED);
       completedContainers.put(containerId, containerAgent.getContainerInfo());
     }
   }
