@@ -62,6 +62,17 @@ public class PhysicalPlan implements Serializable
   private static final long serialVersionUID = 201312112033L;
   private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
+  public static class LoadIndicator {
+    public final int indicator;
+    public final String note;
+    
+    LoadIndicator(int indicator, String note)
+    {
+      this.indicator = indicator;
+      this.note = note;
+    }
+  }
+
   /**
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
@@ -82,13 +93,18 @@ public class PhysicalPlan implements Serializable
       this.operMapping = operMapping;
     }
 
-    protected int getLoadIndicator(int operatorId, long tps) {
+    protected LoadIndicator getLoadIndicator(int operatorId, long tps) {
       if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
         lastTps = tps;
-        return (tps < tpsMin) ? -1 : 1;
+        if (tps < tpsMin) {
+          return new LoadIndicator(-1, String.format("Tuples per second %d is less than the minimum %d", tps, tpsMin));
+        }
+        else {
+          return new LoadIndicator(1, String.format("Tuples per second %d is greater than the maximum %d", tps, tpsMax));
+        }
       }
       lastTps = tps;
-      return 0;
+      return new LoadIndicator(0, null);
     }
 
     @Override
@@ -96,12 +112,14 @@ public class PhysicalPlan implements Serializable
     {
       long tps = operMapping.logicalOperator.getInputStreams().isEmpty() ? status.getTuplesEmittedPSMA() : status.getTuplesProcessedPSMA();
       Response rsp = new Response();
-      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      LoadIndicator loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      rsp.loadIndicator = loadIndicator.indicator;
       if (rsp.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
           lastEvalMillis = System.currentTimeMillis();
           LOG.debug("Requesting repartitioning for {}/{} {} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator, tps});
           rsp.repartitionRequired = true;
+          rsp.repartitionNote = loadIndicator.note;
         }
       }
       return rsp;
@@ -463,7 +481,8 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  private void redoPartitions(PMapping currentMapping)
+  @SuppressWarnings("unchecked")
+  private void redoPartitions(PMapping currentMapping, String note)
   {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
@@ -501,10 +520,13 @@ public class PhysicalPlan implements Serializable
     }
 
     Operator operator = currentMapping.logicalOperator.getOperator();
-    @SuppressWarnings("unchecked")
-    Partitioner<Operator> partitioner = currentMapping.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)
-                                        ? (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER)
-                                        : operator instanceof Partitioner ? (Partitioner<Operator>)operator : null;
+    Partitioner<Operator> partitioner = null;
+    if (currentMapping.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)) {
+      partitioner = (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER);
+    }
+    else if (operator instanceof Partitioner) {
+      partitioner = (Partitioner<Operator>)operator;
+    }
 
     Collection<Partition<Operator>> newPartitions = null;
     if (partitioner != null) {
@@ -609,7 +631,12 @@ public class PhysicalPlan implements Serializable
     }
 
     deployChanges();
-    this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
+
+    if (currentPartitions.size() != newPartitions.size()) {
+      StramEvent ev = new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size());
+      ev.setReason(note);
+      this.ctx.recordEventAsync(ev);
+    }
 
     if (partitioner != null) {
       partitioner.partitioned(operatorIdToPartition);
@@ -1226,7 +1253,7 @@ public class PhysicalPlan implements Serializable
   {
     oper.getOperatorMeta().getStatus().counters.clear();
     for (StatsListener l : oper.statsListeners) {
-      StatsListener.Response rsp = l.processStats(oper.stats);
+      final StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
         //LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
         // TODO: repartition delay needs to come out of the listener
@@ -1242,7 +1269,7 @@ public class PhysicalPlan implements Serializable
             Runnable r = new Runnable() {
               @Override
               public void run() {
-                redoPartitions(logicalToPTOperator.get(om));
+                redoPartitions(logicalToPTOperator.get(om), rsp.repartitionNote);
                 pendingRepartition.remove(om);
               }
             };
