@@ -4,10 +4,9 @@
  */
 package com.datatorrent.stram.codec;
 
+import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.lib.util.ObjectMapperString;
@@ -102,7 +101,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     for (OperatorMeta operatorMeta : allOperators) {
       HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
       ArrayList<Map<String, Object>> portList = new ArrayList<Map<String, Object>>();
-      HashMap<String, Object> attributeMap = new HashMap<String, Object>();
+      Map<String, Object> attributeMap = new HashMap<String, Object>();
 
       String operatorName = operatorMeta.getName();
       operatorArray.add(operatorDetailMap);
@@ -110,17 +109,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       operatorDetailMap.put("ports", portList);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
-      for (Attribute<?> attrKey : new Attribute<?>[] {
-        Context.OperatorContext.APPLICATION_WINDOW_COUNT,
-        Context.OperatorContext.INITIAL_PARTITION_COUNT,
-        Context.OperatorContext.PARTITION_TPS_MAX,
-        Context.OperatorContext.PARTITION_TPS_MIN,
-        Context.OperatorContext.RECOVERY_ATTEMPTS,
-        Context.OperatorContext.SPIN_MILLIS}) {
-        Object attrValue = operatorMeta.getAttributes().get(attrKey);
-        if (attrValue != null) {
-          attributeMap.put(attrKey.name, attrValue);
-        }
+      Map<Attribute<Object>, Object> rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(operatorMeta, Context.OperatorContext.class);
+      for (Map.Entry<Attribute<Object>, Object> entry : rawAttributes.entrySet()) {
+        attributeMap.put(entry.getKey().getSimpleName(), entry.getValue());
       }
 
       ObjectMapperString str;
@@ -143,14 +134,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Attribute<?> attrKey : new Attribute<?>[] {
-          Context.PortContext.QUEUE_CAPACITY,
-          Context.PortContext.PARTITION_PARALLEL,
-          Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().get(attrKey);
-          if (attrValue != null) {
-            portAttributeMap.put(attrKey.name, attrValue);
-          }
+        rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
+          attributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
         portList.add(portDetailMap);
       }
@@ -162,14 +148,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Attribute<?> attrKey : new Attribute<?>[] {
-          Context.PortContext.QUEUE_CAPACITY,
-          Context.PortContext.PARTITION_PARALLEL,
-          Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().get(attrKey);
-          if (attrValue != null) {
-            portAttributeMap.put(attrKey.name, attrValue);
-          }
+        rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
+          attributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
         portList.add(portDetailMap);
       }
