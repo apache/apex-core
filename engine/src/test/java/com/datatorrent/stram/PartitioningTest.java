@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
 import static java.lang.Thread.sleep;
 
 import com.google.common.collect.Sets;
@@ -18,11 +19,11 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
@@ -232,7 +233,10 @@ public class PartitioningTest
     lc.runAsync();
 
     List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getMeta(collector));
-
+    Set<PTContainer> containers = Sets.newHashSet();
+    for (PTOperator oper : partitions) {
+      containers.add(oper.getContainer());
+    }
     PTOperator splitPartition = partitions.get(0);
     PartitionLoadWatch.loadIndicators.put(splitPartition.getId(), 1);
 
@@ -243,6 +247,8 @@ public class PartitioningTest
     }
 
     partitions = assertNumberPartitions(3, lc, dag.getMeta(collector));
+    Assert.assertTrue("container reused", lc.dnmgr.getPhysicalPlan().getContainers().containsAll(containers));
+
     // check deployment
     for (PTOperator p: partitions) {
       StramTestSupport.waitForActivation(lc, p);
