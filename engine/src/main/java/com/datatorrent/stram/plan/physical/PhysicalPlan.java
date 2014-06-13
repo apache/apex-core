@@ -65,7 +65,7 @@ public class PhysicalPlan implements Serializable
   public static class LoadIndicator {
     public final int indicator;
     public final String note;
-    
+
     LoadIndicator(int indicator, String note)
     {
       this.indicator = indicator;
@@ -481,7 +481,6 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  @SuppressWarnings("unchecked")
   private void redoPartitions(PMapping currentMapping, String note)
   {
     // collect current partitions with committed operator state
@@ -522,10 +521,14 @@ public class PhysicalPlan implements Serializable
     Operator operator = currentMapping.logicalOperator.getOperator();
     Partitioner<Operator> partitioner = null;
     if (currentMapping.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)) {
-      partitioner = (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER);
+      @SuppressWarnings("unchecked")
+      Partitioner<Operator> tmp = (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER);
+      partitioner = tmp;
     }
     else if (operator instanceof Partitioner) {
-      partitioner = (Partitioner<Operator>)operator;
+      @SuppressWarnings("unchecked")
+      Partitioner<Operator> tmp = (Partitioner<Operator>)operator;
+      partitioner = tmp;
     }
 
     Collection<Partition<Operator>> newPartitions = null;
@@ -721,17 +724,25 @@ public class PhysicalPlan implements Serializable
       }
 
       PTContainer newContainer = null;
+      int memoryMB = 0;
       // handle container locality
       for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
         }
+        memoryMB += inlineOper.operatorMeta.getValue2(OperatorContext.MEMORY_MB);
       }
 
       if (newContainer == null) {
-        // find container
-        newContainer = findContainer(oper);
+        // attempt to find empty container with required size
+        for (PTContainer c : this.containers) {
+          if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
+            LOG.debug("Reusing existing container {} for {}", c, oper);
+            newContainer = c;
+          }
+        }
+
         if (newContainer == null) {
           // get new container
           LOG.debug("New container for: " + oper);
@@ -849,17 +860,6 @@ public class PhysicalPlan implements Serializable
         removePTOperator(unifier);
       }
     }
-  }
-
-  private PTContainer findContainer(PTOperator oper) {
-    // TODO: find container based on utilization
-    for (PTContainer c : this.containers) {
-      if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE) {
-        LOG.debug("Reusing existing container {} for {}", c, oper);
-        return c;
-      }
-    }
-    return null;
   }
 
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<? extends Operator> partition, Checkpoint checkpoint) {
