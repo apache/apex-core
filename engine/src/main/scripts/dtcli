@@ -41,17 +41,18 @@ fi
 HADOOP_PREFIX=${HADOOP_PREFIX:-${HADOOP_HOME:-$HADOOP_DIR}}
 
 BUILD_DIR="$( dirname "$0" )/../../../target"
-MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath-no-hadoop"
+if [ "$HADOOP_PREFIX" = "" ]; then
+  MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
+else
+  MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath-no-hadoop"
+fi
+
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
   #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
   DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
   if [ ! -f "$DT_CORE_JAR" ]; then
     echoerr "Error: Cannot find $DT_CORE_JAR";
-    exit 1;
-  fi
-  if [ ! -x "$HADOOP_PREFIX/bin/hadoop" ]; then
-    echoerror "In development mode, HADOOP_PREFIX environment variable must be set and must point to a hadoop installation";
     exit 1;
   fi
   DT_CLASSPATH="$DT_CLASSPATH:$DT_CORE_JAR"
