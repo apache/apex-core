@@ -21,49 +21,32 @@ import org.slf4j.LoggerFactory;
 public class FSJsonLineFile
 {
   private final FileSystem fs;
-  private final Path path;
   private final ObjectMapper objectMapper;
+  private final FSDataOutputStream os;
   private static final Logger LOG = LoggerFactory.getLogger(FSJsonLineFile.class);
 
   public FSJsonLineFile(Path path, FsPermission permission) throws IOException
   {
     fs = FileSystem.newInstance(path.toUri(), new Configuration());
-    this.path = path;
-    LOG.debug("Path: {}", path.toUri());
-    if (!fs.exists(path)) {
-      FSDataOutputStream os = FileSystem.create(fs, path, permission);
-      os.close();
+    if (fs.exists(path)) {
+      os = fs.append(path);
     }
-
-    boolean flag = fs.getConf().getBoolean("dfs.support.append", true);
-    if (!flag) {
-      throw new IOException("DFS append is not supported!");
+    else {
+      os = FileSystem.create(fs, path, permission);
     }
     this.objectMapper = (new JacksonObjectMapperProvider()).getContext(null);
   }
 
   public void append(JSONObject json) throws IOException
   {
-    PrintWriter writer = new PrintWriter(fs.append(path));
-    try {
-      writer.append(json.toString() + "\n");
-      writer.flush();
-    }
-    finally {
-      writer.close();
-    }
+    os.writeBytes(json.toString() + "\n");
+    os.hflush();
   }
 
   public void append(Object obj) throws IOException
   {
-    PrintWriter writer = new PrintWriter(fs.append(path));
-    try {
-      writer.append(objectMapper.writeValueAsString(obj) + "\n");
-      writer.flush();
-    }
-    finally {
-      writer.close();
-    }
+    os.writeBytes(objectMapper.writeValueAsString(obj) + "\n");
+    os.hflush();
   }
 
 }
