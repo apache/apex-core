@@ -16,7 +16,6 @@
 package com.datatorrent.api;
 
 import java.io.ObjectStreamException;
-import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -199,5 +198,4 @@ public class BaseOperator implements Operator
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BaseOperator.class);
-  private static final long serialVersionUID = 201404140831L;
 }
