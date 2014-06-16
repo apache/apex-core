@@ -377,6 +377,9 @@ public class StramClient
         if (tokens != null) {
           for (Token<?> token : tokens) {
             LOG.info("Got dt for " + fs.getUri() + "; " + token);
+            if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
+              credentials.addToken(token.getService(), token);
+            }
           }
         }
       }
