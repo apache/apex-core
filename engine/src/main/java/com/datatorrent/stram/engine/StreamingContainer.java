@@ -227,7 +227,6 @@ public class StreamingContainer extends YarnContainerMain
    */
   public static void main(String[] args) throws Throwable
   {
-    DTLoggerFactory.getInstance().initialize();
     StdOutErrLog.tieSystemOutAndErrToLog();
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));

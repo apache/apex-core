@@ -20,7 +20,6 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.util.VersionInfo;
@@ -42,7 +41,6 @@ public class StreamingAppMaster extends StramUtils.YarnContainerMain
    */
   public static void main(final String[] args) throws Throwable
   {
-    DTLoggerFactory.getInstance().initialize();
     StdOutErrLog.tieSystemOutAndErrToLog();
     LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 
