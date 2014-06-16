@@ -37,7 +37,7 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.DTLoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;

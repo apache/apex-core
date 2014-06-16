@@ -39,7 +39,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.impl.DTLoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
 

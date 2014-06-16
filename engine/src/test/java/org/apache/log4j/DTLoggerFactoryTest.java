@@ -1,13 +1,11 @@
 /*
  * Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  */
-package org.slf4j.impl;
+package org.apache.log4j;
 
 import java.util.Map;
 
 import junit.framework.Assert;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 

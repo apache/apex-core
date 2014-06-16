@@ -25,7 +25,7 @@ import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.DTLoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;

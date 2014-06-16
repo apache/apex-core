@@ -20,7 +20,7 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.DTLoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.util.VersionInfo;
