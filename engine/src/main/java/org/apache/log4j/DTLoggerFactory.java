@@ -54,7 +54,7 @@ public class DTLoggerFactory implements LoggerFactory
   {
     if (!initialized) {
       LOG.info("initializing DT Logger Factory");
-      RepositorySelectorImpl.getInstance().initialize();
+      new RepositorySelectorImpl().initialize();
       String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
       if (!Strings.isNullOrEmpty(loggersLevel)) {
         Map<String, String> targetChanges = Maps.newHashMap();
@@ -175,16 +175,6 @@ public class DTLoggerFactory implements LoggerFactory
   private static class RepositorySelectorImpl implements RepositorySelector
   {
 
-    private static RepositorySelectorImpl SINGLETON;
-
-    public synchronized static RepositorySelectorImpl getInstance()
-    {
-      if (SINGLETON == null) {
-        SINGLETON = new RepositorySelectorImpl();
-      }
-      return SINGLETON;
-    }
-
     private boolean initialized;
     private Logger guard;
     private Hierarchy hierarchy;
@@ -193,8 +183,7 @@ public class DTLoggerFactory implements LoggerFactory
     {
       initialized = false;
     }
-
-    public void initialize()
+    private void initialize()
     {
       if (!initialized) {
         LOG.info("initializing logger repository selector impl");
