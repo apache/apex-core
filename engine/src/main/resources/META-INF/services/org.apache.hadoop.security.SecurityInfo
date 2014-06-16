@@ -1,1 +1,2 @@
 com.datatorrent.stram.StreamingContainerSecurityInfo
+com.datatorrent.stram.LicensingSecurityInfo
