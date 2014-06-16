@@ -8,28 +8,15 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.license.License;
-import com.datatorrent.stram.license.LicenseObject;
-import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocol;
-import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
-import com.datatorrent.stram.license.agent.protocol.request.GetLicenseDelegationTokenRequest;
-import com.datatorrent.stram.license.agent.protocol.response.GetLicenseDelegationTokenResponse;
-import com.datatorrent.stram.license.security.LicenseDelegationTokenIdentifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
-import java.io.*;
-import java.net.*;
-import java.nio.ByteBuffer;
-import java.util.*;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
@@ -48,6 +35,15 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.DTLoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 /**
  *
@@ -398,6 +394,7 @@ public class StramClient
       credentials.addToken(rmToken.getService(), rmToken);
 
       // Get the license manager delegation token
+      /*
       if (!YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         try {
           String license = dag.getValue(LogicalPlan.LICENSE);
@@ -416,6 +413,7 @@ public class StramClient
           throw new YarnException(e);
         }
       }
+      */
 
       DataOutputBuffer dob = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dob);
