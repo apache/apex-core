@@ -176,7 +176,7 @@ public class StramRecoveryTest
     Assert.assertEquals("post restore 1", PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
     Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
-    StramChildAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
+    StreamingContainerAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
     Assert.assertNotNull("allocated container restored " + originalContainer, sca);
 
     // YARN-1490 - simulate container terminated on AM recovery

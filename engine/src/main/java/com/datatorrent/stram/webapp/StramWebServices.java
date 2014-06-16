@@ -53,7 +53,7 @@ import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
@@ -444,13 +444,13 @@ public class StramWebServices
       }
     }
 
-    Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
+    Collection<StreamingContainerAgent> containerAgents = dagManager.getContainerAgents();
     // add itself (app master container)
     ContainerInfo appMasterContainerInfo = dagManager.getAppMasterContainerInfo();
     if (stateSet == null || stateSet.contains(appMasterContainerInfo.state)) {
       ci.add(appMasterContainerInfo);
     }
-    for (StramChildAgent sca : containerAgents) {
+    for (StreamingContainerAgent sca : containerAgents) {
       ContainerInfo containerInfo = sca.getContainerInfo();
       if (stateSet == null || stateSet.contains(containerInfo.state)) {
         ci.add(containerInfo);
@@ -477,7 +477,7 @@ public class StramWebServices
         }
       }
       if (ci == null) {
-        StramChildAgent sca = dagManager.getContainerAgent(containerId);
+        StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
         if (sca == null) {
           throw new NotFoundException();
         }

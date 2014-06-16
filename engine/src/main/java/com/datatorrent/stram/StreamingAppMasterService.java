@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.api.*;
 
 import java.io.BufferedReader;
@@ -564,11 +565,11 @@ public class StreamingAppMasterService extends CompositeService
   {
     boolean status = true;
     try {
-      StramChild.eventloop.start();
+      StreamingContainer.eventloop.start();
       execute();
     }
     finally {
-      StramChild.eventloop.stop();
+      StreamingContainer.eventloop.stop();
     }
     return status;
   }
@@ -599,7 +600,7 @@ public class StreamingAppMasterService extends CompositeService
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
 
     // for locality relaxation fall back
-    Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
+    Map<StreamingContainerAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -673,7 +674,7 @@ public class StreamingAppMasterService extends CompositeService
           // ensure enough memory is left to request new container
           licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
           availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
-          Iterator<StramChildAgent.ContainerStartRequest> it = dnmgr.containerStartRequests.iterator();
+          Iterator<StreamingContainerAgent.ContainerStartRequest> it = dnmgr.containerStartRequests.iterator();
           int requiredMemory = 0;
           while (it.hasNext()) {
             requiredMemory += it.next().container.getRequiredMemoryMB();
@@ -684,7 +685,7 @@ public class StreamingAppMasterService extends CompositeService
           }
         }
         if (requestResources) {
-          StramChildAgent.ContainerStartRequest csr;
+          StreamingContainerAgent.ContainerStartRequest csr;
           while ((csr = dnmgr.containerStartRequests.poll()) != null) {
             if (csr.container.getRequiredMemoryMB() > maxMem) {
               LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
@@ -699,10 +700,10 @@ public class StreamingAppMasterService extends CompositeService
 
       if (!requestedResources.isEmpty()) {
         //resourceRequestor.clearNodeMapping();
-        for (Map.Entry<StramChildAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
           if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
             entry.setValue(loopCounter);
-            StramChildAgent.ContainerStartRequest csr = entry.getKey();
+            StreamingContainerAgent.ContainerStartRequest csr = entry.getKey();
             containerRequests.add(resourceRequestor.createContainerRequest(csr, false));
           }
         }
@@ -740,8 +741,8 @@ public class StreamingAppMasterService extends CompositeService
         // + ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
         boolean alreadyAllocated = true;
-        StramChildAgent.ContainerStartRequest csr = null;
-        for (Map.Entry<StramChildAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+        StreamingContainerAgent.ContainerStartRequest csr = null;
+        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
           if (entry.getKey().container.getResourceRequestPriority() == allocatedContainer.getPriority().getPriority()) {
             alreadyAllocated = false;
             csr = entry.getKey();
@@ -762,7 +763,7 @@ public class StreamingAppMasterService extends CompositeService
 
         // allocate resource to container
         ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
-        StramChildAgent sca = dnmgr.assignContainer(resource, null);
+        StreamingContainerAgent sca = dnmgr.assignContainer(resource, null);
 
         if (sca == null) {
           // allocated container no longer needed, add release request
@@ -805,7 +806,7 @@ public class StreamingAppMasterService extends CompositeService
             numFailedContainers.incrementAndGet();
           }
 //          if (exitStatus == 1) {
-//            // non-recoverable StramChild failure
+//            // non-recoverable StreamingContainer failure
 //            appDone = true;
 //            finalStatus = FinalApplicationStatus.FAILED;
 //            dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
@@ -883,8 +884,8 @@ public class StreamingAppMasterService extends CompositeService
    */
   private void checkContainerStatus()
   {
-    Collection<StramChildAgent> containers = this.dnmgr.getContainerAgents();
-    for (StramChildAgent ca : containers) {
+    Collection<StreamingContainerAgent> containers = this.dnmgr.getContainerAgents();
+    for (StreamingContainerAgent ca : containers) {
       ContainerId containerId = ConverterUtils.toContainerId(ca.container.getExternalId());
       NodeId nodeId = ConverterUtils.toNodeId(ca.container.host);
 

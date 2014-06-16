@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.net.InetSocketAddress;
 
 import org.slf4j.Logger;
@@ -30,7 +31,7 @@ class BufferServerController extends Controller
   public void onMessage(String message)
   {
     logger.debug("Controller received {}, now disconnecting.", message);
-    StramChild.eventloop.disconnect(this);
+    StreamingContainer.eventloop.disconnect(this);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerController.class);

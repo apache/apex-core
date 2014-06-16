@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.engine;
 
 import java.io.IOException;
 import java.lang.Thread.State;
@@ -10,22 +10,23 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.log4j.DTLoggerFactory;
+import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
@@ -41,13 +42,16 @@ import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.stram.ComponentContextPair;
+import com.datatorrent.stram.RecoverableRpcProxy;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.*;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
@@ -58,7 +62,7 @@ import com.datatorrent.stram.stream.*;
  *
  * @since 0.3.2
  */
-public class StramChild extends YarnContainerMain
+public class StreamingContainer extends YarnContainerMain
 {
   public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
@@ -105,7 +109,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
-  protected StramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical)
+  protected StreamingContainer(String containerId, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
     this.components = new HashSet<Component<ContainerContext>>();
@@ -241,7 +245,7 @@ public class StramChild extends YarnContainerMain
     final String childId = System.getProperty(StreamingApplication.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
-      StramChild stramChild = new StramChild(childId, umbilical);
+      StreamingContainer stramChild = new StreamingContainer(childId, umbilical);
       logger.debug("Container Context = {}", ctx);
       stramChild.setup(ctx);
       try {
@@ -548,14 +552,14 @@ public class StramChild extends YarnContainerMain
     gens.clear();
   }
 
-  protected void triggerHeartbeat()
+  public void triggerHeartbeat()
   {
     synchronized (heartbeatTrigger) {
       heartbeatTrigger.notifyAll();
     }
   }
 
-  protected void heartbeatLoop() throws Exception
+  public void heartbeatLoop() throws Exception
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
@@ -673,7 +677,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
-  protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
+  public void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.nodeRequests != null) {
       nodeRequests = rsp.nodeRequests;
@@ -819,6 +823,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
+  @SuppressWarnings("unchecked")
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
           String sourceIdentifier, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
           throws UnknownHostException
@@ -944,6 +949,7 @@ public class StramChild extends YarnContainerMain
     return spair.context.getId();
   }
 
+  @SuppressWarnings("unchecked")
   private void deployInputStreams(List<OperatorDeployInfo> operatorList, HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws UnknownHostException
   {
     /*
@@ -1494,5 +1500,5 @@ public class StramChild extends YarnContainerMain
     DTLoggerFactory.getInstance().changeLoggersLevel(request.getTargetChanges());
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
+  private static final Logger logger = LoggerFactory.getLogger(StreamingContainer.class);
 }

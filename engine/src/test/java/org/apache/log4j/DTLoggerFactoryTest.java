@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 
-import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StreamingAppMaster;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.client.DTConfiguration;
@@ -55,8 +55,8 @@ public class DTLoggerFactoryTest
     org.apache.log4j.Logger stramEventLogger = LogManager.getLogger(StramEvent.class);
     Assert.assertEquals(stramEventLogger.getLevel(), Level.DEBUG);
 
-    LoggerFactory.getLogger(StramChild.class);
-    org.apache.log4j.Logger stramChildLogger = LogManager.getLogger(StramChild.class);
+    LoggerFactory.getLogger(StreamingContainer.class);
+    org.apache.log4j.Logger stramChildLogger = LogManager.getLogger(StreamingContainer.class);
     Assert.assertEquals(stramChildLogger.getLevel(), Level.DEBUG);
   }
 }

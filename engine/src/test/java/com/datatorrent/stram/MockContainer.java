@@ -27,7 +27,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
  */
 public class MockContainer
 {
-  final StramChildAgent sca;
+  final StreamingContainerAgent sca;
   final PTContainer container;
   final Map<Integer, MockOperatorStats> stats = Maps.newHashMap();
 
@@ -44,7 +44,7 @@ public class MockContainer
     Assert.assertEquals(PTContainer.State.ACTIVE, container.getState());
   }
 
-  private StramChildAgent assignContainer(StreamingContainerManager scm, PTContainer c) {
+  private StreamingContainerAgent assignContainer(StreamingContainerManager scm, PTContainer c) {
     c.setResourceRequestPriority(c.getId());
     String containerId = "container" + c.getId();
     InetSocketAddress bufferServerAddress = InetSocketAddress.createUnresolved(containerId+"Host", 0);

@@ -4,15 +4,24 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.*;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -29,14 +38,6 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
-import com.google.common.collect.Sets;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -47,8 +48,8 @@ import org.slf4j.LoggerFactory;
  *
  * @since 0.3.2
  */
-public class StramChildAgent {
-  private static final Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);
+public class StreamingContainerAgent {
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerAgent.class);
 
   public static class ContainerStartRequest {
     final PTContainer container;
@@ -59,7 +60,7 @@ public class StramChildAgent {
   }
 
 
-  public StramChildAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
+  public StreamingContainerAgent(PTContainer container, StreamingContainerContext initCtx, StreamingContainerManager dnmgr) {
     this.container = container;
     this.initCtx = initCtx;
     // commented out because free memory is misleading because of GC. may want to revisit this.

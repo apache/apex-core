@@ -58,10 +58,10 @@ public class FSStatsRecorder implements StatsRecorder
   }
 
   @Override
-  public void recordContainers(Map<String, StramChildAgent> containerMap, long timestamp) throws IOException
+  public void recordContainers(Map<String, StreamingContainerAgent> containerMap, long timestamp) throws IOException
   {
-    for (Map.Entry<String, StramChildAgent> entry : containerMap.entrySet()) {
-      StramChildAgent sca = entry.getValue();
+    for (Map.Entry<String, StreamingContainerAgent> entry : containerMap.entrySet()) {
+      StreamingContainerAgent sca = entry.getValue();
       ContainerInfo containerInfo = sca.getContainerInfo();
       if (!containerInfo.state.equals("ACTIVE")) {
         continue;
