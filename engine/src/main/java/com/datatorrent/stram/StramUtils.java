@@ -8,6 +8,7 @@ package com.datatorrent.stram;
 import java.util.Map;
 
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.StreamingApplication;
@@ -78,6 +79,7 @@ public abstract class StramUtils
           }
         }
       }
+      DTLoggerFactory.getInstance().initialize();
     }
   }
 
