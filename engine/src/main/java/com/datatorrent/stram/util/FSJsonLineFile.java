@@ -28,12 +28,7 @@ public class FSJsonLineFile
   public FSJsonLineFile(Path path, FsPermission permission) throws IOException
   {
     fs = FileSystem.newInstance(path.toUri(), new Configuration());
-    if (fs.exists(path)) {
-      os = fs.append(path);
-    }
-    else {
-      os = FileSystem.create(fs, path, permission);
-    }
+    os = FileSystem.create(fs, path, permission);
     this.objectMapper = (new JacksonObjectMapperProvider()).getContext(null);
   }
 
