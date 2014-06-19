@@ -48,6 +48,8 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.api.BaseContext;
@@ -83,7 +85,7 @@ public class StramWebServicesTest extends JerseyTest
 
     TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
     {
-      super(null, null); // this needs to be done in a proper way - may cause application errors.
+      super(new DefaultAttributeMap(), null); // this needs to be done in a proper way - may cause application errors.
       this.appID = ApplicationId.newInstance(0, appid);
       this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
     }
