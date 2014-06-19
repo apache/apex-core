@@ -1418,12 +1418,13 @@ public class StreamingContainer extends YarnContainerMain
       }
       int lCheckpointWindowCount = (int)(windowCount % temp);
       checkpoint = new Checkpoint(WindowGenerator.getWindowId(now, firstWindowMillis, windowWidthMillis), appWindowCount, lCheckpointWindowCount);
-      logger.debug("using at most once on {} at {}", ndi.name, checkpoint);
+      logger.debug("using {} on {} at {}", ProcessingMode.AT_MOST_ONCE, ndi.name, checkpoint);
     }
     else {
       checkpoint = ndi.checkpoint;
-      logger.debug("using at least once on {} at {}", ndi.name, checkpoint);
+      logger.debug("using {} on {} at {}", ndi.contextAttributes == null? ProcessingMode.AT_LEAST_ONCE: ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE), ndi.name, checkpoint);
     }
+    
     return checkpoint;
   }
 
