@@ -8,6 +8,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
@@ -32,9 +33,9 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.apache.log4j.DTLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.DTLoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -523,7 +524,7 @@ public class StramClient
       vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
       vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
       vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
-      vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
+      vargs.add(String.format("-D%s=%s", StreamingContainer.PROP_APP_PATH, dag.assertAppPath()));
       if (dag.isDebug()) {
         vargs.add("-Dlog4j.debug=true");
       }

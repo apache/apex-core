@@ -6,6 +6,7 @@ package com.datatorrent.stram.api;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 
 import com.datatorrent.stram.util.AbstractWritableAdapter;
@@ -27,7 +28,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
-    this.attributes = attributes;
+    this.attributes = attributes == null ? new DefaultAttributeMap() : attributes;
     this.parentContext = parentContext;
   }
 

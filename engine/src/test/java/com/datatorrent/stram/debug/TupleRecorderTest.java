@@ -21,7 +21,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 
-import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -43,13 +43,13 @@ public class TupleRecorderTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop.start();
+    StreamingContainer.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    StreamingContainer.eventloop.stop();
   }
 
   public TupleRecorderTest()

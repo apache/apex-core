@@ -1,5 +1,6 @@
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -36,13 +37,13 @@ public class PartitioningTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop.start();
+    StreamingContainer.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    StreamingContainer.eventloop.stop();
   }
 
   public static class CollectorOperator extends BaseOperator
@@ -257,7 +258,7 @@ public class PartitioningTest
     PartitionLoadWatch.loadIndicators.remove(splitPartition.getId());
 
     PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
-    LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
+    LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, planInput);
     Map<Integer, Node<?>> nodeMap = c.getNodes();
     Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
     @SuppressWarnings({"unchecked"})
@@ -355,7 +356,7 @@ public class PartitioningTest
       List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       Set<String> partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
-        LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
+        LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
         PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.getId()).getOperator();
@@ -381,7 +382,7 @@ public class PartitioningTest
       partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
-        LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
+        LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
         PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.getId()).getOperator();

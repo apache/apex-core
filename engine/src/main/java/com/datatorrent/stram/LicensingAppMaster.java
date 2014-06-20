@@ -12,7 +12,6 @@ import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.DTLoggerFactory;
 
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.license.LicensingAppMasterService;
@@ -32,7 +31,6 @@ public class LicensingAppMaster extends StramUtils.YarnContainerMain
    */
   public static void main(final String[] args) throws Throwable
   {
-    DTLoggerFactory.getInstance().initialize();
     StdOutErrLog.tieSystemOutAndErrToLog();
     LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 

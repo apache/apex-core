@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -39,7 +40,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.impl.DTLoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
 import com.datatorrent.api.StreamingApplication;
 
@@ -233,7 +234,7 @@ public class LaunchContainerRunnable implements Runnable
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
-    vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
+    vargs.add(String.format("-D%s=%s", StreamingContainer.PROP_APP_PATH, dag.assertAppPath()));
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
     vargs.add(String.format("-D%scid=%s", StreamingApplication.DT_PREFIX, jvmID));
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
@@ -244,7 +245,7 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
     }
     // Add main class and its arguments
-    vargs.add(StramChild.class.getName());  // main of Child
+    vargs.add(StreamingContainer.class.getName());  // main of Child
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");

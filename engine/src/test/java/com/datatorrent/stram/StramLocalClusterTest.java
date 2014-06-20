@@ -19,7 +19,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.Node;
@@ -132,13 +132,13 @@ public class StramLocalClusterTest
     PTOperator ptNode1 = localCluster.findByLogicalNode(dag.getMeta(node1));
     PTOperator ptNode2 = localCluster.findByLogicalNode(dag.getMeta(node2));
 
-    LocalStramChild c0 = StramTestSupport.waitForActivation(localCluster, ptNode1);
+    LocalStreamingContainer c0 = StramTestSupport.waitForActivation(localCluster, ptNode1);
     Map<Integer, Node<?>> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     TestGeneratorInputOperator n1 = (TestGeneratorInputOperator)nodeMap.get(ptNode1.getId()).getOperator();
     Assert.assertNotNull(n1);
 
-    LocalStramChild c2 = StramTestSupport.waitForActivation(localCluster, ptNode2);
+    LocalStreamingContainer c2 = StramTestSupport.waitForActivation(localCluster, ptNode2);
     Map<Integer, Node<?>> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestOperator n2 = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
@@ -186,7 +186,7 @@ public class StramLocalClusterTest
 
     // replacement container starts empty
     // operators will deploy after downstream operator was removed
-    LocalStramChild c0Replaced = StramTestSupport.waitForActivation(localCluster, ptNode1);
+    LocalStreamingContainer c0Replaced = StramTestSupport.waitForActivation(localCluster, ptNode1);
     c0Replaced.triggerHeartbeat();
     c0Replaced.waitForHeartbeat(5000); // next heartbeat after setup
 
@@ -195,7 +195,7 @@ public class StramLocalClusterTest
 
     // verify change in downstream container
     LOG.debug("triggering c2 heartbeat processing");
-    StramChildAgent c2Agent = localCluster.getContainerAgent(c2);
+    StreamingContainerAgent c2Agent = localCluster.getContainerAgent(c2);
 
     // wait for downstream re-deploy to complete
     long startTms = System.currentTimeMillis();

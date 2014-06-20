@@ -158,7 +158,7 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   @Override
   public StreamingContainerContext getInitContext(String containerId)
       throws IOException {
-    StramChildAgent sca = dagManager.getContainerAgent(containerId);
+    StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
 
     return sca.getInitContext();
   }

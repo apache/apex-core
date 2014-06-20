@@ -3,6 +3,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -87,13 +88,13 @@ public class StramMiniClusterTest
   @Before
   public void setupEachTime() throws IOException
   {
-    StramChild.eventloop.start();
+    StreamingContainer.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    StreamingContainer.eventloop.stop();
   }
 
   @BeforeClass

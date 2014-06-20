@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  */
-package org.slf4j.impl;
+package org.apache.log4j;
 
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -11,21 +11,20 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.slf4j.ILoggerFactory;
-import org.slf4j.Logger;
+import org.apache.log4j.spi.LoggerFactory;
+import org.apache.log4j.spi.LoggerRepository;
+import org.apache.log4j.spi.RepositorySelector;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
 /**
- * An implementation of {@link ILoggerFactory}
+ * An implementation of {@link LoggerFactory}
  *
  * @author chandni
  */
-public class DTLoggerFactory implements ILoggerFactory
+public class DTLoggerFactory implements LoggerFactory
 {
   public static final String DT_LOGGERS_LEVEL = "dt.loggers.level";
 
@@ -55,6 +54,7 @@ public class DTLoggerFactory implements ILoggerFactory
   {
     if (!initialized) {
       LOG.info("initializing DT Logger Factory");
+      new RepositorySelectorImpl().initialize();
       String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
       if (!Strings.isNullOrEmpty(loggersLevel)) {
         Map<String, String> targetChanges = Maps.newHashMap();
@@ -112,9 +112,10 @@ public class DTLoggerFactory implements ILoggerFactory
     }
 
     if (!patternLevel.isEmpty()) {
-      Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
+      @SuppressWarnings("unchecked")
+      Enumeration<Logger> loggerEnumeration = LogManager.getCurrentLoggers();
       while (loggerEnumeration.hasMoreElements()) {
-        org.apache.log4j.Logger classLogger = loggerEnumeration.nextElement();
+        Logger classLogger = loggerEnumeration.nextElement();
         Level oldLevel = classLogger.getLevel();
         Level newLevel = getLevelFor(classLogger.getName());
         if (newLevel != null && (oldLevel == null || !newLevel.equals(oldLevel))) {
@@ -126,29 +127,15 @@ public class DTLoggerFactory implements ILoggerFactory
   }
 
   @Override
-  public Logger getLogger(String name)
+  public Logger makeNewLoggerInstance(String name)
   {
-    Logger slf4jLogger = loggerMap.get(name);
-    if (slf4jLogger != null) {
-      return slf4jLogger;
+    Logger newInstance = new Logger(name);
+    Level level = getLevelFor(name);
+    if (level != null) {
+      newInstance.setLevel(level);
     }
-    else {
-      org.apache.log4j.Logger log4jLogger;
-      if (name.equalsIgnoreCase(Logger.ROOT_LOGGER_NAME)) {
-        log4jLogger = LogManager.getRootLogger();
-      }
-      else {
-        log4jLogger = LogManager.getLogger(name);
-      }
-
-      Log4jLoggerAdapter newInstance = new Log4jLoggerAdapter(log4jLogger);
-      Level level = getLevelFor(name);
-      if (level != null) {
-        log4jLogger.setLevel(level);
-      }
-      Logger oldInstance = loggerMap.putIfAbsent(name, newInstance);
-      return oldInstance == null ? newInstance : oldInstance;
-    }
+    loggerMap.put(name, newInstance);
+    return newInstance;
   }
 
   private synchronized Level getLevelFor(String name)
@@ -173,9 +160,10 @@ public class DTLoggerFactory implements ILoggerFactory
   {
     Pattern searchPattern = Pattern.compile(searchKey);
     Map<String, String> matchedClasses = Maps.newHashMap();
-    Enumeration<org.apache.log4j.Logger> loggerEnumeration = LogManager.getCurrentLoggers();
+    @SuppressWarnings("unchecked")
+    Enumeration<Logger> loggerEnumeration = LogManager.getCurrentLoggers();
     while (loggerEnumeration.hasMoreElements()) {
-      org.apache.log4j.Logger logger = loggerEnumeration.nextElement();
+      Logger logger = loggerEnumeration.nextElement();
       if (searchPattern.matcher(logger.getName()).matches()) {
         Level level = logger.getLevel();
         matchedClasses.put(logger.getName(), level == null ? "" : level.toString());
@@ -184,5 +172,53 @@ public class DTLoggerFactory implements ILoggerFactory
     return ImmutableMap.copyOf(matchedClasses);
   }
 
-  private static final org.apache.log4j.Logger LOG = LogManager.getLogger(DTLoggerFactory.class);
+  private static class RepositorySelectorImpl implements RepositorySelector
+  {
+
+    private boolean initialized;
+    private Logger guard;
+    private Hierarchy hierarchy;
+
+    private RepositorySelectorImpl()
+    {
+      initialized = false;
+    }
+    private void initialize()
+    {
+      if (!initialized) {
+        LOG.info("initializing logger repository selector impl");
+        guard = LogManager.getRootLogger();
+        LogManager.setRepositorySelector(this, guard);
+        hierarchy = new LoggerRepositoryImpl(guard);
+        initialized = true;
+      }
+    }
+
+    @Override
+    public LoggerRepository getLoggerRepository()
+    {
+      return hierarchy;
+    }
+  }
+
+  private static class LoggerRepositoryImpl extends Hierarchy
+  {
+    /**
+     * Create a new logger hierarchy.
+     *
+     * @param root The root of the new hierarchy.
+     */
+    private LoggerRepositoryImpl(Logger root)
+    {
+      super(root);
+    }
+
+    @Override
+    public Logger getLogger(String name)
+    {
+      return super.getLogger(name, DTLoggerFactory.getInstance());
+    }
+  }
+
+  private static final Logger LOG = LogManager.getLogger(DTLoggerFactory.class);
 }
