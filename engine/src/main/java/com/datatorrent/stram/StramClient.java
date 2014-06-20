@@ -393,28 +393,6 @@ public class StramClient
       Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
       credentials.addToken(rmToken.getService(), rmToken);
 
-      // Get the license manager delegation token
-      /*
-      if (!YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
-        try {
-          String license = dag.getValue(LogicalPlan.LICENSE);
-          byte[] licenseBytes = Base64.decodeBase64(license);
-          LicenseObject licenseObject = License.getLicenseObject(licenseBytes);
-          String licenseId = licenseObject.getLicenseId();
-          LicensingAgentProtocolHelper.LicensingAgentProtocolInfo licensingAgentProtocolInfo = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, licenseRPCTimeout);
-          LicensingAgentProtocol protocol = licensingAgentProtocolInfo.protocol;
-          GetLicenseDelegationTokenRequest request = new GetLicenseDelegationTokenRequest();
-          request.setUser(UserGroupInformation.getLoginUser().getUserName());
-          GetLicenseDelegationTokenResponse response = protocol.getLicenseDelegationToken(request);
-          Token<LicenseDelegationTokenIdentifier> licenseToken = response.getDelegationToken();
-          credentials.addToken(licenseToken.getService(), licenseToken);
-        }
-        catch (Exception e) {
-          throw new YarnException(e);
-        }
-      }
-      */
-
       DataOutputBuffer dob = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dob);
       ByteBuffer fsTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
