@@ -1,2 +1,1 @@
 com.datatorrent.stram.security.StramDelegationTokenIdentifier
-com.datatorrent.stram.license.security.LicenseDelegationTokenIdentifier
