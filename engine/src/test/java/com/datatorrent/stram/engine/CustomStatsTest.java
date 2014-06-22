@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -16,7 +17,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Context.Counters;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Partitioner;
@@ -28,7 +28,6 @@ import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorSta
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import java.io.Serializable;
 
 public class CustomStatsTest
 {
@@ -36,7 +35,7 @@ public class CustomStatsTest
 
   public static class TestOperator extends TestGeneratorInputOperator implements Partitioner<TestOperator>, StatsListener
   {
-    static class TestOperatorStats implements Counters, Serializable
+    static class TestOperatorStats implements Serializable
     {
       private String message;
       private boolean attributeListenerCalled;
@@ -57,7 +56,7 @@ public class CustomStatsTest
     }
 
     private transient OperatorContext context;
-    private static Counters lastCustomStats = null;
+    private static Object lastCustomStats = null;
     private static Thread processStatsThread = null;
     private static Thread definePartitionsThread = null;
 

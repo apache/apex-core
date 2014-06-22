@@ -11,14 +11,14 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import javax.annotation.Nonnull;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.StringUtils;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.*;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -28,6 +28,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -39,6 +40,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+
+import static com.datatorrent.api.Context.CountersAggregator;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -220,6 +223,7 @@ public class PhysicalPlan implements Serializable
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
     private final Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
     private List<StatsListener> statsHandlers;
+    private CountersAggregator aggregator;
 
     /**
      * Operators that form a parallel partition
@@ -467,6 +471,9 @@ public class PhysicalPlan implements Serializable
       }
       m.statsHandlers.add(new StatsListenerProxy(m.logicalOperator));
     }
+
+    m.aggregator = m.logicalOperator.getAttributes().contains(OperatorContext.COUNTERS_AGGREGATOR)
+      ? m.logicalOperator.getValue(OperatorContext.COUNTERS_AGGREGATOR) : null;
 
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
@@ -898,7 +905,7 @@ public class PhysicalPlan implements Serializable
    * Occurs when adding new partition or new logical stream.
    * Does nothing if source was already setup (on add sink to existing stream).
    * @param mapping
-   * @param pOperator
+   * @param oper
    * @param outputEntry
    */
   private void setupOutput(PMapping mapping, PTOperator oper, Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry)
@@ -1251,7 +1258,6 @@ public class PhysicalPlan implements Serializable
 
   public void onStatusUpdate(PTOperator oper)
   {
-    oper.getOperatorMeta().getStatus().counters.clear();
     for (StatsListener l : oper.statsListeners) {
       final StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
@@ -1276,9 +1282,39 @@ public class PhysicalPlan implements Serializable
             ctx.dispatch(r);
           }
         }
-        oper.getOperatorMeta().getStatus().counters.add(rsp.aggregatedCounters);
       }
     }
+  }
+
+  /**
+   * Aggregates physical counters
+   * @param operators
+   */
+  public void aggregatePhysicalCounters(Set<PTOperator> operators)
+  {
+    Multimap<OperatorMeta, Object> physicalCountersPerLogical = ArrayListMultimap.create();
+    for (PTOperator operator : operators) {
+      if (operator.lastSeenCounters != null) {
+        physicalCountersPerLogical.put(operator.getOperatorMeta(), operator.lastSeenCounters);
+      }
+    }
+    for (OperatorMeta logical : physicalCountersPerLogical.keySet()) {
+      PMapping pMapping = logicalToPTOperator.get(logical);
+      if (pMapping.aggregator != null) {
+        Collection<Object> physicalCounters = physicalCountersPerLogical.get(logical);
+        logical.getStatus().counters = pMapping.aggregator.aggregate(physicalCounters);
+      }
+    }
+  }
+
+  /**
+   * @param logicalOperator logical operator
+   * @return any aggregator associated with the operator
+   */
+  @Nonnull
+  public CountersAggregator getCountersAggregatorFor(OperatorMeta logicalOperator)
+  {
+    return logicalToPTOperator.get(logicalOperator).aggregator;
   }
 
   /**

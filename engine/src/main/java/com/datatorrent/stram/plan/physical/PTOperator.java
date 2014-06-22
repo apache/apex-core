@@ -9,11 +9,9 @@ import java.util.*;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
@@ -112,7 +110,6 @@ public class PTOperator implements java.io.Serializable
     /**
      * Constructor
      *
-     * @param plan
      * @param portName
      * @param logicalStream
      * @param source
@@ -189,7 +186,7 @@ public class PTOperator implements java.io.Serializable
 
   final HashMap<InputPortMeta, PTOperator> upstreamMerge = new HashMap<InputPortMeta, PTOperator>();
 
-  public Context.Counters lastSeenCounters;
+  public transient Object lastSeenCounters;
 
   /**
    *

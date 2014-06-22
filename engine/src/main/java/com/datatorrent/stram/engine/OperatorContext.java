@@ -82,7 +82,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   }
 
   @Override
-  public void setCounters(Counters stats)
+  public void setCounters(Object stats)
   {
     this.counters = stats;
   }

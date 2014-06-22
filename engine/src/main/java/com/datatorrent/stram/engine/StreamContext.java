@@ -62,7 +62,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
   }
 
   @Override
-  public void setCounters(Counters counters)
+  public void setCounters(Object counters)
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
