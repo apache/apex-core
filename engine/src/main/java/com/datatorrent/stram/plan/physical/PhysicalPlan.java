@@ -11,19 +11,21 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.*;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
@@ -1288,30 +1290,25 @@ public class PhysicalPlan implements Serializable
 
   /**
    * Aggregates physical counters
-   * @param operators
+   * @param logicalOperator
    */
-  public void aggregatePhysicalCounters(Set<PTOperator> operators)
+  public void aggregatePhysicalCounters(OperatorMeta logicalOperator)
   {
-    Multimap<OperatorMeta, Object> physicalCountersPerLogical = ArrayListMultimap.create();
-    for (PTOperator operator : operators) {
-      if (operator.lastSeenCounters != null) {
-        physicalCountersPerLogical.put(operator.getOperatorMeta(), operator.lastSeenCounters);
+    PMapping pMapping = logicalToPTOperator.get(logicalOperator);
+    List<Object> physicalCounters = Lists.newArrayList();
+    for(PTOperator ptOperator : pMapping.getAllOperators()){
+      if (ptOperator.lastSeenCounters != null) {
+        physicalCounters.add(ptOperator.lastSeenCounters);
       }
     }
-    for (OperatorMeta logical : physicalCountersPerLogical.keySet()) {
-      PMapping pMapping = logicalToPTOperator.get(logical);
-      if (pMapping.aggregator != null) {
-        Collection<Object> physicalCounters = physicalCountersPerLogical.get(logical);
-        logical.getStatus().counters = pMapping.aggregator.aggregate(physicalCounters);
-      }
-    }
+    logicalOperator.getStatus().counters = pMapping.aggregator.aggregate(physicalCounters);
   }
 
   /**
    * @param logicalOperator logical operator
    * @return any aggregator associated with the operator
    */
-  @Nonnull
+  @Nullable
   public CountersAggregator getCountersAggregatorFor(OperatorMeta logicalOperator)
   {
     return logicalToPTOperator.get(logicalOperator).aggregator;

@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -53,6 +52,7 @@ import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -585,9 +585,11 @@ public class StreamingContainerManager implements PlanContext
       if (o.statsListeners != null) {
         plan.onStatusUpdate(o);
       }
+      if (plan.getCountersAggregatorFor(o.getOperatorMeta()) != null) {
+        plan.aggregatePhysicalCounters(o.getOperatorMeta());
+      }
       reportStats.remove(o);
     }
-    plan.aggregatePhysicalCounters(reportStats.keySet());
     if (!eventQueue.isEmpty()) {
       for (PTOperator oper : plan.getAllOperators().values()) {
         if (oper.getState() != PTOperator.State.ACTIVE) {
