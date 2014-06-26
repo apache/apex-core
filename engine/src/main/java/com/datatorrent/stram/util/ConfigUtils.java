@@ -98,10 +98,10 @@ public class ConfigUtils
   {
     String logDirs = conf.get(YarnConfiguration.NM_LOG_DIRS);
     if (logDirs.startsWith("${yarn.log.dir}")) {
-      return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirs.substring("${yarn.log.dir}".length()) + "/" + appId + "/" + containerId + "/";
+      return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirs.substring("${yarn.log.dir}".length()) + "/" + appId + "/" + containerId;
     }
     else if (logDirs.startsWith(getYarnLogDir())) {
-      return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirs.substring(getYarnLogDir().length()) + "/" + appId + "/" + containerId + "/";
+      return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirs.substring(getYarnLogDir().length()) + "/" + appId + "/" + containerId;
     }
     return null;
   }
