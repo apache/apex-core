@@ -37,5 +37,4 @@ public class LogicalOperatorInfo
   public Set<Integer> partitions;
   public Set<Integer> unifiers;
   public Set<String> hosts;
-  public Object counters;
 }

@@ -26,5 +26,4 @@ public class LogicalOperatorStatus implements Serializable
   public long totalTuplesProcessed = 0;
   public long totalTuplesEmitted = 0;
   public long failureCount = 0;
-  public Object counters;
 }

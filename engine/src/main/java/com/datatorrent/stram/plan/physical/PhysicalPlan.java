@@ -1291,8 +1291,9 @@ public class PhysicalPlan implements Serializable
   /**
    * Aggregates physical counters
    * @param logicalOperator
+   * @return aggregated counters
    */
-  public void aggregatePhysicalCounters(OperatorMeta logicalOperator)
+  public Object aggregatePhysicalCounters(OperatorMeta logicalOperator)
   {
     PMapping pMapping = logicalToPTOperator.get(logicalOperator);
     List<Object> physicalCounters = Lists.newArrayList();
@@ -1301,7 +1302,13 @@ public class PhysicalPlan implements Serializable
         physicalCounters.add(ptOperator.lastSeenCounters);
       }
     }
-    logicalOperator.getStatus().counters = pMapping.aggregator.aggregate(physicalCounters);
+    try {
+      return pMapping.aggregator.aggregate(physicalCounters);
+    }
+    catch (Throwable t) {
+      LOG.error("Caught exception when aggregating counters:", t);
+      return null;
+    }
   }
 
   /**

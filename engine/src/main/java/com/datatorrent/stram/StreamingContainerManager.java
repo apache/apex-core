@@ -1818,7 +1818,6 @@ public class StreamingContainerManager implements PlanContext
         loi.hosts.add(physicalOperator.getContainer().host);
       }
     }
-    loi.counters = operator.getStatus().counters;
     return loi;
   }
 
@@ -1914,6 +1913,9 @@ public class StreamingContainerManager implements PlanContext
     oai.tuplesEmittedPSMA.put(Type.SUM, tuplesEmittedPSMATotal);
     oai.tuplesProcessedPSMA.put(Type.AVG, Math.round((double)tuplesProcessedPSMATotal / count));
     oai.tuplesProcessedPSMA.put(Type.SUM, tuplesProcessedPSMATotal);
+    if (plan.getCountersAggregatorFor(operator) != null) {
+      oai.counters = plan.aggregatePhysicalCounters(operator);
+    }
     return oai;
   }
 
