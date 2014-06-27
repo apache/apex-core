@@ -585,9 +585,6 @@ public class StreamingContainerManager implements PlanContext
       if (o.statsListeners != null) {
         plan.onStatusUpdate(o);
       }
-      if (plan.getCountersAggregatorFor(o.getOperatorMeta()) != null) {
-        plan.aggregatePhysicalCounters(o.getOperatorMeta());
-      }
       reportStats.remove(o);
     }
     if (!eventQueue.isEmpty()) {
