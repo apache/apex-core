@@ -5,6 +5,22 @@
 package com.datatorrent.stram.plan.logical;
 
 
+import java.io.*;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
+
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
@@ -12,18 +28,8 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
+
 import com.datatorrent.stram.FSStorageAgent;
-import com.google.common.collect.Sets;
-import java.io.*;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import javax.validation.*;
-import javax.validation.constraints.NotNull;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -103,7 +109,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public void setCounters(Counters counters)
+  public void setCounters(Object counters)
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
@@ -164,7 +170,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public void setCounters(Counters counters)
+    public void setCounters(Object counters)
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
@@ -237,7 +243,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public void setCounters(Counters counters)
+    public void setCounters(Object counters)
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
@@ -525,7 +531,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public void setCounters(Counters counters)
+    public void setCounters(Object counters)
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }

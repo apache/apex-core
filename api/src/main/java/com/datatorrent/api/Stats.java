@@ -18,7 +18,6 @@ package com.datatorrent.api;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-import com.datatorrent.api.Context.Counters;
 
 /**
  * <p>Stats interface.</p>
@@ -41,7 +40,7 @@ public interface Stats extends Serializable
     public ArrayList<PortStats> inputPorts;
     public ArrayList<PortStats> outputPorts;
     public long cpuTimeUsed;
-    public Counters counters;
+    public Object counters;
     /**
      * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
      * INVALID_TIME_MILLIS otherwise.
