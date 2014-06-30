@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -75,6 +76,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
@@ -91,8 +93,8 @@ public class StreamingAppMasterService extends CompositeService
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMasterService.class);
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 365 * 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 365 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE/2;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE/2;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
@@ -771,8 +773,16 @@ public class StreamingAppMasterService extends CompositeService
           releasedContainers.add(allocatedContainer.getId());
         }
         else {
-          this.allocatedContainers.put(allocatedContainer.getId().toString(), new AllocatedContainer(allocatedContainer));
-          ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
+          AllocatedContainer allocatedContainerHolder = new AllocatedContainer(allocatedContainer);
+          this.allocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainerHolder);
+          ByteBuffer tokens = null;
+          if (UserGroupInformation.isSecurityEnabled()) {
+            UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+            Token<StramDelegationTokenIdentifier> delegationToken = allocateDelegationToken(ugi.getUserName(), heartbeatListener.getAddress());
+            allocatedContainerHolder.delegationToken = delegationToken;
+            //ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
+            tokens = LaunchContainerRunnable.getTokens(ugi, delegationToken);
+          }
           LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
           // launchThreads.add(launchThread);
@@ -800,6 +810,10 @@ public class StreamingAppMasterService extends CompositeService
         assert (containerStatus.getState() == ContainerState.COMPLETE);
 
         AllocatedContainer allocatedContainer = allocatedContainers.remove(containerStatus.getContainerId().toString());
+        if (allocatedContainer.delegationToken != null) {
+          UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+          delegationTokenManager.cancelToken(allocatedContainer.delegationToken, ugi.getUserName());
+        }
         int exitStatus = containerStatus.getExitStatus();
         if (0 != exitStatus) {
           if (allocatedContainer != null) {
@@ -876,6 +890,15 @@ public class StreamingAppMasterService extends CompositeService
     }
     LOG.info("diagnostics: " + finishReq.getDiagnostics());
     amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
+  }
+
+  private Token<StramDelegationTokenIdentifier> allocateDelegationToken(String username, InetSocketAddress address)
+  {
+    StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(username), new Text(""), new Text(""));
+    String service = address.getAddress().getHostAddress() + ":" + address.getPort();
+    Token<StramDelegationTokenIdentifier> stramToken = new Token<StramDelegationTokenIdentifier>(identifier, delegationTokenManager);
+    stramToken.setService(new Text(service));
+    return stramToken;
   }
 
   /**
@@ -1006,6 +1029,7 @@ public class StreamingAppMasterService extends CompositeService
   {
     final private Container container;
     private boolean stopRequested;
+    private Token<StramDelegationTokenIdentifier> delegationToken;
 
     private AllocatedContainer(Container c)
     {

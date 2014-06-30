@@ -261,17 +261,23 @@ public class LaunchContainerRunnable implements Runnable
 
   }
 
-  public static ByteBuffer getTokens(StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
+  public static ByteBuffer getTokens(StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress) throws IOException
   {
     if (UserGroupInformation.isSecurityEnabled()) {
-      Token<StramDelegationTokenIdentifier> stramToken;
-      try {
-        UserGroupInformation ugi = UserGroupInformation.getLoginUser();
-        StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
-        byte[] password = delegationTokenManager.addIdentifier(identifier);
-        String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
-        stramToken = new Token<StramDelegationTokenIdentifier>(identifier.getBytes(), password, identifier.getKind(), new Text(service));
+      UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+      StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
+      String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
+      Token<StramDelegationTokenIdentifier> stramToken = new Token<StramDelegationTokenIdentifier>(identifier, delegationTokenManager);
+      stramToken.setService(new Text(service));
+      return getTokens(ugi, stramToken);
+    }
+    return null;
+  }
 
+  public static ByteBuffer getTokens(UserGroupInformation ugi, Token<StramDelegationTokenIdentifier> delegationToken)
+  {
+    if (UserGroupInformation.isSecurityEnabled()) {
+      try {
         Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
         Credentials credentials = new Credentials();
         for (Token<? extends TokenIdentifier> token : tokens) {
@@ -280,7 +286,7 @@ public class LaunchContainerRunnable implements Runnable
             LOG.info("Passing container token {}", token);
           }
         }
-        credentials.addToken(stramToken.getService(), stramToken);
+        credentials.addToken(delegationToken.getService(), delegationToken);
         DataOutputBuffer dataOutput = new DataOutputBuffer();
         credentials.writeTokenStorageToStream(dataOutput);
         byte[] tokenBytes = dataOutput.getData();

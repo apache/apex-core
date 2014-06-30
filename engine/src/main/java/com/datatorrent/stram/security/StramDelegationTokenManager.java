@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram.security;
 
-import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
-
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager;
 
 /**
@@ -22,23 +20,12 @@ public class StramDelegationTokenManager extends AbstractDelegationTokenSecretMa
     super(delegationKeyUpdateInterval,delegationTokenMaxLifetime,delegationTokenRenewInterval,delegationTokenRemoverScanInterval);
   }
 
-  public byte[] addIdentifier(StramDelegationTokenIdentifier identifier) throws InvalidToken
-  {
-    byte[] password = null;
-    try {
-      password = retrievePassword(identifier);
-    } catch (InvalidToken iv) {
-    }
-    if (password == null) {
-      password = createPassword(identifier);
-    }
-    return password;
-  }
-
   @Override
   public StramDelegationTokenIdentifier createIdentifier()
   {
     return new StramDelegationTokenIdentifier();
   }
+
+  // save the tokens
 
 }
