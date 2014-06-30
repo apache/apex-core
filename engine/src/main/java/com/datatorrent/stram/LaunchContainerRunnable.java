@@ -276,28 +276,25 @@ public class LaunchContainerRunnable implements Runnable
 
   public static ByteBuffer getTokens(UserGroupInformation ugi, Token<StramDelegationTokenIdentifier> delegationToken)
   {
-    if (UserGroupInformation.isSecurityEnabled()) {
-      try {
-        Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
-        Credentials credentials = new Credentials();
-        for (Token<? extends TokenIdentifier> token : tokens) {
-          if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
-            credentials.addToken(token.getService(), token);
-            LOG.info("Passing container token {}", token);
-          }
+    try {
+      Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
+      Credentials credentials = new Credentials();
+      for (Token<? extends TokenIdentifier> token : tokens) {
+        if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
+          credentials.addToken(token.getService(), token);
+          LOG.info("Passing container token {}", token);
         }
-        credentials.addToken(delegationToken.getService(), delegationToken);
-        DataOutputBuffer dataOutput = new DataOutputBuffer();
-        credentials.writeTokenStorageToStream(dataOutput);
-        byte[] tokenBytes = dataOutput.getData();
-        ByteBuffer cTokenBuf = ByteBuffer.wrap(tokenBytes);
-        return cTokenBuf.duplicate();
       }
-      catch (IOException e) {
-        throw new RuntimeException("Error generating delegation token", e);
-      }
+      credentials.addToken(delegationToken.getService(), delegationToken);
+      DataOutputBuffer dataOutput = new DataOutputBuffer();
+      credentials.writeTokenStorageToStream(dataOutput);
+      byte[] tokenBytes = dataOutput.getData();
+      ByteBuffer cTokenBuf = ByteBuffer.wrap(tokenBytes);
+      return cTokenBuf.duplicate();
     }
-    return null;
+    catch (IOException e) {
+      throw new RuntimeException("Error generating delegation token", e);
+    }
   }
 
 }
