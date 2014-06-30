@@ -24,7 +24,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
    */
   public final AttributeMap attributes;
   public final Context parentContext; // may be we do not need to serialize parentContext!
-  public Counters counters;
+  public Object counters;
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
@@ -49,7 +49,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   }
 
   @Override
-  public void setCounters(Counters counters)
+  public void setCounters(Object counters)
   {
     this.counters = counters;
   }

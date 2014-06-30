@@ -11,23 +11,26 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.annotation.Nullable;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.StringUtils;
-
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -39,6 +42,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+
+import static com.datatorrent.api.Context.CountersAggregator;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -220,6 +225,7 @@ public class PhysicalPlan implements Serializable
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
     private final Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
     private List<StatsListener> statsHandlers;
+    private CountersAggregator aggregator;
 
     /**
      * Operators that form a parallel partition
@@ -467,6 +473,9 @@ public class PhysicalPlan implements Serializable
       }
       m.statsHandlers.add(new StatsListenerProxy(m.logicalOperator));
     }
+
+    m.aggregator = m.logicalOperator.getAttributes().contains(OperatorContext.COUNTERS_AGGREGATOR)
+      ? m.logicalOperator.getValue(OperatorContext.COUNTERS_AGGREGATOR) : null;
 
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
@@ -898,7 +907,7 @@ public class PhysicalPlan implements Serializable
    * Occurs when adding new partition or new logical stream.
    * Does nothing if source was already setup (on add sink to existing stream).
    * @param mapping
-   * @param pOperator
+   * @param oper
    * @param outputEntry
    */
   private void setupOutput(PMapping mapping, PTOperator oper, Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry)
@@ -1251,7 +1260,6 @@ public class PhysicalPlan implements Serializable
 
   public void onStatusUpdate(PTOperator oper)
   {
-    oper.getOperatorMeta().getStatus().counters.clear();
     for (StatsListener l : oper.statsListeners) {
       final StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
@@ -1276,9 +1284,41 @@ public class PhysicalPlan implements Serializable
             ctx.dispatch(r);
           }
         }
-        oper.getOperatorMeta().getStatus().counters.add(rsp.aggregatedCounters);
       }
     }
+  }
+
+  /**
+   * Aggregates physical counters
+   * @param logicalOperator
+   * @return aggregated counters
+   */
+  public Object aggregatePhysicalCounters(OperatorMeta logicalOperator)
+  {
+    PMapping pMapping = logicalToPTOperator.get(logicalOperator);
+    List<Object> physicalCounters = Lists.newArrayList();
+    for(PTOperator ptOperator : pMapping.getAllOperators()){
+      if (ptOperator.lastSeenCounters != null) {
+        physicalCounters.add(ptOperator.lastSeenCounters);
+      }
+    }
+    try {
+      return pMapping.aggregator.aggregate(physicalCounters);
+    }
+    catch (Throwable t) {
+      LOG.error("Caught exception when aggregating counters:", t);
+      return null;
+    }
+  }
+
+  /**
+   * @param logicalOperator logical operator
+   * @return any aggregator associated with the operator
+   */
+  @Nullable
+  public CountersAggregator getCountersAggregatorFor(OperatorMeta logicalOperator)
+  {
+    return logicalToPTOperator.get(logicalOperator).aggregator;
   }
 
   /**

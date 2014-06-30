@@ -27,7 +27,6 @@ import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
 
 /**
- *
  * The base interface for context for all of the streaming platform objects<p>
  * <br>
  *
@@ -59,7 +58,7 @@ public interface Context
    *
    * @param counters
    */
-  void setCounters(Counters counters);
+  void setCounters(Object counters);
 
   /**
    * Custom operator stats that can be defined by an operator implementation to communicate information from the
@@ -67,10 +66,17 @@ public interface Context
    * <p>
    * Implementation needs to be {@link java.io.Serializable} and, if desired, can implement
    * {@link java.io.Externalizable} to use an alternative serialization mechanism.
+   *
+   * @deprecated Custom counters do not need to implement this interface any longer.
    */
   @SuppressWarnings("MarkerInterface")
   interface Counters
   {
+  }
+
+  interface CountersAggregator
+  {
+   Object aggregate(Collection<?> countersList);
   }
 
   public interface PortContext extends Context
@@ -234,6 +240,11 @@ public interface Context
      * is used otherwise default default partitioning is used.
      */
     Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
+
+    /**
+     * Aggregates physical counters to a logical counter.
+     */
+    Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
 
     /**
      * Return the operator runtime id.

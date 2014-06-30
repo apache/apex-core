@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -40,7 +39,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.Context.Counters;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -54,9 +52,13 @@ import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.WindowGenerator;
-import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.plan.physical.*;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -573,17 +575,18 @@ public class StreamingContainerManager implements PlanContext
       o.stats.lastWindowedStats = stats;
       if (o.stats.lastWindowedStats != null) {
         for (int i = o.stats.lastWindowedStats.size() - 1; i >= 0; i--) {
-          Counters counters = o.stats.lastWindowedStats.get(i).counters;
+          Object counters = o.stats.lastWindowedStats.get(i).counters;
           if (counters != null) {
             o.lastSeenCounters = counters;
             break;
           }
         }
       }
-      plan.onStatusUpdate(o);
+      if (o.statsListeners != null) {
+        plan.onStatusUpdate(o);
+      }
       reportStats.remove(o);
     }
-
     if (!eventQueue.isEmpty()) {
       for (PTOperator oper : plan.getAllOperators().values()) {
         if (oper.getState() != PTOperator.State.ACTIVE) {
@@ -1185,7 +1188,7 @@ public class StreamingContainerManager implements PlanContext
           //LOG.warn("This timestamp for {} is lower than the previous!! {} < {}", oper.getId(), maxEndWindowTimestamp, lastMaxEndWindowTimestamp);
         }
         operatorLastEndWindowTimestamps.put(oper.getId(), maxEndWindowTimestamp);
-        if (oper.statsListeners != null) {
+        if (oper.statsListeners != null || plan.getCountersAggregatorFor(logicalOperator) != null) {
           status.listenerStats.add(statsList);
           this.reportStats.put(oper, oper);
         }
@@ -1812,7 +1815,6 @@ public class StreamingContainerManager implements PlanContext
         loi.hosts.add(physicalOperator.getContainer().host);
       }
     }
-    loi.counters = operator.getStatus().counters;
     return loi;
   }
 
@@ -1908,6 +1910,9 @@ public class StreamingContainerManager implements PlanContext
     oai.tuplesEmittedPSMA.put(Type.SUM, tuplesEmittedPSMATotal);
     oai.tuplesProcessedPSMA.put(Type.AVG, Math.round((double)tuplesProcessedPSMATotal / count));
     oai.tuplesProcessedPSMA.put(Type.SUM, tuplesProcessedPSMATotal);
+    if (plan.getCountersAggregatorFor(operator) != null) {
+      oai.counters = plan.aggregatePhysicalCounters(operator);
+    }
     return oai;
   }
 

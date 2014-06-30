@@ -14,13 +14,13 @@ public class OperatorAggregationInfo
 {
   public static enum Type { MIN, MAX, AVG, SUM };
   public String name;
-  public EnumMap<Type, Long> tuplesProcessedPSMA = new EnumMap<Type, Long>(Type.class);;
-  public EnumMap<Type, Long> tuplesEmittedPSMA = new EnumMap<Type, Long>(Type.class);;
-  public EnumMap<Type, Double> cpuPercentageMA = new EnumMap<Type, Double>(Type.class);;
-  public EnumMap<Type, Long> latencyMA = new EnumMap<Type, Long>(Type.class);;
-  public EnumMap<Type, Long> lastHeartbeat = new EnumMap<Type, Long>(Type.class);;
-  public EnumMap<Type, Long> failureCount = new EnumMap<Type, Long>(Type.class);;
-  public EnumMap<Type, Long> recoveryWindowId = new EnumMap<Type, Long>(Type.class);;
-  public EnumMap<Type, Long> currentWindowId = new EnumMap<Type, Long>(Type.class);;
-  public Map<String, EnumMap<Type, Number>> counters = new HashMap<String, EnumMap<Type, Number>>();
+  public EnumMap<Type, Long> tuplesProcessedPSMA = new EnumMap<Type, Long>(Type.class);
+  public EnumMap<Type, Long> tuplesEmittedPSMA = new EnumMap<Type, Long>(Type.class);
+  public EnumMap<Type, Double> cpuPercentageMA = new EnumMap<Type, Double>(Type.class);
+  public EnumMap<Type, Long> latencyMA = new EnumMap<Type, Long>(Type.class);
+  public EnumMap<Type, Long> lastHeartbeat = new EnumMap<Type, Long>(Type.class);
+  public EnumMap<Type, Long> failureCount = new EnumMap<Type, Long>(Type.class);
+  public EnumMap<Type, Long> recoveryWindowId = new EnumMap<Type, Long>(Type.class);
+  public EnumMap<Type, Long> currentWindowId = new EnumMap<Type, Long>(Type.class);
+  public Object counters;
 }

@@ -266,7 +266,7 @@ public class StramClientUtils
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       FileSystem fs = newFileSystemInstance(conf);
       // load global settings from DFS
-      File targetGlobalFile = new File(StramClientUtils.getBackupsDirectory(), StramClientUtils.DT_SITE_GLOBAL_XML_FILE);
+      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
                          new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
@@ -503,4 +503,16 @@ public class StramClientUtils
     }
   }
 
+  public static void copyFromLocalFileNoChecksum(FileSystem fs, File fromLocal, Path toDFS) throws IOException
+  {
+    // This is to void the hadoop FileSystem API to perform checksum on the local file
+    // This "feature" has caused a lot of headache because the local file can be copied from HDFS and modified,
+    // and the checksum will fail if the file is again copied to HDFS
+    try {
+      new File(fromLocal.getParentFile(), "." + fromLocal.getName() + ".crc").delete();
+    } catch (Exception ex) {
+      // ignore
+    }
+    fs.copyFromLocalFile(new Path(fromLocal.toURI()), toDFS);
+  }
 }

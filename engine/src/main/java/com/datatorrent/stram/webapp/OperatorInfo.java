@@ -13,7 +13,6 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.datatorrent.api.Context.Counters;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.annotation.RecordField;
 
@@ -56,7 +55,7 @@ public class OperatorInfo
   @RecordField(type="meta") public String unifierClass;
   @RecordField(type="meta") public String logicalName;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-  @RecordField(type="stats") public Counters counters;
+  @RecordField(type="stats") public Object counters;
 
   /**
    *

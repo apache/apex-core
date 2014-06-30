@@ -136,7 +136,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("attributes", portAttributeMap);
         rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
         for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
-          attributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
+          portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
         portList.add(portDetailMap);
       }
@@ -150,7 +150,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("attributes", portAttributeMap);
         rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
         for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
-          attributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
+          portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
         portList.add(portDetailMap);
       }
