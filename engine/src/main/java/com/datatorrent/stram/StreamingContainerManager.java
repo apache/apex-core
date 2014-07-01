@@ -17,6 +17,7 @@ import javax.annotation.Nullable;
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
 import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -208,7 +209,7 @@ public class StreamingContainerManager implements PlanContext
   {
     ContainerInfo ci = new ContainerInfo();
     ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
-    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
+    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_PORT.toString());
     ci.state = "ACTIVE";
     ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
     ci.numOperators = 0;
@@ -297,6 +298,7 @@ public class StreamingContainerManager implements PlanContext
     if (eventBus != null) {
       eventBus.shutdown();
     }
+    IOUtils.closeQuietly(containerFile);
   }
 
   public void subscribeToEvents(Object listener)

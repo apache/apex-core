@@ -4,6 +4,7 @@
 package com.datatorrent.stram.util;
 
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import org.apache.hadoop.conf.Configuration;
@@ -18,7 +19,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Yan <david@datatorrent.com>
  */
-public class FSJsonLineFile
+public class FSJsonLineFile implements Closeable
 {
   private final FileSystem fs;
   private final ObjectMapper objectMapper;
@@ -42,6 +43,12 @@ public class FSJsonLineFile
   {
     os.writeBytes(objectMapper.writeValueAsString(obj) + "\n");
     os.hflush();
+  }
+
+  @Override
+  public void close() throws IOException
+  {
+    fs.close();
   }
 
 }
