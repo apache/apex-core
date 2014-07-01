@@ -4,7 +4,7 @@
 
 package com.datatorrent.stram.webapp;
 
-import java.util.*;
+import com.datatorrent.api.NumberAggregate.*;
 
 /**
  *
@@ -12,15 +12,14 @@ import java.util.*;
  */
 public class OperatorAggregationInfo
 {
-  public static enum Type { MIN, MAX, AVG, SUM };
   public String name;
-  public EnumMap<Type, Long> tuplesProcessedPSMA = new EnumMap<Type, Long>(Type.class);
-  public EnumMap<Type, Long> tuplesEmittedPSMA = new EnumMap<Type, Long>(Type.class);
-  public EnumMap<Type, Double> cpuPercentageMA = new EnumMap<Type, Double>(Type.class);
-  public EnumMap<Type, Long> latencyMA = new EnumMap<Type, Long>(Type.class);
-  public EnumMap<Type, Long> lastHeartbeat = new EnumMap<Type, Long>(Type.class);
-  public EnumMap<Type, Long> failureCount = new EnumMap<Type, Long>(Type.class);
-  public EnumMap<Type, Long> recoveryWindowId = new EnumMap<Type, Long>(Type.class);
-  public EnumMap<Type, Long> currentWindowId = new EnumMap<Type, Long>(Type.class);
+  public LongAggregate tuplesProcessedPSMA = new LongAggregate();
+  public LongAggregate tuplesEmittedPSMA = new LongAggregate();
+  public DoubleAggregate cpuPercentageMA = new DoubleAggregate();
+  public LongAggregate latencyMA = new LongAggregate(true, false);
+  public LongAggregate lastHeartbeat = new LongAggregate(true, true);
+  public LongAggregate failureCount = new LongAggregate();
+  public LongAggregate recoveryWindowId = new LongAggregate(true, true);
+  public LongAggregate currentWindowId = new LongAggregate(true, true);
   public Object counters;
 }
