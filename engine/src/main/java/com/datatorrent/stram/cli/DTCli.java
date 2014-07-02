@@ -1581,7 +1581,11 @@ public class DTCli
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
     try {
-      return StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      if (wr == null) {
+        throw new CliException("Cannot access the application master for this application.");
+      }
+      return wr;
     }
     catch (IncompatibleVersionException ex) {
       throw new CliException("Incompatible Stram version", ex);
@@ -3640,6 +3644,9 @@ public class DTCli
     shell.run();
     if (lastCommandError) {
       System.exit(1);
+    }
+    else {
+      System.exit(0);
     }
   }
 
