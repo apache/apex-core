@@ -111,7 +111,7 @@ public abstract class NumberAggregate
     @Override
     public Number getMax()
     {
-      return max;
+      return (count == 0) ? null : max;
     }
 
     @Override
@@ -184,7 +184,7 @@ public abstract class NumberAggregate
     @Override
     public Number getMax()
     {
-      return max;
+      return (count == 0) ? null : max;
     }
 
     @Override
