@@ -3642,12 +3642,7 @@ public class DTCli
     DTCli shell = new DTCli();
     shell.init(args);
     shell.run();
-    if (lastCommandError) {
-      System.exit(1);
-    }
-    else {
-      System.exit(0);
-    }
+    System.exit(lastCommandError ? 1 : 0);
   }
 
 }
