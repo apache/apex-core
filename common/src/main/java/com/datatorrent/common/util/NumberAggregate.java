@@ -13,53 +13,56 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.api;
+package com.datatorrent.lib.util;
 
 /**
  * Utility class that gives aggregate information (i.e. min, max, avg, sum) with a set of numbers.
  *
  * @since 1.0.2
  */
-public abstract class NumberAggregate
+public interface NumberAggregate
 {
-  /**
-   * How many numbers are there at this point.
-   */
-  protected int count = 0;
-
   /**
    * Gets the minimum of the given numbers.
    *
    * @return The min
    */
-  public abstract Number getMin();
+  public Number getMin();
 
   /**
    * Gets the maximum of the given numbers
    *
    * @return The max
    */
-  public abstract Number getMax();
+  public Number getMax();
 
   /**
    * Gets the sum of the given numbers
    *
    * @return The sum
    */
-  public abstract Number getSum();
+  public Number getSum();
 
   /**
    * Gets the average of the given numbers
    *
    * @return The avg
    */
-  public abstract Number getAvg();
+  public Number getAvg();
+
+  /**
+   * Add a long to the number set
+   *
+   * @param num the number
+   */
+  public void addNumber(Number num);
 
   /**
    * This is the aggregate class for Long.
    */
-  public static class LongAggregate extends NumberAggregate
+  public static class LongAggregate implements NumberAggregate
   {
+    private int count = 0;
     private long min = Long.MAX_VALUE;
     private long max = Long.MIN_VALUE;
     private long sum = 0;
@@ -85,20 +88,17 @@ public abstract class NumberAggregate
       this.ignoreAvg = ignoreAvg;
     }
 
-    /**
-     * Add a long to the number set
-     *
-     * @param num the number
-     */
-    public void addNumber(long num)
+    @Override
+    public void addNumber(Number num)
     {
-      if (min > num) {
-        min = num;
+      long longVal = num.longValue();
+      if (min > longVal) {
+        min = longVal;
       }
-      if (max < num) {
-        max = num;
+      if (max < longVal) {
+        max = longVal;
       }
-      sum += num;
+      sum += longVal;
       count++;
     }
 
@@ -131,8 +131,9 @@ public abstract class NumberAggregate
   /**
    * This is the aggregate class for Double.
    */
-  public static class DoubleAggregate extends NumberAggregate
+  public static class DoubleAggregate implements NumberAggregate
   {
+    private int count = 0;
     private double min = Double.MAX_VALUE;
     private double max = Double.MIN_VALUE;
     private double sum = 0;
@@ -158,20 +159,17 @@ public abstract class NumberAggregate
       this.ignoreAvg = ignoreAvg;
     }
 
-    /**
-     * Add a double to the number set
-     *
-     * @param num the number
-     */
-    public void addNumber(double num)
+    @Override
+    public void addNumber(Number num)
     {
-      if (min > num) {
-        min = num;
+      double doubleVal = num.doubleValue();
+      if (min > doubleVal) {
+        min = doubleVal;
       }
-      if (max < num) {
-        max = num;
+      if (max < doubleVal) {
+        max = doubleVal;
       }
-      sum += num;
+      sum += doubleVal;
       count++;
     }
 
