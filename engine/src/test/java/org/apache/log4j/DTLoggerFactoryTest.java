@@ -3,7 +3,7 @@
  */
 package org.apache.log4j;
 
-import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Map;
 
 import junit.framework.Assert;
@@ -12,19 +12,22 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Maps;
-import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StreamingAppMaster;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.client.DTConfiguration;
+import com.datatorrent.stram.engine.StreamingContainer;
+import com.google.common.collect.Maps;
 
 public class DTLoggerFactoryTest
 {
 
   @BeforeClass
-  public static void setup() throws InterruptedException, IOException
+  public static void setup() throws Exception
   {
     System.setProperty(DTLoggerFactory.DT_LOGGERS_LEVEL, "com.datatorrent.stram.client.*:INFO,com.datatorrent.stram.api.*:DEBUG");
+    Field f = DTLoggerFactory.class.getDeclaredField("initialized");
+    f.setAccessible(true);
+    f.set(DTLoggerFactory.getInstance(), false);
     DTLoggerFactory.getInstance().initialize();
   }
 
