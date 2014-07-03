@@ -42,8 +42,10 @@ public class CustomStatsTest
       private static final long serialVersionUID = -8096838101190642798L;
     }
 
-    public static class TestStatsListener implements StatsListener
+    public static class TestStatsListener implements StatsListener, Serializable
     {
+      private static final long serialVersionUID = 1L;
+
       @Override
       public Response processStats(BatchedOperatorStats stats)
       {
