@@ -65,7 +65,6 @@ public class StramClient
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
-  private ClientRMHelper rmClient;
   private final YarnClient yarnClient = YarnClient.createYarnClient();
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
@@ -85,7 +84,6 @@ public class StramClient
   private String archives;
   private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
-  private final int licenseRPCTimeout = 10000;
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
@@ -294,7 +292,6 @@ public class StramClient
     if (libjars != null) {
       localJarFiles.addAll(libjars);
     }
-    rmClient = new ClientRMHelper(yarnClient);
     YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
             + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
@@ -638,6 +635,7 @@ public class StramClient
       }
 
     };
+    ClientRMHelper rmClient = new ClientRMHelper(yarnClient);
     return rmClient.waitForCompletion(appId, callback, clientTimeout);
   }
 
