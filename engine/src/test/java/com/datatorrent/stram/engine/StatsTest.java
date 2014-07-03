@@ -4,7 +4,9 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
@@ -21,7 +23,6 @@ import com.datatorrent.stram.engine.StatsTest.TestCollector.TestOutputStatsListe
 import com.datatorrent.stram.engine.StatsTest.TestOperator.TestInputStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import java.util.Arrays;
 
 /**
  * Tests the stats generated in the system.
@@ -44,7 +45,7 @@ public class StatsTest
     }
 
 
-    public static class TestInputStatsListener implements StatsListener
+    public static class TestInputStatsListener implements StatsListener, Serializable
     {
       @Override
       public Response processStats(BatchedOperatorStats stats)
@@ -69,7 +70,7 @@ public class StatsTest
       this.windowId = windowId;
     }
 
-    public static class TestOutputStatsListener implements StatsListener
+    public static class TestOutputStatsListener implements StatsListener, Serializable
     {
       @Override
       public Response processStats(BatchedOperatorStats stats)
