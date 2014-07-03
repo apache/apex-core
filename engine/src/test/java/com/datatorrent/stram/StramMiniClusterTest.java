@@ -123,16 +123,21 @@ public class StramMiniClusterTest
                                         1, 1, 1);
       yarnCluster.init(conf);
       yarnCluster.start();
-      URL url = Thread.currentThread().getContextClassLoader().getResource("yarn-site.xml");
-      if (url == null) {
-        LOG.error("Could not find 'yarn-site.xml' dummy file in classpath");
-        throw new RuntimeException("Could not find 'yarn-site.xml' dummy file in classpath");
-      }
-      yarnCluster.getConfig().set("yarn.application.classpath", new File(url.getPath()).getParent());
-      OutputStream os = new FileOutputStream(new File(url.getPath()));
-      yarnCluster.getConfig().writeXml(os);
-      os.close();
     }
+
+    conf = yarnCluster.getConfig();
+    URL url = Thread.currentThread().getContextClassLoader().getResource("yarn-site.xml");
+    if (url == null) {
+      LOG.error("Could not find 'yarn-site.xml' dummy file in classpath");
+      throw new RuntimeException("Could not find 'yarn-site.xml' dummy file in classpath");
+    }
+    File confFile = new File(url.getPath());
+    yarnCluster.getConfig().set("yarn.application.classpath", confFile.getParent());
+    OutputStream os = new FileOutputStream(confFile);
+    LOG.debug("Conf file: {}", confFile);
+    yarnCluster.getConfig().writeXml(os);
+    os.close();
+
     try {
       Thread.sleep(2000);
     }
