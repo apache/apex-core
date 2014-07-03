@@ -219,7 +219,7 @@ abstract public class StramTestSupport
       private static final long serialVersionUID = 201404091805L;
     }
 
-    HashMap<OperatorWindowIdPair, Object> store = new HashMap<OperatorWindowIdPair, Object>();
+    transient HashMap<OperatorWindowIdPair, Object> store = new HashMap<OperatorWindowIdPair, Object>();
 
     @Override
     public synchronized void save(Object object, int operatorId, long windowId) throws IOException
