@@ -16,8 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>FSJsonLineFile class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 1.0.2
  */
 public class FSJsonLineFile implements Closeable
 {

@@ -4,8 +4,10 @@
 package com.datatorrent.stram.util;
 
 /**
+ * <p>ByteArrayBuilder class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 1.0.2
  */
 public class ByteArrayBuilder
 {

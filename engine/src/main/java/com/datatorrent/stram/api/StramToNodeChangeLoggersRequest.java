@@ -6,6 +6,11 @@ package com.datatorrent.stram.api;
 import java.io.Serializable;
 import java.util.Map;
 
+/**
+ * <p>StramToNodeChangeLoggersRequest class.</p>
+ *
+ * @since 1.0.2
+ */
 public class StramToNodeChangeLoggersRequest extends StreamingContainerUmbilicalProtocol.StramToNodeRequest implements Serializable
 {
   private Map<String, String> targetChanges;

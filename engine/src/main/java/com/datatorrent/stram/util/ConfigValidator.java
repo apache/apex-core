@@ -7,6 +7,11 @@ import java.util.regex.Pattern;
 
 import org.apache.log4j.Level;
 
+/**
+ * <p>ConfigValidator class.</p>
+ *
+ * @since 1.0.2
+ */
 public class ConfigValidator
 {
   private static Pattern LOGGERS_PATTERN = Pattern.compile("^(\\w+\\.?)+(\\*|\\w+)$");

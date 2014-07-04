@@ -23,6 +23,7 @@ import com.google.common.collect.Maps;
  * An implementation of {@link LoggerFactory}
  *
  * @author chandni
+ * @since 1.0.2
  */
 public class DTLoggerFactory implements LoggerFactory
 {

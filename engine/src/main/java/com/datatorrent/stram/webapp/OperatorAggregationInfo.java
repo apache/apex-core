@@ -7,8 +7,10 @@ package com.datatorrent.stram.webapp;
 import com.datatorrent.lib.util.NumberAggregate.*;
 
 /**
+ * <p>OperatorAggregationInfo class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 1.0.2
  */
 public class OperatorAggregationInfo
 {
