@@ -185,6 +185,7 @@
                     <include>PubSubMessage.java</include>
                     <include>PubSubMessageCodec.java</include>
                     <include>PubSubWebSocketClient.java</include>
+                    <include>NumberAggregate.java</include>
                   </includes>
                 </resource>
               </resources>
