@@ -1,5 +1,257 @@
 #Release Notes - Streaming Platform
 
+## Version 1.0.2
+
+## Bug
+* [SPOI-431] - Fix mergeSort operator to actually do mergeSort
+* [SPOI-2499] - Provide license delegation tokens in secure environment
+* [SPOI-2500] - Provide new delegation token before an old one expires in secure enviroment
+* [SPOI-2501] - dt.log not written under CDH5 GA
+* [SPOI-2506] - [MapR]FileSystem.mkdirs() doesn't work for existing folders in MapRFileSystem
+* [SPOI-2605] - DT install as root cannot use /user/chetan/dt0528 as DFS location and not printing out detailed error
+* [SPOI-2608] - LicensingAppMaster's name should not be obfuscated
+* [SPOI-2617] - Memory usage counted by license agent and not released after app is killed
+* [SPOI-2619] - Front End Server - fill missing slots for time series
+* [SPOI-2630] - Not able to launch apps in cloudera cluster
+* [SPOI-2634] - Uninstall is removing entire datatorrent folder as opposed to the release folder only
+* [SPOI-2639] - dtcli allows apps to be launched before configuration is finished
+* [SPOI-2668] - Parent jira for Kafka work for 1.0.2
+* [SPOI-2678] - Put Fraud demo into the demo UI
+* [SPOI-2679] - Front End Server - Query ID as Query JSON
+* [SPOI-2683] - Appmaster Logs are not shown in the Console
+* [SPOI-2689] - set-operator-property produces NPE on stram 
+* [SPOI-2699] - Mobile demo app mis-behaving 
+* [SPOI-2703] - Gateway fails to start in devel mode with hadoop 2.3.0
+* [SPOI-2705] - Demo UI instructions missing from install README
+* [SPOI-2706] - Logical plan change fails w/ obfuscated build
+* [SPOI-2709] - Partition events should not be registered if same no. partitions result
+* [SPOI-2710] - Containers running the unifier are not released
+* [SPOI-2723] - Design and develop the File Ingestion app
+* [SPOI-2737] - Gateway installation replaces dt-site.xml with invalid version
+* [SPOI-2744] - ZIP of version's docs not being made available for download
+* [SPOI-2748] - dtdemos service fails to stop in sandbox
+* [SPOI-2749] - docs distribution files at root path
+* [SPOI-2759] - Installation instructions for user setup
+* [SPOI-2760] - Get container log content fails with 500
+* [SPOI-2761] - Remove dtadmin reference from install wizzard
+* [SPOI-2762] - EMR configuration issues
+* [SPOI-2779] - dtcli failed to read the license file which was uploaded through UI
+* [SPOI-2798] - Request for log content outside of range results in 500, long request time
+* [SPOI-2839] - set-operator-property broken in master
+
+## Improvement
+* [SPOI-2602] - Containers published via websocket should only contain live containers and recently finished containers
+* [SPOI-2610] - Parent: Automatic unobfuscation tool
+* [SPOI-2613] - Create web tool to run unobfuscator
+* [SPOI-2614] - Automate transfer of allatori-log.xml to web server
+* [SPOI-2712] - Add window_width to app info REST call
+* [SPOI-2736] - Merge /systemAlerts/alerts and /systemAlerts/inAlerts API calls
+* [SPOI-2751] - Include sandbox README.html with docs.zip and on website
+
+## New Feature
+* [SPOI-950] - Specify memory requirements on per operator basis (duplicate)
+* [SPOI-2220] - Gateway App Bundle API spec
+* [SPOI-2339] - Enable container size for each operator(s)
+* [SPOI-2515] - Ability to dynamically change the logger level for any instantiated loggers within the application
+* [SPOI-2523] - System alerts for application state and metrics
+* [SPOI-2525] - Add operator serialization check in local mode
+* [SPOI-2528] - Expose "counters" in REST API 
+* [SPOI-2575] - Kafka Pub/Sub Protocol
+* [SPOI-2588] - Record physical counters per window
+* [SPOI-2589] - Expose counters logical and physical through web services/ web socket
+* [SPOI-2606] - Initializing loggers with levels specified in the configuration
+* [SPOI-2627] - Front End Server - "Countdown" usage
+* [SPOI-2629] - Front End Server - Support of Multiple Partitions
+* [SPOI-2631] - Front End Server - Cache Expiration Strategy
+* [SPOI-2632] - Front End Server - Kafka Reconnect
+* [SPOI-2633] - Front End Server - Page Performance (Visibility API)
+* [SPOI-2638] - Front End Server - Kafka Errors Handling
+* [SPOI-2645] - Front End Server - Kafka SimpleConsumer
+* [SPOI-2652] - Develop and Stage Hadoop Summit Landing Page
+* [SPOI-2696] - Front End Server - Top N Metrics
+* [SPOI-2697] - Front End Server - Dynamic Publisher and Site
+* [SPOI-2698] - Front End Server - Kafka Troubleshooting
+* [SPOI-2752] - Front End Server - LRU Cache
+* [SPOI-2756] - Front End POC - Alert Modal
+* [SPOI-2804] - Create a hbase operator that uses a config to map incoming csv tuples to hbase table data and saves them in hbase
+
+## Story
+* [SPOI-2455] - HDFS storage layer for 1.0.2
+* [SPOI-2565] - Front End Server - Define cache policy for push data in Node.js
+* [SPOI-2567] - Parent jira for misc issues for 1.0.2
+* [SPOI-2571] - Parent jira for Hadoop Summit work
+* [SPOI-2590] - Parent: GA Testing
+* [SPOI-2611] - Parent jira for facilitating trouble shooting and debugging in 1.0.2
+* [SPOI-2615] - Parent jira for security work in 1.0.2
+* [SPOI-2662] - Parent jira for licensing security for 1.0.2
+* [SPOI-2664] - HDFS Storage, Ingestion, Access application data and file storage for 1.0.2
+* [SPOI-2667] - Automate distro certification and make it part of CI for 1.0.2
+* [SPOI-2781] - Determine which fields are present in output that are not present in input
+
+## Task
+* [SPOI-2341] - Update on authentication and authorization in Yarn-open source
+* [SPOI-2434] - Short document on deduper checkpointing scheme
+* [SPOI-2440] - Kafka support in POC for 1.0.2
+* [SPOI-2485] - Directory Scan Operator from Amla Pilot
+* [SPOI-2509] - Investigate how to use Kafka to replace the pub/sub mechanism in Gateway
+* [SPOI-2532] - Join Operator
+* [SPOI-2534] - Add support of getting container info of dead applications and dead containers
+* [SPOI-2535] - Add support for retrieving Aggregated Counters from Response processStats of StatsListener
+* [SPOI-2542] - Get user to look at instructions before .bin file download
+* [SPOI-2544] - Twitter demo "feedMultiplier" should be RW and test to ensure that it can be changed in runtime
+* [SPOI-2545] - Amla - Notifications should vanish quickly. Too disruptive
+* [SPOI-2548] - Memory gauge always shows 100%
+* [SPOI-2549] - Total memory on right corner needs to be discussed
+* [SPOI-2552] - Need to list certified Distros on site
+* [SPOI-2558] - Help set up Kafka operations
+* [SPOI-2568] - Making Kafka Producer Exactly Once
+* [SPOI-2569] - Add the Rewind Feature 
+* [SPOI-2573] - Integrate the Scoring of the quality logs  into the DAG
+* [SPOI-2574] - Add counter calculation in hdfs operator
+* [SPOI-2581] - Parent jira for cluster management in 1.0.2
+* [SPOI-2584] - DT counters as Key,Val (String,Number)
+* [SPOI-2585] - Troubleshooting work for reporting min, max, ave, ... on resources
+* [SPOI-2587] - Tracking Jira for moving Olive operators to Malhar
+* [SPOI-2591] - GA Testing: CDH5 end-to-end
+* [SPOI-2592] - GA Testing: HDP2 end-to-end
+* [SPOI-2593] - GA Testing: MapR end-to-end
+* [SPOI-2594] - GA Testing: UI end-to-end
+* [SPOI-2595] - GA Testing: dtcli / gateway end-to-end
+* [SPOI-2596] - GA Testing: Apache Hadoop end-to-end
+* [SPOI-2597] - GA Testing: High Availability / Recovery
+* [SPOI-2598] - GA Testing: Application configuration and launch
+* [SPOI-2599] - GA Testing: Sandbox functionality
+* [SPOI-2600] - GA Testing: Sandbox UX
+* [SPOI-2621] - Top 10 support
+* [SPOI-2622] - Partitioning of DimensionStore operator
+* [SPOI-2624] - Front End Server - Architecture
+* [SPOI-2626] - Setting up of number of partitions for Kafka Producer
+* [SPOI-2636] - Twitter demo app with hashtag top 10
+* [SPOI-2640] - Setup UI server for HDP grid for Hadoop Summit
+* [SPOI-2641] - Setup Ambari for Hadoop Summit Demo
+* [SPOI-2642] - Run Twitter demo on HDP cluster for Hadoop Summit
+* [SPOI-2643] - Setup Mobile demo for HDP demo at Hadoop Summit
+* [SPOI-2644] - Set up machine data demo on HDP cluster for Hadoop Summit
+* [SPOI-2646] - Setup Ads demo on HDP cluster for Hadoop Summit
+* [SPOI-2647] - Add the new Twitter HashTag top 10 demo to Frontend server for Summit
+* [SPOI-2650] - Change default license memory settings
+* [SPOI-2651] - Milestone 1 update
+* [SPOI-2670] - Launch twitter hashtags on CDH and HDP clusters
+* [SPOI-2671] - Update CDH cluster DT UI
+* [SPOI-2672] - Move the HDFSOutputOperator to Malhar Library
+* [SPOI-2676] - Get events, tuple records from kafka
+* [SPOI-2680] - Make more managable kafka cluster
+* [SPOI-2682] - Customer Demos Support
+* [SPOI-2685] - Automated distro certification - virtualization review
+* [SPOI-2686] - Automated distro certification - provisioning review
+* [SPOI-2687] - Certify DT on Pivotal HD
+* [SPOI-2688] - Make twitter HashTags links in demo
+* [SPOI-2690] - Upgrade security sections in guides
+* [SPOI-2700] - Test DimensionStore operator checkpointing and recovery
+* [SPOI-2714] - Document stram event types
+* [SPOI-2732] - Create a multi level key map with multiple keys
+* [SPOI-2733] - Create a CSV lookup class to load CSV and lookup values based on row keys
+* [SPOI-2735] - Ensure all dimemsions are implemented and covered by test
+* [SPOI-2763] - Create a csv parser framework that can handle the different csv file formats in Rainier
+* [SPOI-2764] - Create a template application
+* [SPOI-2765] - Create the template configuration file
+* [SPOI-2766] - Create kafka input for the application 
+* [SPOI-2767] - Add a directory scan operator that progressively scans for new folders and files for input data to the application
+* [SPOI-2768] - Add a kafka upload script to upload data to the application
+* [SPOI-2769] - Create an upload script that uploads application files to hdfs
+* [SPOI-2773] - Add a property to clear the aggregates in the AggregationsOperator
+* [SPOI-2785] - Include the input event string in the CDR event
+* [SPOI-2789] - Add query support for getting events for alerts
+* [SPOI-2790] - Scale the input events into millions
+* [SPOI-2792] - Send top 3 gateway list in alert event details
+* [SPOI-2793] - Add the capability to finalize a bucket 
+* [SPOI-2794] - Add ability to clear out old results when replaying data
+* [SPOI-2797] - Add query support to send the latest five minute buckets and aggregates
+* [SPOI-2800] - Install a kafka web-console in our cluster
+* [SPOI-2805] - Investigate yarn log aggregation to see how this fits into our container logs API
+
+## Sub-task
+* [SPOI-2725] - Create skeleton App
+* [SPOI-2728] - Convert the Skeleton Operators into Real Operators - Part I
+* [SPOI-2739] - File input operator
+* [SPOI-2740] - DAG level unit test
+* [SPOI-2776] - Test and Certify RPM packaging for Cloudera
+* [SPOI-2777] - Gateway throws a bunch of exceptions when trying to install using rpm
+
+
+## Bug
+* [MLHR-724] - RabbitMQ test timing issue
+* [MLHR-1128] - Breadcrumbs should say physical operator, not operator on port page
+* [MLHR-1129] - DAG should not display underneath controls
+* [MLHR-1137] - Memory gauge always shows 100%
+* [MLHR-1142] - Front End Server - Kafka Reconnect
+* [MLHR-1143] - KafkaOutputOperator is not configurable for Kafka Producer properties
+* [MLHR-1144] - Container Actions - use wording that's not confusing
+* [MLHR-1157] - Parent JIRA for Front End Server
+* [MLHR-1159] - Stop Recording function does not give visual indication of stopped recording unless refreshed
+* [MLHR-1169] - Update readme for console repo
+* [MLHR-1170] - Appmaster Logs are not shown in the Console
+* [MLHR-1185] - Stram Event widget should check physical plan for existence of operator
+* [MLHR-1186] - some numbers in logical dag hidden behind control
+* [MLHR-1189] - AbstractHdfsTupleFileOutputOperator output port is not optional
+* [MLHR-1192] - Parametrize the demos
+* [MLHR-1195] - App master container is not showing proper metrics
+* [MLHR-1202] - failureCount missing for physical operators
+
+## Improvement
+* [MLHR-1132] - Improvements to errors in the stram events widget
+* [MLHR-1146] - Only get active containers for initial container list
+* [MLHR-1167] - UI support for searching log levels of classes
+* [MLHR-1168] - Validate input for log level widget
+* [MLHR-1194] - Align app counts with labels in cluster overview widget
+* [MLHR-1209] - Support JMS providers other than ActiveMQ
+
+## New Feature
+* [MLHR-921] - Installer - List of Errors/Codes
+* [MLHR-1111] - Container Log Widget, using new REST call
+* [MLHR-1121] - Front End Server - Kafka Query JSON
+* [MLHR-1122] - Front End Server - Kafka Keep Alive
+* [MLHR-1123] - Front End Server - Kafka Parameterized Queries
+* [MLHR-1124] - Front End Server - Kafka Response Debug/Format
+* [MLHR-1125] - Front End Server - Kafka Pub/Sub Protocol for Widgets
+* [MLHR-1130] - Widget to change the log levels of classes dynamically
+* [MLHR-1133] - Put "float" control in widget config popup
+* [MLHR-1134] - Front End Server - Editable JSON request
+* [MLHR-1135] - Front End Server - Setup Instructions
+* [MLHR-1136] - Front End Server - Packaging/Distribution
+* [MLHR-1147] - Front End Server - Selecting Metrics
+* [MLHR-1149] - Front End Server - Use Latest Kafka Offset
+* [MLHR-1151] - Front End Server - Data Validation
+* [MLHR-1152] - Front End Server - Page Performance (Visibility API)
+* [MLHR-1175] - Widget Library - Select Widget
+* [MLHR-1179] - AngularJS Migration - Application Instance Page
+* [MLHR-1181] - AngularJS Migration - Application Overview Widget
+* [MLHR-1182] - Angular JS Migration - App Structure
+* [MLHR-1187] - UI for adding system alerts
+* [MLHR-1193] - Create Basic Counters and its aggregator in library
+
+## Story
+* [MLHR-1178] - AngularJS Migration for 1.0.2
+
+## Task
+* [MLHR-960] - Create a Tableau output adapter
+* [MLHR-1090] - Create first resource objects (models) for angular console
+* [MLHR-1106] - Improve ended app page
+* [MLHR-1139] - Add HTTP Get Operator
+* [MLHR-1140] - Add HDFS output operator that writes to file names specified in tuple
+* [MLHR-1160] - Create HDFS Output Operator to write with exactly once semantics
+* [MLHR-1162] - Implement app list with angular
+* [MLHR-1164] - Wireframe for UI DAG builder
+* [MLHR-1171] - Make twitter hashTab a link in twitter demo
+* [MLHR-1172] - Create a Cassandra read operator
+* [MLHR-1173] - Create a Cassandra write operator
+
+## Sub-task
+* [MLHR-1163] - Wireframe for DAG builder
+
+
+
+
 ## Version 1.0.1
 
 ## Bug
