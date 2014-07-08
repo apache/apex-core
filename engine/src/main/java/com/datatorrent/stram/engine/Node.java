@@ -306,10 +306,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
-      controlTupleCount = 0;
       portStats.endWindowTimestamp = endWindowEmitTime;
       stats.outputPorts.add(portStats);
     }
+    controlTupleCount = 0;
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;

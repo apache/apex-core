@@ -47,6 +47,7 @@ public class StatsTest
 
     public static class TestInputStatsListener implements StatsListener, Serializable
     {
+      private static final long serialVersionUID = 1L;
       @Override
       public Response processStats(BatchedOperatorStats stats)
       {
@@ -72,6 +73,7 @@ public class StatsTest
 
     public static class TestOutputStatsListener implements StatsListener, Serializable
     {
+      private static final long serialVersionUID = 1L;
       @Override
       public Response processStats(BatchedOperatorStats stats)
       {
@@ -137,8 +139,8 @@ public class StatsTest
         }
       }
 
-      Assert.assertTrue("Tuple Count emitted", outputPortTupleCount == 2);
-      Assert.assertTrue("Tuple Count processed", inputPortTupleCount == 2);
+      Assert.assertEquals("Tuple Count emitted", 2, outputPortTupleCount);
+      Assert.assertEquals("Tuple Count processed", 2, inputPortTupleCount);
     }
     finally {
       lc.shutdown();
