@@ -1442,7 +1442,7 @@ public class DTCli
       }
       prompt += "> ";
     }
-    String line = reader.readLine(prompt);
+    String line = reader.readLine(prompt, consolePresent ? null : (char)0);
     if (line == null) {
       return null;
     }
@@ -3372,7 +3372,13 @@ public class DTCli
       try {
         List<String> commands = new ArrayList<String>();
         while (true) {
-          String line = reader.readLine("macro def (" + name + ") > ");
+          String line;
+          if (consolePresent) {
+            line = reader.readLine("macro def (" + name + ") > ");
+          }
+          else {
+            line = reader.readLine("", (char)0);
+          }
           if (line.equals("end")) {
             macros.put(name, commands);
             updateCompleter(reader);
