@@ -15,6 +15,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static org.junit.Assert.*;
 
 import org.apache.commons.lang.StringUtils;
@@ -27,7 +28,6 @@ import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -275,8 +275,11 @@ public class LogicalPlanConfigurationTest {
   public void testSetOperatorProperties() {
 
     Configuration conf = new Configuration(false);
-    conf.set(StreamingApplication.DT_PREFIX + "operator.o1.myStringProperty", "myStringPropertyValue");
-    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.stringArrayField", "a,b,c");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o1.prop.myStringProperty", "myStringPropertyValue");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.prop.stringArrayField", "a,b,c");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.prop.mapProperty.key1", "key1Val");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.prop.mapProperty(key1.dot)", "key1dotVal");
+    conf.set(StreamingApplication.DT_PREFIX + "operator.o2.prop.mapProperty(key2.dot)", "key2dotVal");
 
     LogicalPlan dag = new LogicalPlan();
     GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
@@ -288,6 +291,11 @@ public class LogicalPlanConfigurationTest {
     pb.setOperatorProperties(dag, "testSetOperatorProperties");
     Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
     Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.getStringArrayField());
+
+    Assert.assertEquals("o2.mapProperty.key1", "key1Val", o2.getMapProperty().get("key1"));
+    Assert.assertEquals("o2.mapProperty(key1.dot)", "key1dotVal", o2.getMapProperty().get("key1.dot"));
+    Assert.assertEquals("o2.mapProperty(key2.dot)", "key2dotVal", o2.getMapProperty().get("key2.dot"));
+
   }
 
   @ApplicationAnnotation(name="AnnotatedAlias")

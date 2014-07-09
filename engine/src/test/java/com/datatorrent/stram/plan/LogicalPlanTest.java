@@ -20,6 +20,7 @@ import javax.validation.constraints.Pattern;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
+import com.google.common.collect.Maps;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -234,6 +235,18 @@ public class LogicalPlanTest {
 
     public void setStringProperty2(String stringProperty2) {
       this.stringProperty2 = stringProperty2;
+    }
+
+    private Map<String, String> mapProperty = Maps.newHashMap();
+
+    public Map<String, String> getMapProperty()
+    {
+      return mapProperty;
+    }
+
+    public void setMapProperty(Map<String, String> mapProperty)
+    {
+      this.mapProperty = mapProperty;
     }
 
   }
