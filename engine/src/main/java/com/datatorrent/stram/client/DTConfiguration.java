@@ -4,6 +4,7 @@
 package com.datatorrent.stram.client;
 
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import java.io.File;
 import java.io.IOException;
@@ -264,7 +265,8 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
   {
     return key.equals(StramClientUtils.DT_DFS_ROOT_DIR) ||
             key.equals(LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS) ||
-            key.equals(StramClientUtils.DT_CONFIG_STATUS);
+            key.equals(StramClientUtils.DT_CONFIG_STATUS) ||
+            key.equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName());
   }
 
   public JSONObject toJSONObject()
