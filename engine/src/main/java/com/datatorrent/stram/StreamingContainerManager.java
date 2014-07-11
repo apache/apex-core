@@ -566,7 +566,7 @@ public class StreamingContainerManager implements PlanContext
   {
     for (PTOperator o : reportStats.keySet()) {
       List<OperatorStats> stats = o.stats.listenerStats.poll();
-      if (!o.stats.listenerStats.isEmpty()) {
+      if (stats != null) {
         // append into single list
         List<OperatorStats> moreStats;
         while ((moreStats = o.stats.listenerStats.poll()) != null) {
@@ -647,6 +647,7 @@ public class StreamingContainerManager implements PlanContext
     cs.container.setState(PTContainer.State.KILLED);
     cs.container.bufferServerAddress = null;
     cs.container.setResourceRequestPriority(-1);
+    cs.container.setAllocatedMemoryMB(0);
 
     // resolve dependencies
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
