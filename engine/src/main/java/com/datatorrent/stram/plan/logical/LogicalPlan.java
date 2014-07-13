@@ -374,31 +374,6 @@ public class LogicalPlan implements Serializable, DAG
           }
         }
       }
-
-      if (value == null) {
-        // determine codec for the stream based on what was set on the ports
-        Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
-        if (lCodecClass != null) {
-          if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
-            String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", lCodecClass, portMeta, this.codecClass);
-            //throw new IllegalArgumentException(msg);
-            throw new ValidationException(msg);
-          }
-          this.codecClass = lCodecClass;
-        }
-      }
-      else {
-        if (port.getStreamCodec() != null) {
-          //throw new IllegalArgumentException(String.format("Both stream codec attribute %s and stream codec class %s were set on input port (%s). Please specify only the stream codec attribute",
-          //        value, port.getStreamCodec(), portMeta));
-          throw new ValidationException(String.format("Both stream codec attribute %s and stream codec class %s were set on input port (%s). Please specify only the stream codec attribute",
-                    value, port.getStreamCodec(), portMeta));
-        } else if (streamCodec != null && !value.equals(streamCodec)) {
-          //throw new IllegalArgumentException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
-          throw new ValidationException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
-        }
-        streamCodec = value;
-      }
     }
 
     public void remove() {
