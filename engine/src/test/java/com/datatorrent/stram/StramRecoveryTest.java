@@ -178,9 +178,11 @@ public class StramRecoveryTest
 
     StreamingContainerAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
     Assert.assertNotNull("allocated container restored " + originalContainer, sca);
+    Assert.assertEquals("memory usage allocated container", (int)OperatorContext.MEMORY_MB.defaultValue, sca.container.getAllocatedMemoryMB());
 
     // YARN-1490 - simulate container terminated on AM recovery
     scm.scheduleContainerRestart(originalContainer.getExternalId());
+    Assert.assertEquals("memory usage of failed container", 0, sca.container.getAllocatedMemoryMB());
 
     Checkpoint firstCheckpoint = new Checkpoint(3, 0, 0);
     mc = new MockContainer(scm, o1p1.getContainer());
