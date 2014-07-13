@@ -5,31 +5,28 @@
 package com.datatorrent.stram.plan.logical;
 
 
-import java.io.*;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.validation.*;
-import javax.validation.constraints.NotNull;
-
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.*;
-
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.stram.FSStorageAgent;
+import com.google.common.collect.Sets;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -330,33 +327,78 @@ public class LogicalPlan implements Serializable, DAG
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, om.inputStreams.get(portMeta)));
       }
 
-      StreamCodec<?> value = portMeta.getValue(PortContext.STREAM_CODEC);
-      if (value == null) {
-        // determine codec for the stream based on what was set on the ports
-        Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
-        if (lCodecClass != null) {
-          if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
-            String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", lCodecClass, portMeta, this.codecClass);
-            throw new IllegalArgumentException(msg);
-          }
-          this.codecClass = lCodecClass;
-        }
-      }
-      else {
-        if (port.getStreamCodec() != null) {
-          throw new IllegalArgumentException(String.format("Both stream codec attribute %s and stream codec class %s were set on input port (%s). Please specify only the stream codec attribute",
-                                                              value, port.getStreamCodec(), portMeta));
-        } else if (streamCodec != null && !value.equals(streamCodec)) {
-          throw new IllegalArgumentException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
-        }
-        streamCodec = value;
-      }
+      /*
+      finalizeValidate(portMeta);
+      */
 
       sinks.add(portMeta);
       om.inputStreams.put(portMeta, this);
       rootOperators.remove(portMeta.operatorMeta);
 
       return this;
+    }
+
+    public void finalizeValidate() {
+      for (InputPortMeta portMeta : sinks) {
+        finalizeValidate(portMeta);
+      }
+    }
+
+    private void finalizeValidate(InputPortMeta portMeta) throws IllegalArgumentException
+    {
+      InputPort<?> port = portMeta.getPortObject();
+      StreamCodec<?> value = portMeta.getValue(PortContext.STREAM_CODEC);
+      if (value != null) {
+        if (streamCodec != null && (value != streamCodec)) {
+          throw new ValidationException(String.format("Conflicting stream codec set on input port %s (%s) when %s was specified on another port", value, portMeta, streamCodec));
+        } else {
+          streamCodec = value;
+        }
+      } else {
+        if (streamCodec != null) {
+          throw new ValidationException(String.format("Stream codec not set on input port %s when %s was specified on another port", portMeta, streamCodec));
+        } else {
+          Class<? extends StreamCodec<?>> classValue = port.getStreamCodec();
+          if (classValue != null) {
+            if (this.codecClass != null && !this.codecClass.equals(classValue)) {
+              String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", classValue, portMeta, this.codecClass);
+              //throw new IllegalArgumentException(msg);
+              throw new ValidationException(msg);
+            } else {
+              this.codecClass = classValue;
+            }
+          } else {
+            if (this.codecClass != null) {
+              throw new ValidationException(String.format("Codec class not set on input port %s when %s was specified on another port", portMeta, this.codecClass));
+            }
+          }
+        }
+      }
+
+      if (value == null) {
+        // determine codec for the stream based on what was set on the ports
+        Class<? extends StreamCodec<?>> lCodecClass = port.getStreamCodec();
+        if (lCodecClass != null) {
+          if (this.codecClass != null && !this.codecClass.equals(lCodecClass)) {
+            String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", lCodecClass, portMeta, this.codecClass);
+            //throw new IllegalArgumentException(msg);
+            throw new ValidationException(msg);
+          }
+          this.codecClass = lCodecClass;
+        }
+      }
+      else {
+        if (port.getStreamCodec() != null) {
+          //throw new IllegalArgumentException(String.format("Both stream codec attribute %s and stream codec class %s were set on input port (%s). Please specify only the stream codec attribute",
+          //        value, port.getStreamCodec(), portMeta));
+          throw new ValidationException(String.format("Both stream codec attribute %s and stream codec class %s were set on input port (%s). Please specify only the stream codec attribute",
+                    value, port.getStreamCodec(), portMeta));
+        } else if (streamCodec != null && !value.equals(streamCodec)) {
+          //throw new IllegalArgumentException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
+          throw new ValidationException(String.format("Conflicting stream codec set in input port %s (%s) when %s was specified earlier", value, portMeta, streamCodec));
+        }
+        streamCodec = value;
+      }
     }
 
     public void remove() {
@@ -1031,6 +1073,8 @@ public class LogicalPlan implements Serializable, DAG
       if (s.source == null || (s.sinks.isEmpty())) {
         throw new ValidationException(String.format("stream not connected: %s", s.getName()));
       }
+      // finalize stream codec
+      s.finalizeValidate();
     }
 
     // processing mode

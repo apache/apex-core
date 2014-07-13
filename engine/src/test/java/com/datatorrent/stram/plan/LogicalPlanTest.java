@@ -4,31 +4,6 @@
  */
 package com.datatorrent.stram.plan;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-
-import javax.validation.*;
-import javax.validation.constraints.AssertTrue;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-
-import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.serializers.JavaSerializer;
-import com.google.common.collect.Maps;
-
-import org.junit.Assert;
-import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -36,6 +11,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
@@ -44,8 +20,23 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
+import com.google.common.collect.Maps;
+import org.junit.Assert;
+import org.junit.Test;
 
+import javax.validation.*;
+import javax.validation.constraints.AssertTrue;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Serializable;
 import java.util.*;
+
+import static org.junit.Assert.*;
 
 public class LogicalPlanTest {
 
@@ -650,6 +641,65 @@ public class LogicalPlanTest {
     LogicalPlan clonedDag = LogicalPlan.read(new ByteArrayInputStream(outStream.toByteArray()));
     JdkSerializableOperator o1Clone = (JdkSerializableOperator)clonedDag.getOperatorMeta("o1").getOperator();
     Assert.assertNotNull("port object null", o1Clone.inport1);
+  }
+
+  public static class TestStreamCodec implements StreamCodec<Object> {
+    @Override
+    public Object fromByteArray(Slice fragment)
+    {
+      return fragment.stringValue();
+    }
+
+    @Override
+    public Slice toByteArray(Object o)
+    {
+      byte[] b = o.toString().getBytes();
+      return new Slice(b, 0, b.length);
+    }
+
+    @Override
+    public int getPartition(Object o)
+    {
+      return o.hashCode() / 2;
+    }
+  }
+
+  @Test
+  public void testStreamCodec() throws Exception {
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator input = dag.addOperator("input", TestGeneratorInputOperator.class);
+    GenericTestOperator gto1 = dag.addOperator("gto1", GenericTestOperator.class);
+    StreamMeta stream1 = dag.addStream("s1", input.outport, gto1.inport1);
+    StreamCodec<?> codec1 = new TestStreamCodec();
+    dag.setInputPortAttribute(gto1.inport1, PortContext.STREAM_CODEC, codec1);
+    dag.validate();
+    Assert.assertEquals("Stream codec not set", stream1.getStreamCodec(), codec1);
+    GenericTestOperator gto2 = dag.addOperator("gto2", GenericTestOperator.class);
+    GenericTestOperator gto3 = dag.addOperator("gto3", GenericTestOperator.class);
+    dag.addStream("s2", gto1.outport1, gto2.inport1, gto3.inport1);
+    dag.setInputPortAttribute(gto2.inport1, PortContext.STREAM_CODEC, codec1);
+    try {
+      dag.validate();
+    } catch (ValidationException e) {
+      String msg = e.getMessage();
+      if (!msg.startsWith("Stream codec not set on input port") || !msg.contains("gto3")
+              || !msg.contains(codec1.toString()) || !msg.endsWith("was specified on another port")) {
+        Assert.fail(String.format("LogicalPlan validation error msg: %s", msg));
+      }
+    }
+    dag.setInputPortAttribute(gto3.inport1, PortContext.STREAM_CODEC, codec1);
+    dag.validate();
+    StreamCodec<?> codec2 = new TestStreamCodec();
+    dag.setInputPortAttribute(gto3.inport1, PortContext.STREAM_CODEC, codec2);
+    try {
+      dag.validate();
+    } catch (ValidationException e) {
+      String msg = e.getMessage();
+      if (!msg.startsWith("Conflicting stream codec set on input port") || !msg.contains("gto3")
+              || !msg.contains(codec2.toString()) || !msg.endsWith("was specified on another port")) {
+        Assert.fail(String.format("LogicalPlan validation error msg: %s", msg));
+      }
+    }
   }
 
 }

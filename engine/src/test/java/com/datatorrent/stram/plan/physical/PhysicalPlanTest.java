@@ -4,18 +4,10 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.util.*;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
@@ -32,6 +24,12 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.*;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
@@ -102,6 +100,8 @@ public class PhysicalPlanTest {
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
+
+    dag.validate();
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
