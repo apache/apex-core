@@ -643,7 +643,7 @@ public class LogicalPlanTest {
     Assert.assertNotNull("port object null", o1Clone.inport1);
   }
 
-  public static class TestStreamCodec implements StreamCodec<Object> {
+  private static class TestStreamCodec implements StreamCodec<Object> {
     @Override
     public Object fromByteArray(Slice fragment)
     {
@@ -664,6 +664,23 @@ public class LogicalPlanTest {
     }
   }
 
+  public static class TestPortCodecOperator extends BaseOperator {
+    public transient final DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+
+      }
+
+      @Override
+      public Class<? extends StreamCodec<Object>> getStreamCodec()
+      {
+        return TestStreamCodec.class;
+      }
+    };
+  }
+
   @Test
   public void testStreamCodec() throws Exception {
     LogicalPlan dag = new LogicalPlan();
@@ -676,7 +693,7 @@ public class LogicalPlanTest {
     Assert.assertEquals("Stream codec not set", stream1.getStreamCodec(), codec1);
     GenericTestOperator gto2 = dag.addOperator("gto2", GenericTestOperator.class);
     GenericTestOperator gto3 = dag.addOperator("gto3", GenericTestOperator.class);
-    dag.addStream("s2", gto1.outport1, gto2.inport1, gto3.inport1);
+    StreamMeta stream2 = dag.addStream("s2", gto1.outport1, gto2.inport1, gto3.inport1);
     dag.setInputPortAttribute(gto2.inport1, PortContext.STREAM_CODEC, codec1);
     try {
       dag.validate();
@@ -689,6 +706,7 @@ public class LogicalPlanTest {
     }
     dag.setInputPortAttribute(gto3.inport1, PortContext.STREAM_CODEC, codec1);
     dag.validate();
+    Assert.assertEquals("Stream codec not set", stream2.getStreamCodec(), codec1);
     StreamCodec<?> codec2 = new TestStreamCodec();
     dag.setInputPortAttribute(gto3.inport1, PortContext.STREAM_CODEC, codec2);
     try {
@@ -700,6 +718,11 @@ public class LogicalPlanTest {
         Assert.fail(String.format("LogicalPlan validation error msg: %s", msg));
       }
     }
+    dag.setInputPortAttribute(gto3.inport1, PortContext.STREAM_CODEC, codec1);
+    TestPortCodecOperator pco = dag.addOperator("pco", TestPortCodecOperator.class);
+    StreamMeta stream3 = dag.addStream("s3", gto2.outport1, pco.input);
+    dag.validate();
+    Assert.assertEquals("Stream codec class not set", stream3.getCodecClass(), TestStreamCodec.class);
   }
 
 }
