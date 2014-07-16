@@ -28,7 +28,7 @@ import com.datatorrent.stram.tuple.Tuple;
  *
  * The base class for node implementation<p>
  * <br>
- * Implements the base interface {@link com.datatorrent.engine.Node}<br>
+ * Implements the base interface {@link com.datatorrent.stram.engine.Node}<br>
  * <br>
  * This is the basic functional block of the DAG. It is responsible for the following<br>
  * It emits and consumes tuples<br>
@@ -580,6 +580,7 @@ public class GenericNode extends Node<Operator>
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = ar.getCount(true);
       portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
+      portStats.queueCapacityUsage = e.getValue().size();
       ipstats.add(portStats);
     }
 

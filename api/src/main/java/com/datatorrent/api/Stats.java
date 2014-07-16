@@ -18,7 +18,6 @@ package com.datatorrent.api;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-
 /**
  * <p>Stats interface.</p>
  *
@@ -54,6 +53,7 @@ public interface Stats extends Serializable
       public int tupleCount;
       public long endWindowTimestamp;
       public long bufferServerBytes;
+      public double queueCapacityUsage;
       /**
        * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
        * INVALID_TIME_MILLIS otherwise.
@@ -68,7 +68,7 @@ public interface Stats extends Serializable
       @Override
       public String toString()
       {
-        return "PortStats{" + "portname=" + id + ", processedCount=" + tupleCount + ", bufferServerBytes = " + bufferServerBytes + ", endWindowTimestamp=" + endWindowTimestamp + '}';
+        return "PortStats{" + "portname=" + id + ", processedCount=" + tupleCount + ", bufferServerBytes = " + bufferServerBytes + ", queueCapacityUsage = " + queueCapacityUsage + ", endWindowTimestamp=" + endWindowTimestamp + '}';
       }
 
     }
