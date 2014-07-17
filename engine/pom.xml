@@ -351,6 +351,10 @@
           <artifactId>jackson-core-asl</artifactId>
         </exclusion>
         <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
           <artifactId>commons-beanutils</artifactId>
           <groupId>commons-beanutils</groupId>
         </exclusion>
