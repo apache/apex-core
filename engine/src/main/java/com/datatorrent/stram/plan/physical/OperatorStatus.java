@@ -40,10 +40,11 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     public final TimedMovingAverageLong bufferServerBytesPMSMA;
     public final TimedMovingAverageLong queueCapacityUsed;
 
-    public PortStatus() {
+    public PortStatus()
+    {
       tuplesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
       bufferServerBytesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
-      queueCapacityUsed = new TimedMovingAverageLong(throughputCalculationMaxSamples,throughputCalculationInterval);
+      queueCapacityUsed = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
     }
   }
 
@@ -140,7 +141,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     final int operatorId;
     final LogicalPlan.OperatorMeta operatorMeta;
 
-    private SerializationProxy(OperatorStatus s) {
+    private SerializationProxy(OperatorStatus s)
+    {
       this.operatorId = s.operatorId;
       this.operatorMeta = s.operatorMeta;
     }
@@ -154,7 +156,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
   private Object writeReplace() throws java.io.ObjectStreamException
   {
-      return new SerializationProxy(this);
+    return new SerializationProxy(this);
   }
 
 }

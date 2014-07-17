@@ -74,7 +74,6 @@ import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
 
 /**
- *
  * Tracks topology provisioning/allocation to containers<p>
  * <br>
  * The tasks include<br>
@@ -124,8 +123,10 @@ public class StreamingContainerManager implements PlanContext
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
 
-  private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>() {
+  private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>()
+  {
     private static final long serialVersionUID = 201405281500L;
+
     @Override
     protected boolean removeEldestEntry(Map.Entry<String, ContainerInfo> eldest)
     {
@@ -179,7 +180,7 @@ public class StreamingContainerManager implements PlanContext
     setupRecording(enableEventRecording);
     setupStringCodecs();
     try {
-      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short)0644));
+      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
       this.containerFile.append(getAppMasterContainerInfo());
     }
     catch (IOException ex) {
@@ -197,7 +198,7 @@ public class StreamingContainerManager implements PlanContext
     setupRecording(enableEventRecording);
     setupStringCodecs();
     try {
-      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short)0644));
+      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
       this.containerFile.append(getAppMasterContainerInfo());
     }
     catch (IOException ex) {
@@ -213,7 +214,7 @@ public class StreamingContainerManager implements PlanContext
     ci.state = "ACTIVE";
     ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
     ci.numOperators = 0;
-    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
+    ci.memoryMBAllocated = (int) (Runtime.getRuntime().maxMemory() / (1024 * 1024));
     ci.lastHeartbeat = -1;
     YarnConfiguration conf = new YarnConfiguration();
     String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
@@ -354,7 +355,7 @@ public class StreamingContainerManager implements PlanContext
           //LOG.debug("{} {} {}", c.getExternalId(), currentTms - sca.createdMillis, this.vars.heartbeatTimeoutMillis);
           // container allocated but process was either not launched or is not able to phone home
           if (currentTms - sca.createdMillis > 2 * this.vars.heartbeatTimeoutMillis) {
-            LOG.info("Container {}@{} startup timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.createdMillis});
+            LOG.info("Container {}@{} startup timeout ({} ms).", new Object[]{c.getExternalId(), c.host, currentTms - sca.createdMillis});
             containerStopRequests.put(c.getExternalId(), c.getExternalId());
           }
         }
@@ -362,7 +363,7 @@ public class StreamingContainerManager implements PlanContext
           if (currentTms - sca.lastHeartbeatMillis > this.vars.heartbeatTimeoutMillis) {
             if (!isApplicationIdle()) {
               // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
-              LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {c.getExternalId(), c.host, currentTms - sca.lastHeartbeatMillis});
+              LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[]{c.getExternalId(), c.host, currentTms - sca.lastHeartbeatMillis});
               containerStopRequests.put(c.getExternalId(), c.getExternalId());
             }
           }
@@ -400,9 +401,9 @@ public class StreamingContainerManager implements PlanContext
         LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", this.vars.maxWindowsBehindForStats);
         while (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
           LOG.debug("Removing incomplete end window stats for window id {}. Collected operator set: {}. Complete set: {}",
-                    endWindowStatsOperatorMap.firstKey(),
-                    endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(),
-                    allCurrentOperators);
+            endWindowStatsOperatorMap.firstKey(),
+            endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(),
+            allCurrentOperators);
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
@@ -505,7 +506,7 @@ public class StreamingContainerManager implements PlanContext
       }
       else if (upstreamMaxEmitTimestamp != adjustedEndWindowEmitTimestamp) {
         LOG.warn("Cannot calculate latency for this operator because upstream timestamp is greater than this operator's end window time: {} ({}) > {} ({})",
-                 upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, endWindowStats.emitTimestamp, oper);
+          upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, endWindowStats.emitTimestamp, oper);
         LOG.warn("Please verify that the system clocks are in sync in your cluster.", oper);
       }
     }
@@ -664,6 +665,7 @@ public class StreamingContainerManager implements PlanContext
   /**
    * Transitively add operators that are container local to the dependency set.
    * (All downstream operators were traversed during checkpoint update.)
+   *
    * @param ctx
    */
   private void includeLocalUpstreamOperators(UpdateCheckpointsContext ctx)
@@ -728,17 +730,16 @@ public class StreamingContainerManager implements PlanContext
     }
 
     /**
-     *
      * @return String
      */
     @Override
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("containerId", this.containerId)
-              .append("host", this.host)
-              .append("memoryMB", this.memoryMB)
-              .toString();
+        .append("containerId", this.containerId)
+        .append("host", this.host)
+        .append("memoryMB", this.memoryMB)
+        .toString();
     }
 
   }
@@ -1032,7 +1033,7 @@ public class StreamingContainerManager implements PlanContext
           /* report checkpointedWindowId status of the operator */
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
-              addCheckpoint(oper, (Checkpoint)stats.checkpoint);
+              addCheckpoint(oper, (Checkpoint) stats.checkpoint);
               oper.failureCount = 0;
             }
           }
@@ -1071,7 +1072,7 @@ public class StreamingContainerManager implements PlanContext
               //LOG.debug("=== PROCESSED TUPLE COUNT for {}: {}, {}, {}, {}", operatorPortName, s.tupleCount, portElapsedMillis, operatorPortLastEndWindowTimestamps.get(operatorPortName), lastStatsTimestamp);
               ps.tuplesPMSMA.add(s.tupleCount, portElapsedMillis);
               ps.bufferServerBytesPMSMA.add(s.bufferServerBytes, portElapsedMillis);
-              ps.queueCapacityUsed.add(s.queueCapacityUsage,portElapsedMillis);
+              ps.queueCapacityUsed.add(s.queueCapacityUsage, portElapsedMillis);
 
               operatorPortLastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
               if (maxEndWindowTimestamp < s.endWindowTimestamp) {
@@ -1316,7 +1317,7 @@ public class StreamingContainerManager implements PlanContext
         if (lastCheckpoint.windowId != checkpoint.windowId) {
           if (lastCheckpoint.windowId > checkpoint.windowId) {
             // list needs to have max windowId last
-            LOG.warn("Out of sequence checkpoint {} last {} (operator {})", new Object[] {checkpoint, lastCheckpoint, node});
+            LOG.warn("Out of sequence checkpoint {} last {} (operator {})", new Object[]{checkpoint, lastCheckpoint, node});
             ListIterator<Checkpoint> li = node.checkpoints.listIterator();
             while (li.hasNext() && li.next().windowId < checkpoint.windowId) {
               //continue;
@@ -1364,7 +1365,7 @@ public class StreamingContainerManager implements PlanContext
    * and then selecting the most recent available checkpoint that is smaller than downstream.
    *
    * @param operator Operator instance for which to find recovery checkpoint
-   * @param ctx Context into which to collect traversal info
+   * @param ctx      Context into which to collect traversal info
    */
   public void updateRecoveryCheckpoints(PTOperator operator, UpdateCheckpointsContext ctx)
   {
@@ -1373,7 +1374,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     if (operator.getState() == PTOperator.State.ACTIVE
-            && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
+      && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
       ctx.blocked.add(operator);
     }
 
@@ -1494,7 +1495,7 @@ public class StreamingContainerManager implements PlanContext
             // address should be null only for a new container, in which case there should not be a purge request
             // TODO: logging added to find out how we got here
             LOG.warn("purge request w/o buffer server address source {} container {} checkpoints {}",
-                     new Object[] {out, operator.getContainer(), operator.checkpoints});
+              new Object[]{out, operator.getContainer(), operator.checkpoints});
             continue;
           }
           // following needs to match the concat logic in StreamingContainer
@@ -2070,14 +2071,15 @@ public class StreamingContainerManager implements PlanContext
 
   /**
    * Send requests to change logger levels to all containers
+   *
    * @param changedLoggers
    */
-  public void setLoggersLevel( Map<String, String> changedLoggers)
+  public void setLoggersLevel(Map<String, String> changedLoggers)
   {
     LOG.debug("change logger request");
     StramToNodeChangeLoggersRequest request = new StramToNodeChangeLoggersRequest();
     request.setTargetChanges(changedLoggers);
-    for(StreamingContainerAgent stramChildAgent : containers.values()) {
+    for (StreamingContainerAgent stramChildAgent : containers.values()) {
       stramChildAgent.addOperatorRequest(request);
     }
   }
@@ -2092,7 +2094,7 @@ public class StreamingContainerManager implements PlanContext
     while (entryIterator.hasNext()) {
       try {
         @SuppressWarnings("unchecked")
-        Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
+        Map.Entry<String, Object> entry = (Map.Entry<String, Object>) entryIterator.next();
         m.put(entry.getKey(), entry.getValue());
       }
       catch (Exception ex) {
@@ -2266,7 +2268,7 @@ public class StreamingContainerManager implements PlanContext
   public static StreamingContainerManager getInstance(RecoveryHandler rh, LogicalPlan dag, boolean enableEventRecording) throws IOException
   {
     try {
-      CheckpointState checkpointedState = (CheckpointState)rh.restore();
+      CheckpointState checkpointedState = (CheckpointState) rh.restore();
       StreamingContainerManager scm;
       if (checkpointedState == null) {
         scm = new StreamingContainerManager(dag, enableEventRecording, new SystemClock());
@@ -2393,7 +2395,7 @@ public class StreamingContainerManager implements PlanContext
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
       if (sa instanceof FSStorageAgent) {
         // replace the default storage agent, if present
-        FSStorageAgent fssa = (FSStorageAgent)sa;
+        FSStorageAgent fssa = (FSStorageAgent) sa;
         if (fssa.path.contains(oldAppId)) {
           fssa = new FSStorageAgent(fssa.path.replace(oldAppId, appId), conf);
           lp.setAttribute(OperatorContext.STORAGE_AGENT, fssa);
