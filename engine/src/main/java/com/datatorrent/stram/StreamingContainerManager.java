@@ -1072,7 +1072,7 @@ public class StreamingContainerManager implements PlanContext
               //LOG.debug("=== PROCESSED TUPLE COUNT for {}: {}, {}, {}, {}", operatorPortName, s.tupleCount, portElapsedMillis, operatorPortLastEndWindowTimestamps.get(operatorPortName), lastStatsTimestamp);
               ps.tuplesPMSMA.add(s.tupleCount, portElapsedMillis);
               ps.bufferServerBytesPMSMA.add(s.bufferServerBytes, portElapsedMillis);
-              ps.queueCapacityUsed.add(s.queueCapacityUsage, portElapsedMillis);
+              ps.queueSizePSMA.add(s.queueSize, portElapsedMillis);
 
               operatorPortLastEndWindowTimestamps.put(operatorPortName, s.endWindowTimestamp);
               if (maxEndWindowTimestamp < s.endWindowTimestamp) {
@@ -1745,7 +1745,7 @@ public class StreamingContainerManager implements PlanContext
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA = Math.round(ps.tuplesPMSMA.getAvg() * 1000);
         pinfo.bufferServerBytesPSMA = Math.round(ps.bufferServerBytesPMSMA.getAvg() * 1000);
-        pinfo.queueCapacityUsedPSMA = Math.round(ps.queueCapacityUsed.getAvg() * 1000);
+        pinfo.queueSizePSMA = Math.round(ps.queueSizePSMA.getAvg() * 1000);
         pinfo.recordingStartTime = ps.recordingStartTime;
         oi.addPort(pinfo);
       }
