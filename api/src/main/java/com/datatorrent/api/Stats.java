@@ -53,7 +53,7 @@ public interface Stats extends Serializable
       public int tupleCount;
       public long endWindowTimestamp;
       public long bufferServerBytes;
-      public double queueCapacityUsage;
+      public int queueCapacityUsage;
       /**
        * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
        * INVALID_TIME_MILLIS otherwise.

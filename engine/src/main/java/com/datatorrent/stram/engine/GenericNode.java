@@ -18,14 +18,15 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.DTThrowable;
+import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
- *
  * The base class for node implementation<p>
  * <br>
  * Implements the base interface {@link com.datatorrent.stram.engine.Node}<br>
@@ -51,7 +52,7 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       SweepableReservoir original = inputs.get(e.getKey());
       if (original instanceof TappedReservoir) {
-        TappedReservoir tr = (TappedReservoir)original;
+        TappedReservoir tr = (TappedReservoir) original;
         tr.add(e.getValue());
       }
       else if (original != null) {
@@ -69,7 +70,7 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       SweepableReservoir reservoir = inputs.get(e.getKey());
       if (reservoir instanceof TappedReservoir) {
-        TappedReservoir tr = (TappedReservoir)reservoir;
+        TappedReservoir tr = (TappedReservoir) reservoir;
         tr.remove(e.getValue());
         if (tr.getSinks().length == 0) {
           tr.reservoir.setSink(tr.setSink(null));
@@ -89,7 +90,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings("unchecked")
   public InputPort<Object> getInputPort(String port)
   {
-    return (InputPort<Object>)descriptor.inputPorts.get(port).component;
+    return (InputPort<Object>) descriptor.inputPorts.get(port).component;
   }
 
   @Override
@@ -115,7 +116,6 @@ public class GenericNode extends Node<Operator>
   }
 
   /**
-   *
    * @param endWindowTuple the value of endWindowTuple
    */
   protected void processEndWindow(Tuple endWindowTuple)
@@ -132,7 +132,7 @@ public class GenericNode extends Node<Operator>
       emitEndWindow();
     }
     else {
-      for (int s = sinks.length; s-- > 0;) {
+      for (int s = sinks.length; s-- > 0; ) {
         sinks[s].put(endWindowTuple);
       }
       controlTupleCount++;
@@ -205,7 +205,7 @@ public class GenericNode extends Node<Operator>
     try {
       do {
         Iterator<SweepableReservoir> buffers = activeQueues.iterator();
-        activequeue:
+  activequeue:
         while (buffers.hasNext()) {
           SweepableReservoir activePort = buffers.next();
           Tuple t = activePort.sweep();
@@ -216,7 +216,7 @@ public class GenericNode extends Node<Operator>
                   activePort.remove();
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
-                  for (int s = sinks.length; s-- > 0;) {
+                  for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
                   }
                   controlTupleCount++;
@@ -273,7 +273,7 @@ public class GenericNode extends Node<Operator>
                     }
                   }
                   else {
-                    logger.error("Catastrophic Error: Out of sequence tuple {} on port {} while expecting {}", new Object[] {Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId)});
+                    logger.error("Catastrophic Error: Out of sequence tuple {} on port {} while expecting {}", new Object[]{Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId)});
                     System.exit(2);
                   }
                 }
@@ -311,7 +311,7 @@ public class GenericNode extends Node<Operator>
                     }
                   }
 
-                  for (int s = sinks.length; s-- > 0;) {
+                  for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
                   }
                   controlTupleCount++;
@@ -359,7 +359,7 @@ public class GenericNode extends Node<Operator>
                       trackerIterator.remove();
                     }
                   }
-                  for (int s = sinks.length; s-- > 0;) {
+                  for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(t);
                   }
                   controlTupleCount++;
@@ -374,7 +374,7 @@ public class GenericNode extends Node<Operator>
               case END_STREAM:
                 activePort.remove();
                 buffers.remove();
-                for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
+                for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext(); ) {
                   Entry<String, SweepableReservoir> e = it.next();
                   if (e.getValue() == activePort) {
                     if (!descriptor.inputPorts.isEmpty()) {
@@ -430,7 +430,7 @@ public class GenericNode extends Node<Operator>
                  * it's the only one which has not, then we consider it delivered and release the reset tuple downstream.
                  */
                 Tuple tuple = null;
-                for (trackerIterator = resetTupleTracker.iterator(); trackerIterator.hasNext();) {
+                for (trackerIterator = resetTupleTracker.iterator(); trackerIterator.hasNext(); ) {
                   tracker = trackerIterator.next();
 
                   trackerIndex = 0;
@@ -466,7 +466,7 @@ public class GenericNode extends Node<Operator>
                  * Since we were waiting for a reset tuple on this stream, we should not any longer.
                  */
                 if (tuple != null) {
-                  for (int s = sinks.length; s-- > 0;) {
+                  for (int s = sinks.length; s-- > 0; ) {
                     sinks[s].put(tuple);
                   }
                   controlTupleCount++;
@@ -498,7 +498,7 @@ public class GenericNode extends Node<Operator>
 
           if (need2sleep) {
             if (handleIdleTime) {
-              ((IdleTimeHandler)operator).handleIdleTime();
+              ((IdleTimeHandler) operator).handleIdleTime();
             }
             else {
               Thread.sleep(spinMillis);
@@ -580,10 +580,9 @@ public class GenericNode extends Node<Operator>
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = ar.getCount(true);
       portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
-      portStats.queueCapacityUsage = e.getValue().size();
+      portStats.queueCapacityUsage = ar.size();
       ipstats.add(portStats);
     }
-
     stats.inputPorts = ipstats;
     super.reportStats(stats, windowId);
   }
