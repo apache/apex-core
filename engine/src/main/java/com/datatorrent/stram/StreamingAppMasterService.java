@@ -810,7 +810,7 @@ public class StreamingAppMasterService extends CompositeService
         assert (containerStatus.getState() == ContainerState.COMPLETE);
 
         AllocatedContainer allocatedContainer = allocatedContainers.remove(containerStatus.getContainerId().toString());
-        if (allocatedContainer.delegationToken != null) {
+        if (allocatedContainer != null && allocatedContainer.delegationToken != null) {
           UserGroupInformation ugi = UserGroupInformation.getLoginUser();
           delegationTokenManager.cancelToken(allocatedContainer.delegationToken, ugi.getUserName());
         }
