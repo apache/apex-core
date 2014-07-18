@@ -115,6 +115,18 @@ public class DTCli
       return br.readLine();
     }
 
+    @Override
+    public String readLine(String prompt, Character mask) throws IOException
+    {
+      return br.readLine();
+    }
+
+    @Override
+    public String readLine(Character mask) throws IOException
+    {
+      return br.readLine();
+    }
+
     public void close() throws IOException
     {
       br.close();
