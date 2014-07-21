@@ -4,12 +4,14 @@
  */
 package com.datatorrent.stram.util;
 
+import java.io.File;
 import java.net.InetSocketAddress;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.HttpConfig;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>
@@ -21,6 +23,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 public class ConfigUtils
 {
   private static String yarnLogDir;
+  private static final Logger LOG = LoggerFactory.getLogger(ConfigUtils.class);
 
   public static InetSocketAddress getRMAddress(YarnConfiguration conf)
   {
@@ -100,8 +103,21 @@ public class ConfigUtils
     if (logDirs.startsWith("${yarn.log.dir}")) {
       return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirs.substring("${yarn.log.dir}".length()) + "/" + appId + "/" + containerId;
     }
-    else if (logDirs.startsWith(getYarnLogDir())) {
-      return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirs.substring(getYarnLogDir().length()) + "/" + appId + "/" + containerId;
+    else {
+      try {
+        String logDirsPath = new File(logDirs).getCanonicalPath();
+        String yarnLogDirPath = new File(getYarnLogDir()).getCanonicalPath();
+        if (logDirsPath.startsWith(yarnLogDirPath)) {
+          return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirsPath.substring(yarnLogDirPath.length()) + "/" + appId + "/" + containerId;
+        }
+        else {
+          LOG.warn("Cannot determine the location of container logs because of incompatible node manager log location ({}) and yarn log location ({})",
+                   logDirsPath, yarnLogDirPath);
+        }
+      }
+      catch (Exception ex) {
+        LOG.warn("Cannot determine the location of container logs because of error: ", ex);
+      }
     }
     return null;
   }
