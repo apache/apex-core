@@ -2070,9 +2070,14 @@ public class DTCli
 
       if (appFactory == null && matchString != null) {
         // attempt to interpret argument as property file - do we still need it?
-        File file = new File(expandFileName(commandLineInfo.args[1], true));
-        if (file.exists()) {
-          appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+        try {
+          File file = new File(expandFileName(commandLineInfo.args[1], true));
+          if (file.exists()) {
+            appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+          }
+        }
+        catch (Throwable t) {
+          // ignore
         }
       }
 
