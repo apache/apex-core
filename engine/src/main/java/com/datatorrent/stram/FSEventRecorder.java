@@ -111,13 +111,13 @@ public class FSEventRecorder implements EventRecorder
   @Override
   public void recordEventAsync(StramEvent event)
   {
-    LOG.debug("Adding event to the queue");
+    LOG.debug("Adding event {} to the queue", event.getType());
     queue.add(event);
   }
 
   public void writeEvent(StramEvent event) throws Exception
   {
-    LOG.debug("Writing event {} to the queue", event.getType());
+    LOG.debug("Writing event {} to the storage", event.getType());
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     bos.write((event.getTimestamp() + ":").getBytes());
     bos.write((event.getType() + ":").getBytes());
@@ -131,6 +131,7 @@ public class FSEventRecorder implements EventRecorder
     bos.write("\n".getBytes());
     storage.writeDataItem(bos.toByteArray(), true);
     if (numSubscribers > 0) {
+      LOG.debug("Publishing event {} through websocket to gateway", event.getType());
       EventsAgent.EventInfo eventInfo = new EventsAgent.EventInfo();
       eventInfo.timestamp = event.getTimestamp();
       eventInfo.type = event.getType();
@@ -141,7 +142,7 @@ public class FSEventRecorder implements EventRecorder
 
   private void setupWsClient() throws ExecutionException, IOException, InterruptedException, TimeoutException
   {
-    wsClient.addHandler(pubSubTopic + ".numSubscribers", new SharedPubSubWebSocketClient.Handler()
+    wsClient.addHandler(pubSubTopic, true, new SharedPubSubWebSocketClient.Handler()
     {
       @Override
       public void onMessage(String type, String topic, Object data)

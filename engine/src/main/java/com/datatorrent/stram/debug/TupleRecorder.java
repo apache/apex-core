@@ -298,7 +298,7 @@ public class TupleRecorder
   private void setupWsClient() throws ExecutionException, IOException, InterruptedException, TimeoutException
   {
     if (wsClient != null) {
-      wsClient.addHandler(recordingNameTopic + ".numSubscribers", new Handler()
+      wsClient.addHandler(recordingNameTopic, true, new Handler()
       {
         @Override
         public void onMessage(String type, String topic, Object data)
