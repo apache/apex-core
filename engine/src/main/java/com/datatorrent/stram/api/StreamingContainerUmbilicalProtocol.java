@@ -195,8 +195,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int bufferServerPort;
 
     public String jvmName;
-    // commented out because free memory is misleading because of GC. may want to revisit this.
-    //public int memoryMBFree;
+    public int memoryMBFree;
     public boolean restartRequested;
 
     public ContainerStats stats;

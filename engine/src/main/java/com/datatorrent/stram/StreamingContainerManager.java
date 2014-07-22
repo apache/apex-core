@@ -975,8 +975,7 @@ public class StreamingContainerManager implements PlanContext
       containerStopRequests.put(sca.container.getExternalId(), sca.container.getExternalId());
     }
 
-    // commented out because free memory is misleading because of GC. may want to revisit this.
-    //sca.memoryMBFree = heartbeat.memoryMBFree;
+    sca.memoryMBFree = heartbeat.memoryMBFree;
 
     sca.undeployOpers.clear();
     sca.deployOpers.clear();

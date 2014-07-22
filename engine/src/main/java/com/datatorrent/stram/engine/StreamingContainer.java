@@ -585,9 +585,7 @@ public class StreamingContainer extends YarnContainerMain
           msg.restartRequested = true;
         }
       }
-      // commented out because freeMemory() is misleading because of GC, may want to revisit this
-      //msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-
+      msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
 
       ContainerHeartbeatResponse rsp;
       do {
@@ -1424,7 +1422,7 @@ public class StreamingContainer extends YarnContainerMain
       checkpoint = ndi.checkpoint;
       logger.debug("using {} on {} at {}", ndi.contextAttributes == null? ProcessingMode.AT_LEAST_ONCE: ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE), ndi.name, checkpoint);
     }
-    
+
     return checkpoint;
   }
 
