@@ -302,6 +302,11 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     return props;
   }
 
+  public static JSONObject convertToJsonObject(LogicalPlan dag)
+  {
+    return new JSONObject(convertToMap(dag));
+  }
+
   @Override
   public void serialize(LogicalPlan dag, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException
   {

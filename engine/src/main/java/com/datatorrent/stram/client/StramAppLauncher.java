@@ -4,18 +4,21 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.annotation.ShipContainingJars;
+import com.datatorrent.stram.*;
+import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
+import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
+import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import java.io.*;
 import java.lang.reflect.Modifier;
 import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.NotImplementedException;
@@ -24,18 +27,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
-
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ShipContainingJars;
-
-import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
-import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
-import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import org.apache.tools.ant.DirectoryScanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -240,7 +234,14 @@ public class StramAppLauncher
       URI uri = new URI(libjar);
       String scheme = uri.getScheme();
       if (scheme == null) {
-        clUrls.add(new URL("file:" + libjar));
+        // expand wildcards
+        DirectoryScanner scanner = new DirectoryScanner();
+        scanner.setIncludes(new String[] {libjar});
+        scanner.scan();
+        String[] files = scanner.getIncludedFiles();
+        for (String file : files) {
+          clUrls.add(new URL("file:" + file));
+        }
       }
       else if (scheme.equals("file")) {
         clUrls.add(new URL(libjar));

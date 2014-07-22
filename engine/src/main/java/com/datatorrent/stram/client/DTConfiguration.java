@@ -88,7 +88,7 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     doc.appendChild(rootElement);
     for (Map.Entry<String, ValueEntry> entry : map.entrySet()) {
       ValueEntry valueEntry = entry.getValue();
-      if (valueEntry.scope == scope) {
+      if (scope == null || valueEntry.scope == scope) {
         Element property = doc.createElement("property");
         rootElement.appendChild(property);
         Element name = doc.createElement("name");
@@ -126,8 +126,11 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     catch (TransformerException ex) {
       throw new IOException(ex);
     }
+  }
 
-    // backup the config file to HDFS
+  public void writeToFile(File file, String comment) throws IOException
+  {
+    writeToFile(file, null, comment);
   }
 
   public void loadFile(File file, Scope defaultScope) throws IOException, ParserConfigurationException, SAXException, ConfigException
@@ -153,6 +156,11 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     }
   }
 
+  public void loadFile(File file) throws IOException, ParserConfigurationException, SAXException, ConfigException
+  {
+    loadFile(file, Scope.TRANSIENT);
+  }
+
   private void processPropertyNode(Element propertyNode, Scope defaultScope)
   {
     NodeList nodeList = propertyNode.getElementsByTagName("name");
@@ -161,13 +169,14 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
       return;
     }
     String name = nodeList.item(0).getTextContent();
-    nodeList = propertyNode.getElementsByTagName("value");
-    if (nodeList.getLength() == 0 || nodeList.item(0).getTextContent().isEmpty()) {
-      LOG.warn("Value element not found, ignoring property entry");
-      return;
-    }
     ValueEntry valueEntry = new ValueEntry();
-    valueEntry.value = nodeList.item(0).getTextContent();
+    nodeList = propertyNode.getElementsByTagName("value");
+    if (nodeList.getLength() == 0) {
+      valueEntry.value = null;
+    }
+    else {
+      valueEntry.value = nodeList.item(0).getTextContent();
+    }
     nodeList = propertyNode.getElementsByTagName("description");
     if (nodeList.getLength() > 0) {
       valueEntry.description = nodeList.item(0).getTextContent();

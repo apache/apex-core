@@ -101,7 +101,6 @@ public class StramWebServices
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
-  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
 
@@ -265,7 +264,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("parent") String parent)
+  public JSONObject getOperatorClasses(@QueryParam("packagePrefix") String packagePrefix, @QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -279,7 +278,12 @@ public class StramWebServices
       }
     }
 
+    if (StringUtils.isBlank(packagePrefix)) {
+      packagePrefix = "com.datatorrent";
+    }
+
     try {
+      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefix);
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
       for (Class<?> clazz : operatorClasses) {

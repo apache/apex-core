@@ -29,7 +29,12 @@ public class StreamGobbler extends Thread
 
   public String getContent()
   {
-    return content.toString();
+    try {
+      return content.toString();
+    }
+    finally {
+      content.setLength(0);
+    }
   }
 
   @Override
