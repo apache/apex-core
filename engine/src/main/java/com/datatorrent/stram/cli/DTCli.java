@@ -992,6 +992,7 @@ public class DTCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
+    fileName = expandFileName(fileName, true);
     LOG.debug("Sourcing {}", fileName);
     boolean consolePresentSaved = consolePresent;
     consolePresent = false;
@@ -1731,7 +1732,7 @@ public class DTCli
     {
       String file = null;
       if (args.length > 1) {
-        file = args[1];
+        file = expandFileName(args[1], true);
       }
       String licenseId = activateLicense(file);
       System.out.println("Started license agent for " + licenseId);
@@ -1911,7 +1912,7 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      JSONObject licenseObj = getLicenseStatus(args.length > 1 ? args[1] : null);
+      JSONObject licenseObj = getLicenseStatus(args.length > 1 ? expandFileName(args[1], true) : null);
       printJson(licenseObj);
     }
 
@@ -2069,7 +2070,7 @@ public class DTCli
 
       if (appFactory == null && matchString != null) {
         // attempt to interpret argument as property file - do we still need it?
-        File file = new File(commandLineInfo.args[1]);
+        File file = new File(expandFileName(commandLineInfo.args[1], true));
         if (file.exists()) {
           appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
         }
@@ -2156,6 +2157,7 @@ public class DTCli
 
           byte[] licenseBytes;
           if (commandLineInfo.licenseFile != null) {
+            LOG.info("Using license at {} instead of the one in configuration to launch this application", commandLineInfo.licenseFile);
             licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile, conf);
           }
           else {
@@ -2178,6 +2180,7 @@ public class DTCli
               System.setOut(dummyStream);
             }
             String licenseId = License.getLicenseID(licenseBytes);
+            LOG.info("Using license {}", licenseId);
             ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
               try {
@@ -2207,7 +2210,7 @@ public class DTCli
                 throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
             }
-            appId = submitApp.launchApp(appFactory);
+            appId = submitApp.launchApp(appFactory, licenseBytes);
             currentApp = yarnClient.getApplicationReport(appId);
           }
           finally {

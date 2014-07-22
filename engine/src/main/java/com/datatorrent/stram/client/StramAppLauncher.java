@@ -367,12 +367,11 @@ public class StramAppLauncher
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppFactory appConfig) throws Exception
+  public ApplicationId launchApp(AppFactory appConfig, byte[] licenseBytes) throws Exception
   {
     loadDependencies();
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = prepareDAG(appConfig);
-    byte[] licenseBytes = StramClientUtils.getLicense(conf);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(conf, dag);
     try {
