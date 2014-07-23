@@ -46,6 +46,7 @@ public class OperatorInfo
   @RecordField(type="stats") public long tuplesEmittedPSMA;
   @RecordField(type="stats") public double cpuPercentageMA;
   @RecordField(type="stats") public long latencyMA;
+  @RecordField(type="stats") public CheckpointInfo checkpointInfo;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
