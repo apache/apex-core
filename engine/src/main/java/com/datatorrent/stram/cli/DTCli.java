@@ -556,7 +556,7 @@ public class DTCli
                                                               "Get info on the app bundle file"));
     globalCommands.put("launch-app-bundle", new OptionsCommandSpec(new LaunchAppBundleCommand(),
                                                                    new Arg[] {new FileArg("app-bundle-file"), new Arg("app-name")},
-                                                                   new Arg[] {new Arg("config-name")},
+                                                                   null,
                                                                    "Launch app in the app bundle", LAUNCH_OPTIONS.options));
     globalCommands.put("get-app-bundle-operators", new CommandSpec(new GetAppBundleOperatorsCommand(),
                                                               new Arg[] {new FileArg("app-bundle-file"), new Arg("package-prefix")},
