@@ -19,11 +19,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
-
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
+import org.codehaus.jackson.map.*;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.RawSerializer;
 
@@ -37,6 +35,7 @@ import org.codehaus.jackson.map.ser.std.RawSerializer;
 public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper>
 {
   private final ObjectMapper objectMapper;
+  private final SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
 
   /**
    * <p>Constructor for JacksonObjectMapperProvider.</p>
@@ -46,7 +45,6 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     this.objectMapper = new ObjectMapper();
     objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
     objectMapper.registerModule(module);
   }
@@ -59,6 +57,11 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
   public ObjectMapper getContext(Class<?> type)
   {
     return objectMapper;
+  }
+
+  public <T> void addSerializer(Class<T> clazz, JsonSerializer<T> serializer)
+  {
+    module.addSerializer(clazz, serializer);
   }
 
 }
