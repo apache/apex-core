@@ -8,7 +8,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * Created by gaurav on 7/22/14.
  */
 
-@XmlRootElement(name = "port")
+@XmlRootElement(name = "checkpoint")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class CheckpointInfo
 {
