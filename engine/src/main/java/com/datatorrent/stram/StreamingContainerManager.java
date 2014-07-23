@@ -1739,8 +1739,11 @@ public class StreamingContainerManager implements PlanContext
         oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
       if (os.checkpointStatsObj != null) {
-        oi.checkpointSize = os.checkpointStatsObj.checkpointSize;
-        oi.checkpointTime = os.checkpointStatsObj.checkpointTime;
+        if(oi.checkpointInfo == null){
+          oi.checkpointInfo = new CheckpointInfo();
+        }
+        oi.checkpointInfo.checkpointSize = os.checkpointStatsObj.checkpointSize;
+        oi.checkpointInfo.checkpointTime = os.checkpointStatsObj.checkpointTime;
       }
       for (PortStatus ps : os.inputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
