@@ -75,6 +75,9 @@ public class AppBundle extends JarFile implements Closeable
   {
     super(file);
     Manifest manifest = getManifest();
+    if (manifest == null) {
+      throw new IOException("Not a valid app bundle. MANIFEST.MF is not present.");
+    }
     Attributes attr = manifest.getMainAttributes();
     appBundleName = attr.getValue(ATTRIBUTE_DT_APP_BUNDLE_NAME);
     appBundleVersion = attr.getValue(ATTRIBUTE_DT_APP_BUNDLE_VERSION);
