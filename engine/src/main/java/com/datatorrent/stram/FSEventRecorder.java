@@ -133,8 +133,10 @@ public class FSEventRecorder implements EventRecorder
     if (numSubscribers > 0) {
       LOG.debug("Publishing event {} through websocket to gateway", event.getType());
       EventsAgent.EventInfo eventInfo = new EventsAgent.EventInfo();
+      eventInfo.id = event.getId();
       eventInfo.timestamp = event.getTimestamp();
       eventInfo.type = event.getType();
+      eventInfo.data.remove("id");
       eventInfo.data = data;
       wsClient.publish(pubSubTopic, eventInfo);
     }
