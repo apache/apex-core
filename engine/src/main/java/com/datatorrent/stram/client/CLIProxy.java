@@ -29,7 +29,7 @@ public class CLIProxy implements Closeable
   private final ExecutorService executor = Executors.newFixedThreadPool(1);
   private StreamGobbler errorGobbler;
   private final Map<String, String> env = new HashMap<String, String>();
-  private static final long TIMEOUT_MILLIS = 10000;
+  private static final long TIMEOUT_MILLIS = 30000;
   private static final String COMMAND_DELIMITER = "___COMMAND_DELIMITER___";
 
   @SuppressWarnings("serial")
