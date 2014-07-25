@@ -221,7 +221,7 @@ public class CLIProxy implements Closeable
     String prompt = br.readLine(); // consume the next prompt
     LOG.debug("From CLI, received (prompt): {}", prompt);
     if (!COMMAND_DELIMITER.equals(prompt)) {
-      throw new RuntimeException();
+      throw new RuntimeException(String.format("CLIProxy: expected \"%s\" but got \"%s\"", COMMAND_DELIMITER, prompt));
     }
   }
 
