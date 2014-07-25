@@ -15,6 +15,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.lib.io.ConsoleOutputOperator;
 import com.datatorrent.lib.testbench.SeedEventGenerator;
 
+@ApplicationAnnotation(name="MyFirstApplication")
 public class Application implements StreamingApplication
 {
 
