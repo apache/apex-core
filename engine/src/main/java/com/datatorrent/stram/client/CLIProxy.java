@@ -193,17 +193,17 @@ public class CLIProxy implements Closeable
       @Override
       public String call() throws Exception
       {
-        String line = br.readLine(); // this line is echoed from jline2
-        LOG.debug("From CLI, received (echo): {}", line); // this line should contain the json results
-        line = br.readLine();
-        LOG.debug("From CLI, received (line): {}", line);
-        if (COMMAND_DELIMITER.equals(line)) {
-          return null;
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while (true) {
+          line = br.readLine();
+          LOG.debug("From CLI, received: {}", line);
+          if (COMMAND_DELIMITER.equals(line)) {
+            break;
+          }
+          sb.append(line);
         }
-        else {
-          consumePrompt();
-          return line;
-        }
+        return sb.toString();
       }
 
     };
