@@ -169,14 +169,11 @@ public interface StringCodec<T>
         }
 
         String[] properties = parts[1].split(separator, 2);
-        if (properties.length == 1) {
+        if (properties.length == 1 || properties[1].isEmpty()) {
           return clazz.getConstructor(String.class).newInstance(properties[0]);
         }
         else {
           T object = clazz.getConstructor(String.class).newInstance(properties[0]);
-          if (properties[1].isEmpty()) {
-            return object;
-          }
           HashMap<String, String> hashMap = new HashMap<String, String>();
           String[] keyValProperties = properties[1].split(separator);
           for (String keyValProperty : keyValProperties) {
