@@ -201,7 +201,7 @@ public class CLIProxy implements Closeable
           if (COMMAND_DELIMITER.equals(line)) {
             break;
           }
-          sb.append(line);
+          sb.append(line).append("\n");
         }
         return sb.toString();
       }
