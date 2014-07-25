@@ -159,7 +159,7 @@ public interface StringCodec<T>
     @SuppressWarnings({"UseSpecificCatch", "BroadCatchBlock", "TooBroadCatch"})
     public T fromString(String string)
     {
-      String[] parts = string.split(separator, 2);
+      String[] parts = string.split(separator);
 
       try {
         @SuppressWarnings("unchecked")
@@ -168,16 +168,15 @@ public interface StringCodec<T>
           return clazz.newInstance();
         }
 
-        String[] properties = parts[1].split(separator, 2);
-        if (properties.length == 1 || properties[1].isEmpty()) {
-          return clazz.getConstructor(String.class).newInstance(properties[0]);
+        //String[] properties = parts[1].split(separator, 2);
+        if (parts.length == 2) {
+          return clazz.getConstructor(String.class).newInstance(parts[1]);
         }
         else {
-          T object = clazz.getConstructor(String.class).newInstance(properties[0]);
+          T object = clazz.getConstructor(String.class).newInstance(parts[1]);
           HashMap<String, String> hashMap = new HashMap<String, String>();
-          String[] keyValProperties = properties[1].split(separator);
-          for (String keyValProperty : keyValProperties) {
-            String[] keyValPair = keyValProperty.split(propertySeparator, 2);
+          for (int i = 2; i < parts.length; i++) {
+            String[] keyValPair = parts[i].split(propertySeparator, 2);
             hashMap.put(keyValPair[0], keyValPair[1]);
           }
           BeanUtils.populate(object, hashMap);

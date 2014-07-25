@@ -113,13 +113,23 @@ public class Object2StringTest
   }
 
   @Test
-  public void testBeanCodecOnlyConstructor()
+  public void testBeanCodecOnlyEmptyConstructor()
   {
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":";
     TestBean obj = bean2String.fromString(bean);
     logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=-1, stringVal='constructor', longVal=-1}", obj.toString());
+    assertEquals("Validating bean Object", "TestBean{intVal=0, stringVal='null', longVal=0}", obj.toString());
+  }
+
+  @Test
+  public void testBeanCodecOnlyConstructor()
+  {
+    StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
+    String bean = TestBean.class.getName() + ": ";
+    TestBean obj = bean2String.fromString(bean);
+    logger.debug("Bean Object {}", obj.toString());
+    assertEquals("Validating bean Object", "TestBean{intVal=-1, stringVal=' ', longVal=-1}", obj.toString());
   }
 
   @Test
@@ -129,7 +139,7 @@ public class Object2StringTest
     String bean = TestBean.class.getName() + "::";
     TestBean obj = bean2String.fromString(bean);
     logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=-1, stringVal='constructor', longVal=-1}", obj.toString());
+    assertEquals("Validating bean Object", "TestBean{intVal=0, stringVal='null', longVal=0}", obj.toString());
   }
 
   @Test
