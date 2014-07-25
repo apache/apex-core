@@ -172,18 +172,34 @@ public class PartitioningTest
   public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
     private static final long serialVersionUID = 1L;
-    final public static Map<Integer, Integer> loadIndicators = new ConcurrentHashMap<Integer, Integer>();
+    final private static ThreadLocal<Map<Integer, Integer>> loadIndicators = new ThreadLocal<Map<Integer, Integer>>();
 
     @Override
     public Response processStats(BatchedOperatorStats status)
     {
-      Integer l = loadIndicators.get(status.getOperatorId());
-      Response hbr = new Response();
-      if (l != null) {
-        hbr.repartitionRequired = true;
-        hbr.loadIndicator = l.intValue();
+      Response hbr = null;
+      Map<Integer, Integer> m = loadIndicators.get();
+      if (m != null) {
+        Integer l = m.get(status.getOperatorId());
+        if (l != null) {
+          hbr = new Response();
+          hbr.repartitionRequired = true;
+          hbr.loadIndicator = l.intValue();
+        }
       }
       return hbr;
+    }
+
+    public static void put(PTOperator oper, int load) {
+      Map<Integer, Integer> m = loadIndicators.get();
+      if (m == null) {
+        loadIndicators.set(m = new ConcurrentHashMap<Integer, Integer>());
+      }
+      m.put(oper.getId(), load);
+    }
+
+    public static void remove(PTOperator oper) {
+      loadIndicators.get().remove(oper.getId());
     }
 
   }
@@ -237,7 +253,8 @@ public class PartitioningTest
       containers.add(oper.getContainer());
     }
     PTOperator splitPartition = partitions.get(0);
-    PartitionLoadWatch.loadIndicators.put(splitPartition.getId(), 1);
+    PartitionLoadWatch.put(splitPartition, 1);
+    LOG.debug("Triggered split for {}", splitPartition);
 
     int count = 0;
     long startMillis = System.currentTimeMillis();
@@ -254,7 +271,7 @@ public class PartitioningTest
       StramTestSupport.waitForActivation(lc, p);
     }
 
-    PartitionLoadWatch.loadIndicators.remove(splitPartition.getId());
+    PartitionLoadWatch.remove(splitPartition);
 
     PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
     LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, planInput);
@@ -370,13 +387,13 @@ public class PartitioningTest
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
 
-      PartitionLoadWatch.loadIndicators.put(partitions.get(0).getId(), 1);
+      PartitionLoadWatch.put(partitions.get(0), 1);
       int count = 0;
       long startMillis = System.currentTimeMillis();
       while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS) {
         count += lc.dnmgr.processEvents();
       }
-      PartitionLoadWatch.loadIndicators.remove(partitions.get(0).getId());
+      PartitionLoadWatch.remove(partitions.get(0));
 
       partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       partProperties = new HashSet<String>();

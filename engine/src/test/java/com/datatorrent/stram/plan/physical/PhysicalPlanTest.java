@@ -291,7 +291,7 @@ public class PhysicalPlanTest {
     StatsListener l = o1p1.statsListeners.get(0);
     Assert.assertTrue("stats handlers " + o1p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
 
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p1.getId(), 1);
+    PartitioningTest.PartitionLoadWatch.put(o1p1, 1);
     plan.onStatusUpdate(o1p1);
     Assert.assertEquals("scale up triggered", 1, ctx.events.size());
 
@@ -301,7 +301,7 @@ public class PhysicalPlanTest {
     for (PTOperator p : plan.getOperators(o1Meta)) {
       Assert.assertEquals("activation window id " + p, Checkpoint.INITIAL_CHECKPOINT, p.recoveryCheckpoint);
       Assert.assertEquals("checkpoints " + p + " " + p.checkpoints, Lists.newArrayList(), p.checkpoints);
-      PartitioningTest.PartitionLoadWatch.loadIndicators.put(p.getId(), -1);
+      PartitioningTest.PartitionLoadWatch.put(p, -1);
       plan.onStatusUpdate(p);
     }
     ctx.events.remove(0).run();
@@ -467,8 +467,8 @@ public class PhysicalPlanTest {
 
     StatsListener l = o1p1.statsListeners.get(0);
     Assert.assertTrue("stats handlers " + o1p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p1.getId(), -1);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1Partitions.get(1).getId(), -1);
+    PartitioningTest.PartitionLoadWatch.put(o1p1, -1);
+    PartitioningTest.PartitionLoadWatch.put(o1Partitions.get(1), -1);
 
     plan.onStatusUpdate(o1p1);
     plan.onStatusUpdate(o1Partitions.get(1));
@@ -489,7 +489,7 @@ public class PhysicalPlanTest {
 
     // scale up, ensure unifier is setup at activation checkpoint
     setActivationCheckpoint(o1NewPartitions.get(0), 3);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1NewPartitions.get(0).getId(), 1);
+    PartitioningTest.PartitionLoadWatch.put(o1NewPartitions.get(0), 1);
     plan.onStatusUpdate(o1NewPartitions.get(0));
     Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
     ctx.events.remove(0).run();
@@ -934,7 +934,7 @@ public class PhysicalPlanTest {
       Set<PTOperator> expUndeploy = Sets.newHashSet(ptos);
       for (PTOperator ptOperator : ptos) {
         expUndeploy.addAll(ptOperator.upstreamMerge.values());
-        PartitioningTest.PartitionLoadWatch.loadIndicators.put(ptOperator.getId(), -1);
+        PartitioningTest.PartitionLoadWatch.put(ptOperator, -1);
         plan.onStatusUpdate(ptOperator);
       }
       ctx.backupRequests = 0;
@@ -969,7 +969,7 @@ public class PhysicalPlanTest {
       unChangedOps.addAll(nOps);
 
 
-      PartitioningTest.PartitionLoadWatch.loadIndicators.put(o2p1.getId(), 1);
+      PartitioningTest.PartitionLoadWatch.put(o2p1, 1);
 
       plan.onStatusUpdate(o2p1);
       Assert.assertEquals("repartition event", 1, ctx.events.size());
@@ -1009,7 +1009,7 @@ public class PhysicalPlanTest {
 
       for (PTOperator o1p : plan.getOperators(o1Meta)) {
         expUndeploy.add(o1p);
-        PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p.getId(), -1);
+        PartitioningTest.PartitionLoadWatch.put(o1p, -1);
         plan.onStatusUpdate(o1p);
       }
 
@@ -1034,7 +1034,7 @@ public class PhysicalPlanTest {
       Set<PTOperator> expDeploy = Sets.newHashSet();
       for (PTOperator o1p : plan.getOperators(o1Meta)) {
         expUndeploy.add(o1p);
-        PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p.getId(), 1);
+        PartitioningTest.PartitionLoadWatch.put(o1p, 1);
         plan.onStatusUpdate(o1p);
       }
 
@@ -1136,7 +1136,7 @@ public class PhysicalPlanTest {
     PTOperator p1 = o1Partitions.get(0);
     StatsListener l = p1.statsListeners.get(0);
     Assert.assertTrue("stats handlers " + p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(p1.getId(), 1);
+    PartitioningTest.PartitionLoadWatch.put(p1, 1);
 
     plan.onStatusUpdate(p1);
 
