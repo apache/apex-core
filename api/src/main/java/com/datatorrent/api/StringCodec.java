@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.datatorrent.common.util.DTThrowable;
@@ -122,27 +123,36 @@ public interface StringCodec<T>
 
   /**
    * The attributes which represent arbitrary objects for which the schema cannot be
-   * standardized, we allow them to be represented as <ClassName>,<String> representation.
+   * standardized, we allow them to be represented as <ClassName>:<Constructor_String>:<Property_String> representation.
    * This allows us to instantiate the class by invoking its constructor which takes
-   * <String> as argument. <String> itself can contain comma (,) character in it. If
+   * <String> as argument. <String> itself can contain comma (:) character in it. If
    * Only the <ClassName> is specified, then just the class is instantiated using default
-   * constructor. If comma is specified then class is instantiated using constructor with
-   * empty string as an argument.
+   * constructor. If colon is specified then class is instantiated using constructor with
+   * empty string as an argument.If properties are specified then properties will be set on the object
    *
    * @param <T> Type of the object which is converted to/from String
    */
   public class Object2String<T> implements StringCodec<T>, Serializable
   {
     public final String separator;
+    public final String propertySeparator;
 
     public Object2String()
     {
       separator = ":";
+      propertySeparator = "=";
     }
 
     public Object2String(String separator)
     {
       this.separator = separator;
+      this.propertySeparator = "=";
+    }
+
+    public Object2String(String separator, String propertySeparator)
+    {
+      this.separator = separator;
+      this.propertySeparator = propertySeparator;
     }
 
     @Override
@@ -153,12 +163,29 @@ public interface StringCodec<T>
 
       try {
         @SuppressWarnings("unchecked")
-        Class<? extends T> clazz = (Class<? extends T>)Thread.currentThread().getContextClassLoader().loadClass(parts[0]);
+        Class<? extends T> clazz = (Class<? extends T>) Thread.currentThread().getContextClassLoader().loadClass(parts[0]);
         if (parts.length == 1) {
           return clazz.newInstance();
         }
 
-        return clazz.getConstructor(String.class).newInstance(parts[1]);
+        String[] properties = parts[1].split(separator, 2);
+        if (properties.length == 1) {
+          return clazz.getConstructor(String.class).newInstance(properties[0]);
+        }
+        else {
+          T object = clazz.getConstructor(String.class).newInstance(properties[0]);
+          if (properties[1].isEmpty()) {
+            return object;
+          }
+          HashMap<String, String> hashMap = new HashMap<String, String>();
+          String[] keyValProperties = properties[1].split(separator);
+          for (String keyValProperty : keyValProperties) {
+            String[] keyValPair = keyValProperty.split(propertySeparator, 2);
+            hashMap.put(keyValPair[0], keyValPair[1]);
+          }
+          BeanUtils.populate(object, hashMap);
+          return object;
+        }
       }
       catch (Throwable cause) {
         DTThrowable.rethrow(cause);

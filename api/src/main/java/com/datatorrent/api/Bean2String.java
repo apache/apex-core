@@ -8,30 +8,39 @@ import com.datatorrent.common.util.DTThrowable;
 import org.apache.commons.beanutils.BeanUtils;
 
 /**
+ * The attributes which represent arbitrary objects for which the schema cannot be
+ * standardized, we allow them to be represented as <ClassName>:<String> representation.
+ * This allows us to instantiate the class and setting the properties defined in the <String>.
+ * <String> defines the properties in property=value format separated by :. If only the
+ * <ClassName> is specified, then just the class is instantiated using default
+ * constructor.
+ *
+ * @param <T> Type of the object which is converted to/from String
+ *
  * Created by gaurav on 7/24/14.
  */
 public class Bean2String<T> implements StringCodec<T>, Serializable
 {
 
   public final String separator;
-  public final String equal;
+  public final String propertySeparator;
 
   public Bean2String()
   {
     separator = ":";
-    equal = "=";
+    propertySeparator = "=";
   }
 
   public Bean2String(String separator)
   {
     this.separator = separator;
-    this.equal = "=";
+    this.propertySeparator = "=";
   }
 
-  public Bean2String(String separator, String equal)
+  public Bean2String(String separator, String propertySeparator)
   {
     this.separator = separator;
-    this.equal = equal;
+    this.propertySeparator = propertySeparator;
   }
 
   @Override
@@ -51,8 +60,8 @@ public class Bean2String<T> implements StringCodec<T>, Serializable
       HashMap<String, String> hashMap = new HashMap<String, String>();
       String[] properties = parts[1].split(separator);
       for (String property : properties) {
-        String[] kvpair = property.split(equal, 2);
-        hashMap.put(kvpair[0], kvpair[1]);
+        String[] keyValPair = property.split(propertySeparator, 2);
+        hashMap.put(keyValPair[0], keyValPair[1]);
       }
       BeanUtils.populate(obj, hashMap);
       return obj;
