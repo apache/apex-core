@@ -82,7 +82,11 @@ public class AppBundle extends JarFile implements Closeable
     appBundleName = attr.getValue(ATTRIBUTE_DT_APP_BUNDLE_NAME);
     appBundleVersion = attr.getValue(ATTRIBUTE_DT_APP_BUNDLE_VERSION);
     dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
-    classPath.addAll(Arrays.asList(StringUtils.split(attr.getValue(ATTRIBUTE_CLASS_PATH), " ")));
+    String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
+    if (classPathString == null) {
+      throw new IOException("Not a valid app bundle.  Class-Path is missing from MANIFEST.MF");
+    }
+    classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
 
     ZipFile zipFile = new ZipFile(file);
     if (zipFile.isEncrypted()) {
