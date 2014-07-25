@@ -205,7 +205,7 @@ public class PartitioningTest
     return lc.getPlanOperators(ow);
   }
 
-  @Ignore
+  //@Ignore
   @Test
   @SuppressWarnings("SleepWhileInLoop")
   public void testDynamicDefaultPartitioning() throws Exception
@@ -242,6 +242,7 @@ public class PartitioningTest
     int count = 0;
     long startMillis = System.currentTimeMillis();
     while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS) {
+      sleep(20); // yield
       count += lc.dnmgr.processEvents();
     }
 
