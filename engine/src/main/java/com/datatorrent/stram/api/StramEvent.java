@@ -5,6 +5,7 @@
 package com.datatorrent.stram.api;
 
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * <p>
@@ -15,11 +16,23 @@ import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
  */
 public abstract class StramEvent
 {
+  private static final AtomicLong nextId = new AtomicLong(1);
+  private final long id;
   private long timestamp = System.currentTimeMillis();
   private String reason;
 
   public abstract String getType();
 
+  protected StramEvent()
+  {
+    id = nextId.getAndIncrement();
+  }
+
+  public long getId()
+  {
+    return id;
+  }
+  
   public long getTimestamp()
   {
     return timestamp;

@@ -42,6 +42,8 @@ public final class EventsAgent extends FSPartFileAgent
   public static class EventInfo
   {
     @JsonSerialize(using = ToStringSerializer.class)
+    public long id;
+    @JsonSerialize(using = ToStringSerializer.class)
     public long timestamp;
     public String type;
     public Map<String, Object> data;
@@ -242,6 +244,8 @@ public final class EventsAgent extends FSPartFileAgent
         }
         else if (limit-- > 0) {
           ev.data = new ObjectMapper().readValue(partLine.substring(cursor), HashMap.class);
+          ev.id = Long.valueOf((String)ev.data.get("id"));
+          ev.data.remove("id");
           result.add(ev);
         }
       }

@@ -15,6 +15,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.lib.io.ConsoleOutputOperator;
 import com.datatorrent.lib.testbench.SeedEventGenerator;
 
+@ApplicationAnnotation(name="MyFirstApplication")
 public class Application implements StreamingApplication
 {
 
@@ -22,6 +23,7 @@ public class Application implements StreamingApplication
   public void populateDAG(DAG dag, Configuration conf)
   {
     // Sample DAG with 2 operators
+    // Replace this code with the DAG you want to build
 
     SeedEventGenerator seedGen = dag.addOperator("seedGen", SeedEventGenerator.class);
     seedGen.setSeedstart(1);

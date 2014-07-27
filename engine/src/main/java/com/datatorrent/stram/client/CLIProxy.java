@@ -29,7 +29,7 @@ public class CLIProxy implements Closeable
   private final ExecutorService executor = Executors.newFixedThreadPool(1);
   private StreamGobbler errorGobbler;
   private final Map<String, String> env = new HashMap<String, String>();
-  private static final long TIMEOUT_MILLIS = 10000;
+  private static final long TIMEOUT_MILLIS = 30000;
   private static final String COMMAND_DELIMITER = "___COMMAND_DELIMITER___";
 
   @SuppressWarnings("serial")
@@ -151,7 +151,7 @@ public class CLIProxy implements Closeable
     sb.append(appBundleLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(configName)) {
-      sb.append(" -conf \"").append(configName).append("\"");
+      sb.append("-conf \"").append(configName).append("\" ");
     }
     for (Map.Entry<String, String> property : overrideProperties.entrySet()) {
       sb.append("-D \"").append(property.getKey()).append("=").append(property.getValue()).append("\" ");
@@ -193,17 +193,17 @@ public class CLIProxy implements Closeable
       @Override
       public String call() throws Exception
       {
-        String line = br.readLine(); // this line is echoed from jline2
-        LOG.debug("From CLI, received (echo): {}", line); // this line should contain the json results
-        line = br.readLine();
-        LOG.debug("From CLI, received (line): {}", line);
-        if (COMMAND_DELIMITER.equals(line)) {
-          return null;
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while (true) {
+          line = br.readLine();
+          LOG.debug("From CLI, received: {}", line);
+          if (COMMAND_DELIMITER.equals(line)) {
+            break;
+          }
+          sb.append(line).append("\n");
         }
-        else {
-          consumePrompt();
-          return line;
-        }
+        return sb.toString();
       }
 
     };
@@ -221,7 +221,7 @@ public class CLIProxy implements Closeable
     String prompt = br.readLine(); // consume the next prompt
     LOG.debug("From CLI, received (prompt): {}", prompt);
     if (!COMMAND_DELIMITER.equals(prompt)) {
-      throw new RuntimeException();
+      throw new RuntimeException(String.format("CLIProxy: expected \"%s\" but got \"%s\"", COMMAND_DELIMITER, prompt));
     }
   }
 
