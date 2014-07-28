@@ -6,7 +6,6 @@ package com.datatorrent.stram.util;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.PrintWriter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -31,7 +30,13 @@ public class FSJsonLineFile implements Closeable
   public FSJsonLineFile(Path path, FsPermission permission) throws IOException
   {
     fs = FileSystem.newInstance(path.toUri(), new Configuration());
-    os = FileSystem.create(fs, path, permission);
+    if (fs.exists(path)) {
+      // happens if not the first application attempt
+      os = fs.append(path);
+    }
+    else {
+      os = FileSystem.create(fs, path, permission);
+    }
     this.objectMapper = (new JacksonObjectMapperProvider()).getContext(null);
   }
 
