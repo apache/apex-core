@@ -30,23 +30,31 @@ public class FSJsonLineFile implements Closeable
   public FSJsonLineFile(Path path, FsPermission permission) throws IOException
   {
     fs = FileSystem.newInstance(path.toUri(), new Configuration());
+    FSDataOutputStream myos;
     if (fs.exists(path)) {
-      // happens if not the first application attempt
-      os = fs.append(path);
+      try {
+        // happens if not the first application attempt
+        myos = fs.append(path);
+      }
+      catch (IOException ex) {
+        LOG.warn("Caught exception (OK during unit test): {}", ex.getMessage());
+        myos = FileSystem.create(fs, path, permission);
+      }
     }
     else {
-      os = FileSystem.create(fs, path, permission);
+      myos = FileSystem.create(fs, path, permission);
     }
+    os = myos;
     this.objectMapper = (new JacksonObjectMapperProvider()).getContext(null);
   }
 
-  public void append(JSONObject json) throws IOException
+  public synchronized void append(JSONObject json) throws IOException
   {
     os.writeBytes(json.toString() + "\n");
     os.hflush();
   }
 
-  public void append(Object obj) throws IOException
+  public synchronized void append(Object obj) throws IOException
   {
     os.writeBytes(objectMapper.writeValueAsString(obj) + "\n");
     os.hflush();
