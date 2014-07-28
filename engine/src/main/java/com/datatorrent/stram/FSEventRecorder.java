@@ -39,6 +39,7 @@ public class FSEventRecorder implements EventRecorder
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private final String pubSubTopic;
+  private EventRecorderThread eventRecorderThread = new EventRecorderThread();
 
   private class EventRecorderThread extends Thread
   {
@@ -48,6 +49,7 @@ public class FSEventRecorder implements EventRecorder
       while (true) {
         try {
           writeEvent(queue.take());
+          Thread.yield();
           if (queue.isEmpty()) {
             if (!storage.flushData() && wsClient != null) {
               String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".event." + storage.getBasePath();
@@ -100,11 +102,16 @@ public class FSEventRecorder implements EventRecorder
         }
       }
 
-      new EventRecorderThread().start();
+      eventRecorderThread.start();
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
+  }
+
+  public void teardown()
+  {
+    eventRecorderThread.interrupt();
   }
 
   @Handler
