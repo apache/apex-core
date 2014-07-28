@@ -1199,13 +1199,9 @@ public class StreamingContainerManager implements PlanContext
           //LOG.warn("This timestamp for {} is lower than the previous!! {} < {}", oper.getId(), maxEndWindowTimestamp, lastMaxEndWindowTimestamp);
         }
         operatorLastEndWindowTimestamps.put(oper.getId(), maxEndWindowTimestamp);
-        if (oper.statsListeners != null || plan.getCountersAggregatorFor(logicalOperator) != null) {
-          status.listenerStats.add(statsList);
-          this.reportStats.put(oper, oper);
-        }
-        else {
-          status.lastWindowedStats = statsList;
-        }
+        status.listenerStats.add(statsList);
+        this.reportStats.put(oper, oper);
+
         status.statsRevs.commit();
       }
       if (lastStatsTimestamp < maxEndWindowTimestamp) {
