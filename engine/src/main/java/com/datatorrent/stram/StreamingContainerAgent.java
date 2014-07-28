@@ -4,24 +4,14 @@
  */
 package com.datatorrent.stram;
 
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -38,6 +28,15 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
+import com.google.common.collect.Sets;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  *
@@ -161,11 +160,14 @@ public class StreamingContainerAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
+          // TODO-
+          /*
           if (streamMeta.getStreamCodec() != null) {
             portInfo.streamCodec = streamMeta.getStreamCodec();
           } else if (streamMeta.getCodecClass() != null) {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
+          */
         }
 
         ndi.outputs.add(portInfo);
@@ -188,9 +190,11 @@ public class StreamingContainerAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getName();
         inputInfo.portName = in.portName;
+        InputPortMeta inputPortMeta = null;
         for (Map.Entry<InputPortMeta, StreamMeta> e : oper.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
-            inputInfo.contextAttributes = e.getKey().getAttributes();
+            inputPortMeta = e.getKey();
+            inputInfo.contextAttributes = inputPortMeta.getAttributes();
           }
         }
 
@@ -227,10 +231,21 @@ public class StreamingContainerAgent {
           inputInfo.bufferServerPort = addr.getPort();
         }
 
+        /*
         if (streamMeta.getStreamCodec() != null) {
           inputInfo.streamCodec = streamMeta.getStreamCodec();
         } else if (streamMeta.getCodecClass() != null) {
           inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
+        }
+        */
+        StreamCodec<?> streamCodec = inputInfo.contextAttributes.get(PortContext.STREAM_CODEC);
+        if (streamCodec != null) {
+          inputInfo.streamCodec = streamCodec;
+        } else {
+          if (inputPortMeta != null) {
+            Class<? extends StreamCodec<?>> codecClass = inputPortMeta.getPortObject().getStreamCodec();
+            inputInfo.serDeClassName = codecClass.getName();
+          }
         }
         ndi.inputs.add(inputInfo);
       }

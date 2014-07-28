@@ -256,8 +256,10 @@ public class LogicalPlan implements Serializable, DAG
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
     @Deprecated /* use codec instead; feel free to delete the codecClass related code after May 1, 2014 */
+    /*
     private Class<? extends StreamCodec<?>> codecClass;
     private StreamCodec<?> streamCodec;
+    */
     private final String id;
 
     private StreamMeta(String id)
@@ -283,6 +285,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     //@Deprecated
+    /*
     public Class<? extends StreamCodec<?>> getCodecClass()
     {
       return codecClass;
@@ -292,6 +295,7 @@ public class LogicalPlan implements Serializable, DAG
     {
       return streamCodec;
     }
+    */
 
     public OutputPortMeta getSource()
     {
@@ -338,6 +342,7 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
+    /*
     public void finalizeValidate() {
       for (InputPortMeta portMeta : sinks) {
         finalizeValidate(portMeta);
@@ -375,6 +380,7 @@ public class LogicalPlan implements Serializable, DAG
         }
       }
     }
+    */
 
     public void remove() {
       for (InputPortMeta ipm : this.sinks) {
@@ -405,6 +411,7 @@ public class LogicalPlan implements Serializable, DAG
       int hash = 7;
       hash = 31 * hash + (this.locality != null ? this.locality.hashCode() : 0);
       hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
+      /*
       if (streamCodec != null) {
         hash = 31 * hash + streamCodec.hashCode();
       } else if (streamCodec != null) {
@@ -416,6 +423,7 @@ public class LogicalPlan implements Serializable, DAG
       else {
         hash = 31 * hash;
       }
+      */
       hash = 31 * hash + (this.id != null ? this.id.hashCode() : 0);
       return hash;
     }
@@ -442,6 +450,7 @@ public class LogicalPlan implements Serializable, DAG
       if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
         return false;
       }
+      /*
       if (this.streamCodec != other.streamCodec && (this.streamCodec == null || !this.streamCodec.equals(other.streamCodec))) {
         return false;
       }
@@ -451,6 +460,7 @@ public class LogicalPlan implements Serializable, DAG
       if (this.codecClass != other.codecClass && (this.codecClass == null || !this.codecClass.equals(other.codecClass))) {
         return false;
       }
+      */
       if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
         return false;
       }
@@ -927,6 +937,7 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     for (StreamMeta n: this.streams.values()) {
+      /*
       if (n.streamCodec != null) {
         classNames.add(n.streamCodec.getClass().getName());
       } else if (n.streamCodec != null) {
@@ -934,6 +945,18 @@ public class LogicalPlan implements Serializable, DAG
       }
       else if (n.codecClass != null) {
         classNames.add(n.codecClass.getName());
+      }
+      */
+      for (InputPortMeta sink : n.getSinks()) {
+        StreamCodec<?> streamCodec = sink.getValue(PortContext.STREAM_CODEC);
+        if (streamCodec != null) {
+          classNames.add(streamCodec.getClass().getName());
+        } else {
+          Class<? extends StreamCodec<?>> codecClass = sink.getPortObject().getStreamCodec();
+          if (codecClass != null) {
+            classNames.add(codecClass.getName());
+          }
+        }
       }
     }
     return classNames;
@@ -1049,7 +1072,7 @@ public class LogicalPlan implements Serializable, DAG
         throw new ValidationException(String.format("stream not connected: %s", s.getName()));
       }
       // finalize stream codec
-      s.finalizeValidate();
+      //s.finalizeValidate();
     }
 
     // processing mode
