@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import static org.junit.Assert.*;
 
 /**
- * Created by gaurav on 7/24/14.
+ * This tests teh Object2String codec
  */
 public class Object2StringTest
 {
@@ -170,7 +170,7 @@ public class Object2StringTest
     try {
       TestBean obj = bean2String.fromString(bean);
     }
-    catch (Throwable ex) {
+    catch (RuntimeException ex) {
       logger.debug("Caught class not found exception", ex.getCause());
     }
   }
@@ -185,7 +185,7 @@ public class Object2StringTest
     try {
       assertEquals("Validating bean Object", "TestBean{intVal=10, stringVal='hello', longVal=10}", obj.toString());
     }
-    catch (Throwable ex) {
+    catch (AssertionError ex) {
       logger.debug("Caught validation exception", ex);
     }
 
