@@ -13,6 +13,10 @@
 
   <name>DataTorrent application Maven archetype</name>
 
+  <properties>
+    <maven.deploy.skip>false</maven.deploy.skip>
+  </properties>
+
   <build>
     <extensions>
       <extension>
