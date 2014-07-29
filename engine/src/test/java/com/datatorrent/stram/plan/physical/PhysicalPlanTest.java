@@ -4,18 +4,10 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.util.*;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
@@ -32,6 +24,12 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.*;
 
 public class PhysicalPlanTest
 {
@@ -109,6 +107,8 @@ public class PhysicalPlanTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
+
+    dag.validate();
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
@@ -298,7 +298,7 @@ public class PhysicalPlanTest
     StatsListener l = o1p1.statsListeners.get(0);
     Assert.assertTrue("stats handlers " + o1p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
 
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p1.getId(), 1);
+    PartitioningTest.PartitionLoadWatch.put(o1p1, 1);
     plan.onStatusUpdate(o1p1);
     Assert.assertEquals("scale up triggered", 1, ctx.events.size());
 
@@ -308,7 +308,7 @@ public class PhysicalPlanTest
     for (PTOperator p : plan.getOperators(o1Meta)) {
       Assert.assertEquals("activation window id " + p, Checkpoint.INITIAL_CHECKPOINT, p.recoveryCheckpoint);
       Assert.assertEquals("checkpoints " + p + " " + p.checkpoints, Lists.newArrayList(), p.checkpoints);
-      PartitioningTest.PartitionLoadWatch.loadIndicators.put(p.getId(), -1);
+      PartitioningTest.PartitionLoadWatch.put(p, -1);
       plan.onStatusUpdate(p);
     }
     ctx.events.remove(0).run();
@@ -474,8 +474,8 @@ public class PhysicalPlanTest
 
     StatsListener l = o1p1.statsListeners.get(0);
     Assert.assertTrue("stats handlers " + o1p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p1.getId(), -1);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1Partitions.get(1).getId(), -1);
+    PartitioningTest.PartitionLoadWatch.put(o1p1, -1);
+    PartitioningTest.PartitionLoadWatch.put(o1Partitions.get(1), -1);
 
     plan.onStatusUpdate(o1p1);
     plan.onStatusUpdate(o1Partitions.get(1));
@@ -496,7 +496,7 @@ public class PhysicalPlanTest
 
     // scale up, ensure unifier is setup at activation checkpoint
     setActivationCheckpoint(o1NewPartitions.get(0), 3);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1NewPartitions.get(0).getId(), 1);
+    PartitioningTest.PartitionLoadWatch.put(o1NewPartitions.get(0), 1);
     plan.onStatusUpdate(o1NewPartitions.get(0));
     Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
     ctx.events.remove(0).run();
@@ -951,7 +951,7 @@ public class PhysicalPlanTest
       Set<PTOperator> expUndeploy = Sets.newHashSet(ptos);
       for (PTOperator ptOperator : ptos) {
         expUndeploy.addAll(ptOperator.upstreamMerge.values());
-        PartitioningTest.PartitionLoadWatch.loadIndicators.put(ptOperator.getId(), -1);
+        PartitioningTest.PartitionLoadWatch.put(ptOperator, -1);
         plan.onStatusUpdate(ptOperator);
       }
       ctx.backupRequests = 0;
@@ -986,7 +986,7 @@ public class PhysicalPlanTest
       unChangedOps.addAll(nOps);
 
 
-      PartitioningTest.PartitionLoadWatch.loadIndicators.put(o2p1.getId(), 1);
+      PartitioningTest.PartitionLoadWatch.put(o2p1, 1);
 
       plan.onStatusUpdate(o2p1);
       Assert.assertEquals("repartition event", 1, ctx.events.size());
@@ -1026,7 +1026,7 @@ public class PhysicalPlanTest
 
       for (PTOperator o1p : plan.getOperators(o1Meta)) {
         expUndeploy.add(o1p);
-        PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p.getId(), -1);
+        PartitioningTest.PartitionLoadWatch.put(o1p, -1);
         plan.onStatusUpdate(o1p);
       }
 
@@ -1051,7 +1051,7 @@ public class PhysicalPlanTest
       Set<PTOperator> expDeploy = Sets.newHashSet();
       for (PTOperator o1p : plan.getOperators(o1Meta)) {
         expUndeploy.add(o1p);
-        PartitioningTest.PartitionLoadWatch.loadIndicators.put(o1p.getId(), 1);
+        PartitioningTest.PartitionLoadWatch.put(o1p, 1);
         plan.onStatusUpdate(o1p);
       }
 
@@ -1153,7 +1153,7 @@ public class PhysicalPlanTest
     PTOperator p1 = o1Partitions.get(0);
     StatsListener l = p1.statsListeners.get(0);
     Assert.assertTrue("stats handlers " + p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
-    PartitioningTest.PartitionLoadWatch.loadIndicators.put(p1.getId(), 1);
+    PartitioningTest.PartitionLoadWatch.put(p1, 1);
 
     plan.onStatusUpdate(p1);
 
@@ -1172,6 +1172,29 @@ public class PhysicalPlanTest
       Assert.assertNotNull("container null: " + o, o.getContainer());
     }
 
+  }
+
+  @Test
+  public void testContainerSize()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+
+    dag.setAttribute(o2, OperatorContext.MEMORY_MB, 4000);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+    Assert.assertEquals("memory container 1", 2048, plan.getContainers().get(0).getRequiredMemoryMB());
+    Assert.assertEquals("memory container 2", 4000, plan.getContainers().get(1).getRequiredMemoryMB());
   }
 
 }

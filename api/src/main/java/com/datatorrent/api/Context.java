@@ -21,12 +21,12 @@ import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.Collection2String;
+import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.StringCodec.String2String;
 import com.datatorrent.api.annotation.Stateless;
 
 /**
- *
  * The base interface for context for all of the streaming platform objects<p>
  * <br>
  *
@@ -51,6 +51,33 @@ public interface Context
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
   public <T> T getValue(AttributeMap.Attribute<T> key);
+
+  /**
+   * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
+   * current window, reset at window boundary.
+   *
+   * @param counters
+   */
+  void setCounters(Object counters);
+
+  /**
+   * Custom operator stats that can be defined by an operator implementation to communicate information from the
+   * execution environment to the application master. Treated by the engine as opaque object.
+   * <p>
+   * Implementation needs to be {@link java.io.Serializable} and, if desired, can implement
+   * {@link java.io.Externalizable} to use an alternative serialization mechanism.
+   *
+   * @deprecated Custom counters do not need to implement this interface any longer.
+   */
+  @SuppressWarnings("MarkerInterface")
+  interface Counters
+  {
+  }
+
+  interface CountersAggregator
+  {
+   Object aggregate(Collection<?> countersList);
+  }
 
   public interface PortContext extends Context
   {
@@ -113,19 +140,21 @@ public interface Context
     Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
     /**
      * The maximum number of attempts to restart a failing operator before shutting down the application.
-     * When an operator fails to start it is re-spawned in a new container. If it continues to fail after the number of restart
-     * attempts reaches this limit the application is shutdown. The default value is 5 attempts.
+     * Until this number is reached, when an operator fails to start it is re-spawned in a new container. Once all the
+     * attempts are exhausted, the application is shutdown. The default value for this attribute is null or unset and
+     * is equivalent to infinity; The operator hence will be attempted to be recovered indefinitely unless this value
+     * is set to anything else.
      */
-    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(0);
+    Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(new Integer2String());
     /**
      * Count of initial partitions for the operator. The number is interpreted as follows:
      * <p>
-     * Default partitioning (operator does not implement {@link Partitionable}):<br>
+     * Default partitioning (operator does not implement {@link Partitioner}):<br>
      * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
      * Default partitioning does not consider operator state on split or merge.
      * <p>
-     * Operator implements {@link Partitionable}:<br>
-     * Value given as initial capacity hint to {@link Partitionable#definePartitions(java.util.Collection, int)}
+     * Operator implements {@link Partitioner}:<br>
+     * Value given as initial capacity hint to {@link Partitioner#definePartitions(java.util.Collection, int)}
      * The operator implementation controls instance number and initialization on a per partition basis.
      */
     Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
@@ -153,9 +182,9 @@ public interface Context
      */
     Attribute<Boolean> STATELESS = new Attribute<Boolean>(false);
     /**
-     * Attribute of the operator that suggests the ideal RAM that the operator may need for optimal functioning.
+     * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement for containers.
      */
-    //public static final Attribute<Integer> MEMORY_MB = new Attribute<Integer>("memoryMB");
+    Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
@@ -213,19 +242,16 @@ public interface Context
     Attribute<Partitioner<? extends Operator>> PARTITIONER = new Attribute<Partitioner<? extends Operator>>(new Object2String<Partitioner<? extends Operator>>());
 
     /**
+     * Aggregates physical counters to a logical counter.
+     */
+    Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
+
+    /**
      * Return the operator runtime id.
      *
      * @return The id
      */
     int getId();
-
-    /**
-     * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
-     * current window, reset at window boundary.
-     *
-     * @param stats
-     */
-    void setCustomStats(Stats.OperatorStats.CustomStats stats);
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);

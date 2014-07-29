@@ -5,14 +5,14 @@
 
 package com.datatorrent.stram.webapp;
 
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.DAGContext;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.util.VersionInfo;
+import java.util.*;
+import javax.xml.bind.annotation.*;
 import org.apache.hadoop.yarn.util.Times;
-
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
-import java.util.List;
 
 /**
  *
@@ -47,6 +47,7 @@ public class AppInfo {
   protected long totalLicensedMB;
   protected long allocatedMB;
   protected long licenseInfoLastUpdate;
+  public Map<String, Object> attributes;
   public String appMasterTrackingUrl;
   public String version;
   public AppStats stats;
@@ -167,6 +168,10 @@ public class AppInfo {
     this.totalLicensedMB = context.getTotalLicensedMB();
     this.allocatedMB = context.getAllocatedMB();
     this.licenseInfoLastUpdate = context.getLicenseInfoLastUpdate();
+    this.attributes = new TreeMap<String, Object>();
+    for (Map.Entry<Attribute<Object>, Object> entry : AttributeMap.AttributeInitializer.getAllAttributes(context, DAGContext.class).entrySet()) {
+      this.attributes.put(entry.getKey().getSimpleName(), entry.getValue());
+    }
   }
 
   /**

@@ -1,5 +1,16 @@
 package com.datatorrent.stram.security;
 
+import com.datatorrent.stram.webapp.WebServices;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+
+import javax.servlet.*;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -8,19 +19,6 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.servlet.*;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-
-import com.datatorrent.stram.webapp.WebServices;
 
 /**
  * Created by pramod on 12/17/13.
@@ -179,9 +177,11 @@ public class StramWSFilter implements Filter
   private String createClientToken(String username, String service) throws IOException
   {
     StramDelegationTokenIdentifier tokenIdentifier = new StramDelegationTokenIdentifier(new Text(username), new Text(loginUser), new Text());
-    tokenIdentifier.setSequenceNumber(sequenceNumber.getAndAdd(1));
-    byte[] password = tokenManager.addIdentifier(tokenIdentifier);
-    Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>(tokenIdentifier.getBytes(), password, tokenIdentifier.getKind(), new Text(service));
+    //tokenIdentifier.setSequenceNumber(sequenceNumber.getAndAdd(1));
+    //byte[] password = tokenManager.addIdentifier(tokenIdentifier);
+    //Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>(tokenIdentifier.getBytes(), password, tokenIdentifier.getKind(), new Text(service));
+    Token<StramDelegationTokenIdentifier> token = new Token<StramDelegationTokenIdentifier>(tokenIdentifier, tokenManager);
+    token.setService(new Text(service));
     return token.encodeToUrlString();
   }
 

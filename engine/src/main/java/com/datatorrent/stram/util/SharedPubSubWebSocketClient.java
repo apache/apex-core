@@ -51,9 +51,13 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
     openConnection(timeoutMillis);
   }
 
-  public synchronized void addHandler(String topic, Handler handler)
+  public synchronized void addHandler(String topic, boolean numSubscribers, Handler handler)
   {
     List<Handler> handlers;
+    String originalTopic = topic;
+    if (numSubscribers) {
+      topic += ".numSubscribers";
+    }
     if (topicHandlers.containsKey(topic)) {
       handlers = topicHandlers.get(topic);
     }
@@ -64,7 +68,12 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
     handlers.add(handler);
     try {
       if (isConnectionOpen()) {
-        subscribe(topic);
+        if (numSubscribers) {
+          subscribeNumSubscribers(originalTopic);
+        }
+        else {
+          subscribe(topic);
+        }
       }
     }
     catch (IOException ex) {

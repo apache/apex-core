@@ -9,9 +9,7 @@ import com.datatorrent.api.Operator.InputPort;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -20,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * <p>OperatorDiscoverer class.</p>
+ * Discover Operators.
+ * Warning: Using this class may cause classloader leakage, depending on the classes it loads.
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
@@ -39,9 +39,11 @@ public class OperatorDiscoverer
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
   private final List<String> pathsToScan = new ArrayList<String>();
   private final ClassLoader classLoader;
+  private final String packagePrefix; // The reason why we need this is that if we scan the entire class path, it's very likely that we end up with out of permgen memory
 
-  public OperatorDiscoverer()
+  public OperatorDiscoverer(String packagePrefix)
   {
+    this.packagePrefix = packagePrefix;
     classLoader = ClassLoader.getSystemClassLoader();
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
@@ -52,8 +54,9 @@ public class OperatorDiscoverer
     }
   }
 
-  public OperatorDiscoverer(String[] jars)
+  public OperatorDiscoverer(String packagePrefix, String[] jars)
   {
+    this.packagePrefix = packagePrefix;
     URL[] urls = new URL[jars.length];
     for (int i = 0; i < jars.length; i++) {
       pathsToScan.add(jars[i]);
@@ -73,30 +76,38 @@ public class OperatorDiscoverer
     for (String jarFile : pathsToScan) {
       try {
         JarFile jar = new JarFile(jarFile);
-        java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
-        while (entriesEnum.hasMoreElements()) {
-          java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-          if (!jarEntry.isDirectory()) {
-            String entryName = jarEntry.getName();
-            if (entryName.endsWith(".class")) {
-              final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
-              try {
-                Class<?> clazz = classLoader.loadClass(className);
-                if (isInstantiableOperatorClass(clazz)) {
-                  LOG.debug("Adding class {} as an operator", clazz.getName());
-                  operatorClasses.add((Class<? extends Operator>)clazz);
+        try {
+          java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
+          while (entriesEnum.hasMoreElements()) {
+            java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+            if (!jarEntry.isDirectory()) {
+              String entryName = jarEntry.getName();
+              if (entryName.endsWith(".class")) {
+                final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
+                if (!className.startsWith(packagePrefix)) {
+                  continue;
                 }
-              }
-              catch (ClassNotFoundException ex) {
-                LOG.warn("Class not found: {}", className);
-              }
-              catch (NoClassDefFoundError ex) {
-                LOG.warn("Class definition not found: {}", className);
+                //LOG.debug("Looking at class {} jar {}", className, jarFile);
+                try {
+                  Class<?> clazz = classLoader.loadClass(className);
+                  if (isInstantiableOperatorClass(clazz)) {
+                    LOG.debug("Adding class {} as an operator", clazz.getName());
+                    operatorClasses.add((Class<? extends Operator>)clazz);
+                  }
+                }
+                catch (ClassNotFoundException ex) {
+                  LOG.warn("Class not found: {}", className);
+                }
+                catch (NoClassDefFoundError ex) {
+                  LOG.warn("Class definition not found: {}", className);
+                }
               }
             }
           }
         }
-        jar.close();
+        finally {
+          jar.close();
+        }
       }
       catch (IOException ex) {
       }

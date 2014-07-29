@@ -26,5 +26,6 @@ public class PortInfo
   public long totalTuples;
   public long tuplesPSMA;
   public long bufferServerBytesPSMA;
+  public long queueSizePSMA;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
 }

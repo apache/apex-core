@@ -6,6 +6,7 @@ package com.datatorrent.stram.api;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 
 import com.datatorrent.stram.util.AbstractWritableAdapter;
@@ -23,10 +24,11 @@ public class BaseContext extends AbstractWritableAdapter implements Context
    */
   public final AttributeMap attributes;
   public final Context parentContext; // may be we do not need to serialize parentContext!
+  public Object counters;
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
-    this.attributes = attributes;
+    this.attributes = attributes == null ? new DefaultAttributeMap() : attributes;
     this.parentContext = parentContext;
   }
 
@@ -44,6 +46,12 @@ public class BaseContext extends AbstractWritableAdapter implements Context
       return attr;
     }
     return parentContext == null ? key.defaultValue : parentContext.getValue(key);
+  }
+
+  @Override
+  public void setCounters(Object counters)
+  {
+    this.counters = counters;
   }
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")

@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.StreamingApplication;
 
 /**
  * <p>StramUserLogin class.</p>
@@ -23,7 +23,7 @@ import com.datatorrent.api.DAGContext;
 public class StramUserLogin
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramUserLogin.class);
-  private static final String DT_AUTH_PREFIX = DAGContext.DT_PREFIX + "authentication.";
+  private static final String DT_AUTH_PREFIX = StreamingApplication.DT_PREFIX + "authentication.";
   private static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX +  "principal";
   private static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
 

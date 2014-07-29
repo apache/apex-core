@@ -4,28 +4,30 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+
+import com.google.common.collect.Lists;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
-import com.datatorrent.api.Stats.OperatorStats.CustomStats;
+import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorStats;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.google.common.collect.Lists;
-import java.util.Arrays;
-import java.util.Map;
 
 public class CustomStatsTest
 {
@@ -33,28 +35,30 @@ public class CustomStatsTest
 
   public static class TestOperator extends TestGeneratorInputOperator implements Partitioner<TestOperator>, StatsListener
   {
-    static class TestOperatorStats implements CustomStats
+    static class TestOperatorStats implements Serializable
     {
-      private static final long serialVersionUID = -8096838101190642798L;
       private String message;
       private boolean attributeListenerCalled;
+      private static final long serialVersionUID = -8096838101190642798L;
     }
 
-    public static class TestStatsListener implements StatsListener
+    public static class TestStatsListener implements StatsListener, Serializable
     {
+      private static final long serialVersionUID = 1L;
+
       @Override
       public Response processStats(BatchedOperatorStats stats)
       {
         for (OperatorStats os : stats.getLastWindowedStats()) {
-          Assert.assertNotNull("custom stats", os.customStats);
-          ((TestOperatorStats)os.customStats).attributeListenerCalled = true;
+          Assert.assertNotNull("custom stats", os.counters);
+          ((TestOperatorStats)os.counters).attributeListenerCalled = true;
         }
         return null;
       }
     }
 
     private transient OperatorContext context;
-    private static CustomStats lastCustomStats = null;
+    private static Object lastCustomStats = null;
     private static Thread processStatsThread = null;
     private static Thread definePartitionsThread = null;
 
@@ -74,9 +78,9 @@ public class CustomStatsTest
         if (stats != null) {
           definePartitionsThread = Thread.currentThread();
           for (OperatorStats os : stats.getLastWindowedStats()) {
-            if (os.customStats != null) {
-              //LOG.debug("Custom stats: {}", os.customStats);
-              lastCustomStats = os.customStats;
+            if (os.counters != null) {
+              //LOG.debug("Custom stats: {}", os.counters);
+              lastCustomStats = os.counters;
             }
           }
         }
@@ -95,9 +99,9 @@ public class CustomStatsTest
     public void endWindow()
     {
       super.endWindow();
-      TestOperatorStats stats = new TestOperatorStats();
-      stats.message = "interesting";
-      context.setCustomStats(stats);
+      TestOperatorStats counters = new TestOperatorStats();
+      counters.message = "interesting";
+      context.setCounters(counters);
       //LOG.debug("set custom stats");
     }
 
@@ -106,7 +110,7 @@ public class CustomStatsTest
     {
       processStatsThread = Thread.currentThread();
       for (OperatorStats os : stats.getLastWindowedStats()) {
-        Assert.assertNotNull("custom stats in listener", os.customStats);
+        Assert.assertNotNull("custom stats in listener", os.counters);
       }
       Response rsp = new Response();
       rsp.repartitionRequired = true; // trigger definePartitions
@@ -150,7 +154,6 @@ public class CustomStatsTest
     Assert.assertEquals("custom stats message", "interesting", ((TestOperatorStats)TestOperator.lastCustomStats).message);
     Assert.assertTrue("attribute defined stats listener called", ((TestOperatorStats)TestOperator.lastCustomStats).attributeListenerCalled);
     Assert.assertSame("single thread", TestOperator.definePartitionsThread, TestOperator.processStatsThread);
-
   }
 
 }

@@ -73,6 +73,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int applicationWindowCount;
   public int checkpointWindowCount;
   protected int controlTupleCount;
+  protected Stats.CheckpointStatsObj checkpointStatsObj;
   public final OperatorContext context;
 
   public Node(OPERATOR operator, OperatorContext context)
@@ -166,7 +167,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         changes = true;
       }
       else if (ics instanceof MuxSink) {
-        ((MuxSink)ics).add(e.getValue());
+        ((MuxSink) ics).add(e.getValue());
       }
       else {
         MuxSink muxSink = new MuxSink(ics, e.getValue());
@@ -198,7 +199,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         changes = true;
       }
       else if (ics instanceof MuxSink) {
-        MuxSink ms = (MuxSink)ics;
+        MuxSink ms = (MuxSink) ics;
         ms.remove(e.getValue());
         Sink<Object>[] sinks1 = ms.getSinks();
         if (sinks1.length == 0) {
@@ -268,7 +269,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected void emitEndWindow()
   {
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
-    for (int s = sinks.length; s-- > 0;) {
+    for (int s = sinks.length; s-- > 0; ) {
       sinks[s].put(ewt);
     }
     controlTupleCount++;
@@ -306,10 +307,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.tupleCount = e.getValue().getCount(true) - controlTupleCount;
-      controlTupleCount = 0;
       portStats.endWindowTimestamp = endWindowEmitTime;
       stats.outputPorts.add(portStats);
     }
+    controlTupleCount = 0;
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
@@ -317,6 +318,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     if (checkpoint != null) {
       stats.checkpoint = checkpoint;
+      stats.checkpointStatsObj = checkpointStatsObj;
       checkpoint = null;
     }
 
@@ -331,7 +333,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
     else {
       @SuppressWarnings("unchecked")
-      Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, size);
+      Sink<Object>[] newSinks = (Sink<Object>[]) Array.newInstance(Sink.class, size);
       for (Sink<Object> s : outputs.values()) {
         newSinks[--size] = s;
       }
@@ -352,11 +354,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       if (ba != null) {
         try {
           ba.save(operator, id, windowId);
+          if (ba instanceof Stats.CheckpointStats) {
+            checkpointStatsObj = ((Stats.CheckpointStats) ba).getCheckpointStats();
+          }
         }
         catch (IOException ie) {
           try {
             logger.warn("Rolling back checkpoint {} for Operator {} due to the exception {}",
-                        new Object[] {Codec.getStringWindowId(windowId), operator, ie});
+              new Object[]{Codec.getStringWindowId(windowId), operator, ie});
             ba.delete(id, windowId);
           }
           catch (IOException ex) {
@@ -369,7 +374,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     checkpoint = new Checkpoint(windowId, applicationWindowCount, checkpointWindowCount);
     if (operator instanceof CheckpointListener) {
-      ((CheckpointListener)operator).checkpointed(windowId);
+      ((CheckpointListener) operator).checkpointed(windowId);
     }
   }
 
@@ -380,16 +385,16 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     Node<?> node;
     if (operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
-      node = new InputNode((InputOperator)operator, context);
+      node = new InputNode((InputOperator) operator, context);
     }
     else if (operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
-      node = new UnifierNode((Unifier<Object>)operator, context);
+      node = new UnifierNode((Unifier<Object>) operator, context);
     }
     else if (type == OperatorDeployInfo.OperatorType.OIO) {
-      node = new OiONode((Operator)operator, context);
+      node = new OiONode((Operator) operator, context);
     }
     else {
-      node = new GenericNode((Operator)operator, context);
+      node = new GenericNode((Operator) operator, context);
     }
 
     return node;
@@ -425,9 +430,9 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     if (CHECKPOINT_WINDOW_COUNT % APPLICATION_WINDOW_COUNT != 0) {
       logger.warn("{} is not exact multiple of {} for operator {}. This may cause side effects such as processing to begin without beginWindow preceding it in the first window after activation.",
-                  OperatorContext.CHECKPOINT_WINDOW_COUNT,
-                  OperatorContext.APPLICATION_WINDOW_COUNT,
-                  operator);
+        OperatorContext.CHECKPOINT_WINDOW_COUNT,
+        OperatorContext.APPLICATION_WINDOW_COUNT,
+        operator);
     }
 
     PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
@@ -439,7 +444,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     context.setThread(Thread.currentThread());
     activateSinks();
     if (operator instanceof ActivationListener) {
-      ((ActivationListener<OperatorContext>)operator).activate(context);
+      ((ActivationListener<OperatorContext>) operator).activate(context);
     }
 
     /*
@@ -453,7 +458,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public void deactivate()
   {
     if (operator instanceof ActivationListener) {
-      ((ActivationListener<?>)operator).deactivate();
+      ((ActivationListener<?>) operator).deactivate();
     }
 
     if (!shutdown && !alive) {

@@ -12,6 +12,7 @@ package com.datatorrent.stram.util;
 public class MovingAverage
 {
   public static class MovingAverageLong implements java.io.Serializable {
+    private static final long serialVersionUID = 201404291550L;
     private final int periods;
     private final long[] values;
     private int index = 0;
@@ -22,7 +23,7 @@ public class MovingAverage
       this.values = new long[periods];
     }
 
-    public void add(long val) {
+    public synchronized void add(long val) {
       values[index++] = val;
       if (index == periods) {
         filled = true;
@@ -30,7 +31,7 @@ public class MovingAverage
       index %= periods;
     }
 
-    public long getAvg() {
+    public synchronized long getAvg() {
       long sum = 0;
       for (int i=0; i<periods; i++) {
         sum += values[i];
@@ -46,6 +47,7 @@ public class MovingAverage
 
   // Generics don't work with numbers.  Hence this mess.
   public static class MovingAverageDouble implements java.io.Serializable {
+    private static final long serialVersionUID = 201404291550L;
     private final int periods;
     private final double[] values;
     private int index = 0;
@@ -56,7 +58,7 @@ public class MovingAverage
       this.values = new double[periods];
     }
 
-    public void add(double val) {
+    public synchronized void add(double val) {
       values[index++] = val;
       if (index == periods) {
         filled = true;
@@ -64,7 +66,7 @@ public class MovingAverage
       index %= periods;
     }
 
-    public double getAvg() {
+    public synchronized double getAvg() {
       double sum = 0;
       for (int i=0; i<periods; i++) {
         sum += values[i];
@@ -79,6 +81,7 @@ public class MovingAverage
   }
 
   public static class TimedMovingAverageLong implements java.io.Serializable {
+    private static final long serialVersionUID = 201404291550L;
     private final int periods;
     private final long[] values;
     private final long[] timeIntervals;
@@ -92,14 +95,14 @@ public class MovingAverage
       this.baseTimeInterval = baseTimeInterval;
     }
 
-    public void add(long val, long time) {
+    public synchronized void add(long val, long time) {
       values[index] = val;
       timeIntervals[index] = time;
       index++;
       index %= periods;
     }
 
-    public double getAvg() {
+    public synchronized double getAvg() {
       long sumValues = 0;
       long sumTimeIntervals = 0;
       int i = index;

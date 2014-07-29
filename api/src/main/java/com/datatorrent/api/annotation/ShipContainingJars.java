@@ -27,8 +27,10 @@ import java.lang.annotation.RetentionPolicy;
  * <br>
  *
  * @since 0.3.2
+ * @deprecated ShipContainingJars annotation results in no-op. Instead all the jars in the same directory as application jar are bundled for the job.
  */
 @Retention(RetentionPolicy.RUNTIME)
+@Deprecated
 public @interface ShipContainingJars {
   Class<?>[] classes();
 }

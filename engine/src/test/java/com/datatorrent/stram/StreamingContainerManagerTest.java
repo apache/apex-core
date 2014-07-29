@@ -30,7 +30,7 @@ import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
 
-import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -139,8 +139,8 @@ public class StreamingContainerManagerTest {
     dnm.assignContainer(new ContainerResource(0, "container1Id", "host1", 1024, null), InetSocketAddress.createUnresolved("host1", 9001));
     dnm.assignContainer(new ContainerResource(0, "container2Id", "host2", 1024, null), InetSocketAddress.createUnresolved("host2", 9002));
 
-    StramChildAgent sca1 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(0).getExternalId());
-    StramChildAgent sca2 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(1).getExternalId());
+    StreamingContainerAgent sca1 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(0).getExternalId());
+    StreamingContainerAgent sca2 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(1).getExternalId());
 
     Assert.assertEquals("", dnm.getPhysicalPlan().getContainers().get(0), sca1.container);
     Assert.assertEquals("", PTContainer.State.ALLOCATED, sca1.container.getState());
@@ -231,13 +231,13 @@ public class StreamingContainerManagerTest {
     PhysicalPlan plan = dnm.getPhysicalPlan();
 
     Assert.assertEquals("number containers", 6, plan.getContainers().size());
-    List<StramChildAgent> containerAgents = Lists.newArrayList();
+    List<StreamingContainerAgent> containerAgents = Lists.newArrayList();
     for (int i=0; i < plan.getContainers().size(); i++) {
       containerAgents.add(assignContainer(dnm, "container"+(i+1)));
     }
 
     PTContainer c = plan.getOperators(dag.getMeta(node1)).get(0).getContainer();
-    StramChildAgent sca1 = dnm.getContainerAgent(c.getExternalId());
+    StreamingContainerAgent sca1 = dnm.getContainerAgent(c.getExternalId());
     List<OperatorDeployInfo> c1 = getDeployInfo(sca1);
     Assert.assertEquals("number operators assigned to container", 1, c1.size());
     Assert.assertTrue(node2.getName() + " assigned to " + sca1.container.getExternalId(), containsNodeContext(c1, dag.getMeta(node1)));
@@ -331,23 +331,23 @@ public class StreamingContainerManagerTest {
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
     List<PTOperator> o1Partitions = plan.getOperators(dag.getMeta(o1));
-    List<StramChildAgent> containerAgents = Lists.newArrayList();
+    List<StreamingContainerAgent> containerAgents = Lists.newArrayList();
     for (int i=0; i < plan.getContainers().size(); i++) {
       containerAgents.add(assignContainer(dnm, "container"+(i+1)));
     }
 
     Assert.assertEquals("number of partitions", 3,o1Partitions.size());
     PTOperator o = o1Partitions.get(0);
-    Map<String,Object> m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+    Map<String,Object> m = dnm.getPhysicalOperatorProperty(o.getId());
     int origionalValue = ((Integer)m.get("maxTuples")).intValue();
 
-    dnm.setPhysicalOperatorProperty(o.getId()+"", "maxTuples","2" );
-    m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+    dnm.setPhysicalOperatorProperty(o.getId(), "maxTuples","2" );
+    m = dnm.getPhysicalOperatorProperty(o.getId());
     int newVal = Integer.valueOf(m.get("maxTuples").toString());
     Assert.assertEquals(2,newVal);
     for(int i = 1; i< 3;i++){
       o = o1Partitions.get(i);
-      m = dnm.getPhysicalOperatorProperty(o.getId()+"");
+      m = dnm.getPhysicalOperatorProperty(o.getId());
       Assert.assertEquals(origionalValue,((Integer)m.get("maxTuples")).intValue());
     }
 
@@ -387,8 +387,8 @@ public class StreamingContainerManagerTest {
     assignContainer(scm, "container1");
     assignContainer(scm, "container2");
 
-    StramChildAgent sca1 = scm.getContainerAgent(c1.getExternalId());
-    StramChildAgent sca2 = scm.getContainerAgent(c2.getExternalId());
+    StreamingContainerAgent sca1 = scm.getContainerAgent(c1.getExternalId());
+    StreamingContainerAgent sca2 = scm.getContainerAgent(c2.getExternalId());
     Assert.assertEquals("", 0, countState(sca1.container, PTOperator.State.PENDING_UNDEPLOY));
     Assert.assertEquals("", 2, countState(sca1.container, PTOperator.State.PENDING_DEPLOY));
 
@@ -493,7 +493,7 @@ public class StreamingContainerManagerTest {
 
     // assign container
     String containerId = "container1";
-    StramChildAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0));
+    StreamingContainerAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertNotNull(sca);
 
     Assert.assertEquals(PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
@@ -596,7 +596,7 @@ public class StreamingContainerManagerTest {
     return getNodeDeployInfo(di, nodeConf) != null;
   }
 
-  private static List<OperatorDeployInfo> getDeployInfo(StramChildAgent sca) {
+  private static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca) {
     return sca.getDeployInfoList(sca.container.getOperators());
   }
 
@@ -618,7 +618,7 @@ public class StreamingContainerManagerTest {
     return null;
   }
 
-  private static StramChildAgent assignContainer(StreamingContainerManager scm, String containerId) {
+  private static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 

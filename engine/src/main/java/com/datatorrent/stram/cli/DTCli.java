@@ -4,12 +4,14 @@
 package com.datatorrent.stram.cli;
 
 import com.datatorrent.api.*;
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.*;
+import com.datatorrent.stram.client.AppBundle.AppInfo;
+import com.datatorrent.stram.client.DTConfiguration.Scope;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.license.*;
@@ -17,38 +19,34 @@ import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
-import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.*;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
-
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
 import javax.ws.rs.core.MediaType;
-
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
 import jline.console.history.*;
-
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
@@ -59,6 +57,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 /**
  *
@@ -73,7 +73,7 @@ public class DTCli
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
   private Configuration conf;
-  private ClientRMHelper rmClient;
+  private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
   private String[] commandsToExecute;
@@ -89,13 +89,17 @@ public class DTCli
   private String jsonp;
   private boolean raw = false;
   private RecordingsAgent recordingsAgent;
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JacksonObjectMapperProvider().getContext(null);
   private String pagerCommand;
   private Process pagerProcess;
   private int verboseLevel = 0;
   private final Tokenizer tokenizer = new Tokenizer();
   private final Map<String, String> variableMap = new HashMap<String, String>();
   private static boolean lastCommandError = false;
+  private Thread mainThread;
+  private Thread commandThread;
+  private String prompt;
+  private String forcePrompt;
 
   private static class FileLineReader extends ConsoleReader
   {
@@ -110,6 +114,18 @@ public class DTCli
 
     @Override
     public String readLine(String prompt) throws IOException
+    {
+      return br.readLine();
+    }
+
+    @Override
+    public String readLine(String prompt, Character mask) throws IOException
+    {
+      return br.readLine();
+    }
+
+    @Override
+    public String readLine(Character mask) throws IOException
     {
       return br.readLine();
     }
@@ -318,6 +334,7 @@ public class DTCli
 
   }
 
+  @SuppressWarnings("unused")
   private StramAppLauncher getStramAppLauncher(String jarfileUri, Configuration config, boolean ignorePom) throws Exception
   {
     URI uri = new URI(jarfileUri);
@@ -325,13 +342,13 @@ public class DTCli
     StramAppLauncher appLauncher = null;
     if (scheme == null || scheme.equals("file")) {
       File jf = new File(uri.getPath());
-      appLauncher = new StramAppLauncher(jf, config, ignorePom);
+      appLauncher = new StramAppLauncher(jf, config);
     }
-    else if (scheme.equals("hdfs")) {
+    else {
       FileSystem fs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
-        appLauncher = new StramAppLauncher(fs, path, config, ignorePom);
+        appLauncher = new StramAppLauncher(fs, path, config);
       }
       finally {
         fs.close();
@@ -470,7 +487,7 @@ public class DTCli
                                                                    getShowLogicalPlanCommandLineOptions()));
 
     globalCommands.put("get-jar-operator-classes", new CommandSpec(new GetJarOperatorClassesCommand(),
-                                                                   new Arg[] {new FileArg("jar-files-comma-separated")},
+                                                                   new Arg[] {new FileArg("jar-files-comma-separated"), new Arg("package-prefix")},
                                                                    new Arg[] {new Arg("parent-class-name")},
                                                                    "List operators in a jar list"));
 
@@ -529,7 +546,26 @@ public class DTCli
                                                               null,
                                                               new Arg[] {new FileArg("license-file")},
                                                               "Show the status of the license"));
-
+    globalCommands.put("get-config-parameter", new CommandSpec(new GetConfigParameterCommand(),
+                                                               null,
+                                                               new Arg[] {new FileArg("parameter-name")},
+                                                               "Get the configuration parameter"));
+    globalCommands.put("get-app-bundle-info", new CommandSpec(new GetAppBundleInfoCommand(),
+                                                              new Arg[] {new FileArg("app-bundle-file")},
+                                                              null,
+                                                              "Get info on the app bundle file"));
+    globalCommands.put("launch-app-bundle", new OptionsCommandSpec(new LaunchAppBundleCommand(),
+                                                                   new Arg[] {new FileArg("app-bundle-file"), new Arg("app-name")},
+                                                                   null,
+                                                                   "Launch app in the app bundle", LAUNCH_OPTIONS.options));
+    globalCommands.put("get-app-bundle-operators", new CommandSpec(new GetAppBundleOperatorsCommand(),
+                                                              new Arg[] {new FileArg("app-bundle-file"), new Arg("package-prefix")},
+                                                              new Arg[] {new Arg("parent-class")},
+                                                              "Get operators within the given app bundle"));
+    globalCommands.put("get-app-bundle-operator-properties", new CommandSpec(new GetAppBundleOperatorPropertiesCommand(),
+                                                              new Arg[] {new FileArg("app-bundle-file"), new Arg("operator-class")},
+                                                              null,
+                                                              "Get operator properties within the given app bundle"));
     //
     // Connected command specification starts here
     //
@@ -855,6 +891,21 @@ public class DTCli
 
   public void init(String[] args) throws IOException
   {
+    Signal.handle(new Signal("INT"), new SignalHandler() {
+      @Override
+      public void handle(Signal sig)
+      {
+        System.out.println("^C");
+        if (commandThread != null) {
+          commandThread.interrupt();
+          mainThread.interrupt();
+        }
+        else {
+          System.out.print(prompt);
+          System.out.flush();
+        }
+      }
+    });
     consolePresent = (System.console() != null);
     Options options = new Options();
     options.addOption("e", true, "Commands are read from the argument");
@@ -865,6 +916,7 @@ public class DTCli
     options.addOption("r", false, "JSON Raw mode");
     options.addOption("p", true, "JSONP padding function");
     options.addOption("h", false, "Print this help");
+    options.addOption("f", true, "Use the given prompt at all time");
     CommandLineParser parser = new BasicParser();
     try {
       CommandLine cmd = parser.parse(options, args);
@@ -889,6 +941,9 @@ public class DTCli
       }
       if (cmd.hasOption("p")) {
         jsonp = cmd.getOptionValue("p");
+      }
+      if (cmd.hasOption("f")) {
+        forcePrompt = cmd.getOptionValue("f");
       }
       if (cmd.hasOption("h")) {
         HelpFormatter formatter = new HelpFormatter();
@@ -943,8 +998,9 @@ public class DTCli
     // Need to initialize security before starting RPC for the credentials to
     // take effect
     StramUserLogin.attemptAuthentication(conf);
-    YarnClientHelper yarnClient = new YarnClientHelper(conf);
-    rmClient = new ClientRMHelper(yarnClient);
+    yarnClient.init(conf);
+    yarnClient.start();
+    LOG.debug("Yarn Client initialized and started");
     String socks = conf.get(CommonConfigurationKeysPublic.HADOOP_SOCKS_SERVER_KEY);
     if (socks != null) {
       int colon = socks.indexOf(':');
@@ -958,6 +1014,7 @@ public class DTCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
+    fileName = expandFileName(fileName, true);
     LOG.debug("Sourcing {}", fileName);
     boolean consolePresentSaved = consolePresent;
     consolePresent = false;
@@ -1114,6 +1171,10 @@ public class DTCli
       //printLicenseStatus();
       setupCompleter(reader);
       setupHistory(reader);
+      //reader.setHandleUserInterrupt(true);
+    }
+    else {
+      reader.setEchoCharacter((char)0);
     }
     setupAgents();
     String line;
@@ -1192,13 +1253,20 @@ public class DTCli
     return s.substring(i);
   }
 
-  private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
+  private void processLine(String line, final ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
+      // clear interrupt flag
+      Thread.interrupted();
       if (reader.isHistoryEnabled()) {
         History history = reader.getHistory();
         if (history instanceof FileHistory) {
-          ((FileHistory)history).flush();
+          try {
+            ((FileHistory)history).flush();
+          }
+          catch (IOException ex) {
+            // ignore
+          }
         }
       }
       //LOG.debug("line: \"{}\"", line);
@@ -1206,7 +1274,7 @@ public class DTCli
       if (commands == null) {
         return;
       }
-      for (String[] args : commands) {
+      for (final String[] args : commands) {
         if (args.length == 0 || StringUtils.isBlank(args[0])) {
           continue;
         }
@@ -1259,30 +1327,59 @@ public class DTCli
             cs.printUsage(args[0]);
             throw ex;
           }
-          cs.command.execute(args, reader);
-          lastCommandError = false;
+          final Command command = cs.command;
+          commandThread = new Thread()
+          {
+            @Override
+            public void run()
+            {
+              try {
+                command.execute(args, reader);
+                lastCommandError = false;
+              }
+              catch (Exception e) {
+                handleException(e);
+              }
+            }
+
+          };
+          mainThread = Thread.currentThread();
+          commandThread.start();
+          try {
+            commandThread.join();
+          }
+          catch (InterruptedException ex) {
+            System.err.println("Interrupted");
+          }
+          commandThread = null;
         }
       }
     }
-    catch (CliException e) {
-      String msg = e.getMessage();
-      if (e.getCause() != null) {
-        msg += ": " + e.getCause().getMessage();
-      }
-      System.err.println(msg);
-      LOG.debug("Error processing line: " + line, e);
-      lastCommandError = true;
-    }
     catch (Exception e) {
-      System.err.println("Unexpected error: " + e);
-      LOG.error("Error processing line: {}", line, e);
-      lastCommandError = true;
+      handleException(e);
     }
+  }
+
+  private void handleException(Exception e)
+  {
+    String msg = e.getMessage();
+    if (e.getCause() != null && e.getCause().getMessage() != null) {
+      msg += ": " + e.getCause().getMessage();
+    }
+    if (msg != null) {
+      System.err.println(msg);
+    }
+    LOG.error("Exception caught: ", e);
+    lastCommandError = true;
   }
 
   private void printWelcomeMessage()
   {
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
+    String configStatus = conf.get(StramClientUtils.DT_CONFIG_STATUS);
+    if (!"complete".equals(configStatus)) {
+      System.err.println("WARNING: Configuration of DataTorrent has not been complete. Please proceed with caution and only in development environment!");
+    }
   }
 
   private void printLicenseStatus()
@@ -1368,22 +1465,27 @@ public class DTCli
   private String readLine(ConsoleReader reader)
           throws IOException
   {
-    String prompt = "";
-    if (consolePresent) {
-      if (changingLogicalPlan) {
-        prompt = "logical-plan-change";
+    if (forcePrompt == null) {
+      prompt = "";
+      if (consolePresent) {
+        if (changingLogicalPlan) {
+          prompt = "logical-plan-change";
+        }
+        else {
+          prompt = "dt";
+        }
+        if (currentApp != null) {
+          prompt += " (";
+          prompt += currentApp.getApplicationId().toString();
+          prompt += ") ";
+        }
+        prompt += "> ";
       }
-      else {
-        prompt = "dt";
-      }
-      if (currentApp != null) {
-        prompt += " (";
-        prompt += currentApp.getApplicationId().toString();
-        prompt += ") ";
-      }
-      prompt += "> ";
     }
-    String line = reader.readLine(prompt);
+    else {
+      prompt = forcePrompt;
+    }
+    String line = reader.readLine(prompt, consolePresent ? null : (char)0);
     if (line == null) {
       return null;
     }
@@ -1393,36 +1495,17 @@ public class DTCli
   private List<ApplicationReport> getApplicationList()
   {
     try {
-      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
-      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
     }
     catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
     }
   }
-  /*
-   private List<ApplicationReport> getRunningApplicationList()
-   {
-   try {
-   GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-   appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE));
-   appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
-   return rmClient.clientRM.getApplications(appsReq).getApplicationList();
-   }
-   catch (Exception e) {
-   throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
-   }
-   }
-   */
 
   private List<ApplicationReport> getLicenseAgentList()
   {
     try {
-      GetApplicationsRequest appsReq = GetApplicationsRequest.newInstance();
-      appsReq.setApplicationTypes(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE));
-      appsReq.setApplicationStates(EnumSet.of(YarnApplicationState.RUNNING));
-      return rmClient.clientRM.getApplications(appsReq).getApplicationList();
+      return yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE), EnumSet.of(YarnApplicationState.RUNNING));
     }
     catch (Exception e) {
       throw new CliException("Error getting application list from resource manager", e);
@@ -1466,7 +1549,7 @@ public class DTCli
   {
     ApplicationReport r;
     try {
-      r = rmClient.getApplicationReport(app.getApplicationId());
+      r = yarnClient.getApplicationReport(app.getApplicationId());
       if (r.getYarnApplicationState() != YarnApplicationState.RUNNING) {
         String msg = String.format("Application %s not running (status %s)",
                                    r.getApplicationId().getId(), r.getYarnApplicationState());
@@ -1511,17 +1594,16 @@ public class DTCli
     r = r.path(resourcePath);
 
     try {
-      return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
-                      {
-                        @Override
-                        public ClientResponse process(WebResource webResource, Class<ClientResponse> clazz)
-                        {
-                          ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-                          if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
-                            throw new CliException("Unexpected response type " + response.getType());
-                          }
-                          return response;
-                        }
+      return wsClient.process(r.getRequestBuilder(), ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>() {
+        @Override
+        public ClientResponse process(WebResource.Builder webResource, Class<ClientResponse> clazz)
+        {
+          ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+          if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
+            throw new CliException("Unexpected response type " + response.getType());
+          }
+          return response;
+        }
 
       });
     }
@@ -1542,14 +1624,18 @@ public class DTCli
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
     try {
-      return StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      if (wr == null) {
+        throw new CliException("Cannot access the application master for this application.");
+      }
+      return wr;
     }
     catch (IncompatibleVersionException ex) {
       throw new CliException("Incompatible Stram version", ex);
     }
   }
 
-  private List<AppFactory> getMatchingAppFactories(StramAppLauncher submitApp, String matchString)
+  private List<AppFactory> getMatchingAppFactories(StramAppLauncher submitApp, String matchString, boolean exactMatch)
   {
     try {
       List<AppFactory> cfgList = submitApp.getBundledTopologies();
@@ -1562,11 +1648,18 @@ public class DTCli
       }
       else {
         List<AppFactory> result = new ArrayList<AppFactory>();
-        matchString = matchString.toLowerCase();
+        if (!exactMatch) {
+          matchString = matchString.toLowerCase();
+        }
         for (AppFactory ac : cfgList) {
           String appName = ac.getName();
           String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
-          if (appName.toLowerCase().contains(matchString) || (appAlias != null && appAlias.toLowerCase().contains(matchString))) {
+          if (exactMatch) {
+            if (matchString.equals(appName) || matchString.equals(appAlias)) {
+              result.add(ac);
+            }
+          }
+          else if (appName.toLowerCase().contains(matchString) || (appAlias != null && appAlias.toLowerCase().contains(matchString))) {
             result.add(ac);
           }
         }
@@ -1574,6 +1667,7 @@ public class DTCli
       }
     }
     catch (Exception ex) {
+      LOG.warn("Caught Exception: ", ex);
       return null;
     }
   }
@@ -1676,7 +1770,7 @@ public class DTCli
     {
       String file = null;
       if (args.length > 1) {
-        file = args[1];
+        file = expandFileName(args[1], true);
       }
       String licenseId = activateLicense(file);
       System.out.println("Started license agent for " + licenseId);
@@ -1701,8 +1795,14 @@ public class DTCli
     int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
     lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
     StramClient client = new StramClient(conf, lp);
-    client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
-    client.startApplication();
+    try {
+      client.start();
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
+    }
+    finally {
+      client.stop();
+    }
     return licenseId;
   }
 
@@ -1721,21 +1821,12 @@ public class DTCli
         licenseId = License.getLicenseID(licenseBytes);
         License.validateLicense(licenseBytes);
       }
-      // TODO: migrate CLI to use YarnClient and this here won't be needed
-      YarnClient clientRMService = YarnClient.createYarnClient();
-      try {
-        clientRMService.init(conf);
-        clientRMService.start();
-        ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
-        if (ar == null) {
-          throw new CliException("License not activated: " + licenseId);
-        }
-        rmClient.killApplication(ar.getApplicationId());
-        System.out.println("Stopped license agent for " + licenseId);
+      ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
+      if (ar == null) {
+        throw new CliException("License not activated: " + licenseId);
       }
-      finally {
-        clientRMService.stop();
-      }
+      yarnClient.killApplication(ar.getApplicationId());
+      System.out.println("Stopped license agent for " + licenseId);
     }
 
   }
@@ -1780,13 +1871,12 @@ public class DTCli
       try {
         JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> licList = getLicenseAgentList();
-        Collections.sort(licList, new Comparator<ApplicationReport>()
-                 {
-                   @Override
-                   public int compare(ApplicationReport o1, ApplicationReport o2)
-                   {
-                     return o1.getApplicationId().getId() - o2.getApplicationId().getId();
-                   }
+        Collections.sort(licList, new Comparator<ApplicationReport>() {
+          @Override
+          public int compare(ApplicationReport o1, ApplicationReport o2)
+          {
+            return o1.getApplicationId().getId() - o2.getApplicationId().getId();
+          }
 
         });
 
@@ -1860,88 +1950,8 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      JSONObject licenseObj = getLicenseStatus(args.length > 1 ? args[1] : null);
+      JSONObject licenseObj = getLicenseStatus(args.length > 1 ? expandFileName(args[1], true) : null);
       printJson(licenseObj);
-    }
-
-  }
-
-  private class GenerateLicenseRequestCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      Map<String, String> infoMap = new HashMap<String, String>();
-
-      // name, company, email, phone, country
-      boolean useHistory = reader.isHistoryEnabled();
-      reader.setHistoryEnabled(false);
-      History previousHistory = reader.getHistory();
-      History dummyHistory = new MemoryHistory();
-      reader.setHistory(dummyHistory);
-      List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
-      for (Completer c : completers) {
-        reader.removeCompleter(c);
-      }
-      String name, company, email, phone, country;
-      while (true) {
-        name = StringUtils.trim(reader.readLine("Your name: "));
-        if (StringUtils.isBlank(name)) {
-          System.out.println("Please enter your name.");
-        }
-        else {
-          break;
-        }
-      }
-      while (true) {
-        company = StringUtils.trim(reader.readLine("Company: "));
-        if (StringUtils.isBlank(company)) {
-          System.out.println("Please enter your company name.");
-        }
-        else {
-          break;
-        }
-      }
-      while (true) {
-        email = StringUtils.trim(reader.readLine("Your email address: "));
-        if (!email.matches("^[a-zA-Z0-9._%+-]+@[^@]+\\.[a-zA-Z][a-zA-Z]+")) {
-          System.out.println("Please enter a valid email address. Make sure your email is valid because we will send your license to this address.");
-        }
-        else {
-          break;
-        }
-      }
-      phone = StringUtils.trim(reader.readLine("Your contact phone number: "));
-
-      while (true) {
-        country = StringUtils.trim(reader.readLine("Country (2-letter code): ")).toUpperCase();
-        if (!country.matches("^[A-Z][A-Z]$")) {
-          System.out.println("Please enter your 2-letter country code. e.g. \"US\"");
-        }
-        else {
-          break;
-        }
-      }
-
-      infoMap.put("name", name);
-      infoMap.put("company", company);
-      infoMap.put("email", email);
-      infoMap.put("phone", phone);
-      infoMap.put("country", country);
-      infoMap.put("type", "trial");
-
-      reader.setHistoryEnabled(useHistory);
-      reader.setHistory(previousHistory);
-      for (Completer c : completers) {
-        reader.addCompleter(c);
-      }
-
-      String b64EncodedString = GenerateLicenseRequest.getLicenseRequest(Util.getDefaultPublicKey(), true, infoMap);
-      System.out.println();
-      System.out.println("Please send an email with the following to license@datatorrent.com to request this license.");
-      System.out.println("-------------------------- Cut from below ------------------------------");
-      System.out.println(b64EncodedString);
-      System.out.println("------------------------------------------------------------------------");
     }
 
   }
@@ -1988,8 +1998,9 @@ public class DTCli
         // ensure app is not running
         ApplicationReport ar = null;
         try {
-          ar = rmClient.getApplicationReport(commandLineInfo.origAppId);
-        } catch (Exception e) {
+          ar = getApplication(commandLineInfo.origAppId);
+        }
+        catch (Exception e) {
           // application (no longer) in the RM history, does not prevent restart from state in DFS
           LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
         }
@@ -1999,7 +2010,7 @@ public class DTCli
           }
           if (matchString == null) {
             // skip selection if we can match application name from previous run
-            List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName());
+            List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(), commandLineInfo.exactMatch);
             for (AppFactory af : matchingAppFactories) {
               String appName = submitApp.getLogicalPlanConfiguration().getAppAlias(af.getName());
               if (appName == null) {
@@ -2017,16 +2028,21 @@ public class DTCli
 
       if (appFactory == null && matchString != null) {
         // attempt to interpret argument as property file - do we still need it?
-        File file = new File(commandLineInfo.args[1]);
-        if (file.exists()) {
-          appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+        try {
+          File file = new File(expandFileName(commandLineInfo.args[1], true));
+          if (file.exists()) {
+            appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+          }
+        }
+        catch (Throwable t) {
+          // ignore
         }
       }
 
       if (appFactory == null) {
-        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString);
+        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString, commandLineInfo.exactMatch);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
-          throw new CliException("No matching applications bundled in jar.");
+          throw new CliException("No applications matching \"" + matchString + "\" bundled in jar.");
         }
         else if (matchingAppFactories.size() == 1) {
           appFactory = matchingAppFactories.get(0);
@@ -2071,13 +2087,19 @@ public class DTCli
             for (Completer c : completers) {
               reader.removeCompleter(c);
             }
-            String optionLine = reader.readLine("Choose application: ");
-            reader.setHistoryEnabled(useHistory);
-            reader.setHistory(previousHistory);
-            for (Completer c : completers) {
-              reader.addCompleter(c);
+            reader.setHandleUserInterrupt(true);
+            String optionLine;
+            try {
+              optionLine = reader.readLine("Choose application: ");
             }
-
+            finally {
+              reader.setHandleUserInterrupt(false);
+              reader.setHistoryEnabled(useHistory);
+              reader.setHistory(previousHistory);
+              for (Completer c : completers) {
+                reader.addCompleter(c);
+              }
+            }
             try {
               int option = Integer.parseInt(optionLine);
               if (0 < option && option <= matchingAppFactories.size()) {
@@ -2098,6 +2120,7 @@ public class DTCli
 
           byte[] licenseBytes;
           if (commandLineInfo.licenseFile != null) {
+            LOG.info("Using license at {} instead of the one in configuration to launch this application", commandLineInfo.licenseFile);
             licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile, conf);
           }
           else {
@@ -2106,7 +2129,6 @@ public class DTCli
           // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
           PrintStream originalStream = System.out;
           ApplicationId appId = null;
-          YarnClient clientRMService = YarnClient.createYarnClient();
           try {
             if (raw) {
               PrintStream dummyStream = new PrintStream(new OutputStream()
@@ -2121,18 +2143,17 @@ public class DTCli
               System.setOut(dummyStream);
             }
             String licenseId = License.getLicenseID(licenseBytes);
-            clientRMService.init(conf);
-            clientRMService.start();
-            ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
+            LOG.info("Using license {}", licenseId);
+            ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
               try {
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
-                activateLicense(null);
+                activateLicense(commandLineInfo.licenseFile);
                 long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
                 boolean waitMessagePrinted = false;
                 do {
                   Thread.sleep(1000);
-                  ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, clientRMService);
+                  ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
                   if (ar == null) {
                     if (!raw && !waitMessagePrinted) {
                       System.out.println("Waiting for license agent to start...");
@@ -2152,11 +2173,10 @@ public class DTCli
                 throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
             }
-            appId = submitApp.launchApp(appFactory);
-            currentApp = rmClient.getApplicationReport(appId);
+            appId = submitApp.launchApp(appFactory, licenseBytes);
+            currentApp = yarnClient.getApplicationReport(appId);
           }
           finally {
-            clientRMService.stop();
             if (raw) {
               System.setOut(originalStream);
             }
@@ -2173,6 +2193,32 @@ public class DTCli
         System.err.println("No application specified.");
       }
 
+    }
+
+  }
+
+  private class GetConfigParameterCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      PrintStream os = getOutputPrintStream();
+      if (args.length == 1) {
+        Map<String, String> sortedMap = new TreeMap<String, String>();
+        for (Map.Entry<String, String> entry : conf) {
+          sortedMap.put(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, String> entry : sortedMap.entrySet()) {
+          os.println(entry.getKey() + "=" + entry.getValue());
+        }
+      }
+      else {
+        String value = conf.get(args[1]);
+        if (value != null) {
+          os.println(value);
+        }
+      }
+      closeOutputPrintStream(os);
     }
 
   }
@@ -2205,13 +2251,12 @@ public class DTCli
       for (ApplicationReport app : apps) {
         WebResource r = getStramWebResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
         try {
-          JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                  {
-                                                    @Override
-                                                    public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                    {
-                                                      return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
-                                                    }
+          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+            @Override
+            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+            {
+              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
+            }
 
           });
           if (consolePresent) {
@@ -2311,7 +2356,7 @@ public class DTCli
         }
         else {
           try {
-            rmClient.killApplication(currentApp.getApplicationId());
+            yarnClient.killApplication(currentApp.getApplicationId());
             currentApp = null;
           }
           catch (YarnException e) {
@@ -2332,7 +2377,7 @@ public class DTCli
           if (app == null) {
             throw new CliException("Streaming application with id " + args[i] + " is not found.");
           }
-          rmClient.killApplication(app.getApplicationId());
+          yarnClient.killApplication(app.getApplicationId());
           if (app == currentApp) {
             currentApp = null;
           }
@@ -2498,13 +2543,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
       try {
-        printJson(webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                    {
-                                      @Override
-                                      public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                      {
-                                        return webResource.accept(MediaType.APPLICATION_JSON).get(clazz);
-                                      }
+        printJson(webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(clazz);
+          }
 
         }));
       }
@@ -2527,13 +2571,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(containerLongId).path("kill");
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
+          }
 
         });
         if (consolePresent) {
@@ -2577,7 +2620,8 @@ public class DTCli
       };
 
       try {
-        boolean result = rmClient.waitForCompletion(currentApp.getApplicationId(), cb, timeout * 1000);
+        ClientRMHelper clientRMHelper = new ClientRMHelper(yarnClient);
+        boolean result = clientRMHelper.waitForCompletion(currentApp.getApplicationId(), cb, timeout * 1000);
         if (!result) {
           System.err.println("Application terminated unsucessful.");
         }
@@ -2657,13 +2701,12 @@ public class DTCli
         r = r.queryParam("attributeName", args[1]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2689,13 +2732,12 @@ public class DTCli
         r = r.queryParam("attributeName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2721,13 +2763,12 @@ public class DTCli
         r = r.queryParam("attributeName", args[3]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2753,13 +2794,12 @@ public class DTCli
         r = r.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2785,13 +2825,12 @@ public class DTCli
         r = r.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2826,13 +2865,12 @@ public class DTCli
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+          }
 
         });
         printJson(response);
@@ -2854,13 +2892,12 @@ public class DTCli
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       final JSONObject request = new JSONObject();
       request.put(args[2], args[3]);
-      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                              {
-                                                @Override
-                                                public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                {
-                                                  return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
-                                                }
+      JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        @Override
+        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+        }
 
       });
       printJson(response);
@@ -2899,7 +2936,7 @@ public class DTCli
         String appName = commandLineInfo.args[1];
         StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
         submitApp.loadDependencies();
-        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
+        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, commandLineInfo.exactMatch);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
           throw new CliException("No application in jar file matches '" + appName + "'");
         }
@@ -2907,11 +2944,31 @@ public class DTCli
           throw new CliException("More than one application in jar file match '" + appName + "'");
         }
         else {
-          AppFactory appFactory = matchingAppFactories.get(0);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
           Map<String, Object> map = new HashMap<String, Object>();
-          map.put("applicationName", appFactory.getName());
-          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          PrintStream originalStream = System.out;
+          AppFactory appFactory = matchingAppFactories.get(0);
+          try {
+            if (raw) {
+              PrintStream dummyStream = new PrintStream(new OutputStream()
+              {
+                @Override
+                public void write(int b)
+                {
+                  // no-op
+                }
+
+              });
+              System.setOut(dummyStream);
+            }
+            LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+            map.put("applicationName", appFactory.getName());
+            map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          }
+          finally {
+            if (raw) {
+              System.setOut(originalStream);
+            }
+          }
           printJson(map);
         }
       }
@@ -2935,13 +2992,12 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         printJson(response);
@@ -2958,10 +3014,10 @@ public class DTCli
       try {
         URI uri = new URI(files[i]);
         String scheme = uri.getScheme();
-        if (scheme.equals("file")) {
+        if (scheme == null || scheme.equals("file")) {
           files[i] = uri.getPath();
         }
-        else if (scheme.equals("hdfs")) {
+        else {
           FileSystem fs = FileSystem.newInstance(uri, conf);
           try {
             Path srcPath = new Path(uri.getPath());
@@ -2988,13 +3044,13 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       String parentName = Operator.class.getName();
-      if (args.length > 2) {
-        parentName = args[2];
+      if (args.length > 3) {
+        parentName = args[3];
       }
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
         Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
@@ -3021,7 +3077,7 @@ public class DTCli
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
         JSONObject json = new JSONObject();
         json.put("properties", OperatorBeanUtils.getClassProperties(operatorClass, 0));
@@ -3047,7 +3103,7 @@ public class DTCli
         Configuration config = StramClientUtils.addDTSiteResources(new Configuration());
         StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, false);
         submitApp.loadDependencies();
-        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName);
+        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, appName, true);
         if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
           throw new CliException("No application in jar file matches '" + appName + "'");
         }
@@ -3071,13 +3127,12 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
         File file = new File(outfilename);
@@ -3249,13 +3304,12 @@ public class DTCli
         m.put("requests", logicalPlanRequestQueue);
         final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
 
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, jsonRequest);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, jsonRequest);
+          }
 
         });
         printJson(response);
@@ -3296,7 +3350,13 @@ public class DTCli
       try {
         List<String> commands = new ArrayList<String>();
         while (true) {
-          String line = reader.readLine("macro def (" + name + ") > ");
+          String line;
+          if (consolePresent) {
+            line = reader.readLine("macro def (" + name + ") > ");
+          }
+          else {
+            line = reader.readLine("", (char)0);
+          }
           if (line.equals("end")) {
             macros.put(name, commands);
             updateCompleter(reader);
@@ -3358,7 +3418,7 @@ public class DTCli
           throw new CliException("No application selected");
         }
         // refresh the state in currentApp
-        currentApp = rmClient.getApplicationReport(currentApp.getApplicationId());
+        currentApp = yarnClient.getApplicationReport(currentApp.getApplicationId());
         appReport = currentApp;
       }
       JSONObject response;
@@ -3366,13 +3426,12 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
 
-        response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                     {
-                                       @Override
-                                       public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                       {
-                                         return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-                                       }
+        response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
 
         });
       }
@@ -3411,13 +3470,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
+          }
 
         });
         printJson(response);
@@ -3437,13 +3495,12 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
       try {
-        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-                                                {
-                                                  @Override
-                                                  public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
-                                                  {
-                                                    return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
-                                                  }
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          @Override
+          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
+          }
 
         });
         printJson(response);
@@ -3467,6 +3524,195 @@ public class DTCli
 
   }
 
+  private class GetAppBundleInfoCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      try {
+        JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
+        jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
+        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ab)));
+      }
+      finally {
+        IOUtils.closeQuietly(ab);
+      }
+    }
+
+  }
+
+  private class LaunchAppBundleCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      LaunchCommandLineInfo commandLineInfo = getLaunchCommandLineInfo(newArgs);
+
+      AppBundle ab = new AppBundle(new File(expandFileName(commandLineInfo.args[0], true)), true);
+      DTConfiguration launchProperties = new DTConfiguration();
+      Map<String, String> defaultProperties = ab.getDefaultProperties();
+      Set<String> requiredProperties = new TreeSet<String>(ab.getRequiredProperties());
+
+      for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
+        launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+        requiredProperties.remove(entry.getKey());
+      }
+
+      String appName = commandLineInfo.args[1];
+
+      try {
+        List<AppInfo> applications = ab.getApplications();
+        String jarName = null;
+        for (AppInfo appInfo : applications) {
+          if (appName.equals(appInfo.name)) {
+            jarName = ab.tempDirectory() + "/app/" + appInfo.jarName;
+          }
+        }
+        if (jarName == null) {
+          throw new CliException("Application name \"" + appName + "\" is not found in the App Bundle");
+        }
+
+        List<String> launchArgs = new ArrayList<String>();
+
+        launchArgs.add("launch");
+        if (commandLineInfo.exactMatch) {
+          launchArgs.add("-exactMatch");
+        }
+        List<String> absClassPath = new ArrayList<String>(ab.getClassPath());
+        for (int i = 0; i < absClassPath.size(); i++) {
+          String path = absClassPath.get(i);
+          if (!path.startsWith("/")) {
+            absClassPath.set(i, ab.tempDirectory() + "/" + path);
+          }
+        }
+        if (!absClassPath.isEmpty() || commandLineInfo.libjars != null) {
+          launchArgs.add("-libjars");
+          StringBuilder argVal = new StringBuilder();
+          if (!absClassPath.isEmpty()) {
+            argVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
+          }
+          if (commandLineInfo.libjars != null) {
+            if (argVal.length() > 0) {
+              argVal.append(",");
+            }
+            argVal.append(commandLineInfo.libjars);
+          }
+          launchArgs.add(argVal.toString());
+        }
+
+        if (commandLineInfo.configFile != null) {
+          DTConfiguration givenConfig = new DTConfiguration();
+          givenConfig.loadFile(new File(ab.tempDirectory() + "/conf/" + commandLineInfo.configFile));
+          for (Map.Entry<String, String> entry : givenConfig) {
+            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+            requiredProperties.remove(entry.getKey());
+          }
+        }
+        File launchPropertiesFile = new File(ab.tempDirectory(), "launch.xml");
+        launchProperties.writeToFile(launchPropertiesFile, "");
+        launchArgs.add("-conf");
+        launchArgs.add(launchPropertiesFile.getCanonicalPath());
+        if (commandLineInfo.files != null) {
+          launchArgs.add("-files");
+          launchArgs.add(commandLineInfo.files);
+        }
+        if (commandLineInfo.archives != null) {
+          launchArgs.add("-archives");
+          launchArgs.add(commandLineInfo.archives);
+        }
+        if (commandLineInfo.origAppId != null) {
+          launchArgs.add("-origAppId");
+          launchArgs.add(commandLineInfo.origAppId);
+        }
+        if (commandLineInfo.licenseFile != null) {
+          launchArgs.add("-license");
+          launchArgs.add(commandLineInfo.licenseFile);
+        }
+        if (commandLineInfo.overrideProperties != null) {
+          for (Map.Entry<String, String> entry : commandLineInfo.overrideProperties.entrySet()) {
+            launchArgs.add("-D");
+            launchArgs.add(entry.getKey() + "=" + entry.getValue());
+            requiredProperties.remove(entry.getKey());
+          }
+        }
+        launchArgs.add(jarName);
+        launchArgs.add(appName);
+
+        if (requiredProperties.isEmpty()) {
+          new LaunchCommand().execute(launchArgs.toArray(new String[] {}), reader);
+        }
+        else {
+          throw new CliException("Required properties not set: " + StringUtils.join(requiredProperties, ", "));
+        }
+      }
+      finally {
+        IOUtils.closeQuietly(ab);
+      }
+    }
+
+  }
+
+  private class GetAppBundleOperatorsCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      try {
+        List<String> newArgs = new ArrayList<String>();
+        List<String> jars = new ArrayList<String>();
+        for (String jar : ab.getAppJars()) {
+          jars.add(ab.tempDirectory() + "/app/" + jar);
+        }
+        for (String libJar : ab.getClassPath()) {
+          jars.add(ab.tempDirectory() + "/" + libJar);
+        }
+        newArgs.add("get-jar-operator-classes");
+        newArgs.add(StringUtils.join(jars, ","));
+        newArgs.add(args[2]);
+        if (args.length > 3) {
+          newArgs.add(args[3]);
+        }
+        new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[] {}), reader);
+
+      }
+      finally {
+        IOUtils.closeQuietly(ab);
+      }
+    }
+
+  }
+
+  private class GetAppBundleOperatorPropertiesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      try {
+        List<String> newArgs = new ArrayList<String>();
+        List<String> jars = new ArrayList<String>();
+        for (String jar : ab.getAppJars()) {
+          jars.add(ab.tempDirectory() + "/app/" + jar);
+        }
+        for (String libJar : ab.getClassPath()) {
+          jars.add(ab.tempDirectory() + "/" + libJar);
+        }
+        newArgs.add("get-jar-operator-properties");
+        newArgs.add(StringUtils.join(jars, ","));
+        newArgs.add(args[2]);
+        new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[] {}), reader);
+      }
+      finally {
+        IOUtils.closeQuietly(ab);
+      }
+    }
+
+  }
+
   @SuppressWarnings("static-access")
   public static class LaunchCommandLineOptions
   {
@@ -3480,12 +3726,14 @@ public class DTCli
     final Option license = add(OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license"));
     final Option ignorePom = add(new Option("ignorepom", "Do not run maven to find the dependency"));
     final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg().withDescription("Specify original application identifier for restart.").create("originalAppId"));
+    final Option exactMatch = add(new Option("exactMatch", "Only consider applications with exact app name"));
 
     private Option add(Option opt)
     {
       this.options.addOption(opt);
       return opt;
     }
+
   }
 
   private static LaunchCommandLineOptions LAUNCH_OPTIONS = new LaunchCommandLineOptions();
@@ -3517,6 +3765,7 @@ public class DTCli
     result.licenseFile = line.getOptionValue(LAUNCH_OPTIONS.license.getOpt());
     result.args = line.getArgs();
     result.origAppId = line.getOptionValue(LAUNCH_OPTIONS.originalAppID.getOpt());
+    result.exactMatch = line.hasOption("exactMatch");
     return result;
   }
 
@@ -3532,6 +3781,7 @@ public class DTCli
     String licenseFile;
     String origAppId;
     String[] args;
+    boolean exactMatch;
   }
 
   @SuppressWarnings("static-access")
@@ -3540,8 +3790,10 @@ public class DTCli
     Options options = new Options();
     Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars");
     Option ignorePom = new Option("ignorepom", "Do not run maven to find the dependency");
+    Option exactMatch = new Option("exactMatch", "Only consider exact match for app name");
     options.addOption(libjars);
     options.addOption(ignorePom);
+    options.addOption(exactMatch);
     return options;
   }
 
@@ -3553,6 +3805,7 @@ public class DTCli
     result.libjars = line.getOptionValue("libjars");
     result.ignorePom = line.hasOption("ignorepom");
     result.args = line.getArgs();
+    result.exactMatch = line.hasOption("exactMatch");
     return result;
   }
 
@@ -3561,6 +3814,7 @@ public class DTCli
     String libjars;
     boolean ignorePom;
     String[] args;
+    boolean exactMatch;
   }
 
   public static void main(String[] args) throws Exception
@@ -3568,9 +3822,7 @@ public class DTCli
     DTCli shell = new DTCli();
     shell.init(args);
     shell.run();
-    if (lastCommandError) {
-      System.exit(1);
-    }
+    System.exit(lastCommandError ? 1 : 0);
   }
 
 }

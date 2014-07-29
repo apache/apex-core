@@ -156,7 +156,7 @@ public class Server implements ServerListener
     }
     else {
       dl.purge(request.getBaseSeconds(), request.getWindowId());
-      message = "Purge request sent for processing".getBytes();
+      message = ("Request sent for processing: " + request).getBytes();
     }
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
@@ -188,7 +188,7 @@ public class Server implements ServerListener
         eventloop.disconnect(channel);
       }
       dl.reset();
-      message = "Reset request sent for processing".getBytes();
+      message = ("Request sent for processing: " + request).getBytes();
     }
 
     final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);

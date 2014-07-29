@@ -9,14 +9,13 @@ import com.datatorrent.api.annotation.RecordField;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.lib.codec.JsonStreamCodec;
 import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.ContainerInfo;
 import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
-
+import java.util.concurrent.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,22 +31,62 @@ public class FSStatsRecorder implements StatsRecorder
   private static final Logger LOG = LoggerFactory.getLogger(FSStatsRecorder.class);
   private String basePath = ".";
   private FSPartFileCollection containersStorage;
-  private final Map<String, FSPartFileCollection> logicalOperatorStorageMap = new HashMap<String, FSPartFileCollection>();
+  private final Map<String, FSPartFileCollection> logicalOperatorStorageMap = new ConcurrentHashMap<String, FSPartFileCollection>();
   private final Map<String, Integer> knownContainers = new HashMap<String, Integer>();
   private final Set<String> knownOperators = new HashSet<String>();
   private transient StreamCodec<Object> streamCodec;
   private final Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
   private final Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
-  private SharedPubSubWebSocketClient wsClient;
+  private final BlockingQueue<WriteOperation> queue = new LinkedBlockingQueue<WriteOperation>();
+  private final StatsRecorderThread statsRecorderThread = new StatsRecorderThread();
+
+  private class StatsRecorderThread extends Thread
+  {
+    @Override
+    public void run()
+    {
+      while (true) {
+        try {
+          WriteOperation wo = queue.take();
+          if (wo.meta) {
+            wo.storage.writeMetaData(wo.bytes);
+          }
+          else {
+            wo.storage.writeDataItem(wo.bytes, true);
+          }
+          Thread.yield();
+          if (queue.isEmpty()) {
+            containersStorage.flushData();
+            for (FSPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
+              operatorStorage.flushData();
+            }
+          }
+        }
+        catch (InterruptedException ex) {
+          return;
+        }
+        catch (Exception ex) {
+          LOG.error("Caught Exception", ex);
+        }
+      }
+    }
+
+  }
+
+  private static class WriteOperation {
+    WriteOperation(FSPartFileCollection storage, byte[] bytes, boolean meta) {
+      this.storage = storage;
+      this.bytes = bytes;
+      this.meta = meta;
+    }
+    FSPartFileCollection storage;
+    byte[] bytes;
+    boolean meta;
+  }
 
   public void setBasePath(String basePath)
   {
     this.basePath = basePath;
-  }
-
-  public void setWebSocketClient(SharedPubSubWebSocketClient wsClient)
-  {
-    this.wsClient = wsClient;
   }
 
   public void setup()
@@ -58,17 +97,23 @@ public class FSStatsRecorder implements StatsRecorder
       containersStorage.setBasePath(basePath + "/containers");
       containersStorage.setup();
       containersStorage.writeMetaData((VERSION + "\n").getBytes());
+      statsRecorderThread.start();
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
   }
 
-  @Override
-  public void recordContainers(Map<String, StramChildAgent> containerMap, long timestamp) throws IOException
+  public void teardown()
   {
-    for (Map.Entry<String, StramChildAgent> entry : containerMap.entrySet()) {
-      StramChildAgent sca = entry.getValue();
+    statsRecorderThread.interrupt();
+  }
+
+  @Override
+  public void recordContainers(Map<String, StreamingContainerAgent> containerMap, long timestamp) throws IOException
+  {
+    for (Map.Entry<String, StreamingContainerAgent> entry : containerMap.entrySet()) {
+      StreamingContainerAgent sca = entry.getValue();
       ContainerInfo containerInfo = sca.getContainerInfo();
       if (!containerInfo.state.equals("ACTIVE")) {
         continue;
@@ -83,7 +128,7 @@ public class FSStatsRecorder implements StatsRecorder
         bos.write((String.valueOf(containerIndex) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
-        containersStorage.writeMetaData(bos.toByteArray());
+        queue.add(new WriteOperation(containersStorage, bos.toByteArray(), true));
       }
       else {
         containerIndex = knownContainers.get(entry.getKey());
@@ -95,15 +140,7 @@ public class FSStatsRecorder implements StatsRecorder
       bos.write((String.valueOf(timestamp) + ":").getBytes());
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
-      containersStorage.writeDataItem(bos.toByteArray(), true);
-      if (!containersStorage.flushData() && wsClient != null) {
-        String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + containersStorage.getBasePath();
-        try {
-          wsClient.publish(topic, containersStorage.getLatestIndexLine());
-        } catch (IOException ex) {
-          LOG.warn("Error publishing to the gateway", ex);
-        }
-      }
+      queue.add(new WriteOperation(containersStorage, bos.toByteArray(), false));
     }
   }
 
@@ -129,7 +166,7 @@ public class FSStatsRecorder implements StatsRecorder
         Slice f = streamCodec.toByteArray(fieldMap);
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
-        operatorStorage.writeMetaData(bos.toByteArray());
+        queue.add(new WriteOperation(operatorStorage, bos.toByteArray(), true));
       }
       Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "stats");
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -138,18 +175,7 @@ public class FSStatsRecorder implements StatsRecorder
       bos.write((String.valueOf(timestamp) + ":").getBytes());
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
-      operatorStorage.writeDataItem(bos.toByteArray(), true);
-    }
-    for (FSPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
-      if (!operatorStorage.flushData() && wsClient != null) {
-        String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".stats." + operatorStorage.getBasePath();
-        try {
-          wsClient.publish(topic, operatorStorage.getLatestIndexLine());
-        }
-        catch (IOException ex) {
-          LOG.warn("Error publishing to the gateway", ex);
-        }
-      }
+      queue.add(new WriteOperation(operatorStorage, bos.toByteArray(), false));
     }
   }
 

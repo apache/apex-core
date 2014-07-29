@@ -16,7 +16,6 @@
 package com.datatorrent.api;
 
 import java.io.ObjectStreamException;
-import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -33,13 +32,12 @@ import com.datatorrent.api.Context.OperatorContext;
  *
  * @since 0.3.2
  */
-public class BaseOperator implements Operator, Serializable
+public class BaseOperator implements Operator
 {
   private String name;
 
   /**
-   * <p>Getter for the field
-   * <code>name</code>.</p>
+   * @return the name property of the operator.
    */
   public String getName()
   {
@@ -47,8 +45,8 @@ public class BaseOperator implements Operator, Serializable
   }
 
   /**
-   * <p>Setter for the field
-   * <code>name</code>.</p>
+   * Set the name property of the operator.
+   * @param name
    */
   public void setName(String name)
   {
@@ -200,5 +198,4 @@ public class BaseOperator implements Operator, Serializable
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BaseOperator.class);
-  private static final long serialVersionUID = 201404140831L;
 }

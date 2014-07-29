@@ -4,14 +4,16 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.api.StramEvent.ContainerErrorEvent;
+import com.datatorrent.stram.api.StramEvent.OperatorErrorEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.util.SecureExecutor;
+import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.ipc.ProtocolSignature;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.ipc.Server;
+import org.apache.hadoop.ipc.*;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.security.authorize.Service;
@@ -20,9 +22,6 @@ import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-import com.datatorrent.stram.util.SecureExecutor;
 
 /**
  *
@@ -135,9 +134,31 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
   }
 
   @Override
+  public void reportError(String containerId, int[] operators, String msg)
+  {
+    if (operators == null || operators.length == 0) {
+      dagManager.recordEventAsync(new ContainerErrorEvent(containerId, msg));
+    }
+    else {
+      for (int operator : operators) {
+        OperatorInfo operatorInfo = dagManager.getOperatorInfo(operator);
+        if (operatorInfo != null) {
+          dagManager.recordEventAsync(new OperatorErrorEvent(operatorInfo.name, operator, containerId, msg));
+        }
+      }
+    }
+    try {
+      log(containerId, msg);
+    }
+    catch (IOException ex) {
+      // ignore
+    }
+  }
+
+  @Override
   public StreamingContainerContext getInitContext(String containerId)
       throws IOException {
-    StramChildAgent sca = dagManager.getContainerAgent(containerId);
+    StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
 
     return sca.getInitContext();
   }
@@ -147,6 +168,12 @@ public class StreamingContainerParent extends org.apache.hadoop.service.Composit
     // -- TODO
     // Change to use some sort of a annotation that developers can use to specify secure code
     // For now using SecureExecutor work load. Also change sig to throw Exception
+    long now = System.currentTimeMillis();
+    if (msg.sentTms - now > 50) {
+      LOG.warn("Child container heartbeat sent time for {} ({}) is greater than the receive timestamp in AM ({}). Please make sure the clocks are in sync", msg.getContainerId(), msg.sentTms, now);
+    }
+    //LOG.debug("RPC latency from child container {} is {} ms (according to system clocks)", msg.getContainerId(), now - msg.sentTms);
+    dagManager.updateRPCLatency(msg.getContainerId(), now - msg.sentTms);
     try {
       final ContainerHeartbeat fmsg = msg;
       return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>() {

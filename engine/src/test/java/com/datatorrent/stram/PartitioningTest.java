@@ -1,28 +1,27 @@
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
 import static java.lang.Thread.sleep;
 
 import com.google.common.collect.Sets;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
-import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
@@ -35,13 +34,13 @@ public class PartitioningTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop.start();
+    StreamingContainer.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    StreamingContainer.eventloop.stop();
   }
 
   public static class CollectorOperator extends BaseOperator
@@ -173,18 +172,34 @@ public class PartitioningTest
   public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
   {
     private static final long serialVersionUID = 1L;
-    final public static Map<Integer, Integer> loadIndicators = new ConcurrentHashMap<Integer, Integer>();
+    final private static ThreadLocal<Map<Integer, Integer>> loadIndicators = new ThreadLocal<Map<Integer, Integer>>();
 
     @Override
     public Response processStats(BatchedOperatorStats status)
     {
-      Integer l = loadIndicators.get(status.getOperatorId());
-      Response hbr = new Response();
-      if (l != null) {
-        hbr.repartitionRequired = true;
-        hbr.loadIndicator = l.intValue();
+      Response hbr = null;
+      Map<Integer, Integer> m = loadIndicators.get();
+      if (m != null) {
+        Integer l = m.get(status.getOperatorId());
+        if (l != null) {
+          hbr = new Response();
+          hbr.repartitionRequired = true;
+          hbr.loadIndicator = l.intValue();
+        }
       }
       return hbr;
+    }
+
+    public static void put(PTOperator oper, int load) {
+      Map<Integer, Integer> m = loadIndicators.get();
+      if (m == null) {
+        loadIndicators.set(m = new ConcurrentHashMap<Integer, Integer>());
+      }
+      m.put(oper.getId(), load);
+    }
+
+    public static void remove(PTOperator oper) {
+      loadIndicators.get().remove(oper.getId());
     }
 
   }
@@ -206,6 +221,7 @@ public class PartitioningTest
     return lc.getPlanOperators(ow);
   }
 
+  //@Ignore
   @Test
   @SuppressWarnings("SleepWhileInLoop")
   public void testDynamicDefaultPartitioning() throws Exception
@@ -232,26 +248,33 @@ public class PartitioningTest
     lc.runAsync();
 
     List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getMeta(collector));
-
+    Set<PTContainer> containers = Sets.newHashSet();
+    for (PTOperator oper : partitions) {
+      containers.add(oper.getContainer());
+    }
     PTOperator splitPartition = partitions.get(0);
-    PartitionLoadWatch.loadIndicators.put(splitPartition.getId(), 1);
+    PartitionLoadWatch.put(splitPartition, 1);
+    LOG.debug("Triggered split for {}", splitPartition);
 
     int count = 0;
     long startMillis = System.currentTimeMillis();
     while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS) {
+      sleep(20); // yield
       count += lc.dnmgr.processEvents();
     }
 
     partitions = assertNumberPartitions(3, lc, dag.getMeta(collector));
+    Assert.assertTrue("container reused", lc.dnmgr.getPhysicalPlan().getContainers().containsAll(containers));
+
     // check deployment
     for (PTOperator p: partitions) {
       StramTestSupport.waitForActivation(lc, p);
     }
 
-    PartitionLoadWatch.loadIndicators.remove(splitPartition.getId());
+    PartitionLoadWatch.remove(splitPartition);
 
     PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
-    LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
+    LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, planInput);
     Map<Integer, Node<?>> nodeMap = c.getNodes();
     Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
     @SuppressWarnings({"unchecked"})
@@ -349,7 +372,7 @@ public class PartitioningTest
       List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       Set<String> partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
-        LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
+        LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
         PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.getId()).getOperator();
@@ -364,18 +387,18 @@ public class PartitioningTest
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
 
-      PartitionLoadWatch.loadIndicators.put(partitions.get(0).getId(), 1);
+      PartitionLoadWatch.put(partitions.get(0), 1);
       int count = 0;
       long startMillis = System.currentTimeMillis();
       while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS) {
         count += lc.dnmgr.processEvents();
       }
-      PartitionLoadWatch.loadIndicators.remove(partitions.get(0).getId());
+      PartitionLoadWatch.remove(partitions.get(0));
 
       partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
-        LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
+        LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
         PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.getId()).getOperator();

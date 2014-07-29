@@ -3,6 +3,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,7 +15,6 @@ import java.net.URL;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
-import org.junit.Assert;
 import static java.lang.Thread.sleep;
 
 import javax.ws.rs.core.MediaType;
@@ -26,6 +26,7 @@ import com.sun.jersey.api.client.WebResource;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -62,7 +63,9 @@ import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
+
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -85,13 +88,13 @@ public class StramMiniClusterTest
   @Before
   public void setupEachTime() throws IOException
   {
-    StramChild.eventloop.start();
+    StreamingContainer.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    StreamingContainer.eventloop.stop();
   }
 
   @BeforeClass
@@ -120,16 +123,21 @@ public class StramMiniClusterTest
                                         1, 1, 1);
       yarnCluster.init(conf);
       yarnCluster.start();
-      URL url = Thread.currentThread().getContextClassLoader().getResource("yarn-site.xml");
-      if (url == null) {
-        LOG.error("Could not find 'yarn-site.xml' dummy file in classpath");
-        throw new RuntimeException("Could not find 'yarn-site.xml' dummy file in classpath");
-      }
-      yarnCluster.getConfig().set("yarn.application.classpath", new File(url.getPath()).getParent());
-      OutputStream os = new FileOutputStream(new File(url.getPath()));
-      yarnCluster.getConfig().writeXml(os);
-      os.close();
     }
+
+    conf = yarnCluster.getConfig();
+    URL url = Thread.currentThread().getContextClassLoader().getResource("yarn-site.xml");
+    if (url == null) {
+      LOG.error("Could not find 'yarn-site.xml' dummy file in classpath");
+      throw new RuntimeException("Could not find 'yarn-site.xml' dummy file in classpath");
+    }
+    File confFile = new File(url.getPath());
+    yarnCluster.getConfig().set("yarn.application.classpath", confFile.getParent());
+    OutputStream os = new FileOutputStream(confFile);
+    LOG.debug("Conf file: {}", confFile);
+    yarnCluster.getConfig().writeXml(os);
+    os.close();
+
     try {
       Thread.sleep(2000);
     }
@@ -145,15 +153,6 @@ public class StramMiniClusterTest
       yarnCluster.stop();
       yarnCluster = null;
     }
-  }
-
-  private File createTmpPropFile(Properties props) throws IOException
-  {
-    File tmpFile = File.createTempFile("dt-junit", ".properties");
-    tmpFile.deleteOnExit();
-    props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
-    LOG.info("topology: " + tmpFile);
-    return tmpFile;
   }
 
   @Test
@@ -179,55 +178,60 @@ public class StramMiniClusterTest
     LOG.info("testJar: " + testJar);
 
     // create test application
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put(DAGContext.DT_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
-    dagProps.put(DAGContext.DT_PREFIX + "operator.numGen.maxTuples", "1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.numGen.classname", TestGeneratorInputOperator.class.getName());
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
     //props.put(DAGContext.DT_PREFIX + "stream.output.classname", HDFSOutputStream.class.getName());
     //props.put(DAGContext.DT_PREFIX + "stream.output.inputNode", "module2");
     //props.put(DAGContext.DT_PREFIX + "stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put(DAGContext.DT_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.module1.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(DAGContext.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
+    dagProps.put(StreamingApplication.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(DAGContext.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
-    dagProps.put(DAGContext.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
 
-    dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.source", "module1.output1");
-    dagProps.put(DAGContext.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.output1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINER_MEMORY_MB.getName(), "512");
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
-    dagProps.setProperty(DAGContext.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
-    tb.addFromProperties(dagProps);
-
-    Properties tplgProperties = tb.getProperties();
-    File tmpFile = createTmpPropFile(tplgProperties);
-
-    String[] args = {
-      "--topologyProperties",
-      tmpFile.getAbsolutePath()
-    };
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.MEMORY_MB.getName(), "512");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.DEBUG.getName(), "true");
+    dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
 
     LOG.info("Initializing Client");
-    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()));
-    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
-      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
-    }
-    boolean initSuccess = client.init(args);
-    Assert.assertTrue(initSuccess);
-    LOG.info("Running client");
-    client.startApplication();
-    boolean result = client.monitorApplication();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    tb.addFromProperties(dagProps);
+    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
+    try {
+      client.start();
+      if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
+        client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
+      }
+      LOG.info("Running client");
+      client.startApplication();
+      boolean result = client.monitorApplication();
 
-    LOG.info("Client run completed. Result=" + result);
-    Assert.assertTrue(result);
+      LOG.info("Client run completed. Result=" + result);
+      Assert.assertTrue(result);
+    }
+    finally {
+      client.stop();
+    }
+  }
+
+  private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    Configuration appConf = new Configuration(false);
+    lpc.prepareDAG(dag, lpc, "test", appConf);
+    dag.validate();
+    return dag;
   }
 
   /**
@@ -242,31 +246,24 @@ public class StramMiniClusterTest
 
     // single container topology of inline input and module
     Properties props = new Properties();
-    props.put(DAGContext.DT_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
-    props.put(DAGContext.DT_PREFIX + "stream.input.outputNode", "module1");
-    props.put(DAGContext.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
-
-    File tmpFile = createTmpPropFile(props);
-
-    String[] args = {
-      "--topologyProperties",
-      tmpFile.getAbsolutePath()
-    };
+    props.put(StreamingApplication.DT_PREFIX + "stream.input.classname", TestGeneratorInputOperator.class.getName());
+    props.put(StreamingApplication.DT_PREFIX + "stream.input.outputNode", "module1");
+    props.put(StreamingApplication.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
     LOG.info("Initializing Client");
-    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()));
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    tb.addFromProperties(props);
+
+    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }
-    boolean initSuccess = client.init(args);
-    Assert.assertTrue(initSuccess);
-
-    client.startApplication();
-
-    // attempt web service connection
-    ApplicationReport appReport = client.getApplicationReport();
-
     try {
+      client.start();
+      client.startApplication();
+
+      // attempt web service connection
+      ApplicationReport appReport = client.getApplicationReport();
       Thread.sleep(5000); // delay to give web service time to fully initialize
       Client wsClient = Client.create();
       wsClient.setFollowRedirects(true);
@@ -278,15 +275,12 @@ public class StramMiniClusterTest
       LOG.info("Got response: " + json.toString());
       assertEquals("incorrect number of elements", 1, json.length());
       assertEquals("appId", appReport.getApplicationId().toString(), json.get("id"));
-
-
       r = wsClient.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS);
       LOG.info("Requesting: " + r.getURI());
       response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
       json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
-
 
     }
     finally {
@@ -296,6 +290,7 @@ public class StramMiniClusterTest
       //}
       //boolean result = client.monitorApplication();
       client.killApplication();
+      client.stop();
     }
 
   }
@@ -373,20 +368,25 @@ public class StramMiniClusterTest
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
     }
+    try {
+      client.start();
+      client.startApplication();
+      client.setClientTimeout(120000);
 
-    client.startApplication();
-    client.setClientTimeout(120000);
+      boolean result = client.monitorApplication();
 
-    boolean result = client.monitorApplication();
+      LOG.info("Client run completed. Result=" + result);
+      Assert.assertFalse("should fail", result);
 
-    LOG.info("Client run completed. Result=" + result);
-    Assert.assertFalse("should fail", result);
-
-    ApplicationReport ar = client.getApplicationReport();
-    Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
+      ApplicationReport ar = client.getApplicationReport();
+      Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
     // unable to get the diagnostics message set by the AM here - see YARN-208
-    // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
-    //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
+      // diagnostics message does not make it here even with Hadoop 2.2 (but works on standalone cluster)
+      //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
+    }
+    finally {
+      client.stop();
+    }
   }
 
   @ShipContainingJars(classes = {javax.jms.Message.class})

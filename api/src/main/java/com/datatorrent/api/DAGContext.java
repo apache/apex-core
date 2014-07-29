@@ -15,12 +15,13 @@
  */
 package com.datatorrent.api;
 
+import java.util.Map;
+
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.StringCodec.Class2String;
 import com.datatorrent.api.StringCodec.Map2String;
 import com.datatorrent.api.StringCodec.String2String;
-import java.util.Map;
 
 /**
  * <p>DAGContext interface.</p>
@@ -29,12 +30,6 @@ import java.util.Map;
  */
 public interface DAGContext extends Context
 {
-  String DT_PREFIX = "dt.";
-  /**
-   * Launch mode for the application.
-   * Used in the client to set configuration depending on how the DAG is executed.
-   */
-  String LAUNCH_MODE = DT_PREFIX + "launchmode";
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
@@ -89,9 +84,9 @@ public interface DAGContext extends Context
    */
   Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
   /**
-   * The amount of memory to be requested for streaming containers. Not used in local mode.
-   * Default value is 1GB.
+   * @deprecated  As of release 1.0.2, replaced by {@link OperatorContext#MEMORY_MB}
    */
+  @Deprecated
   Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
   /**
    * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
@@ -142,11 +137,6 @@ public interface DAGContext extends Context
    */
   Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
   /**
-   * @deprecated Please use GATEWAY_CONNECT_ADDRESS
-   */
-  @Deprecated
-  Attribute<String> GATEWAY_ADDRESS = new Attribute<String>(new String2String());
-  /**
    * Whether or not gateway is expecting SSL connection.
    */
   Attribute<Boolean> GATEWAY_USE_SSL = new Attribute<Boolean>(false);
@@ -184,10 +174,9 @@ public interface DAGContext extends Context
    */
   Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
   /**
-   * The time interval for recording statistics. The statistics are periodically recorded with interval equal to the stats
-   * record interval. If the interval is specified as 0 then no statistics are recorded. The default value is 0.
+   * Whether or not we record statistics. The statistics are recorded for each heartbeat if enabled.  The default value is false.
    */
-  Attribute<Integer> STATS_RECORD_INTERVAL_MILLIS = new Attribute<Integer>(0);
+  Attribute<Boolean> ENABLE_STATS_RECORDING = new Attribute<Boolean>(false);
   /**
    * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
    * equal to the throughput calculation interval. The default value is 10s.

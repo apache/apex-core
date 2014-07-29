@@ -5,23 +5,32 @@
 package com.datatorrent.stram.client;
 
 import com.datatorrent.stram.util.StreamGobbler;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
 import org.apache.commons.lang.StringUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>CLIProxy class.</p>
+ * <p>
+ * CLIProxy class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.9.2
  */
-public class CLIProxy
+public class CLIProxy implements Closeable
 {
   private static final Logger LOG = LoggerFactory.getLogger(CLIProxy.class);
-  private String dtHome = null;
+  private String dtCliCommand = null;
+  private Process process;
+  private BufferedReader br;
+  private final ExecutorService executor = Executors.newFixedThreadPool(1);
+  private StreamGobbler errorGobbler;
+  private final Map<String, String> env = new HashMap<String, String>();
+  private static final long TIMEOUT_MILLIS = 30000;
+  private static final String COMMAND_DELIMITER = "___COMMAND_DELIMITER___";
 
   @SuppressWarnings("serial")
   public static class CommandException extends Exception
@@ -33,9 +42,36 @@ public class CLIProxy
 
   }
 
-  public CLIProxy(String dtHome)
+  public CLIProxy(String dtCliCommand)
   {
-    this.dtHome = dtHome;
+    this.dtCliCommand = dtCliCommand;
+  }
+
+  public void putenv(String key, String value)
+  {
+    env.put(key, value);
+  }
+
+  public void start() throws IOException
+  {
+    ProcessBuilder pb = new ProcessBuilder(dtCliCommand != null ? dtCliCommand : "dtcli", "-r", "-f", COMMAND_DELIMITER + "\n");
+    pb.environment().putAll(env);
+    process = pb.start();
+    errorGobbler = new StreamGobbler(process.getErrorStream());
+    errorGobbler.start();
+    br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+    consumePrompt(); // consume the first prompt
+  }
+
+  @Override
+  public void close() throws IOException
+  {
+    if (br != null) {
+      br.close();
+    }
+    if (process != null) {
+      process.destroy();
+    }
   }
 
   public JSONObject getLogicalPlan(String jarUri, String appName, List<String> libjars, boolean ignorePom) throws Exception
@@ -58,7 +94,7 @@ public class CLIProxy
 
   public JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars, boolean ignorePom) throws Exception
   {
-    StringBuilder sb = new StringBuilder("launch ");
+    StringBuilder sb = new StringBuilder("launch -exactMatch ");
     for (Map.Entry<String, String> entry : properties.entrySet()) {
       sb.append("-D ");
       sb.append(entry.getKey());
@@ -104,27 +140,88 @@ public class CLIProxy
     return issueCommand("show-logical-plan \"" + jarUri + "\"");
   }
 
-  private JSONObject issueCommand(String command) throws Exception
+  public JSONObject getAppBundleInfo(String file) throws Exception
   {
-    // we can optimize this by launching dtcli only once so subsequent issueCommand() calls won't take so long, and use stdin to issue commands to cli,
-    // but we need to make sure the stdout and stderr from dtcli are in sync with the commands.
-    // that probably means the streamglobber needs to go.
-    String dtCliCommand = (dtHome == null) ? "dtcli" : (dtHome + "/bin/dtcli");
-    String shellCommand = dtCliCommand + " -r -e '" + command + "'";
-    Process p = Runtime.getRuntime().exec(new String[] {"bash", "-c", shellCommand});
-    StreamGobbler errorGobbler = new StreamGobbler(p.getErrorStream());
-    StreamGobbler outputGobbler = new StreamGobbler(p.getInputStream());
-    errorGobbler.start();
-    outputGobbler.start();
-    int exitValue = p.waitFor();
-    LOG.debug("Executed: {} ; exit code: {}", shellCommand, exitValue);
-    LOG.debug("Output: {}", outputGobbler.getContent());
-    LOG.debug("Error: {}", errorGobbler.getContent());
-    if (exitValue == 0) {
-      return new JSONObject(outputGobbler.getContent());
+    return issueCommand("get-app-bundle-info \"" + file + "\"");
+  }
+
+  public JSONObject launchAppBundle(File appBundleLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
+  {
+    StringBuilder sb = new StringBuilder("launch-app-bundle -exactMatch \"");
+    sb.append(appBundleLocalFile.getAbsolutePath());
+    sb.append("\" ");
+    if (!StringUtils.isBlank(configName)) {
+      sb.append("-conf \"").append(configName).append("\" ");
     }
-    else {
-      throw new CommandException(errorGobbler.getContent());
+    for (Map.Entry<String, String> property : overrideProperties.entrySet()) {
+      sb.append("-D \"").append(property.getKey()).append("=").append(property.getValue()).append("\" ");
+    }
+    sb.append("\"").append(appName).append("\"");
+
+    return issueCommand(sb.toString());
+  }
+
+  public JSONObject getAppBundleOperatorClasses(File appBundleLocalFile, String parent) throws Exception
+  {
+    StringBuilder sb = new StringBuilder("get-app-bundle-operators \"");
+    sb.append(appBundleLocalFile.getAbsolutePath());
+    sb.append("\" ");
+    if (!StringUtils.isBlank(parent)) {
+      sb.append("\"").append(parent).append("\"");
+    }
+    return issueCommand(sb.toString());
+  }
+
+  public JSONObject getAppBundleOperatorProperties(File appBundleLocalFile, String clazz) throws Exception
+  {
+    StringBuilder sb = new StringBuilder("get-app-bundle-operator-properties \"");
+    sb.append(appBundleLocalFile.getAbsolutePath());
+    sb.append("\" ");
+    sb.append("\"").append(clazz).append("\"");
+    return issueCommand(sb.toString());
+  }
+
+  public JSONObject issueCommand(String command) throws Exception
+  {
+    OutputStream os = process.getOutputStream();
+    LOG.debug("Issuing command to CLI: {}", command);
+    os.write((command + "\n").getBytes());
+    os.flush();
+    Callable<String> readTask = new Callable<String>()
+    {
+
+      @Override
+      public String call() throws Exception
+      {
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while (true) {
+          line = br.readLine();
+          LOG.debug("From CLI, received: {}", line);
+          if (COMMAND_DELIMITER.equals(line)) {
+            break;
+          }
+          sb.append(line).append("\n");
+        }
+        return sb.toString();
+      }
+
+    };
+    Future<String> future = executor.submit(readTask);
+    String result = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    String err = errorGobbler.getContent();
+    if (!err.isEmpty()) {
+      throw new CommandException(err);
+    }
+    return (result == null) ? null : new JSONObject(result);
+  }
+
+  private void consumePrompt() throws IOException
+  {
+    String prompt = br.readLine(); // consume the next prompt
+    LOG.debug("From CLI, received (prompt): {}", prompt);
+    if (!COMMAND_DELIMITER.equals(prompt)) {
+      throw new RuntimeException(String.format("CLIProxy: expected \"%s\" but got \"%s\"", COMMAND_DELIMITER, prompt));
     }
   }
 

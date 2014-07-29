@@ -140,7 +140,7 @@ public class OutputUnifiedTest
     List<PTOperator> ptOperators = physicalPlan.getOperators(dag.getMeta(operator));
     for (PTOperator ptOperator : ptOperators) {
       PTContainer container = ptOperator.getContainer();
-      StramChildAgent agent = scm.getContainerAgent("container" + container.getId());
+      StreamingContainerAgent agent = scm.getContainerAgent("container" + container.getId());
       System.out.println("Opsize " + container.getOperators().size());
       List<OperatorDeployInfo> deployInfoList = agent.getDeployInfoList(container.getOperators());
       Assert.assertEquals("Deploy info size", 1, deployInfoList.size());
@@ -155,7 +155,7 @@ public class OutputUnifiedTest
     }
   }
 
-  private static StramChildAgent assignContainer(StreamingContainerManager scm, String containerId) {
+  private static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
     return scm.assignContainer(new StreamingContainerManager.ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 

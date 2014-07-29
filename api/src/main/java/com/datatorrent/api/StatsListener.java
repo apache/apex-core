@@ -57,7 +57,7 @@ public interface StatsListener
   {
     /**
       Stats list will typically contain multiple entries, depending on streaming window size and heartbeat interval.
-      * @return 
+      * @return
       */
     List<OperatorStats> getLastWindowedStats();
     int getOperatorId();
@@ -81,6 +81,12 @@ public interface StatsListener
      * Taken into consideration on repartition.
      */
     public int loadIndicator;
+
+    /**
+     * Note for repartition.  Should indicate the reason if there is a partition of the operator
+     *
+     */
+    public String repartitionNote;
 
     /**
      * List of commands to be executed on all deployed operator instances.

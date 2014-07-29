@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.api.*;
 
 import java.io.BufferedReader;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -74,10 +76,12 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+
 import com.google.common.collect.Maps;
 
 /**
@@ -89,8 +93,8 @@ public class StreamingAppMasterService extends CompositeService
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMasterService.class);
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 365 * 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 365 * 24 * 60 * 60 * 1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE/2;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE/2;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
@@ -519,6 +523,13 @@ public class StreamingAppMasterService extends CompositeService
     StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
+    }
+    catch (Throwable throwable) {
+      // SPOI-2687. As part of Pivotal Certification, we need to catch ClassNotFoundException as Pivotal was using Jetty 7 where as other distros are using Jetty 6.
+     // LOG.error("can't set the log to null: ", throwable);
+    }
+
+    try {
       Configuration config = getConfig();
       if (UserGroupInformation.isSecurityEnabled()) {
         config = new Configuration(config);
@@ -541,20 +552,26 @@ public class StreamingAppMasterService extends CompositeService
     if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
-    nmClient.stop();
-    amRmClient.stop();
-    dnmgr.teardown();
+    if (nmClient != null) {
+      nmClient.stop();
+    }
+    if (amRmClient != null) {
+      amRmClient.stop();
+    }
+    if (dnmgr != null) {
+      dnmgr.teardown();
+    }
   }
 
   public boolean run() throws Exception
   {
     boolean status = true;
     try {
-      StramChild.eventloop.start();
+      StreamingContainer.eventloop.start();
       execute();
     }
     finally {
-      StramChild.eventloop.stop();
+      StreamingContainer.eventloop.stop();
     }
     return status;
   }
@@ -584,14 +601,8 @@ public class StreamingAppMasterService extends CompositeService
     int maxMem = response.getMaximumResourceCapability().getMemory();
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
 
-    int containerMemory = dag.getContainerMemoryMB();
-    if (containerMemory > maxMem) {
-      LOG.info("Container memory specified above max threshold of cluster. Using max value." + ", specified=" + containerMemory + ", max=" + maxMem);
-      containerMemory = maxMem;
-    }
-
     // for locality relaxation fall back
-    Map<StramChildAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
+    Map<StreamingContainerAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -609,18 +620,21 @@ public class StreamingAppMasterService extends CompositeService
     int nextRequestPriority = 0;
     ResourceRequestHandler resourceRequestor = new ResourceRequestHandler();
 
+    YarnClient clientRMService = YarnClient.createYarnClient();
+
     try {
       // YARN-435
       // we need getClusterNodes to populate the initial node list,
       // subsequent updates come through the heartbeat response
-      YarnClient clientRMService = YarnClient.createYarnClient();
       clientRMService.init(getConfig());
       clientRMService.start();
       resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
-      clientRMService.stop();
     }
     catch (Exception e) {
       throw new RuntimeException("Failed to retrieve cluster nodes report.", e);
+    }
+    finally {
+      clientRMService.stop();
     }
 
     // check for previously allocated containers
@@ -662,29 +676,37 @@ public class StreamingAppMasterService extends CompositeService
           // ensure enough memory is left to request new container
           licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
           availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
-          int requiredMemory = dnmgr.containerStartRequests.size() * containerMemory;
+          Iterator<StreamingContainerAgent.ContainerStartRequest> it = dnmgr.containerStartRequests.iterator();
+          int requiredMemory = 0;
+          while (it.hasNext()) {
+            requiredMemory += it.next().container.getRequiredMemoryMB();
+          }
           if (requiredMemory > availableLicensedMemory) {
-            LOG.warn("Insufficient licensed memory to request resources required {}m available {}m", requiredMemory, availableLicensedMemory);
+            LOG.warn("Insufficient licensed memory to request resources: required {}m available {}m", requiredMemory, availableLicensedMemory);
             requestResources = false;
           }
         }
         if (requestResources) {
-          StramChildAgent.ContainerStartRequest csr;
+          StreamingContainerAgent.ContainerStartRequest csr;
           while ((csr = dnmgr.containerStartRequests.poll()) != null) {
+            if (csr.container.getRequiredMemoryMB() > maxMem) {
+              LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
+              csr.container.setRequiredMemoryMB(maxMem);
+            }
             csr.container.setResourceRequestPriority(nextRequestPriority++);
             requestedResources.put(csr, loopCounter);
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory, true));
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, true));
           }
         }
       }
 
       if (!requestedResources.isEmpty()) {
         //resourceRequestor.clearNodeMapping();
-        for (Map.Entry<StramChildAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
           if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
             entry.setValue(loopCounter);
-            StramChildAgent.ContainerStartRequest csr = entry.getKey();
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, containerMemory, false));
+            StreamingContainerAgent.ContainerStartRequest csr = entry.getKey();
+            containerRequests.add(resourceRequestor.createContainerRequest(csr, false));
           }
         }
       }
@@ -721,8 +743,8 @@ public class StreamingAppMasterService extends CompositeService
         // + ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
         boolean alreadyAllocated = true;
-        StramChildAgent.ContainerStartRequest csr = null;
-        for (Map.Entry<StramChildAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+        StreamingContainerAgent.ContainerStartRequest csr = null;
+        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
           if (entry.getKey().container.getResourceRequestPriority() == allocatedContainer.getPriority().getPriority()) {
             alreadyAllocated = false;
             csr = entry.getKey();
@@ -743,7 +765,7 @@ public class StreamingAppMasterService extends CompositeService
 
         // allocate resource to container
         ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
-        StramChildAgent sca = dnmgr.assignContainer(resource, null);
+        StreamingContainerAgent sca = dnmgr.assignContainer(resource, null);
 
         if (sca == null) {
           // allocated container no longer needed, add release request
@@ -751,8 +773,16 @@ public class StreamingAppMasterService extends CompositeService
           releasedContainers.add(allocatedContainer.getId());
         }
         else {
-          this.allocatedContainers.put(allocatedContainer.getId().toString(), new AllocatedContainer(allocatedContainer));
-          ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
+          AllocatedContainer allocatedContainerHolder = new AllocatedContainer(allocatedContainer);
+          this.allocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainerHolder);
+          ByteBuffer tokens = null;
+          if (UserGroupInformation.isSecurityEnabled()) {
+            UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+            Token<StramDelegationTokenIdentifier> delegationToken = allocateDelegationToken(ugi.getUserName(), heartbeatListener.getAddress());
+            allocatedContainerHolder.delegationToken = delegationToken;
+            //ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
+            tokens = LaunchContainerRunnable.getTokens(ugi, delegationToken);
+          }
           LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
           // launchThreads.add(launchThread);
@@ -780,13 +810,17 @@ public class StreamingAppMasterService extends CompositeService
         assert (containerStatus.getState() == ContainerState.COMPLETE);
 
         AllocatedContainer allocatedContainer = allocatedContainers.remove(containerStatus.getContainerId().toString());
+        if (allocatedContainer != null && allocatedContainer.delegationToken != null) {
+          UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+          delegationTokenManager.cancelToken(allocatedContainer.delegationToken, ugi.getUserName());
+        }
         int exitStatus = containerStatus.getExitStatus();
         if (0 != exitStatus) {
           if (allocatedContainer != null) {
             numFailedContainers.incrementAndGet();
           }
 //          if (exitStatus == 1) {
-//            // non-recoverable StramChild failure
+//            // non-recoverable StreamingContainer failure
 //            appDone = true;
 //            finalStatus = FinalApplicationStatus.FAILED;
 //            dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
@@ -858,14 +892,23 @@ public class StreamingAppMasterService extends CompositeService
     amRmClient.unregisterApplicationMaster(finishReq.getFinalApplicationStatus(), finishReq.getDiagnostics(), null);
   }
 
+  private Token<StramDelegationTokenIdentifier> allocateDelegationToken(String username, InetSocketAddress address)
+  {
+    StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(username), new Text(""), new Text(""));
+    String service = address.getAddress().getHostAddress() + ":" + address.getPort();
+    Token<StramDelegationTokenIdentifier> stramToken = new Token<StramDelegationTokenIdentifier>(identifier, delegationTokenManager);
+    stramToken.setService(new Text(service));
+    return stramToken;
+  }
+
   /**
    * Check for containers that were allocated in a previous attempt.
    * If the containers are still alive, wait for them to check in via heartbeat.
    */
   private void checkContainerStatus()
   {
-    Collection<StramChildAgent> containers = this.dnmgr.getContainerAgents();
-    for (StramChildAgent ca : containers) {
+    Collection<StreamingContainerAgent> containers = this.dnmgr.getContainerAgents();
+    for (StreamingContainerAgent ca : containers) {
       ContainerId containerId = ConverterUtils.toContainerId(ca.container.getExternalId());
       NodeId nodeId = ConverterUtils.toNodeId(ca.container.host);
 
@@ -986,6 +1029,7 @@ public class StreamingAppMasterService extends CompositeService
   {
     final private Container container;
     private boolean stopRequested;
+    private Token<StramDelegationTokenIdentifier> delegationToken;
 
     private AllocatedContainer(Container c)
     {

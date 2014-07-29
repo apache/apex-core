@@ -8,9 +8,10 @@ package com.datatorrent.stram;
 import java.util.Map;
 
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+import org.apache.log4j.DTLoggerFactory;
 
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 
 /**
@@ -64,7 +65,7 @@ public abstract class StramUtils
       Map<String, String> envs = System.getenv();
       String containerIdString = envs.get(Environment.CONTAINER_ID.name());
       if (containerIdString != null) {
-        System.setProperty(DAGContext.DT_PREFIX + "cid", containerIdString);
+        System.setProperty(StreamingApplication.DT_PREFIX + "cid", containerIdString);
       }
 
       System.setProperty("hadoop.log.file", "dt.log");
@@ -78,6 +79,7 @@ public abstract class StramUtils
           }
         }
       }
+      DTLoggerFactory.getInstance().initialize();
     }
   }
 

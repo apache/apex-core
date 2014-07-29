@@ -15,13 +15,7 @@
  */
 package com.datatorrent.api.annotation;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-
+import java.lang.annotation.*;
 /**
  *
  * Annotation for input ports on streaming operators.<p>
@@ -31,14 +25,19 @@ import java.lang.annotation.Target;
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface InputPortFieldAnnotation {
-
+public @interface InputPortFieldAnnotation
+{
   /**
-   * <p>name.</p>
+   * Alternative name of the port. When this parameter is not defined or set to empty string,
+   * the name of the field is used.
+   *
+   * @return - name of the parameter.
    */
   public String name();
   /**
-   * <p>optional.</p>
+   * Whether this port connection is optional. When true, you may choose not to connect the port.
+   *
+   * @return - true if port is optional, false otherwise.
    */
   public boolean optional() default false;
 

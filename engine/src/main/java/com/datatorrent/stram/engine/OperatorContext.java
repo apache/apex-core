@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
-import com.datatorrent.api.Stats.OperatorStats.CustomStats;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.BaseContext;
@@ -35,7 +34,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   private final CircularBuffer<OperatorCommand> requests = new CircularBuffer<OperatorCommand>(1024);
   public final boolean stateless;
 
-  private CustomStats customStats;
   /**
    * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
@@ -84,9 +82,9 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   }
 
   @Override
-  public void setCustomStats(CustomStats stats)
+  public void setCounters(Object stats)
   {
-    this.customStats = stats;
+    this.counters = stats;
   }
 
   /**
@@ -111,8 +109,8 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     lastProcessedWindowId = windowId;
     stats.windowId = windowId;
 
-    stats.customStats = this.customStats;
-    this.customStats = null;
+    stats.counters = this.counters;
+    this.counters = null;
 
     if (!statsBuffer.offer(stats)) {
       statsBuffer.poll();

@@ -86,7 +86,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
-     * @return ArrayList<OperatorStats>
+     * @return
      */
     public ArrayList<ContainerStats.OperatorStats> getOperatorStatsContainer() {
       return windowStats;
@@ -195,11 +195,12 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int bufferServerPort;
 
     public String jvmName;
-    // commented out because free memory is misleading because of GC. may want to revisit this.
-    //public int memoryMBFree;
+    public int memoryMBFree;
     public boolean restartRequested;
 
     public ContainerStats stats;
+
+    public long sentTms = System.currentTimeMillis();
 
     public ContainerStats getContainerStats() {
       return stats;
@@ -228,7 +229,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class StramToNodeRequest implements Serializable {
     public static enum RequestType
     {
-      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
+      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY, SET_LOG_LEVEL
     }
 
     private static final long serialVersionUID = 1L;
@@ -342,15 +343,35 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Context will provide all information to initialize and prepare it for operator deployment<br>
    *
    * @param containerId
+   * @return
    * @throws IOException
    * <br>
    */
   StreamingContainerContext getInitContext(String containerId) throws IOException;
 
+  /**
+   * Log to app master's log by child container
+   *
+   * @param containerId
+   * @param msg
+   * @throws IOException
+   */
   void log(String containerId, String msg) throws IOException;
 
   /**
+   * Reports an error to the app master by child container
+   *
+   * @param containerId
+   * @param operators
+   * @param msg
+   */
+  void reportError(String containerId, int[] operators, String msg);
+
+  /**
    * To be called periodically by child for heartbeat protocol.
+   *
+   * @param msg
+   * @return
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
 

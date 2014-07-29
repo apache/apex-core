@@ -2,13 +2,14 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram;
+package com.datatorrent.stram.engine;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.lang.Thread.State;
-import java.net.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
@@ -24,6 +25,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
@@ -40,13 +42,16 @@ import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.stram.ComponentContextPair;
+import com.datatorrent.stram.RecoverableRpcProxy;
+import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.*;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.debug.StdOutErrLog;
-import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
@@ -57,9 +62,9 @@ import com.datatorrent.stram.stream.*;
  *
  * @since 0.3.2
  */
-public class StramChild extends YarnContainerMain
+public class StreamingContainer extends YarnContainerMain
 {
-  public static final String PROP_APP_PATH = DAGContext.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
+  public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
@@ -104,7 +109,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
-  protected StramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical)
+  protected StreamingContainer(String containerId, StreamingContainerUmbilicalProtocol umbilical)
   {
     this.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
     this.components = new HashSet<Component<ContainerContext>>();
@@ -236,10 +241,10 @@ public class StramChild extends YarnContainerMain
 
     RecoverableRpcProxy rpcProxy = new RecoverableRpcProxy(appPath, new Configuration());
     final StreamingContainerUmbilicalProtocol umbilical = rpcProxy.getProxy();
-    final String childId = System.getProperty(DAGContext.DT_PREFIX + "cid");
+    final String childId = System.getProperty(StreamingApplication.DT_PREFIX + "cid");
     try {
       StreamingContainerContext ctx = umbilical.getInitContext(childId);
-      StramChild stramChild = new StramChild(childId, umbilical);
+      StreamingContainer stramChild = new StreamingContainer(childId, umbilical);
       logger.debug("Container Context = {}", ctx);
       stramChild.setup(ctx);
       try {
@@ -254,18 +259,14 @@ public class StramChild extends YarnContainerMain
     catch (Error error) {
       logger.error("Fatal error in container!", error);
       /* Report back any failures, for diagnostic purposes */
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      error.printStackTrace(new PrintStream(baos));
-      umbilical.log(childId, "FATAL: " + baos.toString());
-      baos.close();
+      String msg = ExceptionUtils.getStackTrace(error);
+      umbilical.reportError(childId, null, "FATAL: " + msg);
     }
     catch (Exception exception) {
       logger.error("Fatal exception in container!", exception);
       /* Report back any failures, for diagnostic purposes */
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      exception.printStackTrace(new PrintStream(baos));
-      umbilical.log(childId, baos.toString());
-      baos.close();
+      String msg = ExceptionUtils.getStackTrace(exception);
+      umbilical.reportError(childId, null, msg);
     }
     finally {
       rpcProxy.close();
@@ -550,14 +551,14 @@ public class StramChild extends YarnContainerMain
     gens.clear();
   }
 
-  protected void triggerHeartbeat()
+  public void triggerHeartbeat()
   {
     synchronized (heartbeatTrigger) {
       heartbeatTrigger.notifyAll();
     }
   }
 
-  protected void heartbeatLoop() throws Exception
+  public void heartbeatLoop() throws Exception
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
@@ -575,7 +576,6 @@ public class StramChild extends YarnContainerMain
 
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
-
       msg.jvmName = jvmName;
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
@@ -585,9 +585,7 @@ public class StramChild extends YarnContainerMain
           msg.restartRequested = true;
         }
       }
-      // commented out because freeMemory() is misleading because of GC, may want to revisit this
-      //msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-
+      msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
 
       ContainerHeartbeatResponse rsp;
       do {
@@ -615,6 +613,7 @@ public class StramChild extends YarnContainerMain
 
         // heartbeat call and follow-up processing
         //logger.debug("Sending heartbeat for {} operators.", msg.getContainerStats().size());
+        msg.sentTms = System.currentTimeMillis();
         rsp = umbilical.processHeartbeat(msg);
         processHeartbeatResponse(rsp);
         if (rsp.hasPendingRequests) {
@@ -645,6 +644,10 @@ public class StramChild extends YarnContainerMain
       if (req.isDeleted()) {
         continue;
       }
+      if(req instanceof StramToNodeChangeLoggersRequest){
+        handleChangeLoggersRequest((StramToNodeChangeLoggersRequest)req);
+        continue;
+      }
       Node<?> node = nodes.get(req.getOperatorId());
       if (node == null) {
         logger.warn("Node for operator {} is not found, probably not deployed yet", req.getOperatorId());
@@ -671,7 +674,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
-  protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
+  public void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.nodeRequests != null) {
       nodeRequests = rsp.nodeRequests;
@@ -817,6 +820,7 @@ public class StramChild extends YarnContainerMain
     }
   }
 
+  @SuppressWarnings("unchecked")
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
           String sourceIdentifier, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
           throws UnknownHostException
@@ -827,7 +831,11 @@ public class StramChild extends YarnContainerMain
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(finishedWindowId);
-    bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    if (nodi.streamCodec != null) {
+      bssc.put(StreamContext.CODEC, (StreamCodec<Object>)nodi.streamCodec);
+    } else {
+      bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
+    }
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
@@ -938,6 +946,7 @@ public class StramChild extends YarnContainerMain
     return spair.context.getId();
   }
 
+  @SuppressWarnings("unchecked")
   private void deployInputStreams(List<OperatorDeployInfo> operatorList, HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams) throws UnknownHostException
   {
     /*
@@ -1002,7 +1011,11 @@ public class StramChild extends YarnContainerMain
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            if (nidi.streamCodec != null) {
+              context.put(StreamContext.CODEC, (StreamCodec<Object>)nidi.streamCodec);
+            } else {
+              context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
+            }
             context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
@@ -1081,7 +1094,11 @@ public class StramChild extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, stream);
+              StreamCodec<Object> streamCodec = (StreamCodec<Object>)nidi.streamCodec;
+              if (streamCodec == null) {
+                streamCodec = StramUtils.getSerdeInstance(nidi.serDeClassName);
+              }
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
@@ -1262,17 +1279,34 @@ public class StramChild extends YarnContainerMain
             node.run(); /* this is a blocking call */
           }
           catch (Error error) {
-            logger.error("Voluntary container termination due to an error in operator set {}.", currentdi == null ? setOperators : currentdi, error);
+            int[] operators;
+            if (currentdi == null) {
+              logger.error("Voluntary container termination due to an error in operator set {}.", setOperators, error);
+              operators = new int[setOperators.size()];
+              int i = 0;
+              for (Iterator<OperatorDeployInfo> it = setOperators.iterator(); it.hasNext(); i++) {
+                operators[i] = it.next().id;
+              }
+            }
+            else {
+              logger.error("Voluntary container termination due to an error in operator {}.", currentdi, error);
+              operators = new int[]{currentdi.id};
+            }
+            umbilical.reportError(containerId, operators, "Voluntary container termination due to an error. " + ExceptionUtils.getStackTrace(error));
             System.exit(1);
           }
           catch (Exception ex) {
             if (currentdi == null) {
               failedNodes.add(ndi.id);
-              logger.error("Operator set {} failed stopped running due to an exception.", setOperators, ex);
+              logger.error("Operator set {} stopped running due to an exception.", setOperators, ex);
+              int[] operators = new int[]{ndi.id};
+              umbilical.reportError(containerId, operators, "Stopped running due to an exception. " + ExceptionUtils.getStackTrace(ex));
             }
             else {
               failedNodes.add(currentdi.id);
-              logger.error("Abandoning deployment of operator {} due setup failure.", currentdi, ex);
+              logger.error("Abandoning deployment of operator {} due to setup failure.", currentdi, ex);
+              int[] operators = new int[]{currentdi.id};
+              umbilical.reportError(containerId, operators, "Abandoning deployment due to setup failure. " + ExceptionUtils.getStackTrace(ex));
             }
           }
           finally {
@@ -1382,12 +1416,13 @@ public class StramChild extends YarnContainerMain
       }
       int lCheckpointWindowCount = (int)(windowCount % temp);
       checkpoint = new Checkpoint(WindowGenerator.getWindowId(now, firstWindowMillis, windowWidthMillis), appWindowCount, lCheckpointWindowCount);
-      logger.debug("using at most once on {} at {}", ndi.name, checkpoint);
+      logger.debug("using {} on {} at {}", ProcessingMode.AT_MOST_ONCE, ndi.name, checkpoint);
     }
     else {
       checkpoint = ndi.checkpoint;
-      logger.debug("using at least once on {} at {}", ndi.name, checkpoint);
+      logger.debug("using {} on {} at {}", ndi.contextAttributes == null? ProcessingMode.AT_LEAST_ONCE: ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE), ndi.name, checkpoint);
     }
+
     return checkpoint;
   }
 
@@ -1457,5 +1492,11 @@ public class StramChild extends YarnContainerMain
     return containerContext.getValue(key);
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
+  private void handleChangeLoggersRequest(StramToNodeChangeLoggersRequest request)
+  {
+    logger.debug("handle change logger request");
+    DTLoggerFactory.getInstance().changeLoggersLevel(request.getTargetChanges());
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(StreamingContainer.class);
 }

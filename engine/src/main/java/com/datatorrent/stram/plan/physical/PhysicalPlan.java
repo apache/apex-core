@@ -11,23 +11,26 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.annotation.Nullable;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.StringUtils;
-
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -39,6 +42,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+
+import static com.datatorrent.api.Context.CountersAggregator;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -62,6 +67,17 @@ public class PhysicalPlan implements Serializable
   private static final long serialVersionUID = 201312112033L;
   private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
+  public static class LoadIndicator {
+    public final int indicator;
+    public final String note;
+
+    LoadIndicator(int indicator, String note)
+    {
+      this.indicator = indicator;
+      this.note = note;
+    }
+  }
+
   /**
    * Stats listener for throughput based partitioning.
    * Used when thresholds are configured on operator through attributes.
@@ -82,13 +98,18 @@ public class PhysicalPlan implements Serializable
       this.operMapping = operMapping;
     }
 
-    protected int getLoadIndicator(int operatorId, long tps) {
+    protected LoadIndicator getLoadIndicator(int operatorId, long tps) {
       if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
         lastTps = tps;
-        return (tps < tpsMin) ? -1 : 1;
+        if (tps < tpsMin) {
+          return new LoadIndicator(-1, String.format("Tuples per second %d is less than the minimum %d", tps, tpsMin));
+        }
+        else {
+          return new LoadIndicator(1, String.format("Tuples per second %d is greater than the maximum %d", tps, tpsMax));
+        }
       }
       lastTps = tps;
-      return 0;
+      return new LoadIndicator(0, null);
     }
 
     @Override
@@ -96,12 +117,14 @@ public class PhysicalPlan implements Serializable
     {
       long tps = operMapping.logicalOperator.getInputStreams().isEmpty() ? status.getTuplesEmittedPSMA() : status.getTuplesProcessedPSMA();
       Response rsp = new Response();
-      rsp.loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      LoadIndicator loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      rsp.loadIndicator = loadIndicator.indicator;
       if (rsp.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
           lastEvalMillis = System.currentTimeMillis();
           LOG.debug("Requesting repartitioning for {}/{} {} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator, tps});
           rsp.repartitionRequired = true;
+          rsp.repartitionNote = loadIndicator.note;
         }
       }
       return rsp;
@@ -202,6 +225,7 @@ public class PhysicalPlan implements Serializable
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
     private final Map<LogicalPlan.OutputPortMeta, StreamMapping> outputStreams = Maps.newHashMap();
     private List<StatsListener> statsHandlers;
+    private CountersAggregator aggregator;
 
     /**
      * Operators that form a parallel partition
@@ -272,7 +296,8 @@ public class PhysicalPlan implements Serializable
       }
     }
 
-    @SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart; you don't be an idiot! */
+    // if netbeans is not smart, don't produce warnings in other IDE
+    //@SuppressWarnings("null") /* for lp2.operators.add(m1); line below - netbeans is not very smart; you don't be an idiot! */
     void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
@@ -355,6 +380,9 @@ public class PhysicalPlan implements Serializable
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
+          if (!container.operators.isEmpty()) {
+            LOG.warn("Operator {} shares container without locality contraint due to insufficient resources.", oper);
+          }
           Set<PTOperator> inlineSet = oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet();
           if (!inlineSet.isEmpty()) {
             // process inline operators
@@ -391,6 +419,8 @@ public class PhysicalPlan implements Serializable
         container.operators.add(mEntry.getValue());
       }
     }
+    int memoryMB = pOperator.getOperatorMeta().getValue2(OperatorContext.MEMORY_MB);
+    container.setRequiredMemoryMB(container.getRequiredMemoryMB() + memoryMB);
   }
 
   private void initPartitioning(PMapping m, int partitionCnt)
@@ -438,6 +468,9 @@ public class PhysicalPlan implements Serializable
       m.statsHandlers.add(new StatsListenerProxy(m.logicalOperator));
     }
 
+    m.aggregator = m.logicalOperator.getAttributes().contains(OperatorContext.COUNTERS_AGGREGATOR)
+      ? m.logicalOperator.getValue(OperatorContext.COUNTERS_AGGREGATOR) : null;
+
     // create operator instance per partition
     Map<Integer, Partition<Operator>> operatorIdToPartition = Maps.newHashMapWithExpectedSize(partitions.size());
     for (Partition<Operator> partition : partitions) {
@@ -451,7 +484,7 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  private void redoPartitions(PMapping currentMapping)
+  private void redoPartitions(PMapping currentMapping, String note)
   {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
@@ -489,10 +522,17 @@ public class PhysicalPlan implements Serializable
     }
 
     Operator operator = currentMapping.logicalOperator.getOperator();
-    @SuppressWarnings("unchecked")
-    Partitioner<Operator> partitioner = currentMapping.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)
-                                        ? (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER)
-                                        : operator instanceof Partitioner ? (Partitioner<Operator>)operator : null;
+    Partitioner<Operator> partitioner = null;
+    if (currentMapping.logicalOperator.getAttributes().contains(OperatorContext.PARTITIONER)) {
+      @SuppressWarnings("unchecked")
+      Partitioner<Operator> tmp = (Partitioner<Operator>)currentMapping.logicalOperator.getValue(OperatorContext.PARTITIONER);
+      partitioner = tmp;
+    }
+    else if (operator instanceof Partitioner) {
+      @SuppressWarnings("unchecked")
+      Partitioner<Operator> tmp = (Partitioner<Operator>)operator;
+      partitioner = tmp;
+    }
 
     Collection<Partition<Operator>> newPartitions = null;
     if (partitioner != null) {
@@ -514,7 +554,11 @@ public class PhysicalPlan implements Serializable
       return;
     }
 
-    int requiredMemoryMB = (newPartitions.size() - currentPartitions.size()) * dag.getContainerMemoryMB();
+    int memoryPerPartition = currentMapping.logicalOperator.getValue2(OperatorContext.MEMORY_MB);
+    for (OperatorMeta pp : currentMapping.parallelPartitions) {
+      memoryPerPartition += pp.getValue2(OperatorContext.MEMORY_MB);
+    }
+    int requiredMemoryMB = (newPartitions.size() - currentPartitions.size()) * memoryPerPartition;
     if (requiredMemoryMB > availableMemoryMB) {
       LOG.warn("Insufficient headroom for repartitioning: available {}m required {}m", availableMemoryMB, requiredMemoryMB);
       return;
@@ -593,7 +637,12 @@ public class PhysicalPlan implements Serializable
     }
 
     deployChanges();
-    this.ctx.recordEventAsync(new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size()));
+
+    if (currentPartitions.size() != newPartitions.size()) {
+      StramEvent ev = new StramEvent.PartitionEvent(currentMapping.logicalOperator.getName(), currentPartitions.size(), newPartitions.size());
+      ev.setReason(note);
+      this.ctx.recordEventAsync(ev);
+    }
 
     if (partitioner != null) {
       partitioner.partitioned(operatorIdToPartition);
@@ -677,17 +726,25 @@ public class PhysicalPlan implements Serializable
       }
 
       PTContainer newContainer = null;
-      // check for existing inline set
+      int memoryMB = 0;
+      // handle container locality
       for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
         if (inlineOper.container != null) {
           newContainer = inlineOper.container;
           break;
         }
+        memoryMB += inlineOper.operatorMeta.getValue2(OperatorContext.MEMORY_MB);
       }
 
       if (newContainer == null) {
-        // find container
-        newContainer = findContainer(oper);
+        // attempt to find empty container with required size
+        for (PTContainer c : this.containers) {
+          if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
+            LOG.debug("Reusing existing container {} for {}", c, oper);
+            newContainer = c;
+          }
+        }
+
         if (newContainer == null) {
           // get new container
           LOG.debug("New container for: " + oper);
@@ -807,17 +864,6 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  private PTContainer findContainer(PTOperator oper) {
-    // TODO: find container based on utilization
-    for (PTContainer c : this.containers) {
-      if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE) {
-        LOG.debug("Reusing existing container {} for {}", c, oper);
-        return c;
-      }
-    }
-    return null;
-  }
-
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<? extends Operator> partition, Checkpoint checkpoint) {
     String host = null;
     if(partition != null){
@@ -854,7 +900,7 @@ public class PhysicalPlan implements Serializable
    * Occurs when adding new partition or new logical stream.
    * Does nothing if source was already setup (on add sink to existing stream).
    * @param mapping
-   * @param pOperator
+   * @param oper
    * @param outputEntry
    */
   private void setupOutput(PMapping mapping, PTOperator oper, Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry)
@@ -1215,10 +1261,9 @@ public class PhysicalPlan implements Serializable
   public void onStatusUpdate(PTOperator oper)
   {
     for (StatsListener l : oper.statsListeners) {
-      StatsListener.Response rsp = l.processStats(oper.stats);
+      final StatsListener.Response rsp = l.processStats(oper.stats);
       if (rsp != null) {
         //LOG.debug("Response to processStats = {}", rsp.repartitionRequired);
-        // TODO: repartition delay needs to come out of the listener
         oper.loadIndicator = rsp.loadIndicator;
         if (rsp.repartitionRequired) {
           final OperatorMeta om = oper.getOperatorMeta();
@@ -1231,7 +1276,7 @@ public class PhysicalPlan implements Serializable
             Runnable r = new Runnable() {
               @Override
               public void run() {
-                redoPartitions(logicalToPTOperator.get(om));
+                redoPartitions(logicalToPTOperator.get(om), rsp.repartitionNote);
                 pendingRepartition.remove(om);
               }
             };
@@ -1240,6 +1285,39 @@ public class PhysicalPlan implements Serializable
         }
       }
     }
+  }
+
+  /**
+   * Aggregates physical counters
+   * @param logicalOperator
+   * @return aggregated counters
+   */
+  public Object aggregatePhysicalCounters(OperatorMeta logicalOperator)
+  {
+    PMapping pMapping = logicalToPTOperator.get(logicalOperator);
+    List<Object> physicalCounters = Lists.newArrayList();
+    for(PTOperator ptOperator : pMapping.getAllOperators()){
+      if (ptOperator.lastSeenCounters != null) {
+        physicalCounters.add(ptOperator.lastSeenCounters);
+      }
+    }
+    try {
+      return pMapping.aggregator.aggregate(physicalCounters);
+    }
+    catch (Throwable t) {
+      LOG.error("Caught exception when aggregating counters:", t);
+      return null;
+    }
+  }
+
+  /**
+   * @param logicalOperator logical operator
+   * @return any aggregator associated with the operator
+   */
+  @Nullable
+  public CountersAggregator getCountersAggregatorFor(OperatorMeta logicalOperator)
+  {
+    return logicalToPTOperator.get(logicalOperator).aggregator;
   }
 
   /**

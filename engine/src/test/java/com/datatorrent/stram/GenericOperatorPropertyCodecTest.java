@@ -39,7 +39,7 @@ public class GenericOperatorPropertyCodecTest
     PlanModifier pm = new PlanModifier(plan);
     try {
       pm.setOperatorProperty(o1Meta.getName(), "genericOperatorProperty", "xyz");
-      Assert.fail("validation error exepected");
+      Assert.fail("validation error expected"); // cannot set properties on an operator that is already deployed.
     } catch (javax.validation.ValidationException e) {
       Assert.assertTrue(e.getMessage().contains(o1Meta.toString()));
     }

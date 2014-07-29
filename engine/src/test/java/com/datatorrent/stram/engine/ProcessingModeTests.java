@@ -23,7 +23,6 @@ import com.datatorrent.api.Operator.ProcessingMode;
 
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.stram.StramChild;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.tuple.EndWindowTuple;
@@ -46,13 +45,13 @@ public class ProcessingModeTests
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop.start();
+    StreamingContainer.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+    StreamingContainer.eventloop.stop();
   }
 
   public void testLinearInputOperatorRecovery() throws Exception

@@ -5,7 +5,6 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
@@ -20,29 +19,28 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.google.inject.Inject;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.http.HttpConfig;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
 
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAGContext;
@@ -50,18 +48,20 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StringCodec;
-import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
+import com.datatorrent.stram.util.ConfigValidator;
 import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
@@ -83,15 +83,17 @@ public class StramWebServices
   public static final String PATH_PHYSICAL_PLAN = "physicalPlan";
   public static final String PATH_PHYSICAL_PLAN_OPERATORS = PATH_PHYSICAL_PLAN + "/operators";
   public static final String PATH_PHYSICAL_PLAN_STREAMS = PATH_PHYSICAL_PLAN + "/streams";
+  public static final String PATH_PHYSICAL_PLAN_CONTAINERS = PATH_PHYSICAL_PLAN + "/containers";
   public static final String PATH_SHUTDOWN = "shutdown";
   public static final String PATH_RECORDINGS = "recordings";
   public static final String PATH_RECORDINGS_START = PATH_RECORDINGS + "/start";
   public static final String PATH_RECORDINGS_STOP = PATH_RECORDINGS + "/stop";
-  public static final String PATH_PHYSICAL_PLAN_CONTAINERS = PATH_PHYSICAL_PLAN + "/containers";
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_ALERTS = "alerts";
+  public static final String PATH_LOGGERS = "loggers";
+
   //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
   @Context
@@ -99,16 +101,13 @@ public class StramWebServices
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
-  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
 
   @Inject
   public StramWebServices(final StramAppContext context)
   {
     this.appCtx = context;
-    objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
-    objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
   }
 
   Boolean hasAccess(HttpServletRequest request)
@@ -154,6 +153,8 @@ public class StramWebServices
         objectMapper.registerModule(sm);
       }
       initialized = true;
+
+
     }
   }
 
@@ -217,7 +218,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorInfo(@PathParam("operatorId") String operatorId) throws Exception
+  public JSONObject getOperatorInfo(@PathParam("operatorId") int operatorId) throws Exception
   {
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
@@ -230,7 +231,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId) throws Exception
+  public JSONObject getPortsInfo(@PathParam("operatorId") int operatorId) throws Exception
   {
     init();
     Map<String, Object> map = new HashMap<String, Object>();
@@ -245,7 +246,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports/{portName}")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
+  public JSONObject getPortsInfo(@PathParam("operatorId") int operatorId, @PathParam("portName") String portName) throws Exception
   {
     init();
     OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
@@ -263,7 +264,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("parent") String parent)
+  public JSONObject getOperatorClasses(@QueryParam("packagePrefix") String packagePrefix, @QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -277,7 +278,12 @@ public class StramWebServices
       }
     }
 
+    if (StringUtils.isBlank(packagePrefix)) {
+      packagePrefix = "com.datatorrent";
+    }
+
     try {
+      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefix);
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
 
       for (Class<?> clazz : operatorClasses) {
@@ -405,52 +411,54 @@ public class StramWebServices
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject stopRecording(@PathParam("opId") String opId)
+  public JSONObject stopRecording(@PathParam("opId") int opId)
   {
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
-    dagManager.stopRecording(Integer.valueOf(opId), null);
+    dagManager.stopRecording(opId, null);
     return response;
   }
 
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject stopRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
+  public JSONObject stopRecording(@PathParam("opId") int opId, @PathParam("portName") String portName)
   {
     LOG.debug("Stop recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
-    dagManager.stopRecording(Integer.valueOf(opId), portName);
+    dagManager.stopRecording(opId, portName);
     return response;
-  }
-
-  ContainerInfo getAppMasterContainerInfo()
-  {
-    ContainerInfo ci = new ContainerInfo();
-    ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
-    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
-    ci.state = "ACTIVE";
-    ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
-    ci.numOperators = 0;
-    ci.memoryMBAllocated = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
-    ci.lastHeartbeat = -1;
-    ci.containerLogsUrl = HttpConfig.getSchemePrefix() + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
-
-    return ci;
   }
 
   @GET
   @Path(PATH_PHYSICAL_PLAN_CONTAINERS)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject listContainers() throws Exception
+  public JSONObject listContainers(@QueryParam("states") String states) throws Exception
   {
     init();
-    Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
+    Set<String> stateSet = null;
+    if (states != null) {
+      stateSet = new HashSet<String>();
+      stateSet.addAll(Arrays.asList(StringUtils.split(states, ',')));
+    }
     ContainersInfo ci = new ContainersInfo();
+    for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {
+      if (stateSet == null || stateSet.contains(containerInfo.state)) {
+        ci.add(containerInfo);
+      }
+    }
+
+    Collection<StreamingContainerAgent> containerAgents = dagManager.getContainerAgents();
     // add itself (app master container)
-    ci.add(getAppMasterContainerInfo());
-    for (StramChildAgent sca : containerAgents) {
-      ci.add(sca.getContainerInfo());
+    ContainerInfo appMasterContainerInfo = dagManager.getAppMasterContainerInfo();
+    if (stateSet == null || stateSet.contains(appMasterContainerInfo.state)) {
+      ci.add(appMasterContainerInfo);
+    }
+    for (StreamingContainerAgent sca : containerAgents) {
+      ContainerInfo containerInfo = sca.getContainerInfo();
+      if (stateSet == null || stateSet.contains(containerInfo.state)) {
+        ci.add(containerInfo);
+      }
     }
     // To get around the nasty JAXB problem for lists
     return new JSONObject(objectMapper.writeValueAsString(ci));
@@ -462,16 +470,23 @@ public class StramWebServices
   public JSONObject getContainer(@PathParam("containerId") String containerId) throws Exception
   {
     init();
-    ContainerInfo ci;
+    ContainerInfo ci = null;
     if (containerId.equals(System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString()))) {
-      ci = getAppMasterContainerInfo();
+      ci = dagManager.getAppMasterContainerInfo();
     }
     else {
-      StramChildAgent sca = dagManager.getContainerAgent(containerId);
-      if (sca == null) {
-        throw new NotFoundException();
+      for (ContainerInfo containerInfo : dagManager.getCompletedContainerInfo()) {
+        if (containerInfo.id.equals(containerId)) {
+          ci = containerInfo;
+        }
       }
-      ci = sca.getContainerInfo();
+      if (ci == null) {
+        StreamingContainerAgent sca = dagManager.getContainerAgent(containerId);
+        if (sca == null) {
+          throw new NotFoundException();
+        }
+        ci = sca.getContainerInfo();
+      }
     }
     return new JSONObject(objectMapper.writeValueAsString(ci));
   }
@@ -530,6 +545,20 @@ public class StramWebServices
     return new JSONObject(objectMapper.writeValueAsString(logicalOperatorInfo));
   }
 
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/aggregation")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getOperatorAggregation(@PathParam("operatorName") String operatorName) throws Exception
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+
+    OperatorAggregationInfo operatorAggregationInfo = dagManager.getOperatorAggregationInfo(operatorName);
+    return new JSONObject(objectMapper.writeValueAsString(operatorAggregationInfo));
+  }
+
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
@@ -566,7 +595,7 @@ public class StramWebServices
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") String operatorId)
+  public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") int operatorId)
   {
     init();
     JSONObject response = new JSONObject();
@@ -672,7 +701,7 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
+  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") int operatorId, @QueryParam("propertyName") String propertyName)
   {
     Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
 
@@ -802,4 +831,67 @@ public class StramWebServices
    return response;
    }
    */
+
+  @POST
+  @Path(PATH_LOGGERS)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject setLoggersLevel(JSONObject request)
+  {
+    init();
+    JSONObject response = new JSONObject();
+    Map<String, String> targetChanges = Maps.newHashMap();
+    try {
+      @SuppressWarnings("unchecked")
+      JSONArray loggerArray = request.getJSONArray("loggers");
+      for (int i = 0; i < loggerArray.length(); i++) {
+        JSONObject loggerNode = loggerArray.getJSONObject(i);
+        String target = loggerNode.getString("target");
+        String level = loggerNode.getString("logLevel");
+        if (ConfigValidator.validateLoggersLevel(target, level)) {
+          LOG.info("changing logger level for {} to {}", target, level);
+          targetChanges.put(target, level);
+        }
+        else {
+          LOG.warn("incorrect logger settings {}:{}", target, level);
+        }
+      }
+
+      if (!targetChanges.isEmpty()) {
+        dagManager.setLoggersLevel(Collections.unmodifiableMap(targetChanges));
+        //Changing the levels on Stram after sending the message to all containers.
+        DTLoggerFactory.getInstance().changeLoggersLevel(targetChanges);
+      }
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
+    return response;
+  }
+
+  @GET
+  @Path(PATH_LOGGERS + "/search")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject searchLoggersLevel(@QueryParam("pattern") String pattern)
+  {
+    init();
+    JSONObject response = new JSONObject();
+    JSONArray loggersArray = new JSONArray();
+    try {
+      if (pattern != null) {
+        Map<String, String> matches = DTLoggerFactory.getInstance().getClassesMatching(pattern);
+        for (Entry<String, String> match : matches.entrySet()) {
+          JSONObject node = new JSONObject();
+          node.put("name", match.getKey());
+          node.put("level", match.getValue());
+          loggersArray.put(node);
+        }
+      }
+      response.put("loggers", loggersArray);
+    }
+    catch (JSONException ex) {
+      LOG.warn("Got JSON Exception: ", ex);
+    }
+    return response;
+  }
 }

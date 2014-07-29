@@ -5,10 +5,12 @@
 package com.datatorrent.stram.debug;
 
 import java.io.PrintStream;
-import org.apache.log4j.Appender;
-import org.apache.log4j.RollingFileAppender;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.log4j.Appender;
+import org.apache.log4j.RollingFileAppender;
 
 /**
  * <p>StdOutErrLog class.</p>

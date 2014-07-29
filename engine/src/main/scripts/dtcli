@@ -41,7 +41,12 @@ fi
 HADOOP_PREFIX=${HADOOP_PREFIX:-${HADOOP_HOME:-$HADOOP_DIR}}
 
 BUILD_DIR="$( dirname "$0" )/../../../target"
-MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
+if [ "$HADOOP_PREFIX" = "" ]; then
+  MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
+else
+  MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath-no-hadoop"
+fi
+
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
   #echoerr "Setting classpath from: $MVN_GENERATED_PATH"

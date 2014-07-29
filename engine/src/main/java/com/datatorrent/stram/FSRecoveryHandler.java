@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.util.EnumSet;
 
 import org.apache.commons.io.IOUtils;
@@ -25,6 +26,8 @@ import org.apache.hadoop.fs.Options.Rename;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.stram.util.FSUtil;
 
 /**
  * <p>FSRecoveryHandler class.</p>
@@ -82,9 +85,15 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
     LOG.info("Creating {}", logPath);
     final FSDataOutputStream fsOutputStream;
-    if (fs.getScheme().equals("file")) {
+    String scheme = null;
+    try{
+      scheme = fs.getScheme();
+    }catch(UnsupportedOperationException e){
+      LOG.warn("{} doesn't implement getScheme() method", fs.getClass().getName());
+    }
+    if ("file".equals(scheme)) {
       // local FS does not support hflush and does not flush native stream
-      fs.mkdirs(logPath.getParent());
+      FSUtil.mkdirs(fs, logPath.getParent());
       fsOutputStream = new FSDataOutputStream(new FileOutputStream(Path.getPathWithoutSchemeAndAuthority(logPath).toString()), null);
     } else {
       fsOutputStream = fs.create(logPath);
@@ -198,8 +207,19 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       return null;
     }
 
+    LOG.debug("Reading checkpoint {}", snapshotPath);
     InputStream is = fc.open(snapshotPath);
-    ObjectInputStream ois = new ObjectInputStream(is);
+    // indeterministic class loading behavior
+    // http://stackoverflow.com/questions/9110677/readresolve-not-working-an-instance-of-guavas-serializedform-appears
+    final ClassLoader loader = Thread.currentThread().getContextClassLoader();
+    ObjectInputStream ois = new ObjectInputStream(is) {
+      @Override
+      protected Class<?> resolveClass(ObjectStreamClass objectStreamClass)
+              throws IOException, ClassNotFoundException {
+          return Class.forName(objectStreamClass.getName(), true, loader);
+      }
+    };
+    //ObjectInputStream ois = new ObjectInputStream(is);
     try {
       return ois.readObject();
     } catch (ClassNotFoundException cnfe) {

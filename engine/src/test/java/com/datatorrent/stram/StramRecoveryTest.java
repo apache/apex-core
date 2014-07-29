@@ -42,8 +42,8 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
-import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
-import com.datatorrent.stram.plan.logical.CreateStreamRequest;
+import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.requests.CreateStreamRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -176,11 +176,13 @@ public class StramRecoveryTest
     Assert.assertEquals("post restore 1", PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
     Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
-    StramChildAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
+    StreamingContainerAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
     Assert.assertNotNull("allocated container restored " + originalContainer, sca);
+    Assert.assertEquals("memory usage allocated container", (int)OperatorContext.MEMORY_MB.defaultValue, sca.container.getAllocatedMemoryMB());
 
     // YARN-1490 - simulate container terminated on AM recovery
     scm.scheduleContainerRestart(originalContainer.getExternalId());
+    Assert.assertEquals("memory usage of failed container", 0, sca.container.getAllocatedMemoryMB());
 
     Checkpoint firstCheckpoint = new Checkpoint(3, 0, 0);
     mc = new MockContainer(scm, o1p1.getContainer());
@@ -350,7 +352,13 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
     dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars2");
     StramClient sc = new StramClient(new Configuration(false), dag);
-    sc.copyInitialState(new Path(appPath1));
+    try {
+      sc.start();
+      sc.copyInitialState(new Path(appPath1));
+    }
+    finally {
+      sc.stop();
+    }
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     plan = scm.getPhysicalPlan();
     dag = plan.getLogicalPlan();

@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -13,6 +13,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
@@ -37,8 +40,9 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
+
+import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -86,6 +90,10 @@ public class LaunchContainerRunnable implements Runnable
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("./*");
     for (String c : nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+      if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {
+        // SPOI-2501
+        continue;
+      }
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
@@ -130,6 +138,12 @@ public class LaunchContainerRunnable implements Runnable
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
 
     setClasspath(containerEnv);
+    try {
+      // propagate to replace node managers user name (effective in non-secure mode)
+      containerEnv.put("HADOOP_USER_NAME", UserGroupInformation.getLoginUser().getUserName());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve principal name", e);
+    }
     // Set the environment
     ctx.setEnvironment(containerEnv);
     ctx.setTokens(tokens);
@@ -191,8 +205,8 @@ public class LaunchContainerRunnable implements Runnable
 
     List<CharSequence> vargs = new ArrayList<CharSequence>(8);
 
-    //vargs.add("exec");
-    if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.$()))) {
+    if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.key()))) {
+      // node manager provides JAVA_HOME
       vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
     }
     else {
@@ -220,14 +234,18 @@ public class LaunchContainerRunnable implements Runnable
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
-    vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
+    vargs.add(String.format("-D%s=%s", StreamingContainer.PROP_APP_PATH, dag.assertAppPath()));
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
-    vargs.add(String.format("-D%scid=%s", DAGContext.DT_PREFIX, jvmID));
+    vargs.add(String.format("-D%scid=%s", StreamingApplication.DT_PREFIX, jvmID));
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
+    String loggersLevel = System.getProperty(DTLoggerFactory.DT_LOGGERS_LEVEL);
+    if (loggersLevel != null) {
+      vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
+    }
     // Add main class and its arguments
-    vargs.add(StramChild.class.getName());  // main of Child
+    vargs.add(StreamingContainer.class.getName());  // main of Child
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
@@ -243,37 +261,40 @@ public class LaunchContainerRunnable implements Runnable
 
   }
 
-  public static ByteBuffer getTokens(StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
+  public static ByteBuffer getTokens(StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress) throws IOException
   {
     if (UserGroupInformation.isSecurityEnabled()) {
-      Token<StramDelegationTokenIdentifier> stramToken;
-      try {
-        UserGroupInformation ugi = UserGroupInformation.getLoginUser();
-        StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
-        byte[] password = delegationTokenManager.addIdentifier(identifier);
-        String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
-        stramToken = new Token<StramDelegationTokenIdentifier>(identifier.getBytes(), password, identifier.getKind(), new Text(service));
-
-        Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
-        Credentials credentials = new Credentials();
-        for (Token<? extends TokenIdentifier> token : tokens) {
-          if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
-            credentials.addToken(token.getService(), token);
-            LOG.info("Passing container token {}", token);
-          }
-        }
-        credentials.addToken(stramToken.getService(), stramToken);
-        DataOutputBuffer dataOutput = new DataOutputBuffer();
-        credentials.writeTokenStorageToStream(dataOutput);
-        byte[] tokenBytes = dataOutput.getData();
-        ByteBuffer cTokenBuf = ByteBuffer.wrap(tokenBytes);
-        return cTokenBuf.duplicate();
-      }
-      catch (IOException e) {
-        throw new RuntimeException("Error generating delegation token", e);
-      }
+      UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+      StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
+      String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
+      Token<StramDelegationTokenIdentifier> stramToken = new Token<StramDelegationTokenIdentifier>(identifier, delegationTokenManager);
+      stramToken.setService(new Text(service));
+      return getTokens(ugi, stramToken);
     }
     return null;
+  }
+
+  public static ByteBuffer getTokens(UserGroupInformation ugi, Token<StramDelegationTokenIdentifier> delegationToken)
+  {
+    try {
+      Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
+      Credentials credentials = new Credentials();
+      for (Token<? extends TokenIdentifier> token : tokens) {
+        if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
+          credentials.addToken(token.getService(), token);
+          LOG.info("Passing container token {}", token);
+        }
+      }
+      credentials.addToken(delegationToken.getService(), delegationToken);
+      DataOutputBuffer dataOutput = new DataOutputBuffer();
+      credentials.writeTokenStorageToStream(dataOutput);
+      byte[] tokenBytes = dataOutput.getData();
+      ByteBuffer cTokenBuf = ByteBuffer.wrap(tokenBytes);
+      return cTokenBuf.duplicate();
+    }
+    catch (IOException e) {
+      throw new RuntimeException("Error generating delegation token", e);
+    }
   }
 
 }

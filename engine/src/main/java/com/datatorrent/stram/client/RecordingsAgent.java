@@ -202,7 +202,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         return result;
       }
       WebResource path = wr.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
-      JSONObject response = new JSONObject(webServicesClient.process(path, String.class, new WebServicesClient.GetWebServicesHandler<String>()));
+      JSONObject response = new JSONObject(webServicesClient.process(path.getRequestBuilder(), String.class, new WebServicesClient.GetWebServicesHandler<String>()));
       Object containersObj = response.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
@@ -458,9 +458,6 @@ public final class RecordingsAgent extends FSPartFileAgent
       ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       long currentOffset = 0;
       boolean readPartFile = false;
-      if (limit == 0 || limit > MAX_LIMIT_TUPLES) {
-        limit = MAX_LIMIT_TUPLES;
-      }
       MutableLong numRemainingTuples = new MutableLong(limit);
       MutableLong currentTimestamp = new MutableLong();
       RecordingsIndexLine indexLine;
@@ -531,13 +528,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
       BufferedReader partBr = null;
       try {
-        String extraPartFile = null;
-        if (lastProcessPartFile == null) {
-          extraPartFile = "part0.txt";
-        }
-        else if (lastProcessPartFile.startsWith("part") && lastProcessPartFile.endsWith(".txt")) {
-          extraPartFile = "part" + (Integer.valueOf(lastProcessPartFile.substring(4, lastProcessPartFile.length() - 4)) + 1) + ".txt";
-        }
+        String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
           partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
           processPartFile(partBr, queryType, low, high, limit, ports,
@@ -644,11 +635,11 @@ public final class RecordingsAgent extends FSPartFileAgent
         path += "/ports/" + portName;
       }
       path += "/" + StramWebServices.PATH_RECORDINGS_START;
-      return webServicesClient.process(wr.path(path), String.class,
+      return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
-        public String process(WebResource webResource, Class<String> clazz)
+        public String process(WebResource.Builder webResource, Class<String> clazz)
         {
           return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
         }
@@ -675,11 +666,11 @@ public final class RecordingsAgent extends FSPartFileAgent
         path += "/ports/" + portName;
       }
       path += "/" + StramWebServices.PATH_RECORDINGS_STOP;
-      return webServicesClient.process(wr.path(path), String.class,
+      return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {
         @Override
-        public String process(WebResource webResource, Class<String> clazz)
+        public String process(WebResource.Builder webResource, Class<String> clazz)
         {
           return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
         }

@@ -4,38 +4,35 @@
  */
 package com.datatorrent.stram.codec;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.ws.rs.Produces;
-import javax.ws.rs.ext.Provider;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.configuration.PropertiesConfiguration;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.lib.util.ObjectMapperString;
+import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
+import java.io.IOException;
+import java.util.*;
+import javax.ws.rs.Produces;
+import javax.ws.rs.ext.Provider;
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.configuration.PropertiesConfiguration;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.annotate.JsonTypeInfo;
+import org.codehaus.jackson.map.*;
+import org.codehaus.jackson.map.ObjectMapper.DefaultTypeResolverBuilder;
+import org.codehaus.jackson.map.ObjectMapper.DefaultTyping;
+import org.codehaus.jackson.map.jsontype.impl.StdTypeResolverBuilder;
+import org.codehaus.jackson.type.JavaType;
+import org.codehaus.jettison.json.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>LogicalPlanSerializer class.</p>
@@ -47,6 +44,30 @@ import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 @Produces("application/json")
 public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 {
+  private static class PropertyTypeResolverBuilder extends DefaultTypeResolverBuilder
+  {
+    PropertyTypeResolverBuilder()
+    {
+      super(DefaultTyping.NON_FINAL);
+    }
+
+    @Override
+    public boolean useForType(JavaType t)
+    {
+      if (t.getRawClass() == Object.class) {
+        return true;
+      }
+      if (t.getRawClass().getName().startsWith("java.")) {
+        return false;
+      }
+      if (t.isArrayType()) {
+        return false;
+      }
+      return super.useForType(t);
+    }
+
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanSerializer.class);
 
   /**
@@ -68,12 +89,19 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     //
 
     Collection<OperatorMeta> allOperators = dag.getAllOperators();
+    ObjectMapper propertyObjectMapper = new ObjectMapper();
+    propertyObjectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+    propertyObjectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+
+    StdTypeResolverBuilder typer = new PropertyTypeResolverBuilder();
+    typer.init(JsonTypeInfo.Id.CLASS, null);
+    typer = typer.inclusion(JsonTypeInfo.As.PROPERTY);
+    propertyObjectMapper.setDefaultTyping(typer);
 
     for (OperatorMeta operatorMeta : allOperators) {
       HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
       ArrayList<Map<String, Object>> portList = new ArrayList<Map<String, Object>>();
-      HashMap<String, Object> attributeMap = new HashMap<String, Object>();
-      HashMap<String, Object> propertyMap = new HashMap<String, Object>();
+      Map<String, Object> attributeMap = new HashMap<String, Object>();
 
       String operatorName = operatorMeta.getName();
       operatorArray.add(operatorDetailMap);
@@ -81,34 +109,20 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       operatorDetailMap.put("ports", portList);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
-      operatorDetailMap.put("properties", propertyMap);
-      for (Attribute<?> attrKey : new Attribute<?>[] {
-        Context.OperatorContext.APPLICATION_WINDOW_COUNT,
-        Context.OperatorContext.INITIAL_PARTITION_COUNT,
-        Context.OperatorContext.PARTITION_TPS_MAX,
-        Context.OperatorContext.PARTITION_TPS_MIN,
-        Context.OperatorContext.RECOVERY_ATTEMPTS,
-        Context.OperatorContext.SPIN_MILLIS}) {
-        Object attrValue = operatorMeta.getAttributes().get(attrKey);
-        if (attrValue != null) {
-          attributeMap.put(attrKey.name, attrValue);
-        }
+      Map<Attribute<Object>, Object> rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(operatorMeta, Context.OperatorContext.class);
+      for (Map.Entry<Attribute<Object>, Object> entry : rawAttributes.entrySet()) {
+        attributeMap.put(entry.getKey().getSimpleName(), entry.getValue());
       }
-      BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(operatorMeta.getOperator());
-      @SuppressWarnings("rawtypes")
-      Iterator entryIterator = operatorProperties.entryIterator();
-      while (entryIterator.hasNext()) {
-        try {
-          @SuppressWarnings("unchecked")
-          Map.Entry<String, Object> entry = (Map.Entry<String, Object>)entryIterator.next();
-          if (entry.getValue() != null) {
-            propertyMap.put(entry.getKey(), entry.getValue());
-          }
-        }
-        catch (Exception ex) {
-          LOG.warn("Error trying to get a property of operator {}", operatorMeta.getName(), ex);
-        }
+
+      ObjectMapperString str;
+
+      try {
+        str = new ObjectMapperString(propertyObjectMapper.writeValueAsString(operatorMeta.getOperator()));
       }
+      catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+      operatorDetailMap.put("properties", str);
 
       Operators.PortMappingDescriptor pmd = new Operators.PortMappingDescriptor();
       Operators.describe(operatorMeta.getOperator(), pmd);
@@ -120,14 +134,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Attribute<?> attrKey : new Attribute<?>[] {
-          Context.PortContext.QUEUE_CAPACITY,
-          Context.PortContext.PARTITION_PARALLEL,
-          Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().get(attrKey);
-          if (attrValue != null) {
-            portAttributeMap.put(attrKey.name, attrValue);
-          }
+        rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
+          portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
         portList.add(portDetailMap);
       }
@@ -139,14 +148,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);
-        for (Attribute<?> attrKey : new Attribute<?>[] {
-          Context.PortContext.QUEUE_CAPACITY,
-          Context.PortContext.PARTITION_PARALLEL,
-          Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().get(attrKey);
-          if (attrValue != null) {
-            portAttributeMap.put(attrKey.name, attrValue);
-          }
+        rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
+          portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
         portList.add(portDetailMap);
       }
@@ -296,6 +300,11 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     // TBD: Attributes
 
     return props;
+  }
+
+  public static JSONObject convertToJsonObject(LogicalPlan dag)
+  {
+    return new JSONObject(convertToMap(dag));
   }
 
   @Override

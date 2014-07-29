@@ -34,14 +34,29 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @since 0.3.2
  */
-public interface StreamingApplication {
-    /** Constant <code>LAUNCHMODE_YARN="yarn"</code> */
-    public static final String LAUNCHMODE_YARN = "yarn";
-    /** Constant <code>LAUNCHMODE_LOCAL="local"</code> */
-    public static final String LAUNCHMODE_LOCAL = "local";
+public interface StreamingApplication
+{
+  String DT_PREFIX = "dt.";
+  /**
+   * Launch mode for the application.
+   * Used in the client to set configuration depending on how the DAG is executed.
+   */
+  String ENVIRONMENT = DT_PREFIX + "environment";
 
-    /**
-     * <p>populateDAG.</p>
-     */
-    void populateDAG(DAG dag, Configuration conf);
+  /**
+   * Streaming Application code would be executing in one of these environments.
+   * ENVIRONMENT key in conf is set to LOCAL when the application is running in local mode.
+   * It's set to CLUSTER when the application is running in distributed mode.
+   */
+  enum Environment
+  {
+    LOCAL,
+    CLUSTER
+  };
+
+  /**
+   * <p>populateDAG.</p>
+   */
+  void populateDAG(DAG dag, Configuration conf);
+
 }

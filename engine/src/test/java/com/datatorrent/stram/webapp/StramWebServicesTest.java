@@ -4,16 +4,20 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
-import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
-import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.webapp.StramWebApp.JAXBContextResolver;
-import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
+import java.io.File;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
+import java.util.logging.Level;
+
+import javax.ws.rs.core.MediaType;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.ServletModule;
@@ -24,11 +28,7 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.util.Clock;
-import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -40,20 +40,26 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
-
-import javax.ws.rs.core.MediaType;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.FutureTask;
-import java.util.logging.Level;
-
 import static org.junit.Assert.*;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.util.Clock;
+import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
+
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.requests.SetOperatorPropertyRequest;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.webapp.StramWebApp.JAXBContextResolver;
+import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
 
 /**
  * Test the application master web services api's.
@@ -70,7 +76,6 @@ public class StramWebServicesTest extends JerseyTest
 
   static class TestAppContext extends BaseContext implements StramAppContext
   {
-    private static final long serialVersionUID = 201309121323L;
     final ApplicationAttemptId appAttemptID;
     final ApplicationId appID;
     final String appPath = "/testPath";
@@ -80,7 +85,7 @@ public class StramWebServicesTest extends JerseyTest
 
     TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
     {
-      super(null, null); // this needs to be done in a proper way - may cause application errors.
+      super(new DefaultAttributeMap(), null); // this needs to be done in a proper way - may cause application errors.
       this.appID = ApplicationId.newInstance(0, appid);
       this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
     }
@@ -137,7 +142,7 @@ public class StramWebServicesTest extends JerseyTest
     {
       return "TestAppDocLink";
     }
-    
+
     @Override
     public long getStartTime()
     {
@@ -187,6 +192,8 @@ public class StramWebServicesTest extends JerseyTest
       return 0;
     }
 
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201309121323L;
   }
 
   public static class SomeStats
@@ -207,6 +214,7 @@ public class StramWebServicesTest extends JerseyTest
       }
 
       @Override
+      @SuppressWarnings("AssignmentToCollectionOrArrayFieldFromParameter")
       public FutureTask<Object> logicalPlanModification(final List<LogicalPlanRequest> requests) throws Exception
       {
         lastRequests = requests;
@@ -234,7 +242,7 @@ public class StramWebServicesTest extends JerseyTest
       protected void configureServlets()
       {
         LogicalPlan dag = new LogicalPlan();
-        dag.setAttribute(LogicalPlan.APPLICATION_PATH, StramWebServicesTest.class.getName());
+        dag.setAttribute(LogicalPlan.APPLICATION_PATH, new File("target", StramWebServicesTest.class.getName()).getAbsolutePath());
         final DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager(dag);
 
         appContext = new TestAppContext();

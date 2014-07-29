@@ -7,6 +7,7 @@ package com.datatorrent.stram.webapp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -45,15 +46,17 @@ public class OperatorInfo
   @RecordField(type="stats") public long tuplesEmittedPSMA;
   @RecordField(type="stats") public double cpuPercentageMA;
   @RecordField(type="stats") public long latencyMA;
+  @RecordField(type="stats") public CheckpointInfo checkpointInfo;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
-  @RecordField(type="stats") public ArrayList<PortInfo> ports = new ArrayList<PortInfo>();
+  @RecordField(type="stats") public List<PortInfo> ports = new ArrayList<PortInfo>();
   @RecordField(type="meta") public String unifierClass;
   @RecordField(type="meta") public String logicalName;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
+  @RecordField(type="stats") public Object counters;
 
   /**
    *
@@ -66,7 +69,7 @@ public class OperatorInfo
 
   /**
    *
-   * @return ArrayList<ContainerInfo>
+   * @return
    *
    */
   public Collection<PortInfo> getPorts()

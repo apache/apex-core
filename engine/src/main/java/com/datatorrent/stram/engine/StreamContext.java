@@ -61,6 +61,12 @@ public class StreamContext extends DefaultAttributeMap implements Context
     put(BUFFER_SERVER_ADDRESS, isa);
   }
 
+  @Override
+  public void setCounters(Object counters)
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
   public static enum State
   {
     UNDEFINED,

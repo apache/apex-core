@@ -4,21 +4,35 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * <p>Abstract StramEvent class.</p>
+ * <p>
+ * Abstract StramEvent class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.9.2
  */
 public abstract class StramEvent
 {
+  private static final AtomicLong nextId = new AtomicLong(1);
+  private final long id;
   private long timestamp = System.currentTimeMillis();
   private String reason;
 
   public abstract String getType();
 
+  protected StramEvent()
+  {
+    id = nextId.getAndIncrement();
+  }
+
+  public long getId()
+  {
+    return id;
+  }
+  
   public long getTimestamp()
   {
     return timestamp;
@@ -142,7 +156,7 @@ public abstract class StramEvent
 
   public abstract static class PhysicalOperatorEvent extends OperatorEvent
   {
-    private int operatorId;
+    private final int operatorId;
 
     public PhysicalOperatorEvent(String operatorName, int operatorId)
     {
@@ -384,6 +398,85 @@ public abstract class StramEvent
     public void setRequest(LogicalPlanRequest request)
     {
       this.request = request;
+    }
+
+  }
+
+  public static class OperatorErrorEvent extends PhysicalOperatorEvent
+  {
+    private String containerId;
+    private String errorMessage;
+
+    public OperatorErrorEvent(String operatorName, int operatorId, String containerId, String errorMessage)
+    {
+      super(operatorName, operatorId);
+      this.containerId = containerId;
+      this.errorMessage = errorMessage;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "OperatorError";
+    }
+
+    public String getContainerId()
+    {
+      return containerId;
+    }
+
+    public void setContainerId(String containerId)
+    {
+      this.containerId = containerId;
+    }
+
+    public String getErrorMessage()
+    {
+      return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage)
+    {
+      this.errorMessage = errorMessage;
+    }
+
+  }
+
+  public static class ContainerErrorEvent extends StramEvent
+  {
+    private String containerId;
+    private String errorMessage;
+
+    public ContainerErrorEvent(String containerId, String errorMessage)
+    {
+      this.containerId = containerId;
+      this.errorMessage = errorMessage;
+    }
+
+    @Override
+    public String getType()
+    {
+      return "ContainerError";
+    }
+
+    public String getContainerId()
+    {
+      return containerId;
+    }
+
+    public void setContainerId(String containerId)
+    {
+      this.containerId = containerId;
+    }
+
+    public String getErrorMessage()
+    {
+      return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage)
+    {
+      this.errorMessage = errorMessage;
     }
 
   }

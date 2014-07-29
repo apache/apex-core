@@ -4,10 +4,11 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigValidator;
+import com.google.common.base.Preconditions;
 import java.io.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,15 +24,14 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
-import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
-import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.log4j.DTLoggerFactory;
 
 /**
  *
@@ -48,8 +48,8 @@ public class StramClientUtils
 {
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
-  public static final String DT_DFS_ROOT_DIR = DAGContext.DT_PREFIX + "dfsRootDirectory";
-  public static final String DT_CONFIG_STATUS = DAGContext.DT_PREFIX + "configStatus";
+  public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
+  public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
 
@@ -127,54 +127,11 @@ public class StramClientUtils
   public static class ClientRMHelper
   {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
-    public final ApplicationClientProtocol clientRM;
+    public final YarnClient clientRM;
 
-    public ClientRMHelper(YarnClientHelper yarnClient) throws IOException
+    public ClientRMHelper(YarnClient yarnClient) throws IOException
     {
-      this.clientRM = yarnClient.connectToASM();
-    }
-
-    public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnException, IOException
-    {
-      // Get application report for the appId we are interested in
-      GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
-      reportRequest.setApplicationId(appId);
-      GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
-      ApplicationReport report = reportResponse.getApplicationReport();
-      return report;
-    }
-
-    public List<ApplicationReport> getAllApplicationReports() throws IOException, YarnException
-    {
-      GetApplicationsRequest applicationsRequest = Records.newRecord(GetApplicationsRequest.class);
-      GetApplicationsResponse applicationsResponse = clientRM.getApplications(applicationsRequest);
-      return applicationsResponse.getApplicationList();
-    }
-
-    public ApplicationReport getApplicationReport(String appId) throws IOException, YarnException
-    {
-      ApplicationId applicationId = ConverterUtils.toApplicationId(appId);
-      return getApplicationReport(applicationId);
-    }
-
-    /**
-     * Kill a submitted application by sending a call to the ASM
-     *
-     * @param appId Application Id to be killed.
-     * @throws YarnException
-     * @throws IOException
-     */
-    public void killApplication(ApplicationId appId) throws YarnException, IOException
-    {
-      KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);
-      // TODO clarify whether multiple jobs with the same app id can be submitted and be running at
-      // the same time.
-      // If yes, can we kill a particular attempt only?
-      request.setApplicationId(appId);
-      // KillApplicationResponse response = applicationsManager.forceKillApplication(request);
-      // Response can be ignored as it is non-null on success or
-      // throws an exception in case of failures
-      clientRM.forceKillApplication(request);
+      this.clientRM = yarnClient;
     }
 
     public static interface AppStatusCallback
@@ -207,7 +164,7 @@ public class StramClientUtils
           LOG.debug("Thread sleep in monitoring loop interrupted");
         }
 
-        ApplicationReport report = getApplicationReport(appId);
+        ApplicationReport report = clientRM.getApplicationReport(appId);
         if (callback.exitLoop(report) == true) {
           return true;
         }
@@ -236,7 +193,7 @@ public class StramClientUtils
 
         if (System.currentTimeMillis() - startMillis > timeoutMillis) {
           LOG.info("Reached specified timeout. Killing application");
-          killApplication(appId);
+          clientRM.killApplication(appId);
           return false;
         }
       }
@@ -245,6 +202,16 @@ public class StramClientUtils
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
+
+  public static String getHostName()
+  {
+    try {
+      return java.net.InetAddress.getLocalHost().getHostName();
+    }
+    catch (UnknownHostException ex) {
+      return null;
+    }
+  }
 
   public static File getUserDTDirectory()
   {
@@ -265,9 +232,21 @@ public class StramClientUtils
     }
   }
 
+  public static boolean isDevelopmentMode()
+  {
+    return getUserDTDirectory().equals(getConfigDir());
+  }
+
+  public static File getBackupsDirectory()
+  {
+    return new File(getConfigDir(), BACKUPS_DIRECTORY);
+  }
+
   public static final String DT_DEFAULT_XML_FILE = "dt-default.xml";
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
+  public static final String DT_SITE_GLOBAL_XML_FILE = "dt-site-global.xml";
   public static final String DT_ENV_SH_FILE = "dt-env.sh";
+  public static final String BACKUPS_DIRECTORY = "backups";
 
   public static Configuration addDTDefaultResources(Configuration conf)
   {
@@ -278,9 +257,41 @@ public class StramClientUtils
   public static Configuration addDTSiteResources(Configuration conf)
   {
     conf.addResource(DT_DEFAULT_XML_FILE);
-    addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+    if (!isDevelopmentMode()) {
+      addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+    }
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
 
+    try {
+      // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
+      FileSystem fs = newFileSystemInstance(conf);
+      // load global settings from DFS
+      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
+      fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
+                         new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
+      addDTSiteResources(conf, targetGlobalFile);
+      if (!isDevelopmentMode()) {
+        // load node local config file
+        addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+      }
+      // load user config file
+      addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
+    }
+    catch (IOException ex) {
+      // ignore
+      LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
+    }
+    //Validate loggers-level settings
+    String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
+    if (loggersLevel != null) {
+      String targets[] = loggersLevel.split(",");
+      Preconditions.checkArgument(targets.length > 0, "zero loggers level");
+      for (String target : targets) {
+        String parts[] = target.split(":");
+        Preconditions.checkArgument(parts.length == 2, "incorrect " + target);
+        Preconditions.checkArgument(ConfigValidator.validateLoggersLevel(parts[0], parts[1]), "incorrect " + target);
+      }
+    }
     convertDeprecatedProperties(conf);
 
     //
@@ -302,6 +313,9 @@ public class StramClientUtils
       LOG.info("Loading settings: " + confFile.toURI());
       conf.addResource(new Path(confFile.toURI()));
     }
+    else {
+      LOG.info("Configuration file {} is not found. Skipping...", confFile.toURI());
+    }
     return conf;
   }
 
@@ -313,18 +327,12 @@ public class StramClientUtils
     while (iterator.hasNext()) {
       Map.Entry<String, String> entry = iterator.next();
       if (entry.getKey().startsWith("stram.")) {
-        String newKey = DAGContext.DT_PREFIX + entry.getKey().substring(6);
+        String newKey = StreamingApplication.DT_PREFIX + entry.getKey().substring(6);
         LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
         newEntries.put(newKey, entry.getValue());
         iterator.remove();
       }
-      else if (entry.getKey().equals(DAGContext.DT_PREFIX + LogicalPlan.GATEWAY_ADDRESS.getName())) {
-        String newKey = DAGContext.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName();
-        newEntries.put(newKey, entry.getValue());
-        LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
-        iterator.remove();
-      }
-      else if (entry.getKey().equals(DAGContext.DT_PREFIX + "gateway.address")) {
+      else if (entry.getKey().equals(StreamingApplication.DT_PREFIX + "gateway.address")) {
         String newKey = LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS;
         newEntries.put(newKey, entry.getValue());
         iterator.remove();
@@ -363,7 +371,7 @@ public class StramClientUtils
     }
   }
 
-  public static Path getDTRootDir(FileSystem fs, Configuration conf)
+  public static Path getDTDFSRootDir(FileSystem fs, Configuration conf)
   {
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
     if (StringUtils.isBlank(dfsRootDir)) {
@@ -381,6 +389,11 @@ public class StramClientUtils
       }
       return new Path(fs.getUri().getScheme(), fs.getUri().getAuthority(), dfsRootDir);
     }
+  }
+
+  public static Path getDTDFSConfigDir(FileSystem fs, Configuration conf)
+  {
+    return new Path(getDTDFSRootDir(fs, conf), "conf");
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException, URISyntaxException
@@ -418,7 +431,7 @@ public class StramClientUtils
 
   public static int getLicenseMasterMemory(Configuration conf)
   {
-    return conf.getInt(DT_LICENSE_MASTER_MEMORY, 256);
+    return conf.getInt(DT_LICENSE_MASTER_MEMORY, 512);
   }
 
   /**
@@ -447,7 +460,7 @@ public class StramClientUtils
         File cfgResource = new File(resource.toURI());
         synchronized (StramClientUtils.class) {
           BufferedReader br = new BufferedReader(new FileReader(cfgResource));
-          StringBuilder sb = new StringBuilder();
+          StringBuilder sb = new StringBuilder(1024);
           try {
             String line;
             boolean changed = false;
@@ -490,4 +503,16 @@ public class StramClientUtils
     }
   }
 
+  public static void copyFromLocalFileNoChecksum(FileSystem fs, File fromLocal, Path toDFS) throws IOException
+  {
+    // This is to void the hadoop FileSystem API to perform checksum on the local file
+    // This "feature" has caused a lot of headache because the local file can be copied from HDFS and modified,
+    // and the checksum will fail if the file is again copied to HDFS
+    try {
+      new File(fromLocal.getParentFile(), "." + fromLocal.getName() + ".crc").delete();
+    } catch (Exception ex) {
+      // ignore
+    }
+    fs.copyFromLocalFile(new Path(fromLocal.toURI()), toDFS);
+  }
 }

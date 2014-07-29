@@ -22,7 +22,7 @@ import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -113,9 +113,9 @@ abstract public class StramTestSupport
    * @throws InterruptedException
    */
   @SuppressWarnings("SleepWhileInLoop")
-  public static LocalStramChild waitForActivation(StramLocalCluster localCluster, PTOperator operator) throws InterruptedException
+  public static LocalStreamingContainer waitForActivation(StramLocalCluster localCluster, PTOperator operator) throws InterruptedException
   {
-    LocalStramChild container;
+    LocalStreamingContainer container;
     long startMillis = System.currentTimeMillis();
     while (System.currentTimeMillis() < (startMillis + DEFAULT_TIMEOUT_MILLIS)) {
       if (operator.getState() == PTOperator.State.ACTIVE) {
@@ -219,7 +219,7 @@ abstract public class StramTestSupport
       private static final long serialVersionUID = 201404091805L;
     }
 
-    HashMap<OperatorWindowIdPair, Object> store = new HashMap<OperatorWindowIdPair, Object>();
+    transient HashMap<OperatorWindowIdPair, Object> store = new HashMap<OperatorWindowIdPair, Object>();
 
     @Override
     public synchronized void save(Object object, int operatorId, long windowId) throws IOException

@@ -4,9 +4,16 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.engine.OperatorContext;
@@ -14,9 +21,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.StatsRevisions.VersionedLong;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.MovingAverage.TimedMovingAverageLong;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * <p>OperatorStatus class.</p>
@@ -34,16 +38,20 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
     public final TimedMovingAverageLong tuplesPMSMA;
     public final TimedMovingAverageLong bufferServerBytesPMSMA;
+    public final TimedMovingAverageLong queueSizePSMA;
 
-    public PortStatus() {
+    public PortStatus()
+    {
       tuplesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
       bufferServerBytesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+      queueSizePSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
     }
   }
 
   private final int operatorId;
   public final StatsRevisions statsRevs = new StatsRevisions();
   public OperatorHeartbeat lastHeartbeat;
+  public Stats.CheckpointStatsObj checkpointStatsObj;
   public final VersionedLong totalTuplesProcessed = statsRevs.newVersionedLong();
   public final VersionedLong totalTuplesEmitted = statsRevs.newVersionedLong();
   public final VersionedLong currentWindowId = statsRevs.newVersionedLong();
@@ -134,7 +142,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     final int operatorId;
     final LogicalPlan.OperatorMeta operatorMeta;
 
-    private SerializationProxy(OperatorStatus s) {
+    private SerializationProxy(OperatorStatus s)
+    {
       this.operatorId = s.operatorId;
       this.operatorMeta = s.operatorMeta;
     }
@@ -148,7 +157,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
   private Object writeReplace() throws java.io.ObjectStreamException
   {
-      return new SerializationProxy(this);
+    return new SerializationProxy(this);
   }
 
 }

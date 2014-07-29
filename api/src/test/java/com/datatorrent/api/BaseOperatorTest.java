@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -18,7 +19,7 @@ public class BaseOperatorTest
 {
   public static final String filename = "target/" + BaseOperatorTest.class.getName() + ".bin";
 
-  public static class SerializableOperator<T> extends BaseOperator
+  public static class SerializableOperator<T> extends BaseOperator implements Serializable
   {
     public final transient InputPort<T> input = new DefaultInputPort<T>()
     {

@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>0.9.5-SNAPSHOT</version>
+    <version>1.0.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>dt-stram</artifactId>
@@ -65,6 +65,21 @@
             </configuration>
           </execution>
           <execution>
+            <id>create-client-mvn-generated-classpath-no-hadoop</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>build-classpath</goal>
+            </goals>
+            <configuration>
+              <!--
+              generate runtime classpath for running client in dev environment with no hadoop jars
+              -->
+              <outputFile>${project.build.directory}/mvn-generated-runtime-classpath-no-hadoop</outputFile>
+              <includeScope>runtime</includeScope>
+              <excludeGroupIds>org.apache.hadoop</excludeGroupIds>
+            </configuration>
+          </execution>
+          <execution>
             <id>create-mvn-generated-classpath</id>
             <phase>generate-test-resources</phase>
             <goals>
@@ -80,6 +95,38 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- Extend packaged default_license term for 120 days since build -->
+      <plugin>
+        <artifactId>exec-maven-plugin</artifactId>
+        <groupId>org.codehaus.mojo</groupId>
+        <executions>
+          <execution>
+            <id>update-default-license-term</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+          </execution>
+        </executions>
+
+        <configuration>
+          <workingDirectory>${basedir}</workingDirectory>
+          <executable>java</executable>
+          <arguments>
+            <argument>-classpath</argument>
+            <!-- automatically creates the classpath using all project dependencies,
+                 also adding the project build directory -->
+            <classpath/>
+            <argument>com.datatorrent.stram.license.DefaultLicense</argument>
+            <argument>-propertiesFile</argument>
+            <argument>${basedir}/src/main/license/default_license_properties</argument>
+            <argument>-outputFile</argument>
+            <argument>${project.build.directory}/classes/com/datatorrent/stram/license/default_license</argument>
+          </arguments>
+        </configuration>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-eclipse-plugin</artifactId>
@@ -138,6 +185,7 @@
                     <include>PubSubMessage.java</include>
                     <include>PubSubMessageCodec.java</include>
                     <include>PubSubWebSocketClient.java</include>
+                    <include>NumberAggregate.java</include>
                   </includes>
                 </resource>
               </resources>
@@ -295,12 +343,16 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <version>2.2.0</version>
+      <version>${hadoop.version}</version>
       <type>test-jar</type>
       <exclusions>
         <exclusion>
           <groupId>org.codehaus.jackson</groupId>
           <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
         </exclusion>
         <exclusion>
           <artifactId>commons-beanutils</artifactId>
@@ -322,6 +374,11 @@
       <artifactId>mockito-all</artifactId>
       <version>1.8.5</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.lingala.zip4j</groupId>
+      <artifactId>zip4j</artifactId>
+      <version>1.3.2</version>
     </dependency>
   </dependencies>
   <profiles>

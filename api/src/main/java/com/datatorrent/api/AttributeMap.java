@@ -133,6 +133,11 @@ public interface AttributeMap
       return "attr" + name.substring(name.lastIndexOf('.'));
     }
 
+    public String getSimpleName()
+    {
+      return name.substring(name.lastIndexOf('.') + 1);
+    }
+
     @Override
     public String toString()
     {
@@ -235,6 +240,24 @@ public interface AttributeMap
   public static class AttributeInitializer
   {
     static final HashMap<Class<?>, Set<AttributeMap.Attribute<Object>>> map = new HashMap<Class<?>, Set<AttributeMap.Attribute<Object>>>();
+
+    public static Map<Attribute<Object>, Object> getAllAttributes(Context context, Class<?> clazz)
+    {
+      Map<Attribute<Object>, Object> result = new HashMap<Attribute<Object>, Object>();
+      try {
+        for (Field f : clazz.getDeclaredFields()) {
+          if (Modifier.isStatic(f.getModifiers()) && Attribute.class.isAssignableFrom(f.getType())) {
+            @SuppressWarnings("unchecked")
+            Attribute<Object> attribute = (Attribute<Object>)f.get(null);
+            result.put(attribute, context.getValue(attribute));
+          }
+        }
+      }
+      catch (Exception ex) {
+        DTThrowable.rethrow(ex);
+      }
+      return result;
+    }
 
     public static Set<AttributeMap.Attribute<Object>> getAttributes(Class<?> clazz)
     {

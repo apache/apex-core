@@ -4,22 +4,14 @@
  */
 package com.datatorrent.stram;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.*;
-
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.annotation.ShipContainingJars;
+import com.datatorrent.stram.client.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.engine.StreamingContainer;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.Options;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -27,28 +19,32 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.protocolrecords.*;
 import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.client.api.YarnClientApplication;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.apache.log4j.DTLoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ShipContainingJars;
-
-import com.datatorrent.stram.client.StramClientUtils;
-import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 /**
  *
@@ -69,18 +65,18 @@ public class StramClient
   // Configuration
   private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
-  private ClientRMHelper rmClient;
+  private final YarnClient yarnClient = YarnClient.createYarnClient();
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
-  private int amPriority = 0;
+  private final int amPriority = 0;
   // Queue for App master
-  private String amQueue = "default";
+  private final String amQueue = "default";
   private ApplicationId appId;
-  private LogicalPlan dag;
+  private final LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
-  private String log4jPropFile = "";
+  private final String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   private LinkedHashSet<String> libjars;
@@ -89,97 +85,22 @@ public class StramClient
   private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
 
-  /**
-   *
-   * @param conf
-   * @throws Exception
-   */
-  StramClient(Configuration conf) throws Exception
-  {
-    this.conf = conf;
-  }
-
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
-    this(conf);
+    this.conf = conf;
     this.dag = dag;
     dag.validate();
+    yarnClient.init(conf);
   }
 
-  /**
-   * Parse command line options
-   *
-   * @param args Parsed command line options
-   * @return Whether the init was successful to run the client
-   * @throws Exception
-   */
-  boolean init(String[] args) throws Exception
+  public void start()
   {
+    yarnClient.start();
+  }
 
-    Options opts = new Options();
-    opts.addOption("appname", true, "Application Name. Default value - Stram");
-    opts.addOption("priority", true, "Application Priority. Default 0");
-    opts.addOption("queue", true, "RM Queue in which this application is to be submitted");
-    opts.addOption("user", true, "User to run the application as");
-    opts.addOption("timeout", true, "Application timeout in milliseconds");
-    opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
-    opts.addOption("topologyProperties", true, "Property file defining the dag");
-    opts.addOption("container_memory", true, "Amount of memory in MB per child container");
-    opts.addOption("num_containers", true, "No. of containers to use for dag");
-    opts.addOption("log_properties", true, "log4j.properties file");
-    opts.addOption("debug", false, "Dump out debug information");
-    CommandLine cliParser = new GnuParser().parse(opts, args);
-
-    if (args.length == 0) {
-      throw new IllegalArgumentException("No args specified for client to initialize");
-    }
-
-    // dag properties
-    String propertyFileName = cliParser.getOptionValue("topologyProperties");
-    if (propertyFileName == null) {
-      throw new IllegalArgumentException("No dag property file specified, exiting.");
-    }
-    LOG.info("Configuration: " + propertyFileName);
-
-    dag = new LogicalPlan();
-    Configuration appConf = new Configuration(false);
-    StreamingApplication app = LogicalPlanConfiguration.create(appConf, propertyFileName);
-    app.populateDAG(dag, appConf);
-    dag.validate();
-    if (cliParser.hasOption("debug")) {
-      dag.getAttributes().put(LogicalPlan.DEBUG, true);
-    }
-
-    amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
-    amQueue = cliParser.getOptionValue("queue", amQueue);
-    int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", "" + dag.getMasterMemoryMB()));
-
-    if (amMemory < 0) {
-      throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
-                                         + " Specified memory=" + amMemory);
-    }
-
-    int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "" + dag.getContainerMemoryMB()));
-    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", "" + dag.getMaxContainerCount()));
-
-    if (containerMemory < 0 || dag.getMaxContainerCount() < 1) {
-      throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
-                                         + " Specified containerMemory=" + containerMemory
-                                         + ", numContainer=" + containerCount);
-    }
-
-    dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, containerCount);
-    dag.getAttributes().put(LogicalPlan.MASTER_MEMORY_MB, amMemory);
-    dag.getAttributes().put(LogicalPlan.CONTAINER_MEMORY_MB, containerMemory);
-
-    clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
-    if (clientTimeout == 0) {
-      clientTimeout = Long.MAX_VALUE;
-    }
-
-    log4jPropFile = cliParser.getOptionValue("log_properties", "");
-
-    return true;
+  public void stop()
+  {
+    yarnClient.stop();
   }
 
   public static LinkedHashSet<String> findJars(LogicalPlan dag)
@@ -285,13 +206,20 @@ public class StramClient
       Path src = new Path(localFile);
       String filename = src.getName();
       Path dst = new Path(basePath, filename);
-      if (localFile.startsWith("hdfs:")) {
-        LOG.info("Copy {} from HDFS to {}", localFile, dst);
-        FileUtil.copy(fs, src, fs, dst, false, true, conf);
+      URI localFileURI = null;
+      try {
+        localFileURI = new URI(localFile);
       }
-      else {
+      catch (URISyntaxException e) {
+        throw new IOException(e);
+      }
+      if (localFileURI.getScheme() == null || localFileURI.getScheme().startsWith("file")) {
         LOG.info("Copy {} from local filesystem to {}", localFile, dst);
         fs.copyFromLocalFile(false, true, src, dst);
+      }
+      else {
+        LOG.info("Copy {} from DFS to {}", localFile, dst);
+        FileUtil.copy(fs, src, fs, dst, false, true, conf);
       }
       if (csv.length() > 0) {
         csv.append(LIB_JARS_SEP);
@@ -339,9 +267,11 @@ public class StramClient
         if (!fs.exists(new Path(targetPath))) {
           LOG.debug("Copying {} to {}", f.getPath(), targetPath);
           FileUtil.copy(fs, f.getPath(), fs, new Path(targetPath), false, conf);
+          //FSUtil.copy(fs, f, fs, new Path(targetPath), false, false, conf);
         }
         else {
           LOG.debug("Ignoring {} as it already exists under {}", f.getPath(), targetPath);
+          //FSUtil.setPermission(fs, new Path(targetPath), new FsPermission((short)0777));
         }
       }
     }
@@ -362,17 +292,9 @@ public class StramClient
     if (libjars != null) {
       localJarFiles.addAll(libjars);
     }
-
-    // Connect to ResourceManager
-    YarnClientHelper yarnClient = new YarnClientHelper(conf);
-    rmClient = new ClientRMHelper(yarnClient);
-    assert (rmClient.clientRM != null);
-
-    // Use ClientRMProtocol handle to general cluster information
-    GetClusterMetricsRequest clusterMetricsReq = Records.newRecord(GetClusterMetricsRequest.class);
-    GetClusterMetricsResponse clusterMetricsResp = rmClient.clientRM.getClusterMetrics(clusterMetricsReq);
+    YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
-             + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
+            + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
 
     //GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
     //GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
@@ -385,29 +307,27 @@ public class StramClient
     //           + ", nodeNumContainers" + node.getNumContainers()
     //           + ", nodeHealthStatus" + node.getHealthReport());
     //}
-    GetQueueUserAclsInfoRequest queueUserAclsReq = Records.newRecord(GetQueueUserAclsInfoRequest.class);
-    GetQueueUserAclsInfoResponse queueUserAclsResp = rmClient.clientRM.getQueueUserAcls(queueUserAclsReq);
-    List<QueueUserACLInfo> listAclInfo = queueUserAclsResp.getUserAclsInfoList();
+    List<QueueUserACLInfo> listAclInfo = yarnClient.getQueueAclsInfo();
     for (QueueUserACLInfo aclInfo : listAclInfo) {
       for (QueueACL userAcl : aclInfo.getUserAcls()) {
         LOG.info("User ACL Info for Queue"
-                 + ", queueName=" + aclInfo.getQueueName()
-                 + ", userAcl=" + userAcl.name());
+                + ", queueName=" + aclInfo.getQueueName()
+                + ", userAcl=" + userAcl.name());
       }
     }
 
     // Get a new application id
-    GetNewApplicationResponse newApp = getNewApplication();
-    appId = newApp.getApplicationId();
+    YarnClientApplication newApp = yarnClient.createApplication();
+    appId = newApp.getNewApplicationResponse().getApplicationId();
 
     // Dump out information about cluster capability as seen by the resource manager
-    int maxMem = newApp.getMaximumResourceCapability().getMemory();
+    int maxMem = newApp.getNewApplicationResponse().getMaximumResourceCapability().getMemory();
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
     int amMemory = dag.getMasterMemoryMB();
     if (amMemory > maxMem) {
       LOG.info("AM memory specified above max threshold of cluster. Using max value."
-               + ", specified=" + amMemory
-               + ", max=" + maxMem);
+              + ", specified=" + amMemory
+              + ", max=" + maxMem);
       amMemory = maxMem;
     }
 
@@ -467,10 +387,7 @@ public class StramClient
                                                        YarnConfiguration.DEFAULT_RM_PORT);
 
       // Get the ResourceManager delegation rmToken
-      GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
-      gdtr.setRenewer(tokenRenewer);
-      GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
-      org.apache.hadoop.yarn.api.records.Token rmDelToken = gdresp.getRMDelegationToken();
+      org.apache.hadoop.yarn.api.records.Token rmDelToken = yarnClient.getRMDelegationToken(new Text(tokenRenewer));
       Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
       credentials.addToken(rmToken.getService(), rmToken);
 
@@ -480,7 +397,6 @@ public class StramClient
       amContainer.setTokens(fsTokens);
     }
 
-
     // set local resources for the application master
     // local files or archives as needed
     // In this scenario, the jar file for the application master is part of the local resources
@@ -489,7 +405,7 @@ public class StramClient
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
     try {
-      Path appsBasePath = new Path(StramClientUtils.getDTRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
+      Path appsBasePath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), StramClientUtils.SUBDIR_APPS);
       Path appPath = new Path(appsBasePath, appId.toString());
 
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[] {}));
@@ -576,10 +492,16 @@ public class StramClient
       //StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
       StringBuilder classPathEnv = new StringBuilder("./*");
       for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+        if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {
+          // SPOI-2501
+          continue;
+        }
         classPathEnv.append(':');
         classPathEnv.append(c.trim());
       }
       env.put("CLASSPATH", classPathEnv.toString());
+      // propagate to replace node managers user name (effective in non-secure mode)
+      env.put("HADOOP_USER_NAME", UserGroupInformation.getLoginUser().getUserName());
 
       amContainer.setEnvironment(env);
 
@@ -599,8 +521,15 @@ public class StramClient
       vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
       vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
       vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
-      vargs.add(String.format("-D%s=%s", StramChild.PROP_APP_PATH, dag.assertAppPath()));
+      vargs.add(String.format("-D%s=%s", StreamingContainer.PROP_APP_PATH, dag.assertAppPath()));
+      if (dag.isDebug()) {
+        vargs.add("-Dlog4j.debug=true");
+      }
 
+      String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
+      if (loggersLevel != null) {
+        vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
+      }
       if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         vargs.add(LicensingAppMaster.class.getName());
       }
@@ -640,10 +569,6 @@ public class StramClient
       // Set the queue to which this application is to be submitted in the RM
       appContext.setQueue(amQueue);
 
-      // Create the request to send to the applications manager
-      SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
-      appRequest.setApplicationSubmissionContext(appContext);
-
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
       // Ignore the response as either a valid response object is returned on success
@@ -658,7 +583,7 @@ public class StramClient
       if (dag.isDebug()) {
         //LOG.info("Full submission context: " + appContext);
       }
-      rmClient.clientRM.submitApplication(appRequest);
+      yarnClient.submitApplication(appContext);
     }
     finally {
       fs.close();
@@ -667,12 +592,12 @@ public class StramClient
 
   public ApplicationReport getApplicationReport() throws YarnException, IOException
   {
-    return this.rmClient.getApplicationReport(this.appId);
+    return yarnClient.getApplicationReport(this.appId);
   }
 
   public void killApplication() throws YarnException, IOException
   {
-    this.rmClient.killApplication(this.appId);
+    yarnClient.killApplication(this.appId);
   }
 
   public void setClientTimeout(long timeoutMillis)
@@ -695,36 +620,23 @@ public class StramClient
       public boolean exitLoop(ApplicationReport report)
       {
         LOG.info("Got application report from ASM for"
-                 + ", appId=" + appId.getId()
-                 + ", clientToken=" + report.getClientToAMToken()
-                 + ", appDiagnostics=" + report.getDiagnostics()
-                 + ", appMasterHost=" + report.getHost()
-                 + ", appQueue=" + report.getQueue()
-                 + ", appMasterRpcPort=" + report.getRpcPort()
-                 + ", appStartTime=" + report.getStartTime()
-                 + ", yarnAppState=" + report.getYarnApplicationState().toString()
-                 + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-                 + ", appTrackingUrl=" + report.getTrackingUrl()
-                 + ", appUser=" + report.getUser());
+                + ", appId=" + appId.getId()
+                + ", clientToken=" + report.getClientToAMToken()
+                + ", appDiagnostics=" + report.getDiagnostics()
+                + ", appMasterHost=" + report.getHost()
+                + ", appQueue=" + report.getQueue()
+                + ", appMasterRpcPort=" + report.getRpcPort()
+                + ", appStartTime=" + report.getStartTime()
+                + ", yarnAppState=" + report.getYarnApplicationState().toString()
+                + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
+                + ", appTrackingUrl=" + report.getTrackingUrl()
+                + ", appUser=" + report.getUser());
         return false;
       }
 
     };
+    ClientRMHelper rmClient = new ClientRMHelper(yarnClient);
     return rmClient.waitForCompletion(appId, callback, clientTimeout);
-  }
-
-  /**
-   * Get a new application from the ASM
-   *
-   * @return New Application
-   * @throws YarnRemoteException
-   */
-  private GetNewApplicationResponse getNewApplication() throws YarnException, IOException
-  {
-    GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);
-    GetNewApplicationResponse response = rmClient.clientRM.getNewApplication(request);
-    LOG.info("Got new application id=" + response.getApplicationId());
-    return response;
   }
 
   public void setFiles(String files)

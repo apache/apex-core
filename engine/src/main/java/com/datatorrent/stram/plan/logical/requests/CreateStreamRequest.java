@@ -1,20 +1,22 @@
 /*
- *  Copyright (c) 2012-2013 Malhar, Inc.
+ *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.stram.plan.logical;
+package com.datatorrent.stram.plan.logical.requests;
 
 import com.datatorrent.stram.plan.physical.PlanModifier;
 
 /**
- * <p>AddStreamRequest class.</p>
+ * <p>CreateStreamRequest class.</p>
  *
  * @author David Yan <david@datatorrent.com>
- * @since 0.3.5
+ * @since 0.3.2
  */
-public class AddStreamSinkRequest extends LogicalPlanRequest
+public class CreateStreamRequest extends LogicalPlanRequest
 {
   private String streamName;
+  private String sourceOperatorName;
+  private String sourceOperatorPortName;
   private String sinkOperatorName;
   private String sinkOperatorPortName;
 
@@ -26,6 +28,26 @@ public class AddStreamSinkRequest extends LogicalPlanRequest
   public void setStreamName(String streamName)
   {
     this.streamName = streamName;
+  }
+
+  public String getSourceOperatorName()
+  {
+    return sourceOperatorName;
+  }
+
+  public void setSourceOperatorName(String sourceOperatorName)
+  {
+    this.sourceOperatorName = sourceOperatorName;
+  }
+
+  public String getSourceOperatorPortName()
+  {
+    return sourceOperatorPortName;
+  }
+
+  public void setSourceOperatorPortName(String sourceOperatorPortName)
+  {
+    this.sourceOperatorPortName = sourceOperatorPortName;
   }
 
   public String getSinkOperatorName()
@@ -51,7 +73,7 @@ public class AddStreamSinkRequest extends LogicalPlanRequest
   @Override
   public void execute(PlanModifier pm)
   {
-    pm.addSink(streamName, sinkOperatorName, sinkOperatorPortName);
+    pm.addStream(streamName, sourceOperatorName, sourceOperatorPortName, sinkOperatorName, sinkOperatorPortName);
   }
 
 }
