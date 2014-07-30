@@ -17,8 +17,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * <p>AppBundle class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 1.0.3
  */
 public class AppBundle extends JarFile implements Closeable
 {

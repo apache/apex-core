@@ -5,13 +5,17 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>dt-app-archetype</artifactId>
   <packaging>maven-archetype</packaging>
 
   <name>DataTorrent application Maven archetype</name>
+
+  <properties>
+    <maven.deploy.skip>false</maven.deploy.skip>
+  </properties>
 
   <build>
     <extensions>
