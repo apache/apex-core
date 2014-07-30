@@ -1,29 +1,17 @@
 /*
- * Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *  Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  */
 
 package com.datatorrent.api;
 
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.*;
 
 /**
- * This tests teh Object2String codec
+ * This tests the Object2String codec
  */
 public class Object2StringTest
 {
@@ -87,6 +75,40 @@ public class Object2StringTest
         ", longVal=" + longVal +
         '}';
     }
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      TestBean testBean = (TestBean) o;
+
+      if (intVal != testBean.intVal) {
+        return false;
+      }
+      if (longVal != testBean.longVal) {
+        return false;
+      }
+      if (stringVal != null ? !stringVal.equals(testBean.stringVal) : testBean.stringVal != null) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = intVal;
+      result = 31 * result + (stringVal != null ? stringVal.hashCode() : 0);
+      result = 31 * result + (int) (longVal ^ (longVal >>> 32));
+      return result;
+    }
   }
 
   @Test
@@ -95,17 +117,16 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName();
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=0, stringVal='null', longVal=0}", obj.toString());
+    assertEquals("validating the bean",obj,new TestBean());
   }
+
   @Test
   public void testBeanCodecWithConstructorSet()
   {
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":testVal";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=-1, stringVal='testVal', longVal=-1}", obj.toString());
+    assertEquals("validating the bean", obj, new TestBean("testVal"));
   }
 
   @Test
@@ -114,8 +135,10 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":testVal:intVal=10:stringVal=strVal";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=10, stringVal='strVal', longVal=-1}", obj.toString());
+    TestBean expectedBean = new TestBean("testVal");
+    expectedBean.intVal = 10;
+    expectedBean.stringVal = "strVal";
+    assertEquals("validating the bean", obj, expectedBean);
   }
 
   @Test
@@ -124,8 +147,7 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":testVal:";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=-1, stringVal='testVal', longVal=-1}", obj.toString());
+    assertEquals("validating the bean",obj,new TestBean("testVal"));
   }
 
   @Test
@@ -134,8 +156,7 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ":";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=0, stringVal='null', longVal=0}", obj.toString());
+    assertEquals("validating the bean",obj,new TestBean());
   }
 
   @Test
@@ -144,8 +165,7 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + ": ";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=-1, stringVal=' ', longVal=-1}", obj.toString());
+    assertEquals("validating the bean",obj,new TestBean(" "));
   }
 
   @Test
@@ -154,8 +174,7 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=0, stringVal='null', longVal=0}", obj.toString());
+    assertEquals("validating the bean",obj,new TestBean());
   }
 
   @Test
@@ -164,49 +183,80 @@ public class Object2StringTest
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::intVal=1";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=1, stringVal='constructor', longVal=-1}", obj.toString());
+    TestBean expectedBean = new TestBean("");
+    expectedBean.intVal = 1;
+    assertEquals("validating the bean", obj, expectedBean);
   }
 
   @Test
   public void testBeanCodecWithAllProperties()
   {
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
-    String bean = TestBean.class.getName() + "::intVal=1:stringVal=hello:longVal=10";
+    String bean = TestBean.class.getName() + "::intVal=1:stringVal=testStr:longVal=10";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    assertEquals("Validating bean Object", "TestBean{intVal=1, stringVal='hello', longVal=10}", obj.toString());
+    TestBean expectedBean = new TestBean("testStr");
+    expectedBean.intVal = 1;
+    expectedBean.longVal = 10;
+    assertEquals("validating the bean", obj, expectedBean);
   }
 
   @Test
-  public void testBeanCodecNegativeTest()
+  public void testBeanWithWrongClassName()
   {
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "1::intVal=1";
     try {
-      TestBean obj = bean2String.fromString(bean);
+      bean2String.fromString(bean);
+      assertFalse(true);
     }
-    catch (RuntimeException ex) {
-      logger.debug("Caught class not found exception", ex.getCause());
+    catch (RuntimeException e) {
+      if (e.getCause() instanceof ClassNotFoundException) {
+        String expRegex = "java.lang.ClassNotFoundException: com.datatorrent.api.Object2StringTest\\$TestBean1";
+        assertThat("exception message", e.getMessage(), RegexMatcher.matches(expRegex));
+        return;
+      }
+      throw e;
     }
   }
 
   @Test
-  public void testBeanNegativeValidation()
+  public void testBeanFailure()
   {
     StringCodec.Object2String<TestBean> bean2String = new StringCodec.Object2String<TestBean>();
     String bean = TestBean.class.getName() + "::intVal=1:stringVal=hello:longVal=10";
     TestBean obj = bean2String.fromString(bean);
-    logger.debug("Bean Object {}", obj.toString());
-    try {
-      assertEquals("Validating bean Object", "TestBean{intVal=10, stringVal='hello', longVal=10}", obj.toString());
-    }
-    catch (AssertionError ex) {
-      logger.debug("Caught validation exception", ex);
-    }
-
+    TestBean expectedBean = new TestBean("hello");
+    expectedBean.intVal = 1;
+    expectedBean.longVal = 10;
+    assertEquals("validating the bean", obj, expectedBean);
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(Object2StringTest.class);
+  public static class RegexMatcher extends BaseMatcher<String>
+  {
+    private final String regex;
+
+    public RegexMatcher(String regex)
+    {
+      this.regex = regex;
+    }
+
+    @Override
+    public boolean matches(Object o)
+    {
+      return ((String) o).matches(regex);
+
+    }
+
+    @Override
+    public void describeTo(Description description)
+    {
+      description.appendText("matches regex=" + regex);
+    }
+
+    public static RegexMatcher matches(String regex)
+    {
+      return new RegexMatcher(regex);
+    }
+  }
 
 }
