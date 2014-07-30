@@ -28,7 +28,7 @@ public class AppBundleTest
 
     Assert.assertEquals("pi-demo", json.getString("appBundleName"));
     Assert.assertEquals("1.0-SNAPSHOT", json.getString("appBundleVersion"));
-    Assert.assertEquals("1.0.3-SNAPSHOT", json.getString("dtEngineVersion"));
+    Assert.assertEquals("1.0.4-SNAPSHOT", json.getString("dtEngineVersion"));
     Assert.assertEquals("lib/*.jar", json.getJSONArray("classPath").getString(0));
     
     JSONObject application = json.getJSONArray("applications").getJSONObject(0);

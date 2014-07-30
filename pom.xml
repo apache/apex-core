@@ -4,7 +4,7 @@
 
   <groupId>com.datatorrent</groupId>
   <artifactId>dt-framework</artifactId>
-  <version>1.0.3-SNAPSHOT</version>
+  <version>1.0.4-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>
