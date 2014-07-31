@@ -195,13 +195,32 @@ public class LogicalPlanConfigurationTest {
     LogicalPlan dag = new LogicalPlan();
     dagBuilder.populateDAG(dag, new Configuration(false));
 
-    dagBuilder.setApplicationConfiguration(dag, appName);
+    dagBuilder.setApplicationConfiguration(dag, appName,null);
     Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
     Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.CONTAINER_MEMORY_MB));
     Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
 
   }
+  @Test
+  public void testAppLevelProperties() {
+	  String appName ="app1";
+	  Properties props =new Properties();
+	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".testprop1","10");
+	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".prop.testprop2","100");
+	  props.put(StreamingApplication.DT_PREFIX + "application.*.prop.testprop3","1000");
+	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".inncls.a","10000");
+	  LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+	  dagBuilder.addFromProperties(props);
 
+	  LogicalPlan dag = new LogicalPlan();
+	  TestApplication app1Test=new TestApplication();
+
+	  dagBuilder.setApplicationConfiguration(dag, appName,app1Test);
+	  Assert.assertEquals("",Integer.valueOf(10),app1Test.getTestprop1());
+	  Assert.assertEquals("",Integer.valueOf(100),app1Test.getTestprop2());
+	  Assert.assertEquals("",Integer.valueOf(1000),app1Test.getTestprop3());
+	  Assert.assertEquals("",Integer.valueOf(10000),app1Test.getInncls().getA());
+  }
   @Test
   public void testPrepareDAG() {
     final MutableBoolean appInitialized = new MutableBoolean(false);
