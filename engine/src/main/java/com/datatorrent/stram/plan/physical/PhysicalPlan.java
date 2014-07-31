@@ -423,14 +423,8 @@ public class PhysicalPlan implements Serializable
     container.setRequiredMemoryMB(container.getRequiredMemoryMB() + memoryMB);
   }
 
-  private void initPartitioning(PMapping m)
+  private void initPartitioning(PMapping m, int partitionCnt)
   {
-    int partitionCnt = m.logicalOperator.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
-    if (partitionCnt == 0) {
-      LOG.warn("Ignoring invalid value 0 for {} {}", m.logicalOperator, OperatorContext.INITIAL_PARTITION_COUNT);
-      partitionCnt = 1;
-    }
-
     Operator operator = m.logicalOperator.getOperator();
     Collection<Partition<Operator>> partitions = null;
 
@@ -483,7 +477,7 @@ public class PhysicalPlan implements Serializable
       PTOperator p = addPTOperator(m, partition, Checkpoint.INITIAL_CHECKPOINT);
       operatorIdToPartition.put(p.getId(), partition);
     }
-    updateStreamMappings(m);
+    //updateStreamMappings(m);
 
     if (partitioner != null) {
       partitioner.partitioned(operatorIdToPartition);
@@ -672,7 +666,7 @@ public class PhysicalPlan implements Serializable
 
       if (ipm.getKey().getValue(PortContext.PARTITION_PARALLEL)) {
         if (sourceMapping.partitions.size() < m.partitions.size()) {
-          throw new AssertionError("Number of partitions don't match in parallel mapping");
+          throw new AssertionError("Number of partitions don't match in parallel mapping " + sourceMapping.logicalOperator.getName() + " -> " + m.logicalOperator.getName());
         }
         for (int i=0; i<m.partitions.size(); i++) {
           PTOperator oper = m.partitions.get(i);
@@ -685,7 +679,6 @@ public class PhysicalPlan implements Serializable
           }
         }
       } else {
-        // TODO: we have potentially changed the input operators, refresh stream mapping
         StreamMapping ug = sourceMapping.outputStreams.get(ipm.getValue().getSource());
         if (ug == null) {
           ug = new StreamMapping(ipm.getValue(), this);
@@ -1135,12 +1128,19 @@ public class PhysicalPlan implements Serializable
     this.logicalToPTOperator.put(om, pnodes);
     if (upstreamPartitioned != null) {
       // parallel partition
-      for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
-        // TODO: the initial checkpoint has to be derived from upstream operators
-        addPTOperator(pnodes, null, Checkpoint.INITIAL_CHECKPOINT);
-      }
+      // TODO: remove partition keys, disable stats listeners
+      initPartitioning(pnodes, upstreamPartitioned.partitions.size());
+      //for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
+      //  // TODO: the initial checkpoint has to be derived from upstream operators
+      //  addPTOperator(pnodes, null, Checkpoint.INITIAL_CHECKPOINT);
+      //}
     } else {
-      initPartitioning(pnodes);
+      int partitionCnt = pnodes.logicalOperator.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
+      if (partitionCnt == 0) {
+        LOG.warn("Ignoring invalid value 0 for {} {}", pnodes.logicalOperator, OperatorContext.INITIAL_PARTITION_COUNT);
+        partitionCnt = 1;
+      }
+      initPartitioning(pnodes, partitionCnt);
     }
     updateStreamMappings(pnodes);
   }

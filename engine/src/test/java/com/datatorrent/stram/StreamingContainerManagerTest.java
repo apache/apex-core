@@ -259,7 +259,7 @@ public class StreamingContainerManagerTest {
 
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getName(), nidi.declaredStreamId);
-      Assert.assertEquals("partition for " + containerId, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), nidi.partitionKeys);
+      Assert.assertEquals("partition for " + containerId, Sets.newHashSet(node2.partitionKeys[i]), nidi.partitionKeys);
       Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
     }
 

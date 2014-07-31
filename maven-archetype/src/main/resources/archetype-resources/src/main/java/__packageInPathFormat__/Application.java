@@ -9,6 +9,7 @@ package ${package};
 
 import org.apache.hadoop.conf.Configuration;
 
+import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;

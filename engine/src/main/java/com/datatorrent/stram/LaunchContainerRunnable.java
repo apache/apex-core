@@ -215,8 +215,6 @@ public class LaunchContainerRunnable implements Runnable
 
     String jvmOpts = dag.getAttributes().get(LogicalPlan.CONTAINER_JVM_OPTIONS);
     if (jvmOpts == null) {
-      /* default Xmx based on total allocated memory size; default heap size 75% of total memory */
-      vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
       if (dag.isDebug()) {
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
@@ -231,6 +229,10 @@ public class LaunchContainerRunnable implements Runnable
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
     }
+
+    // container size is variable
+    // set -Xmx based on allocated memory size; default heap size 75% of total memory
+    vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);

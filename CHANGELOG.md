@@ -1,5 +1,124 @@
 #Release Notes - Streaming Platform
 
+
+## Version 1.0.3
+
+## Bug
+* [SPOI-2620] - S3 reader error
+* [SPOI-2673] - Move the Kafka Exactly Once Producer to Malhar Library
+* [SPOI-2775] - Log file being processed on seperate port to monitor progress by input operators.
+* [SPOI-2813] - Send top gateways in descending order
+* [SPOI-2814] - Change field name of input event in CDREvent
+* [SPOI-2815] - Show top 3 gateways using a widget
+* [SPOI-2816] - No query poll in alert information view
+* [SPOI-2817] - For non-finalized buckets threshold flags should not be set
+* [SPOI-2819] - Send data continuously to the application
+* [SPOI-2820] - Provide more alerts in the UI
+* [SPOI-2837] - Operators crashing sporadically when alert information requested from frontend
+* [SPOI-2838] - Clear out the cdr event files and aggregates are cleared
+* [SPOI-2844] - Machine data demo waits long before starting
+* [SPOI-2845] - Recovery is failing in cdr events output operator after upstream operator redeploys
+* [SPOI-2854] - Buckets are not being finalized correctly when there is a bucket gap in input data
+* [SPOI-2861] - GATEWAY_CONNECT_ADDRESS not set during install
+* [SPOI-2866] - Change lablel of top gateways to top 3 gateways
+* [SPOI-2867] - Change null to empty value in the UI for alert event information
+* [SPOI-2869] - Need a cleanup script to delete old files from hdfs
+* [SPOI-2882] - Backup the allatory log file for flume integration build as well
+* [SPOI-2883] - NPE in bufferserver
+* [SPOI-2892] - DTGateway WS fails to get YARN logs
+* [SPOI-2894] - Investigate bucket manager for cdr event storage
+* [SPOI-2900] - First few events for an application do not get published
+* [SPOI-2902] - Documentation for sandbox missing images
+* [SPOI-2910] - PartitioningTest.testDynamicDefaultPartitioning sometimes fails and sometimes succeeds 
+* [SPOI-2913] - Events API returns no events when limit and offset not supplied
+* [SPOI-2919] - Change cleanup to cleanup folders older than an hour
+* [SPOI-2920] - make stats recorder asynchronous so that it won't block stram
+* [SPOI-2921] - Test Node Locality feature on HDP
+* [SPOI-2932] - Historical containers don't show up on gateway if there is a second attempt on application
+* [SPOI-2936] - Historical data store high level design
+* [SPOI-2937] - Gateway throwing exception while launching app 
+
+## Improvement
+* [SPOI-2811] - Show input record in alert information dialog
+* [SPOI-2812] - Show top gateways for all defect aggregates and possibly all aggregates
+* [SPOI-2881] - Show actual memory usage in dashboard
+* [SPOI-2891] - DTGateway default log setting too verbose
+* [SPOI-2911] - Create a Bean2String codec
+
+## New Feature
+* [SPOI-2228] - Gateway to load and to allow manipulation of app bundles
+* [SPOI-2753] - Front End POC - Aggregates Table
+* [SPOI-2757] - Front End POC - Kafka Operations
+* [SPOI-2758] - Front End POC - Historical Data Navigation
+* [SPOI-2808] - Support YARN log aggregation for dead container log retrieval in the gateway
+* [SPOI-2826] - Maven archetype for assembling app bundle
+* [SPOI-2827] - CLI to load app bundles
+* [SPOI-2828] - Supports launching apps in app bundle in CLI
+* [SPOI-2829] - Gateway to allow uploading and changing configuration of existing App Bundles
+* [SPOI-2849] - Demonstrate Datatorrent RTS as front end ingestion for Spark.
+* [SPOI-2879] - Kafka Request/Response Debug Collapsible Panel
+* [SPOI-2896] - Unique identifier for stram events
+
+## Story
+* [SPOI-2825] - Parent JIRA for App Bundle for 1.0.3
+* [SPOI-2830] - Parent jira for facilitating trouble shooting and debugging in 1.0.3
+* [SPOI-2835] - Streamlet Design - 1.0.3
+* [SPOI-2836] - Parent JIRA for Kafka integration for 1.0.3
+* [SPOI-2851] - Platform Excellence - 1.0.3
+
+## Task
+* [SPOI-2212] - Determine logistics of application bundles
+* [SPOI-2521] - Add counters for checkpointo operations
+* [SPOI-2546] - Pi demo does not seem to work in 512MB
+* [SPOI-2547] - Twitter demo needs 1024MB
+* [SPOI-2684] - Automated distro certification - collect minimum requirements
+* [SPOI-2786] - Include setters and getters for output fields in the event
+* [SPOI-2795] - Add top 3 gateways to alert aggregate csv in HDFS
+* [SPOI-2802] - Amla: Dynamic partitioning for S3 input operator.
+* [SPOI-2822] - Add operator to write cdr events to hdfs
+* [SPOI-2823] - Fetch events from hdfs for alert events query response
+* [SPOI-2846] - Partition Aggregations operator
+* [SPOI-2859] - Separate out query processing from aggregations operator
+* [SPOI-2870] - Application template classpath does not include malhar libraries
+* [SPOI-2874] - Add Port Queue Capacity usage as part of the operator stats
+* [SPOI-2878] - Move the gateway randomization to generator
+* [SPOI-2890] - Update support contacts to malhar-users group
+* [SPOI-2914] - Configure Store operator to join logger and tracker stream.
+
+## Sub-task
+* [SPOI-2747] - Total emitted window of an operator keeps on increasing even when it has stopped emitting
+* [SPOI-2850] - Sort out the dependencies for dt-flume so we do not include the jars which are already part of dt dist and hadoop dist
+* [SPOI-2873] - Deprecate ShipContainingJars.
+* [SPOI-2895] - launch -license does not work
+* [SPOI-2907] - Counters appear in physical plan only when a Counters aggregator or a stats listener is set on the operator
+
+
+## Bug
+* [MLHR-1176] - Update demo section of README.md
+* [MLHR-1219] - Non-chrome browsers cannot parse date format from date picker
+* [MLHR-1227] - AbstractKafkaOutputOperator fails with java.lang.NoClassDefFoundError: com/yammer/metrics/Metrics
+* [MLHR-1235] - close button on gateway info modal does not close the modal
+
+## Improvement
+* [MLHR-1213] - Use trackBy for malhar-angular-table
+* [MLHR-1216] - DB key value store manager enhancement
+* [MLHR-1218] - Clicking on an open stram log event should close it in UI
+
+## New Feature
+* [MLHR-1212] - Make scrollbar draggable on malhar-angular-table
+* [MLHR-1225] - Logical Operator Table
+* [MLHR-1226] - Stram Event widget
+* [MLHR-1229] - Provide better widget options dialog
+* [MLHR-1231] - Custom template/controller for widget options
+
+## Task
+* [MLHR-1205] - Restructure directory structure in angular console
+* [MLHR-1206] - Change malhar pom to use provided scope to prevent DT and hadoop jars from being sucked into the runtime classpath
+* [MLHR-1210] - Create script to automatically add scripts to index.html
+* [MLHR-1224] - Kafka enabled AdsDimensions demo
+
+
+
 ## Version 1.0.2
 
 ## Bug
