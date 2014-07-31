@@ -167,7 +167,7 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>src/main/x-java</outputDirectory>
+              <outputDirectory>target/generated-sources/main/x-java</outputDirectory>
               <resources>
                 <resource>
                   <directory>../malhar/library/src/main/java/com/datatorrent/lib/codec</directory>
@@ -205,7 +205,7 @@
             </goals>
             <configuration>
               <sources>
-                <source>src/main/x-java</source>
+                <source>target/generated-sources/main/x-java</source>
               </sources>
             </configuration>
           </execution>
