@@ -6,4 +6,21 @@
     <value>some-default-value (if value is not specified, it is required from the user or custom config when launching)</value>
   </property>
   -->
+  <property>
+    <name>dt.attr.MASTER_MEMORY_MB</name>
+    <value>1024</value>
+  </property>
+  <property>
+    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedstart</name>
+    <value>1</value>
+  </property>
+  <property>
+    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedend</name>
+    <value>10</value>
+  </property>
+  <property>
+    <name>dt.application.MyFirstApplication.operator.console.prop.stringFormat</name>
+    <value>hello: %s</value>
+  </property>
 </configuration>
+
