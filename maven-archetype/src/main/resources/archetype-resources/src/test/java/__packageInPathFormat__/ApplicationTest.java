@@ -28,7 +28,9 @@ public class ApplicationTest {
   public void testApplication() throws IOException, Exception {
     try {
       LocalMode lma = LocalMode.newInstance();
-      new Application().populateDAG(lma.getDAG(), new Configuration(false));
+      Configuration conf = new Configuration(false);
+      conf.addResource(this.getClass().getResourceAsStream("/META-INF/properties.xml"));
+      lma.prepareDAG(new Application(), conf);
       LocalMode.Controller lc = lma.getController();
       lc.run(10000); // runs for 10 seconds and quits
     } catch (ConstraintViolationException e) {

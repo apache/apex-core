@@ -20,7 +20,7 @@
   </property>
   <property>
     <name>dt.application.MyFirstApplication.operator.console.prop.stringFormat</name>
-    <value>hello: %s</value>
+    <value>hello world: %s</value>
   </property>
 </configuration>
 
