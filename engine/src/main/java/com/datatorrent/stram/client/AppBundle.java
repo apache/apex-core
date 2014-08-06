@@ -94,7 +94,7 @@ public class AppBundle extends JarFile implements Closeable
     if (zipFile.isEncrypted()) {
       throw new ZipException("Encrypted app bundle not supported yet");
     }
-    File newDirectory = new File("/tmp/dt-appBundle/" + System.currentTimeMillis());
+    File newDirectory = new File("/tmp/dt-appBundle-" + System.currentTimeMillis());
     newDirectory.mkdirs();
     directory = newDirectory.getAbsolutePath();
     zipFile.extractAll(directory);
