@@ -299,15 +299,37 @@ public class LogicalPlanConfigurationTest {
   }
 
   @ApplicationAnnotation(name="AnnotatedAlias")
-  class AnnotatedApplication implements StreamingApplication{
+  class AnnotatedApplication implements StreamingApplication {
 
     @Override
     public void populateDAG(DAG dag, Configuration conf)
     {
-      dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
+      //dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
     }
 
   }
+
+  @Test
+  public void testAppNameAttribute() {
+    StreamingApplication app = new AnnotatedApplication();
+    Configuration conf = new Configuration(false);
+    conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
+
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
+
+    Properties properties = new Properties();
+    properties.put(StreamingApplication.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
+
+    builder.addFromProperties(properties);
+
+    LogicalPlan dag = new LogicalPlan();
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+    dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
+    builder.prepareDAG(dag, app, appPath, conf);
+
+    Assert.assertEquals("Application name", "testApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+  }
+
   @Test
   public void testAppAlias() {
     StreamingApplication app = new AnnotatedApplication();
