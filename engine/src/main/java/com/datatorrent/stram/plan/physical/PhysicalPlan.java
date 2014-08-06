@@ -741,6 +741,7 @@ public class PhysicalPlan implements Serializable
         for (PTContainer c : this.containers) {
           if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
             LOG.debug("Reusing existing container {} for {}", c, oper);
+            c.setRequiredMemoryMB(0);
             newContainer = c;
           }
         }
