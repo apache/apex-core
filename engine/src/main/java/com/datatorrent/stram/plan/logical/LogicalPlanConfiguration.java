@@ -985,12 +985,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     setApplicationConfiguration(dag, appConfs);
 
     app.populateDAG(dag, conf);
-
-    if (appAlias != null) {
-      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
-    } else {
-      if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
-        dag.getAttributes().put(DAG.APPLICATION_NAME, name);
+    if (dag.getAttributes().get(DAGContext.APPLICATION_NAME) == null) {
+      if (appAlias != null) {
+        dag.setAttribute(DAGContext.APPLICATION_NAME, appAlias);
+      }
+      else {
+        dag.getAttributes().put(DAGContext.APPLICATION_NAME, name);
       }
     }
     // inject external operator configuration
