@@ -3574,7 +3574,7 @@ public class DTCli
           while (it.hasNext()) {
             AppInfo ai = it.next();
             if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
-                    || !ai.name.toLowerCase().matches(matchAppName.toLowerCase())) {
+                    || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
               it.remove();
             }
           }
