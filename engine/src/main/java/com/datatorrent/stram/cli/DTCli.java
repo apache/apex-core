@@ -651,6 +651,7 @@ public class DTCli
                                                           null,
                                                           new Arg[] {new Arg("app-id")},
                                                           "Get the information of an app"));
+    /*
     connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(),
                                                           new Arg[] {new Arg("name"), new FileArg("file")},
                                                           null,
@@ -663,6 +664,7 @@ public class DTCli
                                                          null,
                                                          null,
                                                          "List all alerts"));
+    */
     connectedCommands.put("get-recording-info", new CommandSpec(new GetRecordingInfoCommand(),
                                                                 null,
                                                                 new Arg[] {new Arg("operator-id"), new Arg("start-time")},
