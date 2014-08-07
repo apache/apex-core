@@ -49,9 +49,9 @@ public final class EventsAgent extends FSPartFileAgent
     public Map<String, Object> data;
   }
 
-  public EventsAgent(FileSystem fs, Configuration conf)
+  public EventsAgent(FileSystem fs)
   {
-    super(fs, conf);
+    super(fs);
   }
 
   private String getEventsDirectory(String appId)

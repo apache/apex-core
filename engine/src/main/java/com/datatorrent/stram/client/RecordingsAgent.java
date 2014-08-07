@@ -102,9 +102,9 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   }
 
-  public RecordingsAgent(FileSystem fs, Configuration conf)
+  public RecordingsAgent(FileSystem fs)
   {
-    super(fs, conf);
+    super(fs);
   }
 
   public String getRecordingsDirectory(String appId, String opId)

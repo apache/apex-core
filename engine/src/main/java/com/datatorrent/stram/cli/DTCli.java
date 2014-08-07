@@ -995,7 +995,7 @@ public class DTCli
       }
     }
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
-    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS));
+    StramAgent.setConfiguration(conf);
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1149,7 +1149,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf), conf);
+    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf));
   }
 
   public void run() throws IOException
