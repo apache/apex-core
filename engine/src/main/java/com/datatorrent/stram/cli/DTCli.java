@@ -1849,7 +1849,7 @@ public class DTCli
     for (ApplicationReport licenseAgent : licenseAgentList) {
       String licenseId = licenseAgent.getName();
       try {
-        LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout);
+        LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout, null);
         ClusterMemoryReportState reportState = lap.protocol.getMemoryMetricReport(new GetMemoryMetricReportRequest()).getReportState();
         LicenseInfo licenseInfo = new LicenseInfo();
         licenseInfo.remainingLicensedMB = reportState.getFreeMemoryMB();
