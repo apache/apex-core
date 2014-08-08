@@ -29,6 +29,7 @@ public class ContainerInfo {
   public int memoryMBAllocated;
   @RecordField(type = "stats")
   public int memoryMBFree;
+  @RecordField(type = "meta", publish = false)
   public String containerLogsUrl;
   public long startedTime = -1;
   public long finishedTime = -1;
