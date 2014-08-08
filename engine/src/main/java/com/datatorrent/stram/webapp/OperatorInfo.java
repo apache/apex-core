@@ -35,28 +35,44 @@ import com.datatorrent.api.annotation.RecordField;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class OperatorInfo
 {
-  @RecordField(type="meta") public String id;
-  @RecordField(type="meta") public String name;
-  @RecordField(type="meta") public String className;
-  @RecordField(type="stats") public String container; // type=stats because container can change
-  @RecordField(type="stats") public String host;
-  @RecordField(type="stats") public long totalTuplesProcessed;
-  @RecordField(type="stats") public long totalTuplesEmitted;
-  @RecordField(type="stats") public long tuplesProcessedPSMA;
-  @RecordField(type="stats") public long tuplesEmittedPSMA;
-  @RecordField(type="stats") public double cpuPercentageMA;
-  @RecordField(type="stats") public long latencyMA;
-  @RecordField(type="stats") public CheckpointInfo checkpointInfo;
+  @RecordField(type = "meta")
+  public String id;
+  @RecordField(type = "meta")
+  public String name;
+  @RecordField(type = "meta", publish = false)
+  public String className;
+  @RecordField(type = "stats")
+  public String container; // type=stats because container can change
+  @RecordField(type = "stats")
+  public String host;
+  @RecordField(type = "stats")
+  public long totalTuplesProcessed;
+  @RecordField(type = "stats")
+  public long totalTuplesEmitted;
+  @RecordField(type = "stats")
+  public long tuplesProcessedPSMA;
+  @RecordField(type = "stats")
+  public long tuplesEmittedPSMA;
+  @RecordField(type = "stats")
+  public double cpuPercentageMA;
+  @RecordField(type = "stats")
+  public long latencyMA;
+  @RecordField(type = "stats")
+  public CheckpointInfo checkpointInfo;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
-  @RecordField(type="stats") public List<PortInfo> ports = new ArrayList<PortInfo>();
-  @RecordField(type="meta") public String unifierClass;
-  @RecordField(type="meta") public String logicalName;
+  @RecordField(type = "stats")
+  public List<PortInfo> ports = new ArrayList<PortInfo>();
+  @RecordField(type = "meta")
+  public String unifierClass;
+  @RecordField(type = "meta")
+  public String logicalName;
   public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
-  @RecordField(type="stats") public Object counters;
+  @RecordField(type = "stats")
+  public Object counters;
 
   /**
    *
