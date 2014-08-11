@@ -42,7 +42,7 @@ public class TupleRecorder
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
-  private String containerId;
+  private final String appId;
   private int nextPortIndex = 0;
   private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
@@ -87,6 +87,11 @@ public class TupleRecorder
     }
 
   };
+
+  public TupleRecorder(String appId)
+  {
+    this.appId = appId;
+  }
 
   public FSPartFileCollection getStorage()
   {
@@ -144,22 +149,6 @@ public class TupleRecorder
     throw new IllegalStateException("Tuple recorder has already started");
   }
 
-  /**
-   * @return the containerId
-   */
-  public String getContainerId()
-  {
-    return containerId;
-  }
-
-  /**
-   * @param containerId the containerId to set
-   */
-  public void setContainerId(String containerId)
-  {
-    this.containerId = containerId;
-  }
-
   /* defined for json information */
   public static class PortInfo
   {
@@ -179,7 +168,7 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
-    public String containerId;
+    public String appId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
 
@@ -257,7 +246,7 @@ public class TupleRecorder
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
-      recordInfo.containerId = containerId;
+      recordInfo.appId = appId;
 
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
@@ -286,7 +275,7 @@ public class TupleRecorder
       storage.writeMetaData(bos.toByteArray());
 
       if (wsClient != null) {
-        recordingNameTopic = "tupleRecorder." + getStartTime();
+        recordingNameTopic = "applications." + appId + ".tupleRecorder." + getStartTime();
         setupWsClient();
       }
     }
