@@ -101,8 +101,10 @@ public class AppBundle extends JarFile implements Closeable
     if (processAppDirectory) {
       processAppDirectory(new File(newDirectory, "app"));
     }
-    processConfDirectory(new File(newDirectory, "conf"));
-
+    File confDirectory = new File(newDirectory, "conf");
+    if (confDirectory.exists()) {
+      processConfDirectory(confDirectory);
+    }
     File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
       processPropertiesXml(propertiesXml);
