@@ -199,7 +199,14 @@ public class StramAgent extends FSAgent
       yarnClient.init(conf);
       yarnClient.start();
       ApplicationReport ar = yarnClient.getApplicationReport(ConverterUtils.toApplicationId(appId));
-      url = ar.getTrackingUrl();
+      String trackingUrl = ar.getTrackingUrl();
+      if (!trackingUrl.startsWith("http://")
+              && !trackingUrl.startsWith("https://")) {
+        url = "http://" + trackingUrl;
+      }
+      else {
+        url = trackingUrl;
+      }
       if (StringUtils.isBlank(url)) {
         LOG.error("Cannot get tracking url from YARN");
         return null;
