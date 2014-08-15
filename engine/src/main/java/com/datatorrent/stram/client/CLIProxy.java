@@ -140,15 +140,15 @@ public class CLIProxy implements Closeable
     return issueCommand("show-logical-plan \"" + jarUri + "\"");
   }
 
-  public JSONObject getAppBundleInfo(String file) throws Exception
+  public JSONObject getAppPackageInfo(String file) throws Exception
   {
-    return issueCommand("get-app-bundle-info \"" + file + "\"");
+    return issueCommand("get-app-package-info \"" + file + "\"");
   }
 
-  public JSONObject launchAppBundle(File appBundleLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
+  public JSONObject launchAppPackage(File appPackageLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
   {
-    StringBuilder sb = new StringBuilder("launch-app-bundle -exactMatch \"");
-    sb.append(appBundleLocalFile.getAbsolutePath());
+    StringBuilder sb = new StringBuilder("launch-app-package -exactMatch \"");
+    sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(configName)) {
       sb.append("-conf \"").append(configName).append("\" ");
@@ -161,10 +161,10 @@ public class CLIProxy implements Closeable
     return issueCommand(sb.toString());
   }
 
-  public JSONObject getAppBundleOperatorClasses(File appBundleLocalFile, String parent) throws Exception
+  public JSONObject getAppPackageOperatorClasses(File appPackageLocalFile, String parent) throws Exception
   {
-    StringBuilder sb = new StringBuilder("get-app-bundle-operators \"");
-    sb.append(appBundleLocalFile.getAbsolutePath());
+    StringBuilder sb = new StringBuilder("get-app-package-operators \"");
+    sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(parent)) {
       sb.append("\"").append(parent).append("\"");
@@ -172,10 +172,10 @@ public class CLIProxy implements Closeable
     return issueCommand(sb.toString());
   }
 
-  public JSONObject getAppBundleOperatorProperties(File appBundleLocalFile, String clazz) throws Exception
+  public JSONObject getAppPackageOperatorProperties(File appPackageLocalFile, String clazz) throws Exception
   {
-    StringBuilder sb = new StringBuilder("get-app-bundle-operator-properties \"");
-    sb.append(appBundleLocalFile.getAbsolutePath());
+    StringBuilder sb = new StringBuilder("get-app-package-operator-properties \"");
+    sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     sb.append("\"").append(clazz).append("\"");
     return issueCommand(sb.toString());

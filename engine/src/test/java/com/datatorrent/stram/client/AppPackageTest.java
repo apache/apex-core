@@ -16,18 +16,18 @@ import org.junit.Test;
  *
  * @author David Yan <david@datatorrent.com>
  */
-public class AppBundleTest
+public class AppPackageTest
 {
   @Test
-  public void testAppBundle() throws Exception
+  public void testAppPackage() throws Exception
   {
-    AppBundle ab = new AppBundle(new File("src/test/resources/testAppBundle.zip"), true);
+    AppPackage ab = new AppPackage(new File("src/test/resources/testAppPackage.jar"), true);
     JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
     jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
     JSONObject json = new JSONObject(jomp.getContext(null).writeValueAsString(ab));
 
-    Assert.assertEquals("pi-demo", json.getString("appBundleName"));
-    Assert.assertEquals("1.0-SNAPSHOT", json.getString("appBundleVersion"));
+    Assert.assertEquals("pi-demo", json.getString("appPackageName"));
+    Assert.assertEquals("1.0-SNAPSHOT", json.getString("appPackageVersion"));
     Assert.assertEquals("1.0.0", json.getString("dtEngineVersion"));
     Assert.assertEquals("lib/*.jar", json.getJSONArray("classPath").getString(0));
 

@@ -7,7 +7,7 @@ import com.datatorrent.api.*;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.*;
-import com.datatorrent.stram.client.AppBundle.AppInfo;
+import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
@@ -550,22 +550,22 @@ public class DTCli
                                                                null,
                                                                new Arg[] {new FileArg("parameter-name")},
                                                                "Get the configuration parameter"));
-    globalCommands.put("get-app-bundle-info", new CommandSpec(new GetAppBundleInfoCommand(),
-                                                              new Arg[] {new FileArg("app-bundle-file")},
+    globalCommands.put("get-app-package-info", new CommandSpec(new GetAppPackageInfoCommand(),
+                                                              new Arg[] {new FileArg("app-package-file")},
                                                               null,
-                                                              "Get info on the app bundle file"));
-    globalCommands.put("launch-app-bundle", new OptionsCommandSpec(new LaunchAppBundleCommand(),
-                                                                   new Arg[] {new FileArg("app-bundle-file")},
+                                                              "Get info on the app package file"));
+    globalCommands.put("launch-app-package", new OptionsCommandSpec(new LaunchAppPackageCommand(),
+                                                                   new Arg[] {new FileArg("app-package-file")},
                                                                    new Arg[] {new Arg("matching-app-name")},
-                                                                   "Launch app in the app bundle", LAUNCH_OPTIONS.options));
-    globalCommands.put("get-app-bundle-operators", new CommandSpec(new GetAppBundleOperatorsCommand(),
-                                                              new Arg[] {new FileArg("app-bundle-file"), new Arg("package-prefix")},
+                                                                   "Launch app in the app package", LAUNCH_OPTIONS.options));
+    globalCommands.put("get-app-package-operators", new CommandSpec(new GetAppPackageOperatorsCommand(),
+                                                              new Arg[] {new FileArg("app-package-file"), new Arg("package-prefix")},
                                                               new Arg[] {new Arg("parent-class")},
-                                                              "Get operators within the given app bundle"));
-    globalCommands.put("get-app-bundle-operator-properties", new CommandSpec(new GetAppBundleOperatorPropertiesCommand(),
-                                                              new Arg[] {new FileArg("app-bundle-file"), new Arg("operator-class")},
+                                                              "Get operators within the given app package"));
+    globalCommands.put("get-app-package-operator-properties", new CommandSpec(new GetAppPackageOperatorPropertiesCommand(),
+                                                              new Arg[] {new FileArg("app-package-file"), new Arg("operator-class")},
                                                               null,
-                                                              "Get operator properties within the given app bundle"));
+                                                              "Get operator properties within the given app package"));
     //
     // Connected command specification starts here
     //
@@ -3526,12 +3526,12 @@ public class DTCli
 
   }
 
-  private class GetAppBundleInfoCommand implements Command
+  private class GetAppPackageInfoCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+     AppPackage ab = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
         jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
@@ -3544,7 +3544,7 @@ public class DTCli
 
   }
 
-  private class LaunchAppBundleCommand implements Command
+  private class LaunchAppPackageCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
@@ -3553,10 +3553,10 @@ public class DTCli
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       LaunchCommandLineInfo commandLineInfo = getLaunchCommandLineInfo(newArgs);
 
-      AppBundle ab = new AppBundle(new File(expandFileName(commandLineInfo.args[0], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
       DTConfiguration launchProperties = new DTConfiguration();
-      Map<String, String> defaultProperties = ab.getDefaultProperties();
-      Set<String> requiredProperties = new TreeSet<String>(ab.getRequiredProperties());
+      Map<String, String> defaultProperties = ap.getDefaultProperties();
+      Set<String> requiredProperties = new TreeSet<String>(ap.getRequiredProperties());
 
       for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
         launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
@@ -3569,7 +3569,7 @@ public class DTCli
       }
 
       try {
-        List<AppInfo> applications = new ArrayList<AppInfo>(ab.getApplications());
+        List<AppInfo> applications = new ArrayList<AppInfo>(ap.getApplications());
 
         if (matchAppName != null) {
           Iterator<AppInfo> it = applications.iterator();
@@ -3585,7 +3585,7 @@ public class DTCli
         AppInfo selectedApp = null;
 
         if (applications.isEmpty()) {
-          throw new CliException("No applications in Application Bundle" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
+          throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
         }
         else if (applications.size() == 1) {
           selectedApp = applications.get(0);
@@ -3612,7 +3612,7 @@ public class DTCli
 
           // Exit if not in interactive mode
           if (!consolePresent) {
-            throw new CliException("More than one application in Application Bundle match '" + matchAppName + "'");
+            throw new CliException("More than one application in Application Package match '" + matchAppName + "'");
           }
           else {
 
@@ -3654,17 +3654,17 @@ public class DTCli
         if (selectedApp == null) {
           throw new CliException("No application selected");
         }
-        String jarName = ab.tempDirectory() + "/app/" + selectedApp.jarName;
+        String jarName = ap.tempDirectory() + "/app/" + selectedApp.jarName;
 
         List<String> launchArgs = new ArrayList<String>();
 
         launchArgs.add("launch");
         launchArgs.add("-exactMatch");
-        List<String> absClassPath = new ArrayList<String>(ab.getClassPath());
+        List<String> absClassPath = new ArrayList<String>(ap.getClassPath());
         for (int i = 0; i < absClassPath.size(); i++) {
           String path = absClassPath.get(i);
           if (!path.startsWith("/")) {
-            absClassPath.set(i, ab.tempDirectory() + "/" + path);
+            absClassPath.set(i, ap.tempDirectory() + "/" + path);
           }
         }
         if (!absClassPath.isEmpty() || commandLineInfo.libjars != null) {
@@ -3684,13 +3684,13 @@ public class DTCli
 
         if (commandLineInfo.configFile != null) {
           DTConfiguration givenConfig = new DTConfiguration();
-          givenConfig.loadFile(new File(ab.tempDirectory() + "/conf/" + commandLineInfo.configFile));
+          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.configFile));
           for (Map.Entry<String, String> entry : givenConfig) {
             launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
             requiredProperties.remove(entry.getKey());
           }
         }
-        File launchPropertiesFile = new File(ab.tempDirectory(), "launch.xml");
+        File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
         launchProperties.writeToFile(launchPropertiesFile, "");
         launchArgs.add("-conf");
         launchArgs.add(launchPropertiesFile.getCanonicalPath());
@@ -3729,26 +3729,26 @@ public class DTCli
         }
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
   }
 
-  private class GetAppBundleOperatorsCommand implements Command
+  private class GetAppPackageOperatorsCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
-        for (String jar : ab.getAppJars()) {
-          jars.add(ab.tempDirectory() + "/app/" + jar);
+        for (String jar : ap.getAppJars()) {
+          jars.add(ap.tempDirectory() + "/app/" + jar);
         }
-        for (String libJar : ab.getClassPath()) {
-          jars.add(ab.tempDirectory() + "/" + libJar);
+        for (String libJar : ap.getClassPath()) {
+          jars.add(ap.tempDirectory() + "/" + libJar);
         }
         newArgs.add("get-jar-operator-classes");
         newArgs.add(StringUtils.join(jars, ","));
@@ -3760,26 +3760,26 @@ public class DTCli
 
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
   }
 
-  private class GetAppBundleOperatorPropertiesCommand implements Command
+  private class GetAppPackageOperatorPropertiesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
-        for (String jar : ab.getAppJars()) {
-          jars.add(ab.tempDirectory() + "/app/" + jar);
+        for (String jar : ap.getAppJars()) {
+          jars.add(ap.tempDirectory() + "/app/" + jar);
         }
-        for (String libJar : ab.getClassPath()) {
-          jars.add(ab.tempDirectory() + "/" + libJar);
+        for (String libJar : ap.getClassPath()) {
+          jars.add(ap.tempDirectory() + "/" + libJar);
         }
         newArgs.add("get-jar-operator-properties");
         newArgs.add(StringUtils.join(jars, ","));
@@ -3787,7 +3787,7 @@ public class DTCli
         new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[] {}), reader);
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 

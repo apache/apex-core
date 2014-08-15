@@ -17,20 +17,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>AppBundle class.</p>
+ * <p>AppPackage class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 1.0.3
  */
-public class AppBundle extends JarFile implements Closeable
+public class AppPackage extends JarFile implements Closeable
 {
   public static final String ATTRIBUTE_DT_ENGINE_VERSION = "DT-Engine-Version";
-  public static final String ATTRIBUTE_DT_APP_BUNDLE_NAME = "DT-App-Bundle-Name";
-  public static final String ATTRIBUTE_DT_APP_BUNDLE_VERSION = "DT-App-Bundle-Version";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_VERSION = "DT-App-Package-Version";
   public static final String ATTRIBUTE_CLASS_PATH = "Class-Path";
 
-  private final String appBundleName;
-  private final String appBundleVersion;
+  private final String appPackageName;
+  private final String appPackageVersion;
   private final String dtEngineVersion;
   private final ArrayList<String> classPath = new ArrayList<String>();
   private final String directory;
@@ -58,13 +58,13 @@ public class AppBundle extends JarFile implements Closeable
 
   }
 
-  public AppBundle(File file) throws IOException, ZipException
+  public AppPackage(File file) throws IOException, ZipException
   {
     this(file, false);
   }
 
   /**
-   * Creates an App Bundle object.
+   * Creates an App Package object.
    *
    * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived applications
    *
@@ -73,28 +73,28 @@ public class AppBundle extends JarFile implements Closeable
    * @throws java.io.IOException
    * @throws net.lingala.zip4j.exception.ZipException
    */
-  public AppBundle(File file, boolean processAppDirectory) throws IOException, ZipException
+  public AppPackage(File file, boolean processAppDirectory) throws IOException, ZipException
   {
     super(file);
     Manifest manifest = getManifest();
     if (manifest == null) {
-      throw new IOException("Not a valid app bundle. MANIFEST.MF is not present.");
+      throw new IOException("Not a valid app package. MANIFEST.MF is not present.");
     }
     Attributes attr = manifest.getMainAttributes();
-    appBundleName = attr.getValue(ATTRIBUTE_DT_APP_BUNDLE_NAME);
-    appBundleVersion = attr.getValue(ATTRIBUTE_DT_APP_BUNDLE_VERSION);
+    appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
+    appPackageVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_VERSION);
     dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
     String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
     if (classPathString == null) {
-      throw new IOException("Not a valid app bundle.  Class-Path is missing from MANIFEST.MF");
+      throw new IOException("Not a valid app package.  Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
 
     ZipFile zipFile = new ZipFile(file);
     if (zipFile.isEncrypted()) {
-      throw new ZipException("Encrypted app bundle not supported yet");
+      throw new ZipException("Encrypted app package not supported yet");
     }
-    File newDirectory = new File("/tmp/dt-appBundle-" + System.currentTimeMillis());
+    File newDirectory = new File("/tmp/dt-appPackage-" + System.currentTimeMillis());
     newDirectory.mkdirs();
     directory = newDirectory.getAbsolutePath();
     zipFile.extractAll(directory);
@@ -123,14 +123,14 @@ public class AppBundle extends JarFile implements Closeable
     FileUtils.deleteDirectory(new File(directory));
   }
 
-  public String getAppBundleName()
+  public String getAppPackageName()
   {
-    return appBundleName;
+    return appPackageName;
   }
 
-  public String getAppBundleVersion()
+  public String getAppPackageVersion()
   {
-    return appBundleVersion;
+    return appPackageVersion;
   }
 
   public String getDtEngineVersion()
@@ -251,6 +251,6 @@ public class AppBundle extends JarFile implements Closeable
     }
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(AppBundle.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AppPackage.class);
 
 }
