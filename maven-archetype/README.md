@@ -13,6 +13,6 @@ Write your application code and optionally operator code
 
 Change to the project directory created by the maven archetype and run mvn install
 
-    cd mydtapp; mvn install
+    cd mydtapp; mvn package
 
 The DT App Package will be at target/DTApp-mydtapp-1.0-SNAPSHOT.jar
