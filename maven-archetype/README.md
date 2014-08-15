@@ -15,4 +15,4 @@ Change to the project directory created by the maven archetype and run mvn insta
 
     cd mydtapp; mvn install
 
-The DT App Package will be at target/dtapp-mydtapp-1.0-SNAPSHOT.jar
+The DT App Package will be at target/DTApp-mydtapp-1.0-SNAPSHOT.jar
