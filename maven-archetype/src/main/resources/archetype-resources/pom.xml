@@ -121,7 +121,7 @@
                <goal>single</goal>
              </goals>
              <configuration>
-               <finalName>DTApp-${project.artifactId}-${project.version}</finalName>
+               <finalName>${project.build.finalName}</finalName>
                <descriptors>
                  <descriptor>src/assemble/appPackage.xml</descriptor>
                </descriptors>
@@ -148,7 +148,7 @@
                  <resource>
                    <move>true</move>
                    <targetPath>${project.build.directory}</targetPath>
-                   <file>${project.build.directory}/DTApp-${project.artifactId}-${project.version}-appPackage.zip</file>
+                   <file>${project.build.directory}/${project.build.finalName}-appPackage.zip</file>
                    <destFileName>DTApp-${project.artifactId}-${project.version}.jar</destFileName>
                  </resource>
                </resources>
