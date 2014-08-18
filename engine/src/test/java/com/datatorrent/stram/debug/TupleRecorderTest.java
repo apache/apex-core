@@ -75,7 +75,7 @@ public class TupleRecorderTest
   {
     FileSystem fs = new LocalFileSystem();
     try {
-      TupleRecorder recorder = new TupleRecorder();
+      TupleRecorder recorder = new TupleRecorder("application_test_id_1");
       recorder.getStorage().setBytesPerPartFile(4096);
       recorder.getStorage().setLocalMode(true);
       recorder.getStorage().setBasePath("file://" + testWorkDir.getAbsolutePath() + "/recordings");

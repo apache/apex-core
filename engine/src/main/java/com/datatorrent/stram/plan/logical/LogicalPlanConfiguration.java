@@ -760,20 +760,19 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public String getAppAlias(String appPath) {
     String appAlias;
     if (appPath.endsWith(CLASS_SUFFIX)) {
-      String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
-      appAlias = stramConf.appAliases.get(className);
-      if(appAlias == null){
-        try {
-          ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(className).getAnnotation(ApplicationAnnotation.class);
-          if (an != null && !StringUtils.isBlank(an.name())) {
-            appAlias = an.name();
-          }
-        } catch (ClassNotFoundException e) {
-          LOG.warn("Unable to load class: ", e);
+      appPath = appPath.replace("/", ".").substring(0, appPath.length() - CLASS_SUFFIX.length());
+    }
+    appAlias = stramConf.appAliases.get(appPath);
+    if (appAlias == null) {
+      try {
+        ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(appPath).getAnnotation(ApplicationAnnotation.class);
+        if (StringUtils.isNotBlank(an.name())) {
+          appAlias = an.name();
         }
       }
-    } else {
-      appAlias = stramConf.appAliases.get(appPath);
+      catch (ClassNotFoundException e) {
+        LOG.warn("Unable to load class: ", e);
+      }
     }
     return appAlias;
   }
@@ -986,13 +985,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     setApplicationConfiguration(dag, appConfs);
 
     app.populateDAG(dag, conf);
-
-    if (appAlias != null) {
-      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
-    } else {
-      if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
-        dag.getAttributes().put(DAG.APPLICATION_NAME, name);
-      }
+    if (dag.getAttributes().get(DAGContext.APPLICATION_NAME) == null) {
+      dag.setAttribute(DAGContext.APPLICATION_NAME, appAlias == null ? name : appAlias);
     }
     // inject external operator configuration
     setOperatorConfiguration(dag, appConfs, appAlias);

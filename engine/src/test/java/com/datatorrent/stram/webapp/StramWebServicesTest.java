@@ -192,6 +192,12 @@ public class StramWebServicesTest extends JerseyTest
       return 0;
     }
 
+    @Override
+    public boolean isGatewayConnected()
+    {
+      return false;
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201309121323L;
   }

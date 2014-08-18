@@ -28,14 +28,16 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.5
+ * @deprecated The old alerts is now deprecated. The preferred way to set alerts are now through system alerts
  */
+@Deprecated
 public class AlertsAgent extends StramAgent
 {
   private static final Logger LOG = LoggerFactory.getLogger(AlertsAgent.class);
 
-  public AlertsAgent(FileSystem fs, Configuration conf)
+  public AlertsAgent(FileSystem fs)
   {
-    super(fs, conf);
+    super(fs);
   }
 
   private String getAlertTemplatesDirectory()

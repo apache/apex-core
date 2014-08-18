@@ -1,4 +1,0 @@
-DT-Engine-Version: ${archetypeVersion}
-DT-App-Bundle-Name: ${artifactId}
-DT-App-Bundle-Version: ${version}
-Class-Path: lib/*.jar

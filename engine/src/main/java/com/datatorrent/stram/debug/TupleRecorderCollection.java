@@ -47,7 +47,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private String gatewayPassword;
   private long tupleRecordingPartFileTimeMillis;
   private String appPath;
-  private String containerId; // this should be retired!
+  private String appId;
   private SharedPubSubWebSocketClient wsClient;
   private Map<Class<?>, Class<? extends StringCodec<?>>> codecs;
 
@@ -62,7 +62,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   {
     tupleRecordingPartFileSize = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE);
     tupleRecordingPartFileTimeMillis = ctx.getValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS);
-    containerId = ctx.getValue(ContainerContext.IDENTIFIER);
+    appId = ctx.getValue(LogicalPlan.APPLICATION_ID);
     gatewayAddress = ctx.getValue(LogicalPlan.GATEWAY_CONNECT_ADDRESS);
     gatewayUseSsl = ctx.getValue(LogicalPlan.GATEWAY_USE_SSL);
     gatewayUserName = ctx.getValue(LogicalPlan.GATEWAY_USER_NAME);
@@ -157,8 +157,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         }
       }
 
-      TupleRecorder tupleRecorder = new TupleRecorder();
-      tupleRecorder.setContainerId(containerId);
+      TupleRecorder tupleRecorder = new TupleRecorder(appId);
       tupleRecorder.setWebSocketClient(wsClient);
 
       HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();

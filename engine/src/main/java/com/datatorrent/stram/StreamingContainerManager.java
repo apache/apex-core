@@ -299,6 +299,13 @@ public class StreamingContainerManager implements PlanContext
     if (eventBus != null) {
       eventBus.shutdown();
     }
+    if (eventRecorder != null) {
+      eventRecorder.teardown();
+    }
+    if (statsRecorder != null) {
+      statsRecorder.teardown();
+    }
+
     IOUtils.closeQuietly(containerFile);
   }
 
@@ -317,6 +324,11 @@ public class StreamingContainerManager implements PlanContext
   public long getCommittedWindowId()
   {
     return committedWindowId;
+  }
+
+  public boolean isGatewayConnected()
+  {
+    return wsClient.isConnectionOpen();
   }
 
   /**

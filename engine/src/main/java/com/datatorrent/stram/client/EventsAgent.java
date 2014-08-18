@@ -49,9 +49,9 @@ public final class EventsAgent extends FSPartFileAgent
     public Map<String, Object> data;
   }
 
-  public EventsAgent(FileSystem fs, Configuration conf)
+  public EventsAgent(FileSystem fs)
   {
-    super(fs, conf);
+    super(fs);
   }
 
   private String getEventsDirectory(String appId)
@@ -162,7 +162,7 @@ public final class EventsAgent extends FSPartFileAgent
     return result;
   }
 
-  public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime, Long offset, int limit)
+  public List<EventInfo> getEvents(String appId, Long fromTime, Long toTime, long offset, int limit)
   {
     List<EventInfo> result = new ArrayList<EventInfo>();
     String dir = getEventsDirectory(appId);

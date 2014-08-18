@@ -47,6 +47,7 @@ public class AppInfo {
   protected long totalLicensedMB;
   protected long allocatedMB;
   protected long licenseInfoLastUpdate;
+  protected boolean gatewayConnected;
   public Map<String, Object> attributes;
   public String appMasterTrackingUrl;
   public String version;
@@ -172,6 +173,7 @@ public class AppInfo {
     for (Map.Entry<Attribute<Object>, Object> entry : AttributeMap.AttributeInitializer.getAllAttributes(context, DAGContext.class).entrySet()) {
       this.attributes.put(entry.getKey().getSimpleName(), entry.getValue());
     }
+    this.gatewayConnected = context.isGatewayConnected();
   }
 
   /**
@@ -245,6 +247,11 @@ public class AppInfo {
   public long getAllocatedMB()
   {
     return allocatedMB;
+  }
+
+  public boolean isGatewayConnected()
+  {
+    return gatewayConnected;
   }
 
 }

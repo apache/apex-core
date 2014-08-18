@@ -25,7 +25,6 @@ import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.stram.util.FSUtil;
-
 public class FSStorageAgent implements StorageAgent, Stats.CheckpointStats, Serializable
 {
   private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);

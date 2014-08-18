@@ -89,7 +89,8 @@ public class LaunchContainerRunnable implements Runnable
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("./*");
-    for (String c : nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+    String classpath = nmClient.getConfig().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH);
+    for (String c : StringUtils.isBlank(classpath) ? YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH : classpath.split(",")) {
       if (c.equals("$HADOOP_CLIENT_CONF_DIR")) {
         // SPOI-2501
         continue;
@@ -215,8 +216,6 @@ public class LaunchContainerRunnable implements Runnable
 
     String jvmOpts = dag.getAttributes().get(LogicalPlan.CONTAINER_JVM_OPTIONS);
     if (jvmOpts == null) {
-      /* default Xmx based on total allocated memory size; default heap size 75% of total memory */
-      vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
       if (dag.isDebug()) {
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
@@ -231,6 +230,10 @@ public class LaunchContainerRunnable implements Runnable
         vargs.add(JAVA_REMOTE_DEBUG_OPTS);
       }
     }
+
+    // container size is variable
+    // set -Xmx based on allocated memory size; default heap size 75% of total memory
+    vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
