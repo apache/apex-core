@@ -392,6 +392,12 @@ public class StreamingAppMasterService extends CompositeService
       return 0;
     }
 
+    @Override
+    public boolean isGatewayConnected()
+    {
+      return StreamingAppMasterService.this.dnmgr.isGatewayConnected();
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201309112304L;
   }

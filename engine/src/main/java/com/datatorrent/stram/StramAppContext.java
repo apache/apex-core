@@ -29,7 +29,7 @@ public interface StramAppContext extends Context
   ApplicationAttemptId getApplicationAttemptId();
 
   String getApplicationName();
-  
+
   String getApplicationDocLink();
 
   long getStartTime();
@@ -59,9 +59,11 @@ public interface StramAppContext extends Context
   long getTotalLicensedMB();
 
   long getAllocatedMB();
-  
+
   long getLicenseInfoLastUpdate();
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);
+
+  boolean isGatewayConnected();
 }

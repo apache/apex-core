@@ -29,7 +29,7 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
   private final Map<String, List<Handler>> topicHandlers = new HashMap<String, List<Handler>>();
   private long lastConnectTryTime;
   private final long minWaitConnectionRetry = 5000;
-  private long timeoutMillis;
+  private final long timeoutMillis;
 
   public interface Handler
   {

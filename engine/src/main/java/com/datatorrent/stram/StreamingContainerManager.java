@@ -326,6 +326,11 @@ public class StreamingContainerManager implements PlanContext
     return committedWindowId;
   }
 
+  public boolean isGatewayConnected()
+  {
+    return wsClient.isConnectionOpen();
+  }
+
   /**
    * Check periodically that deployed containers phone home.
    * Run from the master main loop (single threaded access).
