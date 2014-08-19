@@ -328,7 +328,7 @@ public class StreamingContainerManager implements PlanContext
 
   public boolean isGatewayConnected()
   {
-    return wsClient.isConnectionOpen();
+    return wsClient != null && wsClient.isConnectionOpen();
   }
 
   /**
