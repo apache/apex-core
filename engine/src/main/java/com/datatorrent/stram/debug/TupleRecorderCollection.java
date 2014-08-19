@@ -13,11 +13,14 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
-import com.datatorrent.stram.api.RequestFactory;
+import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
+import com.datatorrent.stram.api.*;
+import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
+import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
@@ -107,7 +110,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     return String.valueOf(operatorId).concat(Component.CONCAT_SEPARATOR).concat(portname);
   }
 
-  private void startRecording(Node<?> node, int operatorId, String portName)
+  private void startRecording(final Node<?> node, int operatorId, final String portName, long numWindows)
   {
     PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
     OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
@@ -193,6 +196,24 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         node.addSinks(sinkMap);
         tupleRecorder.setup(node.getOperator(), codecs);
         put(operatorIdPortNamePair, tupleRecorder);
+        if (numWindows > 0) {
+          tupleRecorder.setNumWindows(numWindows, new Runnable() {
+
+            @Override
+            public void run()
+            {
+              node.context.request(new OperatorCommand()
+              {
+                @Override
+                public void execute(Operator operator, int operatorId, long windowId) throws IOException
+                {
+                  stopRecording(node, operatorId, portName);
+                }
+              });
+            }
+
+          });
+        }
       }
       else {
         logger.warn("Tuple recording request ignored because operator is not connected on the specified port.");
@@ -273,17 +294,17 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   {
     Node<?> node = nae.getNode();
     if (node.context.getValue(OperatorContext.AUTO_RECORD)) {
-      startRecording(node, node.getId(), null);
+      startRecording(node, node.getId(), null, 0);
     }
     else {
       for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
         if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
-          startRecording(node, node.getId(), entry.getKey());
+          startRecording(node, node.getId(), entry.getKey(), 0);
         }
       }
       for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
         if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
-          startRecording(node, node.getId(), entry.getKey());
+          startRecording(node, node.getId(), entry.getKey(), 0);
         }
       }
     }
@@ -362,7 +383,8 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
             {
-              startRecording(node, operatorId, snr.getPortName());
+              StramToNodeStartRecordingRequest r = (StramToNodeStartRecordingRequest) snr;
+              startRecording(node, operatorId, r.getPortName(), r.getNumWindows());
             }
 
             @Override

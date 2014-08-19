@@ -599,7 +599,7 @@ public class DTCli
                                                   "Wait for completion of current application"));
     connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(),
                                                              new Arg[] {new Arg("operator-id")},
-                                                             new Arg[] {new Arg("port-name")},
+                                                             new Arg[] {new Arg("port-name"), new Arg("num-windows")},
                                                              "Start recording"));
     connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(),
                                                             new Arg[] {new Arg("operator-id")},
@@ -2642,10 +2642,14 @@ public class DTCli
     {
       String opId = args[1];
       String port = null;
-      if (args.length == 3) {
+      long numWindows = 0;
+      if (args.length >= 3) {
         port = args[2];
       }
-      printJson(recordingsAgent.startRecording(currentApp.getApplicationId().toString(), opId, port));
+      if (args.length >= 4) {
+        numWindows = Long.valueOf(args[3]);
+      }
+      printJson(recordingsAgent.startRecording(currentApp.getApplicationId().toString(), opId, port, numWindows));
     }
 
   }

@@ -620,14 +620,14 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
   }
 
-  public String startRecording(String appId, String opId, String portName) throws IncompatibleVersionException
+  public String startRecording(String appId, String opId, String portName, long numWindows) throws IncompatibleVersionException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
     WebResource wr = getStramWebResource(webServicesClient, appId);
     if (wr == null) {
       throw new WebApplicationException(404);
     }
-    LOG.debug("Start recording requested for {}.{}", opId, portName);
+    LOG.debug("Start recording requested for {}.{} ({} windows)", opId, portName, numWindows);
     try {
       final JSONObject request = new JSONObject();
       String path = StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS + "/" + opId;
@@ -635,6 +635,7 @@ public final class RecordingsAgent extends FSPartFileAgent
         path += "/ports/" + portName;
       }
       path += "/" + StramWebServices.PATH_RECORDINGS_START;
+      request.put("numWindows", numWindows);
       return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
                                        new WebServicesClient.WebServicesHandler<String>()
       {

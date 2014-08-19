@@ -389,22 +389,32 @@ public class StramWebServices
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject startRecording(@PathParam("opId") String opId)
+  public JSONObject startRecording(@PathParam("opId") String opId, String content) throws JSONException
   {
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
-    dagManager.startRecording(Integer.valueOf(opId), null);
+    long numWindows = 0;
+    if (StringUtils.isNotBlank(content)) {
+      JSONObject r = new JSONObject(content);
+      numWindows = r.getLong("numWindows");
+    }
+    dagManager.startRecording(Integer.valueOf(opId), null, numWindows);
     return response;
   }
 
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
+  public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName, String content) throws JSONException
   {
     LOG.debug("Start recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
-    dagManager.startRecording(Integer.valueOf(opId), portName);
+    long numWindows = 0;
+    if (StringUtils.isNotBlank(content)) {
+      JSONObject r = new JSONObject(content);
+      numWindows = r.getLong("numWindows");
+    }
+    dagManager.startRecording(Integer.valueOf(opId), portName, numWindows);
     return response;
   }
 
