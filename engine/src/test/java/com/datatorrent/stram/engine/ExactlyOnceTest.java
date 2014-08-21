@@ -21,7 +21,7 @@ public class ExactlyOnceTest extends ProcessingModeTests
     super(ProcessingMode.EXACTLY_ONCE);
   }
 
-  //@Test
+  @Test
   @Override
   public void testLinearInputOperatorRecovery() throws Exception
   {
