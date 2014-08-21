@@ -52,7 +52,8 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void emitTuples()
   {
-    if (first) {
+    if (first && maximumTuples > 0) {
+      // only emit tuples once per window (first is reset to true in beginWindow())
       logger.debug("emitting {}", Codec.getStringWindowId(windowId));
       Long etuple = idMap.get(windowId);
       if (etuple == null) {
@@ -62,9 +63,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
       output.emit(etuple);
       emittedTuples.add(etuple);
       first = false;
-      if (--maximumTuples == 0) {
-        Operator.Util.shutdown();
-      }
+      maximumTuples--;
     }
   }
 
@@ -108,6 +107,11 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
 
     if (simulateFailure && firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
       throw new RuntimeException("Failure Simulation from " + this);
+    }
+
+    // we have emitted enough tuples and we have tested recovery, so we can shutdown once we have emitted enough.
+    if (maximumTuples == 0) {
+      Operator.Util.shutdown();
     }
   }
 
