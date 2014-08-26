@@ -11,22 +11,19 @@ import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OperatorAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.FSStorageAgent;
 import com.google.common.collect.Sets;
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.validation.*;
-import javax.validation.constraints.NotNull;
-import java.io.*;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -119,6 +116,7 @@ public class LogicalPlan implements Serializable, DAG
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
     private final AttributeMap attributes = new DefaultAttributeMap();
+    private Type tupleType;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -171,6 +169,12 @@ public class LogicalPlan implements Serializable, DAG
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+
+    public Type getTupleType()
+    {
+      return tupleType;
+    }
+
   }
 
   public final class OutputPortMeta implements DAG.OutputPortMeta, Serializable
@@ -181,6 +185,7 @@ public class LogicalPlan implements Serializable, DAG
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes = new DefaultAttributeMap();
+    private Type tupleType;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -244,6 +249,12 @@ public class LogicalPlan implements Serializable, DAG
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+
+    public Type getTupleType()
+    {
+      return tupleType;
+    }
+
   }
 
   /**
@@ -577,6 +588,7 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
+        metaPort.tupleType = getPortType(field);
         inPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
@@ -599,6 +611,7 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
+        metaPort.tupleType = getPortType(field);
         outPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
@@ -1258,6 +1271,44 @@ public class LogicalPlan implements Serializable, DAG
   public static LogicalPlan read(InputStream is) throws IOException, ClassNotFoundException
   {
     return (LogicalPlan)new ObjectInputStream(is).readObject();
+  }
+
+
+  public static Type getPortType(Field f)
+  {
+    if (f.getGenericType() instanceof ParameterizedType) {
+      ParameterizedType t = (ParameterizedType)f.getGenericType();
+      //LOG.debug("Field type is parameterized: " + Arrays.asList(t.getActualTypeArguments()));
+      //LOG.debug("rawType: " + t.getRawType()); // the port class
+      Type typeArgument = t.getActualTypeArguments()[0];
+      if (typeArgument instanceof Class) {
+        return typeArgument;
+      }
+      else if (typeArgument instanceof TypeVariable) {
+        TypeVariable<?> tv = (TypeVariable<?>)typeArgument;
+        LOG.debug("bounds: " + Arrays.asList(tv.getBounds()));
+        // variable may contain other variables, java.util.Map<java.lang.String, ? extends T2>
+        return tv.getBounds()[0];
+      }
+      else if (typeArgument instanceof GenericArrayType) {
+        LOG.debug("type {} is of GenericArrayType", typeArgument);
+        return typeArgument;
+      }
+      else if (typeArgument instanceof WildcardType) {
+        LOG.debug("type {} is of WildcardType", typeArgument);
+        return typeArgument;
+      }
+      else if (typeArgument instanceof ParameterizedType) {
+        return typeArgument;
+      }
+      else {
+        throw new IllegalArgumentException("Type argument is of expected type " + typeArgument);
+      }
+    }
+    else {
+      // ports are always parameterized
+      throw new IllegalArgumentException("No type variable: " + f.getType() + ", typeParameters: " + Arrays.asList(f.getClass().getTypeParameters()));
+    }
   }
 
   @Override
