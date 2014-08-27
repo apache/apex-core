@@ -68,8 +68,8 @@ public class OiONode extends GenericNode
           break;
 
         case END_WINDOW:
+          endWindowDequeueTimes.put(reservoir, System.currentTimeMillis());
           if (--expectingEndWindows == 0) {
-            endWindowDequeueTimes.put(reservoir, System.currentTimeMillis());
             processEndWindow(t);
           }
           break;
@@ -104,7 +104,7 @@ public class OiONode extends GenericNode
         case END_STREAM:
           if (lastEndStreamWindowId != t.getWindowId()) {
             lastEndStreamWindowId = t.getWindowId();
-            for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
+            for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
               PortContextPair<InputPort<?>> pcpair = descriptor.inputPorts.get(e.getKey());
               if (pcpair != null) {
                 pcpair.component.setConnected(false);
