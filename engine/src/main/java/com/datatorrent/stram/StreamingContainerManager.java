@@ -1829,10 +1829,13 @@ public class StreamingContainerManager implements PlanContext
       if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
         loi.recoveryWindowId = recoveryWindowId;
       }
-      String externalId = physicalOperator.getContainer().getExternalId();
-      if (externalId != null) {
-        loi.containerIds.add(externalId);
-        loi.hosts.add(physicalOperator.getContainer().host);
+      PTContainer container = physicalOperator.getContainer();
+      if (container != null) {
+        String externalId = container.getExternalId();
+        if (externalId != null) {
+          loi.containerIds.add(externalId);
+          loi.hosts.add(container.host);
+        }
       }
     }
     return loi;
