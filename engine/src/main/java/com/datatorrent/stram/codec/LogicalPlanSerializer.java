@@ -133,7 +133,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         String portName = portMeta.getPortName();
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "input");
-        portDetailMap.put("tupleType", portMeta.getTupleType());
+        portDetailMap.put("tupleType", portMeta.getTupleTypeString());
         portDetailMap.put("attributes", portAttributeMap);
         rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
         for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
@@ -148,7 +148,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         String portName = portMeta.getPortName();
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "output");
-        portDetailMap.put("tupleType", portMeta.getTupleType());
+        portDetailMap.put("tupleType", portMeta.getTupleTypeString());
         portDetailMap.put("attributes", portAttributeMap);
         rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
         for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {

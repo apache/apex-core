@@ -116,7 +116,7 @@ public class LogicalPlan implements Serializable, DAG
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
     private final AttributeMap attributes = new DefaultAttributeMap();
-    private Type tupleType;
+    private String tupleTypeString;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -170,9 +170,41 @@ public class LogicalPlan implements Serializable, DAG
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    /**
+     * Gets the tuple type.
+     * Note that this can be slow, because we need the port meta to be serializable
+     *
+     * @return the tuple type
+     */
     public Type getTupleType()
     {
-      return tupleType;
+      Operator operator = this.operatorMeta.operator;
+      for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass()) {
+        Field[] fields = c.getDeclaredFields();
+        for (Field field : fields) {
+          field.setAccessible(true);
+
+          try {
+            Object portObject = field.get(operator);
+
+            if (portObject instanceof OutputPort) {
+              if (field.getName().equals(this.fieldName)) {
+                return getPortType(field);
+              }
+            }
+          }
+          catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+      throw new RuntimeException("Tuple type cannot be determined.");
+    }
+
+
+    public String getTupleTypeString()
+    {
+      return tupleTypeString;
     }
 
   }
@@ -185,7 +217,7 @@ public class LogicalPlan implements Serializable, DAG
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes = new DefaultAttributeMap();
-    private Type tupleType;
+    private String tupleTypeString;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -250,11 +282,40 @@ public class LogicalPlan implements Serializable, DAG
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    public String getTupleTypeString()
+    {
+      return tupleTypeString;
+    }
+    /**
+     * Gets the tuple type.
+     * Note that this can be slow, because we need the port meta to be serializable
+     *
+     * @return the tuple type
+     */
     public Type getTupleType()
     {
-      return tupleType;
-    }
+      Operator operator = this.operatorMeta.operator;
+      for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass()) {
+        Field[] fields = c.getDeclaredFields();
+        for (Field field : fields) {
+          field.setAccessible(true);
 
+          try {
+            Object portObject = field.get(operator);
+
+            if (portObject instanceof InputPort) {
+              if (field.getName().equals(this.fieldName)) {
+                return getPortType(field);
+              }
+            }
+          }
+          catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+      throw new RuntimeException("Tuple type cannot be determined.");
+    }
   }
 
   /**
@@ -588,7 +649,7 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
-        metaPort.tupleType = getPortType(field);
+        metaPort.tupleTypeString = getPortType(field).toString();
         inPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
@@ -611,7 +672,7 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
-        metaPort.tupleType = getPortType(field);
+        metaPort.tupleTypeString = getPortType(field).toString();
         outPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
