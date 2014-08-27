@@ -766,7 +766,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     if (appAlias == null) {
       try {
         ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(appPath).getAnnotation(ApplicationAnnotation.class);
-        if (StringUtils.isNotBlank(an.name())) {
+        if (an != null && StringUtils.isNotBlank(an.name())) {
           appAlias = an.name();
         }
       }
