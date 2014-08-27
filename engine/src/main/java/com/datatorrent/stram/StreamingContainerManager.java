@@ -1045,7 +1045,7 @@ public class StreamingContainerManager implements PlanContext
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
               addCheckpoint(oper, (Checkpoint) stats.checkpoint);
-              status.checkpointStatsObj = stats.checkpointStatsObj;
+              status.checkpointStats = stats.checkpointStats;
               oper.failureCount = 0;
             }
           }
@@ -1746,12 +1746,12 @@ public class StreamingContainerManager implements PlanContext
       if (os.lastHeartbeat != null) {
         oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
-      if (os.checkpointStatsObj != null) {
+      if (os.checkpointStats != null) {
         if(oi.checkpointInfo == null){
           oi.checkpointInfo = new CheckpointInfo();
         }
-        oi.checkpointInfo.checkpointSize = os.checkpointStatsObj.checkpointSize;
-        oi.checkpointInfo.checkpointTime = os.checkpointStatsObj.checkpointTime;
+        oi.checkpointInfo.checkpointSize = os.checkpointStats.checkpointSize;
+        oi.checkpointInfo.checkpointTime = os.checkpointStats.checkpointTime;
       }
       for (PortStatus ps : os.inputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
