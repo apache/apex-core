@@ -1860,7 +1860,9 @@ public class StreamingContainerManager implements PlanContext
         oai.tuplesProcessedPSMA.addNumber(os.tuplesProcessedPSMA.get());
         oai.currentWindowId.addNumber(os.currentWindowId.get());
         oai.recoveryWindowId.addNumber(toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId));
-        oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
+        if (os.lastHeartbeat != null) {
+          oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
+        }
       }
     }
     if (plan.getCountersAggregatorFor(operator) != null) {
