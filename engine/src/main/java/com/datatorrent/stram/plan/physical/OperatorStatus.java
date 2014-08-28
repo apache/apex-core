@@ -51,7 +51,6 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   private final int operatorId;
   public final StatsRevisions statsRevs = new StatsRevisions();
   public OperatorHeartbeat lastHeartbeat;
-  public Stats.CheckpointStats checkpointStats;
   public final VersionedLong totalTuplesProcessed = statsRevs.newVersionedLong();
   public final VersionedLong totalTuplesEmitted = statsRevs.newVersionedLong();
   public final VersionedLong currentWindowId = statsRevs.newVersionedLong();
