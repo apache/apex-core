@@ -168,6 +168,34 @@ public class StreamingContainerAgent {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
           */
+          // Get a map of all input stream codecs connected to this port
+          for (PTOperator.PTInput input : out.sinks) {
+            PTOperator inputTarget = input.target;
+            OperatorDeployInfo.PortIdentifier inputPortIdentifier = new OperatorDeployInfo.PortIdentifier();
+            inputPortIdentifier.portName = input.portName;
+            inputPortIdentifier.operName = inputTarget.getName();
+            System.out.println("INPUTTT " + oper.getName() + " " + out.portName + " " + inputPortIdentifier.operName + " " + inputPortIdentifier.portName);
+            if (!portInfo.streamCodecs.containsKey(inputPortIdentifier)) {
+              InputPortMeta inputPortMeta = null;
+              if (!inputTarget.isUnifier()) {
+                inputPortMeta = getInputPortMeta(inputTarget.getOperatorMeta(), streamMeta);
+              } else {
+                List<PTOperator.PTOutput> outputs = inputTarget.getOutputs();
+                // Since it is unifier, getting the downstream input port it is connect to which is the first port it
+                // is connected to
+                if (outputs.size() > 0) {
+                  List<PTOperator.PTInput> sinks = outputs.get(0).sinks;
+                  if (sinks.size() > 0) {
+                    PTOperator.PTInput sink = sinks.get(0);
+                    StreamMeta inputStreamMeta = sink.logicalStream;
+                    inputPortMeta = getInputPortMeta(sink.target.getOperatorMeta(), inputStreamMeta);
+                  }
+                }
+              }
+              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+              portInfo.streamCodecs.put(inputPortIdentifier, streamCodecInfo);
+            }
+          }
         }
 
         ndi.outputs.add(portInfo);
@@ -190,6 +218,19 @@ public class StreamingContainerAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getName();
         inputInfo.portName = in.portName;
+        InputPortMeta inputPortMeta = getInputPortMeta(oper.getOperatorMeta(), streamMeta);
+
+        System.out.println("Setting port name " + oper.getName() + " " + inputInfo.portName);
+
+        /*
+        InputPortMeta inputPortMeta = in.inputPortMeta;
+        */
+
+        if (inputPortMeta != null) {
+          inputInfo.contextAttributes = inputPortMeta.getAttributes();
+        }
+
+        /*
         InputPortMeta inputPortMeta = null;
         for (Map.Entry<InputPortMeta, StreamMeta> e : oper.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
@@ -197,6 +238,7 @@ public class StreamingContainerAgent {
             inputInfo.contextAttributes = inputPortMeta.getAttributes();
           }
         }
+        */
 
         if (inputInfo.contextAttributes == null && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           inputInfo.contextAttributes = in.source.logicalStream.getSource().getAttributes();
@@ -238,20 +280,43 @@ public class StreamingContainerAgent {
           inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
         }
         */
-        StreamCodec<?> streamCodec = inputInfo.contextAttributes.get(PortContext.STREAM_CODEC);
-        if (streamCodec != null) {
-          inputInfo.streamCodec = streamCodec;
-        } else {
-          if (inputPortMeta != null) {
-            Class<? extends StreamCodec<?>> codecClass = inputPortMeta.getPortObject().getStreamCodec();
-            inputInfo.serDeClassName = codecClass.getName();
-          }
-        }
+        OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+        OperatorDeployInfo.PortIdentifier portIdentifier = new OperatorDeployInfo.PortIdentifier();
+        portIdentifier.operName = sourceOutput.source.getName();
+        portIdentifier.portName = sourceOutput.portName;
+        inputInfo.streamCodecs.put(portIdentifier, streamCodecInfo);
+
         ndi.inputs.add(inputInfo);
       }
     }
 
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
+  }
+
+  private InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta) {
+    InputPortMeta inputPortMeta = null;
+    Map<InputPortMeta, StreamMeta> inputStreams = operatorMeta.getInputStreams();
+    for (Map.Entry<InputPortMeta, StreamMeta> entry : inputStreams.entrySet()) {
+      if (entry.getValue() == streamMeta) {
+        inputPortMeta = entry.getKey();
+        break;
+      }
+    }
+    return inputPortMeta;
+  }
+
+  private OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta) {
+    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = new OperatorDeployInfo.StreamCodecInfo();
+    if (inputPortMeta != null) {
+      streamCodecInfo.streamCodec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
+      if (streamCodecInfo.streamCodec == null) {
+        Class<? extends StreamCodec<?>> serDeClass = inputPortMeta.getPortObject().getStreamCodec();
+        if (serDeClass != null) {
+          streamCodecInfo.serDeClassName = serDeClass.getName();
+        }
+      }
+    }
+    return streamCodecInfo;
   }
 
   /**
@@ -305,6 +370,7 @@ public class StreamingContainerAgent {
     LOG.debug("{} recovery checkpoint {}", oper, checkpoint);
     ndi.checkpoint = checkpoint;
     ndi.name = oper.getOperatorMeta().getName();
+    ndi.operName = oper.getName();
     ndi.id = oper.getId();
     // clone the map as StramChild assumes ownership and may add non-serializable attributes
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();

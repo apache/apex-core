@@ -12,7 +12,9 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,6 +42,7 @@ public class OperatorDeployInfo implements Serializable
      * Port name matching the operator's port declaration
      */
     public String portName;
+    public String origPortName;
     /**
      * Name of stream declared in logical topology
      */
@@ -62,12 +65,17 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
+    /*
     @Deprecated
     public String serDeClassName;
+    */
     /**
      * The SerDe object.
      */
+    /*
     public StreamCodec streamCodec;
+    */
+    public Map<PortIdentifier, StreamCodecInfo> streamCodecs = new HashMap<PortIdentifier, StreamCodecInfo>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -143,12 +151,17 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
+    /*
     @Deprecated
     public String serDeClassName;
+    */
     /**
      * The SerDe object.
      */
+    /*
     public StreamCodec streamCodec;
+    */
+    public Map<PortIdentifier, StreamCodecInfo> streamCodecs = new HashMap<PortIdentifier, StreamCodecInfo>();
     /**
      * Context attributes for output port
      */
@@ -191,6 +204,56 @@ public class OperatorDeployInfo implements Serializable
     private static final long serialVersionUID = 201208271958L;
   }
 
+  public static class StreamCodecInfo implements Serializable
+  {
+
+    /**
+     * Class name of tuple SerDe (buffer server stream only).
+     */
+    @Deprecated
+    public String serDeClassName;
+
+    /**
+     * The SerDe object.
+     */
+    public StreamCodec<?> streamCodec;
+  }
+
+  public static class PortIdentifier implements Serializable
+  {
+    /*
+     * The operator name
+     */
+    public String operName;
+
+    /**
+     * The port name
+     */
+    public String portName;
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      PortIdentifier portIdentifier = (PortIdentifier) o;
+
+      if (!operName.equals(portIdentifier.operName)) return false;
+      if (!portName.equals(portIdentifier.portName)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = operName.hashCode();
+      result = 31 * result + portName.hashCode();
+      return result;
+    }
+  }
+
   /**
    * Unique id in the DAG, assigned by the master and immutable (restart/recovery)
    */
@@ -204,6 +267,7 @@ public class OperatorDeployInfo implements Serializable
    * Logical operator name from DAG.
    */
   public String name;
+  public String operName;
   /**
    * The checkpoint window identifier.
    * Used to restore state and incoming streams as part of recovery.

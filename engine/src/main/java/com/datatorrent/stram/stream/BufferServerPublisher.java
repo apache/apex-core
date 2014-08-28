@@ -3,15 +3,7 @@
  */
 package com.datatorrent.stram.stream;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicLong;
-import static java.lang.Thread.sleep;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.datatorrent.api.StreamCodec;
-
 import com.datatorrent.bufferserver.client.Publisher;
 import com.datatorrent.bufferserver.packet.*;
 import com.datatorrent.bufferserver.util.Codec;
@@ -21,6 +13,13 @@ import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static java.lang.Thread.sleep;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>
@@ -130,6 +129,8 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
     InetSocketAddress address = context.getBufferServerAddress();
     eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
+
+    System.out.println("Activating publisher");
 
     logger.debug("Registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), Codec.getStringWindowId(context.getFinishedWindowId()), context.getBufferServerAddress()});
     serde = context.get(StreamContext.CODEC);
