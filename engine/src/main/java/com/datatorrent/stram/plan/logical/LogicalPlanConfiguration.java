@@ -977,14 +977,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param conf
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
-    String appAlias = getAppAlias(name);
-
-    List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
-
-    // set application level attributes first to make them available to populateDAG
-    setApplicationConfiguration(dag, appConfs);
-
+    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
+    String connectAddress = conf.get(DT_PREFIX + DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
+    dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
     app.populateDAG(dag, conf);
+
+    String appAlias = getAppAlias(name);
+    List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
+    setApplicationConfiguration(dag, appConfs);
     if (dag.getAttributes().get(DAGContext.APPLICATION_NAME) == null) {
       dag.setAttribute(DAGContext.APPLICATION_NAME, appAlias == null ? name : appAlias);
     }
@@ -1169,16 +1169,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs) {
     // Make the gateway address available as an application attribute
-    for (Conf appConf : appConfs) {
-      Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
-      if (gwConf != null) {
-        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_LISTEN_ADDRESS_PROP);
-        if (gatewayAddress != null) {
-          dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, gatewayAddress);
-          break;
-        }
-      }
-    }
+//    for (Conf appConf : appConfs) {
+//      Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
+//      if (gwConf != null) {
+//        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_LISTEN_ADDRESS_PROP);
+//        if (gatewayAddress != null) {
+//          dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, gatewayAddress);
+//          break;
+//        }
+//      }
+//    }
     setAttributes(DAGContext.class, appConfs, dag.getAttributes());
   }
 
