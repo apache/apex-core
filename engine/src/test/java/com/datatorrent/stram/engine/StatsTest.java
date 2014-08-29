@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
@@ -44,10 +45,10 @@ public class StatsTest
       this.windowId = windowId;
     }
 
-
     public static class TestInputStatsListener implements StatsListener, Serializable
     {
       private static final long serialVersionUID = 1L;
+
       @Override
       public Response processStats(BatchedOperatorStats stats)
       {
@@ -58,10 +59,10 @@ public class StatsTest
 
     }
 
-
   }
 
-  public static class TestCollector extends GenericTestOperator {
+  public static class TestCollector extends GenericTestOperator
+  {
     private static List<OperatorStats> outputOperatorStats = new ArrayList<OperatorStats>();
     transient long windowId;
 
@@ -74,6 +75,7 @@ public class StatsTest
     public static class TestOutputStatsListener implements StatsListener, Serializable
     {
       private static final long serialVersionUID = 1L;
+
       @Override
       public Response processStats(BatchedOperatorStats stats)
       {
@@ -105,7 +107,7 @@ public class StatsTest
     testOper.setMaxTuples(0);
 
     TestCollector collector = dag.addOperator("Collector", new TestCollector());
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[] {new TestOutputStatsListener()}));
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestOutputStatsListener()}));
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(null);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
@@ -126,6 +128,7 @@ public class StatsTest
           if (inputPortStats.tupleCount > 0) {
             inputPortTupleCount += inputPortStats.tupleCount;
             Assert.assertTrue("Validate input port buffer server bytes", inputPortStats.bufferServerBytes > 0);
+            Assert.assertTrue("Validate input port queue size", inputPortStats.queueSize > 0);
           }
         }
       }
@@ -141,6 +144,54 @@ public class StatsTest
 
       Assert.assertEquals("Tuple Count emitted", 2, outputPortTupleCount);
       Assert.assertEquals("Tuple Count processed", 2, inputPortTupleCount);
+    }
+    finally {
+      lc.shutdown();
+    }
+  }
+
+  /**
+   * Verify queue size.
+   *
+   * @throws Exception
+   */
+  @Test
+  @SuppressWarnings("SleepWhileInLoop")
+  public void testQueueSizeForInlineOperators() throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
+
+    TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestInputStatsListener()}));
+    testOper.addTuple("test tuple 1");
+    testOper.addTuple("test tuple 2");
+    testOper.setMaxTuples(0);
+
+    TestCollector collector = dag.addOperator("Collector", new TestCollector());
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestOutputStatsListener()}));
+    dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(DAG.Locality.THREAD_LOCAL);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.runAsync();
+
+    long startTms = System.currentTimeMillis();
+    while ((TestCollector.outputOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+      Thread.sleep(300);
+      LOG.debug("Waiting for stats");
+    }
+
+    try {
+      int inputPortTupleCount = 0;
+      int outputPortTupleCount = 0;
+
+      for (OperatorStats operatorStats : TestCollector.outputOperatorStats) {
+        for (PortStats inputPortStats : operatorStats.inputPorts) {
+          if (inputPortStats.tupleCount > 0) {
+            Assert.assertTrue("Validate input port queue size", inputPortStats.queueSize == 1);
+          }
+        }
+      }
     }
     finally {
       lc.shutdown();

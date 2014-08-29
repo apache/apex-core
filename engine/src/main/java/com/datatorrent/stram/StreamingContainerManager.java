@@ -1045,7 +1045,6 @@ public class StreamingContainerManager implements PlanContext
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
               addCheckpoint(oper, (Checkpoint) stats.checkpoint);
-              status.checkpointStatsObj = stats.checkpointStatsObj;
               oper.failureCount = 0;
             }
           }
@@ -1746,13 +1745,6 @@ public class StreamingContainerManager implements PlanContext
       if (os.lastHeartbeat != null) {
         oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
-      if (os.checkpointStatsObj != null) {
-        if(oi.checkpointInfo == null){
-          oi.checkpointInfo = new CheckpointInfo();
-        }
-        oi.checkpointInfo.checkpointSize = os.checkpointStatsObj.checkpointSize;
-        oi.checkpointInfo.checkpointTime = os.checkpointStatsObj.checkpointTime;
-      }
       for (PortStatus ps : os.inputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
         pinfo.name = ps.portName;
@@ -1829,10 +1821,13 @@ public class StreamingContainerManager implements PlanContext
       if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
         loi.recoveryWindowId = recoveryWindowId;
       }
-      String externalId = physicalOperator.getContainer().getExternalId();
-      if (externalId != null) {
-        loi.containerIds.add(externalId);
-        loi.hosts.add(physicalOperator.getContainer().host);
+      PTContainer container = physicalOperator.getContainer();
+      if (container != null) {
+        String externalId = container.getExternalId();
+        if (externalId != null) {
+          loi.containerIds.add(externalId);
+          loi.hosts.add(container.host);
+        }
       }
     }
     return loi;
@@ -1857,7 +1852,9 @@ public class StreamingContainerManager implements PlanContext
         oai.tuplesProcessedPSMA.addNumber(os.tuplesProcessedPSMA.get());
         oai.currentWindowId.addNumber(os.currentWindowId.get());
         oai.recoveryWindowId.addNumber(toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId));
-        oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
+        if (os.lastHeartbeat != null) {
+          oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
+        }
       }
     }
     if (plan.getCountersAggregatorFor(operator) != null) {
