@@ -1021,9 +1021,11 @@ public class StreamingContainer extends YarnContainerMain
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
           System.out.println("NDI NAME " + ndi.type + " " + ndi.operName + " " + ndi.name + " " + nidi.portName + " " + nidi.origPortName);
-          String portName = (nidi.origPortName == null) ? nidi.portName : nidi.origPortName;
-          String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(ndi.operName).concat(Component.CONCAT_SEPARATOR)
-                  .concat(portName);
+          //String portName = (nidi.origPortName == null) ? nidi.portName : nidi.origPortName;
+          //String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(ndi.operName).concat(Component.CONCAT_SEPARATOR)
+          //        .concat(portName);
+          String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(portIdentifier.operName).concat(Component.CONCAT_SEPARATOR)
+                  .concat(portIdentifier.portName);
           System.out.println("Subscribe connIdentifier " + connIdentifier);
 
           int queueCapacity = getValue(PortContext.QUEUE_CAPACITY, nidi, ndi);

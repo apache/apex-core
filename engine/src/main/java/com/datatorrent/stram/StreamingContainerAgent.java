@@ -170,28 +170,12 @@ public class StreamingContainerAgent {
           */
           // Get a map of all input stream codecs connected to this port
           for (PTOperator.PTInput input : out.sinks) {
-            PTOperator inputTarget = input.target;
+            InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
             OperatorDeployInfo.PortIdentifier inputPortIdentifier = new OperatorDeployInfo.PortIdentifier();
-            inputPortIdentifier.portName = input.portName;
-            inputPortIdentifier.operName = inputTarget.getName();
-            System.out.println("INPUTTT " + oper.getName() + " " + out.portName + " " + inputPortIdentifier.operName + " " + inputPortIdentifier.portName);
+            inputPortIdentifier.portName = inputPortMeta.getPortName();
+            inputPortIdentifier.operName = inputPortMeta.getOperatorWrapper().getName();
+            System.out.println("OUTPUTT " + oper.getName() + " " + out.portName + " " + inputPortIdentifier.operName + " " + inputPortIdentifier.portName);
             if (!portInfo.streamCodecs.containsKey(inputPortIdentifier)) {
-              InputPortMeta inputPortMeta = null;
-              if (!inputTarget.isUnifier()) {
-                inputPortMeta = getInputPortMeta(inputTarget.getOperatorMeta(), streamMeta);
-              } else {
-                List<PTOperator.PTOutput> outputs = inputTarget.getOutputs();
-                // Since it is unifier, getting the downstream input port it is connect to which is the first port it
-                // is connected to
-                if (outputs.size() > 0) {
-                  List<PTOperator.PTInput> sinks = outputs.get(0).sinks;
-                  if (sinks.size() > 0) {
-                    PTOperator.PTInput sink = sinks.get(0);
-                    StreamMeta inputStreamMeta = sink.logicalStream;
-                    inputPortMeta = getInputPortMeta(sink.target.getOperatorMeta(), inputStreamMeta);
-                  }
-                }
-              }
               OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
               portInfo.streamCodecs.put(inputPortIdentifier, streamCodecInfo);
             }
@@ -220,7 +204,7 @@ public class StreamingContainerAgent {
         inputInfo.portName = in.portName;
         InputPortMeta inputPortMeta = getInputPortMeta(oper.getOperatorMeta(), streamMeta);
 
-        System.out.println("Setting port name " + oper.getName() + " " + inputInfo.portName);
+        //System.out.println("Setting port name " + oper.getName() + " " + inputInfo.portName);
 
         /*
         InputPortMeta inputPortMeta = in.inputPortMeta;
@@ -281,9 +265,11 @@ public class StreamingContainerAgent {
         }
         */
         OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+        InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
         OperatorDeployInfo.PortIdentifier portIdentifier = new OperatorDeployInfo.PortIdentifier();
-        portIdentifier.operName = sourceOutput.source.getName();
-        portIdentifier.portName = sourceOutput.portName;
+        portIdentifier.portName = idInputPortMeta.getPortName();
+        portIdentifier.operName = idInputPortMeta.getOperatorWrapper().getName();
+        System.out.println("INPUTTT " + oper.getName() + " " + in.portName + " " + portIdentifier.operName + " " + portIdentifier.portName);
         inputInfo.streamCodecs.put(portIdentifier, streamCodecInfo);
 
         ndi.inputs.add(inputInfo);
@@ -303,6 +289,37 @@ public class StreamingContainerAgent {
       }
     }
     return inputPortMeta;
+  }
+
+  private InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input) {
+    InputPortMeta inputPortMeta = null;
+    PTOperator inputTarget = input.target;
+    StreamMeta streamMeta = input.logicalStream;
+    if (!inputTarget.isUnifier()) {
+      inputPortMeta = getInputPortMeta(inputTarget.getOperatorMeta(), streamMeta);
+    } else {
+      PTOperator destTarget = getDestOperator(inputTarget);
+      inputPortMeta = getInputPortMeta(destTarget.getOperatorMeta(), streamMeta);
+    }
+    return inputPortMeta;
+  }
+
+  private PTOperator getDestOperator(PTOperator operator) {
+    while ((operator != null) && operator.isUnifier()) {
+      PTOperator noperator = null;
+      List<PTOperator.PTOutput> outputs = operator.getOutputs();
+      // Since it is unifier, getting the downstream input port it is connect to which is the first port it
+      // is connected to
+      if (outputs.size() > 0) {
+        List<PTOperator.PTInput> sinks = outputs.get(0).sinks;
+        if (sinks.size() > 0) {
+          PTOperator.PTInput sink = sinks.get(0);
+          noperator = sink.target;
+        }
+      }
+      operator = noperator;
+    }
+    return operator;
   }
 
   private OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta) {
