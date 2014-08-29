@@ -73,7 +73,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int applicationWindowCount;
   public int checkpointWindowCount;
   protected int controlTupleCount;
-  protected Stats.CheckpointStatsObj checkpointStatsObj;
   public final OperatorContext context;
 
   public Node(OPERATOR operator, OperatorContext context)
@@ -318,7 +317,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     if (checkpoint != null) {
       stats.checkpoint = checkpoint;
-      stats.checkpointStatsObj = checkpointStatsObj;
       checkpoint = null;
     }
 
@@ -354,9 +352,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       if (ba != null) {
         try {
           ba.save(operator, id, windowId);
-          if (ba instanceof Stats.CheckpointStats) {
-            checkpointStatsObj = ((Stats.CheckpointStats) ba).getCheckpointStats();
-          }
         }
         catch (IOException ie) {
           try {

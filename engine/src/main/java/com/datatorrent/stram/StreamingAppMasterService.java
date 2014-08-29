@@ -395,7 +395,10 @@ public class StreamingAppMasterService extends CompositeService
     @Override
     public boolean isGatewayConnected()
     {
-      return StreamingAppMasterService.this.dnmgr.isGatewayConnected();
+      if (StreamingAppMasterService.this.dnmgr != null) {
+        return StreamingAppMasterService.this.dnmgr.isGatewayConnected();
+      }
+      return false;
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")

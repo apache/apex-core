@@ -229,7 +229,7 @@ public class TupleRecorderTest
 
   private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op, int numPorts) throws Exception
   {
-    localCluster.getStreamingContainerManager().startRecording(op.getId(), null);
+    localCluster.getStreamingContainerManager().startRecording(op.getId(), null, 0);
 
     WaitCondition c = new WaitCondition()
     {

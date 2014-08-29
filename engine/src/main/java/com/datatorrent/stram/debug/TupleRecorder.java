@@ -50,6 +50,8 @@ public class TupleRecorder
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private String recordingNameTopic;
+  private long numWindows = Long.MAX_VALUE; // number of windows to record
+  private Runnable stopProcedure; // stop procedure to execute
   private final FSPartFileCollection storage = new FSPartFileCollection()
   {
     @Override
@@ -347,6 +349,9 @@ public class TupleRecorder
         logger.error("Exception caught in endWindow", ex);
       }
     }
+    if (stopProcedure != null && --numWindows <= 0) {
+      stopProcedure.run();
+    }
   }
 
   public void writeTuple(Object obj, String port)
@@ -427,6 +432,12 @@ public class TupleRecorder
     catch (Exception ex) {
       logger.warn("Error publishing tuple data", ex);
     }
+  }
+
+  public void setNumWindows(long numWindows, Runnable stopProcedure)
+  {
+    this.numWindows = numWindows;
+    this.stopProcedure = stopProcedure;
   }
 
   public class RecorderSink implements Sink<Object>

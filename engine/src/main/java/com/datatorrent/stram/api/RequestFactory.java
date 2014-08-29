@@ -68,7 +68,8 @@ public class RequestFactory
           @Override
           public void execute(Operator operator, int id, long windowId) throws IOException
           {
-            final Map<String, String> properties = Collections.singletonMap(snr.setPropertyKey, snr.setPropertyValue);
+            StramToNodeSetPropertyRequest snspr = (StramToNodeSetPropertyRequest)snr;
+            final Map<String, String> properties = Collections.singletonMap(snspr.getPropertyKey(), snspr.getPropertyValue());
             logger.info("Setting property {} on operator {}", properties, operator);
             LogicalPlanConfiguration.setOperatorProperties(operator, properties);
           }

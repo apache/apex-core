@@ -328,7 +328,7 @@ public class StreamingContainerManager implements PlanContext
 
   public boolean isGatewayConnected()
   {
-    return wsClient.isConnectionOpen();
+    return wsClient != null && wsClient.isConnectionOpen();
   }
 
   /**
@@ -1045,7 +1045,6 @@ public class StreamingContainerManager implements PlanContext
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
               addCheckpoint(oper, (Checkpoint) stats.checkpoint);
-              status.checkpointStatsObj = stats.checkpointStatsObj;
               oper.failureCount = 0;
             }
           }
@@ -1746,13 +1745,6 @@ public class StreamingContainerManager implements PlanContext
       if (os.lastHeartbeat != null) {
         oi.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
       }
-      if (os.checkpointStatsObj != null) {
-        if(oi.checkpointInfo == null){
-          oi.checkpointInfo = new CheckpointInfo();
-        }
-        oi.checkpointInfo.checkpointSize = os.checkpointStatsObj.checkpointSize;
-        oi.checkpointInfo.checkpointTime = os.checkpointStatsObj.checkpointTime;
-      }
       for (PortStatus ps : os.inputPortStatusList.values()) {
         PortInfo pinfo = new PortInfo();
         pinfo.name = ps.portName;
@@ -1829,10 +1821,13 @@ public class StreamingContainerManager implements PlanContext
       if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
         loi.recoveryWindowId = recoveryWindowId;
       }
-      String externalId = physicalOperator.getContainer().getExternalId();
-      if (externalId != null) {
-        loi.containerIds.add(externalId);
-        loi.hosts.add(physicalOperator.getContainer().host);
+      PTContainer container = physicalOperator.getContainer();
+      if (container != null) {
+        String externalId = container.getExternalId();
+        if (externalId != null) {
+          loi.containerIds.add(externalId);
+          loi.hosts.add(container.host);
+        }
       }
     }
     return loi;
@@ -1857,7 +1852,9 @@ public class StreamingContainerManager implements PlanContext
         oai.tuplesProcessedPSMA.addNumber(os.tuplesProcessedPSMA.get());
         oai.currentWindowId.addNumber(os.currentWindowId.get());
         oai.recoveryWindowId.addNumber(toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId));
-        oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
+        if (os.lastHeartbeat != null) {
+          oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
+        }
       }
     }
     if (plan.getCountersAggregatorFor(operator) != null) {
@@ -1944,7 +1941,10 @@ public class StreamingContainerManager implements PlanContext
       if (input == null) {
         return false;
       }
-      return input.getRequestType() == StramToNodeRequest.RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
+      if (input instanceof StramToNodeSetPropertyRequest) {
+        return ((StramToNodeSetPropertyRequest)input).getPropertyKey().equals(propertyKey);
+      }
+      return false;
     }
 
   }
@@ -1978,15 +1978,15 @@ public class StreamingContainerManager implements PlanContext
     throw new NotFoundException("Operator ID " + operatorId + " not found");
   }
 
-  public void startRecording(int operId, String portName)
+  public void startRecording(int operId, String portName, long numWindows)
   {
     StreamingContainerAgent sca = getContainerAgentFromOperatorId(operId);
-    StramToNodeRequest request = new StramToNodeRequest();
+    StramToNodeStartRecordingRequest request = new StramToNodeStartRecordingRequest();
     request.setOperatorId(operId);
     if (!StringUtils.isBlank(portName)) {
       request.setPortName(portName);
     }
-    request.setRequestType(StramToNodeRequest.RequestType.START_RECORDING);
+    request.setNumWindows(numWindows);
     sca.addOperatorRequest(request);
     PTOperator operator = plan.getAllOperators().get(operId);
     if (operator != null) {
@@ -2040,11 +2040,10 @@ public class StreamingContainerManager implements PlanContext
     List<PTOperator> operators = plan.getOperators(logicalOperator);
     for (PTOperator o : operators) {
       StreamingContainerAgent sca = getContainerAgent(o.getContainer().getExternalId());
-      StramToNodeRequest request = new StramToNodeRequest();
+      StramToNodeSetPropertyRequest request = new StramToNodeSetPropertyRequest();
       request.setOperatorId(o.getId());
-      request.setPropertyKey = propertyName;
-      request.setPropertyValue = propertyValue;
-      request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
+      request.setPropertyKey(propertyName);
+      request.setPropertyValue(propertyValue);
       sca.addOperatorRequest(request);
       // re-apply to checkpointed state on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
@@ -2070,11 +2069,10 @@ public class StreamingContainerManager implements PlanContext
 
     String operatorName = o.getName();
     StreamingContainerAgent sca = getContainerAgent(o.getContainer().getExternalId());
-    StramToNodeRequest request = new StramToNodeRequest();
+    StramToNodeSetPropertyRequest request = new StramToNodeSetPropertyRequest();
     request.setOperatorId(operatorId);
-    request.setPropertyKey = propertyName;
-    request.setPropertyValue = propertyValue;
-    request.setRequestType(StramToNodeRequest.RequestType.SET_PROPERTY);
+    request.setPropertyKey(propertyName);
+    request.setPropertyValue(propertyValue);
     sca.addOperatorRequest(request);
     updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
 
@@ -2117,8 +2115,9 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     for (StramToNodeRequest existingRequest : o.deployRequests) {
-      if (operatorId == existingRequest.operatorId) {
-        m.put(existingRequest.setPropertyKey, existingRequest.setPropertyValue);
+      if (existingRequest instanceof StramToNodeSetPropertyRequest && operatorId == existingRequest.operatorId) {
+        StramToNodeSetPropertyRequest r = (StramToNodeSetPropertyRequest)existingRequest;
+        m.put(r.getPropertyKey(), r.getPropertyValue());
       }
     }
     return m;

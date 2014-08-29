@@ -143,8 +143,8 @@ public class FSEventRecorder implements EventRecorder
       eventInfo.id = event.getId();
       eventInfo.timestamp = event.getTimestamp();
       eventInfo.type = event.getType();
-      eventInfo.data.remove("id");
       eventInfo.data = data;
+      eventInfo.data.remove("id");
       wsClient.publish(pubSubTopic, eventInfo);
     }
   }

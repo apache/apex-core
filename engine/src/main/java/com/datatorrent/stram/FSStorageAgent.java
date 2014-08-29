@@ -18,20 +18,18 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.permission.FsPermission;
 
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.stram.util.FSUtil;
-public class FSStorageAgent implements StorageAgent, Stats.CheckpointStats, Serializable
+public class FSStorageAgent implements StorageAgent, Serializable
 {
   private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
   private final transient FileSystem fs;
   private static final transient Kryo kryo;
-  private transient Stats.CheckpointStatsObj checkpointStatsObj;
 
   static {
     kryo = new Kryo();
@@ -53,7 +51,6 @@ public class FSStorageAgent implements StorageAgent, Stats.CheckpointStats, Seri
       if (FSUtil.mkdirs(fs, lPath)) {
         fs.setWorkingDirectory(lPath);
       }
-      checkpointStatsObj = new Stats.CheckpointStatsObj();
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -79,23 +76,10 @@ public class FSStorageAgent implements StorageAgent, Stats.CheckpointStats, Seri
 
     FSDataOutputStream stream = fs.create(lPath);
     try {
-      saveHelper(stream, object);
+      store(stream, object);
     }
     finally {
       stream.close();
-    }
-  }
-
-  private void saveHelper(OutputStream stream, Object operator)
-  {
-    synchronized (kryo) {
-      checkpointStatsObj.checkpointTime = System.currentTimeMillis();
-      Output output = new Output(4096, Integer.MAX_VALUE);
-      output.setOutputStream(stream);
-      kryo.writeClassAndObject(output, operator);
-      output.flush();
-      checkpointStatsObj.checkpointTime = System.currentTimeMillis() - checkpointStatsObj.checkpointTime;
-      checkpointStatsObj.checkpointSize = output.total();
     }
   }
 
@@ -169,12 +153,6 @@ public class FSStorageAgent implements StorageAgent, Stats.CheckpointStats, Seri
   public Object readResolve() throws ObjectStreamException
   {
     return new FSStorageAgent(this.path, null);
-  }
-
-  @Override
-  public Stats.CheckpointStatsObj getCheckpointStats()
-  {
-    return checkpointStatsObj;
   }
 
   private static final long serialVersionUID = 201404031201L;

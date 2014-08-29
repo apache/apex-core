@@ -240,10 +240,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public String portName;
     public boolean deleted;
 
-    public String setPropertyKey;
-    public String setPropertyValue;
-
-
     public boolean isDeleted()
     {
       return deleted;

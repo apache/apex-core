@@ -179,8 +179,11 @@ public class StreamMapping implements java.io.Serializable
               finalUnifier = createUnifier();
             }
             setInput(doperEntry.first, doperEntry.second, finalUnifier, null);
-            for (PTOutput out : unifierSources) {
-              addInput(this.finalUnifier, out, null);
+            if (finalUnifier.inputs.isEmpty()) {
+              // set unifier inputs once, regardless how many downstream operators there are
+              for (PTOutput out : unifierSources) {
+                addInput(this.finalUnifier, out, null);
+              }
             }
           } else {
             // MxN partitioning: unifier per downstream partition
