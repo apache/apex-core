@@ -658,7 +658,6 @@ public class PhysicalPlan implements Serializable
       }
       LOG.debug("update stream mapping for {} {}", opm.getKey().getOperatorWrapper(), opm.getKey().getPortName());
       ug.setSources(m.partitions);
-      ug.redoMapping();
     }
 
     for (Map.Entry<InputPortMeta, StreamMeta> ipm : m.logicalOperator.getInputStreams().entrySet()) {
@@ -686,7 +685,6 @@ public class PhysicalPlan implements Serializable
         }
         LOG.debug("update upstream stream mapping for {} {}", sourceMapping.logicalOperator, ipm.getValue().getSource().getPortName());
         ug.setSources(sourceMapping.partitions);
-        ug.redoMapping();
       }
     }
 
