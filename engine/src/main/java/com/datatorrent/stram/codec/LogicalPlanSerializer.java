@@ -119,8 +119,9 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       try {
         str = new ObjectMapperString(propertyObjectMapper.writeValueAsString(operatorMeta.getOperator()));
       }
-      catch (IOException ex) {
-        throw new RuntimeException(ex);
+      catch (Throwable ex) {
+        LOG.error("Got exception when trying to get properties for operator {}", operatorMeta.getName(), ex);
+        str = null;
       }
       operatorDetailMap.put("properties", str);
 
