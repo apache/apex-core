@@ -32,17 +32,6 @@ public interface Stats extends Serializable
     long getWindowId();
   }
 
-  public static class CheckpointStats implements Serializable
-  {
-    public long checkpointSize;
-    public long checkpointTime;
-
-    public String toString()
-    {
-      return "CheckpointStats{" + "checkpointSize=" + checkpointSize + ", checkpointTime=" + checkpointTime + '}';
-    }
-  }
-
   public static class OperatorStats implements Stats
   {
     public long windowId;
@@ -51,7 +40,7 @@ public interface Stats extends Serializable
     public ArrayList<PortStats> outputPorts;
     public long cpuTimeUsed;
     public Object counters;
-    public CheckpointStats checkpointStats;
+
     /**
      * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
      * INVALID_TIME_MILLIS otherwise.
@@ -88,7 +77,7 @@ public interface Stats extends Serializable
     @Override
     public String toString()
     {
-      return "OperatorStats{" + "windowId=" + windowId + ", checkpointedWindowId=" + checkpoint + ", inputPorts=" + inputPorts + ", outputPorts=" + outputPorts + ", cpuTimeUsed=" + cpuTimeUsed + checkpointStats != null ? ", " + checkpointStats.toString() : "" + '}';
+      return "OperatorStats{" + "windowId=" + windowId + ", checkpointedWindowId=" + checkpoint + ", inputPorts=" + inputPorts + ", outputPorts=" + outputPorts + ", cpuTimeUsed=" + cpuTimeUsed + '}';
     }
 
     private static final long serialVersionUID = 201309131905L;
