@@ -70,7 +70,7 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
 import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -505,7 +505,7 @@ public class StreamingAppMasterService extends CompositeService
     String licenseBase64 = dag.getValue(LogicalPlan.LICENSE);
     if (licenseBase64 != null) {
       byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
-      String licenseId = License.getLicenseID(licenseBytes);
+      String licenseId = LicenseAuthority.getLicenseID(licenseBytes);
       this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), licenseId);
       addService(this.licenseClient);
     }
