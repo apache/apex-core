@@ -264,8 +264,9 @@ public class StreamingContainerAgent {
           inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
         }
         */
-        OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+        //OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
         InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
+        OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(idInputPortMeta);
         OperatorDeployInfo.PortIdentifier portIdentifier = new OperatorDeployInfo.PortIdentifier();
         portIdentifier.portName = idInputPortMeta.getPortName();
         portIdentifier.operName = idInputPortMeta.getOperatorWrapper().getName();

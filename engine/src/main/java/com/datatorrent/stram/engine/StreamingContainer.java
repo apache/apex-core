@@ -889,9 +889,15 @@ public class StreamingContainer extends YarnContainerMain
            */
           Map.Entry<OperatorDeployInfo.PortIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = streamCodecs.entrySet().iterator().next();
           StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
+          OperatorDeployInfo.PortIdentifier portIdentifier = entry.getKey();
+          String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(portIdentifier.operName)
+                  .concat(Component.CONCAT_SEPARATOR).concat(portIdentifier.portName);
+          System.out.println("Publisher connIndentifier single " + nodi.bufferServerHost + ":" + nodi.bufferServerPort + " " + connIdentifier);
+
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
                   //deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
-                  deployBufferServerPublisher(sourceIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+                  //deployBufferServerPublisher(sourceIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+                  deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
           newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
         } else {
@@ -1021,7 +1027,7 @@ public class StreamingContainer extends YarnContainerMain
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
-          System.out.println("NDI NAME " +  " " + ndi.id + " " + ndi.type + " " + ndi.operName + " " + ndi.name + " " + nidi.portName + " " + nidi.origPortName);
+          System.out.println("NDI NAME " + ndi.id + " " + ndi.type + " " + ndi.operName + " " + ndi.name + " " + nidi.portName + " " + nidi.origPortName);
           //String portName = (nidi.origPortName == null) ? nidi.portName : nidi.origPortName;
           //String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(ndi.operName).concat(Component.CONCAT_SEPARATOR)
           //        .concat(portName);
@@ -1075,6 +1081,14 @@ public class StreamingContainer extends YarnContainerMain
             context.setSourceId(connIdentifier);
             context.setSinkId(sinkIdentifier);
             context.setFinishedWindowId(checkpoint.windowId);
+
+            /*
+            try {
+              Thread.sleep(5000);
+            } catch (InterruptedException ie) {
+              ie.printStackTrace();
+            }
+            */
 
             /*
             BufferServerSubscriber subscriber = fastPublisherSubscriber
