@@ -118,9 +118,9 @@
             <!-- automatically creates the classpath using all project dependencies,
                  also adding the project build directory -->
             <classpath/>
-            <argument>com.datatorrent.stram.license.DefaultLicense</argument>
+            <argument>com.datatorrent.stram.license.LicenseAuthority</argument>
             <argument>-propertiesFile</argument>
-            <argument>${basedir}/src/main/license/default_license_properties</argument>
+            <argument>${basedir}/src/main/license/defaultlicenseproperties</argument>
             <argument>-outputFile</argument>
             <argument>${project.build.directory}/classes/com/datatorrent/stram/license/default_license</argument>
           </arguments>

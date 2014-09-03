@@ -292,7 +292,7 @@ public class StramWebServices
         classNames.put(j);
       }
 
-      result.put("classes", classNames);
+      result.put("operatorClasses", classNames);
     }
     catch (ClassNotFoundException ex) {
       throw new NotFoundException();
@@ -791,6 +791,7 @@ public class StramWebServices
   @PUT
   @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
+  @Deprecated
   public Object createAlert(String content, @PathParam("name") String name) throws JSONException, IOException
   {
     return dagManager.getAlertsManager().createAlert(name, content);
@@ -799,6 +800,7 @@ public class StramWebServices
   @DELETE
   @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
+  @Deprecated
   public Object deleteAlert(@PathParam("name") String name) throws JSONException, IOException
   {
     return dagManager.getAlertsManager().deleteAlert(name);
@@ -807,6 +809,7 @@ public class StramWebServices
   @GET
   @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
+  @Deprecated
   public Object getAlert(@PathParam("name") String name) throws JSONException, IOException
   {
     JSONObject alert = dagManager.getAlertsManager().getAlert(name);
@@ -837,7 +840,7 @@ public class StramWebServices
    for (Class<? extends Operator> clazz : operatorClasses) {
    jsonArray.put(clazz.getName());
    }
-   response.put("classes", jsonArray);
+   response.put("operatorClasses", jsonArray);
    return response;
    }
    */
