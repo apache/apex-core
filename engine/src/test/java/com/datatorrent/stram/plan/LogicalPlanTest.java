@@ -684,6 +684,7 @@ public class LogicalPlanTest {
     public transient final DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
   }
 
+  /*
   @Test
   public void testStreamCodec() throws Exception {
     LogicalPlan dag = new LogicalPlan();
@@ -735,5 +736,6 @@ public class LogicalPlanTest {
     dag.validate();
     //Assert.assertEquals("Stream codec not set", stream3.getStreamCodec(), codec2);
   }
+  */
 
 }

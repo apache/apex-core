@@ -299,26 +299,25 @@ public class StreamingContainerAgent {
     if (!inputTarget.isUnifier()) {
       inputPortMeta = getInputPortMeta(inputTarget.getOperatorMeta(), streamMeta);
     } else {
-      PTOperator destTarget = getDestOperator(inputTarget);
+      PTOperator destTarget = getIdentifyingOperator(inputTarget);
       inputPortMeta = getInputPortMeta(destTarget.getOperatorMeta(), streamMeta);
     }
     return inputPortMeta;
   }
 
-  private PTOperator getDestOperator(PTOperator operator) {
+  private PTOperator getIdentifyingOperator(PTOperator operator) {
     while ((operator != null) && operator.isUnifier()) {
-      PTOperator noperator = null;
+      PTOperator idOperator = null;
       List<PTOperator.PTOutput> outputs = operator.getOutputs();
-      // Since it is unifier, getting the downstream input port it is connect to which is the first port it
-      // is connected to
+      // Since it is a unifier, getting the downstream operator it is connected to which is on the first port
       if (outputs.size() > 0) {
         List<PTOperator.PTInput> sinks = outputs.get(0).sinks;
         if (sinks.size() > 0) {
           PTOperator.PTInput sink = sinks.get(0);
-          noperator = sink.target;
+          idOperator = sink.target;
         }
       }
-      operator = noperator;
+      operator = idOperator;
     }
     return operator;
   }
@@ -388,7 +387,6 @@ public class StreamingContainerAgent {
     LOG.debug("{} recovery checkpoint {}", oper, checkpoint);
     ndi.checkpoint = checkpoint;
     ndi.name = oper.getOperatorMeta().getName();
-    ndi.operName = oper.getName();
     ndi.id = oper.getId();
     // clone the map as StramChild assumes ownership and may add non-serializable attributes
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();

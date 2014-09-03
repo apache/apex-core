@@ -791,7 +791,6 @@ public class StreamingContainer extends YarnContainerMain
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
     for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
-      idi.origPortName = idi.portName;
       idi.portName = getUnifierInputPortName(idi.portName, idi.sourceNodeId, idi.sourcePortName);
     }
   }
@@ -1018,8 +1017,8 @@ public class StreamingContainer extends YarnContainerMain
         Node<?> node = nodes.get(ndi.id);
 
         for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
-          if (nidi.streamCodecs.size() > 1) {
-            throw new IllegalStateException("Input codecs supported is only one");
+          if (nidi.streamCodecs.size() != 1) {
+            throw new IllegalStateException("Only one input codec should be present");
           }
           Map.Entry<OperatorDeployInfo.PortIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = nidi.streamCodecs.entrySet().iterator().next();
           OperatorDeployInfo.PortIdentifier portIdentifier = entry.getKey();
@@ -1027,7 +1026,7 @@ public class StreamingContainer extends YarnContainerMain
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
-          System.out.println("NDI NAME " + ndi.id + " " + ndi.type + " " + ndi.operName + " " + ndi.name + " " + nidi.portName + " " + nidi.origPortName);
+          System.out.println("NDI NAME " + ndi.id + " " + ndi.type + " " + ndi.name + " " + nidi.portName );
           //String portName = (nidi.origPortName == null) ? nidi.portName : nidi.origPortName;
           //String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(ndi.operName).concat(Component.CONCAT_SEPARATOR)
           //        .concat(portName);

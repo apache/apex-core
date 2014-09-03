@@ -42,7 +42,6 @@ public class OperatorDeployInfo implements Serializable
      * Port name matching the operator's port declaration
      */
     public String portName;
-    public String origPortName;
     /**
      * Name of stream declared in logical topology
      */
@@ -267,7 +266,6 @@ public class OperatorDeployInfo implements Serializable
    * Logical operator name from DAG.
    */
   public String name;
-  public String operName;
   /**
    * The checkpoint window identifier.
    * Used to restore state and incoming streams as part of recovery.

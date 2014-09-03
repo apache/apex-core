@@ -255,7 +255,8 @@ public class StreamingContainerManagerTest {
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getName(), nidi.declaredStreamId);
       Assert.assertEquals("partition for " + containerId, Sets.newHashSet(node2.partitionKeys[i]), nidi.partitionKeys);
-      //Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
+      Assert.assertEquals("number stream codecs for " + nidi, 1, nidi.streamCodecs.size());
+      Assert.assertEquals("serde " + nidi, null, nidi.streamCodecs.values().iterator().next().serDeClassName);
     }
 
     // unifier
