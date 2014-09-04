@@ -33,8 +33,8 @@ public class StreamContext extends DefaultAttributeMap implements Context
   public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
   public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
   public static final Attribute<StreamCodec<Object>> CODEC = new Attribute<StreamCodec<Object>>(null, null);
-  public static final Attribute<Map<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>>> CODECS
-          = new Attribute<Map<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>>>(null, null);
+  public static final Attribute<Map<OperatorDeployInfo.StreamIdentifier, StreamCodec<Object>>> CODECS
+          = new Attribute<Map<OperatorDeployInfo.StreamIdentifier, StreamCodec<Object>>>(null, null);
 
   @Override
   public AttributeMap getAttributes()

@@ -4,14 +4,13 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
-import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
@@ -561,6 +560,181 @@ public class StreamingContainerManagerTest {
 
   }
 
+  @Test
+  public void testStreamCodec() {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
+    TestStreamCodec serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node3.inport1, PortContext.STREAM_CODEC, serDe);
+
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
+    dag.addStream("n2n3", node2.outport1, node3.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
+    MemoryStorageAgent msa = new MemoryStorageAgent();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, msa);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(dnm, "container" + (i+1));
+    }
+
+    OperatorDeployInfo n1di = getSingleDeployInfo(node1, dnm);
+    OperatorMeta n1meta = dag.getMeta(node1);
+
+    OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
+    String id = n1meta.getName() + " " + n1odi.portName;
+    Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
+    checkNotSetStreamCodecInfo(n1odi.streamCodecs.values().iterator().next(), id);
+
+
+    OperatorDeployInfo n2di = getSingleDeployInfo(node2, dnm);
+    OperatorMeta n2meta = dag.getMeta(node2);
+
+    InputDeployInfo n2idi = getInputDeployInfo(n2di, n2meta.getMeta(node2.inport1));
+    id = n2meta.getName() + " " + n2idi.portName;
+    Assert.assertEquals("number stream codecs " + id, n2idi.streamCodecs.size(), 1);
+    checkNotSetStreamCodecInfo(n2idi.streamCodecs.values().iterator().next(), id);
+
+    OutputDeployInfo n2odi = getOutputDeployInfo(n2di, n2meta.getMeta(node2.outport1));
+    id = n2meta.getName() + " " + n2odi.portName;
+    Assert.assertEquals("number stream codecs " + id, n2odi.streamCodecs.size(), 1);
+    checkStreamCodecInfo(n2odi.streamCodecs.values().iterator().next(), id, serDe);
+
+
+    OperatorDeployInfo n3di = getSingleDeployInfo(node3, dnm);
+    OperatorMeta n3meta = dag.getMeta(node3);
+
+    InputDeployInfo n3idi = getInputDeployInfo(n3di, n3meta.getMeta(node3.inport1));
+    id = n3meta.getName() + " " + n3idi.portName;
+    Assert.assertEquals("number stream codecs " + id, n3idi.streamCodecs.size(), 1);
+    checkStreamCodecInfo(n3idi.streamCodecs.values().iterator().next(), id, serDe);
+
+  }
+
+  @Test
+  public void testDefaultStreamCodec() {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    DefaultCodecOperator node2 = dag.addOperator("node2", DefaultCodecOperator.class);
+    DefaultCodecOperator node3 = dag.addOperator("node3", DefaultCodecOperator.class);
+    TestStreamCodec serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node3.inportWithCodec, PortContext.STREAM_CODEC, serDe);
+
+    dag.addStream("n1n2", node1.outport1, node2.inportWithCodec);
+    dag.addStream("n2n3", node2.outport1, node3.inportWithCodec);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
+    MemoryStorageAgent msa = new MemoryStorageAgent();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, msa);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(dnm, "container" + (i+1));
+    }
+
+    OperatorDeployInfo n1di = getSingleDeployInfo(node1, dnm);
+    OperatorMeta n1meta = dag.getMeta(node1);
+
+    OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
+    String id = n1meta.getName() + " " + n1odi.portName;
+    Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
+    checkStreamCodecInfo(n1odi.streamCodecs.values().iterator().next(), id, null, node2.inportWithCodec.getStreamCodec().getName());
+
+
+    OperatorDeployInfo n2di = getSingleDeployInfo(node2, dnm);
+    OperatorMeta n2meta = dag.getMeta(node2);
+
+    InputDeployInfo n2idi = getInputDeployInfo(n2di, n2meta.getMeta(node2.inportWithCodec));
+    id = n2meta.getName() + " " + n2idi.portName;
+    Assert.assertEquals("number stream codecs " + id, n2idi.streamCodecs.size(), 1);
+    checkStreamCodecInfo(n2idi.streamCodecs.values().iterator().next(), id, null, node2.inportWithCodec.getStreamCodec().getName());
+
+    OutputDeployInfo n2odi = getOutputDeployInfo(n2di, n2meta.getMeta(node2.outport1));
+    id = n2meta.getName() + " " + n2odi.portName;
+    Assert.assertEquals("number stream codecs " + id, n2odi.streamCodecs.size(), 1);
+    checkStreamCodecInfo(n2odi.streamCodecs.values().iterator().next(), id, serDe);
+
+
+    OperatorDeployInfo n3di = getSingleDeployInfo(node3, dnm);
+    OperatorMeta n3meta = dag.getMeta(node3);
+
+    InputDeployInfo n3idi = getInputDeployInfo(n3di, n3meta.getMeta(node3.inportWithCodec));
+    id = n3meta.getName() + " " + n3idi.portName;
+    Assert.assertEquals("number stream codecs " + id, n3idi.streamCodecs.size(), 1);
+    checkStreamCodecInfo(n3idi.streamCodecs.values().iterator().next(), id, serDe);
+  }
+
+  private void checkNotSetStreamCodecInfo(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, String id) {
+    Assert.assertNull("stream codec object " + id, streamCodecInfo.streamCodec);
+    Assert.assertNull("stream codec class " + id, streamCodecInfo.serDeClassName);
+  }
+
+  private void checkStreamCodecInfo(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, String id, StreamCodec<?> streamCodec) {
+    checkStreamCodecInfo(streamCodecInfo, id, streamCodec, null);
+  }
+
+  private void checkStreamCodecInfo(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, String id, StreamCodec<?> streamCodec, String className) {
+    Assert.assertEquals("stream codec object " + id, streamCodec, streamCodecInfo.streamCodec);
+    Assert.assertEquals("stream codec class " + id, className, streamCodecInfo.serDeClassName);
+  }
+
+  private OperatorDeployInfo getSingleDeployInfo(BaseOperator oper, StreamingContainerManager scm)
+  {
+    LogicalPlan dag = scm.getLogicalPlan();
+    PhysicalPlan plan = scm.getPhysicalPlan();
+    List<PTOperator> operators = plan.getOperators(dag.getMeta(oper));
+    Assert.assertEquals("number of operators " + oper.getName(), 1, operators.size());
+
+    PTOperator operator = operators.get(0);
+    String containerId = operator.getContainer().getExternalId();
+
+    List<OperatorDeployInfo> cdi = getDeployInfo(scm.getContainerAgent(containerId));
+
+    Assert.assertEquals("number operators assigned to container", 1, cdi.size());
+    Assert.assertTrue(oper.getName() + " assigned to " + containerId, containsNodeContext(cdi, dag.getMeta(oper)));
+
+    return cdi.get(0);
+  }
+
+  private InputDeployInfo getInputDeployInfo(OperatorDeployInfo odi, LogicalPlan.InputPortMeta portMeta) {
+    InputDeployInfo idi = null;
+    List<InputDeployInfo> inputs = odi.inputs;
+    for (InputDeployInfo input : inputs) {
+      if (input.portName == portMeta.getPortName()) {
+        idi = input;
+        break;
+      }
+    }
+    Assert.assertNotNull("input deploy info " + portMeta.getPortName(), idi);
+    return idi;
+  }
+
+  private OutputDeployInfo getOutputDeployInfo(OperatorDeployInfo odi, LogicalPlan.OutputPortMeta portMeta) {
+    OutputDeployInfo otdi = null;
+    List<OutputDeployInfo> outputs = odi.outputs;
+    for (OutputDeployInfo output : outputs) {
+      if (output.portName == portMeta.getPortName()) {
+        otdi = output;
+        break;
+      }
+    }
+    Assert.assertNotNull("output deploy info " + portMeta.getPortName(), otdi);
+    return otdi;
+  }
+
   public static class TestStaticPartitioningSerDe extends DefaultStatefulStreamCodec<Object> {
 
     public final static int[] partitions = new int[]{
@@ -576,6 +750,30 @@ public class StreamingContainerManagerTest {
       return partitions[0];
     }
 
+  }
+
+  public static class TestStreamCodec extends DefaultStatefulStreamCodec<Object> {
+
+  }
+
+  public static class DefaultTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
+
+  }
+
+  public static class DefaultCodecOperator extends GenericTestOperator {
+    final static String INPORT_WITH_CODEC = "inportWithCodec";
+    @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
+    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
+      @Override
+      public Class<? extends StreamCodec<Object>> getStreamCodec() {
+        return DefaultTestStreamCodec.class;
+      }
+
+      @Override
+      final public void process(Object payload) {
+      }
+
+    };
   }
 
   private int countState(PTContainer c, PTOperator.State state) {

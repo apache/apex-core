@@ -74,7 +74,7 @@ public class OperatorDeployInfo implements Serializable
     /*
     public StreamCodec streamCodec;
     */
-    public Map<PortIdentifier, StreamCodecInfo> streamCodecs = new HashMap<PortIdentifier, StreamCodecInfo>();
+    public Map<StreamIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamIdentifier, StreamCodecInfo>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -160,7 +160,7 @@ public class OperatorDeployInfo implements Serializable
     /*
     public StreamCodec streamCodec;
     */
-    public Map<PortIdentifier, StreamCodecInfo> streamCodecs = new HashMap<PortIdentifier, StreamCodecInfo>();
+    public Map<StreamIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamIdentifier, StreamCodecInfo>();
     /**
      * Context attributes for output port
      */
@@ -218,7 +218,8 @@ public class OperatorDeployInfo implements Serializable
     public StreamCodec<?> streamCodec;
   }
 
-  public static class PortIdentifier implements Serializable
+  // This contains the extra information to identify the buffer server stream endpoint
+  public static class StreamIdentifier implements Serializable
   {
     /*
      * The operator name
@@ -236,10 +237,10 @@ public class OperatorDeployInfo implements Serializable
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      PortIdentifier portIdentifier = (PortIdentifier) o;
+      StreamIdentifier streamIdentifier = (StreamIdentifier) o;
 
-      if (!operName.equals(portIdentifier.operName)) return false;
-      if (!portName.equals(portIdentifier.portName)) return false;
+      if (!operName.equals(streamIdentifier.operName)) return false;
+      if (!portName.equals(streamIdentifier.portName)) return false;
 
       return true;
     }
