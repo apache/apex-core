@@ -171,14 +171,17 @@ public class StreamingContainerAgent {
           */
           // Get a map of all input stream codecs connected to this port
           for (PTOperator.PTInput input : out.sinks) {
-            InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
-            OperatorDeployInfo.StreamIdentifier inputStreamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            inputStreamIdentifier.portName = inputPortMeta.getPortName();
-            inputStreamIdentifier.operName = inputPortMeta.getOperatorWrapper().getName();
-            System.out.println("OUTPUTT " + oper.getName() + " " + out.portName + " " + inputStreamIdentifier.operName + " " + inputStreamIdentifier.portName);
-            if (!portInfo.streamCodecs.containsKey(inputStreamIdentifier)) {
-              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
-              portInfo.streamCodecs.put(inputStreamIdentifier, streamCodecInfo);
+            // Create mappings for all non-inline operators
+            if (input.target.getContainer() != out.source.getContainer()) {
+              InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
+              OperatorDeployInfo.StreamIdentifier inputStreamIdentifier = new OperatorDeployInfo.StreamIdentifier();
+              inputStreamIdentifier.portName = inputPortMeta.getPortName();
+              inputStreamIdentifier.operName = inputPortMeta.getOperatorWrapper().getName();
+              System.out.println("OUTPUTT " + oper.getName() + " " + out.portName + " " + inputStreamIdentifier.operName + " " + inputStreamIdentifier.portName);
+              if (!portInfo.streamCodecs.containsKey(inputStreamIdentifier)) {
+                OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+                portInfo.streamCodecs.put(inputStreamIdentifier, streamCodecInfo);
+              }
             }
           }
         }
