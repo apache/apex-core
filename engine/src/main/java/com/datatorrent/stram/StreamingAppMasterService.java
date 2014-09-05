@@ -746,7 +746,10 @@ public class StreamingAppMasterService extends CompositeService
       // CDH reporting incorrect resources, see SPOI-1846, YARN-1959. Workaround for now.
       //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       int availableMemory = availableLicensedMemory;
-      dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
+      //SPOI-2942: locking physical plan only when license type is evaluation
+      if(this.licenseType == License.LicenseType.EVALUATION) {
+        dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
+      }
 
       // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
