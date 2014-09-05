@@ -766,7 +766,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         }
       }
       catch (ClassNotFoundException e) {
-        LOG.warn("Unable to load class: ", e);
+        // ignore
       }
     }
     return appAlias;
@@ -911,10 +911,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           prop = getCompleteKey(keys, index+1);
         } else {
           prop = getCompleteKey(keys, index);
+          /*
           if (conf.getAttributeContextClass() != null) {
             LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
                         getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
           }
+          */
         }
         if (prop != null) {
           conf.setProperty(prop, propertyValue);

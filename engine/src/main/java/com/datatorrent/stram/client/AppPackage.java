@@ -47,13 +47,13 @@ public class AppPackage extends JarFile implements Closeable
   public static class AppInfo
   {
     public final String name;
-    public final String jarName;
+    public final String file;
     public final LogicalPlan dag;
 
-    public AppInfo(String name, String jarName, LogicalPlan dag)
+    public AppInfo(String name, String file, LogicalPlan dag)
     {
       this.name = name;
-      this.jarName = jarName;
+      this.file = file;
       this.dag = dag;
     }
 
@@ -214,13 +214,24 @@ public class AppPackage extends JarFile implements Closeable
           LOG.error("Caught exception trying to process {}", entry.getName(), ex);
         }
       }
-      else if (entry.getName().endsWith(".json")) {
+    }
+    it = FileUtils.iterateFiles(dir, null, false);
+
+    // this is for the properties and json files to be able to depend on the app jars,
+    // since it's possible for users to implement the operators as part of the app package
+    for (String appJar : appJars) {
+      absClassPath.add(new File(dir, appJar).getAbsolutePath());
+    }
+    config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
+    while (it.hasNext()) {
+      File entry = it.next();
+      if (entry.getName().endsWith(".json")) {
         appJsonFiles.add(entry.getName());
         try {
           AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(entry);
-          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry, config);
+          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
-          applications.add(new AppInfo(entry.getName(), entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
+          applications.add(new AppInfo(appFactory.getName(), entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
         }
         catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
@@ -230,14 +241,15 @@ public class AppPackage extends JarFile implements Closeable
         appPropertiesFiles.add(entry.getName());
         try {
           AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(entry);
-          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry, config);
+          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
-          applications.add(new AppInfo(entry.getName(), entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
+          applications.add(new AppInfo(appFactory.getName(), entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
         }
         catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
-      }      else {
+      }
+      else {
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());
       }
     }
