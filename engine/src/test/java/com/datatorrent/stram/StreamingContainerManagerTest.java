@@ -736,12 +736,87 @@ public class StreamingContainerManagerTest {
     List<PTOperator> operators = plan.getOperators(n2meta);
     Assert.assertEquals("number operators " + n2meta.getName(), 3, operators.size());
     for (PTOperator operator : operators) {
-      OperatorDeployInfo odi = getSingleOperatorDeployInfo(operator, n2meta.getName(), n2meta, dnm);
+      OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
 
       InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
       id = n2meta.getName() + " " + idi.portName;
       Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
       checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+    }
+  }
+
+  @Test
+  public void testMxNPartitioningStreamCodec() {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    dag.setAttribute(node1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    dag.setAttribute(node2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    TestStreamCodec serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node2.inport1, PortContext.STREAM_CODEC, serDe);
+
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
+    MemoryStorageAgent msa = new MemoryStorageAgent();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, msa);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(dnm, "container" + (i+1));
+    }
+
+    OperatorMeta n1meta = dag.getMeta(node1);
+    OperatorMeta n2meta = dag.getMeta(node2);
+
+    // Sanity check that physical operators have been allocated for n1meta and n2meta
+    Assert.assertEquals("number operators " + n1meta.getName(), 2, plan.getOperators(n1meta).size());
+    Assert.assertEquals("number operators " + n2meta.getName(), 3, plan.getOperators(n2meta).size());
+
+    for (PTContainer container : containers) {
+      List<PTOperator> operators = container.getOperators();
+      for (PTOperator operator :operators) {
+        if (!operator.isUnifier()) {
+          if (operator.getOperatorMeta() == n1meta) {
+            OperatorDeployInfo odi = getOperatorDeployInfo(operator, n1meta.getName(), dnm);
+
+            OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
+            String id = n1meta.getName() + " " + otdi.portName;
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
+            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
+            streamIdentifier.operName = n2meta.getName();
+            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(otdi.streamCodecs, id, streamIdentifier, serDe);
+          } else if (operator.getOperatorMeta() == n2meta) {
+            OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
+
+            InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
+            String id = n1meta.getName() + " " + idi.portName;
+            Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
+            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
+            streamIdentifier.operName = n2meta.getName();
+            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+          }
+        } else {
+          OperatorDeployInfo odi = getOperatorDeployInfo(operator, operator.getName(), dnm);
+          List<InputDeployInfo> idis = odi.inputs;
+          for (InputDeployInfo idi : idis) {
+            String id = operator.getName() + " " + idi.portName;
+            Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
+            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
+            streamIdentifier.operName = n2meta.getName();
+            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+          }
+        }
+      }
     }
   }
 
@@ -774,19 +849,25 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("number of operators " + id, 1, operators.size());
 
     PTOperator operator = operators.get(0);
-    return getSingleOperatorDeployInfo(operator, id, dag.getMeta(oper), scm);
+    return getOperatorDeployInfo(operator, id, scm);
   }
 
-  private OperatorDeployInfo getSingleOperatorDeployInfo(PTOperator operator, String id, OperatorMeta operMeta, StreamingContainerManager scm)
+  private OperatorDeployInfo getOperatorDeployInfo(PTOperator operator, String id, StreamingContainerManager scm)
   {
     String containerId = operator.getContainer().getExternalId();
 
     List<OperatorDeployInfo> cdi = getDeployInfo(scm.getContainerAgent(containerId));
 
-    Assert.assertEquals("number operators assigned to container", 1, cdi.size());
-    Assert.assertTrue(id + " assigned to " + containerId, containsNodeContext(cdi, operMeta));
+    OperatorDeployInfo odi = null;
+    for (OperatorDeployInfo iodi : cdi) {
+      if (iodi.id == operator.getId()) {
+        odi = iodi;
+        break;
+      }
+    }
 
-    return cdi.get(0);
+    Assert.assertNotNull(id + " assigned to " + containerId + " deploy info", odi );
+    return odi;
   }
 
   private InputDeployInfo getInputDeployInfo(OperatorDeployInfo odi, LogicalPlan.InputPortMeta portMeta) {
