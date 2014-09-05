@@ -554,6 +554,95 @@ public class StreamCodecTest
     }
   }
 
+  @Test
+  public void testInlineStreamCodec() {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
+    TestStreamCodec serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
+    dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, serDe);
+
+    dag.addStream("n1n2n3", node1.outport1, node2.inport1, node3.inport1);
+
+    // Relying on container max count for the manager to layout node1 and node3 in the
+    // same container in inline fashion and node2 in a separate container
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+    StramTestSupport.MemoryStorageAgent msa = new StramTestSupport.MemoryStorageAgent();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, msa);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    Assert.assertEquals("number containers", 2, containers.size());
+
+    for (int i = 0; i < containers.size(); ++i) {
+      StreamingContainerManagerTest.assignContainer(dnm, "container" + (i + 1));
+    }
+
+    LogicalPlan.OperatorMeta n1meta = dag.getMeta(node1);
+
+    LogicalPlan.OperatorMeta nonInlineMeta = null;
+
+    for (int i = 0; i < containers.size(); ++i) {
+      PTContainer container = containers.get(i);
+      List<PTOperator> operators = container.getOperators();
+      if (operators.size() == 1) {
+        nonInlineMeta = operators.get(0).getOperatorMeta();
+        break;
+      }
+    }
+
+    Assert.assertNotNull("non inline operator meta is null", nonInlineMeta);
+    GenericTestOperator nonInlineOperator = null;
+    LogicalPlan.InputPortMeta niInputMeta = null;
+
+    if (nonInlineMeta.getName().equals("node2")) {
+      nonInlineOperator = node2;
+      niInputMeta = nonInlineMeta.getMeta(node2.inport1);
+    } else if (nonInlineMeta.getName().equals("node3")) {
+      nonInlineOperator = node3;
+      niInputMeta = nonInlineMeta.getMeta(node3.inport1);
+    }
+
+    Assert.assertNotNull("non inline operator is null", nonInlineOperator);
+    Assert.assertNotNull("non inline port meta is null", niInputMeta);
+
+    OperatorDeployInfo n1di = getSingleOperatorDeployInfo(node1, node1.getName(), dnm);
+
+    OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
+    String id = n1meta.getName() + " " + n1odi.portName;
+    Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
+    OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
+    streamIdentifier.operName = nonInlineMeta.getName();
+    streamIdentifier.portName = niInputMeta.getPortName();
+    checkStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier, serDe);
+
+    OperatorDeployInfo odi = getSingleOperatorDeployInfo(nonInlineOperator, nonInlineOperator.getName(), dnm);
+
+    OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, niInputMeta);
+    id = nonInlineMeta.getName() + " " + idi.portName;
+    Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
+    streamIdentifier.operName = nonInlineMeta.getName();
+    streamIdentifier.portName = niInputMeta.getPortName();
+    checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+
+    /*
+    OperatorDeployInfo n3di = getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
+
+    OperatorDeployInfo.InputDeployInfo n3idi = getInputDeployInfo(n3di, n3meta.getMeta(node3.inport1));
+    id = n3meta.getName() + " " + n3idi.portName;
+    Assert.assertEquals("number stream codecs " + id, n3idi.streamCodecs.size(), 1);
+    streamIdentifier.operName = n3meta.getName();
+    streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+    checkStreamCodecInfo(n3idi.streamCodecs, id, streamIdentifier, serDe2);
+    */
+  }
+
   private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
                                           OperatorDeployInfo.StreamIdentifier streamIdentifier) {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamIdentifier);
@@ -608,7 +697,7 @@ public class StreamCodecTest
     OperatorDeployInfo.InputDeployInfo idi = null;
     List<OperatorDeployInfo.InputDeployInfo> inputs = odi.inputs;
     for (OperatorDeployInfo.InputDeployInfo input : inputs) {
-      if (input.portName == portMeta.getPortName()) {
+      if (input.portName.equals(portMeta.getPortName())) {
         idi = input;
         break;
       }
@@ -621,13 +710,23 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo otdi = null;
     List<OperatorDeployInfo.OutputDeployInfo> outputs = odi.outputs;
     for (OperatorDeployInfo.OutputDeployInfo output : outputs) {
-      if (output.portName == portMeta.getPortName()) {
+      if (output.portName.equals(portMeta.getPortName())) {
         otdi = output;
         break;
       }
     }
     Assert.assertNotNull("output deploy info " + portMeta.getPortName(), otdi);
     return otdi;
+  }
+
+  private LogicalPlan.InputPortMeta getInputPortMeta(LogicalPlan.StreamMeta streamMeta, LogicalPlan.OperatorMeta operatorMeta) {
+    LogicalPlan.InputPortMeta portMeta = null;
+    for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> entry : operatorMeta.getInputStreams().entrySet()) {
+      if (entry.getValue() == streamMeta) {
+        portMeta = entry.getKey();
+      }
+    }
+    return portMeta;
   }
 
   public static class TestStreamCodec extends DefaultStatefulStreamCodec<Object>
