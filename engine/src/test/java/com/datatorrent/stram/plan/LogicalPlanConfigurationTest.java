@@ -4,24 +4,6 @@
  */
 package com.datatorrent.stram.plan;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.util.*;
-
-import com.google.common.collect.Sets;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static org.junit.Assert.*;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.hadoop.conf.Configuration;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
@@ -37,6 +19,23 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+import com.google.common.collect.Sets;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.util.*;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.hadoop.conf.Configuration;
+import org.codehaus.jettison.json.JSONObject;
+import org.junit.Assert;
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LogicalPlanConfigurationTest {
 
@@ -177,6 +176,55 @@ public class LogicalPlanConfigurationTest {
 
       Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
 
+  }
+
+  @Test
+  public void testLoadFromJson() throws Exception
+  {
+    String resourcePath = "/testTopology.json";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    StringWriter writer = new StringWriter();
+
+    IOUtils.copy(is, writer);
+    JSONObject json = new JSONObject(writer.toString());
+
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration().addFromJson(json);
+
+    LogicalPlan dag = new LogicalPlan();
+    pb.populateDAG(dag, new Configuration(false));
+    dag.validate();
+
+    assertEquals("number of operator confs", 5, dag.getAllOperators().size());
+    assertEquals("number of root operators", 1, dag.getRootOperators().size());
+
+    StreamMeta s1 = dag.getStream("n1n2");
+    assertNotNull(s1);
+    assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
+
+    OperatorMeta operator3 = dag.getOperatorMeta("operator3");
+    assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
+
+    GenericTestOperator doperator3 = (GenericTestOperator)operator3.getOperator();
+    assertEquals("myStringProperty " + doperator3, "myStringPropertyValueFromTemplate", doperator3.getMyStringProperty());
+    assertFalse("booleanProperty " + doperator3, doperator3.booleanProperty);
+
+    OperatorMeta operator4 = dag.getOperatorMeta("operator4");
+    GenericTestOperator doperator4 = (GenericTestOperator)operator4.getOperator();
+    assertEquals("myStringProperty " + doperator4, "overrideOperator4", doperator4.getMyStringProperty());
+    assertEquals("setterOnlyOperator4 " + doperator4, "setterOnlyOperator4", doperator4.propertySetterOnly);
+    assertTrue("booleanProperty " + doperator4, doperator4.booleanProperty);
+
+    StreamMeta input1 = dag.getStream("inputStream");
+    assertNotNull(input1);
+    Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorWrapper());
+    Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
+    for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
+      targetNodes.add(targetPort.getOperatorWrapper());
+    }
+    Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
   }
 
   @Test

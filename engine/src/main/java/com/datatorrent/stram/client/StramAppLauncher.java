@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.jar.JarEntry;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -28,6 +29,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tools.ant.DirectoryScanner;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +95,42 @@ public class StramAppLauncher
     public String getName()
     {
       return propertyFile.getName();
+    }
+
+  }
+
+  public static class JsonFileAppFactory implements AppFactory
+  {
+    final File jsonFile;
+
+    public JsonFileAppFactory(File file)
+    {
+      this.jsonFile = file;
+    }
+
+    @Override
+    public StreamingApplication createApp(Configuration conf)
+    {
+      InputStream is = null;
+      try {
+        is = new FileInputStream(jsonFile);
+        StringWriter writer = new StringWriter();
+        IOUtils.copy(is, writer);
+        JSONObject json = new JSONObject(writer.toString());
+        return LogicalPlanConfiguration.create(conf, json);
+      }
+      catch (Exception e) {
+        throw new IllegalArgumentException("Failed to load: " + this, e);
+      }
+      finally {
+        IOUtils.closeQuietly(is);
+      }
+    }
+
+    @Override
+    public String getName()
+    {
+      return jsonFile.getName();
     }
 
   }
