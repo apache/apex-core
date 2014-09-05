@@ -48,12 +48,14 @@ public class AppPackage extends JarFile implements Closeable
   {
     public final String name;
     public final String file;
+    public final String type;
     public final LogicalPlan dag;
 
-    public AppInfo(String name, String file, LogicalPlan dag)
+    public AppInfo(String name, String file, String type, LogicalPlan dag)
     {
       this.name = name;
       this.file = file;
+      this.type = type;
       this.dag = dag;
     }
 
@@ -207,7 +209,7 @@ public class AppPackage extends JarFile implements Closeable
             if (appName == null) {
               appName = appFactory.getName();
             }
-            applications.add(new AppInfo(appName, entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
+            applications.add(new AppInfo(appName, entry.getName(), "jar", stramAppLauncher.prepareDAG(appFactory)));
           }
         }
         catch (Exception ex) {
@@ -231,7 +233,7 @@ public class AppPackage extends JarFile implements Closeable
           AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(entry);
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
-          applications.add(new AppInfo(appFactory.getName(), entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
+          applications.add(new AppInfo(appFactory.getName(), entry.getName(), "json", stramAppLauncher.prepareDAG(appFactory)));
         }
         catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
@@ -243,7 +245,7 @@ public class AppPackage extends JarFile implements Closeable
           AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(entry);
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
-          applications.add(new AppInfo(appFactory.getName(), entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
+          applications.add(new AppInfo(appFactory.getName(), entry.getName(), "properties", stramAppLauncher.prepareDAG(appFactory)));
         }
         catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
