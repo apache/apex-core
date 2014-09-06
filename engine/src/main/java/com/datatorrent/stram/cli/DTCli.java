@@ -1862,8 +1862,6 @@ public class DTCli
         licenseInfo.remainingLicensedMB = reportState.getFreeMemoryMB();
         licenseInfo.totalLicensedMB = reportState.getFreeMemoryMB() + reportState.getUsedMemoryMB();
         licenseInfoMap.put(licenseId, licenseInfo);
-      }catch(LicenseException ex){
-        LOG.warn("Cannot get license info for license id {}", licenseId, ex);
       }
       catch (Exception ex) {
         LOG.warn("Cannot get license info for license id {}", licenseId, ex);
