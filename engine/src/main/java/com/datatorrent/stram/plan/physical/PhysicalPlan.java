@@ -14,6 +14,7 @@ import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -144,6 +145,9 @@ public class PhysicalPlan implements Serializable
   final Set<PTOperator> undeployOpers = Sets.newHashSet();
   final ConcurrentMap<Integer, PTOperator> allOperators = Maps.newConcurrentMap();
   private final ConcurrentMap<OperatorMeta, OperatorMeta> pendingRepartition = Maps.newConcurrentMap();
+
+  private final AtomicInteger strCodecIdSequence = new AtomicInteger();
+  private final Map<OperatorDeployInfo.StreamCodecInfo, Integer> streamCodecIdentifiers = Maps.newHashMap();
 
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
@@ -1345,6 +1349,23 @@ public class PhysicalPlan implements Serializable
       }
 */
     }
+  }
+
+  public Integer getStreamCodecIdentifier(OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
+    Integer id = null;
+    synchronized (streamCodecIdentifiers) {
+      id = streamCodecIdentifiers.get(streamCodecInfo);
+      if (id == null) {
+        id = strCodecIdSequence.incrementAndGet();
+        streamCodecIdentifiers.put(streamCodecInfo, id);
+      }
+    }
+    return id;
+  }
+
+  // For tests so that it doesn't trigger assignment of a new id
+  public boolean isStrCodecPresent(OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
+    return streamCodecIdentifiers.containsKey(streamCodecInfo);
   }
 
 }

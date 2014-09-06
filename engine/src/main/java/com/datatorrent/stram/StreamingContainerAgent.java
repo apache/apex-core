@@ -26,6 +26,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
 import com.google.common.collect.Sets;
@@ -119,6 +120,8 @@ public class StreamingContainerAgent {
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
     HashSet<PTOperator.PTOutput> publishers = new HashSet<PTOperator.PTOutput>();
 
+    PhysicalPlan physicalPlan = dnmgr.getPhysicalPlan();
+
     for (PTOperator oper : operators) {
       if (oper.getState() != State.PENDING_DEPLOY) {
         LOG.debug("Skipping deploy for operator {} state {}", oper, oper.getState());
@@ -175,13 +178,13 @@ public class StreamingContainerAgent {
             System.out.println("input " + input.target.getName() + " " + input.portName + " container " + input.target.getContainer().getExternalId() + " " + out.source.getContainer().getExternalId());
             if (input.target.getContainer() != out.source.getContainer()) {
               InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
-              OperatorDeployInfo.StreamIdentifier inputStreamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-              inputStreamIdentifier.portName = inputPortMeta.getPortName();
-              inputStreamIdentifier.operName = inputPortMeta.getOperatorWrapper().getName();
-              System.out.println("OUTPUTT " + oper.getName() + " " + out.portName + " " + inputStreamIdentifier.operName + " " + inputStreamIdentifier.portName);
-              if (!portInfo.streamCodecs.containsKey(inputStreamIdentifier)) {
-                OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
-                portInfo.streamCodecs.put(inputStreamIdentifier, streamCodecInfo);
+              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+              Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
+              OperatorDeployInfo.StreamCodecIdentifier inputStreamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+              inputStreamCodecIdentifier.id = id;
+              System.out.println("OUTPUTT " + oper.getName() + " " + out.portName + " " + inputStreamCodecIdentifier.id);
+              if (!portInfo.streamCodecs.containsKey(inputStreamCodecIdentifier)) {
+                portInfo.streamCodecs.put(inputStreamCodecIdentifier, streamCodecInfo);
               }
             }
           }
@@ -273,11 +276,11 @@ public class StreamingContainerAgent {
         //OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
         InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
         OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(idInputPortMeta);
-        OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-        streamIdentifier.portName = idInputPortMeta.getPortName();
-        streamIdentifier.operName = idInputPortMeta.getOperatorWrapper().getName();
-        System.out.println("INPUTTT " + oper.getName() + " " + in.portName + " " + streamIdentifier.operName + " " + streamIdentifier.portName);
-        inputInfo.streamCodecs.put(streamIdentifier, streamCodecInfo);
+        Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
+        OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+        streamCodecIdentifier.id = id;
+        System.out.println("INPUTTT " + oper.getName() + " " + in.portName + " " + streamCodecIdentifier.id);
+        inputInfo.streamCodecs.put(streamCodecIdentifier, streamCodecInfo);
 
         ndi.inputs.add(inputInfo);
       }
@@ -328,7 +331,8 @@ public class StreamingContainerAgent {
     return operator;
   }
 
-  private OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta) {
+  // This will not be needed when we change the port to be able to not specify a stream codec class
+  public static OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta) {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = new OperatorDeployInfo.StreamCodecInfo();
     if (inputPortMeta != null) {
       streamCodecInfo.streamCodec = inputPortMeta.getValue(PortContext.STREAM_CODEC);

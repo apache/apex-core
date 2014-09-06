@@ -74,7 +74,7 @@ public class OperatorDeployInfo implements Serializable
     /*
     public StreamCodec streamCodec;
     */
-    public Map<StreamIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamIdentifier, StreamCodecInfo>();
+    public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -160,7 +160,7 @@ public class OperatorDeployInfo implements Serializable
     /*
     public StreamCodec streamCodec;
     */
-    public Map<StreamIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamIdentifier, StreamCodecInfo>();
+    public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
     /**
      * Context attributes for output port
      */
@@ -203,6 +203,31 @@ public class OperatorDeployInfo implements Serializable
     private static final long serialVersionUID = 201208271958L;
   }
 
+  // This contains the extra information to identify the buffer server stream endpoint
+  public static class StreamCodecIdentifier implements Serializable
+  {
+    public Integer id;
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      StreamCodecIdentifier that = (StreamCodecIdentifier) o;
+
+      if (!id.equals(that.id)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      return id.hashCode();
+    }
+  }
+
   public static class StreamCodecInfo implements Serializable
   {
 
@@ -216,31 +241,19 @@ public class OperatorDeployInfo implements Serializable
      * The SerDe object.
      */
     public StreamCodec<?> streamCodec;
-  }
 
-  // This contains the extra information to identify the buffer server stream endpoint
-  public static class StreamIdentifier implements Serializable
-  {
-    /*
-     * The operator name
-     */
-    public String operName;
-
-    /**
-     * The port name
-     */
-    public String portName;
-
+    // Stream codecs are matched by reference on purpose
     @Override
     public boolean equals(Object o)
     {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      StreamIdentifier streamIdentifier = (StreamIdentifier) o;
+      StreamCodecInfo that = (StreamCodecInfo) o;
 
-      if (!operName.equals(streamIdentifier.operName)) return false;
-      if (!portName.equals(streamIdentifier.portName)) return false;
+      if (serDeClassName != null ? !serDeClassName.equals(that.serDeClassName) : that.serDeClassName != null)
+        return false;
+      if (streamCodec != that.streamCodec) return false;
 
       return true;
     }
@@ -248,8 +261,8 @@ public class OperatorDeployInfo implements Serializable
     @Override
     public int hashCode()
     {
-      int result = operName.hashCode();
-      result = 31 * result + portName.hashCode();
+      int result = serDeClassName != null ? serDeClassName.hashCode() : 0;
+      result = 31 * result + (streamCodec != null ? streamCodec.hashCode() : 0);
       return result;
     }
   }

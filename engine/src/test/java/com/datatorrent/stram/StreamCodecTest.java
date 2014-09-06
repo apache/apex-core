@@ -62,25 +62,26 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
-    OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-    streamIdentifier.operName = n2meta.getName();
-    streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-    checkNotSetStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier);
-
+    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(n2meta.getMeta(node2.inport1));
+    Assert.assertTrue("stream codec identifier not present" + id, plan.isStrCodecPresent(streamCodecInfo));
+    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+    streamCodecIdentifier.id = plan.getStreamCodecIdentifier(streamCodecInfo);
+    checkPresentStreamCodecInfo(n1odi.streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
 
     OperatorDeployInfo n2di = getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
 
     OperatorDeployInfo.InputDeployInfo n2idi = getInputDeployInfo(n2di, n2meta.getMeta(node2.inport1));
     id = n2meta.getName() + " " + n2idi.portName;
     Assert.assertEquals("number stream codecs " + id, n2idi.streamCodecs.size(), 1);
-    checkNotSetStreamCodecInfo(n2idi.streamCodecs, id, streamIdentifier);
+    checkPresentStreamCodecInfo(n2idi.streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
 
     OperatorDeployInfo.OutputDeployInfo n2odi = getOutputDeployInfo(n2di, n2meta.getMeta(node2.outport1));
     id = n2meta.getName() + " " + n2odi.portName;
     Assert.assertEquals("number stream codecs " + id, n2odi.streamCodecs.size(), 1);
-    streamIdentifier.operName = n3meta.getName();
-    streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-    checkStreamCodecInfo(n2odi.streamCodecs, id, streamIdentifier, serDe);
+    streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(n3meta.getMeta(node3.inport1));
+    Assert.assertTrue("stream codec identifier not present" + id, plan.isStrCodecPresent(streamCodecInfo));
+    streamCodecIdentifier.id = plan.getStreamCodecIdentifier(streamCodecInfo);
+    checkPresentStreamCodecInfo(n2odi.streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
 
 
     OperatorDeployInfo n3di = getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
@@ -88,9 +89,10 @@ public class StreamCodecTest
     OperatorDeployInfo.InputDeployInfo n3idi = getInputDeployInfo(n3di, n3meta.getMeta(node3.inport1));
     id = n3meta.getName() + " " + n3idi.portName;
     Assert.assertEquals("number stream codecs " + id, n3idi.streamCodecs.size(), 1);
-    checkStreamCodecInfo(n3idi.streamCodecs, id, streamIdentifier, serDe);
+    checkPresentStreamCodecInfo(n3idi.streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
   }
 
+  /*
   @Test
   public void testDefaultStreamCodec() {
     LogicalPlan dag = new LogicalPlan();
@@ -128,10 +130,10 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
-    OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-    streamIdentifier.operName = n2meta.getName();
-    streamIdentifier.portName = n2meta.getMeta(node2.inportWithCodec).getPortName();
-    checkStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier, null, node2.inportWithCodec.getStreamCodec().getName());
+    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+    streamCodecIdentifier.operName = n2meta.getName();
+    streamCodecIdentifier.portName = n2meta.getMeta(node2.inportWithCodec).getPortName();
+    checkStreamCodecInfo(n1odi.streamCodecs, id, streamCodecIdentifier, null, node2.inportWithCodec.getStreamCodec().getName());
 
 
     OperatorDeployInfo n2di = getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
@@ -139,14 +141,14 @@ public class StreamCodecTest
     OperatorDeployInfo.InputDeployInfo n2idi = getInputDeployInfo(n2di, n2meta.getMeta(node2.inportWithCodec));
     id = n2meta.getName() + " " + n2idi.portName;
     Assert.assertEquals("number stream codecs " + id, n2idi.streamCodecs.size(), 1);
-    checkStreamCodecInfo(n2idi.streamCodecs, id, streamIdentifier, null, node2.inportWithCodec.getStreamCodec().getName());
+    checkStreamCodecInfo(n2idi.streamCodecs, id, streamCodecIdentifier, null, node2.inportWithCodec.getStreamCodec().getName());
 
     OperatorDeployInfo.OutputDeployInfo n2odi = getOutputDeployInfo(n2di, n2meta.getMeta(node2.outport1));
     id = n2meta.getName() + " " + n2odi.portName;
     Assert.assertEquals("number stream codecs " + id, n2odi.streamCodecs.size(), 1);
-    streamIdentifier.operName = n3meta.getName();
-    streamIdentifier.portName = n3meta.getMeta(node3.inportWithCodec).getPortName();
-    checkStreamCodecInfo(n2odi.streamCodecs, id, streamIdentifier, serDe);
+    streamCodecIdentifier.operName = n3meta.getName();
+    streamCodecIdentifier.portName = n3meta.getMeta(node3.inportWithCodec).getPortName();
+    checkStreamCodecInfo(n2odi.streamCodecs, id, streamCodecIdentifier, serDe);
 
 
     OperatorDeployInfo n3di = getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
@@ -154,7 +156,7 @@ public class StreamCodecTest
     OperatorDeployInfo.InputDeployInfo n3idi = getInputDeployInfo(n3di, n3meta.getMeta(node3.inportWithCodec));
     id = n3meta.getName() + " " + n3idi.portName;
     Assert.assertEquals("number stream codecs " + id, n3idi.streamCodecs.size(), 1);
-    checkStreamCodecInfo(n3idi.streamCodecs, id, streamIdentifier, serDe);
+    checkStreamCodecInfo(n3idi.streamCodecs, id, streamCodecIdentifier, serDe);
   }
 
   @Test
@@ -192,10 +194,10 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
-    OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-    streamIdentifier.operName = n2meta.getName();
-    streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-    checkStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier, serDe);
+    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+    streamCodecIdentifier.operName = n2meta.getName();
+    streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+    checkStreamCodecInfo(n1odi.streamCodecs, id, streamCodecIdentifier, serDe);
 
 
     List<PTOperator> operators = plan.getOperators(n2meta);
@@ -206,7 +208,7 @@ public class StreamCodecTest
       OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
       id = n2meta.getName() + " " + idi.portName;
       Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-      checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+      checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe);
     }
   }
 
@@ -254,20 +256,20 @@ public class StreamCodecTest
             OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
             String id = n1meta.getName() + " " + otdi.portName;
             Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(otdi.streamCodecs, id, streamIdentifier, serDe);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(otdi.streamCodecs, id, streamCodecIdentifier, serDe);
           } else if (operator.getOperatorMeta() == n2meta) {
             OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
 
             OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
             String id = n1meta.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe);
           }
         } else {
           OperatorDeployInfo odi = getOperatorDeployInfo(operator, operator.getName(), dnm);
@@ -275,10 +277,10 @@ public class StreamCodecTest
           for (OperatorDeployInfo.InputDeployInfo idi : idis) {
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe);
           }
         }
       }
@@ -335,37 +337,37 @@ public class StreamCodecTest
             OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
             String id = n1meta.getName() + " " + otdi.portName;
             Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(otdi.streamCodecs, id, streamIdentifier, serDe);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(otdi.streamCodecs, id, streamCodecIdentifier, serDe);
           } else if (operator.getOperatorMeta() == n2meta) {
             OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
 
             OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
             String id = n1meta.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe);
 
             OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n2meta.getMeta(node2.outport1));
             id = n2meta.getName() + " " + otdi.portName;
             Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
-            streamIdentifier.operName = n3meta.getName();
-            streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-            checkStreamCodecInfo(otdi.streamCodecs, id, streamIdentifier, serDe2);
+            streamCodecIdentifier.operName = n3meta.getName();
+            streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+            checkStreamCodecInfo(otdi.streamCodecs, id, streamCodecIdentifier, serDe2);
           } else if (operator.getOperatorMeta() == n3meta) {
             OperatorDeployInfo odi = getOperatorDeployInfo(operator, n3meta.getName(), dnm);
 
             OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n3meta.getMeta(node3.inport1));
             String id = n3meta.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n3meta.getName();
-            streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe2);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n3meta.getName();
+            streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe2);
           }
         } else {
           OperatorDeployInfo odi = getOperatorDeployInfo(operator, operator.getName(), dnm);
@@ -373,10 +375,10 @@ public class StreamCodecTest
           for (OperatorDeployInfo.InputDeployInfo idi : idis) {
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n3meta.getName();
-            streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe2);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n3meta.getName();
+            streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe2);
           }
         }
       }
@@ -421,31 +423,31 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 2);
-    OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-    streamIdentifier.operName = n2meta.getName();
-    streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-    checkStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier, serDe);
-    streamIdentifier.operName = n3meta.getName();
-    streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-    checkStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier, serDe2);
+    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+    streamCodecIdentifier.operName = n2meta.getName();
+    streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+    checkStreamCodecInfo(n1odi.streamCodecs, id, streamCodecIdentifier, serDe);
+    streamCodecIdentifier.operName = n3meta.getName();
+    streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+    checkStreamCodecInfo(n1odi.streamCodecs, id, streamCodecIdentifier, serDe2);
 
     OperatorDeployInfo n2di = getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
 
     OperatorDeployInfo.InputDeployInfo n2idi = getInputDeployInfo(n2di, n2meta.getMeta(node2.inport1));
     id = n2meta.getName() + " " + n2idi.portName;
     Assert.assertEquals("number stream codecs " + id, n2idi.streamCodecs.size(), 1);
-    streamIdentifier.operName = n2meta.getName();
-    streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-    checkStreamCodecInfo(n2idi.streamCodecs, id, streamIdentifier, serDe);
+    streamCodecIdentifier.operName = n2meta.getName();
+    streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+    checkStreamCodecInfo(n2idi.streamCodecs, id, streamCodecIdentifier, serDe);
 
     OperatorDeployInfo n3di = getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
 
     OperatorDeployInfo.InputDeployInfo n3idi = getInputDeployInfo(n3di, n3meta.getMeta(node3.inport1));
     id = n3meta.getName() + " " + n3idi.portName;
     Assert.assertEquals("number stream codecs " + id, n3idi.streamCodecs.size(), 1);
-    streamIdentifier.operName = n3meta.getName();
-    streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-    checkStreamCodecInfo(n3idi.streamCodecs, id, streamIdentifier, serDe2);
+    streamCodecIdentifier.operName = n3meta.getName();
+    streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+    checkStreamCodecInfo(n3idi.streamCodecs, id, streamCodecIdentifier, serDe2);
   }
 
   @Test
@@ -499,33 +501,33 @@ public class StreamCodecTest
             OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
             String id = n1meta.getName() + " " + otdi.portName;
             Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 2);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(otdi.streamCodecs, id, streamIdentifier, serDe);
-            streamIdentifier.operName = n3meta.getName();
-            streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-            checkStreamCodecInfo(otdi.streamCodecs, id, streamIdentifier, serDe2);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(otdi.streamCodecs, id, streamCodecIdentifier, serDe);
+            streamCodecIdentifier.operName = n3meta.getName();
+            streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+            checkStreamCodecInfo(otdi.streamCodecs, id, streamCodecIdentifier, serDe2);
           } else if (operator.getOperatorMeta() == n2meta) {
             OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
 
             OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
             String id = n1meta.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n2meta.getName();
-            streamIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n2meta.getName();
+            streamCodecIdentifier.portName = n2meta.getMeta(node2.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe);
           } else if (operator.getOperatorMeta() == n3meta) {
             OperatorDeployInfo odi = getOperatorDeployInfo(operator, n3meta.getName(), dnm);
 
             OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n3meta.getMeta(node3.inport1));
             String id = n3meta.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = n3meta.getName();
-            streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe2);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = n3meta.getName();
+            streamCodecIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe2);
           }
         } else {
           OperatorDeployInfo odi = getOperatorDeployInfo(operator, operator.getName(), dnm);
@@ -544,10 +546,10 @@ public class StreamCodecTest
           for (OperatorDeployInfo.InputDeployInfo idi : idis) {
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-            OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-            streamIdentifier.operName = idMeta.getName();
-            streamIdentifier.portName = idInput.portName;
-            checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, streamCodec);
+            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            streamCodecIdentifier.operName = idMeta.getName();
+            streamCodecIdentifier.portName = idInput.portName;
+            checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, streamCodec);
           }
         }
       }
@@ -617,19 +619,19 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
-    OperatorDeployInfo.StreamIdentifier streamIdentifier = new OperatorDeployInfo.StreamIdentifier();
-    streamIdentifier.operName = nonInlineMeta.getName();
-    streamIdentifier.portName = niInputMeta.getPortName();
-    checkStreamCodecInfo(n1odi.streamCodecs, id, streamIdentifier, serDe);
+    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+    streamCodecIdentifier.operName = nonInlineMeta.getName();
+    streamCodecIdentifier.portName = niInputMeta.getPortName();
+    checkStreamCodecInfo(n1odi.streamCodecs, id, streamCodecIdentifier, serDe);
 
     OperatorDeployInfo odi = getSingleOperatorDeployInfo(nonInlineOperator, nonInlineOperator.getName(), dnm);
 
     OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, niInputMeta);
     id = nonInlineMeta.getName() + " " + idi.portName;
     Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
-    streamIdentifier.operName = nonInlineMeta.getName();
-    streamIdentifier.portName = niInputMeta.getPortName();
-    checkStreamCodecInfo(idi.streamCodecs, id, streamIdentifier, serDe);
+    streamCodecIdentifier.operName = nonInlineMeta.getName();
+    streamCodecIdentifier.portName = niInputMeta.getPortName();
+    checkStreamCodecInfo(idi.streamCodecs, id, streamCodecIdentifier, serDe);
 
     /*
     OperatorDeployInfo n3di = getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
@@ -640,28 +642,37 @@ public class StreamCodecTest
     streamIdentifier.operName = n3meta.getName();
     streamIdentifier.portName = n3meta.getMeta(node3.inport1).getPortName();
     checkStreamCodecInfo(n3idi.streamCodecs, id, streamIdentifier, serDe2);
-    */
+    *-/
+  }
+  */
+
+  private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+                                          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier) {
+    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
+    Assert.assertNotNull("stream codec null " + id, streamCodecInfo);
+    Assert.assertNull("stream codec object not null " + id, streamCodecInfo.streamCodec);
+    Assert.assertNull("stream codec class not null " + id, streamCodecInfo.serDeClassName);
   }
 
-  private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                          OperatorDeployInfo.StreamIdentifier streamIdentifier) {
-    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamIdentifier);
-    Assert.assertNotNull("stream codec info " + id, streamCodecInfo);
-    Assert.assertNull("stream codec object " + id, streamCodecInfo.streamCodec);
-    Assert.assertNull("stream codec class " + id, streamCodecInfo.serDeClassName);
+  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec) {
+    checkStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodec, null);
   }
 
-  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                    OperatorDeployInfo.StreamIdentifier streamIdentifier, StreamCodec<?> streamCodec) {
-    checkStreamCodecInfo(streamCodecs, id, streamIdentifier, streamCodec, null);
-  }
-
-  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                    OperatorDeployInfo.StreamIdentifier streamIdentifier, StreamCodec<?> streamCodec, String className) {
-    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamIdentifier);
-    Assert.assertNotNull("stream codec info " + id, streamCodecInfo);
+  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec, String className) {
+    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
+    Assert.assertNotNull("stream codec info null " + id, streamCodecInfo);
     Assert.assertEquals("stream codec object " + id, streamCodec, streamCodecInfo.streamCodec);
     Assert.assertEquals("stream codec class " + id, className, streamCodecInfo.serDeClassName);
+  }
+
+  private void checkPresentStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
+    System.out.println("IDDDDDDDDDDD " + streamCodecIdentifier.id);
+    OperatorDeployInfo.StreamCodecInfo opStreamCodecInfo = streamCodecs.get(streamCodecIdentifier);
+    Assert.assertNotNull("stream codec info null " + id, opStreamCodecInfo);
+    Assert.assertEquals("stream codec not same " + id, opStreamCodecInfo, streamCodecInfo);
   }
 
   private OperatorDeployInfo getSingleOperatorDeployInfo(Operator oper, String id, StreamingContainerManager scm)

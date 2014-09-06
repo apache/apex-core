@@ -876,7 +876,7 @@ public class StreamingContainer extends YarnContainerMain
         int queueCapacity = getValue(PortContext.QUEUE_CAPACITY, nodi, ndi);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
-        Map<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs = nodi.streamCodecs;
+        Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs = nodi.streamCodecs;
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
         if ((collection == null) && (streamCodecs.size() == 1)) {
@@ -886,11 +886,10 @@ public class StreamingContainer extends YarnContainerMain
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          Map.Entry<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = streamCodecs.entrySet().iterator().next();
+          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = streamCodecs.entrySet().iterator().next();
           StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
-          OperatorDeployInfo.StreamIdentifier streamIdentifier = entry.getKey();
-          String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(streamIdentifier.operName)
-                  .concat(Component.CONCAT_SEPARATOR).concat(streamIdentifier.portName);
+          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
+          String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
           System.out.println("Publisher connIndentifier single " + nodi.bufferServerHost + ":" + nodi.bufferServerPort + " " + connIdentifier);
 
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
@@ -928,12 +927,11 @@ public class StreamingContainer extends YarnContainerMain
              * Although there is a node in this container interested in output placed on this stream, there
              * seems to at least one more party interested but placed in a container other than this one.
              */
-            for (Map.Entry<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> entry : streamCodecs.entrySet()) {
-              OperatorDeployInfo.StreamIdentifier streamIdentifier = entry.getKey();
+            for (Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry : streamCodecs.entrySet()) {
+              OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
               StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
 
-              String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(streamIdentifier.operName)
-                      .concat(Component.CONCAT_SEPARATOR).concat(streamIdentifier.portName);
+              String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
               System.out.println("Publisher connIndentifier " + nodi.bufferServerHost + ":" + nodi.bufferServerPort + " " + connIdentifier);
 
               SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
@@ -1020,8 +1018,8 @@ public class StreamingContainer extends YarnContainerMain
           if (nidi.streamCodecs.size() != 1) {
             throw new IllegalStateException("Only one input codec should be present");
           }
-          Map.Entry<OperatorDeployInfo.StreamIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = nidi.streamCodecs.entrySet().iterator().next();
-          OperatorDeployInfo.StreamIdentifier streamIdentifier = entry.getKey();
+          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = nidi.streamCodecs.entrySet().iterator().next();
+          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
           StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
@@ -1052,8 +1050,7 @@ public class StreamingContainer extends YarnContainerMain
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(streamIdentifier.operName).concat(Component.CONCAT_SEPARATOR)
-                    .concat(streamIdentifier.portName);
+            String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
             System.out.println("Subscribe connIdentifier " + nidi.bufferServerHost + ":" + nidi.bufferServerPort + " " + connIdentifier);
             /*
             Map<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>> codecs = new HashMap<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>>();
