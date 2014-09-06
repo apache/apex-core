@@ -20,7 +20,6 @@ import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
-import com.datatorrent.stram.license.provider.LicenseException;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
