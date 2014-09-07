@@ -878,6 +878,10 @@ public class StreamingContainer extends YarnContainerMain
 
         Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs = nodi.streamCodecs;
 
+        if (nodi.streamCodecs.size() == 0) {
+          throw new IllegalStateException("At least one input codec configuration must be present");
+        }
+
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
         if ((collection == null) && (streamCodecs.size() == 1)) {
           assert (nodi.bufferServerHost != null) : "resulting stream cannot be inline: " + nodi;
@@ -1016,7 +1020,7 @@ public class StreamingContainer extends YarnContainerMain
 
         for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
           if (nidi.streamCodecs.size() != 1) {
-            throw new IllegalStateException("Only one input codec should be present");
+            throw new IllegalStateException("Only one input codec configuration should be present");
           }
           Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = nidi.streamCodecs.entrySet().iterator().next();
           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
