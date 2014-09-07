@@ -87,6 +87,58 @@ public class StreamCodecTest
   }
 
   @Test
+  public void testStreamCodecReuse() {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
+    GenericTestOperator node4 = dag.addOperator("node4", GenericTestOperator.class);
+    TestStreamCodec serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node4.inport1, Context.PortContext.STREAM_CODEC, serDe);
+    GenericTestOperator node5 = dag.addOperator("node5", GenericTestOperator.class);
+    dag.setInputPortAttribute(node5.inport1, Context.PortContext.STREAM_CODEC, serDe);
+    GenericTestOperator node6 = dag.addOperator("node6", GenericTestOperator.class);
+    serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node6.inport1, Context.PortContext.STREAM_CODEC, serDe);
+
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
+    dag.addStream("n2n3", node2.outport1, node3.inport1);
+    dag.addStream("n3n4", node3.outport1, node4.inport1);
+    dag.addStream("n4n5", node4.outport1, node5.inport1);
+    dag.addStream("n5n6", node5.outport1, node6.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
+    StramTestSupport.MemoryStorageAgent msa = new StramTestSupport.MemoryStorageAgent();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, msa);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    Assert.assertEquals("number containers", 6, containers.size());
+
+    for (int i = 0; i < containers.size(); ++i) {
+      StreamingContainerManagerTest.assignContainer(dnm, "container" + (i + 1));
+    }
+
+    Assert.assertEquals("number of stream codec identifiers", 0, plan.getStreamCodecIdentifiers().size());
+    getSingleOperatorDeployInfo(node1, node1.getName(), dnm);
+    Assert.assertEquals("number of stream codec identifiers", 1, plan.getStreamCodecIdentifiers().size());
+    getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
+    Assert.assertEquals("number of stream codec identifiers", 1, plan.getStreamCodecIdentifiers().size());
+    getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
+    Assert.assertEquals("number of stream codec identifiers", 2, plan.getStreamCodecIdentifiers().size());
+    getSingleOperatorDeployInfo(node4, node4.getName(), dnm);
+    Assert.assertEquals("number of stream codec identifiers", 2, plan.getStreamCodecIdentifiers().size());
+    getSingleOperatorDeployInfo(node5, node5.getName(), dnm);
+    Assert.assertEquals("number of stream codec identifiers", 3, plan.getStreamCodecIdentifiers().size());
+    getSingleOperatorDeployInfo(node6, node6.getName(), dnm);
+    Assert.assertEquals("number of stream codec identifiers", 3, plan.getStreamCodecIdentifiers().size());
+  }
+
+  @Test
   public void testDefaultStreamCodec() {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
@@ -603,7 +655,7 @@ public class StreamCodecTest
                                        String id, PhysicalPlan plan )
   {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(operatorMeta.getMeta(inputPort));
-    Assert.assertTrue("stream codec identifier not present" + id, plan.isStrCodecPresent(streamCodecInfo));
+    Assert.assertTrue("stream codec identifier not present" + id, isStrCodecPresent(streamCodecInfo, plan));
     OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
     streamCodecIdentifier.id = plan.getStreamCodecIdentifier(streamCodecInfo);
     checkPresentStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
@@ -680,6 +732,11 @@ public class StreamCodecTest
       }
     }
     return portMeta;
+  }
+
+  // For tests so that it doesn't trigger assignment of a new id
+  public boolean isStrCodecPresent(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, PhysicalPlan plan) {
+    return plan.getStreamCodecIdentifiers().containsKey(streamCodecInfo);
   }
 
   public static class TestStreamCodec extends DefaultStatefulStreamCodec<Object>

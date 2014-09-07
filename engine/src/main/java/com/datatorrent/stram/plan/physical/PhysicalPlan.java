@@ -1363,9 +1363,9 @@ public class PhysicalPlan implements Serializable
     return id;
   }
 
-  // For tests so that it doesn't trigger assignment of a new id
-  public boolean isStrCodecPresent(OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
-    return streamCodecIdentifiers.containsKey(streamCodecInfo);
+  // For tests to lookup the mapping
+  public Map<OperatorDeployInfo.StreamCodecInfo, Integer> getStreamCodecIdentifiers() {
+    return Collections.unmodifiableMap(streamCodecIdentifiers);
   }
 
 }
