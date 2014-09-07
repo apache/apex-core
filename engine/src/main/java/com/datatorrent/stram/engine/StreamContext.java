@@ -9,7 +9,6 @@ import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.netlet.EventLoop;
-import com.datatorrent.stram.api.OperatorDeployInfo;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
@@ -18,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -33,8 +31,6 @@ public class StreamContext extends DefaultAttributeMap implements Context
   public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
   public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
   public static final Attribute<StreamCodec<Object>> CODEC = new Attribute<StreamCodec<Object>>(null, null);
-  public static final Attribute<Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<Object>>> CODECS
-          = new Attribute<Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<Object>>>(null, null);
 
   @Override
   public AttributeMap getAttributes()

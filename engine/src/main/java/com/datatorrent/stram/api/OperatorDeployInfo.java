@@ -147,19 +147,6 @@ public class OperatorDeployInfo implements Serializable
      */
     public String bufferServerHost;
     public int bufferServerPort;
-    /**
-     * Class name of tuple SerDe (buffer server stream only).
-     */
-    /*
-    @Deprecated
-    public String serDeClassName;
-    */
-    /**
-     * The SerDe object.
-     */
-    /*
-    public StreamCodec streamCodec;
-    */
     public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
     /**
      * Context attributes for output port
@@ -240,7 +227,7 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
-    @Deprecated
+    @Deprecated /* use codec instead; feel free to delete the codecClass related code after May 1, 2014 */
     public String serDeClassName;
 
     /**

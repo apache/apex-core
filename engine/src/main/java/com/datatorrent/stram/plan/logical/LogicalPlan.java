@@ -255,11 +255,6 @@ public class LogicalPlan implements Serializable, DAG
     private Locality locality;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
-    @Deprecated /* use codec instead; feel free to delete the codecClass related code after May 1, 2014 */
-    /*
-    private Class<? extends StreamCodec<?>> codecClass;
-    private StreamCodec<?> streamCodec;
-    */
     private final String id;
 
     private StreamMeta(String id)
@@ -283,19 +278,6 @@ public class LogicalPlan implements Serializable, DAG
       this.locality = locality;
       return this;
     }
-
-    //@Deprecated
-    /*
-    public Class<? extends StreamCodec<?>> getCodecClass()
-    {
-      return codecClass;
-    }
-
-    public StreamCodec<?> getStreamCodec()
-    {
-      return streamCodec;
-    }
-    */
 
     public OutputPortMeta getSource()
     {
@@ -342,46 +324,6 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
-    /*
-    public void finalizeValidate() {
-      for (InputPortMeta portMeta : sinks) {
-        finalizeValidate(portMeta);
-      }
-    }
-
-    private void finalizeValidate(InputPortMeta portMeta) throws IllegalArgumentException
-    {
-      InputPort<?> port = portMeta.getPortObject();
-      StreamCodec<?> value = portMeta.getValue(PortContext.STREAM_CODEC);
-      if (value != null) {
-        if (streamCodec != null && (value != streamCodec)) {
-          throw new ValidationException(String.format("Conflicting stream codec set on input port %s (%s) when %s was specified on another port", value, portMeta, streamCodec));
-        } else {
-          streamCodec = value;
-        }
-      } else {
-        if (streamCodec != null) {
-          throw new ValidationException(String.format("Stream codec not set on input port %s when %s was specified on another port", portMeta, streamCodec));
-        } else {
-          Class<? extends StreamCodec<?>> classValue = port.getStreamCodec();
-          if (classValue != null) {
-            if (this.codecClass != null && !this.codecClass.equals(classValue)) {
-              String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", classValue, portMeta, this.codecClass);
-              //throw new IllegalArgumentException(msg);
-              throw new ValidationException(msg);
-            } else {
-              this.codecClass = classValue;
-            }
-          } else {
-            if (this.codecClass != null) {
-              throw new ValidationException(String.format("Codec class not set on input port %s when %s was specified on another port", portMeta, this.codecClass));
-            }
-          }
-        }
-      }
-    }
-    */
-
     public void remove() {
       for (InputPortMeta ipm : this.sinks) {
         ipm.getOperatorWrapper().inputStreams.remove(ipm);
@@ -411,19 +353,6 @@ public class LogicalPlan implements Serializable, DAG
       int hash = 7;
       hash = 31 * hash + (this.locality != null ? this.locality.hashCode() : 0);
       hash = 31 * hash + (this.source != null ? this.source.hashCode() : 0);
-      /*
-      if (streamCodec != null) {
-        hash = 31 * hash + streamCodec.hashCode();
-      } else if (streamCodec != null) {
-        hash = 31 * hash + streamCodec.hashCode();
-      }
-      else if (codecClass != null) {
-        hash = 31 * hash + codecClass.hashCode();
-      }
-      else {
-        hash = 31 * hash;
-      }
-      */
       hash = 31 * hash + (this.id != null ? this.id.hashCode() : 0);
       return hash;
     }
@@ -450,17 +379,6 @@ public class LogicalPlan implements Serializable, DAG
       if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
         return false;
       }
-      /*
-      if (this.streamCodec != other.streamCodec && (this.streamCodec == null || !this.streamCodec.equals(other.streamCodec))) {
-        return false;
-      }
-      if (this.streamCodec != other.streamCodec && (this.streamCodec == null || !this.streamCodec.equals(other.streamCodec))) {
-        return false;
-      }
-      if (this.codecClass != other.codecClass && (this.codecClass == null || !this.codecClass.equals(other.codecClass))) {
-        return false;
-      }
-      */
       if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
         return false;
       }
@@ -937,16 +855,6 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     for (StreamMeta n: this.streams.values()) {
-      /*
-      if (n.streamCodec != null) {
-        classNames.add(n.streamCodec.getClass().getName());
-      } else if (n.streamCodec != null) {
-        classNames.add(n.streamCodec.getClass().getName());
-      }
-      else if (n.codecClass != null) {
-        classNames.add(n.codecClass.getName());
-      }
-      */
       for (InputPortMeta sink : n.getSinks()) {
         StreamCodec<?> streamCodec = sink.getValue(PortContext.STREAM_CODEC);
         if (streamCodec != null) {
@@ -1071,8 +979,6 @@ public class LogicalPlan implements Serializable, DAG
       if (s.source == null || (s.sinks.isEmpty())) {
         throw new ValidationException(String.format("stream not connected: %s", s.getName()));
       }
-      // finalize stream codec
-      //s.finalizeValidate();
     }
 
     // processing mode
