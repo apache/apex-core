@@ -876,13 +876,8 @@ public class StreamingContainer extends YarnContainerMain
         int queueCapacity = getValue(PortContext.QUEUE_CAPACITY, nodi, ndi);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
-        Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs = nodi.streamCodecs;
-
-        if (nodi.streamCodecs.size() == 0) {
-          throw new IllegalStateException("At least one input codec configuration must be present");
-        }
-
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
+        Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs = nodi.streamCodecs;
         if ((collection == null) && (streamCodecs.size() == 1)) {
           assert (nodi.bufferServerHost != null) : "resulting stream cannot be inline: " + nodi;
           /*
@@ -908,7 +903,7 @@ public class StreamingContainer extends YarnContainerMain
            * plan accordingly. we possibly will come to this code block multiple times. We create
            * the MuxStream only the first time and use it for subsequent calls of this block.
            *
-           * There is a new possibility that we have a stream with multiple codecs for multiple inputs.
+           * There is also the possibility that we have a stream with multiple sinks having distinct codecs
            */
           ComponentContextPair<Stream, StreamContext> pair = newStreams.get(sourceIdentifier);
           if (pair == null) {

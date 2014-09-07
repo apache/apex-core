@@ -663,7 +663,6 @@ public class StreamCodecTest
 
   private void checkPresentStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
                                            OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
-    System.out.println("IDDDDDDDDDDD " + streamCodecIdentifier.id);
     OperatorDeployInfo.StreamCodecInfo opStreamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, opStreamCodecInfo);
     Assert.assertEquals("stream codec not same " + id, opStreamCodecInfo, streamCodecInfo);

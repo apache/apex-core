@@ -171,7 +171,7 @@ public class StreamingContainerAgent {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
           */
-          // Get a map of all input stream codecs connected to this port
+          // Build the stream codec configuration of all sinks connected to this port
           for (PTOperator.PTInput input : out.sinks) {
             // Create mappings for all non-inline operators
             if (input.target.getContainer() != out.source.getContainer()) {
@@ -268,6 +268,8 @@ public class StreamingContainerAgent {
         }
         */
         //OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+        // On the input side there is a unlikely scenario of partitions even for inline stream that is being
+        // handled. Always specifying a stream codec configuration in case that scenario happens.
         InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
         OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(idInputPortMeta);
         Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
