@@ -163,14 +163,6 @@ public class StreamingContainerAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
-          // TODO-
-          /*
-          if (streamMeta.getStreamCodec() != null) {
-            portInfo.streamCodec = streamMeta.getStreamCodec();
-          } else if (streamMeta.getCodecClass() != null) {
-            portInfo.serDeClassName = streamMeta.getCodecClass().getName();
-          }
-          */
           // Build the stream codec configuration of all sinks connected to this port
           for (PTOperator.PTInput input : out.sinks) {
             // Create mappings for all non-inline operators
@@ -209,23 +201,9 @@ public class StreamingContainerAgent {
         inputInfo.portName = in.portName;
         InputPortMeta inputPortMeta = getInputPortMeta(oper.getOperatorMeta(), streamMeta);
 
-        /*
-        InputPortMeta inputPortMeta = in.inputPortMeta;
-        */
-
         if (inputPortMeta != null) {
           inputInfo.contextAttributes = inputPortMeta.getAttributes();
         }
-
-        /*
-        InputPortMeta inputPortMeta = null;
-        for (Map.Entry<InputPortMeta, StreamMeta> e : oper.getOperatorMeta().getInputStreams().entrySet()) {
-          if (e.getValue() == streamMeta) {
-            inputPortMeta = e.getKey();
-            inputInfo.contextAttributes = inputPortMeta.getAttributes();
-          }
-        }
-        */
 
         if (inputInfo.contextAttributes == null && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           inputInfo.contextAttributes = in.source.logicalStream.getSource().getAttributes();
@@ -260,14 +238,6 @@ public class StreamingContainerAgent {
           inputInfo.bufferServerPort = addr.getPort();
         }
 
-        /*
-        if (streamMeta.getStreamCodec() != null) {
-          inputInfo.streamCodec = streamMeta.getStreamCodec();
-        } else if (streamMeta.getCodecClass() != null) {
-          inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
-        }
-        */
-        //OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
         // On the input side there is a unlikely scenario of partitions even for inline stream that is being
         // handled. Always specifying a stream codec configuration in case that scenario happens.
         InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);

@@ -827,23 +827,6 @@ public class StreamingContainer extends YarnContainerMain
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(finishedWindowId);
-    /*
-    StreamCodec<Object> scodec = null;
-    Map<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>> codecs = new HashMap<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>>();
-    for (Map.Entry<OperatorDeployInfo.PortIdentifier, OperatorDeployInfo.StreamCodecInfo> entry : nodi.streamCodecs.entrySet()) {
-      OperatorDeployInfo.StreamCodecInfo streamCodecInfo = entry.getValue();
-      StreamCodec<Object> codec = (StreamCodec<Object>)streamCodecInfo.streamCodec;
-      if (codec == null) {
-        codec = StramUtils.getSerdeInstance(streamCodecInfo.serDeClassName);
-      }
-      if (scodec == null) {
-        scodec = codec;
-      }
-      codecs.put(entry.getKey(), codec);
-    }
-    bssc.put(StreamContext.CODEC, scodec);
-    bssc.put(StreamContext.CODECS, codecs);
-    */
     bssc.put(StreamContext.CODEC, streamCodec);
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
@@ -891,8 +874,6 @@ public class StreamingContainer extends YarnContainerMain
           String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                  //deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
-                  //deployBufferServerPublisher(sourceIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
                   deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
           newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
@@ -932,7 +913,6 @@ public class StreamingContainer extends YarnContainerMain
               String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
               SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                      //deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
                       deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
               newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
 
@@ -1020,9 +1000,6 @@ public class StreamingContainer extends YarnContainerMain
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
-          //String portName = (nidi.origPortName == null) ? nidi.portName : nidi.origPortName;
-          //String connIdentifier = sourceIdentifier.concat(Component.CONCAT_SEPARATOR).concat(ndi.operName).concat(Component.CONCAT_SEPARATOR)
-          //        .concat(portName);
           int queueCapacity = getValue(PortContext.QUEUE_CAPACITY, nidi, ndi);
 
           Checkpoint checkpoint = getFinishedCheckpoint(ndi);
@@ -1046,24 +1023,6 @@ public class StreamingContainer extends YarnContainerMain
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
             String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
-            /*
-            Map<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>> codecs = new HashMap<OperatorDeployInfo.PortIdentifier, StreamCodec<Object>>();
-            StreamCodec<Object> scodec = null;
-            for (Map.Entry<OperatorDeployInfo.PortIdentifier, OperatorDeployInfo.StreamCodecInfo> entry : nidi.streamCodecs.entrySet()) {
-              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = entry.getValue();
-              StreamCodec<Object> codec = (StreamCodec<Object>)streamCodecInfo.streamCodec;
-              if (codec == null) {
-                codec = StramUtils.getSerdeInstance(streamCodecInfo.serDeClassName);
-              }
-              if (scodec == null) {
-                scodec = codec;
-              }
-              codecs.put(entry.getKey(), codec);
-            }
-            //context.put(StreamContext.CODEC, streamCodec);
-            context.put(StreamContext.CODEC, scodec);
-            context.put(StreamContext.CODECS, codecs);
-            */
             context.put(StreamContext.CODEC, streamCodec);
             context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
@@ -1072,19 +1031,6 @@ public class StreamingContainer extends YarnContainerMain
             context.setSinkId(sinkIdentifier);
             context.setFinishedWindowId(checkpoint.windowId);
 
-            /*
-            try {
-              Thread.sleep(5000);
-            } catch (InterruptedException ie) {
-              ie.printStackTrace();
-            }
-            */
-
-            /*
-            BufferServerSubscriber subscriber = fastPublisherSubscriber
-                                                ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity)
-                                                : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
-            */
             BufferServerSubscriber subscriber = fastPublisherSubscriber
                     ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
                     : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
@@ -1157,19 +1103,6 @@ public class StreamingContainer extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              /*
-              StreamCodec<Object> streamCodec = null;
-              String serDeClassName = null;
-              for (Map.Entry<OperatorDeployInfo.PortIdentifier, OperatorDeployInfo.StreamCodecInfo> entry : nidi.streamCodecs.entrySet()) {
-                OperatorDeployInfo.StreamCodecInfo streamCodecInfo = entry.getValue();
-                streamCodec = (StreamCodec<Object>)streamCodecInfo.streamCodec;
-                serDeClassName = streamCodecInfo.serDeClassName;
-                break;
-              }
-              if (streamCodec == null) {
-                streamCodec = StramUtils.getSerdeInstance(serDeClassName);
-              }
-              */
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
