@@ -209,6 +209,12 @@ public class OperatorDeployInfo implements Serializable
     public Integer id;
 
     @Override
+    public String toString()
+    {
+      return "" + id;
+    }
+
+    @Override
     public boolean equals(Object o)
     {
       if (this == o) return true;

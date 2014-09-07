@@ -889,7 +889,7 @@ public class StreamingContainer extends YarnContainerMain
           Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = streamCodecs.entrySet().iterator().next();
           StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
-          String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
+          String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
           System.out.println("Publisher connIndentifier single " + nodi.bufferServerHost + ":" + nodi.bufferServerPort + " " + connIdentifier);
 
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
@@ -931,7 +931,7 @@ public class StreamingContainer extends YarnContainerMain
               OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
               StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
 
-              String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
+              String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
               System.out.println("Publisher connIndentifier " + nodi.bufferServerHost + ":" + nodi.bufferServerPort + " " + connIdentifier);
 
               SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
