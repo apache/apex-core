@@ -33,7 +33,7 @@ public class AppPackageTest
 
     JSONObject application = json.getJSONArray("applications").getJSONObject(0);
     Assert.assertEquals("PiCalculator", application.getString("name"));
-    Assert.assertEquals("pi-demo-1.0-SNAPSHOT.jar", application.getString("jarName"));
+    Assert.assertEquals("pi-demo-1.0-SNAPSHOT.jar", application.getString("file"));
 
     JSONObject dag = application.getJSONObject("dag");
     Assert.assertTrue("There is at least one stream", dag.getJSONArray("streams").length() >= 1);

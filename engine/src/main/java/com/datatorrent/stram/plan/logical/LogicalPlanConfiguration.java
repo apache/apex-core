@@ -4,42 +4,37 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.Map.Entry;
-
-import javax.validation.ValidationException;
-
-import com.google.common.base.CaseFormat;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.commons.beanutils.BeanMap;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import java.io.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.*;
+import java.util.Map.Entry;
+import javax.validation.ValidationException;
+import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -771,11 +766,81 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         }
       }
       catch (ClassNotFoundException e) {
-        LOG.warn("Unable to load class: ", e);
+        // ignore
       }
     }
     return appAlias;
   }
+
+  public LogicalPlanConfiguration addFromJson(JSONObject json) throws JSONException
+  {
+    Properties prop = new Properties();
+    JSONArray operatorArray = json.getJSONArray("operators");
+    for (int i = 0; i < operatorArray.length(); i++) {
+      JSONObject operator = operatorArray.getJSONObject(i);
+      String operatorPrefix = StreamingApplication.DT_PREFIX + StramElement.OPERATOR.getValue() + "." + operator.getString("name") + ".";
+      prop.setProperty(operatorPrefix + "classname", operator.getString("class"));
+      JSONObject operatorProperties = operator.optJSONObject("properties");
+      if (operatorProperties != null) {
+        String propertiesPrefix = operatorPrefix + StramElement.PROP.getValue() + ".";
+        Iterator<String> iter = operatorProperties.keys();
+        while (iter.hasNext()) {
+          String key = iter.next();
+          prop.setProperty(propertiesPrefix + key, operatorProperties.get(key).toString());
+        }
+      }
+      JSONObject operatorAttributes = operator.optJSONObject("attributes");
+      if (operatorAttributes != null) {
+        String attributesPrefix = operatorPrefix + StramElement.ATTR.getValue() + ".";
+        Iterator<String> iter = operatorAttributes.keys();
+        while (iter.hasNext()) {
+          String key = iter.next();
+          prop.setProperty(attributesPrefix + key, operatorAttributes.getString(key));
+        }
+      }
+      JSONArray portArray = operator.optJSONArray("ports");
+      if (portArray != null) {
+        String portsPrefix = operatorPrefix + StramElement.PORT.getValue() + ".";
+        for (int j = 0; j < portArray.length(); j++) {
+          JSONObject port = portArray.getJSONObject(i);
+          JSONObject portAttributes = port.optJSONObject("attributes");
+          if (portAttributes != null) {
+            String portAttributePrefix = portsPrefix + port.getString("name") + "." + StramElement.ATTR.getValue() + ".";
+            Iterator<String> iter = portAttributes.keys();
+            while (iter.hasNext()) {
+              String key = iter.next();
+              prop.setProperty(portAttributePrefix + key, portAttributes.getString(key));
+            }
+          }
+        }
+      }
+    }
+
+    JSONArray streamArray = json.getJSONArray("streams");
+    for (int i = 0; i < streamArray.length(); i++) {
+      JSONObject stream = streamArray.getJSONObject(i);
+      String name = stream.optString("name", "stream-" + i);
+      String streamPrefix = StreamingApplication.DT_PREFIX + StramElement.STREAM.getValue() + "." + name + ".";
+      JSONObject source = stream.getJSONObject("source");
+      prop.setProperty(streamPrefix + STREAM_SOURCE, source.getString("operatorName") + "." + source.getString("portName"));
+      JSONArray sinks = stream.getJSONArray("sinks");
+      StringBuilder sinkPropertyValue = new StringBuilder();
+      for (int j = 0; j < sinks.length(); j++) {
+        if (sinkPropertyValue.length() > 0) {
+          sinkPropertyValue.append(",");
+        }
+        JSONObject sink = sinks.getJSONObject(j);
+        sinkPropertyValue.append(sink.getString("operatorName") + "." + sink.getString("portName"));
+      }
+      prop.setProperty(streamPrefix + STREAM_SINKS, sinkPropertyValue.toString());
+      String locality = stream.optString("locality", null);
+      if (locality != null) {
+        prop.setProperty(streamPrefix + STREAM_LOCALITY, locality);
+      }
+    }
+    return addFromProperties(prop);
+  }
+
 
   /**
    * Read node configurations from opProps. The opProps can be in any
@@ -846,10 +911,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           prop = getCompleteKey(keys, index+1);
         } else {
           prop = getCompleteKey(keys, index);
+          /*
           if (conf.getAttributeContextClass() != null) {
             LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
                         getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
           }
+          */
         }
         if (prop != null) {
           conf.setProperty(prop, propertyValue);
@@ -976,7 +1043,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param name
    * @param conf
    */
-  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
+  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf)
+  {
     // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
     String connectAddress = conf.get(DT_PREFIX + DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
     dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
@@ -993,11 +1061,18 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     setStreamConfiguration(dag, appConfs, appAlias);
   }
 
-  public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
+  public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException
+  {
     Properties topologyProperties = readProperties(tplgPropsFile);
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
     tb.addFromProperties(topologyProperties);
     return tb;
+  }
+
+  public static StreamingApplication create(Configuration conf, JSONObject json) throws JSONException
+  {
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    return tb.addFromJson(json);
   }
 
   public static Properties readProperties(String filePath) throws IOException

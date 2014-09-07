@@ -469,8 +469,8 @@ public class DTCli
       null,
       "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
-      new Arg[]{new FileArg("jar-file")},
-      new Arg[]{new Arg("matching-name/property-file")},
+      new Arg[]{new FileArg("jar-file/json-file/properties-file")},
+      new Arg[]{new Arg("matching-name")},
       "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
       new Arg[]{new Arg("app-id")},
@@ -1999,10 +1999,29 @@ public class DTCli
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
-      StramAppLauncher submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
-      submitApp.loadDependencies();
+      StramAppLauncher submitApp;
       AppFactory appFactory = null;
       String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
+      if (fileName.endsWith(".json")) {
+        File file = new File(fileName);
+        submitApp = new StramAppLauncher(file.getName(), config);
+        appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+        if (matchString != null) {
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON");
+        }
+      }
+      else if (fileName.endsWith(".properties")) {
+        File file = new File(fileName);
+        submitApp = new StramAppLauncher(file.getName(), config);
+        appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+        if (matchString != null) {
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file");
+        }
+      }
+      else {
+        submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
+      }
+      submitApp.loadDependencies();
 
       if (commandLineInfo.origAppId != null) {
         // ensure app is not running
@@ -2018,7 +2037,7 @@ public class DTCli
           if (ar.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
             throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " " + ar.getYarnApplicationState());
           }
-          if (matchString == null) {
+          if (appFactory == null && matchString == null) {
             // skip selection if we can match application name from previous run
             List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(), commandLineInfo.exactMatch);
             for (AppFactory af : matchingAppFactories) {
@@ -2041,7 +2060,12 @@ public class DTCli
         try {
           File file = new File(expandFileName(commandLineInfo.args[1], true));
           if (file.exists()) {
-            appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+            if (commandLineInfo.args[1].endsWith(".properties")) {
+              appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+            }
+            else if (commandLineInfo.args[1].endsWith(".json")) {
+              appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+            }
           }
         }
         catch (Throwable t) {
@@ -3682,7 +3706,7 @@ public class DTCli
         if (selectedApp == null) {
           throw new CliException("No application selected");
         }
-        String jarName = ap.tempDirectory() + "/app/" + selectedApp.jarName;
+        String appFile = ap.tempDirectory() + "/app/" + selectedApp.file;
 
         List<String> launchArgs = new ArrayList<String>();
 
@@ -3695,21 +3719,28 @@ public class DTCli
             absClassPath.set(i, ap.tempDirectory() + "/" + path);
           }
         }
+        StringBuilder libjarsVal = new StringBuilder();
         if (!absClassPath.isEmpty() || commandLineInfo.libjars != null) {
-          launchArgs.add("-libjars");
-          StringBuilder argVal = new StringBuilder();
           if (!absClassPath.isEmpty()) {
-            argVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
+            libjarsVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
           }
           if (commandLineInfo.libjars != null) {
-            if (argVal.length() > 0) {
-              argVal.append(",");
+            if (libjarsVal.length() > 0) {
+              libjarsVal.append(",");
             }
-            argVal.append(commandLineInfo.libjars);
+            libjarsVal.append(commandLineInfo.libjars);
           }
-          launchArgs.add(argVal.toString());
         }
-
+        if (appFile.endsWith(".json") || appFile.endsWith(".properties")) {
+          if (libjarsVal.length() > 0) {
+            libjarsVal.append(",");
+          }
+          libjarsVal.append(ap.tempDirectory()).append("/app/*.jar");
+        }
+        if (libjarsVal.length() > 0) {
+          launchArgs.add("-libjars");
+          launchArgs.add(libjarsVal.toString());
+        }
         if (commandLineInfo.configFile != null) {
           DTConfiguration givenConfig = new DTConfiguration();
           givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.configFile));
@@ -3745,8 +3776,10 @@ public class DTCli
             requiredProperties.remove(entry.getKey());
           }
         }
-        launchArgs.add(jarName);
-        launchArgs.add(selectedApp.name);
+        launchArgs.add(appFile);
+        if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
+          launchArgs.add(selectedApp.name);
+        }
 
         if (requiredProperties.isEmpty()) {
           LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));

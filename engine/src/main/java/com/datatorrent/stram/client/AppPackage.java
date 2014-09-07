@@ -37,6 +37,7 @@ public class AppPackage extends JarFile implements Closeable
 
   private final List<AppInfo> applications = new ArrayList<AppInfo>();
   private final List<String> appJars = new ArrayList<String>();
+  private final List<String> appJsonFiles = new ArrayList<String>();
   private final List<String> appPropertiesFiles = new ArrayList<String>();
 
   private final Set<String> requiredProperties = new TreeSet<String>();
@@ -46,13 +47,15 @@ public class AppPackage extends JarFile implements Closeable
   public static class AppInfo
   {
     public final String name;
-    public final String jarName;
+    public final String file;
+    public final String type;
     public final LogicalPlan dag;
 
-    public AppInfo(String name, String jarName, LogicalPlan dag)
+    public AppInfo(String name, String file, String type, LogicalPlan dag)
     {
       this.name = name;
-      this.jarName = jarName;
+      this.file = file;
+      this.type = type;
       this.dag = dag;
     }
 
@@ -158,6 +161,11 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableList(appJars);
   }
 
+  public List<String> getAppJsonFiles()
+  {
+    return Collections.unmodifiableList(appJsonFiles);
+  }
+
   public List<String> getAppPropertiesFiles()
   {
     return Collections.unmodifiableList(appPropertiesFiles);
@@ -201,16 +209,47 @@ public class AppPackage extends JarFile implements Closeable
             if (appName == null) {
               appName = appFactory.getName();
             }
-            applications.add(new AppInfo(appName, entry.getName(), stramAppLauncher.prepareDAG(appFactory)));
+            applications.add(new AppInfo(appName, entry.getName(), "jar", stramAppLauncher.prepareDAG(appFactory)));
           }
         }
         catch (Exception ex) {
           LOG.error("Caught exception trying to process {}", entry.getName(), ex);
         }
       }
+    }
+    it = FileUtils.iterateFiles(dir, null, false);
+
+    // this is for the properties and json files to be able to depend on the app jars,
+    // since it's possible for users to implement the operators as part of the app package
+    for (String appJar : appJars) {
+      absClassPath.add(new File(dir, appJar).getAbsolutePath());
+    }
+    config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
+    while (it.hasNext()) {
+      File entry = it.next();
+      if (entry.getName().endsWith(".json")) {
+        appJsonFiles.add(entry.getName());
+        try {
+          AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(entry);
+          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
+          stramAppLauncher.loadDependencies();
+          applications.add(new AppInfo(appFactory.getName(), entry.getName(), "json", stramAppLauncher.prepareDAG(appFactory)));
+        }
+        catch (Exception ex) {
+          LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
+        }
+      }
       else if (entry.getName().endsWith(".properties")) {
-        // TBD
         appPropertiesFiles.add(entry.getName());
+        try {
+          AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(entry);
+          StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
+          stramAppLauncher.loadDependencies();
+          applications.add(new AppInfo(appFactory.getName(), entry.getName(), "properties", stramAppLauncher.prepareDAG(appFactory)));
+        }
+        catch (Exception ex) {
+          LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
+        }
       }
       else {
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());

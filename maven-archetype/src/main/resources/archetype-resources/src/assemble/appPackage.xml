@@ -35,6 +35,10 @@
       <directory>${basedir}/src/main/resources/META-INF</directory>
       <outputDirectory>/META-INF</outputDirectory>
     </fileSet>
+    <fileSet>
+      <directory>${basedir}/src/main/resources/app</directory>
+      <outputDirectory>/app</outputDirectory>
+    </fileSet>
   </fileSets>
 
 </assembly>

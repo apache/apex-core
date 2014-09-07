@@ -5,7 +5,6 @@
 package com.datatorrent.stram.client;
 
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ShipContainingJars;
 import com.datatorrent.stram.*;
 import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
 import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
@@ -21,6 +20,7 @@ import java.util.*;
 import java.util.jar.JarEntry;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tools.ant.DirectoryScanner;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +53,7 @@ public class StramAppLauncher
   public static final String ORIGINAL_APP_ID = "tmpOriginalAppId";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
-  private final File jarFile;
+  private File jarFile;
   private FileSystem fs;
   private final Configuration conf;
   private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
@@ -91,16 +92,69 @@ public class StramAppLauncher
     @Override
     public String getName()
     {
-      return propertyFile.getName();
+      String filename = propertyFile.getName();
+      if (filename.endsWith(".properties")) {
+        return filename.substring(0, filename.length() - 5);
+      }
+      else {
+        return filename;
+      }
     }
 
+  }
+
+  public static class JsonFileAppFactory implements AppFactory
+  {
+    final File jsonFile;
+    JSONObject json;
+
+    public JsonFileAppFactory(File file)
+    {
+      this.jsonFile = file;
+      InputStream is = null;
+      try {
+        is = new FileInputStream(jsonFile);
+        StringWriter writer = new StringWriter();
+        IOUtils.copy(is, writer);
+        json = new JSONObject(writer.toString());
+      }
+      catch (Exception e) {
+        throw new IllegalArgumentException("Failed to load: " + this, e);
+      }
+      finally {
+        IOUtils.closeQuietly(is);
+      }
+    }
+
+    @Override
+    public StreamingApplication createApp(Configuration conf)
+    {
+      try {
+        return LogicalPlanConfiguration.create(conf, json);
+      }
+      catch (Exception e) {
+        throw new IllegalArgumentException("Failed to load: " + this, e);
+      }
+    }
+
+    @Override
+    public String getName()
+    {
+      String filename = jsonFile.getName();
+      if (filename.endsWith(".json")) {
+        return filename.substring(0, filename.length() - 5);
+      }
+      else {
+        return filename;
+      }
+    }
   }
 
   public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
   {
     this.jarFile = appJarFile;
     this.conf = conf;
-    init();
+    init(this.jarFile.getName());
   }
 
   public StramAppLauncher(FileSystem fs, Path path, Configuration conf) throws Exception
@@ -112,7 +166,13 @@ public class StramAppLauncher
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
     this.conf = conf;
-    init();
+    init(this.jarFile.getName());
+  }
+
+  public StramAppLauncher(String name, Configuration conf) throws Exception
+  {
+    this.conf = conf;
+    init(name);
   }
 
   public String getMvnBuildClasspathOutput()
@@ -120,83 +180,90 @@ public class StramAppLauncher
     return mvnBuildClasspathOutput.toString();
   }
 
-  private void init() throws Exception
+  private void init(String tmpName) throws Exception
   {
     propertiesBuilder.addFromConfiguration(conf);
 
     File baseDir = StramClientUtils.getUserDTDirectory();
-    baseDir = new File(new File(baseDir, "appcache"), jarFile.getName());
+    baseDir = new File(new File(baseDir, "appcache"), tmpName);
     baseDir.mkdirs();
-
-    JarFileContext jfc = new JarFileContext(new java.util.jar.JarFile(jarFile), mvnBuildClasspathOutput);
-    jfc.cacheDir = baseDir;
-
+    LinkedHashSet<URL> clUrls;
     List<String> classFileNames = new ArrayList<String>();
-    java.util.Enumeration<JarEntry> entriesEnum = jfc.jarFile.entries();
-    while (entriesEnum.hasMoreElements()) {
-      java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-      if (!jarEntry.isDirectory()) {
-        if (jarEntry.getName().endsWith("pom.xml")) {
-          jfc.pomEntry = jarEntry;
-        }
-        else if (jarEntry.getName().endsWith(".app.properties")) {
-          File targetFile = new File(baseDir, jarEntry.getName());
-          FileUtils.copyInputStreamToFile(jfc.jarFile.getInputStream(jarEntry), targetFile);
-          appResourceList.add(new PropertyFileAppFactory(targetFile));
-        }
-        else if (jarEntry.getName().endsWith(".class")) {
-          classFileNames.add(jarEntry.getName());
-        }
-      }
-    }
 
-    URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
-    jfc.urls.add(mainJarUrl);
+    if (jarFile != null) {
+      JarFileContext jfc = new JarFileContext(new java.util.jar.JarFile(jarFile), mvnBuildClasspathOutput);
+      jfc.cacheDir = baseDir;
 
-    deployJars = Sets.newLinkedHashSet();
-    // add all jar files from same directory
-    Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
-    for (File lJarFile : jarFiles) {
-      jfc.urls.add(lJarFile.toURI().toURL());
-      deployJars.add(lJarFile);
-    }
-
-    // resolve dependencies
-    List<Resolver> resolvers = Lists.newArrayList();
-
-    String resolverConfig = this.conf.get(CLASSPATH_RESOLVERS_KEY_NAME, null);
-    if (!StringUtils.isEmpty(resolverConfig)) {
-      resolvers = new ClassPathResolvers().createResolvers(resolverConfig);
-    } else {
-      // default setup if nothing was configured
-      String manifestCp = jfc.jarFile.getManifest().getMainAttributes().getValue(ManifestResolver.ATTR_NAME);
-      if (manifestCp != null) {
-        File repoRoot = new File(System.getProperty("user.home") + "/.m2/repository");
-        if (repoRoot.exists()) {
-          LOG.debug("Resolving manifest attribute {} based on {}", ManifestResolver.ATTR_NAME, repoRoot);
-          resolvers.add(new ClassPathResolvers.ManifestResolver(repoRoot));
-        } else {
-          LOG.warn("Ignoring manifest attribute {} because {} does not exist.", ManifestResolver.ATTR_NAME, repoRoot);
+      java.util.Enumeration<JarEntry> entriesEnum = jfc.jarFile.entries();
+      while (entriesEnum.hasMoreElements()) {
+        java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+        if (!jarEntry.isDirectory()) {
+          if (jarEntry.getName().endsWith("pom.xml")) {
+            jfc.pomEntry = jarEntry;
+          }
+          else if (jarEntry.getName().endsWith(".app.properties")) {
+            File targetFile = new File(baseDir, jarEntry.getName());
+            FileUtils.copyInputStreamToFile(jfc.jarFile.getInputStream(jarEntry), targetFile);
+            appResourceList.add(new PropertyFileAppFactory(targetFile));
+          }
+          else if (jarEntry.getName().endsWith(".class")) {
+            classFileNames.add(jarEntry.getName());
+          }
         }
       }
-    }
 
-    for (Resolver r : resolvers) {
-      r.resolve(jfc);
-    }
+      URL mainJarUrl = new URL("jar", "", "file:" + jarFile.getAbsolutePath() + "!/");
+      jfc.urls.add(mainJarUrl);
 
-    jfc.jarFile.close();
+      deployJars = Sets.newLinkedHashSet();
+      // add all jar files from same directory
+      Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
+      for (File lJarFile : jarFiles) {
+        jfc.urls.add(lJarFile.toURI().toURL());
+        deployJars.add(lJarFile);
+      }
 
-    URLConnection urlConnection = mainJarUrl.openConnection();
-    if (urlConnection instanceof JarURLConnection) {
+      // resolve dependencies
+      List<Resolver> resolvers = Lists.newArrayList();
+
+      String resolverConfig = this.conf.get(CLASSPATH_RESOLVERS_KEY_NAME, null);
+      if (!StringUtils.isEmpty(resolverConfig)) {
+        resolvers = new ClassPathResolvers().createResolvers(resolverConfig);
+      }
+      else {
+        // default setup if nothing was configured
+        String manifestCp = jfc.jarFile.getManifest().getMainAttributes().getValue(ManifestResolver.ATTR_NAME);
+        if (manifestCp != null) {
+          File repoRoot = new File(System.getProperty("user.home") + "/.m2/repository");
+          if (repoRoot.exists()) {
+            LOG.debug("Resolving manifest attribute {} based on {}", ManifestResolver.ATTR_NAME, repoRoot);
+            resolvers.add(new ClassPathResolvers.ManifestResolver(repoRoot));
+          }
+          else {
+            LOG.warn("Ignoring manifest attribute {} because {} does not exist.", ManifestResolver.ATTR_NAME, repoRoot);
+          }
+        }
+      }
+
+      for (Resolver r : resolvers) {
+        r.resolve(jfc);
+      }
+
+      jfc.jarFile.close();
+
+      URLConnection urlConnection = mainJarUrl.openConnection();
+      if (urlConnection instanceof JarURLConnection) {
       // JDK6 keeps jar file shared and open as long as the process is running.
-      // we want the jar file to be opened on every launch to pick up latest changes
-      // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
-      // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
-      ((JarURLConnection)urlConnection).getJarFile().close();
+        // we want the jar file to be opened on every launch to pick up latest changes
+        // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
+        // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
+        ((JarURLConnection)urlConnection).getJarFile().close();
+      }
+      clUrls = jfc.urls;
     }
-
-    LinkedHashSet<URL> clUrls = jfc.urls;
+    else {
+      clUrls = new LinkedHashSet<URL>();
+    }
 
     // add the jar dependencies
 /*
@@ -365,6 +432,7 @@ public class StramAppLauncher
    * Sets the context class loader for application dependencies.
    *
    * @param appConfig
+   * @param licenseBytes
    * @return ApplicationId
    * @throws Exception
    */
@@ -383,8 +451,10 @@ public class StramAppLauncher
         String[] jars = StringUtils.splitByWholeSeparator(libjarsCsv, StramClient.LIB_JARS_SEP);
         libjars.addAll(Arrays.asList(jars));
       }
-      for (File deployJar : deployJars) {
-        libjars.add(deployJar.getAbsolutePath());
+      if (deployJars != null) {
+        for (File deployJar : deployJars) {
+          libjars.add(deployJar.getAbsolutePath());
+        }
       }
       client.setLibJars(libjars);
       client.setFiles(conf.get(FILES_CONF_KEY_NAME));
