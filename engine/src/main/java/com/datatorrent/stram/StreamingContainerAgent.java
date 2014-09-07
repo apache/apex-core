@@ -134,7 +134,6 @@ public class StreamingContainerAgent {
       ndi.outputs = new ArrayList<OutputDeployInfo>(oper.getOutputs().size());
 
       for (PTOperator.PTOutput out : oper.getOutputs()) {
-        System.out.println(oper.getName() + " " + out.portName);
         final StreamMeta streamMeta = out.logicalStream;
         // buffer server or inline publisher
         OutputDeployInfo portInfo = new OutputDeployInfo();
@@ -175,14 +174,12 @@ public class StreamingContainerAgent {
           // Get a map of all input stream codecs connected to this port
           for (PTOperator.PTInput input : out.sinks) {
             // Create mappings for all non-inline operators
-            System.out.println("input " + input.target.getName() + " " + input.portName + " container " + input.target.getContainer().getExternalId() + " " + out.source.getContainer().getExternalId());
             if (input.target.getContainer() != out.source.getContainer()) {
               InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
               OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
               Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
               OperatorDeployInfo.StreamCodecIdentifier inputStreamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
               inputStreamCodecIdentifier.id = id;
-              System.out.println("OUTPUTT " + oper.getName() + " " + out.portName + " " + inputStreamCodecIdentifier.id);
               if (!portInfo.streamCodecs.containsKey(inputStreamCodecIdentifier)) {
                 portInfo.streamCodecs.put(inputStreamCodecIdentifier, streamCodecInfo);
               }
@@ -201,7 +198,6 @@ public class StreamingContainerAgent {
       OperatorDeployInfo ndi = operEntry.getKey();
       PTOperator oper = operEntry.getValue();
       for (PTOperator.PTInput in : oper.getInputs()) {
-        System.out.println(oper.getName() + " " + in.portName);
         final StreamMeta streamMeta = in.logicalStream;
         if (streamMeta.getSource() == null) {
           throw new AssertionError("source is null: " + in);
@@ -212,8 +208,6 @@ public class StreamingContainerAgent {
         inputInfo.declaredStreamId = streamMeta.getName();
         inputInfo.portName = in.portName;
         InputPortMeta inputPortMeta = getInputPortMeta(oper.getOperatorMeta(), streamMeta);
-
-        //System.out.println("Setting port name " + oper.getName() + " " + inputInfo.portName);
 
         /*
         InputPortMeta inputPortMeta = in.inputPortMeta;
@@ -279,7 +273,6 @@ public class StreamingContainerAgent {
         Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
         OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
         streamCodecIdentifier.id = id;
-        System.out.println("INPUTTT " + oper.getName() + " " + in.portName + " " + streamCodecIdentifier.id);
         inputInfo.streamCodecs.put(streamCodecIdentifier, streamCodecInfo);
 
         ndi.inputs.add(inputInfo);
