@@ -24,7 +24,7 @@ import java.lang.annotation.Target;
 
 /**
  *
- * Annotation for output ports on streaming operators.<p>
+ * Annotation for output ports on streaming operators.
  *
  * @since 0.3.2
  */
@@ -34,15 +34,39 @@ import java.lang.annotation.Target;
 public @interface OutputPortFieldAnnotation {
 
   /**
-   * <p>name.</p>
+   * Alternative name of the port. When this parameter is not defined or set to empty string,
+   * the name of the field is used.
+   *
+   * @return - name of the parameter.
    */
   public String name();
+
   /**
-   * <p>optional.</p>
+   * Whether this port connection is optional. When true, you may choose not to connect the port.
+   *
+   * @return - true if port is optional, false otherwise.
    */
   public boolean optional() default true;
+
   /**
-   * <p>error.</p>
+   * Whether this port emits an error stream.
+   *
+   * @return - true if port is an error port, false otherwise.
    */
   public boolean error() default false;
+
+  /**
+   * Display name of the port.
+   *
+   * @return - port name
+   */
+  public String displayName() default "";
+
+  /**
+   * A short description (1-2 sentences) of this output port.
+   *
+   * @return port description
+   */
+  public String description() default "";
+
 }

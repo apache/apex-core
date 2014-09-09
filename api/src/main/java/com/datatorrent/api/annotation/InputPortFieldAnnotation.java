@@ -18,7 +18,7 @@ package com.datatorrent.api.annotation;
 import java.lang.annotation.*;
 /**
  *
- * Annotation for input ports on streaming operators.<p>
+ * Annotation for input ports on streaming operators.
  *
  * @since 0.3.2
  */
@@ -34,11 +34,26 @@ public @interface InputPortFieldAnnotation
    * @return - name of the parameter.
    */
   public String name();
+
   /**
    * Whether this port connection is optional. When true, you may choose not to connect the port.
    *
    * @return - true if port is optional, false otherwise.
    */
   public boolean optional() default false;
+
+  /**
+   * Display name of the port.
+   *
+   * @return - port name
+   */
+  public String displayName() default "";
+
+  /**
+   * A short description (1-2 sentences) of the port.</p>
+   *
+   * @return the port description
+   */
+  public String description() default "";
 
 }
