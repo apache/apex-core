@@ -469,8 +469,8 @@ public class DTCli
       null,
       "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
-      new Arg[]{new FileArg("jar-file/json-file/properties-file")},
-      new Arg[]{new Arg("matching-name")},
+      new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file")},
+      new Arg[]{new Arg("matching-app-name")},
       "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
       new Arg[]{new Arg("app-id")},
@@ -485,7 +485,7 @@ public class DTCli
       null,
       "Kill an app"));
     globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
-      new Arg[]{new FileArg("jar-file")},
+      new Arg[]{new FileArg("jar-file/app-package-file")},
       new Arg[]{new Arg("class-name")},
       "List apps in a jar or show logical plan of an app class",
       getShowLogicalPlanCommandLineOptions()));
@@ -558,10 +558,6 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file")},
       null,
       "Get info on the app package file"));
-    globalCommands.put("launch-app-package", new OptionsCommandSpec(new LaunchAppPackageCommand(),
-      new Arg[]{new FileArg("app-package-file")},
-      new Arg[]{new Arg("matching-app-name")},
-      "Launch app in the app package", LAUNCH_OPTIONS.options));
     globalCommands.put("get-app-package-operators", new CommandSpec(new GetAppPackageOperatorsCommand(),
       new Arg[]{new FileArg("app-package-file"), new Arg("package-prefix")},
       new Arg[]{new Arg("parent-class")},
@@ -644,7 +640,7 @@ public class DTCli
       "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
       null,
-      new Arg[]{new FileArg("jar-file"), new Arg("class-name")},
+      new Arg[]{new FileArg("jar-file/app-package-file"), new Arg("class-name")},
       "Show logical plan of an app class",
       getShowLogicalPlanCommandLineOptions()));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
@@ -2019,6 +2015,21 @@ public class DTCli
         }
       }
       else {
+        // see if it's an app package
+        AppPackage ap = null;
+        try {
+          ap = new AppPackage(new File(fileName));
+        }
+        catch (Exception ex) {
+          // fall through, it's not an app package
+        }
+        finally {
+          IOUtils.closeQuietly(ap);
+        }
+        if (ap != null) {
+          new LaunchAppPackageCommand().execute(args, reader);
+          return;
+        }
         submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
       }
       submitApp.loadDependencies();
@@ -2981,6 +2992,18 @@ public class DTCli
 
       if (commandLineInfo.args.length >= 2) {
         String jarfile = expandFileName(commandLineInfo.args[0], true);
+        AppPackage ap = null;
+        // see if the first argument is actually an app package
+        try {
+          ap = new AppPackage(new File(jarfile));
+        }
+        catch (Exception ex) {
+          // fall through
+        }
+        if (ap != null) {
+          new ShowLogicalPlanAppPackageCommand().execute(args, reader);
+          return;
+        }
         String appName = commandLineInfo.args[1];
         StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
         submitApp.loadDependencies();
@@ -3021,17 +3044,39 @@ public class DTCli
         }
       }
       else if (commandLineInfo.args.length == 1) {
-        String jarfile = expandFileName(commandLineInfo.args[0], true);
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
-        submitApp.loadDependencies();
-        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
-        List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
-        for (AppFactory appFactory : appFactoryList) {
-          Map<String, Object> m = new HashMap<String, Object>();
-          m.put("name", appFactory.getName());
-          appList.add(m);
+        String filename = expandFileName(commandLineInfo.args[0], true);
+        if (filename.endsWith(".json")) {
+          File file = new File(filename);
+          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+          AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("applicationName", appFactory.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          printJson(map);
         }
-        printJson(appList, "applications");
+        else if (filename.endsWith(".properties")) {
+          File file = new File(filename);
+          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+          AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("applicationName", appFactory.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          printJson(map);
+        }
+        else {
+          StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
+          submitApp.loadDependencies();
+          List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+          List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
+          for (AppFactory appFactory : appFactoryList) {
+            Map<String, Object> m = new HashMap<String, Object>();
+            m.put("name", appFactory.getName());
+            appList.add(m);
+          }
+          printJson(appList, "applications");
+        }
       }
       else {
         if (currentApp == null) {
@@ -3054,6 +3099,46 @@ public class DTCli
     }
 
   }
+
+  private class ShowLogicalPlanAppPackageCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String jarfile = expandFileName(args[1], true);
+      AppPackage ap = new AppPackage(new File(jarfile), true);
+
+      List<AppInfo> applications = ap.getApplications();
+
+      if (args.length >= 3) {
+        for (AppInfo appInfo : applications) {
+          if (args[2].equals(appInfo.name)) {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("applicationName", appInfo.name);
+            if (appInfo.dag != null) {
+              map.put("logicalPlan", LogicalPlanSerializer.convertToMap(appInfo.dag));
+            }
+            if (appInfo.error != null) {
+              map.put("error", appInfo.error);
+            }
+            printJson(map);
+          }
+        }
+      }
+      else {
+        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+        for (AppInfo appInfo : applications) {
+          Map<String, Object> m = new HashMap<String, Object>();
+          m.put("name", appInfo.name);
+          m.put("type", appInfo.type);
+          appList.add(m);
+        }
+        printJson(appList, "applications");
+      }
+    }
+
+  }
+
 
   private File copyToLocal(String[] files) throws IOException
   {
