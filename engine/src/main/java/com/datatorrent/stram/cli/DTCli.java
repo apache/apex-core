@@ -3189,9 +3189,12 @@ public class DTCli
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         for (Class<? extends Operator> clazz : operatorClasses) {
-          JSONObject classObject = new JSONObject();
-          classObject.put("name", clazz.getName());
-          arr.put(classObject);
+          try {
+            arr.put(OperatorUtils.describeOperator(clazz));
+          }
+          catch (Throwable t) {
+            // ignore this class
+          }
         }
         json.put("operatorClasses", arr);
         printJson(json);
@@ -3213,9 +3216,7 @@ public class DTCli
       try {
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        JSONObject json = new JSONObject();
-        json.put("properties", OperatorBeanUtils.getClassProperties(operatorClass, 0));
-        printJson(json);
+        printJson(OperatorUtils.describeOperator(operatorClass));
       }
       finally {
         FileUtils.deleteDirectory(tmpDir);
