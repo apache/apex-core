@@ -57,7 +57,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
-import com.datatorrent.stram.util.OperatorUtils;
 
 /**
  *
@@ -259,7 +258,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("packagePrefix") String packagePrefix, @QueryParam("parent") String parent)
+  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -273,13 +272,9 @@ public class StramWebServices
       }
     }
 
-    if (StringUtils.isBlank(packagePrefix)) {
-      packagePrefix = "com.datatorrent";
-    }
-
     try {
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefix);
-      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
+      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
       for (Class<?> clazz : operatorClasses) {
         JSONObject j = new JSONObject();
@@ -309,7 +304,7 @@ public class StramWebServices
     try {
       Class<?> clazz = Class.forName(className);
       if (Operator.class.isAssignableFrom(clazz)) {
-        return OperatorUtils.describeOperator((Class<? extends Operator>)clazz);
+        return OperatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
         throw new NotFoundException();

@@ -490,10 +490,11 @@ public class DTCli
       "List apps in a jar or show logical plan of an app class",
       getShowLogicalPlanCommandLineOptions()));
 
-    globalCommands.put("get-jar-operator-classes", new CommandSpec(new GetJarOperatorClassesCommand(),
-      new Arg[]{new FileArg("jar-files-comma-separated"), new Arg("package-prefix")},
-      new Arg[]{new Arg("parent-class-name")},
-      "List operators in a jar list"));
+    globalCommands.put("get-jar-operator-classes", new OptionsCommandSpec(new GetJarOperatorClassesCommand(),
+      new Arg[]{new FileArg("jar-files-comma-separated")},
+      new Arg[]{new Arg("search-term")},
+      "List operators in a jar list",
+      GET_OPERATOR_CLASSES_OPTIONS.options));
 
     globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(),
       new Arg[]{new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
@@ -558,10 +559,11 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file")},
       null,
       "Get info on the app package file"));
-    globalCommands.put("get-app-package-operators", new CommandSpec(new GetAppPackageOperatorsCommand(),
-      new Arg[]{new FileArg("app-package-file"), new Arg("package-prefix")},
-      new Arg[]{new Arg("parent-class")},
-      "Get operators within the given app package"));
+    globalCommands.put("get-app-package-operators", new OptionsCommandSpec(new GetAppPackageOperatorsCommand(),
+      new Arg[]{new FileArg("app-package-file")},
+      new Arg[]{new Arg("search-term")},
+      "Get operators within the given app package",
+      GET_OPERATOR_CLASSES_OPTIONS.options));
     globalCommands.put("get-app-package-operator-properties", new CommandSpec(new GetAppPackageOperatorPropertiesCommand(),
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
@@ -3172,25 +3174,61 @@ public class DTCli
     return tmpDir;
   }
 
+
+  @SuppressWarnings("static-access")
+  public static class GetOperatorClassesCommandLineOptions
+  {
+    final Options options = new Options();
+    final Option parent = add(new Option("parent", "Specify the parent class for the operators"));
+
+    private Option add(Option opt)
+    {
+      this.options.addOption(opt);
+      return opt;
+    }
+
+  }
+
+  private static GetOperatorClassesCommandLineOptions GET_OPERATOR_CLASSES_OPTIONS = new GetOperatorClassesCommandLineOptions();
+
+  private static class GetOperatorClassesCommandLineInfo
+  {
+    String parent;
+    String[] args;
+  }
+
+  private static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    GetOperatorClassesCommandLineInfo result = new GetOperatorClassesCommandLineInfo();
+    CommandLine line = parser.parse(GET_OPERATOR_CLASSES_OPTIONS.options, args);
+    result.parent = line.getOptionValue("parent");
+    result.args = line.getArgs();
+    return result;
+  }
+
+
   private class GetJarOperatorClassesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String parentName = Operator.class.getName();
-      if (args.length > 3) {
-        parentName = args[3];
-      }
-      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(newArgs);
+      String parentName = commandLineInfo.parent != null ? commandLineInfo.parent : Operator.class.getName();
+
+      String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
-        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
+        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         for (Class<? extends Operator> clazz : operatorClasses) {
           try {
-            arr.put(OperatorUtils.describeOperator(clazz));
+            arr.put(OperatorDiscoverer.describeOperator(clazz));
           }
           catch (Throwable t) {
             // ignore this class
@@ -3214,9 +3252,9 @@ public class DTCli
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        printJson(OperatorUtils.describeOperator(operatorClass));
+        printJson(OperatorDiscoverer.describeOperator(operatorClass));
       }
       finally {
         FileUtils.deleteDirectory(tmpDir);
@@ -3887,7 +3925,10 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
+      String[] tmpArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, tmpArgs, 0, args.length - 1);
+      GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(tmpArgs);
+      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
       try {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
@@ -3898,11 +3939,15 @@ public class DTCli
           jars.add(ap.tempDirectory() + "/" + libJar);
         }
         newArgs.add("get-jar-operator-classes");
-        newArgs.add(StringUtils.join(jars, ","));
-        newArgs.add(args[2]);
-        if (args.length > 3) {
-          newArgs.add(args[3]);
+        if (commandLineInfo.parent != null) {
+          newArgs.add("-parent");
+          newArgs.add(commandLineInfo.parent);
         }
+        newArgs.add(StringUtils.join(jars, ","));
+        for (int i = 1; i < commandLineInfo.args.length; i++) {
+          newArgs.add(commandLineInfo.args[i]);
+        }
+        LOG.debug("Executing: " + newArgs);
         new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[]{}), reader);
 
       }
@@ -4007,9 +4052,9 @@ public class DTCli
     String archives;
     String licenseFile;
     String origAppId;
-    String[] args;
     boolean exactMatch;
-  }
+    String[] args;
+ }
 
   @SuppressWarnings("static-access")
   public static Options getShowLogicalPlanCommandLineOptions()
