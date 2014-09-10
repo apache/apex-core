@@ -9,6 +9,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,13 +162,16 @@ public class CLIProxy implements Closeable
     return issueCommand(sb.toString());
   }
 
-  public JSONObject getAppPackageOperatorClasses(File appPackageLocalFile, String parent) throws Exception
+  public JSONObject getAppPackageOperatorClasses(File appPackageLocalFile, String parent, String searchTerm) throws Exception
   {
     StringBuilder sb = new StringBuilder("get-app-package-operators \"");
-    sb.append(appPackageLocalFile.getAbsolutePath());
-    sb.append("\" ");
     if (!StringUtils.isBlank(parent)) {
-      sb.append("\"").append(parent).append("\"");
+      sb.append("-parent \"").append(parent).append("\"");
+      sb.append("\" ");
+    }
+    sb.append(appPackageLocalFile.getAbsolutePath());
+    if (!StringUtils.isBlank(searchTerm)) {
+      sb.append(" \"").append(StringEscapeUtils.escapeJava(searchTerm)).append("\"");
     }
     return issueCommand(sb.toString());
   }
