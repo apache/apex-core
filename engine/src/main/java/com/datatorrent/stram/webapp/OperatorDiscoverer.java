@@ -8,6 +8,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -160,9 +161,26 @@ public class OperatorDiscoverer
           result.add(clazz);
         }
         else {
-          // TBD: add other search fields here, e.g. descriptions, categories, tags
           if (clazz.getName().toLowerCase().contains(searchTerm)) {
             result.add(clazz);
+          }
+          else {
+            OperatorAnnotation an = clazz.getAnnotation(OperatorAnnotation.class);
+            if (an != null) {
+              if (an.category().toLowerCase().contains(searchTerm)
+                      || an.description().toLowerCase().contains(searchTerm)
+                      || an.displayName().toLowerCase().contains(searchTerm)) {
+                result.add(clazz);
+              }
+              else {
+                for (String tag : an.tags()) {
+                  if (tag.toLowerCase().equals(searchTerm)) {
+                    result.add(clazz);
+                    break;
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -241,6 +259,14 @@ public class OperatorDiscoverer
         response.put("properties", properties);
         response.put("inputPorts", inputPorts);
         response.put("outputPorts", outputPorts);
+
+        OperatorAnnotation an = clazz.getAnnotation(OperatorAnnotation.class);
+        if (an != null) {
+          response.put("category", an.category());
+          response.put("description", an.description());
+          response.put("displayName", an.displayName());
+          response.put("tags", new JSONArray(Arrays.asList(an.tags())));
+        }
       }
       catch (JSONException ex) {
         throw new RuntimeException(ex);
