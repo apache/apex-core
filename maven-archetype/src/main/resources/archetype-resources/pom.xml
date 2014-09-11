@@ -7,13 +7,15 @@
   <artifactId>${artifactId}</artifactId>
   <packaging>jar</packaging>
 
+  <!-- change these to the appropriate values -->
+  <name>My DataTorrent Application</name>
+  <description>My DataTorrent Application Description</description>
+
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
     <datatorrent.version>${archetypeVersion}</datatorrent.version>
     <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
-
-  <name>My DataTorrent Application</name>
 
   <!-- repository to provide the DataTorrent artifacts -->
   <repositories>
@@ -70,6 +72,8 @@
               <DT-Engine-Version>${datatorrent.version}</DT-Engine-Version>
               <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
               <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
+              <DT-App-Package-Display-Name>${project.name}</DT-App-Package-Display-Name>
+              <DT-App-Package-Description>${project.description}</DT-App-Package-Description>
             </manifestEntries>
           </archive>
         </configuration>

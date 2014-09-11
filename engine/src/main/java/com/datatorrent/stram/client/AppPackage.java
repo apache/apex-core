@@ -29,10 +29,14 @@ public class AppPackage extends JarFile implements Closeable
   public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_VERSION = "DT-App-Package-Version";
   public static final String ATTRIBUTE_CLASS_PATH = "Class-Path";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME = "DT-App-Package-Display-Name";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION = "DT-App-Package-Description";
 
   private final String appPackageName;
   private final String appPackageVersion;
   private final String dtEngineVersion;
+  private final String appPackageDescription;
+  private final String appPackageDisplayName;
   private final ArrayList<String> classPath = new ArrayList<String>();
   private final String directory;
 
@@ -88,6 +92,8 @@ public class AppPackage extends JarFile implements Closeable
     appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
     appPackageVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_VERSION);
     dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
+    appPackageDisplayName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME);
+    appPackageDescription = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION);
     String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
     if (appPackageName == null || appPackageVersion == null || classPathString == null) {
       throw new IOException("Not a valid app package.  Class-Path is missing from MANIFEST.MF");
@@ -135,6 +141,16 @@ public class AppPackage extends JarFile implements Closeable
   public String getAppPackageVersion()
   {
     return appPackageVersion;
+  }
+
+  public String getAppPackageDescription()
+  {
+    return appPackageDescription;
+  }
+
+  public String getAppPackageDisplayName()
+  {
+    return appPackageDisplayName;
   }
 
   public String getDtEngineVersion()

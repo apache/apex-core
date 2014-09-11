@@ -3707,14 +3707,14 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ab = new AppPackage(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
         jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
-        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ab)));
+        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ap)));
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
