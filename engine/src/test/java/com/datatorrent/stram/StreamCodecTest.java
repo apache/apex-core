@@ -123,17 +123,11 @@ public class StreamCodecTest
       StreamingContainerManagerTest.assignContainer(dnm, "container" + (i + 1));
     }
 
-    Assert.assertEquals("number of stream codec identifiers", 0, plan.getStreamCodecIdentifiers().size());
     getSingleOperatorDeployInfo(node1, node1.getName(), dnm);
-    Assert.assertEquals("number of stream codec identifiers", 1, plan.getStreamCodecIdentifiers().size());
     getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
-    Assert.assertEquals("number of stream codec identifiers", 1, plan.getStreamCodecIdentifiers().size());
     getSingleOperatorDeployInfo(node3, node3.getName(), dnm);
-    Assert.assertEquals("number of stream codec identifiers", 2, plan.getStreamCodecIdentifiers().size());
     getSingleOperatorDeployInfo(node4, node4.getName(), dnm);
-    Assert.assertEquals("number of stream codec identifiers", 2, plan.getStreamCodecIdentifiers().size());
     getSingleOperatorDeployInfo(node5, node5.getName(), dnm);
-    Assert.assertEquals("number of stream codec identifiers", 3, plan.getStreamCodecIdentifiers().size());
     getSingleOperatorDeployInfo(node6, node6.getName(), dnm);
     Assert.assertEquals("number of stream codec identifiers", 3, plan.getStreamCodecIdentifiers().size());
   }
