@@ -158,32 +158,32 @@ public class StreamMapping implements java.io.Serializable
 
       int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
-      boolean separateUnifier = false;
-      Integer lastIdentifier = null;
+      boolean separateUnifiers = false;
+      Integer lastId = null;
       for (InputPortMeta ipm : streamMeta.getSinks()) {
         OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
-        Integer streamCodecIdentifier = plan.getStreamCodecIdentifier(streamCodecInfo);
-        if (lastIdentifier == null) {
-          lastIdentifier = streamCodecIdentifier;
-        } else if (!streamCodecIdentifier.equals(lastIdentifier)) {
-          separateUnifier = true;
+        Integer id = plan.getStreamCodecIdentifier(streamCodecInfo);
+        if (lastId == null) {
+          lastId = id;
+        } else if (!id.equals(lastId)) {
+          separateUnifiers = true;
           break;
         }
       }
 
       List<PTOutput> unifierSources = this.upstream;
-      Map<OperatorDeployInfo.StreamCodecInfo, List<PTOutput>> unifierSourcesMap = Maps.newHashMap();
+      Map<OperatorDeployInfo.StreamCodecInfo, List<PTOutput>> cascadeUnifierSourcesMap = Maps.newHashMap();
 
       if (limit > 1 && this.upstream.size() > limit) {
         // cascading unifier
-        if (!separateUnifier) {
+        if (!separateUnifiers) {
           unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
         } else {
           for (InputPortMeta ipm : streamMeta.getSinks()) {
             OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
-            if (!unifierSourcesMap.containsKey(streamCodecInfo)) {
+            if (!cascadeUnifierSourcesMap.containsKey(streamCodecInfo)) {
               unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
-              unifierSourcesMap.put(streamCodecInfo, unifierSources);
+              cascadeUnifierSourcesMap.put(streamCodecInfo, unifierSources);
             }
           }
         }
@@ -201,7 +201,7 @@ public class StreamMapping implements java.io.Serializable
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
 
         if (upstream.size() > 1) {
-          if (!separateUnifier && (pks == null || pks.mask == 0)) {
+          if (!separateUnifiers && (pks == null || pks.mask == 0)) {
             if (finalUnifier == null) {
               finalUnifier = createUnifier();
             }
@@ -226,13 +226,13 @@ public class StreamMapping implements java.io.Serializable
               in.source.sinks.remove(in);
             }
             unifier.inputs.clear();
-            List<PTOutput> doperUnifierSources = null;
-            if (separateUnifier) {
+            List<PTOutput> doperUnifierSources = unifierSources;
+            if (separateUnifiers) {
               OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(doperEntry.second);
-              doperUnifierSources = unifierSourcesMap.get(streamCodecInfo);
-            }
-            if (doperUnifierSources == null) {
-              doperUnifierSources = unifierSources;
+              List<PTOutput> cascadeSources = cascadeUnifierSourcesMap.get(streamCodecInfo);
+              if (cascadeSources != null) {
+                doperUnifierSources = cascadeSources;
+              }
             }
             // add new inputs
             for (PTOutput out : doperUnifierSources) {
