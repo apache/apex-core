@@ -10,11 +10,13 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.annotation.PropertyAnnotation;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.*;
 import java.util.*;
@@ -228,6 +230,8 @@ public class OperatorDiscoverer
             JSONObject inputPort = new JSONObject();
             inputPort.put("name", inputAnnotation.name());
             inputPort.put("optional", inputAnnotation.optional());
+            inputPort.put("displayName", inputAnnotation.displayName());
+            inputPort.put("description", inputAnnotation.description());
             inputPorts.put(inputPort);
             continue;
           }
@@ -243,6 +247,9 @@ public class OperatorDiscoverer
             JSONObject outputPort = new JSONObject();
             outputPort.put("name", outputAnnotation.name());
             outputPort.put("optional", outputAnnotation.optional());
+            outputPort.put("error", outputAnnotation.error());
+            outputPort.put("displayName", outputAnnotation.displayName());
+            outputPort.put("description", outputAnnotation.description());
             outputPorts.put(outputPort);
             //continue;
           }
@@ -293,9 +300,16 @@ public class OperatorDiscoverer
           if (propertyType != null) {
             JSONObject propertyObj = new JSONObject();
             propertyObj.put("name", pd.getName());
-            propertyObj.put("canGet", pd.getReadMethod() != null);
+            Method readMethod = pd.getReadMethod();
+            propertyObj.put("canGet", readMethod != null);
             propertyObj.put("canSet", pd.getWriteMethod() != null);
-            propertyObj.put("description", pd.getShortDescription());
+            if (readMethod != null) {
+              PropertyAnnotation pa = readMethod.getAnnotation(PropertyAnnotation.class);
+              if (pa != null) {
+                propertyObj.put("description", pa.description());
+                propertyObj.put("displayName", pa.displayName());
+              }
+            }
             propertyObj.put("type", propertyType.getName());
             if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang") && level < MAX_PROPERTY_LEVELS) {
               propertyObj.put("properties", getClassProperties(propertyType, level + 1));

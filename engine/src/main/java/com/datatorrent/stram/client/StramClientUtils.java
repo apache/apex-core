@@ -232,6 +232,20 @@ public class StramClientUtils
     }
   }
 
+  public static File getInstallationDir()
+  {
+    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
+    try {
+      if (resource == null) {
+        return null;
+      }
+      return new File(resource.toURI()).getParentFile().getParentFile();
+    }
+    catch (URISyntaxException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   public static boolean isDevelopmentMode()
   {
     return getUserDTDirectory().equals(getConfigDir());
