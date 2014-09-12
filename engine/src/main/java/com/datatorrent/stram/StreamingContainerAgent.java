@@ -254,7 +254,7 @@ public class StreamingContainerAgent {
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
   }
 
-  private InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta) {
+  public static InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta) {
     InputPortMeta inputPortMeta = null;
     Map<InputPortMeta, StreamMeta> inputStreams = operatorMeta.getInputStreams();
     for (Map.Entry<InputPortMeta, StreamMeta> entry : inputStreams.entrySet()) {
@@ -266,7 +266,7 @@ public class StreamingContainerAgent {
     return inputPortMeta;
   }
 
-  private InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input) {
+  public static InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input) {
     InputPortMeta inputPortMeta = null;
     PTOperator inputTarget = input.target;
     StreamMeta streamMeta = input.logicalStream;
@@ -279,7 +279,7 @@ public class StreamingContainerAgent {
     return inputPortMeta;
   }
 
-  private PTOperator getIdentifyingOperator(PTOperator operator) {
+  public static PTOperator getIdentifyingOperator(PTOperator operator) {
     while ((operator != null) && operator.isUnifier()) {
       PTOperator idOperator = null;
       List<PTOperator.PTOutput> outputs = operator.getOutputs();

@@ -20,6 +20,7 @@ import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,17 +158,6 @@ public class StreamMapping implements java.io.Serializable
 
       int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
-      List<PTOutput> unifierSources = this.upstream;
-      if (limit > 1 && this.upstream.size() > limit) {
-        // cascading unifier
-        unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
-      }
-
-      // remove remaining unifiers
-      for (PTOperator oper : currentUnifiers) {
-        plan.removePTOperator(oper);
-      }
-
       boolean separateUnifier = false;
       Integer lastIdentifier = null;
       for (InputPortMeta ipm : streamMeta.getSinks()) {
@@ -179,6 +169,29 @@ public class StreamMapping implements java.io.Serializable
           separateUnifier = true;
           break;
         }
+      }
+
+      List<PTOutput> unifierSources = this.upstream;
+      Map<OperatorDeployInfo.StreamCodecInfo, List<PTOutput>> unifierSourcesMap = Maps.newHashMap();
+
+      if (limit > 1 && this.upstream.size() > limit) {
+        // cascading unifier
+        if (!separateUnifier) {
+          unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
+        } else {
+          for (InputPortMeta ipm : streamMeta.getSinks()) {
+            OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+            if (!unifierSourcesMap.containsKey(streamCodecInfo)) {
+              unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
+              unifierSourcesMap.put(streamCodecInfo, unifierSources);
+            }
+          }
+        }
+      }
+
+      // remove remaining unifiers
+      for (PTOperator oper : currentUnifiers) {
+        plan.removePTOperator(oper);
       }
 
       // link the downstream operators with the unifiers
@@ -213,8 +226,16 @@ public class StreamMapping implements java.io.Serializable
               in.source.sinks.remove(in);
             }
             unifier.inputs.clear();
+            List<PTOutput> doperUnifierSources = null;
+            if (separateUnifier) {
+              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(doperEntry.second);
+              doperUnifierSources = unifierSourcesMap.get(streamCodecInfo);
+            }
+            if (doperUnifierSources == null) {
+              doperUnifierSources = unifierSources;
+            }
             // add new inputs
-            for (PTOutput out : unifierSources) {
+            for (PTOutput out : doperUnifierSources) {
               addInput(unifier, out, pks);
             }
           }
