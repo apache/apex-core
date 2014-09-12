@@ -243,6 +243,7 @@ public class OperatorDiscoverer
             JSONObject outputPort = new JSONObject();
             outputPort.put("name", outputAnnotation.name());
             outputPort.put("optional", outputAnnotation.optional());
+            outputPort.put("error", outputAnnotation.error());
             outputPorts.put(outputPort);
             //continue;
           }
