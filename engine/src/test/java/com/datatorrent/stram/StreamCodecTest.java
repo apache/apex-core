@@ -303,6 +303,12 @@ public class StreamCodecTest
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
             checkPresentStreamCodec(n2meta, node2.inport1, idi.streamCodecs, id, plan);
           }
+          List<OperatorDeployInfo.OutputDeployInfo> otdis = odi.outputs;
+          for (OperatorDeployInfo.OutputDeployInfo otdi : otdis) {
+            String id = operator.getName() + " " + otdi.portName;
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
+            checkPresentStreamCodec(n2meta, node2.inport1, otdi.streamCodecs, id, plan);
+          }
         }
       }
     }
@@ -386,6 +392,12 @@ public class StreamCodecTest
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
             checkPresentStreamCodec(n3meta, node3.inport1, idi.streamCodecs, id, plan);
+          }
+          List<OperatorDeployInfo.OutputDeployInfo> otdis = odi.outputs;
+          for (OperatorDeployInfo.OutputDeployInfo otdi : otdis) {
+            String id = operator.getName() + " " + otdi.portName;
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
+            checkPresentStreamCodec(n3meta, node3.inport1, otdi.streamCodecs, id, plan);
           }
         }
       }
@@ -516,17 +528,23 @@ public class StreamCodecTest
           Assert.assertEquals("unifier sinks " + operator.getName(), 1, out.sinks.size());
           PTOperator.PTInput idInput = out.sinks.get(0);
           LogicalPlan.OperatorMeta idMeta = idInput.target.getOperatorMeta();
-          List<OperatorDeployInfo.InputDeployInfo> idis = odi.inputs;
           Operator.InputPort<?> idInputPort = null;
           if (idMeta == n2meta) {
             idInputPort = node2.inport1;
           } else if (idMeta == n3meta) {
             idInputPort = node3.inport1;
           }
+          List<OperatorDeployInfo.InputDeployInfo> idis = odi.inputs;
           for (OperatorDeployInfo.InputDeployInfo idi : idis) {
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
             checkPresentStreamCodec(idMeta, idInputPort, idi.streamCodecs, id, plan);
+          }
+          List<OperatorDeployInfo.OutputDeployInfo> otdis = odi.outputs;
+          for (OperatorDeployInfo.OutputDeployInfo otdi : otdis) {
+            String id = operator.getName() + " " + otdi.portName;
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
+            checkPresentStreamCodec(idMeta, idInputPort, otdi.streamCodecs, id, plan);
           }
         }
       }
@@ -608,17 +626,23 @@ public class StreamCodecTest
           Assert.assertEquals("unifier sinks " + operator.getName(), 1, out.sinks.size());
           PTOperator.PTInput idInput = out.sinks.get(0);
           LogicalPlan.OperatorMeta idMeta = idInput.target.getOperatorMeta();
-          List<OperatorDeployInfo.InputDeployInfo> idis = odi.inputs;
           Operator.InputPort<?> idInputPort = null;
           if (idMeta == n2meta) {
             idInputPort = node2.inport1;
           } else if (idMeta == n3meta) {
             idInputPort = node3.inport1;
           }
+          List<OperatorDeployInfo.InputDeployInfo> idis = odi.inputs;
           for (OperatorDeployInfo.InputDeployInfo idi : idis) {
             String id = operator.getName() + " " + idi.portName;
             Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
             checkPresentStreamCodec(idMeta, idInputPort, idi.streamCodecs, id, plan);
+          }
+          List<OperatorDeployInfo.OutputDeployInfo> otdis = odi.outputs;
+          for (OperatorDeployInfo.OutputDeployInfo otdi : otdis) {
+            String id = operator.getName() + " " + otdi.portName;
+            Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 1);
+            checkPresentStreamCodec(idMeta, idInputPort, otdi.streamCodecs, id, plan);
           }
         }
       }

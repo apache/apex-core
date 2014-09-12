@@ -163,20 +163,21 @@ public class StreamingContainerAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
-          // Build the stream codec configuration of all sinks connected to this port
-          for (PTOperator.PTInput input : out.sinks) {
-            // Create mappings for all non-inline operators
-            if (input.target.getContainer() != out.source.getContainer()) {
-              InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
-              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
-              Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
-              OperatorDeployInfo.StreamCodecIdentifier inputStreamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
-              inputStreamCodecIdentifier.id = id;
-              if (!portInfo.streamCodecs.containsKey(inputStreamCodecIdentifier)) {
-                portInfo.streamCodecs.put(inputStreamCodecIdentifier, streamCodecInfo);
-              }
+        }
+
+        // Build the stream codec configuration of all sinks connected to this port
+        for (PTOperator.PTInput input : out.sinks) {
+          // Create mappings for all non-inline operators
+          //if (input.target.getContainer() != out.source.getContainer()) {
+            InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
+            OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+            Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
+            OperatorDeployInfo.StreamCodecIdentifier inputStreamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
+            inputStreamCodecIdentifier.id = id;
+            if (!portInfo.streamCodecs.containsKey(inputStreamCodecIdentifier)) {
+              portInfo.streamCodecs.put(inputStreamCodecIdentifier, streamCodecInfo);
             }
-          }
+          //}
         }
 
         ndi.outputs.add(portInfo);
