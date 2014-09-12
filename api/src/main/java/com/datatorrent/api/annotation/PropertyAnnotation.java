@@ -11,12 +11,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation to specify characteristics of an operator property.
+ * Annotation to specify characteristics of an operator property. Needs to
+ * be attached to the field getter method.
  *
  * @since 1.0.5
  */
 @Documented
-@Target(ElementType.FIELD)
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PropertyAnnotation
 {
