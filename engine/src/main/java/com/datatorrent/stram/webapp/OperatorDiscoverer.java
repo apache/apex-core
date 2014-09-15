@@ -107,11 +107,8 @@ public class OperatorDiscoverer
                     operatorClasses.add((Class<? extends Operator>)clazz);
                   }
                 }
-                catch (ClassNotFoundException ex) {
-                  LOG.warn("Class not found: {}", className);
-                }
-                catch (NoClassDefFoundError ex) {
-                  LOG.warn("Class definition not found: {}", className);
+                catch (Throwable ex) {
+                  LOG.warn("Class cannot be loaded: {} (error was {})", className, ex.getMessage());
                 }
               }
             }
