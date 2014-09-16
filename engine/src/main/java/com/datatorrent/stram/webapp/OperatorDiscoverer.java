@@ -51,12 +51,12 @@ public class OperatorDiscoverer
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
   private final List<String> pathsToScan = new ArrayList<String>();
   private final ClassLoader classLoader;
-  //private final String packagePrefix; // The reason why we need this is that if we scan the entire class path, it's very likely that we end up with out of permgen memory
+  private final String[] packagePrefixes; // The reason why we need this is that if we scan the entire class path, it's very likely that we end up with out of permgen memory
   private static final int MAX_PROPERTY_LEVELS = 5;
 
-  public OperatorDiscoverer()
+  public OperatorDiscoverer(String[] packagePrefixes)
   {
-    //this.packagePrefix = packagePrefix;
+    this.packagePrefixes = packagePrefixes;
     classLoader = ClassLoader.getSystemClassLoader();
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
@@ -67,9 +67,9 @@ public class OperatorDiscoverer
     }
   }
 
-  public OperatorDiscoverer(String[] jars)
+  public OperatorDiscoverer(String[] packagePrefixes, String[] jars)
   {
-    //this.packagePrefix = packagePrefix;
+    this.packagePrefixes = packagePrefixes;
     URL[] urls = new URL[jars.length];
     for (int i = 0; i < jars.length; i++) {
       pathsToScan.add(jars[i]);
@@ -81,6 +81,16 @@ public class OperatorDiscoverer
       }
     }
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
+  }
+
+  private boolean isEligibleClass(String className)
+  {
+    for (String packagePrefix : packagePrefixes) {
+      if (className.startsWith(packagePrefix)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @SuppressWarnings("unchecked")
@@ -102,16 +112,18 @@ public class OperatorDiscoverer
                  continue;
                  }
                  */
-                LOG.debug("Looking at class {} jar {}", className, jarFile);
-                try {
-                  Class<?> clazz = classLoader.loadClass(className);
-                  if (isInstantiableOperatorClass(clazz)) {
-                    LOG.debug("Adding class {} as an operator", clazz.getName());
-                    operatorClasses.add((Class<? extends Operator>)clazz);
+                if (isEligibleClass(className)) {
+                  LOG.debug("Looking at class {} jar {}", className, jarFile);
+                  try {
+                    Class<?> clazz = classLoader.loadClass(className);
+                    if (isInstantiableOperatorClass(clazz)) {
+                      LOG.debug("Adding class {} as an operator", clazz.getName());
+                      operatorClasses.add((Class<? extends Operator>)clazz);
+                    }
                   }
-                }
-                catch (Throwable ex) {
-                  LOG.warn("Class cannot be loaded: {} (error was {})", className, ex.getMessage());
+                  catch (Throwable ex) {
+                    LOG.warn("Class cannot be loaded: {} (error was {})", className, ex.getMessage());
+                  }
                 }
               }
             }
