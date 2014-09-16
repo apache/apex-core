@@ -27,7 +27,8 @@ for conf_dir in "${script_dir}/../conf" "$HOME/.dt"; do
 done
 
 if [ "$DT_CLIENT_OPTS" = "" ]; then
-  DT_CLIENT_OPTS="-Xmx1024m -XX:MaxPermSize=512m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
+#  DT_CLIENT_OPTS="-Xmx1024m -XX:MaxPermSize=512m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
+  DT_CLIENT_OPTS="-Xmx1024m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
 fi
 
 export HADOOP_CLIENT_OPTS="$DT_CLIENT_OPTS"

@@ -258,7 +258,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent)
+  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent, @QueryParam("packagePrefixes") String prefixes)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -273,7 +273,14 @@ public class StramWebServices
     }
 
     try {
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+      String[] packagePrefixes;
+      if (StringUtils.isBlank(prefixes)) {
+        packagePrefixes = new String[] {"com.datatorrent"};
+      }
+      else {
+        packagePrefixes = StringUtils.split(prefixes, ',');
+      }
+      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes);
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
       for (Class<?> clazz : operatorClasses) {

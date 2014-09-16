@@ -3220,8 +3220,16 @@ public class DTCli
 
       String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
+      String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
+      String[] packagePrefixes;
+      if (StringUtils.isBlank(prefixes)) {
+        packagePrefixes = new String[] {"com.datatorrent"};
+      }
+      else {
+        packagePrefixes = StringUtils.split(prefixes, ',');
+      }
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
         String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
         Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
@@ -3251,8 +3259,16 @@ public class DTCli
     {
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
+      String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
+      String[] packagePrefixes;
+      if (StringUtils.isBlank(prefixes)) {
+        packagePrefixes = new String[] {"com.datatorrent"};
+      }
+      else {
+        packagePrefixes = StringUtils.split(prefixes, ',');
+      }
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
         printJson(OperatorDiscoverer.describeOperator(operatorClass));
       }
