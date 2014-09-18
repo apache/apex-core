@@ -311,7 +311,8 @@ public class StramWebServices
     try {
       Class<?> clazz = Class.forName(className);
       if (Operator.class.isAssignableFrom(clazz)) {
-        return OperatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(new String[] {className});
+        return operatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
         throw new NotFoundException();

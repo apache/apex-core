@@ -7,26 +7,25 @@ package com.datatorrent.stram.webapp;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OperatorAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.api.annotation.PropertyAnnotation;
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
+import com.datatorrent.api.annotation.*;
+import java.beans.*;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.io.InputStream;
+import java.lang.reflect.*;
 import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.xml.parsers.*;
+import org.apache.commons.lang3.StringUtils;
+import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * <p>OperatorDiscoverer class.</p>
@@ -53,6 +52,60 @@ public class OperatorDiscoverer
   private final ClassLoader classLoader;
   private final String[] packagePrefixes; // The reason why we need this is that if we scan the entire class path, it's very likely that we end up with out of permgen memory
   private static final int MAX_PROPERTY_LEVELS = 5;
+
+  private final Map<String, OperatorClassInfo> classInfo = new HashMap<String, OperatorClassInfo>();
+
+  private static class OperatorClassInfo {
+    String comment;
+    final Map<String, String> tags = new HashMap<String, String>();
+  }
+
+  private class JavadocSAXHandler extends DefaultHandler {
+
+    private String className = null;
+    private OperatorClassInfo oci = null;
+    private StringBuilder comment;
+
+    @Override
+    public void startElement(String uri, String localName, String qName, Attributes attributes)
+            throws SAXException
+    {
+      if (qName.equalsIgnoreCase("class")) {
+        className = attributes.getValue("qualified");
+        oci = new OperatorClassInfo();
+      }
+      else if (qName.equalsIgnoreCase("comment")) {
+        comment = new StringBuilder();
+      }
+      else if (qName.equalsIgnoreCase("tag")) {
+        if (oci != null) {
+          String tagName = attributes.getValue("name");
+          String tagText = attributes.getValue("text");
+          oci.tags.put(tagName, tagText);
+        }
+      }
+    }
+
+    @Override
+    public void endElement(String uri, String localName, String qName) throws SAXException {
+      if (qName.equalsIgnoreCase("class")) {
+        classInfo.put(className, oci);
+        className = null;
+        oci = null;
+      }
+      else if (qName.equalsIgnoreCase("comment") && oci != null) {
+        oci.comment = comment.toString();
+        comment = null;
+      }
+    }
+
+    @Override
+    public void characters(char ch[], int start, int length) throws SAXException {
+      if (comment != null) {
+        comment.append(ch, start, length);
+      }
+    }
+  }
 
   public OperatorDiscoverer(String[] packagePrefixes)
   {
@@ -107,11 +160,6 @@ public class OperatorDiscoverer
               String entryName = jarEntry.getName();
               if (entryName.endsWith(".class")) {
                 final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
-                /*
-                 if (!className.startsWith(packagePrefix)) {
-                 continue;
-                 }
-                 */
                 if (isEligibleClass(className)) {
                   LOG.debug("Looking at class {} jar {}", className, jarFile);
                   try {
@@ -126,6 +174,14 @@ public class OperatorDiscoverer
                   }
                 }
               }
+              else if (entryName.endsWith("-javadoc.xml")) {
+                try {
+                  processJavadocXml(jar.getInputStream(jarEntry));
+                }
+                catch (Exception ex) {
+                  LOG.warn("Cannot process javadoc xml: ", ex);
+                }
+              }
             }
           }
         }
@@ -136,6 +192,12 @@ public class OperatorDiscoverer
       catch (IOException ex) {
       }
     }
+  }
+
+  private void processJavadocXml(InputStream is) throws ParserConfigurationException, SAXException, IOException
+  {
+    SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
+    saxParserFactory.newSAXParser().parse(is, new JavadocSAXHandler());
   }
 
   public static boolean isInstantiableOperatorClass(Class<?> clazz)
@@ -214,7 +276,7 @@ public class OperatorDiscoverer
     return (Class<? extends Operator>)clazz;
   }
 
-  public static JSONObject describeOperator(Class<? extends Operator> clazz) throws IntrospectionException
+  public JSONObject describeOperator(Class<? extends Operator> clazz) throws IntrospectionException
   {
     if (OperatorDiscoverer.isInstantiableOperatorClass(clazz)) {
       JSONObject response = new JSONObject();
@@ -276,12 +338,31 @@ public class OperatorDiscoverer
         response.put("inputPorts", inputPorts);
         response.put("outputPorts", outputPorts);
 
-        OperatorAnnotation an = clazz.getAnnotation(OperatorAnnotation.class);
-        if (an != null) {
-          response.put("category", an.category());
-          response.put("description", an.description());
-          response.put("displayName", an.displayName());
-          response.put("tags", new JSONArray(Arrays.asList(an.tags())));
+        OperatorClassInfo oci = classInfo.get(clazz.getName());
+        if (oci != null) {
+          if (oci.comment != null) {
+            String[] descriptions = oci.comment.split("\\.\\s", 2);
+            if (descriptions.length > 0) {
+              response.put("shortDesc", descriptions[0]);
+            }
+            if (descriptions.length > 1) {
+              response.put("longDesc", descriptions[1]);
+            }
+          }
+          response.put("category", oci.tags.get("category"));
+          String displayName = oci.tags.get("displayName");
+          if (displayName == null) {
+            displayName = decamelizeClassName(clazz.getSimpleName());
+          }
+          response.put("displayName", displayName);
+          String tags = oci.tags.get("tags");
+          if (tags != null) {
+            JSONArray tagArray = new JSONArray();
+            for (String tag : StringUtils.split(tags, ',')) {
+              tagArray.put(tag.trim().toLowerCase());
+            }
+            response.put("tags", tagArray);
+          }
         }
       }
       catch (JSONException ex) {
@@ -334,4 +415,21 @@ public class OperatorDiscoverer
     return arr;
   }
 
+  private static final Pattern CAPS = Pattern.compile("([A-Z\\d][^A-Z\\d]*)");
+
+  private static String decamelizeClassName(String className)
+  {
+    Matcher match = CAPS.matcher(className);
+    StringBuilder deCameled = new StringBuilder();
+    while (match.find()) {
+      if (deCameled.length() == 0) {
+        deCameled.append(match.group());
+      }
+      else {
+        deCameled.append(" ");
+        deCameled.append(match.group().toLowerCase());
+      }
+    }
+    return deCameled.toString();
+  }
 }

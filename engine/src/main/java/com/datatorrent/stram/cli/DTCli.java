@@ -3236,7 +3236,7 @@ public class DTCli
         JSONArray arr = new JSONArray();
         for (Class<? extends Operator> clazz : operatorClasses) {
           try {
-            arr.put(OperatorDiscoverer.describeOperator(clazz));
+            arr.put(operatorDiscoverer.describeOperator(clazz));
           }
           catch (Throwable t) {
             // ignore this class
@@ -3270,7 +3270,7 @@ public class DTCli
       try {
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        printJson(OperatorDiscoverer.describeOperator(operatorClass));
+        printJson(operatorDiscoverer.describeOperator(operatorClass));
       }
       finally {
         FileUtils.deleteDirectory(tmpDir);
