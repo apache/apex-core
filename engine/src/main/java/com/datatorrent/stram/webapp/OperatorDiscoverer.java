@@ -50,7 +50,6 @@ public class OperatorDiscoverer
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
   private final List<String> pathsToScan = new ArrayList<String>();
   private final ClassLoader classLoader;
-  private final String[] packagePrefixes; // The reason why we need this is that if we scan the entire class path, it's very likely that we end up with out of permgen memory
   private static final int MAX_PROPERTY_LEVELS = 5;
 
   private final Map<String, OperatorClassInfo> classInfo = new HashMap<String, OperatorClassInfo>();
@@ -107,9 +106,8 @@ public class OperatorDiscoverer
     }
   }
 
-  public OperatorDiscoverer(String[] packagePrefixes)
+  public OperatorDiscoverer()
   {
-    this.packagePrefixes = packagePrefixes;
     classLoader = ClassLoader.getSystemClassLoader();
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
@@ -120,9 +118,8 @@ public class OperatorDiscoverer
     }
   }
 
-  public OperatorDiscoverer(String[] packagePrefixes, String[] jars)
+  public OperatorDiscoverer(String[] jars)
   {
-    this.packagePrefixes = packagePrefixes;
     URL[] urls = new URL[jars.length];
     for (int i = 0; i < jars.length; i++) {
       pathsToScan.add(jars[i]);
@@ -136,16 +133,6 @@ public class OperatorDiscoverer
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
   }
 
-  private boolean isEligibleClass(String className)
-  {
-    for (String packagePrefix : packagePrefixes) {
-      if (className.startsWith(packagePrefix)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   @SuppressWarnings("unchecked")
   private void init()
   {
@@ -154,13 +141,31 @@ public class OperatorDiscoverer
         JarFile jar = new JarFile(jarFile);
         try {
           java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
+          boolean hasJavadocXml = false;
           while (entriesEnum.hasMoreElements()) {
             java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-            if (!jarEntry.isDirectory()) {
-              String entryName = jarEntry.getName();
-              if (entryName.endsWith(".class")) {
-                final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
-                if (isEligibleClass(className)) {
+            if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
+              try {
+                processJavadocXml(jar.getInputStream(jarEntry));
+                hasJavadocXml = true;
+                break;
+              }
+              catch (Exception ex) {
+                LOG.warn("Cannot process javadoc xml: ", ex);
+              }
+            }
+          }
+          // skip jars that don't have the javadoc xml.  for now, we use this to identify jars that contain operator classes.
+          // change this code if there's a better way to identify this in the future.
+          // note that if we process all jars, we will likely end up with out of permgen space error because of transitive dependencies.
+          if (hasJavadocXml) {
+            entriesEnum = jar.entries();
+            while (entriesEnum.hasMoreElements()) {
+              java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+              if (!jarEntry.isDirectory()) {
+                String entryName = jarEntry.getName();
+                if (entryName.endsWith(".class")) {
+                  final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
                   LOG.debug("Looking at class {} jar {}", className, jarFile);
                   try {
                     Class<?> clazz = classLoader.loadClass(className);
@@ -172,14 +177,6 @@ public class OperatorDiscoverer
                   catch (Throwable ex) {
                     LOG.warn("Class cannot be loaded: {} (error was {})", className, ex.getMessage());
                   }
-                }
-              }
-              else if (entryName.endsWith("-javadoc.xml")) {
-                try {
-                  processJavadocXml(jar.getInputStream(jarEntry));
-                }
-                catch (Exception ex) {
-                  LOG.warn("Cannot process javadoc xml: ", ex);
                 }
               }
             }

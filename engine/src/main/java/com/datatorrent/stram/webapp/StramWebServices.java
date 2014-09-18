@@ -98,6 +98,8 @@ public class StramWebServices
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
 
+  private OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+
   @Inject
   public StramWebServices(final StramAppContext context)
   {
@@ -258,7 +260,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent, @QueryParam("packagePrefixes") String prefixes)
+  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -273,14 +275,6 @@ public class StramWebServices
     }
 
     try {
-      String[] packagePrefixes;
-      if (StringUtils.isBlank(prefixes)) {
-        packagePrefixes = new String[] {"com.datatorrent"};
-      }
-      else {
-        packagePrefixes = StringUtils.split(prefixes, ',');
-      }
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes);
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
       for (Class<?> clazz : operatorClasses) {
@@ -311,7 +305,7 @@ public class StramWebServices
     try {
       Class<?> clazz = Class.forName(className);
       if (Operator.class.isAssignableFrom(clazz)) {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(new String[] {className});
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
         return operatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
