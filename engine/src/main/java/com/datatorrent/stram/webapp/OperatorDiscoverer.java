@@ -238,16 +238,14 @@ public class OperatorDiscoverer
             result.add(clazz);
           }
           else {
-            OperatorAnnotation an = clazz.getAnnotation(OperatorAnnotation.class);
-            if (an != null) {
-              if (an.category().toLowerCase().contains(searchTerm)
-                      || an.description().toLowerCase().contains(searchTerm)
-                      || an.displayName().toLowerCase().contains(searchTerm)) {
+            OperatorClassInfo oci = classInfo.get(clazz.getName());
+            if (oci != null) {
+              if (oci.comment != null && oci.comment.toLowerCase().contains(searchTerm)) {
                 result.add(clazz);
               }
               else {
-                for (String tag : an.tags()) {
-                  if (tag.toLowerCase().equals(searchTerm)) {
+                for (Map.Entry<String, String> entry : oci.tags.entrySet()) {
+                  if (entry.getValue().toLowerCase().contains(searchTerm)) {
                     result.add(clazz);
                     break;
                   }
@@ -349,13 +347,13 @@ public class OperatorDiscoverer
               response.put("longDesc", descriptions[1]);
             }
           }
-          response.put("category", oci.tags.get("category"));
-          String displayName = oci.tags.get("displayName");
+          response.put("category", oci.tags.get("@category"));
+          String displayName = oci.tags.get("@displayName");
           if (displayName == null) {
             displayName = decamelizeClassName(clazz.getSimpleName());
           }
           response.put("displayName", displayName);
-          String tags = oci.tags.get("tags");
+          String tags = oci.tags.get("@tags");
           if (tags != null) {
             JSONArray tagArray = new JSONArray();
             for (String tag : StringUtils.split(tags, ',')) {
