@@ -8,6 +8,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.beans.*;
 import java.io.IOException;
 import java.io.InputStream;
@@ -296,6 +297,9 @@ public class OperatorDiscoverer
             JSONObject inputPort = new JSONObject();
             inputPort.put("name", inputAnnotation.name());
             inputPort.put("optional", inputAnnotation.optional());
+            inputPort.put("tupleType", LogicalPlan.getPortType(field));
+
+            // TBD: use extracted info from javadoc to get this info
             inputPort.put("displayName", inputAnnotation.displayName());
             inputPort.put("description", inputAnnotation.description());
             inputPorts.put(inputPort);
@@ -305,6 +309,7 @@ public class OperatorDiscoverer
             JSONObject inputPort = new JSONObject();
             inputPort.put("name", field.getName());
             inputPort.put("optional", false); // input port that is not annotated is default to be non-optional
+            inputPort.put("tupleType", LogicalPlan.getPortType(field));
             inputPorts.put(inputPort);
             continue;
           }
@@ -314,6 +319,9 @@ public class OperatorDiscoverer
             outputPort.put("name", outputAnnotation.name());
             outputPort.put("optional", outputAnnotation.optional());
             outputPort.put("error", outputAnnotation.error());
+            outputPort.put("tupleType", LogicalPlan.getPortType(field));
+
+            // TBD: use extracted info from javadoc to get this info
             outputPort.put("displayName", outputAnnotation.displayName());
             outputPort.put("description", outputAnnotation.description());
             outputPorts.put(outputPort);
@@ -323,6 +331,7 @@ public class OperatorDiscoverer
             JSONObject outputPort = new JSONObject();
             outputPort.put("name", field.getName());
             outputPort.put("optional", true); // output port that is not annotated is default to be optional
+            outputPort.put("tupleType", LogicalPlan.getPortType(field));
             outputPorts.put(outputPort);
             //continue;
           }
