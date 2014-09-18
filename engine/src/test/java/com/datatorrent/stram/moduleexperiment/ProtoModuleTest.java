@@ -4,20 +4,12 @@
  */
 package com.datatorrent.stram.moduleexperiment;
 
+import com.datatorrent.api.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.google.inject.TypeLiteral;
-import com.datatorrent.api.BaseOperator;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.Operator;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.lang.reflect.WildcardType;
+import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.Map;
 import org.junit.Assert;
@@ -115,6 +107,17 @@ public class ProtoModuleTest {
     final StringOutputPort outportString = new StringOutputPort(this);
   }
 
+  static class SpecializedOperator extends BaseOperator {
+    final InputPort<String> inputT1 = new DefaultInputPort<String>() {
+      @Override
+      public void process(String tuple) {
+      }
+    };
+    final OutputPort<Map<String, Number>> outportT2 = new DefaultOutputPort<Map<String, Number>>();
+    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<Number>();
+    final StringOutputPort outportString = new StringOutputPort(this);
+  }
+
   public static Type getPortType(Field f) {
     if (f.getGenericType() instanceof ParameterizedType) {
       ParameterizedType t = (ParameterizedType)f.getGenericType();
@@ -128,6 +131,14 @@ public class ProtoModuleTest {
         LOG.debug("bounds: " + Arrays.asList(tv.getBounds()));
         // variable may contain other variables, java.util.Map<java.lang.String, ? extends T2>
         return tv.getBounds()[0];
+      } else if (typeArgument instanceof GenericArrayType) {
+        LOG.debug("type {} is of GenericArrayType", typeArgument);
+        return typeArgument;
+      } else if (typeArgument instanceof WildcardType) {
+        LOG.debug("type {} is of WildcardType", typeArgument);
+        return typeArgument;
+      } else if (typeArgument instanceof ParameterizedType) {
+        return typeArgument;
       } else {
         // ports are always parameterized
         throw new IllegalArgumentException("No type variable: " + typeArgument + ", typeParameters: " + Arrays.asList(f.getClass().getTypeParameters()));
@@ -136,6 +147,7 @@ public class ProtoModuleTest {
       LOG.debug("Field is not parameterized: " + f.getGenericType());
       if (Operator.Port.class.isAssignableFrom(f.getType())) {
         Type t = findTypeArgument(f.getType(), Operator.Port.class);
+        LOG.debug("Field is of type {}", t);
         return t;
       }
       throw new IllegalArgumentException("Cannot determine type argument for field " + f);
@@ -174,6 +186,22 @@ public class ProtoModuleTest {
     Assert.assertEquals("typeArgs[1] " + ptype, "T0", wt.getUpperBounds()[0].toString());
     TypeVariable<?> tv = (TypeVariable<?>)wt.getUpperBounds()[0];
     Assert.assertEquals("bounds[0] " + tv, Object.class, tv.getBounds()[0]);
+
+    LOG.debug("Getting specialized operator");
+    Type typeInputSO = getPortType(SpecializedOperator.class.getDeclaredField("inputT1"));
+    Assert.assertNotNull(typeInputSO);
+    LOG.debug("typeInputSO.inputT1 type is {}", typeInputSO);
+    Assert.assertEquals("type", String.class, typeInputSO);
+
+    Type typeOutportSO = getPortType(SpecializedOperator.class.getDeclaredField("outportT2"));
+    Assert.assertNotNull("type is not null", typeOutportSO);
+    LOG.debug("typeInputSO.outportT2 type is {}", typeOutportSO);
+
+    Type typeOutportNumberParamSO = getPortType(SpecializedOperator.class.getDeclaredField("outportNumberParam"));
+    Assert.assertNotNull(typeOutportNumberParamSO);
+    LOG.debug("typeInputSO.outportNumberParam type is {}", typeOutportNumberParamSO);
+    LOG.debug("Done getting specialized operator");
+
   }
 
   @Test
