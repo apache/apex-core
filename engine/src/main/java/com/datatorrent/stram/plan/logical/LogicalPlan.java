@@ -1021,10 +1021,6 @@ public class LogicalPlan implements Serializable, DAG
    */
   public void validate() throws ConstraintViolationException
   {
-    if (operators.isEmpty()) {
-      throw new ValidationException("There are no operators in the application. A valid application must have at least one operator.");
-    }
-
     ValidatorFactory factory =
             Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
