@@ -291,7 +291,7 @@ public class AppPackage extends JarFile implements Closeable
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
       }
-      else {
+      else if (!entry.getName().endsWith(".jar")) {
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());
       }
     }

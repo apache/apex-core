@@ -981,7 +981,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     AppConf appConf = this.stramConf.getChild(WILDCARD, StramElement.APPLICATION);
     if (appConf == null) {
-      throw new IllegalArgumentException(String.format("Application configuration not found"));
+      LOG.warn("Application configuration not found. Probably an empty app.");
+      return;
     }
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);
