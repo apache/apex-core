@@ -226,7 +226,7 @@ public class AppPackage extends JarFile implements Closeable
             if (appName == null) {
               appName = appFactory.getName();
             }
-            AppInfo appInfo = new AppInfo(appName, entry.getName(), "jar");
+            AppInfo appInfo = new AppInfo(appName, entry.getName(), "class");
             appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
             try {
               appInfo.dag.validate();
