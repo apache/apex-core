@@ -802,7 +802,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       if (portArray != null) {
         String portsPrefix = operatorPrefix + StramElement.PORT.getValue() + ".";
         for (int j = 0; j < portArray.length(); j++) {
-          JSONObject port = portArray.getJSONObject(i);
+          JSONObject port = portArray.getJSONObject(j);
           JSONObject portAttributes = port.optJSONObject("attributes");
           if (portAttributes != null) {
             String portAttributePrefix = portsPrefix + port.getString("name") + "." + StramElement.ATTR.getValue() + ".";
