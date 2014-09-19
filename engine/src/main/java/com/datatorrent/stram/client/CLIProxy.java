@@ -148,7 +148,7 @@ public class CLIProxy implements Closeable
 
   public JSONObject launchAppPackage(File appPackageLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
   {
-    StringBuilder sb = new StringBuilder("launch-app-package -exactMatch \"");
+    StringBuilder sb = new StringBuilder("launch -exactMatch \"");
     sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(configName)) {
