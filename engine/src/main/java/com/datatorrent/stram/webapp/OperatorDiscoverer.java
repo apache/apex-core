@@ -7,6 +7,7 @@ package com.datatorrent.stram.webapp;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.beans.*;
@@ -241,7 +242,7 @@ public class OperatorDiscoverer
   public static boolean isInstantiableOperatorClass(Class<?> clazz)
   {
     int modifiers = clazz.getModifiers();
-    return !Modifier.isAbstract(modifiers) && !Modifier.isInterface(modifiers) && Operator.class.isAssignableFrom(clazz);
+    return !Modifier.isAbstract(modifiers) && !Modifier.isInterface(modifiers) && Operator.class.isAssignableFrom(clazz) && ! Unifier.class.isAssignableFrom(clazz);
   }
 
   public Set<Class<? extends Operator>> getOperatorClasses(String parent, String searchTerm) throws ClassNotFoundException
