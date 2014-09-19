@@ -92,7 +92,7 @@ public class OperatorDiscoverer
           String tagName = attributes.getValue("name");
           String tagText = attributes.getValue("text");
           if (methodName != null) {
-            if (tagName.equals("@return") && isGetter(methodName)) {
+            if ("@return".equals(tagName) && isGetter(methodName)) {
               oci.getMethods.put(methodName, tagText);
             }
           }
@@ -425,7 +425,7 @@ public class OperatorDiscoverer
     JSONArray arr = new JSONArray();
     try {
       for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
-        if (!pd.getName().equals("class") && (!(pd.getName().equals("up") && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
+        if (!"class".equals(pd.getName()) && (!("up".equals(pd.getName()) && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
           Class<?> propertyType = pd.getPropertyType();
           if (propertyType != null) {
             JSONObject propertyObj = new JSONObject();
