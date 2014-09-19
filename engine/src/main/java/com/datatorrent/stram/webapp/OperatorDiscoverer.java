@@ -58,6 +58,8 @@ public class OperatorDiscoverer
   private static class OperatorClassInfo {
     String comment;
     final Map<String, String> tags = new HashMap<String, String>();
+    final Map<String, String> getMethods = new HashMap<String, String>();
+    final Map<String, String> fields = new HashMap<String, String>();
   }
 
   private class JavadocSAXHandler extends DefaultHandler {
@@ -65,6 +67,14 @@ public class OperatorDiscoverer
     private String className = null;
     private OperatorClassInfo oci = null;
     private StringBuilder comment;
+    private String fieldName = null;
+    private String methodName = null;
+    private final Pattern getterPattern = Pattern.compile("(?:is|get)[A-Z].*");
+
+    private boolean isGetter(String methodName)
+    {
+      return getterPattern.matcher(methodName).matches();
+    }
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes)
@@ -81,8 +91,24 @@ public class OperatorDiscoverer
         if (oci != null) {
           String tagName = attributes.getValue("name");
           String tagText = attributes.getValue("text");
-          oci.tags.put(tagName, tagText);
+          if (methodName != null) {
+            if (tagName.equals("@return") && isGetter(methodName)) {
+              oci.getMethods.put(methodName, tagText);
+            }
+          }
+          else if (fieldName != null) {
+            // do nothing
+          }
+          else {
+            oci.tags.put(tagName, tagText);
+          }
         }
+      }
+      else if (qName.equalsIgnoreCase("field")) {
+        fieldName = attributes.getValue("name");
+      }
+      else if (qName.equalsIgnoreCase("method")) {
+        methodName = attributes.getValue("name");
       }
     }
 
@@ -94,8 +120,22 @@ public class OperatorDiscoverer
         oci = null;
       }
       else if (qName.equalsIgnoreCase("comment") && oci != null) {
-        oci.comment = comment.toString();
+        if (methodName != null) {
+          // do nothing
+        }
+        else if (fieldName != null) {
+          oci.fields.put(fieldName, comment.toString());
+        }
+        else {
+          oci.comment = comment.toString();
+        }
         comment = null;
+      }
+      else if (qName.equalsIgnoreCase("field")) {
+        fieldName = null;
+      }
+      else if (qName.equalsIgnoreCase("method")) {
+        methodName = null;
       }
     }
 
@@ -278,7 +318,7 @@ public class OperatorDiscoverer
       JSONObject response = new JSONObject();
       JSONArray inputPorts = new JSONArray();
       JSONArray outputPorts = new JSONArray();
-      JSONArray properties = OperatorDiscoverer.getClassProperties(clazz);
+      JSONArray properties = getClassProperties(clazz);
 
       Field[] fields = clazz.getFields();
       Arrays.sort(fields, new Comparator<Field>()
@@ -292,48 +332,43 @@ public class OperatorDiscoverer
       });
       try {
         for (Field field : fields) {
-          InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
-          if (inputAnnotation != null) {
+          if (InputPort.class.isAssignableFrom(field.getType())) {
+            InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
             JSONObject inputPort = new JSONObject();
-            inputPort.put("name", inputAnnotation.name());
-            inputPort.put("optional", inputAnnotation.optional());
+            inputPort.put("name", inputAnnotation == null || StringUtils.isBlank(inputAnnotation.name()) ? field.getName() : inputAnnotation.name());
+            inputPort.put("optional", inputAnnotation == null ? false : inputAnnotation.optional()); // input port that is not annotated is default to be not optional
             inputPort.put("tupleType", LogicalPlan.getPortType(field));
 
-            // TBD: use extracted info from javadoc to get this info
-            inputPort.put("displayName", inputAnnotation.displayName());
-            inputPort.put("description", inputAnnotation.description());
+            for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+              OperatorClassInfo oci = classInfo.get(c.getName());
+              if (oci != null) {
+                String fieldDesc = oci.fields.get(field.getName());
+                if (fieldDesc != null) {
+                  inputPort.put("description", fieldDesc);
+                  break;
+                }
+              }
+            }
             inputPorts.put(inputPort);
-            continue;
-          }
-          else if (InputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", field.getName());
-            inputPort.put("optional", false); // input port that is not annotated is default to be non-optional
-            inputPort.put("tupleType", LogicalPlan.getPortType(field));
-            inputPorts.put(inputPort);
-            continue;
-          }
-          OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
-          if (outputAnnotation != null) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", outputAnnotation.name());
-            outputPort.put("optional", outputAnnotation.optional());
-            outputPort.put("error", outputAnnotation.error());
-            outputPort.put("tupleType", LogicalPlan.getPortType(field));
-
-            // TBD: use extracted info from javadoc to get this info
-            outputPort.put("displayName", outputAnnotation.displayName());
-            outputPort.put("description", outputAnnotation.description());
-            outputPorts.put(outputPort);
-            //continue;
           }
           else if (OutputPort.class.isAssignableFrom(field.getType())) {
+            OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
             JSONObject outputPort = new JSONObject();
-            outputPort.put("name", field.getName());
-            outputPort.put("optional", true); // output port that is not annotated is default to be optional
+            outputPort.put("name", outputAnnotation == null || StringUtils.isBlank(outputAnnotation.name()) ? field.getName() : outputAnnotation.name());
+            outputPort.put("optional", outputAnnotation == null ? true : outputAnnotation.optional()); // output port that is not annotated is default to be optional
+            outputPort.put("error", outputAnnotation == null ? false : outputAnnotation.error());
             outputPort.put("tupleType", LogicalPlan.getPortType(field));
+            for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+              OperatorClassInfo oci = classInfo.get(c.getName());
+              if (oci != null) {
+                String fieldDesc = oci.fields.get(field.getName());
+                if (fieldDesc != null) {
+                  outputPort.put("description", fieldDesc);
+                  break;
+                }
+              }
+            }
             outputPorts.put(outputPort);
-            //continue;
           }
         }
 
@@ -343,6 +378,7 @@ public class OperatorDiscoverer
         response.put("outputPorts", outputPorts);
 
         OperatorClassInfo oci = classInfo.get(clazz.getName());
+
         if (oci != null) {
           if (oci.comment != null) {
             String[] descriptions = oci.comment.split("\\.\\s", 2);
@@ -379,12 +415,12 @@ public class OperatorDiscoverer
     }
   }
 
-  public static JSONArray getClassProperties(Class<?> clazz) throws IntrospectionException
+  private JSONArray getClassProperties(Class<?> clazz) throws IntrospectionException
   {
     return getClassProperties(clazz, 0);
   }
 
-  private static JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
+  private JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
   {
     JSONArray arr = new JSONArray();
     try {
@@ -398,10 +434,15 @@ public class OperatorDiscoverer
             propertyObj.put("canGet", readMethod != null);
             propertyObj.put("canSet", pd.getWriteMethod() != null);
             if (readMethod != null) {
-              PropertyAnnotation pa = readMethod.getAnnotation(PropertyAnnotation.class);
-              if (pa != null) {
-                propertyObj.put("description", pa.description());
-                propertyObj.put("displayName", pa.displayName());
+              for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+                OperatorClassInfo oci = classInfo.get(c.getName());
+                if (oci != null) {
+                  String getMethodDesc = oci.getMethods.get(readMethod.getName());
+                  if (getMethodDesc != null) {
+                    propertyObj.put("description", oci.getMethods.get(readMethod.getName()));
+                    break;
+                  }
+                }
               }
             }
             propertyObj.put("type", propertyType.getName());
