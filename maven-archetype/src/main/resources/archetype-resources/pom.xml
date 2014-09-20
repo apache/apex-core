@@ -7,13 +7,15 @@
   <artifactId>${artifactId}</artifactId>
   <packaging>jar</packaging>
 
+  <!-- change these to the appropriate values -->
+  <name>My DataTorrent Application</name>
+  <description>My DataTorrent Application Description</description>
+
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
     <datatorrent.version>${archetypeVersion}</datatorrent.version>
     <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
-
-  <name>My DataTorrent Application</name>
 
   <!-- repository to provide the DataTorrent artifacts -->
   <repositories>
@@ -57,22 +59,6 @@
            <showDeprecation>true</showDeprecation>
            <showWarnings>true</showWarnings>
          </configuration>
-       </plugin>
-       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>2.5</version>
-        <configuration>
-          <archive>
-            <index>true</index>
-            <manifestEntries>
-              <Class-Path>${datatorrent.apppackage.classpath}</Class-Path>
-              <DT-Engine-Version>${datatorrent.version}</DT-Engine-Version>
-              <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
-              <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
-            </manifestEntries>
-          </archive>
-        </configuration>
        </plugin>
        <plugin>
          <artifactId>maven-dependency-plugin</artifactId>
@@ -128,6 +114,16 @@
                <archiverConfig>
                  <defaultDirectoryMode>0755</defaultDirectoryMode>
                </archiverConfig>                  
+               <archive>
+                 <manifestEntries>
+                   <Class-Path>${datatorrent.apppackage.classpath}</Class-Path>
+                   <DT-Engine-Version>${datatorrent.version}</DT-Engine-Version>
+                   <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
+                   <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
+                   <DT-App-Package-Display-Name>${project.name}</DT-App-Package-Display-Name>
+                   <DT-App-Package-Description>${project.description}</DT-App-Package-Description>
+                 </manifestEntries>
+               </archive>
              </configuration>
            </execution>
          </executions>
@@ -148,7 +144,7 @@
                  <resource>
                    <move>true</move>
                    <targetPath>${project.build.directory}</targetPath>
-                   <file>${project.build.directory}/${project.build.finalName}-appPackage.zip</file>
+                   <file>${project.build.directory}/${project.build.finalName}-appPackage.jar</file>
                    <destFileName>DTApp-${project.artifactId}-${project.version}.jar</destFileName>
                  </resource>
                </resources>

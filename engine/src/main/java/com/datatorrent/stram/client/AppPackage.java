@@ -17,7 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>AppPackage class.</p>
+ * <p>
+ * AppPackage class.</p>
  *
  * @author David Yan <david@datatorrent.com>
  * @since 1.0.3
@@ -28,10 +29,14 @@ public class AppPackage extends JarFile implements Closeable
   public static final String ATTRIBUTE_DT_APP_PACKAGE_NAME = "DT-App-Package-Name";
   public static final String ATTRIBUTE_DT_APP_PACKAGE_VERSION = "DT-App-Package-Version";
   public static final String ATTRIBUTE_CLASS_PATH = "Class-Path";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME = "DT-App-Package-Display-Name";
+  public static final String ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION = "DT-App-Package-Description";
 
   private final String appPackageName;
   private final String appPackageVersion;
   private final String dtEngineVersion;
+  private final String appPackageDescription;
+  private final String appPackageDisplayName;
   private final ArrayList<String> classPath = new ArrayList<String>();
   private final String directory;
 
@@ -49,14 +54,14 @@ public class AppPackage extends JarFile implements Closeable
     public final String name;
     public final String file;
     public final String type;
-    public final LogicalPlan dag;
+    public LogicalPlan dag;
+    public String error;
 
-    public AppInfo(String name, String file, String type, LogicalPlan dag)
+    public AppInfo(String name, String file, String type)
     {
       this.name = name;
       this.file = file;
       this.type = type;
-      this.dag = dag;
     }
 
   }
@@ -87,8 +92,10 @@ public class AppPackage extends JarFile implements Closeable
     appPackageName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_NAME);
     appPackageVersion = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_VERSION);
     dtEngineVersion = attr.getValue(ATTRIBUTE_DT_ENGINE_VERSION);
+    appPackageDisplayName = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DISPLAY_NAME);
+    appPackageDescription = attr.getValue(ATTRIBUTE_DT_APP_PACKAGE_DESCRIPTION);
     String classPathString = attr.getValue(ATTRIBUTE_CLASS_PATH);
-    if (classPathString == null) {
+    if (appPackageName == null || appPackageVersion == null || classPathString == null) {
       throw new IOException("Not a valid app package.  Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
@@ -134,6 +141,16 @@ public class AppPackage extends JarFile implements Closeable
   public String getAppPackageVersion()
   {
     return appPackageVersion;
+  }
+
+  public String getAppPackageDescription()
+  {
+    return appPackageDescription;
+  }
+
+  public String getAppPackageDisplayName()
+  {
+    return appPackageDisplayName;
   }
 
   public String getDtEngineVersion()
@@ -209,7 +226,15 @@ public class AppPackage extends JarFile implements Closeable
             if (appName == null) {
               appName = appFactory.getName();
             }
-            applications.add(new AppInfo(appName, entry.getName(), "jar", stramAppLauncher.prepareDAG(appFactory)));
+            AppInfo appInfo = new AppInfo(appName, entry.getName(), "class");
+            appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
+            try {
+              appInfo.dag.validate();
+            }
+            catch (Exception ex) {
+              appInfo.error = ex.getMessage();
+            }
+            applications.add(appInfo);
           }
         }
         catch (Exception ex) {
@@ -233,7 +258,15 @@ public class AppPackage extends JarFile implements Closeable
           AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(entry);
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
-          applications.add(new AppInfo(appFactory.getName(), entry.getName(), "json", stramAppLauncher.prepareDAG(appFactory)));
+          AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
+          appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
+          try {
+            appInfo.dag.validate();
+          }
+          catch (Exception ex) {
+            appInfo.error = ex.getMessage();
+          }
+          applications.add(appInfo);
         }
         catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
@@ -245,13 +278,20 @@ public class AppPackage extends JarFile implements Closeable
           AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(entry);
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
-          applications.add(new AppInfo(appFactory.getName(), entry.getName(), "properties", stramAppLauncher.prepareDAG(appFactory)));
+          AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "properties");
+          try {
+            appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
+          }
+          catch (Throwable t) {
+            appInfo.error = t.getMessage();
+          }
+          applications.add(appInfo);
         }
         catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
       }
-      else {
+      else if (!entry.getName().endsWith(".jar")) {
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());
       }
     }

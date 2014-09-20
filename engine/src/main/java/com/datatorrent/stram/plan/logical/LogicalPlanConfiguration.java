@@ -802,7 +802,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       if (portArray != null) {
         String portsPrefix = operatorPrefix + StramElement.PORT.getValue() + ".";
         for (int j = 0; j < portArray.length(); j++) {
-          JSONObject port = portArray.getJSONObject(i);
+          JSONObject port = portArray.getJSONObject(j);
           JSONObject portAttributes = port.optJSONObject("attributes");
           if (portAttributes != null) {
             String portAttributePrefix = portsPrefix + port.getString("name") + "." + StramElement.ATTR.getValue() + ".";
@@ -981,7 +981,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     AppConf appConf = this.stramConf.getChild(WILDCARD, StramElement.APPLICATION);
     if (appConf == null) {
-      throw new IllegalArgumentException(String.format("Application configuration not found"));
+      LOG.warn("Application configuration not found. Probably an empty app.");
+      return;
     }
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);

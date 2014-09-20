@@ -5,7 +5,6 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
@@ -45,11 +44,7 @@ import com.google.inject.Inject;
 import com.datatorrent.api.AttributeMap.Attribute;
 import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StringCodec;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramAppContext;
@@ -62,7 +57,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
-import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
  *
@@ -264,7 +258,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("packagePrefix") String packagePrefix, @QueryParam("parent") String parent)
+  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent, @QueryParam("packagePrefixes") String prefixes)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -278,13 +272,16 @@ public class StramWebServices
       }
     }
 
-    if (StringUtils.isBlank(packagePrefix)) {
-      packagePrefix = "com.datatorrent";
-    }
-
     try {
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefix);
-      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
+      String[] packagePrefixes;
+      if (StringUtils.isBlank(prefixes)) {
+        packagePrefixes = new String[] {"com.datatorrent"};
+      }
+      else {
+        packagePrefixes = StringUtils.split(prefixes, ',');
+      }
+      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes);
+      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
       for (Class<?> clazz : operatorClasses) {
         JSONObject j = new JSONObject();
@@ -305,6 +302,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES + "/{className}")
   @Produces(MediaType.APPLICATION_JSON)
+  @SuppressWarnings("unchecked")
   public JSONObject describeOperator(@PathParam("className") String className)
   {
     if (className == null) {
@@ -312,67 +310,15 @@ public class StramWebServices
     }
     try {
       Class<?> clazz = Class.forName(className);
-      if (OperatorDiscoverer.isInstantiableOperatorClass(clazz)) {
-        JSONObject response = new JSONObject();
-        JSONArray inputPorts = new JSONArray();
-        JSONArray outputPorts = new JSONArray();
-        JSONArray properties = OperatorBeanUtils.getClassProperties(clazz, 0);
-
-        Field[] fields = clazz.getFields();
-        Arrays.sort(fields, new Comparator<Field>() {
-          @Override
-          public int compare(Field a, Field b)
-          {
-            return a.getName().compareTo(b.getName());
-          }
-
-        });
-        for (Field field : fields) {
-          InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
-          if (inputAnnotation != null) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", inputAnnotation.name());
-            inputPort.put("optional", inputAnnotation.optional());
-            inputPorts.put(inputPort);
-            continue;
-          }
-          else if (InputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", field.getName());
-            inputPort.put("optional", false); // input port that is not annotated is default to be non-optional
-            inputPorts.put(inputPort);
-            continue;
-          }
-          OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
-          if (outputAnnotation != null) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", outputAnnotation.name());
-            outputPort.put("optional", outputAnnotation.optional());
-            outputPorts.put(outputPort);
-            //continue;
-          }
-          else if (OutputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", field.getName());
-            outputPort.put("optional", true); // output port that is not annotated is default to be optional
-            outputPorts.put(outputPort);
-            //continue;
-          }
-        }
-        response.put("properties", properties);
-        response.put("inputPorts", inputPorts);
-        response.put("outputPorts", outputPorts);
-        return response;
+      if (Operator.class.isAssignableFrom(clazz)) {
+        return OperatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
-        throw new UnsupportedOperationException();
+        throw new NotFoundException();
       }
     }
-    catch (ClassNotFoundException ex) {
-      throw new NotFoundException();
-    }
     catch (Exception ex) {
-      throw new RuntimeException(ex);
+      throw new NotFoundException();
     }
   }
 
