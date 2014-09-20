@@ -969,8 +969,6 @@ public class StreamCodecTest
     dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
     StramTestSupport.MemoryStorageAgent msa = new StramTestSupport.MemoryStorageAgent();
     dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, msa);
-    //TestPlanContext ctx = new TestPlanContext();
-    //dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, ctx);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
@@ -995,31 +993,15 @@ public class StreamCodecTest
     // for M x N partition
     // scale down N from 3 to 2 and then from 2 to 1
     for (int i = 0; i < 2; i++) {
-      markAllOperatorActive(plan);
+      markAllOperatorsActive(plan);
       List<PTOperator> ptos =  plan.getOperators(n2meta);
       for (PTOperator ptOperator : ptos) {
         PartitioningTest.PartitionLoadWatch.put(ptOperator, -1);
         plan.onStatusUpdate(ptOperator);
       }
-      //ctx.backupRequests = 0;
-      //ctx.events.remove(0).run();
+
       dnm.processEvents();
-      containers = plan.getContainers();
-      System.out.println("containers " + containers.size());
-
-      int numPending = 0;
-
-      for (PTContainer container : containers) {
-        if (container.getState() == PTContainer.State.NEW) {
-          numPending++;
-        }
-      }
-
-      System.out.println("pending " + numPending);
-
-      for (int j = 0; j < numPending; ++j) {
-        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
-      }
+      lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n2meta);
       for (PTOperator operator : operators) {
@@ -1035,7 +1017,7 @@ public class StreamCodecTest
 
     // scale up N from 1 to 2 and then from 2 to 3
     for (int i = 0; i < 2; i++) {
-      markAllOperatorActive(plan);
+      markAllOperatorsActive(plan);
       PTOperator o2p1 = plan.getOperators(n2meta).get(0);
 
       PartitioningTest.PartitionLoadWatch.put(o2p1, 1);
@@ -1044,23 +1026,7 @@ public class StreamCodecTest
 
       dnm.processEvents();
 
-      containers = plan.getContainers();
-
-      System.out.println("containers " + containers.size());
-
-      int numPending = 0;
-
-      for (PTContainer container : containers) {
-        if (container.getState() == PTContainer.State.NEW) {
-          numPending++;
-        }
-      }
-
-      System.out.println("pending " + numPending);
-
-      for (int j = 0; j < numPending; ++j) {
-        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
-      }
+      lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n2meta);
       for (PTOperator operator : operators) {
@@ -1086,23 +1052,7 @@ public class StreamCodecTest
 
       dnm.processEvents();
 
-      containers = plan.getContainers();
-
-      System.out.println("containers " + containers.size());
-
-      int numPending = 0;
-
-      for (PTContainer container : containers) {
-        if (container.getState() == PTContainer.State.NEW) {
-          numPending++;
-        }
-      }
-
-      System.out.println("pending " + numPending);
-
-      for (int j = 0; j < numPending; ++j) {
-        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
-      }
+      lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n1meta);
       for (PTOperator operator : operators) {
@@ -1129,23 +1079,7 @@ public class StreamCodecTest
 
       dnm.processEvents();
 
-      containers = plan.getContainers();
-
-      System.out.println("containers " + containers.size());
-
-      int numPending = 0;
-
-      for (PTContainer container : containers) {
-        if (container.getState() == PTContainer.State.NEW) {
-          numPending++;
-        }
-      }
-
-      System.out.println("pending " + numPending);
-
-      for (int j = 0; j < numPending; ++j) {
-        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
-      }
+      lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n1meta);
       for (PTOperator operator : operators) {
@@ -1162,8 +1096,27 @@ public class StreamCodecTest
     }
   }
 
+  private int assignNewContainers(StreamingContainerManager dnm, int lastId)
+  {
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+    List<PTContainer> containers = plan.getContainers();
 
-  private void markAllOperatorActive(PhysicalPlan plan) {
+    int numPending = 0;
+
+    for (PTContainer container : containers) {
+      if (container.getState() == PTContainer.State.NEW) {
+        numPending++;
+      }
+    }
+
+    for (int j = 0; j < numPending; ++j) {
+      StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
+    }
+    return lastId;
+  }
+
+
+  private void markAllOperatorsActive(PhysicalPlan plan) {
     for (PTContainer container : plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
         operator.setState(PTOperator.State.ACTIVE);
