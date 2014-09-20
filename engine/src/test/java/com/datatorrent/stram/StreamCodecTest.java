@@ -28,7 +28,8 @@ public class StreamCodecTest
   public StramTestSupport.TestMeta testMeta = new StramTestSupport.TestMeta();
 
   @Test
-  public void testStreamCodec() {
+  public void testStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -89,7 +90,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testStreamCodecReuse() {
+  public void testStreamCodecReuse()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -135,7 +137,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testDefaultStreamCodec() {
+  public void testDefaultStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -195,7 +198,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testPartitioningStreamCodec() {
+  public void testPartitioningStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -245,7 +249,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testMxNPartitioningStreamCodec() {
+  public void testMxNPartitioningStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -311,7 +316,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testParallelPartitioningStreamCodec() {
+  public void testParallelPartitioningStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -401,7 +407,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testMultipleInputStreamCodec() {
+  public void testMultipleInputStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -455,7 +462,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testPartitioningMultipleInputStreamCodec() {
+  public void testPartitioningMultipleInputStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -533,7 +541,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testMultipleStreamCodecs() {
+  public void testMultipleStreamCodecs()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -589,7 +598,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testPartitioningMultipleStreamCodecs() {
+  public void testPartitioningMultipleStreamCodecs()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -674,7 +684,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testMxNMultipleStreamCodecs() {
+  public void testMxNMultipleStreamCodecs()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -777,7 +788,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testInlineStreamCodec() {
+  public void testInlineStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -860,7 +872,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testCascadingStreamCodec() {
+  public void testCascadingStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -946,7 +959,8 @@ public class StreamCodecTest
   }
 
   @Test
-  public void testDynamicPartitioningStreamCodec() {
+  public void testDynamicPartitioningStreamCodec()
+  {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
 
@@ -1116,7 +1130,8 @@ public class StreamCodecTest
   }
 
 
-  private void markAllOperatorsActive(PhysicalPlan plan) {
+  private void markAllOperatorsActive(PhysicalPlan plan)
+  {
     for (PTContainer container : plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
         operator.setState(PTOperator.State.ACTIVE);
@@ -1125,7 +1140,8 @@ public class StreamCodecTest
   }
 
   private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier) {
+                                          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier)
+  {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec null " + id, streamCodecInfo);
     Assert.assertNull("stream codec object not null " + id, streamCodecInfo.streamCodec);
@@ -1133,12 +1149,14 @@ public class StreamCodecTest
   }
 
   private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec) {
+                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec)
+  {
     checkStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodec, null);
   }
 
   private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec, String className) {
+                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec, String className)
+  {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, streamCodecInfo);
     Assert.assertEquals("stream codec object " + id, streamCodec, streamCodecInfo.streamCodec);
@@ -1157,7 +1175,8 @@ public class StreamCodecTest
   }
 
   private void checkPresentStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
+                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo streamCodecInfo)
+  {
     OperatorDeployInfo.StreamCodecInfo opStreamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, opStreamCodecInfo);
     Assert.assertEquals("stream codec not same " + id, opStreamCodecInfo, streamCodecInfo);
@@ -1193,7 +1212,8 @@ public class StreamCodecTest
     return odi;
   }
 
-  private OperatorDeployInfo.InputDeployInfo getInputDeployInfo(OperatorDeployInfo odi, LogicalPlan.InputPortMeta portMeta) {
+  private OperatorDeployInfo.InputDeployInfo getInputDeployInfo(OperatorDeployInfo odi, LogicalPlan.InputPortMeta portMeta)
+  {
     OperatorDeployInfo.InputDeployInfo idi = null;
     List<OperatorDeployInfo.InputDeployInfo> inputs = odi.inputs;
     for (OperatorDeployInfo.InputDeployInfo input : inputs) {
@@ -1206,7 +1226,8 @@ public class StreamCodecTest
     return idi;
   }
 
-  private OperatorDeployInfo.OutputDeployInfo getOutputDeployInfo(OperatorDeployInfo odi, LogicalPlan.OutputPortMeta portMeta) {
+  private OperatorDeployInfo.OutputDeployInfo getOutputDeployInfo(OperatorDeployInfo odi, LogicalPlan.OutputPortMeta portMeta)
+  {
     OperatorDeployInfo.OutputDeployInfo otdi = null;
     List<OperatorDeployInfo.OutputDeployInfo> outputs = odi.outputs;
     for (OperatorDeployInfo.OutputDeployInfo output : outputs) {
@@ -1219,7 +1240,8 @@ public class StreamCodecTest
     return otdi;
   }
 
-  private LogicalPlan.InputPortMeta getInputPortMeta(LogicalPlan.StreamMeta streamMeta, LogicalPlan.OperatorMeta operatorMeta) {
+  private LogicalPlan.InputPortMeta getInputPortMeta(LogicalPlan.StreamMeta streamMeta, LogicalPlan.OperatorMeta operatorMeta)
+  {
     LogicalPlan.InputPortMeta portMeta = null;
     for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> entry : operatorMeta.getInputStreams().entrySet()) {
       if (entry.getValue() == streamMeta) {
@@ -1230,7 +1252,8 @@ public class StreamCodecTest
   }
 
   // For tests so that it doesn't trigger assignment of a new id
-  public boolean isStrCodecPresent(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, PhysicalPlan plan) {
+  public boolean isStrCodecPresent(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, PhysicalPlan plan)
+  {
     return plan.getStreamCodecIdentifiers().containsKey(streamCodecInfo);
   }
 
@@ -1244,7 +1267,8 @@ public class StreamCodecTest
     }
   }
 
-  public static class TestStreamCodec2 extends DefaultStatefulStreamCodec<Object> {
+  public static class TestStreamCodec2 extends DefaultStatefulStreamCodec<Object>
+  {
 
     @Override
     public int getPartition(Object o)
@@ -1253,11 +1277,13 @@ public class StreamCodecTest
     }
   }
 
-  public static class DefaultTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
+  public static class DefaultTestStreamCodec extends DefaultStatefulStreamCodec<Object>
+  {
 
   }
 
-  public static class DefaultCodecOperator extends GenericTestOperator {
+  public static class DefaultCodecOperator extends GenericTestOperator
+  {
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
