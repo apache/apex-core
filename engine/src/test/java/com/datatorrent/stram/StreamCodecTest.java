@@ -10,10 +10,12 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -712,6 +714,17 @@ public class StreamCodecTest
     Assert.assertEquals("number operators " + n2meta.getName(), 3, plan.getOperators(n2meta).size());
     Assert.assertEquals("number operators " + n3meta.getName(), 3, plan.getOperators(n3meta).size());
 
+    checkMxNStreamCodecs(node1, node2, node3, dnm);
+  }
+
+  private void checkMxNStreamCodecs(GenericTestOperator node1, GenericTestOperator node2, GenericTestOperator node3, StreamingContainerManager dnm)
+  {
+    LogicalPlan dag = dnm.getLogicalPlan();
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+    List<PTContainer> containers = plan.getContainers();
+    LogicalPlan.OperatorMeta n1meta = dag.getMeta(node1);
+    LogicalPlan.OperatorMeta n2meta = dag.getMeta(node2);
+    LogicalPlan.OperatorMeta n3meta = dag.getMeta(node3);
     for (PTContainer container : containers) {
       List<PTOperator> operators = container.getOperators();
       for (PTOperator operator :operators) {
@@ -932,6 +945,231 @@ public class StreamCodecTest
     }
   }
 
+  @Test
+  public void testDynamicPartitioningStreamCodec() {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    dag.setAttribute(node1, Context.OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(node1, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener) new PartitioningTest.PartitionLoadWatch()));
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    dag.setAttribute(node2, Context.OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(node2, Context.OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    TestStreamCodec serDe = new TestStreamCodec();
+    dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
+    dag.setAttribute(node3, Context.OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    TestStreamCodec serDe2 = new TestStreamCodec();
+    dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, serDe2);
+
+
+    dag.addStream("n1n2n3", node1.outport1, node2.inport1, node3.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, Integer.MAX_VALUE);
+    StramTestSupport.MemoryStorageAgent msa = new StramTestSupport.MemoryStorageAgent();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, msa);
+    //TestPlanContext ctx = new TestPlanContext();
+    //dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, ctx);
+
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    int lastId = 0;
+
+    for (int i = 0; i < containers.size(); ++i) {
+      StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
+    }
+
+    LogicalPlan.OperatorMeta n1meta = dag.getMeta(node1);
+    LogicalPlan.OperatorMeta n2meta = dag.getMeta(node2);
+    LogicalPlan.OperatorMeta n3meta = dag.getMeta(node3);
+
+    // Sanity check that physical operators have been allocated for n1meta and n2meta
+    Assert.assertEquals("number operators " + n1meta.getName(), 2, plan.getOperators(n1meta).size());
+    Assert.assertEquals("number operators " + n2meta.getName(), 3, plan.getOperators(n2meta).size());
+    Assert.assertEquals("number operators " + n3meta.getName(), 3, plan.getOperators(n3meta).size());
+
+    // Test Dynamic change
+    // for M x N partition
+    // scale down N from 3 to 2 and then from 2 to 1
+    for (int i = 0; i < 2; i++) {
+      markAllOperatorActive(plan);
+      List<PTOperator> ptos =  plan.getOperators(n2meta);
+      for (PTOperator ptOperator : ptos) {
+        PartitioningTest.PartitionLoadWatch.put(ptOperator, -1);
+        plan.onStatusUpdate(ptOperator);
+      }
+      //ctx.backupRequests = 0;
+      //ctx.events.remove(0).run();
+      dnm.processEvents();
+      containers = plan.getContainers();
+      System.out.println("containers " + containers.size());
+
+      int numPending = 0;
+
+      for (PTContainer container : containers) {
+        if (container.getState() == PTContainer.State.NEW) {
+          numPending++;
+        }
+      }
+
+      System.out.println("pending " + numPending);
+
+      for (int j = 0; j < numPending; ++j) {
+        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
+      }
+
+      List<PTOperator> operators = plan.getOperators(n2meta);
+      for (PTOperator operator : operators) {
+        OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
+
+        OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
+        String id = n2meta.getName() + " " + idi.portName;
+        Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
+        checkPresentStreamCodec(n2meta, node2.inport1, idi.streamCodecs, id, plan);
+      }
+
+    }
+
+    // scale up N from 1 to 2 and then from 2 to 3
+    for (int i = 0; i < 2; i++) {
+      markAllOperatorActive(plan);
+      PTOperator o2p1 = plan.getOperators(n2meta).get(0);
+
+      PartitioningTest.PartitionLoadWatch.put(o2p1, 1);
+
+      plan.onStatusUpdate(o2p1);
+
+      dnm.processEvents();
+
+      containers = plan.getContainers();
+
+      System.out.println("containers " + containers.size());
+
+      int numPending = 0;
+
+      for (PTContainer container : containers) {
+        if (container.getState() == PTContainer.State.NEW) {
+          numPending++;
+        }
+      }
+
+      System.out.println("pending " + numPending);
+
+      for (int j = 0; j < numPending; ++j) {
+        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
+      }
+
+      List<PTOperator> operators = plan.getOperators(n2meta);
+      for (PTOperator operator : operators) {
+        if (operator.getState() != PTOperator.State.ACTIVE) {
+          OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
+
+          OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
+          String id = n2meta.getName() + " " + idi.portName;
+          Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
+          checkPresentStreamCodec(n2meta, node2.inport1, idi.streamCodecs, id, plan);
+        }
+      }
+
+    }
+
+    // scale down M to 1
+    {
+
+      for (PTOperator o1p : plan.getOperators(n1meta)) {
+        PartitioningTest.PartitionLoadWatch.put(o1p, -1);
+        plan.onStatusUpdate(o1p);
+      }
+
+      dnm.processEvents();
+
+      containers = plan.getContainers();
+
+      System.out.println("containers " + containers.size());
+
+      int numPending = 0;
+
+      for (PTContainer container : containers) {
+        if (container.getState() == PTContainer.State.NEW) {
+          numPending++;
+        }
+      }
+
+      System.out.println("pending " + numPending);
+
+      for (int j = 0; j < numPending; ++j) {
+        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
+      }
+
+      List<PTOperator> operators = plan.getOperators(n1meta);
+      for (PTOperator operator : operators) {
+        if (operator.getState() != PTOperator.State.ACTIVE) {
+          OperatorDeployInfo odi = getOperatorDeployInfo(operator, n1meta.getName(), dnm);
+
+          OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
+          String id = n1meta.getName() + " " + otdi.portName;
+          Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 2);
+          checkPresentStreamCodec(n2meta, node2.inport1, otdi.streamCodecs, id, plan);
+          checkPresentStreamCodec(n3meta, node3.inport1, otdi.streamCodecs, id, plan);
+        }
+      }
+
+    }
+
+    // scale up M to 2
+    {
+
+      for (PTOperator o1p : plan.getOperators(n1meta)) {
+        PartitioningTest.PartitionLoadWatch.put(o1p, 1);
+        plan.onStatusUpdate(o1p);
+      }
+
+      dnm.processEvents();
+
+      containers = plan.getContainers();
+
+      System.out.println("containers " + containers.size());
+
+      int numPending = 0;
+
+      for (PTContainer container : containers) {
+        if (container.getState() == PTContainer.State.NEW) {
+          numPending++;
+        }
+      }
+
+      System.out.println("pending " + numPending);
+
+      for (int j = 0; j < numPending; ++j) {
+        StreamingContainerManagerTest.assignContainer(dnm, "container" + (++lastId));
+      }
+
+      List<PTOperator> operators = plan.getOperators(n1meta);
+      for (PTOperator operator : operators) {
+        if (operator.getState() != PTOperator.State.ACTIVE) {
+          OperatorDeployInfo odi = getOperatorDeployInfo(operator, n1meta.getName(), dnm);
+
+          OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
+          String id = n1meta.getName() + " " + otdi.portName;
+          Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 2);
+          checkPresentStreamCodec(n2meta, node2.inport1, otdi.streamCodecs, id, plan);
+          checkPresentStreamCodec(n3meta, node3.inport1, otdi.streamCodecs, id, plan);
+        }
+      }
+    }
+  }
+
+
+  private void markAllOperatorActive(PhysicalPlan plan) {
+    for (PTContainer container : plan.getContainers()) {
+      for (PTOperator operator : container.getOperators()) {
+        operator.setState(PTOperator.State.ACTIVE);
+      }
+    }
+  }
 
   private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier) {
@@ -986,6 +1224,7 @@ public class StreamCodecTest
   private OperatorDeployInfo getOperatorDeployInfo(PTOperator operator, String id, StreamingContainerManager scm)
   {
     String containerId = operator.getContainer().getExternalId();
+    System.out.println("Container id " + containerId);
 
     List<OperatorDeployInfo> cdi = StreamingContainerManagerTest.getDeployInfo(scm.getContainerAgent(containerId));
 
@@ -997,7 +1236,7 @@ public class StreamCodecTest
       }
     }
 
-    Assert.assertNotNull(id + " assigned to " + containerId + " deploy info", odi );
+    Assert.assertNotNull(id + " assigned to " + containerId + " deploy info is null", odi );
     return odi;
   }
 

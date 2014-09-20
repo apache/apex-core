@@ -254,7 +254,8 @@ public class StreamingContainerAgent {
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
   }
 
-  public static InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta) {
+  public static InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta)
+  {
     InputPortMeta inputPortMeta = null;
     Map<InputPortMeta, StreamMeta> inputStreams = operatorMeta.getInputStreams();
     for (Map.Entry<InputPortMeta, StreamMeta> entry : inputStreams.entrySet()) {
@@ -266,7 +267,8 @@ public class StreamingContainerAgent {
     return inputPortMeta;
   }
 
-  public static InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input) {
+  public static InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input)
+  {
     InputPortMeta inputPortMeta = null;
     PTOperator inputTarget = input.target;
     StreamMeta streamMeta = input.logicalStream;
@@ -279,7 +281,8 @@ public class StreamingContainerAgent {
     return inputPortMeta;
   }
 
-  public static PTOperator getIdentifyingOperator(PTOperator operator) {
+  public static PTOperator getIdentifyingOperator(PTOperator operator)
+  {
     while ((operator != null) && operator.isUnifier()) {
       PTOperator idOperator = null;
       List<PTOperator.PTOutput> outputs = operator.getOutputs();
@@ -297,7 +300,8 @@ public class StreamingContainerAgent {
   }
 
   // This will not be needed when we change the port to be able to not specify a stream codec class
-  public static OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta) {
+  public static OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta)
+  {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = new OperatorDeployInfo.StreamCodecInfo();
     if (inputPortMeta != null) {
       streamCodecInfo.streamCodec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
