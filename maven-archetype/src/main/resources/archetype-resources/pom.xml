@@ -121,37 +121,14 @@
                <goal>single</goal>
              </goals>
              <configuration>
-               <finalName>${project.build.finalName}</finalName>
+               <finalName>DTApp-${project.artifactId}-${project.version}</finalName>
+               <appendAssemblyId>false</appendAssemblyId>
                <descriptors>
                  <descriptor>src/assemble/appPackage.xml</descriptor>
                </descriptors>
                <archiverConfig>
                  <defaultDirectoryMode>0755</defaultDirectoryMode>
                </archiverConfig>                  
-             </configuration>
-           </execution>
-         </executions>
-       </plugin>
-       <plugin>
-         <groupId>com.github.goldin</groupId>
-         <artifactId>copy-maven-plugin</artifactId>
-         <version>0.2.5</version>
-         <executions>
-           <execution>
-             <id>create-archive</id>
-             <phase>package</phase>
-             <goals>
-               <goal>copy</goal>
-             </goals>
-             <configuration>
-               <resources>
-                 <resource>
-                   <move>true</move>
-                   <targetPath>${project.build.directory}</targetPath>
-                   <file>${project.build.directory}/${project.build.finalName}-appPackage.zip</file>
-                   <destFileName>DTApp-${project.artifactId}-${project.version}.jar</destFileName>
-                 </resource>
-               </resources>
              </configuration>
            </execution>
          </executions>
