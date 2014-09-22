@@ -1106,7 +1106,7 @@ public class PhysicalPlan implements Serializable
         // operator partitioned with upstream
         if (upstreamPartitioned != null) {
           // need to have common root
-          if (!upstreamPartitioned.parallelPartitions.contains(om)) {
+          if (!upstreamPartitioned.parallelPartitions.contains(m.logicalOperator) && upstreamPartitioned != m) {
             String msg = String.format("operator cannot extend multiple partitions (%s and %s)", upstreamPartitioned.logicalOperator, m.logicalOperator);
             throw new AssertionError(msg);
           }
