@@ -43,6 +43,14 @@
           <artifactId>jackson-xc</artifactId>
           <groupId>org.codehaus.jackson</groupId>
         </exclusion>
+        <exclusion>
+          <artifactId>jersey-server</artifactId>
+          <groupId>com.sun.jersey</groupId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.avro</groupId>
+          <artifactId>avro</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
