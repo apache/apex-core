@@ -23,6 +23,7 @@ public class GenericTestOperator extends BaseOperator {
   public static final String IPORT1 = "input1";
   public static final String IPORT2 = "input2";
   public static final String OPORT1 = "output1";
+  public static final String OPORT2 = "output2";
 
   public volatile Object inport1Tuple = null;
 
@@ -53,6 +54,9 @@ public class GenericTestOperator extends BaseOperator {
 
   @OutputPortFieldAnnotation(name=OPORT1, optional=true)
   final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+
+  @OutputPortFieldAnnotation(name=OPORT2, optional=true)
+  final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
 
   private String emitFormat;
 
