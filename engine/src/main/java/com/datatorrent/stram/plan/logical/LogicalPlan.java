@@ -1363,12 +1363,14 @@ public class LogicalPlan implements Serializable, DAG
         return typeArgument;
       }
       else {
-        throw new IllegalArgumentException("Type argument is of expected type " + typeArgument);
+        LOG.error("Type argument is of expected type {}", typeArgument);
+        return null;
       }
     }
     else {
       // ports are always parameterized
-      throw new IllegalArgumentException("No type variable: " + f.getType() + ", typeParameters: " + Arrays.asList(f.getClass().getTypeParameters()));
+      LOG.error("No type variable: {}, typeParameters: {}", f.getType(), Arrays.asList(f.getClass().getTypeParameters()));
+      return null;
     }
   }
 
