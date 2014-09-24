@@ -29,7 +29,7 @@
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.3.0</hadoop.version>
     <github.global.server>github</github.global.server>
-    <jackson.version>1.8.8</jackson.version>
+    <jackson.version>1.9.2</jackson.version>
     <jersey.version>1.9</jersey.version>
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
