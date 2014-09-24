@@ -649,7 +649,10 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
-        metaPort.tupleTypeString = getPortType(field).toString();
+        Type portType = getPortType(field);
+        if (portType != null) {
+          metaPort.tupleTypeString = portType.toString();
+        }
         inPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
@@ -672,7 +675,10 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
-        metaPort.tupleTypeString = getPortType(field).toString();
+        Type portType = getPortType(field);
+        if (portType != null) {
+          metaPort.tupleTypeString = portType.toString();
+        }
         outPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
