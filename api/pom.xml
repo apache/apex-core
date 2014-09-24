@@ -24,11 +24,7 @@
       <version>${hadoop.version}</version>
       <exclusions>
         <exclusion>
-	        <artifactId>commons-beanutils</artifactId>
-          <groupId>commons-beanutils</groupId>
-        </exclusion>
-        <exclusion>
-	        <artifactId>commons-beanutils-core</artifactId>
+          <artifactId>commons-beanutils-core</artifactId>
           <groupId>commons-beanutils</groupId>
         </exclusion>
         <exclusion>
@@ -58,11 +54,6 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>dt-common</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-beanutils</groupId>
-      <artifactId>commons-beanutils</artifactId>
-      <version>1.8.3</version>
     </dependency>
   </dependencies>
 </project>
