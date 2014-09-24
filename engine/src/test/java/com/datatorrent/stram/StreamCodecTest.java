@@ -15,9 +15,7 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Pramod Immaneni <pramod@datatorrent.com> on 9/5/14.
@@ -974,6 +972,7 @@ public class StreamCodecTest
     dag.setInputPortAttribute(node2.inport1, Context.PortContext.STREAM_CODEC, serDe);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
     dag.setAttribute(node3, Context.OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(node3, Context.OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
     TestStreamCodec serDe2 = new TestStreamCodec();
     dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, serDe2);
 
@@ -1005,7 +1004,7 @@ public class StreamCodecTest
 
     // Test Dynamic change
     // for M x N partition
-    // scale down N from 3 to 2 and then from 2 to 1
+    // scale down N (node2) from 3 to 2 and then from 2 to 1
     for (int i = 0; i < 2; i++) {
       markAllOperatorsActive(plan);
       List<PTOperator> ptos =  plan.getOperators(n2meta);
@@ -1018,18 +1017,49 @@ public class StreamCodecTest
       lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n2meta);
+      List<PTOperator> upstreamOperators = new ArrayList<PTOperator>();
       for (PTOperator operator : operators) {
+        upstreamOperators.addAll(operator.upstreamMerge.values());
+        /*
         OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
 
         OperatorDeployInfo.InputDeployInfo idi = getInputDeployInfo(odi, n2meta.getMeta(node2.inport1));
         String id = n2meta.getName() + " " + idi.portName;
         Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
         checkPresentStreamCodec(n2meta, node2.inport1, idi.streamCodecs, id, plan);
+        */
       }
 
+      Assert.assertEquals("Number of unifiers ", 2-i, upstreamOperators.size());
     }
 
-    // scale up N from 1 to 2 and then from 2 to 3
+    // scale down N (node3) from 3 to 2 and then from 2 to 1
+    for (int i = 0; i < 2; i++) {
+      markAllOperatorsActive(plan);
+      List<PTOperator> ptos =  plan.getOperators(n3meta);
+      for (PTOperator ptOperator : ptos) {
+        PartitioningTest.PartitionLoadWatch.put(ptOperator, -1);
+        plan.onStatusUpdate(ptOperator);
+      }
+
+      dnm.processEvents();
+      lastId = assignNewContainers(dnm, lastId);
+
+      List<PTOperator> operators = plan.getOperators(n3meta);
+      List<PTOperator> upstreamOperators = new ArrayList<PTOperator>();
+      for (PTOperator operator : operators) {
+        upstreamOperators.addAll(operator.upstreamMerge.values());
+      }
+
+      Assert.assertEquals("Number of unifiers ", 2-i, upstreamOperators.size());
+    }
+
+    // Check that different unifiers were created for the two output operators with different codecs
+    // even though there are only one partition of each one
+    Set<PTOperator> unifiers = getUnifiers(plan);
+    Assert.assertEquals("Number of unifiers ", 2, unifiers.size());
+
+    // scale up N (node2) from 1 to 2 and then from 2 to 3
     for (int i = 0; i < 2; i++) {
       markAllOperatorsActive(plan);
       PTOperator o2p1 = plan.getOperators(n2meta).get(0);
@@ -1043,7 +1073,10 @@ public class StreamCodecTest
       lastId = assignNewContainers(dnm, lastId);
 
       List<PTOperator> operators = plan.getOperators(n2meta);
+      List<PTOperator> upstreamOperators = new ArrayList<PTOperator>();
       for (PTOperator operator : operators) {
+        upstreamOperators.addAll(operator.upstreamMerge.values());
+        /*
         if (operator.getState() != PTOperator.State.ACTIVE) {
           OperatorDeployInfo odi = getOperatorDeployInfo(operator, n2meta.getName(), dnm);
 
@@ -1052,13 +1085,15 @@ public class StreamCodecTest
           Assert.assertEquals("number stream codecs " + id, idi.streamCodecs.size(), 1);
           checkPresentStreamCodec(n2meta, node2.inport1, idi.streamCodecs, id, plan);
         }
+        */
       }
 
+      Assert.assertEquals("Number of unifiers ", 2+i, upstreamOperators.size());
     }
 
     // scale down M to 1
     {
-
+      markAllOperatorsActive(plan);
       for (PTOperator o1p : plan.getOperators(n1meta)) {
         PartitioningTest.PartitionLoadWatch.put(o1p, -1);
         plan.onStatusUpdate(o1p);
@@ -1068,24 +1103,13 @@ public class StreamCodecTest
 
       lastId = assignNewContainers(dnm, lastId);
 
-      List<PTOperator> operators = plan.getOperators(n1meta);
-      for (PTOperator operator : operators) {
-        if (operator.getState() != PTOperator.State.ACTIVE) {
-          OperatorDeployInfo odi = getOperatorDeployInfo(operator, n1meta.getName(), dnm);
-
-          OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
-          String id = n1meta.getName() + " " + otdi.portName;
-          Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 2);
-          checkPresentStreamCodec(n2meta, node2.inport1, otdi.streamCodecs, id, plan);
-          checkPresentStreamCodec(n3meta, node3.inport1, otdi.streamCodecs, id, plan);
-        }
-      }
-
+      unifiers = getUnifiers(plan);
+      Assert.assertEquals("Number of unifiers", 0, unifiers.size());
     }
 
     // scale up M to 2
     {
-
+      markAllOperatorsActive(plan);
       for (PTOperator o1p : plan.getOperators(n1meta)) {
         PartitioningTest.PartitionLoadWatch.put(o1p, 1);
         plan.onStatusUpdate(o1p);
@@ -1095,18 +1119,8 @@ public class StreamCodecTest
 
       lastId = assignNewContainers(dnm, lastId);
 
-      List<PTOperator> operators = plan.getOperators(n1meta);
-      for (PTOperator operator : operators) {
-        if (operator.getState() != PTOperator.State.ACTIVE) {
-          OperatorDeployInfo odi = getOperatorDeployInfo(operator, n1meta.getName(), dnm);
-
-          OperatorDeployInfo.OutputDeployInfo otdi = getOutputDeployInfo(odi, n1meta.getMeta(node1.outport1));
-          String id = n1meta.getName() + " " + otdi.portName;
-          Assert.assertEquals("number stream codecs " + id, otdi.streamCodecs.size(), 2);
-          checkPresentStreamCodec(n2meta, node2.inport1, otdi.streamCodecs, id, plan);
-          checkPresentStreamCodec(n3meta, node3.inport1, otdi.streamCodecs, id, plan);
-        }
-      }
+      unifiers = getUnifiers(plan);
+      Assert.assertEquals("Number of unifiers", 4, unifiers.size());
     }
   }
 
@@ -1137,6 +1151,19 @@ public class StreamCodecTest
         operator.setState(PTOperator.State.ACTIVE);
       }
     }
+  }
+
+  private Set<PTOperator> getUnifiers(PhysicalPlan plan)
+  {
+    Set<PTOperator> unifiers = new HashSet<PTOperator>();
+    for (PTContainer container : plan.getContainers()) {
+      for (PTOperator operator : container.getOperators()) {
+        if (operator.isUnifier()) {
+          unifiers.add(operator);
+        }
+      }
+    }
+    return unifiers;
   }
 
   private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
