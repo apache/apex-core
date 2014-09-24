@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>1.0.4-RC3</version>
+    <version>1.0.4-1</version>
   </parent>
 
   <artifactId>dt-api</artifactId>
@@ -42,6 +42,14 @@
         <exclusion>
           <artifactId>jackson-xc</artifactId>
           <groupId>org.codehaus.jackson</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jersey-server</artifactId>
+          <groupId>com.sun.jersey</groupId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.avro</groupId>
+          <artifactId>avro</artifactId>
         </exclusion>
         <exclusion>
           <artifactId>asm</artifactId>
