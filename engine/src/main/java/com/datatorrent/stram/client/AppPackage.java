@@ -54,6 +54,7 @@ public class AppPackage extends JarFile implements Closeable
     public final String name;
     public final String file;
     public final String type;
+    public String displayName;
     public LogicalPlan dag;
     public String error;
 
@@ -227,6 +228,7 @@ public class AppPackage extends JarFile implements Closeable
               appName = appFactory.getName();
             }
             AppInfo appInfo = new AppInfo(appName, entry.getName(), "class");
+            appInfo.displayName = appFactory.getDisplayName();
             appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
             try {
               appInfo.dag.validate();
@@ -259,6 +261,7 @@ public class AppPackage extends JarFile implements Closeable
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
+          appInfo.displayName = appFactory.getDisplayName();
           appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
           try {
             appInfo.dag.validate();
@@ -279,8 +282,10 @@ public class AppPackage extends JarFile implements Closeable
           StramAppLauncher stramAppLauncher = new StramAppLauncher(entry.getName(), config);
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "properties");
+          appInfo.displayName = appFactory.getDisplayName();
+          appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
           try {
-            appInfo.dag = stramAppLauncher.prepareDAG(appFactory);
+            appInfo.dag.validate();
           }
           catch (Throwable t) {
             appInfo.error = t.getMessage();
