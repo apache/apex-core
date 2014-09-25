@@ -21,12 +21,11 @@ import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
-import com.datatorrent.stram.engine.*;
-import com.datatorrent.stram.tuple.CheckpointTuple;
-import com.datatorrent.stram.tuple.EndStreamTuple;
-import com.datatorrent.stram.tuple.EndWindowTuple;
-import com.datatorrent.stram.tuple.ResetWindowTuple;
-import com.datatorrent.stram.tuple.Tuple;
+import com.datatorrent.stram.engine.ByteCounterStream;
+import com.datatorrent.stram.engine.StreamContext;
+import com.datatorrent.stram.engine.SweepableReservoir;
+import com.datatorrent.stram.engine.WindowGenerator;
+import com.datatorrent.stram.tuple.*;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
