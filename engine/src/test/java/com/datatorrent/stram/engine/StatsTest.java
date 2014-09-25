@@ -7,6 +7,7 @@ package com.datatorrent.stram.engine;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.junit.Assert;
@@ -24,7 +25,6 @@ import com.datatorrent.stram.engine.StatsTest.TestCollector.TestOutputStatsListe
 import com.datatorrent.stram.engine.StatsTest.TestOperator.TestInputStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import java.util.Iterator;
 
 /**
  * Tests the stats generated in the system.

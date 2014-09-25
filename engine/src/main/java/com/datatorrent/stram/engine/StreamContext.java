@@ -81,6 +81,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
   private int mask;
   private Set<Integer> partitions;
   private String id;
+  private String portId;
 
   /**
    *
@@ -181,6 +182,16 @@ public class StreamContext extends DefaultAttributeMap implements Context
   public void setSinkId(String downstreamNodeId)
   {
     this.sinkId = downstreamNodeId;
+  }
+
+  public String getPortId()
+  {
+    return portId;
+  }
+
+  public void setPortId(String portId)
+  {
+    this.portId = portId;
   }
 
   @Override
