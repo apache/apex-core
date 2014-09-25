@@ -4,24 +4,6 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.*;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.annotation.Nullable;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -30,9 +12,9 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -42,6 +24,21 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.datatorrent.api.Context.CountersAggregator;
 
@@ -148,6 +145,9 @@ public class PhysicalPlan implements Serializable
   final Set<PTOperator> undeployOpers = Sets.newHashSet();
   final ConcurrentMap<Integer, PTOperator> allOperators = Maps.newConcurrentMap();
   private final ConcurrentMap<OperatorMeta, OperatorMeta> pendingRepartition = Maps.newConcurrentMap();
+
+  private final AtomicInteger strCodecIdSequence = new AtomicInteger();
+  private final Map<OperatorDeployInfo.StreamCodecInfo, Integer> streamCodecIdentifiers = Maps.newHashMap();
 
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
@@ -1349,6 +1349,23 @@ public class PhysicalPlan implements Serializable
       }
 */
     }
+  }
+
+  public Integer getStreamCodecIdentifier(OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
+    Integer id = null;
+    synchronized (streamCodecIdentifiers) {
+      id = streamCodecIdentifiers.get(streamCodecInfo);
+      if (id == null) {
+        id = strCodecIdSequence.incrementAndGet();
+        streamCodecIdentifiers.put(streamCodecInfo, id);
+      }
+    }
+    return id;
+  }
+
+  // For tests to lookup the mapping
+  public Map<OperatorDeployInfo.StreamCodecInfo, Integer> getStreamCodecIdentifiers() {
+    return Collections.unmodifiableMap(streamCodecIdentifiers);
   }
 
 }

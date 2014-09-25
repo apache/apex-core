@@ -12,7 +12,9 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -62,12 +64,17 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
+    /*
     @Deprecated
     public String serDeClassName;
+    */
     /**
      * The SerDe object.
      */
+    /*
     public StreamCodec streamCodec;
+    */
+    public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -140,15 +147,7 @@ public class OperatorDeployInfo implements Serializable
      */
     public String bufferServerHost;
     public int bufferServerPort;
-    /**
-     * Class name of tuple SerDe (buffer server stream only).
-     */
-    @Deprecated
-    public String serDeClassName;
-    /**
-     * The SerDe object.
-     */
-    public StreamCodec streamCodec;
+    public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
     /**
      * Context attributes for output port
      */
@@ -189,6 +188,76 @@ public class OperatorDeployInfo implements Serializable
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201208271958L;
+  }
+
+  // This contains the extra information to identify the buffer server stream endpoint
+  public static class StreamCodecIdentifier implements Serializable
+  {
+    public Integer id;
+
+    @Override
+    public String toString()
+    {
+      return id.toString();
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      StreamCodecIdentifier that = (StreamCodecIdentifier) o;
+
+      if (!id.equals(that.id)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      return id.hashCode();
+    }
+  }
+
+  public static class StreamCodecInfo implements Serializable
+  {
+
+    /**
+     * Class name of tuple SerDe (buffer server stream only).
+     */
+    @Deprecated /* use codec instead; feel free to delete the codecClass related code after May 1, 2014 */
+    public String serDeClassName;
+
+    /**
+     * The SerDe object.
+     */
+    public StreamCodec<?> streamCodec;
+
+    // Stream codecs are matched by reference on purpose
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      StreamCodecInfo that = (StreamCodecInfo) o;
+
+      if (serDeClassName != null ? !serDeClassName.equals(that.serDeClassName) : that.serDeClassName != null)
+        return false;
+      if (streamCodec != that.streamCodec) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = serDeClassName != null ? serDeClassName.hashCode() : 0;
+      result = 31 * result + (streamCodec != null ? streamCodec.hashCode() : 0);
+      return result;
+    }
   }
 
   /**

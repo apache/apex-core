@@ -4,29 +4,31 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.StreamingContainerAgent;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.engine.DefaultUnifier;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Encapsulates the mapping of input to output operators, including unifiers. Depending on logical plan setting and
@@ -156,17 +158,41 @@ public class StreamMapping implements java.io.Serializable
 
       int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
+      boolean separateUnifiers = false;
+      Integer lastId = null;
+      for (InputPortMeta ipm : streamMeta.getSinks()) {
+        OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+        Integer id = plan.getStreamCodecIdentifier(streamCodecInfo);
+        if (lastId == null) {
+          lastId = id;
+        } else if (!id.equals(lastId)) {
+          separateUnifiers = true;
+          break;
+        }
+      }
+
       List<PTOutput> unifierSources = this.upstream;
+      Map<OperatorDeployInfo.StreamCodecInfo, List<PTOutput>> cascadeUnifierSourcesMap = Maps.newHashMap();
+
       if (limit > 1 && this.upstream.size() > limit) {
         // cascading unifier
-        unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
+        if (!separateUnifiers) {
+          unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
+        } else {
+          for (InputPortMeta ipm : streamMeta.getSinks()) {
+            OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+            if (!cascadeUnifierSourcesMap.containsKey(streamCodecInfo)) {
+              unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
+              cascadeUnifierSourcesMap.put(streamCodecInfo, unifierSources);
+            }
+          }
+        }
       }
 
       // remove remaining unifiers
       for (PTOperator oper : currentUnifiers) {
         plan.removePTOperator(oper);
       }
-
 
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
@@ -175,7 +201,7 @@ public class StreamMapping implements java.io.Serializable
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
 
         if (upstream.size() > 1) {
-          if (pks == null || pks.mask == 0) {
+          if (!separateUnifiers && (pks == null || pks.mask == 0)) {
             if (finalUnifier == null) {
               finalUnifier = createUnifier();
             }
@@ -200,8 +226,16 @@ public class StreamMapping implements java.io.Serializable
               in.source.sinks.remove(in);
             }
             unifier.inputs.clear();
+            List<PTOutput> doperUnifierSources = unifierSources;
+            if (separateUnifiers) {
+              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(doperEntry.second);
+              List<PTOutput> cascadeSources = cascadeUnifierSourcesMap.get(streamCodecInfo);
+              if (cascadeSources != null) {
+                doperUnifierSources = cascadeSources;
+              }
+            }
             // add new inputs
-            for (PTOutput out : unifierSources) {
+            for (PTOutput out : doperUnifierSources) {
               addInput(unifier, out, pks);
             }
           }
