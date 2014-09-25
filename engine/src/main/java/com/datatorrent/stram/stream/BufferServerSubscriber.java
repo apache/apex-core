@@ -3,8 +3,17 @@
  */
 package com.datatorrent.stram.stream;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.bufferserver.client.Subscriber;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Slice;
@@ -17,13 +26,6 @@ import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.engine.SweepableReservoir;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
