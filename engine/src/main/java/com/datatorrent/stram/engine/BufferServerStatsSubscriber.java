@@ -57,12 +57,17 @@ public class BufferServerStatsSubscriber
   public void handleStreamDeactivation(StreamDeactivationEvent sde)
   {
     ComponentContextPair<Stream, StreamContext> stream = sde.getStream();
-    String sourceId = stream.context.getSourceId();
     String portId = stream.context.getPortId();
     String sinkId = stream.context.getSinkId();
     if (stream.component instanceof ByteCounterStream) {
       if (sinkId.startsWith("tcp:")) {
-        outputStreams.remove(portId);
+        List<ByteCounterStream> portStreams = outputStreams.get(portId);
+        if (portStreams != null) {
+          portStreams.remove(stream);
+          if (portStreams.size() == 0) {
+            outputStreams.remove(portId);
+          }
+        }
       }
       else {
         inputStreams.remove(portId);
