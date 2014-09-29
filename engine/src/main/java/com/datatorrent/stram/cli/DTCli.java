@@ -2219,14 +2219,14 @@ public class DTCli
                   throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
                 }
                 else {
-                  LOG.warn("Exception while starting license ", ex);
+                  LOG.warn("Exception activating license ", ex);
                 }
               }
               if (ar == null && license.getLicenseType() == License.LicenseType.EVALUATION) {
                 throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
               else {
-                LOG.warn("activating license. Please contact <support@datatorrent.com> for help");
+                LOG.warn("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
             }
             appId = submitApp.launchApp(appFactory, licenseBytes);
