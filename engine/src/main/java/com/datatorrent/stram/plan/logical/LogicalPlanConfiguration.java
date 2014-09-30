@@ -53,6 +53,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String GATEWAY_LISTEN_ADDRESS_PROP = "listenAddress";
   public static final String GATEWAY_LISTEN_ADDRESS = GATEWAY_PREFIX + GATEWAY_LISTEN_ADDRESS_PROP;
   public static final String GATEWAY_STATIC_RESOURCE_DIRECTORY = GATEWAY_PREFIX + "staticResourceDirectory";
+  public static final String GATEWAY_ALLOW_CROSS_ORIGIN = GATEWAY_PREFIX + "allowCrossOrigin";
 
   public static final String STREAM_PREFIX = StreamingApplication.DT_PREFIX + "stream.";
   public static final String LICENSE_PREFIX = StreamingApplication.DT_PREFIX + "license.";
@@ -802,7 +803,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       if (portArray != null) {
         String portsPrefix = operatorPrefix + StramElement.PORT.getValue() + ".";
         for (int j = 0; j < portArray.length(); j++) {
-          JSONObject port = portArray.getJSONObject(i);
+          JSONObject port = portArray.getJSONObject(j);
           JSONObject portAttributes = port.optJSONObject("attributes");
           if (portAttributes != null) {
             String portAttributePrefix = portsPrefix + port.getString("name") + "." + StramElement.ATTR.getValue() + ".";
@@ -981,7 +982,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     AppConf appConf = this.stramConf.getChild(WILDCARD, StramElement.APPLICATION);
     if (appConf == null) {
-      throw new IllegalArgumentException(String.format("Application configuration not found"));
+      LOG.warn("Application configuration not found. Probably an empty app.");
+      return;
     }
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);

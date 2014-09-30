@@ -29,9 +29,9 @@ import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
+import org.apache.log4j.DTLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.log4j.DTLoggerFactory;
 
 /**
  *
@@ -232,6 +232,20 @@ public class StramClientUtils
     }
   }
 
+  public static File getInstallationDir()
+  {
+    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
+    try {
+      if (resource == null) {
+        return null;
+      }
+      return new File(resource.toURI()).getParentFile().getParentFile();
+    }
+    catch (URISyntaxException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   public static boolean isDevelopmentMode()
   {
     return getUserDTDirectory().equals(getConfigDir());
@@ -262,9 +276,10 @@ public class StramClientUtils
     }
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
 
+    FileSystem fs = null;
     try {
+      fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
-      FileSystem fs = newFileSystemInstance(conf);
       // load global settings from DFS
       File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
@@ -280,6 +295,9 @@ public class StramClientUtils
     catch (IOException ex) {
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
+    }
+    finally {
+      IOUtils.closeQuietly(fs);
     }
     //Validate loggers-level settings
     String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
@@ -302,10 +320,12 @@ public class StramClientUtils
 
     int rmConnectMaxWait = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
     if (rmConnectMaxWait > RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE) {
+      LOG.info("Overriding {} assigned value of {} to {} because the assigned value is too big.", YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, rmConnectMaxWait, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
       conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
       int rmConnectRetryInterval = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
       int defaultRetryInterval = Math.max(500, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE / 5);
       if (rmConnectRetryInterval > defaultRetryInterval) {
+        LOG.info("Overriding {} assigned value of {} to {} because the assigned value is too big.", YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, rmConnectRetryInterval, defaultRetryInterval);
         conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, defaultRetryInterval);
       }
     }

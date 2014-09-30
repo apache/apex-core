@@ -5,7 +5,6 @@ package com.datatorrent.stram.stream;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicLong;
-import static java.lang.Thread.sleep;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +20,8 @@ import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.tuple.Tuple;
+
+import static java.lang.Thread.sleep;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>

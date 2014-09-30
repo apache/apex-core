@@ -6,17 +6,17 @@ package org.apache.log4j;
 import java.lang.reflect.Field;
 import java.util.Map;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
 
 import com.datatorrent.stram.StreamingAppMaster;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.engine.StreamingContainer;
-import com.google.common.collect.Maps;
 
 public class DTLoggerFactoryTest
 {

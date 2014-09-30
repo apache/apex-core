@@ -5,6 +5,7 @@
 package com.datatorrent.stram.client;
 
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.stram.*;
 import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
 import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
@@ -67,6 +68,8 @@ public class StramAppLauncher
     StreamingApplication createApp(Configuration conf);
 
     String getName();
+
+    String getDisplayName();
   }
 
   public static class PropertyFileAppFactory implements AppFactory
@@ -92,7 +95,19 @@ public class StramAppLauncher
     @Override
     public String getName()
     {
-      return propertyFile.getName();
+      String filename = propertyFile.getName();
+      if (filename.endsWith(".properties")) {
+        return filename.substring(0, filename.length() - 5);
+      }
+      else {
+        return filename;
+      }
+    }
+
+    @Override
+    public String getDisplayName()
+    {
+      return getName();
     }
 
   }
@@ -100,7 +115,6 @@ public class StramAppLauncher
   public static class JsonFileAppFactory implements AppFactory
   {
     final File jsonFile;
-    String name;
     JSONObject json;
 
     public JsonFileAppFactory(File file)
@@ -112,7 +126,6 @@ public class StramAppLauncher
         StringWriter writer = new StringWriter();
         IOUtils.copy(is, writer);
         json = new JSONObject(writer.toString());
-        name = json.optString("name", null);
       }
       catch (Exception e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
@@ -136,9 +149,21 @@ public class StramAppLauncher
     @Override
     public String getName()
     {
-      return name == null ? jsonFile.getName() : name;
+      String filename = jsonFile.getName();
+      if (filename.endsWith(".json")) {
+        return filename.substring(0, filename.length() - 5);
+      }
+      else {
+        return filename;
+      }
     }
 
+    @Override
+    public String getDisplayName()
+    {
+      String displayName = json.optString("displayName", null);
+      return displayName == null ? getName() : displayName;
+    }
   }
 
   public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
@@ -330,7 +355,7 @@ public class StramAppLauncher
     for (final String classFileName : classFileNames) {
       final String className = classFileName.replace('/', '.').substring(0, classFileName.length() - 6);
       try {
-        Class<?> clazz = cl.loadClass(className);
+        final Class<?> clazz = cl.loadClass(className);
         if (!Modifier.isAbstract(clazz.getModifiers()) && StreamingApplication.class.isAssignableFrom(clazz)) {
           final AppFactory appConfig = new AppFactory()
           {
@@ -338,6 +363,18 @@ public class StramAppLauncher
             public String getName()
             {
               return classFileName;
+            }
+
+            @Override
+            public String getDisplayName()
+            {
+              ApplicationAnnotation an = clazz.getAnnotation(ApplicationAnnotation.class);
+              if (an != null) {
+                return an.name();
+              }
+              else {
+                return classFileName;
+              }
             }
 
             @Override

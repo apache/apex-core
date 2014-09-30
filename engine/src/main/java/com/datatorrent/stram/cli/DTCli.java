@@ -469,8 +469,8 @@ public class DTCli
       null,
       "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
-      new Arg[]{new FileArg("jar-file/json-file/properties-file")},
-      new Arg[]{new Arg("matching-name")},
+      new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file")},
+      new Arg[]{new Arg("matching-app-name")},
       "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
       new Arg[]{new Arg("app-id")},
@@ -485,15 +485,16 @@ public class DTCli
       null,
       "Kill an app"));
     globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
-      new Arg[]{new FileArg("jar-file")},
+      new Arg[]{new FileArg("jar-file/app-package-file")},
       new Arg[]{new Arg("class-name")},
       "List apps in a jar or show logical plan of an app class",
       getShowLogicalPlanCommandLineOptions()));
 
-    globalCommands.put("get-jar-operator-classes", new CommandSpec(new GetJarOperatorClassesCommand(),
-      new Arg[]{new FileArg("jar-files-comma-separated"), new Arg("package-prefix")},
-      new Arg[]{new Arg("parent-class-name")},
-      "List operators in a jar list"));
+    globalCommands.put("get-jar-operator-classes", new OptionsCommandSpec(new GetJarOperatorClassesCommand(),
+      new Arg[]{new FileArg("jar-files-comma-separated")},
+      new Arg[]{new Arg("search-term")},
+      "List operators in a jar list",
+      GET_OPERATOR_CLASSES_OPTIONS.options));
 
     globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(),
       new Arg[]{new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
@@ -558,14 +559,11 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file")},
       null,
       "Get info on the app package file"));
-    globalCommands.put("launch-app-package", new OptionsCommandSpec(new LaunchAppPackageCommand(),
+    globalCommands.put("get-app-package-operators", new OptionsCommandSpec(new GetAppPackageOperatorsCommand(),
       new Arg[]{new FileArg("app-package-file")},
-      new Arg[]{new Arg("matching-app-name")},
-      "Launch app in the app package", LAUNCH_OPTIONS.options));
-    globalCommands.put("get-app-package-operators", new CommandSpec(new GetAppPackageOperatorsCommand(),
-      new Arg[]{new FileArg("app-package-file"), new Arg("package-prefix")},
-      new Arg[]{new Arg("parent-class")},
-      "Get operators within the given app package"));
+      new Arg[]{new Arg("search-term")},
+      "Get operators within the given app package",
+      GET_OPERATOR_CLASSES_OPTIONS.options));
     globalCommands.put("get-app-package-operator-properties", new CommandSpec(new GetAppPackageOperatorPropertiesCommand(),
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
@@ -644,7 +642,7 @@ public class DTCli
       "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
       null,
-      new Arg[]{new FileArg("jar-file"), new Arg("class-name")},
+      new Arg[]{new FileArg("jar-file/app-package-file"), new Arg("class-name")},
       "Show logical plan of an app class",
       getShowLogicalPlanCommandLineOptions()));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
@@ -2019,6 +2017,21 @@ public class DTCli
         }
       }
       else {
+        // see if it's an app package
+        AppPackage ap = null;
+        try {
+          ap = new AppPackage(new File(fileName));
+        }
+        catch (Exception ex) {
+          // fall through, it's not an app package
+        }
+        finally {
+          IOUtils.closeQuietly(ap);
+        }
+        if (ap != null) {
+          new LaunchAppPackageCommand().execute(args, reader);
+          return;
+        }
         submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
       }
       submitApp.loadDependencies();
@@ -2176,7 +2189,8 @@ public class DTCli
               });
               System.setOut(dummyStream);
             }
-            String licenseId = LicenseAuthority.getLicenseID(licenseBytes);
+            License license = LicenseAuthority.getLicense(licenseBytes);
+            String licenseId = license.getLicenseId();
             LOG.info("Using license {}", licenseId);
             ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
@@ -2201,10 +2215,18 @@ public class DTCli
                 while (ar == null && System.currentTimeMillis() <= timeout);
               }
               catch (Exception ex) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
+                if (license.getLicenseType() == License.LicenseType.EVALUATION) {
+                  throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
+                }
+                else {
+                  LOG.warn("Exception activating license ", ex);
+                }
               }
-              if (ar == null) {
+              if (ar == null && license.getLicenseType() == License.LicenseType.EVALUATION) {
                 throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
+              }
+              else {
+                LOG.warn("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
             }
             appId = submitApp.launchApp(appFactory, licenseBytes);
@@ -2981,6 +3003,18 @@ public class DTCli
 
       if (commandLineInfo.args.length >= 2) {
         String jarfile = expandFileName(commandLineInfo.args[0], true);
+        AppPackage ap = null;
+        // see if the first argument is actually an app package
+        try {
+          ap = new AppPackage(new File(jarfile));
+        }
+        catch (Exception ex) {
+          // fall through
+        }
+        if (ap != null) {
+          new ShowLogicalPlanAppPackageCommand().execute(args, reader);
+          return;
+        }
         String appName = commandLineInfo.args[1];
         StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
         submitApp.loadDependencies();
@@ -3021,17 +3055,39 @@ public class DTCli
         }
       }
       else if (commandLineInfo.args.length == 1) {
-        String jarfile = expandFileName(commandLineInfo.args[0], true);
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
-        submitApp.loadDependencies();
-        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
-        List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
-        for (AppFactory appFactory : appFactoryList) {
-          Map<String, Object> m = new HashMap<String, Object>();
-          m.put("name", appFactory.getName());
-          appList.add(m);
+        String filename = expandFileName(commandLineInfo.args[0], true);
+        if (filename.endsWith(".json")) {
+          File file = new File(filename);
+          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+          AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("applicationName", appFactory.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          printJson(map);
         }
-        printJson(appList, "applications");
+        else if (filename.endsWith(".properties")) {
+          File file = new File(filename);
+          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+          AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("applicationName", appFactory.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          printJson(map);
+        }
+        else {
+          StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
+          submitApp.loadDependencies();
+          List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+          List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
+          for (AppFactory appFactory : appFactoryList) {
+            Map<String, Object> m = new HashMap<String, Object>();
+            m.put("name", appFactory.getName());
+            appList.add(m);
+          }
+          printJson(appList, "applications");
+        }
       }
       else {
         if (currentApp == null) {
@@ -3050,6 +3106,45 @@ public class DTCli
 
         });
         printJson(response);
+      }
+    }
+
+  }
+
+  private class ShowLogicalPlanAppPackageCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String jarfile = expandFileName(args[1], true);
+      AppPackage ap = new AppPackage(new File(jarfile), true);
+
+      List<AppInfo> applications = ap.getApplications();
+
+      if (args.length >= 3) {
+        for (AppInfo appInfo : applications) {
+          if (args[2].equals(appInfo.name)) {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("applicationName", appInfo.name);
+            if (appInfo.dag != null) {
+              map.put("logicalPlan", LogicalPlanSerializer.convertToMap(appInfo.dag));
+            }
+            if (appInfo.error != null) {
+              map.put("error", appInfo.error);
+            }
+            printJson(map);
+          }
+        }
+      }
+      else {
+        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+        for (AppInfo appInfo : applications) {
+          Map<String, Object> m = new HashMap<String, Object>();
+          m.put("name", appInfo.name);
+          m.put("type", appInfo.type);
+          appList.add(m);
+        }
+        printJson(appList, "applications");
       }
     }
 
@@ -3087,26 +3182,71 @@ public class DTCli
     return tmpDir;
   }
 
+  @SuppressWarnings("static-access")
+  public static class GetOperatorClassesCommandLineOptions
+  {
+    final Options options = new Options();
+    final Option parent = add(new Option("parent", "Specify the parent class for the operators"));
+
+    private Option add(Option opt)
+    {
+      this.options.addOption(opt);
+      return opt;
+    }
+
+  }
+
+  private static GetOperatorClassesCommandLineOptions GET_OPERATOR_CLASSES_OPTIONS = new GetOperatorClassesCommandLineOptions();
+
+  private static class GetOperatorClassesCommandLineInfo
+  {
+    String parent;
+    String[] args;
+  }
+
+  private static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    GetOperatorClassesCommandLineInfo result = new GetOperatorClassesCommandLineInfo();
+    CommandLine line = parser.parse(GET_OPERATOR_CLASSES_OPTIONS.options, args);
+    result.parent = line.getOptionValue("parent");
+    result.args = line.getArgs();
+    return result;
+  }
+
   private class GetJarOperatorClassesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String parentName = Operator.class.getName();
-      if (args.length > 3) {
-        parentName = args[3];
-      }
-      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(newArgs);
+      String parentName = commandLineInfo.parent != null ? commandLineInfo.parent : Operator.class.getName();
+
+      String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
+      String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
+      String[] packagePrefixes;
+      if (StringUtils.isBlank(prefixes)) {
+        packagePrefixes = new String[]{"com.datatorrent"};
+      }
+      else {
+        packagePrefixes = StringUtils.split(prefixes, ',');
+      }
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
-        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
+        String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
+        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         for (Class<? extends Operator> clazz : operatorClasses) {
-          JSONObject classObject = new JSONObject();
-          classObject.put("name", clazz.getName());
-          arr.put(classObject);
+          try {
+            arr.put(OperatorDiscoverer.describeOperator(clazz));
+          }
+          catch (Throwable t) {
+            // ignore this class
+          }
         }
         json.put("operatorClasses", arr);
         printJson(json);
@@ -3125,12 +3265,18 @@ public class DTCli
     {
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
+      String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
+      String[] packagePrefixes;
+      if (StringUtils.isBlank(prefixes)) {
+        packagePrefixes = new String[]{"com.datatorrent"};
+      }
+      else {
+        packagePrefixes = StringUtils.split(prefixes, ',');
+      }
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        JSONObject json = new JSONObject();
-        json.put("properties", OperatorBeanUtils.getClassProperties(operatorClass, 0));
-        printJson(json);
+        printJson(OperatorDiscoverer.describeOperator(operatorClass));
       }
       finally {
         FileUtils.deleteDirectory(tmpDir);
@@ -3583,14 +3729,14 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ab = new AppPackage(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
         jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
-        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ab)));
+        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ap)));
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
@@ -3801,7 +3947,10 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
+      String[] tmpArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, tmpArgs, 0, args.length - 1);
+      GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(tmpArgs);
+      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
       try {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
@@ -3812,11 +3961,15 @@ public class DTCli
           jars.add(ap.tempDirectory() + "/" + libJar);
         }
         newArgs.add("get-jar-operator-classes");
-        newArgs.add(StringUtils.join(jars, ","));
-        newArgs.add(args[2]);
-        if (args.length > 3) {
-          newArgs.add(args[3]);
+        if (commandLineInfo.parent != null) {
+          newArgs.add("-parent");
+          newArgs.add(commandLineInfo.parent);
         }
+        newArgs.add(StringUtils.join(jars, ","));
+        for (int i = 1; i < commandLineInfo.args.length; i++) {
+          newArgs.add(commandLineInfo.args[i]);
+        }
+        LOG.debug("Executing: " + newArgs);
         new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[]{}), reader);
 
       }
@@ -3921,8 +4074,8 @@ public class DTCli
     String archives;
     String licenseFile;
     String origAppId;
-    String[] args;
     boolean exactMatch;
+    String[] args;
   }
 
   @SuppressWarnings("static-access")

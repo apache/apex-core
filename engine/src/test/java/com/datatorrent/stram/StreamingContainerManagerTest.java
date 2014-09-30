@@ -4,22 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.*;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
-
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -29,7 +13,6 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.Checkpoint;
@@ -51,10 +34,22 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -260,7 +255,8 @@ public class StreamingContainerManagerTest {
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getName(), nidi.declaredStreamId);
       Assert.assertEquals("partition for " + containerId, Sets.newHashSet(node2.partitionKeys[i]), nidi.partitionKeys);
-      Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
+      Assert.assertEquals("number stream codecs for " + nidi, 1, nidi.streamCodecs.size());
+      Assert.assertEquals("serde " + nidi, null, nidi.streamCodecs.values().iterator().next().serDeClassName);
     }
 
     // unifier
@@ -596,7 +592,7 @@ public class StreamingContainerManagerTest {
     return getNodeDeployInfo(di, nodeConf) != null;
   }
 
-  private static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca) {
+  public static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca) {
     return sca.getDeployInfoList(sca.container.getOperators());
   }
 
@@ -618,7 +614,7 @@ public class StreamingContainerManagerTest {
     return null;
   }
 
-  private static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
+  public static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
