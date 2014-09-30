@@ -53,6 +53,7 @@ public class OperatorDiscoverer
   private final List<String> pathsToScan = new ArrayList<String>();
   private final ClassLoader classLoader;
   private static final int MAX_PROPERTY_LEVELS = 5;
+  private final String dtOperatorDoclinkPrefix = "https://www.datatorrent.com/docs/apidocs/index.html";
 
   private final Map<String, OperatorClassInfo> classInfo = new HashMap<String, OperatorClassInfo>();
 
@@ -404,6 +405,14 @@ public class OperatorDiscoverer
             }
             response.put("tags", tagArray);
           }
+          String doclink = oci.tags.get("@doclink");
+          if (doclink != null) {
+            response.put("doclink", doclink + "?" + getDocName(clazz));
+          }
+          else if (clazz.getName().startsWith("com.datatorrent.lib.") ||
+                  clazz.getName().startsWith("com.datatorrent.contrib.")) {
+            response.put("doclink", dtOperatorDoclinkPrefix + "?" + getDocName(clazz));
+          }
         }
       }
       catch (JSONException ex) {
@@ -414,6 +423,11 @@ public class OperatorDiscoverer
     else {
       throw new UnsupportedOperationException();
     }
+  }
+
+  private static String getDocName(Class<?> clazz)
+  {
+    return clazz.getName().replace('.', '/').replace('$', '.') + ".html";
   }
 
   private JSONArray getClassProperties(Class<?> clazz) throws IntrospectionException
