@@ -276,9 +276,10 @@ public class StramClientUtils
     }
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
 
+    FileSystem fs = null;
     try {
+      fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
-      FileSystem fs = newFileSystemInstance(conf);
       // load global settings from DFS
       File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
@@ -294,6 +295,9 @@ public class StramClientUtils
     catch (IOException ex) {
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
+    }
+    finally {
+      IOUtils.closeQuietly(fs);
     }
     //Validate loggers-level settings
     String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
