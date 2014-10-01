@@ -55,18 +55,4 @@ public @interface OutputPortFieldAnnotation {
    */
   public boolean error() default false;
 
-  /**
-   * Display name of the port.
-   *
-   * @return - port name
-   */
-  public String displayName() default "";
-
-  /**
-   * A short description (1-2 sentences) of this output port.
-   *
-   * @return port description
-   */
-  public String description() default "";
-
 }

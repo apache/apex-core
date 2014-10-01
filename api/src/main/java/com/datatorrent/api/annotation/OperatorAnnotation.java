@@ -27,24 +27,4 @@ public @interface OperatorAnnotation
    */
   public boolean partitionable() default true;
 
-  /**
-   * Operator display name.
-   */
-  public String displayName() default "";
-
-  /**
-   * Operator short description.
-   */
-  public String description() default "";
-
-  /**
-   * Operator category.
-   */
-  public String category() default "Uncategorized";
-
-  /**
-   * Operator tags.
-   */
-  public String[] tags() default "";
-
 }
