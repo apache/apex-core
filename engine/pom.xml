@@ -383,18 +383,6 @@
       <version>1.8.3</version>
       <type>jar</type>
     </dependency>
-    <dependency>
-      <groupId>com.esotericsoftware.minlog</groupId>
-      <artifactId>minlog</artifactId>
-      <version>1.2</version>
-      <type>jar</type>
-    </dependency>
-    <dependency>
-      <groupId>org.objenesis</groupId>
-      <artifactId>objenesis</artifactId>
-      <version>1.2</version>
-      <type>jar</type>
-    </dependency>
   </dependencies>
   <profiles>
     <profile>
