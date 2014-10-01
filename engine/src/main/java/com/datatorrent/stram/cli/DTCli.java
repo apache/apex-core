@@ -2189,7 +2189,8 @@ public class DTCli
               });
               System.setOut(dummyStream);
             }
-            String licenseId = LicenseAuthority.getLicenseID(licenseBytes);
+            License license = LicenseAuthority.getLicense(licenseBytes);
+            String licenseId = license.getLicenseId();
             LOG.info("Using license {}", licenseId);
             ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
@@ -2214,10 +2215,18 @@ public class DTCli
                 while (ar == null && System.currentTimeMillis() <= timeout);
               }
               catch (Exception ex) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
+                if (license.getLicenseType() == License.LicenseType.EVALUATION) {
+                  throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
+                }
+                else {
+                  LOG.warn("Exception activating license ", ex);
+                }
               }
-              if (ar == null) {
+              if (ar == null && license.getLicenseType() == License.LicenseType.EVALUATION) {
                 throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
+              }
+              else {
+                LOG.warn("Trouble activating license. Please contact <support@datatorrent.com> for help");
               }
             }
             appId = submitApp.launchApp(appFactory, licenseBytes);
@@ -3141,7 +3150,6 @@ public class DTCli
 
   }
 
-
   private File copyToLocal(String[] files) throws IOException
   {
     File tmpDir = new File("/tmp/datatorrent/" + ManagementFactory.getRuntimeMXBean().getName());
@@ -3173,7 +3181,6 @@ public class DTCli
 
     return tmpDir;
   }
-
 
   @SuppressWarnings("static-access")
   public static class GetOperatorClassesCommandLineOptions
@@ -3207,7 +3214,6 @@ public class DTCli
     return result;
   }
 
-
   private class GetJarOperatorClassesCommand implements Command
   {
     @Override
@@ -3223,7 +3229,7 @@ public class DTCli
       String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
       String[] packagePrefixes;
       if (StringUtils.isBlank(prefixes)) {
-        packagePrefixes = new String[] {"com.datatorrent"};
+        packagePrefixes = new String[]{"com.datatorrent"};
       }
       else {
         packagePrefixes = StringUtils.split(prefixes, ',');
@@ -3262,7 +3268,7 @@ public class DTCli
       String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
       String[] packagePrefixes;
       if (StringUtils.isBlank(prefixes)) {
-        packagePrefixes = new String[] {"com.datatorrent"};
+        packagePrefixes = new String[]{"com.datatorrent"};
       }
       else {
         packagePrefixes = StringUtils.split(prefixes, ',');
@@ -4070,7 +4076,7 @@ public class DTCli
     String origAppId;
     boolean exactMatch;
     String[] args;
- }
+  }
 
   @SuppressWarnings("static-access")
   public static Options getShowLogicalPlanCommandLineOptions()
