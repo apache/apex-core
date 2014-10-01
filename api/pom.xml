@@ -24,11 +24,7 @@
       <version>${hadoop.version}</version>
       <exclusions>
         <exclusion>
-	        <artifactId>commons-beanutils</artifactId>
-          <groupId>commons-beanutils</groupId>
-        </exclusion>
-        <exclusion>
-	        <artifactId>commons-beanutils-core</artifactId>
+          <artifactId>commons-beanutils-core</artifactId>
           <groupId>commons-beanutils</groupId>
         </exclusion>
         <exclusion>
@@ -47,6 +43,22 @@
           <artifactId>jackson-xc</artifactId>
           <groupId>org.codehaus.jackson</groupId>
         </exclusion>
+        <exclusion>
+          <artifactId>jersey-server</artifactId>
+          <groupId>com.sun.jersey</groupId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.avro</groupId>
+          <artifactId>avro</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpclient</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpcore</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -60,9 +72,9 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>commons-beanutils</groupId>
-      <artifactId>commons-beanutils</artifactId>
-      <version>1.8.3</version>
+      <groupId>asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>3.2</version>
     </dependency>
   </dependencies>
 </project>
