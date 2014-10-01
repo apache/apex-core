@@ -124,7 +124,8 @@ public class StramClient
       org.codehaus.jackson.map.ser.std.RawSerializer.class,
       org.apache.commons.beanutils.BeanUtils.class,
       org.apache.http.client.utils.URLEncodedUtils.class,
-      org.apache.http.message.BasicHeaderValueParser.class
+      org.apache.http.message.BasicHeaderValueParser.class,
+      com.esotericsoftware.minlog.Log.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 
