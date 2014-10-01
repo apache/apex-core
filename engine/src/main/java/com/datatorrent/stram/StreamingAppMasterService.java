@@ -509,9 +509,8 @@ public class StreamingAppMasterService extends CompositeService
     if (licenseBase64 != null) {
       byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
       License license = LicenseAuthority.getLicense(licenseBytes);
-      String licenseId = license.getLicenseId();
       this.licenseType = license.getLicenseType();
-      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), licenseId);
+      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), license);
       addService(this.licenseClient);
     }
 
