@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
@@ -1305,11 +1304,9 @@ public class PhysicalPlanTest
     Assert.assertEquals("number operators " + metaOfY.getName(), 2, plan.getOperators(metaOfY).size());
 
 
-    Map<Integer, PTOperator> allPTOperators = Maps.newHashMap();
     for (PTContainer container : plan.getContainers()) {
       for (PTOperator operator : container.getOperators()) {
         operator.setState(PTOperator.State.ACTIVE);
-        allPTOperators.put(operator.id, operator);
       }
     }
 
