@@ -4,19 +4,19 @@
  */
 package com.datatorrent.stram.support;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import static java.lang.Thread.sleep;
 
+import org.apache.commons.io.FileUtils;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Assert;
 import org.junit.rules.TestWatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static org.junit.Assert.assertTrue;
 
 import com.datatorrent.api.StorageAgent;
 
@@ -28,6 +28,9 @@ import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+
+import static java.lang.Thread.sleep;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Bunch of utilities shared between tests.
@@ -173,7 +176,17 @@ abstract public class StramTestSupport
       this.dir = "target/" + className + "/" + methodName;
     }
 
-  };
+    @Override
+    protected void finished(org.junit.runner.Description description)
+    {
+      try {
+        FileUtils.deleteDirectory(new File(this.dir));
+      }
+      catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
 
   public static class MemoryStorageAgent implements StorageAgent, Serializable
   {
