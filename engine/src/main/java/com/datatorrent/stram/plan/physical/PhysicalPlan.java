@@ -680,7 +680,9 @@ public class PhysicalPlan implements Serializable
               //avoid duplicate entries in case of parallel partitions
               boolean duplicate = false;
               for (PTInput sinkIn : sourceOut.sinks) {
-                if (oper == sinkIn.target) {
+                //check if the operator is already in the sinks list and also the port name of that sink is same as the
+                // input-port-meta currently being looked at since we allow an output port to connect to multiple inputs of the same operator.
+                if (oper == sinkIn.target && sinkIn.portName.equals(ipm.getKey().getPortName())) {
                   duplicate = true;
                   break;
                 }
