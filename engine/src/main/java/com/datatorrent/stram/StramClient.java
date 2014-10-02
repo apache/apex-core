@@ -536,7 +536,6 @@ public class StramClient
       }
       if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
         vargs.add(LicensingAppMaster.class.getName());
-        dag.setAttribute(LogicalPlan.LICENSE_ROOT, StramClientUtils.getDTDFSRootDir(fs, conf).toString());
       }
       else {
         vargs.add(StreamingAppMaster.class.getName());
