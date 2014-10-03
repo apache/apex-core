@@ -17,7 +17,7 @@
 
   <licenses>
     <license>
-      <name>DataTorrent, Inc.</name>
+      <name>Copyright &copy; 2014 DataTorrent, Inc.</name>
       <url>http://www.datatorrent.com/</url>
     </license>
   </licenses>
@@ -27,7 +27,7 @@
     <netbeans.hint.license>datatorrent-inc</netbeans.hint.license>
     <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
-    <hadoop.version>2.3.0</hadoop.version>
+    <hadoop.version>2.2.0</hadoop.version>
     <github.global.server>github</github.global.server>
     <jackson.version>1.9.2</jackson.version>
     <jersey.version>1.9</jersey.version>
@@ -157,6 +157,9 @@
                 <classpathLayoutType>repository</classpathLayoutType>
               </manifest>
             </archive>
+            <excludes>
+              <exclude>log4j.properties</exclude>
+            </excludes>  
           </configuration>
         </plugin>
         <plugin>
@@ -215,6 +218,19 @@
       </distributionManagement>
       <build>
         <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>1.9.1</version>
+            <executions>
+              <execution>
+                <id>parse-version</id>
+                <goals>
+                  <goal>parse-version</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
           <plugin>
             <artifactId>maven-site-plugin</artifactId>
             <version>3.2</version>
