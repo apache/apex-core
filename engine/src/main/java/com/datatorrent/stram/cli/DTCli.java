@@ -1800,6 +1800,7 @@ public class DTCli
     lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
     lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
+    lp.setAttribute(LogicalPlan.LICENSE_ROOT, conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
     StramClient client = new StramClient(conf, lp);
     try {
       client.start();
@@ -2194,6 +2195,7 @@ public class DTCli
             LOG.info("Using license {}", licenseId);
             ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
+              /* SPOI-3161
               try {
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
                 activateLicense(commandLineInfo.licenseFile);
@@ -2222,11 +2224,12 @@ public class DTCli
                   LOG.warn("Exception activating license ", ex);
                 }
               }
-              if (ar == null && license.getLicenseType() == License.LicenseType.EVALUATION) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
+              */
+              if (license.getLicenseType() == License.LicenseType.EVALUATION) {
+                throw new CliException("License manager not running. Please activate license");
               }
               else {
-                LOG.warn("Trouble activating license. Please contact <support@datatorrent.com> for help");
+                LOG.warn("License manager not running. Please activate license");
               }
             }
             appId = submitApp.launchApp(appFactory, licenseBytes);
