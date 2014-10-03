@@ -469,6 +469,9 @@ public class StramClientUtils
    */
   public static void changeDTEnvironment(String key, String value) throws IOException
   {
+    if (isDevelopmentMode()) {
+      throw new IllegalStateException("Cannot change DT environment in development mode.");
+    }
     URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
     if (resource == null) {
       File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_ENV_SH_FILE);
