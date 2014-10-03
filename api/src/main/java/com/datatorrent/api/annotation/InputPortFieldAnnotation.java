@@ -42,18 +42,4 @@ public @interface InputPortFieldAnnotation
    */
   public boolean optional() default false;
 
-  /**
-   * Display name of the port.
-   *
-   * @return - port name
-   */
-  public String displayName() default "";
-
-  /**
-   * A short description (1-2 sentences) of the port.</p>
-   *
-   * @return the port description
-   */
-  public String description() default "";
-
 }
