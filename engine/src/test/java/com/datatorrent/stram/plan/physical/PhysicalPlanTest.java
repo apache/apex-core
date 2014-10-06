@@ -4,13 +4,34 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.*;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
@@ -27,11 +48,6 @@ import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.util.*;
 
 public class PhysicalPlanTest
 {
@@ -1243,6 +1259,84 @@ public class PhysicalPlanTest
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
     Assert.assertEquals("memory container 1", 2048, plan.getContainers().get(0).getRequiredMemoryMB());
     Assert.assertEquals("memory container 2", 4000, plan.getContainers().get(1).getRequiredMemoryMB());
+  }
+
+  @Test
+  public void testDefaultPartitionerWithParallel() throws InterruptedException
+  {
+    StatsListener listener = new StatsListener()
+    {
+      @Override
+      public Response processStats(BatchedOperatorStats stats)
+      {
+        Response response = new Response();
+        response.repartitionRequired = true;
+        return response;
+      }
+    };
+
+    LogicalPlan dag = new LogicalPlan();
+
+    GenericTestOperator nodeX = dag.addOperator("X", GenericTestOperator.class);
+    dag.setAttribute(nodeX, Context.OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(nodeX, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList(listener));
+    dag.setAttribute(nodeX, OperatorContext.PARTITIONER, null);
+
+    GenericTestOperator nodeY = dag.addOperator("Y", GenericTestOperator.class);
+    GenericTestOperator nodeZ = dag.addOperator("Z", GenericTestOperator.class);
+
+    dag.addStream("Stream1", nodeX.outport1, nodeY.inport1, nodeZ.inport1);
+    dag.addStream("Stream2", nodeX.outport2, nodeY.inport2, nodeZ.inport2);
+
+    dag.setInputPortAttribute(nodeY.inport1, Context.PortContext.PARTITION_PARALLEL, true);
+    dag.setInputPortAttribute(nodeY.inport2, Context.PortContext.PARTITION_PARALLEL, true);
+    dag.setInputPortAttribute(nodeZ.inport1, Context.PortContext.PARTITION_PARALLEL, true);
+    dag.setInputPortAttribute(nodeZ.inport2, Context.PortContext.PARTITION_PARALLEL, true);
+
+    StramTestSupport.MemoryStorageAgent msa = new StramTestSupport.MemoryStorageAgent();
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, msa);
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+
+    LogicalPlan.OperatorMeta metaOfX = dag.getMeta(nodeX);
+    LogicalPlan.OperatorMeta metaOfY = dag.getMeta(nodeY);
+
+    // Sanity check that physical operators have been allocated for n1meta and n2meta
+    Assert.assertEquals("number operators " + metaOfX.getName(), 2, plan.getOperators(metaOfX).size());
+    Assert.assertEquals("number operators " + metaOfY.getName(), 2, plan.getOperators(metaOfY).size());
+
+    List<PTOperator> ptOfX = plan.getOperators(metaOfX);
+
+    for(PTOperator physicalX : ptOfX) {
+      Assert.assertEquals("2 streams " + physicalX.getOutputs(), 2, physicalX.getOutputs().size());
+      for(PTOutput outputPort : physicalX.getOutputs()) {
+        Set<PTOperator> dopers = Sets.newHashSet();
+        Assert.assertEquals("sink of " + metaOfX.getName() + " id " + physicalX.id + " port "+ outputPort.portName, 2, outputPort.sinks.size());
+        for (PTInput inputPort : outputPort.sinks) {
+          dopers.add(inputPort.target);
+        }
+        Assert.assertEquals(2, dopers.size());
+      }
+    }
+
+    //Invoke redo-partition of PhysicalPlan
+    for (PTOperator ptOperator : ptOfX) {
+      plan.onStatusUpdate(ptOperator);
+    }
+    ctx.events.get(0).run();
+
+    for(PTOperator physicalX : ptOfX){
+      Assert.assertEquals("2 streams " + physicalX.getOutputs(), 2, physicalX.getOutputs().size());
+      for(PTOutput outputPort : physicalX.getOutputs()) {
+        Set<PTOperator> dopers = Sets.newHashSet();
+        Assert.assertEquals("sink of " + metaOfX.getName() + " id " + physicalX.id + " port "+ outputPort.portName, 2, outputPort.sinks.size());
+        for (PTInput inputPort : outputPort.sinks) {
+          dopers.add(inputPort.target);
+        }
+        Assert.assertEquals(2, dopers.size());
+      }
+    }
   }
 
 }
