@@ -676,21 +676,18 @@ public class PhysicalPlan implements Serializable
           PTOperator oper = m.partitions.get(i);
           PTOperator sourceOper = sourceMapping.partitions.get(i);
           for (PTOutput sourceOut : sourceOper.outputs) {
+            nextSource:
             if (sourceOut.logicalStream == ipm.getValue()) {
               //avoid duplicate entries in case of parallel partitions
-              boolean duplicate = false;
               for (PTInput sinkIn : sourceOut.sinks) {
                 //check if the operator is already in the sinks list and also the port name of that sink is same as the
                 // input-port-meta currently being looked at since we allow an output port to connect to multiple inputs of the same operator.
-                if (oper == sinkIn.target && sinkIn.portName.equals(ipm.getKey().getPortName())) {
-                  duplicate = true;
-                  break;
+                if (sinkIn.target == oper && sinkIn.portName.equals(ipm.getKey().getPortName())) {
+                  break nextSource;
                 }
               }
-              if (!duplicate) {
-                PTInput input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
-                oper.inputs.add(input);
-              }
+              PTInput input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
+              oper.inputs.add(input);
             }
           }
         }
