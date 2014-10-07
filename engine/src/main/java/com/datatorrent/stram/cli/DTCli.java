@@ -19,7 +19,9 @@ import com.datatorrent.stram.license.*;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
+import com.datatorrent.stram.license.audit.LicenseAudit;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
+import com.datatorrent.stram.license.storage.LicenseStorage;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
@@ -27,6 +29,7 @@ import com.datatorrent.stram.util.*;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
 
@@ -57,6 +60,7 @@ import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.log4j.*;
+import org.apache.log4j.lf5.util.StreamUtils;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.*;
@@ -568,6 +572,10 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
       "Get operator properties within the given app package"));
+    globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(),
+      new Arg[]{new Arg("month(yyyymm)"), new FileArg("output-file")},
+      new Arg[]{new Arg("license-id")},
+      "Generate the license report for the given month"));
     //
     // Connected command specification starts here
     //
@@ -3599,6 +3607,49 @@ public class DTCli
       }
     }
 
+  }
+
+  private class GenerateLicenseReport implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String licenseId = null;
+      FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
+      Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
+      int length = 5;
+      if (args.length > 3) {
+        licenseId = args[3];
+      }
+      else {
+
+      }
+      if (licenseId == null) {
+        throw new CliException("licenseId is null");
+      }
+      Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[1]);
+      FSDataInputStream inputStream = fs.open(licensePath);
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+      String line;
+      Map<String, PriorityQueue<Integer>> applicationMap = Maps.newHashMap();
+      while ((line = bufferedReader.readLine()) != null) {
+        int appIdx = line.indexOf(LicenseAudit.APPLICATION_ID);
+        if (appIdx != -1) {
+          int memoryIdx = line.indexOf(LicenseAudit.APPLICATION_MEMORY);
+          String appId = line.substring(appIdx + LicenseAudit.APPLICATION_ID.length(), memoryIdx).trim();
+          PriorityQueue<Integer> priorityQueue = applicationMap.get(appId);
+          if (priorityQueue == null) {
+            priorityQueue = new PriorityQueue<Integer>();
+            applicationMap.put(appId, priorityQueue);
+          }
+          priorityQueue.add(Integer.valueOf(line.substring(memoryIdx + LicenseAudit.APPLICATION_MEMORY.length()).trim()));
+        }
+      }
+      for (Map.Entry<String, PriorityQueue<Integer>> entry : applicationMap.entrySet()) {
+        System.out.println(entry.getKey() + " " + entry.getValue());
+      }
+      bufferedReader.close();
+    }
   }
 
   private class GetAppInfoCommand implements Command
