@@ -3720,11 +3720,12 @@ public class DTCli
         }
       }
       finally {
-        if (fs != null) {
-          fs.close();
-        }
         if (bufferedReader != null) {
           bufferedReader.close();
+        }
+
+        if (fs != null) {
+          fs.close();
         }
       }
       String outputFile = expandFileName(args[3], false);
