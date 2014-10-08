@@ -573,8 +573,8 @@ public class DTCli
       null,
       "Get operator properties within the given app package"));
     globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(),
-      new Arg[]{new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("license-id")},
-      new Arg[]{new Arg("TopN")},
+      new Arg[]{new Arg("licenseId"), new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("separator")},
+      new Arg[]{new Arg("topN")},
       "Generate the license report for the given month"));
     //
     // Connected command specification starts here
@@ -3609,6 +3609,19 @@ public class DTCli
 
   }
 
+  @SuppressWarnings("static-access")
+  public static Options getGenerateLicenseReportCommandLineOptions()
+  {
+    Options options = new Options();
+    Option licenseId = new Option("licenseId", "The license for which the report is to be generated");
+    Option numberOfMatches = new Option("numberOfMatches", "The number of memory usages required");
+    Option format = new Option("separator", "The separator used to separate the usages");
+    options.addOption(licenseId);
+    options.addOption(numberOfMatches);
+    options.addOption(format);
+    return options;
+  }
+
   private class GenerateLicenseReport implements Command
   {
     private class LicenseReport implements Comparable<LicenseReport>
@@ -3642,15 +3655,16 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String licenseId = null;
       FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
       Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
       int length = 5;
-      licenseId = args[3];
-      if (args.length > 4) {
-        length = Integer.valueOf(args[4]);
+      String licenseId = args[1];
+      String outputFile = expandFileName(args[3], false);
+      String separator = args[4];
+      if (args.length > 5) {
+        length = Integer.valueOf(args[5]);
       }
-      Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[1]);
+      Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[2]);
       FSDataInputStream inputStream = fs.open(licensePath);
       BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
       String line;
@@ -3719,11 +3733,20 @@ public class DTCli
       }
       bufferedReader.close();
       fs.close();
-
+      BufferedWriter writer = new BufferedWriter(new FileWriter(new File(outputFile)));
+      writer.write("#applicationId " + separator + "application report");
+      writer.newLine();
       for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
         System.out.println(entry.getKey() + " " + entry.getValue());
+        writer.write(entry.getKey() + separator + entry.getValue());
+        writer.newLine();
       }
-      System.out.println(clusterQueue);
+      writer.write("#cluster " + separator + "cluster report");
+      for(LicenseReport report: clusterQueue){
+        writer.write("" + separator + report);
+        writer.newLine();
+      }
+      writer.close();
     }
   }
 

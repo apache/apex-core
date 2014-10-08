@@ -701,9 +701,6 @@ public class StreamingAppMasterService extends CompositeService
             }
           }
         }
-        else {
-          LOG.error("License Manager is not running");
-        }
 
         if (requestResources) {
           StreamingContainerAgent.ContainerStartRequest csr;
