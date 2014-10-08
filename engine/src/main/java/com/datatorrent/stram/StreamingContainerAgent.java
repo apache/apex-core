@@ -4,6 +4,18 @@
  */
 package com.datatorrent.stram;
 
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.InputOperator;
@@ -12,6 +24,7 @@ import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
@@ -29,15 +42,6 @@ import com.datatorrent.stram.plan.physical.PTOperator.State;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
-import com.google.common.collect.Sets;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  *
@@ -269,7 +273,7 @@ public class StreamingContainerAgent {
 
   public static InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input)
   {
-    InputPortMeta inputPortMeta = null;
+    InputPortMeta inputPortMeta;
     PTOperator inputTarget = input.target;
     StreamMeta streamMeta = input.logicalStream;
     if (!inputTarget.isUnifier()) {
@@ -304,12 +308,16 @@ public class StreamingContainerAgent {
   {
     OperatorDeployInfo.StreamCodecInfo streamCodecInfo = new OperatorDeployInfo.StreamCodecInfo();
     if (inputPortMeta != null) {
-      streamCodecInfo.streamCodec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
-      if (streamCodecInfo.streamCodec == null) {
+      @SuppressWarnings("unchecked")
+      StreamCodec<Object> codec = (StreamCodec<Object>)inputPortMeta.getValue(PortContext.STREAM_CODEC);
+      if (codec == null) {
         Class<? extends StreamCodec<?>> serDeClass = inputPortMeta.getPortObject().getStreamCodec();
         if (serDeClass != null) {
           streamCodecInfo.serDeClassName = serDeClass.getName();
         }
+      }
+      else {
+        streamCodecInfo.streamCodec = codec;
       }
     }
     return streamCodecInfo;

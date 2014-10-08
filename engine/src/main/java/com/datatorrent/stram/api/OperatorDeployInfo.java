@@ -4,18 +4,19 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.StreamCodec;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.StreamCodec;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -193,6 +194,7 @@ public class OperatorDeployInfo implements Serializable
   // This contains the extra information to identify the buffer server stream endpoint
   public static class StreamCodecIdentifier implements Serializable
   {
+    private static final long serialVersionUID = 201410081626L;
     public Integer id;
 
     @Override
@@ -204,14 +206,16 @@ public class OperatorDeployInfo implements Serializable
     @Override
     public boolean equals(Object o)
     {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
 
       StreamCodecIdentifier that = (StreamCodecIdentifier) o;
 
-      if (!id.equals(that.id)) return false;
-
-      return true;
+      return id.equals(that.id);
     }
 
     @Override
@@ -223,6 +227,7 @@ public class OperatorDeployInfo implements Serializable
 
   public static class StreamCodecInfo implements Serializable
   {
+    private static final long serialVersionUID = 201410081627L;
 
     /**
      * Class name of tuple SerDe (buffer server stream only).
@@ -233,22 +238,26 @@ public class OperatorDeployInfo implements Serializable
     /**
      * The SerDe object.
      */
-    public StreamCodec<?> streamCodec;
+    public StreamCodec<Object> streamCodec;
 
     // Stream codecs are matched by reference on purpose
     @Override
     public boolean equals(Object o)
     {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
 
       StreamCodecInfo that = (StreamCodecInfo) o;
 
-      if (serDeClassName != null ? !serDeClassName.equals(that.serDeClassName) : that.serDeClassName != null)
+      if (serDeClassName != null ? !serDeClassName.equals(that.serDeClassName) : that.serDeClassName != null) {
         return false;
-      if (streamCodec != that.streamCodec) return false;
+      }
 
-      return true;
+      return streamCodec == that.streamCodec;
     }
 
     @Override
