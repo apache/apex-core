@@ -3641,104 +3641,122 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
-      Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
+      FileSystem fs = null;
+      BufferedReader bufferedReader = null;
+      Map<String, PriorityQueue<LicenseReport>> applicationMap = Maps.newHashMap();
+      LicenseReportComparator comparator = new LicenseReportComparator();
       int length = 5;
-      String licenseId = args[1];
-      String outputFile = expandFileName(args[3], false);
-      String separator = args[4];
       if (args.length > 5) {
         length = Integer.valueOf(args[5]);
       }
-      Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[2]);
-      FSDataInputStream inputStream = fs.open(licensePath);
-      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-      String line;
-      Map<String, PriorityQueue<LicenseReport>> applicationMap = Maps.newHashMap();
-      LicenseReportComparator comparator = new LicenseReportComparator();
       PriorityQueue<LicenseReport> clusterQueue = new PriorityQueue<LicenseReport>(length, comparator);
-      int usedMemory;
       LicenseReport licenseReport;
-      int applicationIdLength = LicenseAudit.APPLICATION_ID.length();
-      int applicationMemoryLength = LicenseAudit.APPLICATION_MEMORY.length();
-      int clusterUsedMemoryLength = LicenseAudit.CLUSTER_USED_MEMORY.length();
-      int appIdx;
-      int memoryIdx;
-      int clusterUsedMemoryIdx;
-      int clusterFreeMemoryIdx;
+      try {
+        fs = StramClientUtils.newFileSystemInstance(conf);
+        Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
+        String licenseId = args[1];
+        Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[2]);
+        FSDataInputStream inputStream = fs.open(licensePath);
+        bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        String line;
+        int usedMemory;
+        int applicationIdLength = LicenseAudit.APPLICATION_ID.length();
+        int applicationMemoryLength = LicenseAudit.APPLICATION_MEMORY.length();
+        int clusterUsedMemoryLength = LicenseAudit.CLUSTER_USED_MEMORY.length();
+        int appIdx;
+        int memoryIdx;
+        int clusterUsedMemoryIdx;
+        int clusterFreeMemoryIdx;
 
-      while ((line = bufferedReader.readLine()) != null) {
-        appIdx = line.indexOf(LicenseAudit.APPLICATION_ID);
-        if (appIdx != -1) {
-          memoryIdx = line.indexOf(LicenseAudit.APPLICATION_MEMORY);
-          String appId = line.substring(appIdx + applicationIdLength, memoryIdx).trim();
-          PriorityQueue<LicenseReport> priorityQueue = applicationMap.get(appId);
-          if (priorityQueue == null) {
-            priorityQueue = new PriorityQueue<LicenseReport>(length, comparator);
-            applicationMap.put(appId, priorityQueue);
-          }
-          usedMemory = Integer.valueOf(line.substring(memoryIdx + applicationMemoryLength).trim());
-          if (priorityQueue.size() >= length) {
-            licenseReport = priorityQueue.peek();
-            if (usedMemory > licenseReport.memoryReported.intValue()) {
-              priorityQueue.poll();
-              licenseReport.memoryReported.setValue(usedMemory);
-              licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-              priorityQueue.add(licenseReport);
+        while ((line = bufferedReader.readLine()) != null) {
+          appIdx = line.indexOf(LicenseAudit.APPLICATION_ID);
+          if (appIdx != -1) {
+            memoryIdx = line.indexOf(LicenseAudit.APPLICATION_MEMORY);
+            String appId = line.substring(appIdx + applicationIdLength, memoryIdx).trim();
+            PriorityQueue<LicenseReport> priorityQueue = applicationMap.get(appId);
+            if (priorityQueue == null) {
+              priorityQueue = new PriorityQueue<LicenseReport>(length, comparator);
+              applicationMap.put(appId, priorityQueue);
             }
-          }
-          else {
-            licenseReport = new LicenseReport();
-            licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-            licenseReport.memoryReported = new MutableInt(usedMemory);
-            priorityQueue.add(licenseReport);
-          }
-        }
-        else {
-          clusterUsedMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_USED_MEMORY);
-          if (clusterUsedMemoryIdx != -1) {
-            clusterFreeMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_FREE_MEMORY);
-            usedMemory = Integer.valueOf(line.substring(clusterUsedMemoryIdx + clusterUsedMemoryLength, clusterFreeMemoryIdx).trim());
-            if (clusterQueue.size() >= length) {
-              licenseReport = clusterQueue.peek();
+            usedMemory = Integer.valueOf(line.substring(memoryIdx + applicationMemoryLength).trim());
+            if (priorityQueue.size() >= length) {
+              licenseReport = priorityQueue.peek();
               if (usedMemory > licenseReport.memoryReported.intValue()) {
-                clusterQueue.poll();
+                priorityQueue.poll();
                 licenseReport.memoryReported.setValue(usedMemory);
                 licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-                clusterQueue.add(licenseReport);
+                priorityQueue.add(licenseReport);
               }
             }
             else {
               licenseReport = new LicenseReport();
               licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
               licenseReport.memoryReported = new MutableInt(usedMemory);
-              clusterQueue.add(licenseReport);
+              priorityQueue.add(licenseReport);
+            }
+          }
+          else {
+            clusterUsedMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_USED_MEMORY);
+            if (clusterUsedMemoryIdx != -1) {
+              clusterFreeMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_FREE_MEMORY);
+              usedMemory = Integer.valueOf(line.substring(clusterUsedMemoryIdx + clusterUsedMemoryLength, clusterFreeMemoryIdx).trim());
+              if (clusterQueue.size() >= length) {
+                licenseReport = clusterQueue.peek();
+                if (usedMemory > licenseReport.memoryReported.intValue()) {
+                  clusterQueue.poll();
+                  licenseReport.memoryReported.setValue(usedMemory);
+                  licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
+                  clusterQueue.add(licenseReport);
+                }
+              }
+              else {
+                licenseReport = new LicenseReport();
+                licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
+                licenseReport.memoryReported = new MutableInt(usedMemory);
+                clusterQueue.add(licenseReport);
+              }
             }
           }
         }
       }
-      bufferedReader.close();
-      fs.close();
-      BufferedWriter writer = new BufferedWriter(new FileWriter(new File(outputFile)));
-      writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Used Memory(MB)");
-      writer.newLine();
-      PriorityQueue<LicenseReport> appPriorityQueue;
-      for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
-        appPriorityQueue = entry.getValue();
-        while ((licenseReport = appPriorityQueue.poll()) != null) {
-          writer.write(entry.getKey() + " " + separator + " " + licenseReport.toString(separator));
+      finally {
+        if (fs != null) {
+          fs.close();
+        }
+        if (bufferedReader != null) {
+          bufferedReader.close();
+        }
+      }
+      String outputFile = expandFileName(args[3], false);
+      String separator = args[4];
+
+      BufferedWriter writer = null;
+      try {
+        writer = new BufferedWriter(new FileWriter(new File(outputFile)));
+        writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Used Memory(MB)");
+        writer.newLine();
+        PriorityQueue<LicenseReport> appPriorityQueue;
+        for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
+          appPriorityQueue = entry.getValue();
+          while ((licenseReport = appPriorityQueue.poll()) != null) {
+            writer.write(entry.getKey() + " " + separator + " " + licenseReport.toString(separator));
+            writer.newLine();
+          }
+        }
+        writer.write("#Cluster Report");
+        writer.newLine();
+        writer.write("#Timestamp " + separator + " Used Memory(MB)");
+        writer.newLine();
+        while ((licenseReport = clusterQueue.poll()) != null) {
+          writer.write("" + licenseReport.toString(separator));
           writer.newLine();
         }
       }
-      writer.write("#Cluster Report");
-      writer.newLine();
-      writer.write("#Timestamp " + separator + " Used Memory(MB)");
-      writer.newLine();
-      while ((licenseReport = clusterQueue.poll()) != null) {
-        writer.write("" + licenseReport.toString(separator));
-        writer.newLine();
+      finally {
+        if (writer != null) {
+          writer.close();
+        }
       }
-      writer.close();
     }
   }
 
