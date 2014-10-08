@@ -3720,19 +3720,22 @@ public class DTCli
       bufferedReader.close();
       fs.close();
       BufferedWriter writer = new BufferedWriter(new FileWriter(new File(outputFile)));
-      writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Memory(MB)");
+      writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Used Memory(MB)");
       writer.newLine();
+      PriorityQueue<LicenseReport> appPriorityQueue;
       for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
-        for (LicenseReport report : entry.getValue()) {
-          writer.write(entry.getKey() + separator + report.toString(separator));
+        appPriorityQueue = entry.getValue();
+        while ((licenseReport = appPriorityQueue.poll()) != null) {
+          writer.write(entry.getKey() + " " + separator + " " + licenseReport.toString(separator));
           writer.newLine();
         }
       }
       writer.write("#Cluster Report");
       writer.newLine();
-      writer.write("#Timestamp " + separator + " Memory(MB)");
-      for (LicenseReport report : clusterQueue) {
-        writer.write("" + report.toString(separator));
+      writer.write("#Timestamp " + separator + " Used Memory(MB)");
+      writer.newLine();
+      while ((licenseReport = clusterQueue.poll()) != null) {
+        writer.write("" + licenseReport.toString(separator));
         writer.newLine();
       }
       writer.close();
