@@ -3611,7 +3611,7 @@ public class DTCli
 
   private class GenerateLicenseReport implements Command
   {
-    private class LicenseReport
+    private class LicenseReport implements Comparable<LicenseReport>
     {
 
       public MutableInt memoryReported;
@@ -3621,6 +3621,12 @@ public class DTCli
       public String toString()
       {
         return timeStamp + " " + memoryReported;
+      }
+
+      @Override
+      public int compareTo(LicenseReport licenseReport)
+      {
+        return this.memoryReported.compareTo(licenseReport.memoryReported);
       }
     }
 
@@ -3711,11 +3717,13 @@ public class DTCli
           }
         }
       }
+      bufferedReader.close();
+      fs.close();
+
       for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
         System.out.println(entry.getKey() + " " + entry.getValue());
       }
       System.out.println(clusterQueue);
-      bufferedReader.close();
     }
   }
 
