@@ -574,7 +574,7 @@ public class DTCli
       "Get operator properties within the given app package"));
     globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(),
       new Arg[]{new Arg("licenseId"), new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("separator")},
-      new Arg[]{new Arg("topN")},
+      new Arg[]{new Arg("topNMemoryUsages")},
       "Generate the license report for the given month"));
     //
     // Connected command specification starts here
@@ -3609,19 +3609,6 @@ public class DTCli
 
   }
 
-  @SuppressWarnings("static-access")
-  public static Options getGenerateLicenseReportCommandLineOptions()
-  {
-    Options options = new Options();
-    Option licenseId = new Option("licenseId", "The license for which the report is to be generated");
-    Option numberOfMatches = new Option("numberOfMatches", "The number of memory usages required");
-    Option format = new Option("separator", "The separator used to separate the usages");
-    options.addOption(licenseId);
-    options.addOption(numberOfMatches);
-    options.addOption(format);
-    return options;
-  }
-
   private class GenerateLicenseReport implements Command
   {
     private class LicenseReport implements Comparable<LicenseReport>
@@ -3630,10 +3617,9 @@ public class DTCli
       public MutableInt memoryReported;
       public String timeStamp;
 
-      @Override
-      public String toString()
+      public String toString(String separator)
       {
-        return timeStamp + " " + memoryReported;
+        return timeStamp + " " + separator + " " + memoryReported;
       }
 
       @Override
@@ -3734,16 +3720,19 @@ public class DTCli
       bufferedReader.close();
       fs.close();
       BufferedWriter writer = new BufferedWriter(new FileWriter(new File(outputFile)));
-      writer.write("#applicationId " + separator + " application report");
+      writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Memory(MB)");
       writer.newLine();
       for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
-        writer.write(entry.getKey() + separator + entry.getValue());
-        writer.newLine();
+        for (LicenseReport report : entry.getValue()) {
+          writer.write(entry.getKey() + separator + report.toString(separator));
+          writer.newLine();
+        }
       }
-      writer.write("#cluster report");
+      writer.write("#Cluster Report");
       writer.newLine();
+      writer.write("#Timestamp " + separator + " Memory(MB)");
       for (LicenseReport report : clusterQueue) {
-        writer.write("" + report);
+        writer.write("" + report.toString(separator));
         writer.newLine();
       }
       writer.close();
