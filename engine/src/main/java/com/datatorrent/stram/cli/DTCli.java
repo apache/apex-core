@@ -3734,16 +3734,16 @@ public class DTCli
       bufferedReader.close();
       fs.close();
       BufferedWriter writer = new BufferedWriter(new FileWriter(new File(outputFile)));
-      writer.write("#applicationId " + separator + "application report");
+      writer.write("#applicationId " + separator + " application report");
       writer.newLine();
       for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
-        System.out.println(entry.getKey() + " " + entry.getValue());
         writer.write(entry.getKey() + separator + entry.getValue());
         writer.newLine();
       }
-      writer.write("#cluster " + separator + "cluster report");
-      for(LicenseReport report: clusterQueue){
-        writer.write("" + separator + report);
+      writer.write("#cluster report");
+      writer.newLine();
+      for (LicenseReport report : clusterQueue) {
+        writer.write("" + report);
         writer.newLine();
       }
       writer.close();
