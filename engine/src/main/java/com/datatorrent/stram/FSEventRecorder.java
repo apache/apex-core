@@ -4,22 +4,28 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.common.util.Slice;
-import com.datatorrent.lib.codec.JsonStreamCodec;
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.client.EventsAgent;
-import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.*;
 import net.engio.mbassy.listener.Handler;
-import org.apache.commons.beanutils.BeanUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.beanutils.BeanUtils;
+
+import com.datatorrent.lib.codec.JsonStreamCodec;
+
+import com.datatorrent.api.StreamCodec;
+
+import com.datatorrent.common.util.DTThrowable;
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.client.EventsAgent;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 
 /**
  * <p>FSEventRecorder class.</p>
@@ -39,17 +45,18 @@ public class FSEventRecorder implements EventRecorder
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private final String pubSubTopic;
-  private EventRecorderThread eventRecorderThread = new EventRecorderThread();
+  private final EventRecorderThread eventRecorderThread = new EventRecorderThread();
 
   private class EventRecorderThread extends Thread
   {
     @Override
+    @SuppressWarnings("CallToThreadYield")
     public void run()
     {
       while (true) {
         try {
           writeEvent(queue.take());
-          Thread.yield();
+          yield();
           if (queue.isEmpty()) {
             if (!storage.flushData() && wsClient != null) {
               String topic = SharedPubSubWebSocketClient.LAST_INDEX_TOPIC_PREFIX + ".event." + storage.getBasePath();
@@ -97,7 +104,16 @@ public class FSEventRecorder implements EventRecorder
         try {
           setupWsClient();
         }
-        catch (Exception ex) {
+        catch (ExecutionException ex) {
+          LOG.error("Cannot connect to gateway at {}", pubSubUrl);
+        }
+        catch (IOException ex) {
+          LOG.error("Cannot connect to gateway at {}", pubSubUrl);
+        }
+        catch (InterruptedException ex) {
+          LOG.error("Cannot connect to gateway at {}", pubSubUrl);
+        }
+        catch (TimeoutException ex) {
           LOG.error("Cannot connect to gateway at {}", pubSubUrl);
         }
       }
@@ -105,7 +121,7 @@ public class FSEventRecorder implements EventRecorder
       eventRecorderThread.start();
     }
     catch (Exception ex) {
-      throw new RuntimeException(ex);
+      DTThrowable.rethrow(ex);
     }
   }
 
