@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang.UnhandledException;
 
-import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;

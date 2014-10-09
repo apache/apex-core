@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.IdleTimeHandler;
 import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator.IdleTimeHandler;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;

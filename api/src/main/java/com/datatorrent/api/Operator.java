@@ -241,4 +241,30 @@ public interface Operator extends Component<OperatorContext>
 
   }
 
+  /**
+   * Interface operator must implement if it's interested in being notified when it's idling.
+   *
+   * When the operator is idling, i.e. for GenericOperator no input is being processed or for InputOperator
+   * no output is being produced, it's explicitly notified of such a state. The operators which implement
+   * this interface should make use of this idle time to do any auxiliary processing they may want to do
+   * when operator is idling. If the operator has no need to do such auxiliary processing, they should not
+   * implement this interface. In which case, the engine will put the operator in scaled back processing mode
+   * to better utilize CPU. It resumes its normal processing as soon as it detects tuples being received
+   * or generated. If this interface is implemented, care should be taken to ensure that it will not result
+   * in busy loop because the engine keeps calling handleIdleTime until it does not have tuples which it
+   * can give to the operator.
+   *
+   * @since 0.3.2
+   */
+  public static interface IdleTimeHandler
+  {
+    /**
+     * Callback for operators to implement if they are interested in using the idle cycles to do auxiliary processing.
+     * If this method detects that it does not have any work to do, it should block the call for a short duration
+     * to prevent busy loop. handleIdleTime is called over and over until operator has tuples to process.
+     */
+    public void handleIdleTime();
+
+  }
+
 }
