@@ -265,7 +265,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void setupStringCodecs()
   {
-    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = this.plan.getLogicalPlan().getAttributes().get(DAGContext.STRING_CODECS);
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = this.plan.getLogicalPlan().getAttributes().get(Context.DAGContext.STRING_CODECS);
     if (codecs != null) {
       StringCodecs.loadConverters(codecs);
     }
@@ -2123,13 +2123,13 @@ public class StreamingContainerManager implements PlanContext
     return m;
   }
 
-  public AttributeMap getApplicationAttributes()
+  public Attribute.AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
     return lp.getAttributes().clone();
   }
 
-  public AttributeMap getOperatorAttributes(String operatorId)
+  public Attribute.AttributeMap getOperatorAttributes(String operatorId)
   {
     OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
@@ -2138,7 +2138,7 @@ public class StreamingContainerManager implements PlanContext
     return logicalOperator.getAttributes().clone();
   }
 
-  public AttributeMap getPortAttributes(String operatorId, String portName)
+  public Attribute.AttributeMap getPortAttributes(String operatorId, String portName)
   {
     OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
@@ -2345,7 +2345,7 @@ public class StreamingContainerManager implements PlanContext
 
     private FinalVars(LogicalPlan dag, long tms)
     {
-      AttributeMap attributes = dag.getAttributes();
+      Attribute.AttributeMap attributes = dag.getAttributes();
       /* try to align to it to please eyes. */
       windowStartMillis = tms - (tms % 1000);
 

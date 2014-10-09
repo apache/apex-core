@@ -6,8 +6,8 @@ package com.datatorrent.stram.plan.logical;
 
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
@@ -75,24 +75,24 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<String> LICENSE_ROOT = new Attribute<String>((String)null, new StringCodec.String2String());
 
   static {
-    AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
+    Attribute.AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);
   }
 
   private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
   private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
-  private final AttributeMap attributes = new DefaultAttributeMap();
+  private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
 
   @Override
-  public AttributeMap getAttributes()
+  public Attribute.AttributeMap getAttributes()
   {
     return attributes;
   }
 
   @Override
-  public <T> T getValue(AttributeMap.Attribute<T> key)
+  public <T> T getValue(Attribute<T> key)
   {
     T val = attributes.get(key);
     if (val == null) {
@@ -119,7 +119,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta operatorMeta;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
-    private final AttributeMap attributes = new DefaultAttributeMap();
+    private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -151,13 +151,13 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public AttributeMap getAttributes()
+    public Attribute.AttributeMap getAttributes()
     {
       return attributes;
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
@@ -214,13 +214,13 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public AttributeMap getAttributes()
+    public Attribute.AttributeMap getAttributes()
     {
       return attributes;
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
@@ -395,7 +395,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
-    private final AttributeMap attributes = new DefaultAttributeMap();
+    private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
     @SuppressWarnings("unused")
     private final int id;
     @NotNull
@@ -430,13 +430,13 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public AttributeMap getAttributes()
+    public Attribute.AttributeMap getAttributes()
     {
       return attributes;
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
@@ -446,7 +446,7 @@ public class LogicalPlan implements Serializable, DAG
       return attr;
     }
 
-    public <T> T getValue2(AttributeMap.Attribute<T> key)
+    public <T> T getValue2(Attribute<T> key)
     {
       T attr = attributes.get(key);
       if (attr == null) {
@@ -733,7 +733,7 @@ public class LogicalPlan implements Serializable, DAG
    * @param operator
    * @return AttributeMap<OperatorContext>
    */
-  public AttributeMap getContextAttributes(Operator operator)
+  public Attribute.AttributeMap getContextAttributes(Operator operator)
   {
     return getMeta(operator).attributes;
   }

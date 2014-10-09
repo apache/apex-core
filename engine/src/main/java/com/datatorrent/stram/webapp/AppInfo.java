@@ -5,9 +5,9 @@
 
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.util.VersionInfo;
 import java.util.*;

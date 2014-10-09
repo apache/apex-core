@@ -10,7 +10,7 @@ import org.junit.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;

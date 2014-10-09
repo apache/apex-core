@@ -14,7 +14,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAGContext;
 
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -35,7 +34,7 @@ public class AlertsManagerTest
   public void testAlertManager() throws JSONException
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
     dag.addOperator("o", GenericTestOperator.class);

@@ -4,10 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
-
-import com.datatorrent.api.*;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -24,13 +20,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.common.collect.Maps;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -68,9 +66,13 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
 
+import com.datatorrent.api.*;
+import com.datatorrent.api.Context.DAGContext;
+
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseAuthority;
 import com.datatorrent.stram.license.LicensingAgentClient;
@@ -83,8 +85,6 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
-
-import com.google.common.collect.Maps;
 
 /**
  * Streaming Application Master
@@ -279,7 +279,7 @@ public class StreamingAppMasterService extends CompositeService
       super(null, null);
     }
 
-    ClusterAppContextImpl(AttributeMap attributes)
+    ClusterAppContextImpl(Attribute.AttributeMap attributes)
     {
       super(attributes, null);
     }

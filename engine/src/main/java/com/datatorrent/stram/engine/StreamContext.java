@@ -11,13 +11,16 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.netlet.EventLoop;
 
 /**

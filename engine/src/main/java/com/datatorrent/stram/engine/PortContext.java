@@ -4,8 +4,8 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.stram.api.BaseContext;
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 
 /**

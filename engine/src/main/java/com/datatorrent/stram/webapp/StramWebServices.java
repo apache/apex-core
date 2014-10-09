@@ -41,8 +41,8 @@ import org.apache.log4j.DTLoggerFactory;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StringCodec;
 

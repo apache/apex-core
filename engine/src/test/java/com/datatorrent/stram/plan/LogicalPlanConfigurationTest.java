@@ -5,8 +5,8 @@
 package com.datatorrent.stram.plan;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
@@ -372,10 +372,10 @@ public class LogicalPlanConfigurationTest {
 
     LogicalPlan dag = new LogicalPlan();
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
-    dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME, "testApp");
     builder.prepareDAG(dag, app, appPath, conf);
 
-    Assert.assertEquals("Application name", "testApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+    Assert.assertEquals("Application name", "testApp", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
   }
 
   @Test
@@ -395,7 +395,7 @@ public class LogicalPlanConfigurationTest {
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
     builder.prepareDAG(dag, app, appPath, conf);
 
-    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
   }
 
 
@@ -411,7 +411,7 @@ public class LogicalPlanConfigurationTest {
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
     builder.prepareDAG(dag, app, appPath, conf);
 
-    Assert.assertEquals("Application name", "AnnotatedAlias", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+    Assert.assertEquals("Application name", "AnnotatedAlias", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
   }
 
   @Test
@@ -495,11 +495,11 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testInvalidAttribute() throws Exception {
 
-    Assert.assertNotSame(0, DAGContext.serialVersionUID);
-    Set<Attribute<Object>> appAttributes = AttributeInitializer.getAttributes(DAGContext.class);
+    Assert.assertNotSame(0, com.datatorrent.api.Context.DAGContext.serialVersionUID);
+    Set<Attribute<Object>> appAttributes = AttributeInitializer.getAttributes(com.datatorrent.api.Context.DAGContext.class);
     Attribute<Object> attribute = new Attribute<Object>("", null);
 
-    Field nameField = AttributeMap.Attribute.class.getDeclaredField("name");
+    Field nameField = Attribute.class.getDeclaredField("name");
     nameField.setAccessible(true);
     nameField.set(attribute, "NOT_CONFIGURABLE");
     nameField.setAccessible(false);
@@ -539,9 +539,9 @@ public class LogicalPlanConfigurationTest {
 
   @Test
   public void testAttributesCodec() {
-    Assert.assertNotSame(null, new Long[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID});
+    Assert.assertNotSame(null, new Long[] {com.datatorrent.api.Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID});
     @SuppressWarnings("unchecked")
-    Set<Class<? extends Context>> contextClasses = Sets.newHashSet(DAGContext.class, OperatorContext.class, PortContext.class);
+    Set<Class<? extends Context>> contextClasses = Sets.newHashSet(com.datatorrent.api.Context.DAGContext.class, OperatorContext.class, PortContext.class);
     for (Class<?> c : contextClasses) {
       for (Attribute<Object> attr : AttributeInitializer.getAttributes(c)) {
         Assert.assertNotNull(attr.name + " codec", attr.codec);

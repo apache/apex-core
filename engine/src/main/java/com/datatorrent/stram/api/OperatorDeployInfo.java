@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram.api;
 
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
@@ -13,7 +15,6 @@ import java.util.Set;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.StreamCodec;
@@ -107,7 +108,7 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T get = contextAttributes.get(key);
       if (get == null) {
@@ -171,7 +172,7 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T attr = contextAttributes.get(key);
       if (attr == null) {

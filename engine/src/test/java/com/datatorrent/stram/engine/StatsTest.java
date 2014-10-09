@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.api.BaseOperator;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
@@ -48,7 +48,7 @@ public class StatsTest
     public void beginWindow(long windowId)
     {
       if (shutdown) {
-        Operator.Util.shutdown();
+        BaseOperator.shutdown();
       }
       this.windowId = windowId;
     }

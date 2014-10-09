@@ -5,7 +5,7 @@
 package com.datatorrent.stram.codec;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -109,7 +109,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       operatorDetailMap.put("ports", portList);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
       operatorDetailMap.put("attributes", attributeMap);
-      Map<Attribute<Object>, Object> rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(operatorMeta, Context.OperatorContext.class);
+      Map<Attribute<Object>, Object> rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(operatorMeta, Context.OperatorContext.class);
       for (Map.Entry<Attribute<Object>, Object> entry : rawAttributes.entrySet()) {
         attributeMap.put(entry.getKey().getSimpleName(), entry.getValue());
       }
@@ -135,7 +135,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "input");
         portDetailMap.put("attributes", portAttributeMap);
-        rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
         for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
           portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }
@@ -149,7 +149,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         portDetailMap.put("name", portName);
         portDetailMap.put("type", "output");
         portDetailMap.put("attributes", portAttributeMap);
-        rawAttributes = AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
         for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
           portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
         }

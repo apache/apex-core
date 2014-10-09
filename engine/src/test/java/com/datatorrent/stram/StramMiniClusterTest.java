@@ -61,7 +61,6 @@ import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ShipContainingJars;
@@ -359,7 +358,7 @@ public class StramMiniClusterTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
     dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 

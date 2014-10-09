@@ -5,8 +5,8 @@
 package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
@@ -78,7 +78,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final String WILDCARD_PATTERN = ".*";
 
   static {
-    Object serial[] = new Object[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
+    Object serial[] = new Object[] {Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
     LOG.debug("Initialized attributes {}", serial);
   }
 
@@ -347,7 +347,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     @Override
     public Class<? extends Context> getAttributeContextClass()
     {
-      return DAGContext.class;
+      return Context.DAGContext.class;
     }
 
   }
@@ -1048,15 +1048,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf)
   {
     // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
-    String connectAddress = conf.get(DT_PREFIX + DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
-    dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
+    String connectAddress = conf.get(DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
+    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
     app.populateDAG(dag, conf);
 
     String appAlias = getAppAlias(name);
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
     setApplicationConfiguration(dag, appConfs);
-    if (dag.getAttributes().get(DAGContext.APPLICATION_NAME) == null) {
-      dag.setAttribute(DAGContext.APPLICATION_NAME, appAlias == null ? name : appAlias);
+    if (dag.getAttributes().get(Context.DAGContext.APPLICATION_NAME) == null) {
+      dag.setAttribute(Context.DAGContext.APPLICATION_NAME, appAlias == null ? name : appAlias);
     }
     // inject external operator configuration
     setOperatorConfiguration(dag, appConfs, appAlias);
@@ -1223,15 +1223,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final Map<String, Attribute<?>> legacyKeyMap = Maps.newHashMap();
 
   static {
-    legacyKeyMap.put("appName", DAGContext.APPLICATION_NAME);
-    legacyKeyMap.put("libjars", DAGContext.LIBRARY_JARS);
-    legacyKeyMap.put("maxContainers", DAGContext.CONTAINERS_MAX_COUNT);
-    legacyKeyMap.put("containerMemoryMB", DAGContext.CONTAINER_MEMORY_MB);
-    legacyKeyMap.put("containerJvmOpts", DAGContext.CONTAINER_JVM_OPTIONS);
-    legacyKeyMap.put("masterMemoryMB", DAGContext.MASTER_MEMORY_MB);
-    legacyKeyMap.put("windowSizeMillis", DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
-    legacyKeyMap.put("appPath", DAGContext.APPLICATION_PATH);
-    legacyKeyMap.put("allocateResourceTimeoutMillis", DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS);
+    legacyKeyMap.put("appName", Context.DAGContext.APPLICATION_NAME);
+    legacyKeyMap.put("libjars", Context.DAGContext.LIBRARY_JARS);
+    legacyKeyMap.put("maxContainers", Context.DAGContext.CONTAINERS_MAX_COUNT);
+    legacyKeyMap.put("containerMemoryMB", Context.DAGContext.CONTAINER_MEMORY_MB);
+    legacyKeyMap.put("containerJvmOpts", Context.DAGContext.CONTAINER_JVM_OPTIONS);
+    legacyKeyMap.put("masterMemoryMB", Context.DAGContext.MASTER_MEMORY_MB);
+    legacyKeyMap.put("windowSizeMillis", Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    legacyKeyMap.put("appPath", Context.DAGContext.APPLICATION_PATH);
+    legacyKeyMap.put("allocateResourceTimeoutMillis", Context.DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS);
   }
 
   /**
@@ -1256,7 +1256,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 //        }
 //      }
 //    }
-    setAttributes(DAGContext.class, appConfs, dag.getAttributes());
+    setAttributes(Context.DAGContext.class, appConfs, dag.getAttributes());
   }
 
   private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName) {
@@ -1320,7 +1320,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       attributeMap.put(clazz, m);
     }
     Attribute<Object> attr = m.get(configKey);
-    if (attr == null && clazz == DAGContext.class) {
+    if (attr == null && clazz == Context.DAGContext.class) {
       isDeprecated = true;
       @SuppressWarnings({ "rawtypes", "unchecked" })
       Attribute<Object> tmp = (Attribute)legacyKeyMap.get(configKey);
@@ -1343,7 +1343,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     conf.setAttribute(attr, attrValue);
   }
 
-  private void setAttributes(Class<?> clazz, List<? extends Conf> confs, AttributeMap attributeMap) {
+  private void setAttributes(Class<?> clazz, List<? extends Conf> confs, Attribute.AttributeMap attributeMap) {
     Set<Attribute<Object>> processedAttributes = Sets.newHashSet();
     if (confs.size() > 0) {
       for (Conf conf : confs) {

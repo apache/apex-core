@@ -52,4 +52,65 @@ public interface Component<CONTEXT extends Context>
    */
   public void teardown();
 
+  /**
+   * A utility class to club component along with the entity such as context or configuration.
+   *
+   * We use ComponentComplementPair for better readability of the code compared to using a bare
+   * pair where first and second do not have semantic meaning.
+   *
+   * @param <COMPONENT>
+   * @param <COMPLEMENT>
+   * @since 0.3.2
+   */
+  public static abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
+  {
+    public final COMPONENT component;
+
+    /**
+     * <p>Constructor for ComponentComplementPair.</p>
+     */
+    public ComponentComplementPair(COMPONENT component)
+    {
+      super();
+      this.component = component;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int hashCode()
+    {
+      int hash = 7;
+      hash = 73 * hash + (this.component != null ? this.component.hashCode() : 0);
+      hash = 73 * hash + (this.getComplement() != null ? this.getComplement().hashCode() : 0);
+      return hash;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      @SuppressWarnings(value = "unchecked")
+      final ComponentComplementPair<COMPONENT, COMPLEMENT> other = (ComponentComplementPair<COMPONENT, COMPLEMENT>)obj;
+      if (this.component != other.component && (this.component == null || !this.component.equals(other.component))) {
+        return false;
+      }
+      if (this.getComplement() != other.getComplement() && (this.getComplement() == null || !this.getComplement().equals(other.getComplement()))) {
+        return false;
+      }
+      return true;
+    }
+
+    /**
+     * <p>getComplement.</p>
+     */
+    public abstract COMPLEMENT getComplement();
+
+  }
+
 }

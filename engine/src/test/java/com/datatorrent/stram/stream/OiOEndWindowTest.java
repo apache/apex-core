@@ -32,7 +32,7 @@ public class OiOEndWindowTest
     @Override
     public void emitTuples()
     {
-      Operator.Util.shutdown();
+      BaseOperator.shutdown();
     }
 
   }

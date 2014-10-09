@@ -368,8 +368,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
 
     checkpoint = new Checkpoint(windowId, applicationWindowCount, checkpointWindowCount);
-    if (operator instanceof CheckpointListener) {
-      ((CheckpointListener) operator).checkpointed(windowId);
+    if (operator instanceof Operator.CheckpointListener) {
+      ((Operator.CheckpointListener) operator).checkpointed(windowId);
     }
   }
 
@@ -438,8 +438,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     context.setThread(Thread.currentThread());
     activateSinks();
-    if (operator instanceof ActivationListener) {
-      ((ActivationListener<OperatorContext>) operator).activate(context);
+    if (operator instanceof Operator.ActivationListener) {
+      ((Operator.ActivationListener<OperatorContext>) operator).activate(context);
     }
 
     /*
@@ -452,8 +452,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   public void deactivate()
   {
-    if (operator instanceof ActivationListener) {
-      ((ActivationListener<?>) operator).deactivate();
+    if (operator instanceof Operator.ActivationListener) {
+      ((Operator.ActivationListener<?>) operator).deactivate();
     }
 
     if (!shutdown && !alive) {

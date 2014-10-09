@@ -3,6 +3,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.api.BaseOperator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
@@ -77,7 +78,7 @@ public class TestGeneratorInputOperator implements InputOperator
       LOG.debug("sending tuple " + generatedTuples);
       outport.emit(String.valueOf(generatedTuples));
       if (maxTuples > 0 && maxTuples <= generatedTuples) {
-        Operator.Util.shutdown();
+        BaseOperator.shutdown();
         throw new RuntimeException(new InterruptedException("done emitting all."));
       }
       remainingSleepTime = emitInterval;

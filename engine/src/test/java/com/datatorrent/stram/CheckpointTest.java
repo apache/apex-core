@@ -83,7 +83,7 @@ public class CheckpointTest
     public void beginWindow(long windowId)
     {
       if (++windowCount == 3) {
-        Operator.Util.shutdown();
+        BaseOperator.shutdown();
       }
     }
 

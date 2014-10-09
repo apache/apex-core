@@ -11,7 +11,6 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -278,7 +277,7 @@ public class LogicalPlanModificationTest
   public void testExecutionManager() throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);

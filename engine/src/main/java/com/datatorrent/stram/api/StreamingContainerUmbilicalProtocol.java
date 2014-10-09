@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.api;
 
+import com.datatorrent.api.Attribute.AttributeMap;
 import java.io.*;
 import java.util.*;
 
@@ -13,7 +14,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats;
 import com.datatorrent.stram.util.AbstractWritableAdapter;

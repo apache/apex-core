@@ -163,7 +163,7 @@ public interface Partitioner<T>
      *
      * @return attributes defined for the current context.
      */
-    public AttributeMap getAttributes();
+    public com.datatorrent.api.Attribute.AttributeMap getAttributes();
 
   }
 

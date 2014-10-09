@@ -1,6 +1,6 @@
 package com.datatorrent.stram.plan.physical;
 
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Context.DAGContext;
 import java.util.Collections;
 import java.util.Map;
 

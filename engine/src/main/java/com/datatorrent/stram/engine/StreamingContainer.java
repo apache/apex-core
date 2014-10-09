@@ -29,7 +29,7 @@ import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -64,7 +64,7 @@ import com.datatorrent.stram.stream.*;
  */
 public class StreamingContainer extends YarnContainerMain
 {
-  public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
+  public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + Context.DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
@@ -131,14 +131,14 @@ public class StreamingContainer extends YarnContainerMain
     this.requestFactory = new RequestFactory();
     ctx.attributes.put(ContainerContext.REQUEST_FACTORY, requestFactory);
 
-    heartbeatIntervalMillis = ctx.getValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS);
+    heartbeatIntervalMillis = ctx.getValue(Context.DAGContext.HEARTBEAT_INTERVAL_MILLIS);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.getValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
-    checkpointWindowCount = ctx.getValue(DAGContext.CHECKPOINT_WINDOW_COUNT);
+    windowWidthMillis = ctx.getValue(Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    checkpointWindowCount = ctx.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
 
     fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
-    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(DAGContext.STRING_CODECS);
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(Context.DAGContext.STRING_CODECS);
     if (codecs != null) {
       StringCodecs.loadConverters(codecs);
     }
@@ -147,10 +147,10 @@ public class StreamingContainer extends YarnContainerMain
       if (ctx.deployBufferServer) {
         eventloop.start();
 
-        int bufferServerRAM = ctx.getValue(DAGContext.BUFFER_SERVER_MEMORY_MB);
+        int bufferServerRAM = ctx.getValue(Context.DAGContext.BUFFER_SERVER_MEMORY_MB);
         int blockCount;
         int blocksize;
-        if (bufferServerRAM < DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
+        if (bufferServerRAM < Context.DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
           blockCount = 8;
           blocksize = bufferServerRAM / blockCount;
           if (blocksize < 1) {
@@ -163,7 +163,7 @@ public class StreamingContainer extends YarnContainerMain
         }
         // start buffer server, if it was not set externally
         bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount);
-        if (ctx.getValue(DAGContext.EXPERIMENTAL_BUFFER_SPOOLING)) {
+        if (ctx.getValue(Context.DAGContext.EXPERIMENTAL_BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());
         }
         SocketAddress bindAddr = bufferServer.run(eventloop);
@@ -688,14 +688,14 @@ public class StreamingContainer extends YarnContainerMain
           continue;
         }
 
-        if (e.getValue().getOperator() instanceof CheckpointListener) {
+        if (e.getValue().getOperator() instanceof Operator.CheckpointListener) {
           if (nr == null) {
             nr = new OperatorCommand()
             {
               @Override
               public void execute(Operator operator, int id, long windowId) throws IOException
               {
-                ((CheckpointListener)operator).committed(lastCommittedWindowId);
+                ((Operator.CheckpointListener)operator).committed(lastCommittedWindowId);
               }
 
             };
@@ -1470,10 +1470,10 @@ public class StreamingContainer extends YarnContainerMain
    * @param deployInfo Operator context if applicable otherwise null.
    * @return Value of the operator
    */
-  private <T> T getValue(AttributeMap.Attribute<T> key, com.datatorrent.api.Context.PortContext portContext, OperatorDeployInfo deployInfo)
+  private <T> T getValue(Attribute<T> key, com.datatorrent.api.Context.PortContext portContext, OperatorDeployInfo deployInfo)
   {
     if (portContext != null) {
-      AttributeMap attributes = portContext.getAttributes();
+      Attribute.AttributeMap attributes = portContext.getAttributes();
       if (attributes != null) {
         T attr = attributes.get(key);
         if (attr != null) {
@@ -1483,7 +1483,7 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     if (deployInfo != null) {
-      AttributeMap attributes = deployInfo.contextAttributes;
+      Attribute.AttributeMap attributes = deployInfo.contextAttributes;
       if (attributes != null) {
         T attr = attributes.get(key);
         if (attr != null) {
@@ -1498,7 +1498,7 @@ public class StreamingContainer extends YarnContainerMain
   private <T> T getValue(Attribute<T> key, OperatorDeployInfo deployInfo)
   {
     if (deployInfo != null) {
-      AttributeMap attributes = deployInfo.contextAttributes;
+      Attribute.AttributeMap attributes = deployInfo.contextAttributes;
       if (attributes != null) {
         T attr = attributes.get(key);
         if (attr != null) {

@@ -4,11 +4,9 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
@@ -60,7 +58,7 @@ public class StreamingContainerManagerTest {
     ndi.name = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
-    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap();
+    ndi.contextAttributes = new com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap();
     ndi.contextAttributes.put(OperatorContext.SPIN_MILLIS, 100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
@@ -108,7 +106,7 @@ public class StreamingContainerManagerTest {
   public void testGenerateDeployInfo() {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -206,7 +204,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);

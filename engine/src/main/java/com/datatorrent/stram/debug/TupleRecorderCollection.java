@@ -71,7 +71,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     gatewayUserName = ctx.getValue(LogicalPlan.GATEWAY_USER_NAME);
     gatewayPassword = ctx.getValue(LogicalPlan.GATEWAY_PASSWORD);
     appPath = ctx.getValue(LogicalPlan.APPLICATION_PATH);
-    codecs = ctx.getAttributes().get(DAGContext.STRING_CODECS);
+    codecs = ctx.getAttributes().get(Context.DAGContext.STRING_CODECS);
 
     RequestDelegateImpl impl = new RequestDelegateImpl();
     RequestFactory rf = ctx.getValue(ContainerContext.REQUEST_FACTORY);

@@ -29,7 +29,7 @@ public class StreamCodecTest
   public void testStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -91,7 +91,7 @@ public class StreamCodecTest
   public void testStreamCodecReuse()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -138,7 +138,7 @@ public class StreamCodecTest
   public void testDefaultStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     DefaultCodecOperator node2 = dag.addOperator("node2", DefaultCodecOperator.class);
@@ -199,7 +199,7 @@ public class StreamCodecTest
   public void testPartitioningStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -250,7 +250,7 @@ public class StreamCodecTest
   public void testMxNPartitioningStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     dag.setAttribute(node1, Context.OperatorContext.INITIAL_PARTITION_COUNT, 2);
@@ -317,7 +317,7 @@ public class StreamCodecTest
   public void testParallelPartitioningStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     dag.setAttribute(node1, Context.OperatorContext.INITIAL_PARTITION_COUNT, 2);
@@ -408,7 +408,7 @@ public class StreamCodecTest
   public void testMultipleInputStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     TestStreamCodec serDe = new TestStreamCodec();
@@ -463,7 +463,7 @@ public class StreamCodecTest
   public void testPartitioningMultipleInputStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -542,7 +542,7 @@ public class StreamCodecTest
   public void testMultipleStreamCodecs()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -599,7 +599,7 @@ public class StreamCodecTest
   public void testPartitioningMultipleStreamCodecs()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -685,7 +685,7 @@ public class StreamCodecTest
   public void testMxNMultipleStreamCodecs()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     dag.setAttribute(node1, Context.OperatorContext.INITIAL_PARTITION_COUNT, 2);
@@ -789,7 +789,7 @@ public class StreamCodecTest
   public void testInlineStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -873,7 +873,7 @@ public class StreamCodecTest
   public void testCascadingStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -960,7 +960,7 @@ public class StreamCodecTest
   public void testDynamicPartitioningStreamCodec()
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     dag.setAttribute(node1, Context.OperatorContext.INITIAL_PARTITION_COUNT, 2);

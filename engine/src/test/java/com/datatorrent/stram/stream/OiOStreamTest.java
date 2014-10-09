@@ -275,7 +275,7 @@ public class OiOStreamTest
     public void endWindow()
     {
       assert (threadId == Thread.currentThread().getId());
-      Operator.Util.shutdown();
+      BaseOperator.shutdown();
     }
 
     @Override

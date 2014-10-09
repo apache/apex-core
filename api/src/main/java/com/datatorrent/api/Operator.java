@@ -169,15 +169,6 @@ public interface Operator extends Component<OperatorContext>
 
   }
 
-  static class Util
-  {
-    public static void shutdown()
-    {
-      throw new ShutdownException();
-    }
-
-  }
-
   /**
    * The operator should throw the following exception if it wants to gracefully conclude its operation.
    * This exception is not treated as an error by the engine. It's considered a request by the operator
@@ -188,6 +179,65 @@ public interface Operator extends Component<OperatorContext>
   static class ShutdownException extends RuntimeException
   {
     private static final long serialVersionUID = 201401081529L;
+
+  }
+
+  /**
+   * Interface operator must implement if they want the the engine to inform them as
+   * they are activated or before they are deactivated.
+   *
+   * An operator may be subjected to activate/deactivate cycle multiple times during
+   * its lifetime which is bounded by setup/teardown method pair. So it's advised that
+   * all the operations which need to be done right before the first window is delivered
+   * to the operator be done during activate and opposite be done in the deactivate.
+   *
+   * An example of where one would consider implementing ActivationListener is an
+   * input operator which wants to consume a high throughput stream. Since there is
+   * typically at least a few hundreds of milliseconds between the time the setup method
+   * is called and the first window, you would want to place the code to activate the
+   * stream inside activate instead of setup.
+   *
+   * @param <CONTEXT> Context for the current run during which the operator is getting de/activated.
+   * @since 0.3.2
+   */
+  public static interface ActivationListener<CONTEXT extends Context>
+  {
+    /**
+     * Do the operations just before the operator starts processing tasks within the windows.
+     * e.g. establish a network connection.
+     * @param context - the context in which the operator is executing.
+     */
+    public void activate(CONTEXT context);
+
+    /**
+     * Do the opposite of the operations the operator did during activate.
+     * e.g. close the network connection.
+     */
+    public void deactivate();
+
+  }
+
+  /**
+   * Operators must implement this interface if they are interested in being notified as
+   * soon as the operator state is checkpointed or committed.
+   *
+   * @since 0.3.2
+   */
+  public static interface CheckpointListener
+  {
+    /**
+     * Inform the operator that it's checkpointed.
+     *
+     * @param windowId Id of the window after which the operator was checkpointed.
+     */
+    public void checkpointed(long windowId);
+
+    /**
+     * Inform the operator that a particular windowId is processed successfully by all the operators in the DAG.
+     *
+     * @param windowId Id of the window which is processed by each operator.
+     */
+    public void committed(long windowId);
 
   }
 

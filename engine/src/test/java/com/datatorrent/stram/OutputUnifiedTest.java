@@ -13,7 +13,6 @@ import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -39,7 +38,7 @@ public class OutputUnifiedTest
   @Test
   public void testManyToOnePartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     TestInputOperator i1 = new TestInputOperator();
@@ -71,7 +70,7 @@ public class OutputUnifiedTest
   @Test
   public void testMxNPartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     TestInputOperator i1 = new TestInputOperator();
@@ -105,7 +104,7 @@ public class OutputUnifiedTest
   @Test
   public void testParallelPartition() throws Exception {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     TestInputOperator i1 = new TestInputOperator();

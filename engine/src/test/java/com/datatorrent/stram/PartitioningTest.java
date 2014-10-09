@@ -104,7 +104,7 @@ public class PartitioningTest
         if (blockEndStream) {
           return;
         }
-        Operator.Util.shutdown();
+        BaseOperator.shutdown();
       }
 
       if (first) {
