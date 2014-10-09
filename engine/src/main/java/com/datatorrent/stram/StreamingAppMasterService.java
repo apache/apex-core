@@ -701,6 +701,7 @@ public class StreamingAppMasterService extends CompositeService
             }
           }
         }
+
         if (requestResources) {
           StreamingContainerAgent.ContainerStartRequest csr;
           while ((csr = dnmgr.containerStartRequests.poll()) != null) {
@@ -746,7 +747,7 @@ public class StreamingAppMasterService extends CompositeService
       //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       int availableMemory = availableLicensedMemory;
       //SPOI-2942: locking physical plan only when license type is evaluation
-      if(this.licenseType == License.LicenseType.EVALUATION) {
+      if (this.licenseType == License.LicenseType.EVALUATION) {
         dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
       }
 

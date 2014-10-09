@@ -19,7 +19,9 @@ import com.datatorrent.stram.license.*;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
+import com.datatorrent.stram.license.audit.LicenseAudit;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
+import com.datatorrent.stram.license.storage.LicenseStorage;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
@@ -27,6 +29,7 @@ import com.datatorrent.stram.util.*;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.*;
 
@@ -49,6 +52,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
@@ -568,6 +572,10 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
       "Get operator properties within the given app package"));
+    globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(),
+      new Arg[]{new Arg("licenseId"), new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("separator")},
+      new Arg[]{new Arg("topNMemoryUsages")},
+      "Generate the license report for the given month"));
     //
     // Connected command specification starts here
     //
@@ -3599,6 +3607,158 @@ public class DTCli
       }
     }
 
+  }
+
+  private class GenerateLicenseReport implements Command
+  {
+    private class LicenseReport implements Comparable<LicenseReport>
+    {
+
+      public MutableInt memoryReported;
+      public String timeStamp;
+
+      public String toString(String separator)
+      {
+        return timeStamp + " " + separator + " " + memoryReported;
+      }
+
+      @Override
+      public int compareTo(LicenseReport licenseReport)
+      {
+        return this.memoryReported.compareTo(licenseReport.memoryReported);
+      }
+    }
+
+    private class LicenseReportComparator implements Comparator<LicenseReport>
+    {
+      @Override
+      public int compare(LicenseReport licenseReport, LicenseReport licenseReport2)
+      {
+        return licenseReport.memoryReported.compareTo(licenseReport2.memoryReported);
+      }
+    }
+
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      FileSystem fs = null;
+      BufferedReader bufferedReader = null;
+      Map<String, PriorityQueue<LicenseReport>> applicationMap = Maps.newHashMap();
+      LicenseReportComparator comparator = new LicenseReportComparator();
+      int length = 5;
+      if (args.length > 5) {
+        length = Integer.valueOf(args[5]);
+      }
+      PriorityQueue<LicenseReport> clusterQueue = new PriorityQueue<LicenseReport>(length, comparator);
+      LicenseReport licenseReport;
+      try {
+        fs = StramClientUtils.newFileSystemInstance(conf);
+        Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
+        String licenseId = args[1];
+        Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[2]);
+        FSDataInputStream inputStream = fs.open(licensePath);
+        bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        String line;
+        int usedMemory;
+        int applicationIdLength = LicenseAudit.APPLICATION_ID.length();
+        int applicationMemoryLength = LicenseAudit.APPLICATION_MEMORY.length();
+        int clusterUsedMemoryLength = LicenseAudit.CLUSTER_USED_MEMORY.length();
+        int appIdx;
+        int memoryIdx;
+        int clusterUsedMemoryIdx;
+        int clusterFreeMemoryIdx;
+
+        while ((line = bufferedReader.readLine()) != null) {
+          appIdx = line.indexOf(LicenseAudit.APPLICATION_ID);
+          if (appIdx != -1) {
+            memoryIdx = line.indexOf(LicenseAudit.APPLICATION_MEMORY);
+            String appId = line.substring(appIdx + applicationIdLength, memoryIdx).trim();
+            PriorityQueue<LicenseReport> priorityQueue = applicationMap.get(appId);
+            if (priorityQueue == null) {
+              priorityQueue = new PriorityQueue<LicenseReport>(length, comparator);
+              applicationMap.put(appId, priorityQueue);
+            }
+            usedMemory = Integer.valueOf(line.substring(memoryIdx + applicationMemoryLength).trim());
+            if (priorityQueue.size() >= length) {
+              licenseReport = priorityQueue.peek();
+              if (usedMemory > licenseReport.memoryReported.intValue()) {
+                priorityQueue.poll();
+                licenseReport.memoryReported.setValue(usedMemory);
+                licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
+                priorityQueue.add(licenseReport);
+              }
+            }
+            else {
+              licenseReport = new LicenseReport();
+              licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
+              licenseReport.memoryReported = new MutableInt(usedMemory);
+              priorityQueue.add(licenseReport);
+            }
+          }
+          else {
+            clusterUsedMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_USED_MEMORY);
+            if (clusterUsedMemoryIdx != -1) {
+              clusterFreeMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_FREE_MEMORY);
+              usedMemory = Integer.valueOf(line.substring(clusterUsedMemoryIdx + clusterUsedMemoryLength, clusterFreeMemoryIdx).trim());
+              if (clusterQueue.size() >= length) {
+                licenseReport = clusterQueue.peek();
+                if (usedMemory > licenseReport.memoryReported.intValue()) {
+                  clusterQueue.poll();
+                  licenseReport.memoryReported.setValue(usedMemory);
+                  licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
+                  clusterQueue.add(licenseReport);
+                }
+              }
+              else {
+                licenseReport = new LicenseReport();
+                licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
+                licenseReport.memoryReported = new MutableInt(usedMemory);
+                clusterQueue.add(licenseReport);
+              }
+            }
+          }
+        }
+      }
+      finally {
+        if (bufferedReader != null) {
+          bufferedReader.close();
+        }
+
+        if (fs != null) {
+          fs.close();
+        }
+      }
+      String outputFile = expandFileName(args[3], false);
+      String separator = args[4];
+
+      BufferedWriter writer = null;
+      try {
+        writer = new BufferedWriter(new FileWriter(new File(outputFile)));
+        writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Used Memory(MB)");
+        writer.newLine();
+        PriorityQueue<LicenseReport> appPriorityQueue;
+        for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
+          appPriorityQueue = entry.getValue();
+          while ((licenseReport = appPriorityQueue.poll()) != null) {
+            writer.write(entry.getKey() + " " + separator + " " + licenseReport.toString(separator));
+            writer.newLine();
+          }
+        }
+        writer.write("#Cluster Report");
+        writer.newLine();
+        writer.write("#Timestamp " + separator + " Used Memory(MB)");
+        writer.newLine();
+        while ((licenseReport = clusterQueue.poll()) != null) {
+          writer.write("" + licenseReport.toString(separator));
+          writer.newLine();
+        }
+      }
+      finally {
+        if (writer != null) {
+          writer.close();
+        }
+      }
+    }
   }
 
   private class GetAppInfoCommand implements Command
