@@ -4090,6 +4090,13 @@ public class DTCli
           launchArgs.add(selectedApp.name);
         }
 
+        // now look at whether it is in default configuration
+        for (Map.Entry<String, String> entry : conf) {
+          if (StringUtils.isNotBlank(entry.getValue())) {
+            requiredProperties.remove(entry.getKey());
+          }
+        }
+
         if (requiredProperties.isEmpty()) {
           LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
           new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
