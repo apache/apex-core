@@ -5,7 +5,6 @@
 package com.datatorrent.stram;
 
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.annotation.ShipContainingJars;
 
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
@@ -147,20 +146,6 @@ public class StramClient
         //LOG.debug("checking " + c);
         jarClasses.add(c);
         jarClasses.addAll(Arrays.asList(c.getInterfaces()));
-        // check for annotated dependencies
-        try {
-          ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
-          if (shipJars != null) {
-            for (Class<?> depClass : shipJars.classes()) {
-              jarClasses.add(depClass);
-              LOG.info("Including {} as deploy dependency of {}", depClass, c);
-              jarClasses.addAll(Arrays.asList(depClass.getInterfaces()));
-            }
-          }
-        }
-        catch (ArrayStoreException e) {
-          LOG.error("Failed to process ShipContainingJars annotation for class " + c.getName(), e);
-        }
       }
     }
 

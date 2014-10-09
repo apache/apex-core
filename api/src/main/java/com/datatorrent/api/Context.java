@@ -273,7 +273,6 @@ public interface Context
     /**
      * Comma separated list of jar file dependencies to be deployed with the application.
      * The launcher will combine the list with built-in dependencies and those specified
-     * via {@link com.datatorrent.api.annotation.ShipContainingJars} into the final set of resources
      * that are made available through the distributed file system to application master
      * and child containers.
      */

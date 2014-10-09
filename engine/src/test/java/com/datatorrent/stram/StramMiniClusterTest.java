@@ -3,16 +3,8 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URL;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import static java.lang.Thread.sleep;
@@ -26,10 +18,6 @@ import com.sun.jersey.api.client.WebResource;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.junit.Assert.assertEquals;
@@ -63,11 +51,11 @@ import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ShipContainingJars;
 
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -388,34 +376,12 @@ public class StramMiniClusterTest
     }
   }
 
-  @ShipContainingJars(classes = {javax.jms.Message.class})
   protected class ShipJarsBaseOperator extends BaseOperator
   {
   }
 
-  @ShipContainingJars(classes = {Logger.class})
   protected class ShipJarsOperator extends ShipJarsBaseOperator
   {
-  }
-
-  @Test
-  public void testShipContainingJars()
-  {
-    LogicalPlan dag = new LogicalPlan();
-    dag.getClassNames();
-    LinkedHashSet<String> baseJars = StramClient.findJars(dag);
-
-    dag = new LogicalPlan();
-    dag.addOperator("foo", new ShipJarsOperator());
-    dag.getClassNames();
-    LinkedHashSet<String> jars = StramClient.findJars(dag);
-
-    // operator class from test + 3 annotated dependencies
-    Assert.assertEquals("" + jars, baseJars.size() + 3, jars.size());
-
-    Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
-    Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));
-    Assert.assertTrue("", jars.contains(JarFinder.getJar(com.esotericsoftware.kryo.Kryo.class)));
   }
 
   @Ignore // thomas knows why this is disabled

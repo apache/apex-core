@@ -16,7 +16,6 @@ import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.annotation.ShipContainingJars;
 
 import com.datatorrent.common.util.Slice;
 
@@ -32,10 +31,6 @@ import com.datatorrent.common.util.Slice;
  * @param <T>
  * @since 0.3.2
  */
-@ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class,
-                               com.esotericsoftware.minlog.Log.class,
-                               org.objenesis.instantiator.ObjectInstantiator.class,
-                               com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStreamCodec<T>
 {
   private final Output data;

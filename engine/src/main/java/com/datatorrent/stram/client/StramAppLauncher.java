@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
  * naming convention).<br>
  * Dependency resolution is based on the bundled pom.xml (if any) and the application is launched with a modified client
  * classpath that includes application dependencies so that classes defined in the DAG can be loaded and
- * {@link ShipContainingJars} annotations processed. Caching is performed for dependency classpath resolution.<br>
  * <br>
  *
  * @since 0.3.2
