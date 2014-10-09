@@ -1006,7 +1006,7 @@ public class StreamingContainerManager implements PlanContext
       PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
 
       if (oper == null) {
-        LOG.error("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
+        LOG.info("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
         sca.undeployOpers.add(shb.nodeId);
         continue;
       }
@@ -1817,9 +1817,11 @@ public class StreamingContainerManager implements PlanContext
         loi.status.put(physicalOperator.getState().toString(), count);
       }
       count.increment();
-      long recoveryWindowId = toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId);
-      if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
-        loi.recoveryWindowId = recoveryWindowId;
+      if (physicalOperator.getRecoveryCheckpoint() != null) {
+        long recoveryWindowId = toWsWindowId(physicalOperator.getRecoveryCheckpoint().windowId);
+        if (loi.recoveryWindowId == 0 || loi.recoveryWindowId > recoveryWindowId) {
+          loi.recoveryWindowId = recoveryWindowId;
+        }
       }
       PTContainer container = physicalOperator.getContainer();
       if (container != null) {
