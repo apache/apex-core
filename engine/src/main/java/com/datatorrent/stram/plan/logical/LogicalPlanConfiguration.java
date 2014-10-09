@@ -1053,14 +1053,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     app.populateDAG(dag, conf);
 
     String appAlias = getAppAlias(name);
-    List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
+    String appName = appAlias == null ? name : appAlias;
+    List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
     setApplicationConfiguration(dag, appConfs);
     if (dag.getAttributes().get(Context.DAGContext.APPLICATION_NAME) == null) {
-      dag.setAttribute(Context.DAGContext.APPLICATION_NAME, appAlias == null ? name : appAlias);
+      dag.setAttribute(Context.DAGContext.APPLICATION_NAME, appName);
     }
     // inject external operator configuration
-    setOperatorConfiguration(dag, appConfs, appAlias);
-    setStreamConfiguration(dag, appConfs, appAlias);
+    setOperatorConfiguration(dag, appConfs, appName);
+    setStreamConfiguration(dag, appConfs, appName);
   }
 
   public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException
