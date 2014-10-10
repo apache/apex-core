@@ -46,7 +46,6 @@ import jline.console.completer.*;
 import jline.console.history.*;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -1389,8 +1388,7 @@ public class DTCli
   private void printWelcomeMessage()
   {
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
-    String configStatus = conf.get(StramClientUtils.DT_CONFIG_STATUS);
-    if (!"complete".equals(configStatus)) {
+    if (!StramClientUtils.configComplete(conf)) {
       System.err.println("WARNING: Configuration of DataTorrent has not been complete. Please proceed with caution and only in development environment!");
     }
   }
@@ -1786,39 +1784,10 @@ public class DTCli
       if (args.length > 1) {
         file = expandFileName(args[1], true);
       }
-      String licenseId = activateLicense(file);
+      String licenseId = StramClientUtils.activateLicense(file, conf);
       System.out.println("Started license agent for " + licenseId);
     }
 
-  }
-
-  protected String activateLicense(String file) throws Exception
-  {
-    byte[] licenseBytes;
-    if (file != null) {
-      licenseBytes = StramClientUtils.getLicense(file, conf);
-    }
-    else {
-      licenseBytes = StramClientUtils.getLicense(conf);
-    }
-    String licenseId = LicenseAuthority.getLicenseID(licenseBytes);
-    LicenseAuthority.validateLicense(licenseBytes);
-    LogicalPlan lp = new LogicalPlan();
-    lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
-    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
-    int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
-    lp.setAttribute(Context.DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
-    lp.setAttribute(LogicalPlan.LICENSE_ROOT, conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
-    StramClient client = new StramClient(conf, lp);
-    try {
-      client.start();
-      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
-      client.startApplication();
-    }
-    finally {
-      client.stop();
-    }
-    return licenseId;
   }
 
   private class DeactivateLicenseCommand implements Command

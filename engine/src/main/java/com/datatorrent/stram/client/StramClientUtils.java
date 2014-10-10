@@ -4,11 +4,18 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
 import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ConfigValidator;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import java.io.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,6 +23,7 @@ import java.io.IOException;
 import java.net.*;
 import java.net.URL;
 import java.util.*;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -543,4 +551,68 @@ public class StramClientUtils
     }
     fs.copyFromLocalFile(new Path(fromLocal.toURI()), toDFS);
   }
+
+  public static String checkAndActivateCurrentLicense(Configuration conf) throws Exception
+  {
+    // start the license manager
+    YarnClient yarnClient = YarnClient.createYarnClient();
+    try {
+      yarnClient.init(conf);
+      yarnClient.start();
+      byte[] licenseBytes = StramClientUtils.getLicense(conf);
+      License license = LicenseAuthority.getLicense(licenseBytes);
+      String licenseId = license.getLicenseId();
+
+      List<ApplicationReport> apps = yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE),
+                                                                EnumSet.of(YarnApplicationState.RUNNING,
+                                                                           YarnApplicationState.ACCEPTED,
+                                                                           YarnApplicationState.NEW,
+                                                                           YarnApplicationState.NEW_SAVING));
+      for (ApplicationReport ar : apps) {
+        if (ar.getName().equals(licenseId)) {
+          return licenseId;
+        }
+      }
+      return StramClientUtils.activateLicense(null, conf);
+    }
+    finally {
+      yarnClient.stop();
+    }
+  }
+
+  public static String activateLicense(String file, Configuration conf) throws Exception
+  {
+    byte[] licenseBytes;
+    if (file != null) {
+      licenseBytes = StramClientUtils.getLicense(file, conf);
+    }
+    else {
+      licenseBytes = StramClientUtils.getLicense(conf);
+    }
+    String licenseId = LicenseAuthority.getLicenseID(licenseBytes);
+    LicenseAuthority.validateLicense(licenseBytes);
+    LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
+    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
+    int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
+    lp.setAttribute(Context.DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
+    lp.setAttribute(LogicalPlan.LICENSE_ROOT, conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    StramClient client = new StramClient(conf, lp);
+    try {
+      client.start();
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
+    }
+    finally {
+      client.stop();
+    }
+    return licenseId;
+  }
+
+  public static boolean configComplete(Configuration conf)
+  {
+    String configStatus = conf.get(StramClientUtils.DT_CONFIG_STATUS);
+    return "complete".equals(configStatus);
+  }
+
 }
