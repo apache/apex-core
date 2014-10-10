@@ -460,6 +460,7 @@ public class DTCli
 
   DTCli()
   {
+    conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
     //
     // Global command specification starts here
     //
@@ -1004,7 +1005,6 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
-    conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
     StramAgent.setConfiguration(conf);
 
     // Need to initialize security before starting RPC for the credentials to
