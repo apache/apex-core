@@ -571,7 +571,7 @@ public class DTCli
       new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
       null,
       "Get operator properties within the given app package"));
-    globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(),
+    globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(conf),
       new Arg[]{new Arg("licenseId"), new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("separator")},
       new Arg[]{new Arg("topNMemoryUsages")},
       "Generate the license report for the given month"));
@@ -3578,8 +3578,15 @@ public class DTCli
 
   }
 
-  private class GenerateLicenseReport implements Command
+  public static class GenerateLicenseReport implements Command
   {
+    private Configuration conf;
+
+    public GenerateLicenseReport(Configuration conf)
+    {
+      this.conf = conf;
+    }
+
     private class LicenseReport implements Comparable<LicenseReport>
     {
 
@@ -3607,24 +3614,19 @@ public class DTCli
       }
     }
 
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
+    public void generateReport(String licenseId, String date, String outputFile, String separator, int topMemoryUsages) throws Exception
     {
       FileSystem fs = null;
       BufferedReader bufferedReader = null;
       Map<String, PriorityQueue<LicenseReport>> applicationMap = Maps.newHashMap();
       LicenseReportComparator comparator = new LicenseReportComparator();
-      int length = 5;
-      if (args.length > 5) {
-        length = Integer.valueOf(args[5]);
-      }
-      PriorityQueue<LicenseReport> clusterQueue = new PriorityQueue<LicenseReport>(length, comparator);
+
+      PriorityQueue<LicenseReport> clusterQueue = new PriorityQueue<LicenseReport>(topMemoryUsages, comparator);
       LicenseReport licenseReport;
       try {
         fs = StramClientUtils.newFileSystemInstance(conf);
         Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
-        String licenseId = args[1];
-        Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[2]);
+        Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + date);
         FSDataInputStream inputStream = fs.open(licensePath);
         bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
         String line;
@@ -3644,11 +3646,11 @@ public class DTCli
             String appId = line.substring(appIdx + applicationIdLength, memoryIdx).trim();
             PriorityQueue<LicenseReport> priorityQueue = applicationMap.get(appId);
             if (priorityQueue == null) {
-              priorityQueue = new PriorityQueue<LicenseReport>(length, comparator);
+              priorityQueue = new PriorityQueue<LicenseReport>(topMemoryUsages, comparator);
               applicationMap.put(appId, priorityQueue);
             }
             usedMemory = Integer.valueOf(line.substring(memoryIdx + applicationMemoryLength).trim());
-            if (priorityQueue.size() >= length) {
+            if (priorityQueue.size() >= topMemoryUsages) {
               licenseReport = priorityQueue.peek();
               if (usedMemory > licenseReport.memoryReported.intValue()) {
                 priorityQueue.poll();
@@ -3669,7 +3671,7 @@ public class DTCli
             if (clusterUsedMemoryIdx != -1) {
               clusterFreeMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_FREE_MEMORY);
               usedMemory = Integer.valueOf(line.substring(clusterUsedMemoryIdx + clusterUsedMemoryLength, clusterFreeMemoryIdx).trim());
-              if (clusterQueue.size() >= length) {
+              if (clusterQueue.size() >= topMemoryUsages) {
                 licenseReport = clusterQueue.peek();
                 if (usedMemory > licenseReport.memoryReported.intValue()) {
                   clusterQueue.poll();
@@ -3697,8 +3699,7 @@ public class DTCli
           fs.close();
         }
       }
-      String outputFile = expandFileName(args[3], false);
-      String separator = args[4];
+      outputFile = expandFileName(outputFile, false);
 
       BufferedWriter writer = null;
       try {
@@ -3727,6 +3728,16 @@ public class DTCli
           writer.close();
         }
       }
+    }
+
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      int length = 5;
+      if (args.length > 5) {
+        length = Integer.valueOf(args[5]);
+      }
+      generateReport(args[1], args[2], args[3], args[4], length);
     }
   }
 
