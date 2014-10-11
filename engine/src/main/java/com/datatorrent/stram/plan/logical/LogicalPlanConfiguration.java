@@ -6,6 +6,7 @@ package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -45,7 +46,8 @@ import org.slf4j.LoggerFactory;
  *
  * @since 0.3.2
  */
-public class LogicalPlanConfiguration implements StreamingApplication {
+public class LogicalPlanConfiguration implements StreamingApplication
+{
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
@@ -62,7 +64,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_LOCALITY = "locality";
 
-  public static final String OPERATOR_PREFIX =  StreamingApplication.DT_PREFIX + "operator.";
+  public static final String OPERATOR_PREFIX = StreamingApplication.DT_PREFIX + "operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
@@ -82,20 +84,24 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     LOG.debug("Initialized attributes {}", serial);
   }
 
-  private enum StramElement {
-    APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"),STREAM("stream"), PORT("port"), INPUT_PORT("inputport"),OUTPUT_PORT("outputport"),
-    ATTR("attr"), PROP("prop"),CLASS("class"),PATH("path");
+  private enum StramElement
+  {
+    APPLICATION("application"), GATEWAY("gateway"), TEMPLATE("template"), OPERATOR("operator"), STREAM("stream"), PORT("port"), INPUT_PORT("inputport"), OUTPUT_PORT("outputport"),
+    ATTR("attr"), PROP("prop"), CLASS("class"), PATH("path");
     private final String value;
 
-    StramElement(String value) {
+    StramElement(String value)
+    {
       this.value = value;
     }
 
-    public String getValue() {
+    public String getValue()
+    {
       return value;
     }
 
-    public static StramElement fromValue(String value) {
+    public static StramElement fromValue(String value)
+    {
       StramElement velement = null;
       for (StramElement element : StramElement.values()) {
         if (element.getValue().equals(value)) {
@@ -108,7 +114,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   }
 
-  private static abstract class Conf {
+  private static abstract class Conf
+  {
 
     protected Conf parentConf = null;
 
@@ -119,36 +126,43 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     protected String id;
 
-    public void setId(String id) {
+    public void setId(String id)
+    {
       this.id = id;
     }
 
-    public String getId() {
+    public String getId()
+    {
       return id;
     }
 
-    public void setParentConf(Conf parentConf) {
+    public void setParentConf(Conf parentConf)
+    {
       this.parentConf = parentConf;
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Conf> T getParentConf() {
+    public <T extends Conf> T getParentConf()
+    {
       return (T)parentConf;
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Conf> T getAncestorConf(StramElement ancestorElement) {
+    public <T extends Conf> T getAncestorConf(StramElement ancestorElement)
+    {
       if (getElement() == ancestorElement) {
         return (T)this;
       }
       if (parentConf == null) {
         return null;
-      } else {
+      }
+      else {
         return parentConf.getAncestorConf(ancestorElement);
       }
     }
 
-    public <T extends Conf> T getOrAddChild(String id, StramElement childType, Class<T> clazz) {
+    public <T extends Conf> T getOrAddChild(String id, StramElement childType, Class<T> clazz)
+    {
       @SuppressWarnings("unchecked")
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
       if (elChildren == null) {
@@ -162,19 +176,23 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return conf;
     }
 
-    public void setAttribute(Attribute<Object> attr, String value) {
+    public void setAttribute(Attribute<Object> attr, String value)
+    {
       attributes.put(attr, value);
     }
 
-    public void setProperty(String name, String value) {
+    public void setProperty(String name, String value)
+    {
       properties.setProperty(name, value);
     }
 
-    public void setDefaultProperties(Properties defaults) {
+    public void setDefaultProperties(Properties defaults)
+    {
       properties.setDefaultProperties(defaults);
     }
 
-    public <T extends Conf> List<T> getMatchingChildConf(String name, StramElement childType) {
+    public <T extends Conf> List<T> getMatchingChildConf(String name, StramElement childType)
+    {
       List<T> childConfs = new ArrayList<T>();
       Map<String, T> elChildren = getChildren(childType);
       for (Map.Entry<String, T> entry : elChildren.entrySet()) {
@@ -186,10 +204,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           if (key == null) {
             match = true;
             exact = true;
-          } else if (key.equals(WILDCARD)) {
+          }
+          else if (key.equals(WILDCARD)) {
             match = true;
           }
-        } else {
+        }
+        else {
           // Also treat WILDCARD as match any character string when running regular express match
           if (key.equals(WILDCARD)) {
             key = WILDCARD_PATTERN;
@@ -205,7 +225,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         if (match) {
           if (!exact) {
             childConfs.add(entry.getValue());
-          } else {
+          }
+          else {
             childConfs.add(0, entry.getValue());
           }
         }
@@ -213,7 +234,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return childConfs;
     }
 
-    protected <T extends Conf> T getOrAddConf(Map<String, T> map, String id, Class<T> clazz) {
+    protected <T extends Conf> T getOrAddConf(Map<String, T> map, String id, Class<T> clazz)
+    {
       T conf = map.get(id);
       if (conf == null) {
         try {
@@ -221,7 +243,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           conf = declaredConstructor.newInstance(new Object[] {});
           conf.setId(id);
           map.put(id, conf);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           LOG.error("Error instantiating configuration", e);
         }
       }
@@ -229,7 +252,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     //public abstract Conf getChild(String id, StramElement childType);
-    public  <T extends Conf> T getChild(String id, StramElement childType) {
+    public <T extends Conf> T getChild(String id, StramElement childType)
+    {
       T conf = null;
       @SuppressWarnings("unchecked")
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
@@ -240,7 +264,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Conf> Map<String, T> getChildren(StramElement childType) {
+    public <T extends Conf> Map<String, T> getChildren(StramElement childType)
+    {
       // Always return non null so caller will not have to do extra check as expected
       Map<String, T> elChildren = (Map<String, T>)children.get(childType);
       if (elChildren == null) {
@@ -252,14 +277,17 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     // Override for parsing of custom elements other than attributes and opProps
     // Make this config parse element as the entry point for parsing in future instead of the generic method in parent class
-    public void parseElement(StramElement element, String[] keys, int index, String propertyValue) {
+    public void parseElement(StramElement element, String[] keys, int index, String propertyValue)
+    {
     }
 
-    public Class<? extends Context> getAttributeContextClass() {
+    public Class<? extends Context> getAttributeContextClass()
+    {
       return null;
     }
 
-    public boolean isAllowedChild(StramElement childType) {
+    public boolean isAllowedChild(StramElement childType)
+    {
       StramElement[] childElements = getChildElements();
       if (childElements != null) {
         for (StramElement childElement : childElements) {
@@ -271,14 +299,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return false;
     }
 
-    public StramElement getDefaultChildElement() {
+    public StramElement getDefaultChildElement()
+    {
       if ((getAttributeContextClass() == null) && isAllowedChild(StramElement.PROP)) {
         return StramElement.PROP;
       }
       return null;
     }
 
-    public boolean ignoreUnknownChildren() {
+    public boolean ignoreUnknownChildren()
+    {
       return getDefaultChildElement() == null;
     }
 
@@ -288,14 +318,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   }
 
-  private static class StramConf extends Conf {
+  private static class StramConf extends Conf
+  {
 
     private final Map<String, String> appAliases = Maps.newHashMap();
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.APPLICATION, StramElement.GATEWAY, StramElement.TEMPLATE, StramElement.OPERATOR,
-            StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.TEMPLATE, StramElement.ATTR};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.APPLICATION, StramElement.GATEWAY, StramElement.TEMPLATE, StramElement.OPERATOR,
+                                                                             StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.TEMPLATE, StramElement.ATTR};
 
-    StramConf() {
+    StramConf()
+    {
     }
 
     @Override
@@ -315,13 +347,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * App configuration
    */
-  private static class AppConf extends Conf {
+  private static class AppConf extends Conf
+  {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.GATEWAY, StramElement.OPERATOR, StramElement.PORT,
-            StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.GATEWAY, StramElement.OPERATOR, StramElement.PORT,
+                                                                             StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH};
 
     @SuppressWarnings("unused")
-    AppConf() {
+    AppConf()
+    {
     }
 
     @Override
@@ -331,7 +365,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     @Override
-    public void parseElement(StramElement element, String[] keys, int index, String propertyValue) {
+    public void parseElement(StramElement element, String[] keys, int index, String propertyValue)
+    {
       if ((element == StramElement.CLASS) || (element == StramElement.PATH)) {
         StramConf stramConf = getParentConf();
         stramConf.appAliases.put(propertyValue, getId());
@@ -352,12 +387,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   }
 
-  private static class GatewayConf extends Conf {
+  private static class GatewayConf extends Conf
+  {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PROP};
 
     @SuppressWarnings("unused")
-    GatewayConf() {
+    GatewayConf()
+    {
     }
 
     @Override
@@ -378,12 +415,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * Named set of opProps that can be used to instantiate streams or operators
    * with common settings.
    */
-  private static class TemplateConf extends Conf {
+  private static class TemplateConf extends Conf
+  {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PROP};
 
     @SuppressWarnings("unused")
-    TemplateConf() {
+    TemplateConf()
+    {
     }
 
     @Override
@@ -391,7 +430,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     {
       return CHILD_ELEMENTS;
     }
-
 
     @Override
     public StramElement getElement()
@@ -404,11 +442,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     {
       if (name.equals(TEMPLATE_appNameRegExp)) {
         appNameRegExp = value;
-      } else if (name.equals(TEMPLATE_idRegExp)) {
+      }
+      else if (name.equals(TEMPLATE_idRegExp)) {
         idRegExp = value;
-      } else if (name.equals(TEMPLATE_classNameRegExp)) {
+      }
+      else if (name.equals(TEMPLATE_classNameRegExp)) {
         classNameRegExp = value;
-      } else {
+      }
+      else {
         super.setProperty(name, value);
       }
     }
@@ -422,7 +463,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    *
    */
-  private static class StreamConf extends Conf {
+  private static class StreamConf extends Conf
+  {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.TEMPLATE, StramElement.PROP};
 
@@ -430,7 +472,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     private final Set<OperatorConf> targetNodes = new HashSet<OperatorConf>();
 
     @SuppressWarnings("unused")
-    StreamConf() {
+    StreamConf()
+    {
     }
 
     @Override
@@ -441,19 +484,23 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     /**
      * Locality for adjacent operators.
+     *
      * @return boolean
      */
-    public DAG.Locality getLocality() {
+    public DAG.Locality getLocality()
+    {
       String v = properties.getProperty(STREAM_LOCALITY, null);
       return (v != null) ? DAG.Locality.valueOf(v) : null;
     }
 
     /**
      * Set source on stream to the node output port.
+     *
      * @param portName
      * @param node
      */
-    public StreamConf setSource(String portName, OperatorConf node) {
+    public StreamConf setSource(String portName, OperatorConf node)
+    {
       if (this.sourceNode != null) {
         throw new IllegalArgumentException(String.format("Stream already receives input from %s", sourceNode));
       }
@@ -462,7 +509,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       return this;
     }
 
-    public StreamConf addSink(String portName, OperatorConf targetNode) {
+    public StreamConf addSink(String portName, OperatorConf targetNode)
+    {
       if (targetNode.inputs.containsKey(portName)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, targetNode.inputs.get(portName)));
       }
@@ -473,7 +521,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     @Override
-    public void setProperty(String name, String value) {
+    public void setProperty(String name, String value)
+    {
       AppConf appConf = getParentConf();
       if (STREAM_SOURCE.equals(name)) {
         if (sourceNode != null) {
@@ -484,22 +533,26 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         String[] parts = getNodeAndPortId(value);
         //setSource(parts[1], getOrAddOperator(appConf, parts[0]));
         setSource(parts[1], appConf.getOrAddChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
-      } else if (STREAM_SINKS.equals(name)) {
+      }
+      else if (STREAM_SINKS.equals(name)) {
         String[] targetPorts = value.split(",");
         for (String nodeAndPort : targetPorts) {
           String[] parts = getNodeAndPortId(nodeAndPort.trim());
           addSink(parts[1], appConf.getOrAddChild(parts[0], StramElement.OPERATOR, OperatorConf.class));
         }
-      } else if (STREAM_TEMPLATE.equals(name)) {
+      }
+      else if (STREAM_TEMPLATE.equals(name)) {
         StramConf stramConf = getAncestorConf(null);
         TemplateConf templateConf = (TemplateConf)stramConf.getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
         setDefaultProperties(templateConf.properties);
-      } else {
+      }
+      else {
         super.setProperty(name, value);
       }
     }
 
-    private String[] getNodeAndPortId(String s) {
+    private String[] getNodeAndPortId(String s)
+    {
       String[] parts = s.split("\\.");
       if (parts.length != 2) {
         throw new IllegalArgumentException("Invalid node.port reference: " + s);
@@ -514,10 +567,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("id", this.id).
-          toString();
+              append("id", this.id).
+              toString();
     }
 
   }
@@ -525,28 +579,34 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    *
    */
-  private static class PropertiesWithModifiableDefaults extends Properties {
+  private static class PropertiesWithModifiableDefaults extends Properties
+  {
     private static final long serialVersionUID = -4675421720308249982L;
 
     /**
      * @param defaults
      */
-    void setDefaultProperties(Properties defaults) {
-        super.defaults = defaults;
+    void setDefaultProperties(Properties defaults)
+    {
+      super.defaults = defaults;
     }
+
   }
 
   /**
    * Operator configuration
    */
-  private static class OperatorConf extends Conf {
+  private static class OperatorConf extends Conf
+  {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
-            StramElement.ATTR, StramElement.PROP};
+                                                                             StramElement.ATTR, StramElement.PROP};
 
     @SuppressWarnings("unused")
-    OperatorConf() {
+    OperatorConf()
+    {
     }
+
     private final Map<String, StreamConf> inputs = new HashMap<String, StreamConf>();
     private final Map<String, StreamConf> outputs = new HashMap<String, StreamConf>();
     private String templateRef;
@@ -567,12 +627,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         StramConf stramConf = getAncestorConf(null);
         TemplateConf templateConf = (TemplateConf)stramConf.getOrAddChild(value, StramElement.TEMPLATE, elementMaps.get(StramElement.TEMPLATE));
         setDefaultProperties(templateConf.properties);
-      } else {
+      }
+      else {
         super.setProperty(name, value);
       }
     }
 
-    private String getClassNameReqd() {
+    private String getClassNameReqd()
+    {
       String className = properties.getProperty(OPERATOR_CLASSNAME);
       if (className == null) {
         throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), LogicalPlanConfiguration.OPERATOR_CLASSNAME));
@@ -582,9 +644,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     /**
      * Properties for the node. Template values (if set) become property defaults.
+     *
      * @return Map<String,String>
      */
-    private Map<String, String> getProperties() {
+    private Map<String, String> getProperties()
+    {
       return Maps.fromProperties(properties);
     }
 
@@ -595,7 +659,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     @Override
-    public StramElement getDefaultChildElement() {
+    public StramElement getDefaultChildElement()
+    {
       return StramElement.PROP;
     }
 
@@ -610,10 +675,11 @@ public class LogicalPlanConfiguration implements StreamingApplication {
      * @return String
      */
     @Override
-    public String toString() {
+    public String toString()
+    {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("id", this.id).
-          toString();
+              append("id", this.id).
+              toString();
     }
 
   }
@@ -621,12 +687,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * Port configuration
    */
-  private static class PortConf extends Conf {
+  private static class PortConf extends Conf
+  {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.ATTR};
 
     @SuppressWarnings("unused")
-    PortConf() {
+    PortConf()
+    {
     }
 
     @Override
@@ -663,7 +731,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     elementMaps.put(StramElement.OUTPUT_PORT, PortConf.class);
   }
 
-  private Conf getConf(StramElement element, Conf ancestorConf) {
+  private Conf getConf(StramElement element, Conf ancestorConf)
+  {
     if (element == ancestorConf.getElement()) {
       return ancestorConf;
     }
@@ -677,7 +746,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return parentConf.getOrAddChild(WILDCARD, element, elementMaps.get(element));
   }
 
-  private Conf addConf(StramElement element, String name, Conf ancestorConf) {
+  private Conf addConf(StramElement element, String name, Conf ancestorConf)
+  {
     StramElement parentElement = getAllowedParentElement(element, ancestorConf);
     Conf conf = null;
     Conf parentConf = getConf(parentElement, ancestorConf);
@@ -687,27 +757,31 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return conf;
   }
 
-  private StramElement getAllowedParentElement(StramElement element, Conf ancestorConf) {
+  private StramElement getAllowedParentElement(StramElement element, Conf ancestorConf)
+  {
     StramElement parentElement = null;
     if ((element == StramElement.APPLICATION)) {
       parentElement = null;
-    } else if ((element == StramElement.GATEWAY) || (element == StramElement.OPERATOR) || (element == StramElement.STREAM)) {
+    }
+    else if ((element == StramElement.GATEWAY) || (element == StramElement.OPERATOR) || (element == StramElement.STREAM)) {
       parentElement = StramElement.APPLICATION;
-    } else if ((element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)) {
+    }
+    else if ((element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)) {
       parentElement = StramElement.OPERATOR;
-    } else if (element == StramElement.TEMPLATE) {
+    }
+    else if (element == StramElement.TEMPLATE) {
       parentElement = null;
     }
     return parentElement;
   }
 
   /*
-  private boolean isApplicationTypeConf(Conf conf) {
-    return (conf.getElement() == null) || (conf.getElement() == StramElement.APPLICATION);
-  }
-  */
-
-  private <T extends Conf> List<T> getMatchingChildConf(List<? extends Conf> confs, String name, StramElement childType) {
+   private boolean isApplicationTypeConf(Conf conf) {
+   return (conf.getElement() == null) || (conf.getElement() == StramElement.APPLICATION);
+   }
+   */
+  private <T extends Conf> List<T> getMatchingChildConf(List<? extends Conf> confs, String name, StramElement childType)
+  {
     List<T> childConfs = new ArrayList<T>();
     for (Conf conf : confs) {
       List<T> matchingConfs = conf.getMatchingChildConf(name, childType);
@@ -720,25 +794,29 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private final StramConf stramConf = new StramConf();
 
-  public LogicalPlanConfiguration() {
+  public LogicalPlanConfiguration()
+  {
   }
 
   /**
    * Add operators from flattened name value pairs in configuration object.
+   *
    * @param conf
    */
-  public void addFromConfiguration(Configuration conf) {
+  public void addFromConfiguration(Configuration conf)
+  {
     addFromProperties(toProperties(conf, StreamingApplication.DT_PREFIX));
   }
 
-  public static Properties toProperties(Configuration conf, String prefix) {
+  public static Properties toProperties(Configuration conf, String prefix)
+  {
     Iterator<Entry<String, String>> it = conf.iterator();
     Properties props = new Properties();
     while (it.hasNext()) {
       Entry<String, String> e = it.next();
       // filter relevant entries
       if (e.getKey().startsWith(prefix)) {
-         props.put(e.getKey(), e.getValue());
+        props.put(e.getKey(), e.getValue());
       }
     }
     return props;
@@ -753,7 +831,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param appPath The path of the application class in the jar
    * @return The alias name if one is available, null otherwise
    */
-  public String getAppAlias(String appPath) {
+  public String getAppAlias(String appPath)
+  {
     String appAlias;
     if (appPath.endsWith(CLASS_SUFFIX)) {
       appPath = appPath.replace("/", ".").substring(0, appPath.length() - CLASS_SUFFIX.length());
@@ -842,16 +921,16 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return addFromProperties(prop);
   }
 
-
   /**
-   * Read node configurations from opProps. The opProps can be in any
+   * Read node configurations from props. The props can be in any
    * random order, as long as they represent a consistent configuration in their
    * entirety.
    *
    * @param props
    * @return Logical plan configuration.
    */
-  public LogicalPlanConfiguration addFromProperties(Properties props) {
+  public LogicalPlanConfiguration addFromProperties(Properties props)
+  {
 
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
@@ -864,7 +943,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return this;
   }
 
-  private void parseStramPropertyTokens(String[] keys, int index, String propertyName, String propertyValue, Conf conf) {
+  private void parseStramPropertyTokens(String[] keys, int index, String propertyName, String propertyValue, Conf conf)
+  {
     if (index < keys.length) {
       String key = keys[index];
       StramElement element = getElement(key, conf);
@@ -875,24 +955,29 @@ public class LogicalPlanConfiguration implements StreamingApplication {
               || (element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)
               || (element == StramElement.TEMPLATE)) {
         if ((index + 1) < keys.length) {
-          String name = keys[index+1];
+          String name = keys[index + 1];
           Conf elConf = addConf(element, name, conf);
           if (elConf != null) {
             parseStramPropertyTokens(keys, index + 2, propertyName, propertyValue, elConf);
-          } else {
+          }
+          else {
             LOG.error("Invalid configuration key: {}", propertyName);
           }
-        } else {
+        }
+        else {
           LOG.warn("Invalid configuration key: {}", propertyName);
         }
-      } else if ((element == StramElement.GATEWAY)) {
+      }
+      else if ((element == StramElement.GATEWAY)) {
         Conf elConf = addConf(element, null, conf);
         if (elConf != null) {
-          parseStramPropertyTokens(keys, index+1, propertyName, propertyValue, elConf);
-        } else {
+          parseStramPropertyTokens(keys, index + 1, propertyName, propertyValue, elConf);
+        }
+        else {
           LOG.error("Invalid configuration key: {}", propertyName);
         }
-      } else if ((element == StramElement.ATTR) || ((element == null) && (conf.getDefaultChildElement() == StramElement.ATTR))) {
+      }
+      else if ((element == StramElement.ATTR) || ((element == null) && (conf.getDefaultChildElement() == StramElement.ATTR))) {
         if (conf.getElement() == null) {
           conf = addConf(StramElement.APPLICATION, WILDCARD, conf);
         }
@@ -901,40 +986,47 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           // Re-composing complete key for nested keys which are used in templates
           // Implement it better way to not pre-tokenize the property string and parse progressively
           parseAttribute(conf, keys, index, element, propertyValue);
-        } else {
+        }
+        else {
           LOG.error("Invalid configuration key: {}", propertyName);
         }
-      } else if ((element == StramElement.PROP) || ((element == null) && (conf.getDefaultChildElement() == StramElement.PROP))) {
+      }
+      else if ((element == StramElement.PROP) || ((element == null) && (conf.getDefaultChildElement() == StramElement.PROP))) {
         // Currently opProps are only supported on operators and streams
         // Supporting current implementation where property can be directly specified under operator
         String prop;
         if (element == StramElement.PROP) {
-          prop = getCompleteKey(keys, index+1);
-        } else {
+          prop = getCompleteKey(keys, index + 1);
+        }
+        else {
           prop = getCompleteKey(keys, index);
           /*
-          if (conf.getAttributeContextClass() != null) {
-            LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
-                        getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
-          }
-          */
+           if (conf.getAttributeContextClass() != null) {
+           LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
+           getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
+           }
+           */
         }
         if (prop != null) {
           conf.setProperty(prop, propertyValue);
-        } else {
+        }
+        else {
           LOG.warn("Invalid property specification, no property name specified for {}", propertyName);
         }
-      } else if (element != null) {
+      }
+      else if (element != null) {
         conf.parseElement(element, keys, index, propertyValue);
       }
     }
   }
 
-  private StramElement getElement(String value, Conf conf) {
+  private StramElement getElement(String value, Conf conf)
+  {
     StramElement element = null;
     try {
       element = StramElement.fromValue(value);
-    } catch (IllegalArgumentException ie) {
+    }
+    catch (IllegalArgumentException ie) {
     }
     // If element is not allowed treat it as text
     if ((element != null) && !conf.isAllowedChild(element)) {
@@ -943,11 +1035,13 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return element;
   }
 
-  private String getCompleteKey(String[] keys, int start) {
+  private String getCompleteKey(String[] keys, int start)
+  {
     return getCompleteKey(keys, start, keys.length);
   }
 
-  private String getCompleteKey(String[] keys, int start, int end) {
+  private String getCompleteKey(String[] keys, int start, int end)
+  {
     StringBuilder sb = new StringBuilder(1024);
     for (int i = start; i < end; ++i) {
       if (i > start) {
@@ -961,19 +1055,22 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * Return all opProps set on the builder.
    * Can be serialized to property file and used to read back into builder.
+   *
    * @return Properties
    */
-  public Properties getProperties() {
+  public Properties getProperties()
+  {
     return this.properties;
   }
 
-  public Map<String, String> getAppAliases() {
+  public Map<String, String> getAppAliases()
+  {
     return Collections.unmodifiableMap(this.stramConf.appAliases);
   }
 
   @Override
-  public void populateDAG(DAG dag, Configuration conf) {
-
+  public void populateDAG(DAG dag, Configuration conf)
+  {
     Configuration pconf = new Configuration(conf);
     for (final String propertyName : this.properties.stringPropertyNames()) {
       String propertyValue = this.properties.getProperty(propertyName);
@@ -996,6 +1093,17 @@ public class LogicalPlanConfiguration implements StreamingApplication {
         Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
         Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
         setOperatorProperties(nd, nodeConf.getProperties());
+        AttributeMap operatorAttr = dag.getMeta(nd).getAttributes();
+        for (Map.Entry<Attribute<Object>, String> e : nodeConf.attributes.entrySet()) {
+          Attribute<Object> attribute = e.getKey();
+          if (attribute.codec == null) {
+            String msg = String.format("Attribute does not support property configuration: %s %s", attribute.name, e.getValue());
+            throw new UnsupportedOperationException(msg);
+          }
+          else {
+            operatorAttr.put(e.getKey(), attribute.codec.fromString(e.getValue()));
+          }
+        }
         nodeMap.put(nodeConf, nd);
       }
     }
@@ -1040,6 +1148,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * Populate the logical plan from the streaming application definition and configuration.
    * Configuration is resolved based on application alias, if any.
+   *
    * @param app
    * @param dag
    * @param name
@@ -1049,7 +1158,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   {
     // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
     String connectAddress = conf.get(DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
-    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
+    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null ? conf.get(GATEWAY_LISTEN_ADDRESS) : connectAddress);
     app.populateDAG(dag, conf);
 
     String appAlias = getAppAlias(name);
@@ -1087,18 +1196,21 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return props;
   }
 
-  private String getSimpleName(Attribute<?> attribute) {
-    return attribute.name.substring(attribute.name.lastIndexOf('.')+1);
+  private String getSimpleName(Attribute<?> attribute)
+  {
+    return attribute.name.substring(attribute.name.lastIndexOf('.') + 1);
   }
 
   /**
    * Get the configuration opProps for the given operator.
    * These can be operator specific settings or settings from matching templates.
+   *
    * @param ow
    * @param appName
    * @return
    */
-  public Map<String, String> getProperties(OperatorMeta ow, String appName) {
+  public Map<String, String> getProperties(OperatorMeta ow, String appName)
+  {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
     List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
     return getProperties(ow, opConfs, appName);
@@ -1107,6 +1219,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   /**
    * Get the configuration opProps for the given operator.
    * These can be operator specific settings or settings from matching templates.
+   *
    * @param ow
    * @param opConfs
    * @param appName
@@ -1138,7 +1251,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return opProps;
   }
 
-  private List<TemplateConf> getDirectTemplates(List<OperatorConf> opConfs, Map<String, TemplateConf> templates) {
+  private List<TemplateConf> getDirectTemplates(List<OperatorConf> opConfs, Map<String, TemplateConf> templates)
+  {
     List<TemplateConf> refTemplates = new ArrayList<TemplateConf>();
     for (TemplateConf t : templates.values()) {
       for (OperatorConf opConf : opConfs) {
@@ -1152,26 +1266,30 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   /**
    * Produce the collections of templates that apply for the given id.
+   *
    * @param ow
    * @param appName
    * @param templates
    * @return TreeMap<Integer, TemplateConf>
    */
-  private TreeMap<Integer, TemplateConf> getMatchingTemplates(OperatorMeta ow, String appName, Map<String, TemplateConf> templates) {
+  private TreeMap<Integer, TemplateConf> getMatchingTemplates(OperatorMeta ow, String appName, Map<String, TemplateConf> templates)
+  {
     TreeMap<Integer, TemplateConf> tm = new TreeMap<Integer, TemplateConf>();
     for (TemplateConf t : templates.values()) {
       /*if (t.id == nodeConf.templateRef) {
-        // directly assigned applies last
-        tm.put(1, t);
-        continue;
-      } else*/
+       // directly assigned applies last
+       tm.put(1, t);
+       continue;
+       } else*/
       if ((t.idRegExp != null && ow.getName().matches(t.idRegExp))) {
         tm.put(1, t);
-      } else if (appName != null && t.appNameRegExp != null
-          && appName.matches(t.appNameRegExp)) {
+      }
+      else if (appName != null && t.appNameRegExp != null
+              && appName.matches(t.appNameRegExp)) {
         tm.put(2, t);
-      } else if (t.classNameRegExp != null
-          && ow.getOperator().getClass().getName().matches(t.classNameRegExp)) {
+      }
+      else if (t.classNameRegExp != null
+              && ow.getOperator().getClass().getName().matches(t.classNameRegExp)) {
         tm.put(3, t);
       }
     }
@@ -1179,7 +1297,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   /**
-   * Inject the configuration opProps into the operator instance.
+   * Inject the configuration properties into the operator instance.
+   *
    * @param operator
    * @param properties
    * @return Operator
@@ -1212,7 +1331,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param dag
    * @param applicationName
    */
-  public void setOperatorProperties(LogicalPlan dag, String applicationName) {
+  public void setOperatorProperties(LogicalPlan dag, String applicationName)
+  {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(applicationName, StramElement.APPLICATION);
     for (OperatorMeta ow : dag.getAllOperators()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
@@ -1237,15 +1357,18 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   /**
    * Set the application configuration.
+   *
    * @param dag
    * @param appName
    */
-  public void setApplicationConfiguration(final LogicalPlan dag, String appName) {
+  public void setApplicationConfiguration(final LogicalPlan dag, String appName)
+  {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
     setApplicationConfiguration(dag, appConfs);
   }
 
-  private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs) {
+  private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs)
+  {
     // Make the gateway address available as an application attribute
 //    for (Conf appConf : appConfs) {
 //      Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
@@ -1260,7 +1383,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     setAttributes(Context.DAGContext.class, appConfs, dag.getAttributes());
   }
 
-  private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName) {
+  private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName)
+  {
     for (final OperatorMeta ow : dag.getAllOperators()) {
       List<OperatorConf> opConfs = getMatchingChildConf(appConfs, ow.getName(), StramElement.OPERATOR);
 
@@ -1291,7 +1415,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
   }
 
-  private void setStreamConfiguration(LogicalPlan dag, List<AppConf> appConfs, String appAlias) {
+  private void setStreamConfiguration(LogicalPlan dag, List<AppConf> appConfs, String appAlias)
+  {
     for (StreamMeta sm : dag.getAllStreams()) {
       List<StreamConf> smConfs = getMatchingChildConf(appConfs, sm.getName(), StramElement.STREAM);
       for (StreamConf smConf : smConfs) {
@@ -1323,7 +1448,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     Attribute<Object> attr = m.get(configKey);
     if (attr == null && clazz == Context.DAGContext.class) {
       isDeprecated = true;
-      @SuppressWarnings({ "rawtypes", "unchecked" })
+      @SuppressWarnings({"rawtypes", "unchecked"})
       Attribute<Object> tmp = (Attribute)legacyKeyMap.get(configKey);
       attr = tmp;
       if (attr == null) {
@@ -1337,14 +1462,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     }
 
     if (element != StramElement.ATTR || isDeprecated) {
-      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() +  "." + getSimpleName(attr);
+      String expName = getCompleteKey(keys, 0, index) + "." + StramElement.ATTR.getValue() + "." + getSimpleName(attr);
       LOG.warn("Referencing the attribute as {} instead of {} is deprecated!", getCompleteKey(keys, 0), expName);
     }
 
     conf.setAttribute(attr, attrValue);
   }
 
-  private void setAttributes(Class<?> clazz, List<? extends Conf> confs, Attribute.AttributeMap attributeMap) {
+  private void setAttributes(Class<?> clazz, List<? extends Conf> confs, Attribute.AttributeMap attributeMap)
+  {
     Set<Attribute<Object>> processedAttributes = Sets.newHashSet();
     if (confs.size() > 0) {
       for (Conf conf : confs) {
