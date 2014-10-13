@@ -431,15 +431,10 @@ public class StramAppLauncher
     StreamingApplication app = appConfig.createApp(conf);
 
     // TODO: this code of choosing which object to call prepareDAG on is a hack and will need cleanup
-    LogicalPlanConfiguration lpc;
     if (app instanceof LogicalPlanConfiguration) {
-      lpc = (LogicalPlanConfiguration)app;
-      lpc.addFromProperties(propertiesBuilder.getProperties());
+      propertiesBuilder.addFromProperties(((LogicalPlanConfiguration)app).getProperties());
     }
-    else {
-      lpc = propertiesBuilder;
-    }
-    lpc.prepareDAG(dag, app, appConfig.getName(), conf);
+    propertiesBuilder.prepareDAG(dag, app, appConfig.getName(), conf);
 
     return dag;
   }
