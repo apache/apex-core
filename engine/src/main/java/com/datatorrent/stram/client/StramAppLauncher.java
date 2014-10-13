@@ -434,6 +434,7 @@ public class StramAppLauncher
     LogicalPlanConfiguration lpc;
     if (app instanceof LogicalPlanConfiguration) {
       lpc = (LogicalPlanConfiguration)app;
+      lpc.addFromProperties(propertiesBuilder.getProperties());
     }
     else {
       lpc = propertiesBuilder;
