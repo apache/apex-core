@@ -1603,19 +1603,23 @@ public class StreamingContainerManager implements PlanContext
           for (PTOperator operator : e.getValue()) {
             for (PTOperator.PTOutput out : operator.getOutputs()) {
               if (!out.isDownStreamInline()) {
-                // following needs to match the concat logic in StreamingContainer
-                String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
-                if (operator.getContainer().getState() == PTContainer.State.ACTIVE) {
-                  // TODO: unit test - find way to mock this when testing rest of logic
-                  if (operator.getContainer().bufferServerAddress.getPort() != 0) {
-                    BufferServerController bsc = getBufferServerClient(operator);
-                    // reset publisher (stale operator may still write data until disconnected)
-                    // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
-                    try {
-                      bsc.reset(null, sourceIdentifier, 0);
-                    }
-                    catch (Exception ex) {
-                      LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
+                for (InputPortMeta ipm : out.logicalStream.getSinks()) {
+                  OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+                  Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
+                  // following needs to match the concat logic in StreamingContainer
+                  String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
+                  if (operator.getContainer().getState() == PTContainer.State.ACTIVE) {
+                    // TODO: unit test - find way to mock this when testing rest of logic
+                    if (operator.getContainer().bufferServerAddress.getPort() != 0) {
+                      BufferServerController bsc = getBufferServerClient(operator);
+                      // reset publisher (stale operator may still write data until disconnected)
+                      // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
+                      try {
+                        bsc.reset(null, sourceIdentifier, 0);
+                      }
+                      catch (Exception ex) {
+                        LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
+                      }
                     }
                   }
                 }
