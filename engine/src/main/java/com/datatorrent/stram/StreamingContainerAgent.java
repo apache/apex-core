@@ -166,7 +166,7 @@ public class StreamingContainerAgent {
           // Build the stream codec configuration of all sinks connected to this port
           for (PTOperator.PTInput input : out.sinks) {
             // Create mappings for all non-inline operators
-              if (input.target.getContainer() != out.source.getContainer()) {
+            if (input.target.getContainer() != out.source.getContainer()) {
               InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
               OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
               Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);

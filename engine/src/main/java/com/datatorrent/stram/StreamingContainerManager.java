@@ -16,6 +16,7 @@ import javax.annotation.Nullable;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -38,14 +39,12 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
@@ -57,6 +56,7 @@ import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.Operators;
@@ -1505,15 +1505,20 @@ public class StreamingContainerManager implements PlanContext
               new Object[]{out, operator.getContainer(), operator.checkpoints});
             continue;
           }
-          // following needs to match the concat logic in StreamingContainer
-          String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
-          // delete everything from buffer server prior to new checkpoint
-          BufferServerController bsc = getBufferServerClient(operator);
-          try {
-            bsc.purge(null, sourceIdentifier, operator.checkpoints.getFirst().windowId - 1);
-          }
-          catch (RuntimeException re) {
-            LOG.warn("Failed to purge " + bsc.addr + " " + sourceIdentifier, re);
+
+          for (InputPortMeta ipm : out.logicalStream.getSinks()) {
+            OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+            Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
+            // following needs to match the concat logic in StreamingContainer
+            String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
+            // delete everything from buffer server prior to new checkpoint
+            BufferServerController bsc = getBufferServerClient(operator);
+            try {
+              bsc.purge(null, sourceIdentifier, operator.checkpoints.getFirst().windowId - 1);
+            }
+            catch (RuntimeException re) {
+              LOG.warn("Failed to purge " + bsc.addr + " " + sourceIdentifier, re);
+            }
           }
         }
       }
