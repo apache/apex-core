@@ -194,7 +194,9 @@ public class LogicalPlanConfigurationTest {
     LogicalPlanConfiguration pb = new LogicalPlanConfiguration().addFromJson(json);
 
     LogicalPlan dag = new LogicalPlan();
-    pb.populateDAG(dag, new Configuration(false));
+
+    pb.prepareDAG(dag, pb, "testLoadFromJson", new Configuration(false));
+    //pb.populateDAG(dag, new Configuration(false));
     dag.validate();
 
     assertEquals("number of operator confs", 5, dag.getAllOperators().size());
@@ -219,11 +221,14 @@ public class LogicalPlanConfigurationTest {
 
     StreamMeta input1 = dag.getStream("inputStream");
     assertNotNull(input1);
-    Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorWrapper());
+    OperatorMeta inputOperator = dag.getOperatorMeta("inputOperator");
+    Assert.assertEquals("input1 source", inputOperator, input1.getSource().getOperatorWrapper());
     Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
     for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
       targetNodes.add(targetPort.getOperatorWrapper());
     }
+    Assert.assertEquals("operator attribute " + inputOperator, 64, (int)inputOperator.getValue(OperatorContext.MEMORY_MB));
+    Assert.assertEquals("port attribute " + inputOperator, 8, (int)input1.getSource().getValue(PortContext.UNIFIER_LIMIT));
     Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
   }
 
