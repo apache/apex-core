@@ -240,7 +240,7 @@ public class TupleRecorderTest
       }
 
     };
-    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
+    Assert.assertTrue("Should get a tuple recorder within 5 seconds", StramTestSupport.awaitCompletion(c, 5000));
     TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
