@@ -170,10 +170,12 @@ public class FSPartFileCollection
 
   public boolean flushData() throws IOException
   {
-    partOutStr.hflush();
-    if (isReadyTurnoverPartFile()) {
-      turnover();
-      return true;
+    if (partOutStr != null) {
+      partOutStr.hflush();
+      if (isReadyTurnoverPartFile()) {
+        turnover();
+        return true;
+      }
     }
     return false;
   }
