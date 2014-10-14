@@ -3600,7 +3600,7 @@ public class DTCli
         length = Integer.valueOf(args[5]);
       }
       LicenseReport report = new LicenseReport(conf);
-      report.generateReport(args[1], args[2], args[3], args[4], length);
+      report.dumpReportToFile(args[1], args[2], args[3], args[4], length);
     }
   }
 
