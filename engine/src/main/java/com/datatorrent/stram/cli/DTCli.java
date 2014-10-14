@@ -3,7 +3,56 @@
  */
 package com.datatorrent.stram.cli;
 
-import com.datatorrent.api.*;
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import javax.ws.rs.core.MediaType;
+
+import jline.console.ConsoleReader;
+import jline.console.completer.*;
+import jline.console.history.FileHistory;
+import jline.console.history.History;
+import jline.console.history.MemoryHistory;
+import org.apache.commons.cli.*;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.log4j.Appender;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.tools.ant.DirectoryScanner;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
+
+import com.google.common.collect.Sets;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
+import com.datatorrent.api.Operator;
 
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
@@ -15,58 +64,21 @@ import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.license.*;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
+import com.datatorrent.stram.license.LicenseSection;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
 import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
-import com.datatorrent.stram.license.audit.LicenseAudit;
+import com.datatorrent.stram.license.audit.LicenseReport;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
-import com.datatorrent.stram.license.storage.LicenseStorage;
-import com.datatorrent.stram.plan.logical.*;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.util.*;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.sun.jersey.api.client.*;
-
-import java.io.*;
-import java.lang.management.ManagementFactory;
-import java.net.*;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
-import javax.ws.rs.core.MediaType;
-
-import jline.console.ConsoleReader;
-import jline.console.completer.*;
-import jline.console.history.*;
-import org.apache.commons.cli.*;
-import org.apache.commons.cli.Options;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.lang.mutable.MutableInt;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.yarn.api.records.*;
-import org.apache.hadoop.yarn.client.api.YarnClient;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.exceptions.YarnException;
-import org.apache.log4j.*;
-import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import sun.misc.Signal;
-import sun.misc.SignalHandler;
 
 /**
  * Provides command line interface for a streaming application on hadoop (yarn)
@@ -3580,153 +3592,15 @@ public class DTCli
 
   private class GenerateLicenseReport implements Command
   {
-    private class LicenseReport implements Comparable<LicenseReport>
-    {
-
-      public MutableInt memoryReported;
-      public String timeStamp;
-
-      public String toString(String separator)
-      {
-        return timeStamp + " " + separator + " " + memoryReported;
-      }
-
-      @Override
-      public int compareTo(LicenseReport licenseReport)
-      {
-        return this.memoryReported.compareTo(licenseReport.memoryReported);
-      }
-    }
-
-    private class LicenseReportComparator implements Comparator<LicenseReport>
-    {
-      @Override
-      public int compare(LicenseReport licenseReport, LicenseReport licenseReport2)
-      {
-        return licenseReport.memoryReported.compareTo(licenseReport2.memoryReported);
-      }
-    }
-
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      FileSystem fs = null;
-      BufferedReader bufferedReader = null;
-      Map<String, PriorityQueue<LicenseReport>> applicationMap = Maps.newHashMap();
-      LicenseReportComparator comparator = new LicenseReportComparator();
       int length = 5;
       if (args.length > 5) {
         length = Integer.valueOf(args[5]);
       }
-      PriorityQueue<LicenseReport> clusterQueue = new PriorityQueue<LicenseReport>(length, comparator);
-      LicenseReport licenseReport;
-      try {
-        fs = StramClientUtils.newFileSystemInstance(conf);
-        Path rootPath = StramClientUtils.getDTDFSRootDir(fs, conf);
-        String licenseId = args[1];
-        Path licensePath = new Path(rootPath, LicenseStorage.LICENSE_PATH + "/" + licenseId + "/" + LicenseAudit.AUDIT_FILE + args[2]);
-        FSDataInputStream inputStream = fs.open(licensePath);
-        bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        String line;
-        int usedMemory;
-        int applicationIdLength = LicenseAudit.APPLICATION_ID.length();
-        int applicationMemoryLength = LicenseAudit.APPLICATION_MEMORY.length();
-        int clusterUsedMemoryLength = LicenseAudit.CLUSTER_USED_MEMORY.length();
-        int appIdx;
-        int memoryIdx;
-        int clusterUsedMemoryIdx;
-        int clusterFreeMemoryIdx;
-
-        while ((line = bufferedReader.readLine()) != null) {
-          appIdx = line.indexOf(LicenseAudit.APPLICATION_ID);
-          if (appIdx != -1) {
-            memoryIdx = line.indexOf(LicenseAudit.APPLICATION_MEMORY);
-            String appId = line.substring(appIdx + applicationIdLength, memoryIdx).trim();
-            PriorityQueue<LicenseReport> priorityQueue = applicationMap.get(appId);
-            if (priorityQueue == null) {
-              priorityQueue = new PriorityQueue<LicenseReport>(length, comparator);
-              applicationMap.put(appId, priorityQueue);
-            }
-            usedMemory = Integer.valueOf(line.substring(memoryIdx + applicationMemoryLength).trim());
-            if (priorityQueue.size() >= length) {
-              licenseReport = priorityQueue.peek();
-              if (usedMemory > licenseReport.memoryReported.intValue()) {
-                priorityQueue.poll();
-                licenseReport.memoryReported.setValue(usedMemory);
-                licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-                priorityQueue.add(licenseReport);
-              }
-            }
-            else {
-              licenseReport = new LicenseReport();
-              licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-              licenseReport.memoryReported = new MutableInt(usedMemory);
-              priorityQueue.add(licenseReport);
-            }
-          }
-          else {
-            clusterUsedMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_USED_MEMORY);
-            if (clusterUsedMemoryIdx != -1) {
-              clusterFreeMemoryIdx = line.indexOf(LicenseAudit.CLUSTER_FREE_MEMORY);
-              usedMemory = Integer.valueOf(line.substring(clusterUsedMemoryIdx + clusterUsedMemoryLength, clusterFreeMemoryIdx).trim());
-              if (clusterQueue.size() >= length) {
-                licenseReport = clusterQueue.peek();
-                if (usedMemory > licenseReport.memoryReported.intValue()) {
-                  clusterQueue.poll();
-                  licenseReport.memoryReported.setValue(usedMemory);
-                  licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-                  clusterQueue.add(licenseReport);
-                }
-              }
-              else {
-                licenseReport = new LicenseReport();
-                licenseReport.timeStamp = line.substring(0, line.indexOf(LicenseAudit.INFO)).trim();
-                licenseReport.memoryReported = new MutableInt(usedMemory);
-                clusterQueue.add(licenseReport);
-              }
-            }
-          }
-        }
-      }
-      finally {
-        if (bufferedReader != null) {
-          bufferedReader.close();
-        }
-
-        if (fs != null) {
-          fs.close();
-        }
-      }
-      String outputFile = expandFileName(args[3], false);
-      String separator = args[4];
-
-      BufferedWriter writer = null;
-      try {
-        writer = new BufferedWriter(new FileWriter(new File(outputFile)));
-        writer.write("#ApplicationId " + separator + " Timestamp " + separator + " Used Memory(MB)");
-        writer.newLine();
-        PriorityQueue<LicenseReport> appPriorityQueue;
-        for (Map.Entry<String, PriorityQueue<LicenseReport>> entry : applicationMap.entrySet()) {
-          appPriorityQueue = entry.getValue();
-          while ((licenseReport = appPriorityQueue.poll()) != null) {
-            writer.write(entry.getKey() + " " + separator + " " + licenseReport.toString(separator));
-            writer.newLine();
-          }
-        }
-        writer.write("#Cluster Report");
-        writer.newLine();
-        writer.write("#Timestamp " + separator + " Used Memory(MB)");
-        writer.newLine();
-        while ((licenseReport = clusterQueue.poll()) != null) {
-          writer.write("" + licenseReport.toString(separator));
-          writer.newLine();
-        }
-      }
-      finally {
-        if (writer != null) {
-          writer.close();
-        }
-      }
+      LicenseReport report = new LicenseReport(conf);
+      report.generateReport(args[1], args[2], args[3], args[4], length);
     }
   }
 
