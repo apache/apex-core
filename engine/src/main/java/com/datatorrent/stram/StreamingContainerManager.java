@@ -72,6 +72,7 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>
@@ -143,6 +144,8 @@ public class StreamingContainerManager implements PlanContext
   };
 
   private FSJsonLineFile containerFile;
+  private final ConcurrentMap<Integer, FSJsonLineFile> operatorFiles = Maps.newConcurrentMap();
+
   private final long startTime = System.currentTimeMillis();
 
   private static class EndWindowStats
@@ -307,6 +310,9 @@ public class StreamingContainerManager implements PlanContext
     }
 
     IOUtils.closeQuietly(containerFile);
+    for (FSJsonLineFile operatorFile : operatorFiles.values()) {
+      IOUtils.closeQuietly(operatorFile);
+    }
   }
 
   public void subscribeToEvents(Object listener)
@@ -970,8 +976,9 @@ public class StreamingContainerManager implements PlanContext
         sca.container.bufferServerAddress = InetSocketAddress.createUnresolved(heartbeat.bufferServerHost, heartbeat.bufferServerPort);
         LOG.info("Container {} buffer server: {}", sca.container.getExternalId(), sca.container.bufferServerAddress);
       }
+      long containerStartTime = System.currentTimeMillis();
       sca.container.setState(PTContainer.State.ACTIVE);
-      sca.container.setStartedTime(System.currentTimeMillis());
+      sca.container.setStartedTime(containerStartTime);
       sca.container.setFinishedTime(-1);
       sca.jvmName = heartbeat.jvmName;
       try {
@@ -979,6 +986,23 @@ public class StreamingContainerManager implements PlanContext
       }
       catch (IOException ex) {
         LOG.warn("Cannot write to container file");
+      }
+      for (PTOperator ptOp : sca.container.getOperators()) {
+        try {
+          FSJsonLineFile operatorFile = operatorFiles.get(ptOp.getId());
+          if (operatorFile == null) {
+            operatorFiles.putIfAbsent(ptOp.getId(), new FSJsonLineFile(new Path(this.vars.appPath + "/operators/" + ptOp.getId()), new FsPermission((short)0644)));
+            operatorFile = operatorFiles.get(ptOp.getId());
+          }
+          JSONObject operatorInfo = new JSONObject();
+          operatorInfo.put("name", ptOp.getName());
+          operatorInfo.put("container", sca.container.getExternalId());
+          operatorInfo.put("startTime", containerStartTime);
+          operatorFile.append(operatorInfo);
+        }
+        catch (Exception ex) {
+          LOG.warn("Cannot write to operator file: ", ex);
+        }
       }
     }
 
