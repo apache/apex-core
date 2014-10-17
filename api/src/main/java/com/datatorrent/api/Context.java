@@ -18,7 +18,6 @@ package com.datatorrent.api;
 import java.util.Collection;
 import java.util.Map;
 
-import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.*;
@@ -90,6 +89,13 @@ public interface Context
      * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
      */
     Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
+
+    /**
+     * Attribute for output port to specify that the last unifier always be a single unifier. This is useful in MxN
+     * partitioning case when there is a need to unify all the outputs of the M stage into a single operator before
+     * sending the results to the N stage.
+     */
+    Attribute<Boolean> UNIFIER_LAST_SINGLE = new Attribute<Boolean>(Boolean.FALSE);
     /**
      * Whether or not to auto record the tuples
      */
