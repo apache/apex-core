@@ -383,7 +383,13 @@ public class OperatorDiscoverer
 
         if (oci != null) {
           if (oci.comment != null) {
-            String[] descriptions = oci.comment.split("\\.\\s", 2);
+            String[] descriptions;
+            // first look for a <p> tag
+            descriptions = oci.comment.split("<p>", 2);
+            if (descriptions.length == 0) {
+              // if no <p> tag, then look for a blank line
+              descriptions = oci.comment.split("\n\n", 2);
+            }
             if (descriptions.length > 0) {
               response.put("shortDesc", descriptions[0]);
             }
