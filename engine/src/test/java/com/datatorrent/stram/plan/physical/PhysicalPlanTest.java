@@ -976,11 +976,12 @@ public class PhysicalPlanTest
       Assert.assertTrue("" + pUnifier, pUnifier.isUnifier());
       // input from each upstream partition
       Assert.assertEquals("" + pUnifier, 2, pUnifier.getInputs().size());
-      for (int inputIndex = 0; i < pUnifier.getInputs().size(); i++) {
+      int numberPartitionKeys = (i == 2) ? 2 : 1;
+      for (int inputIndex = 0; inputIndex < pUnifier.getInputs().size(); inputIndex++) {
         PTInput input = pUnifier.getInputs().get(inputIndex);
         Assert.assertEquals("" + pUnifier, "outputPort", input.source.portName);
         Assert.assertEquals("" + pUnifier, inputOperators.get(inputIndex), input.source.source);
-        Assert.assertEquals("partition keys " + input.partitions, 1, input.partitions.partitions.size());
+        Assert.assertEquals("partition keys " + input.partitions, numberPartitionKeys, input.partitions.partitions.size());
       }
       // output to single downstream partition
       Assert.assertEquals("" + pUnifier, 1, pUnifier.getOutputs().size());
@@ -1380,13 +1381,13 @@ public class PhysicalPlanTest
       Assert.assertTrue(o1Partitions.contains(container.getOperators().get(0)));
     }
 
-    for (int i=5; i<6; i++) {
+    for (int i=4; i<6; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
       Assert.assertTrue(o1Unifiers.contains(container.getOperators().get(0)));
     }
 
-    for (int i=6; i<8; i++) {
+    for (int i=6; i<9; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 2, container.getOperators().size());
       Assert.assertTrue(o2Partitions.contains(container.getOperators().get(0)));
