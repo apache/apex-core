@@ -5,7 +5,17 @@
       "class": "com.datatorrent.stram.engine.TestGeneratorInputOperator",
       "properties": {
         "myConfigProperty": "myConfigPropertyValue"
-      }
+      },
+      "attributes": {
+        "MEMORY_MB" : 64
+      },
+      "ports" : [
+        { "name": "outport",
+          "attributes": {
+            "UNIFIER_LIMIT": 8
+          }
+        }
+      ]
     },
     {
       "name": "operator1",

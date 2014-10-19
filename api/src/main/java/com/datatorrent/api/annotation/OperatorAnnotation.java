@@ -11,7 +11,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation to specify characteristics of an operator.<p>
+ * Annotation to specify characteristics of an operator.
  *
  * @since 0.3.5
  */
@@ -26,4 +26,5 @@ public @interface OperatorAnnotation
    * @return Whether operator can be partitioned or not
    */
   public boolean partitionable() default true;
+
 }
