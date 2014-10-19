@@ -217,7 +217,7 @@ public class OperatorDiscoverer
           InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
           if (inputAnnotation != null) {
             JSONObject inputPort = new JSONObject();
-            inputPort.put("name", inputAnnotation.name());
+            inputPort.put("name", field.getName());
             inputPort.put("optional", inputAnnotation.optional());
             inputPorts.put(inputPort);
             continue;
@@ -232,7 +232,7 @@ public class OperatorDiscoverer
           OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
           if (outputAnnotation != null) {
             JSONObject outputPort = new JSONObject();
-            outputPort.put("name", outputAnnotation.name());
+            outputPort.put("name", field.getName());
             outputPort.put("optional", outputAnnotation.optional());
             outputPort.put("error", outputAnnotation.error());
             outputPorts.put(outputPort);

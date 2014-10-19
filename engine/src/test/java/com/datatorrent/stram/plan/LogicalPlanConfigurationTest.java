@@ -466,10 +466,10 @@ public class LogicalPlanConfigurationTest {
     Properties props = new Properties();
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
-    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
-    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.inport1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.outport1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
-    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.inport2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
     dagBuilder.addFromProperties(props);

@@ -180,11 +180,11 @@ public class StramMiniClusterTest
 
     dagProps.put(StreamingApplication.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outport");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.inport1");
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.output1");
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.outport1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.inport1");
 
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
     dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.MEMORY_MB.getName(), "512");

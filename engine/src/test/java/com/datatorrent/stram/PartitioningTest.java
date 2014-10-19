@@ -82,7 +82,7 @@ public class PartitioningTest
       }
 
     };
-    @OutputPortFieldAnnotation(name = "output", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
   }
 

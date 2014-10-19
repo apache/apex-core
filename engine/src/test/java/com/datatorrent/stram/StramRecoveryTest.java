@@ -197,9 +197,9 @@ public class StramRecoveryTest
     cor.setOperatorName("o2");
     CreateStreamRequest csr = new CreateStreamRequest();
     csr.setSourceOperatorName("o1");
-    csr.setSourceOperatorPortName("outputPort");
+    csr.setSourceOperatorPortName("outport");
     csr.setSinkOperatorName("o2");
-    csr.setSinkOperatorPortName("input1");
+    csr.setSinkOperatorPortName("inport1");
     FutureTask<?> lpmf = scm.logicalPlanModification(Lists.newArrayList(cor, csr));
     while (!lpmf.isDone()) {
       scm.monitorHeartbeat();

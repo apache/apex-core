@@ -75,7 +75,7 @@ public class CheckpointTest
 
   private static class MockInputOperator extends BaseOperator implements InputOperator
   {
-    @OutputPortFieldAnnotation(name = "outputPort", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
     private transient int windowCount;
 

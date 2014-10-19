@@ -93,15 +93,12 @@ public class LogicalPlanTest {
   }
 
   public static class ValidationOperator extends BaseOperator {
-    @OutputPortFieldAnnotation(name="goodOutputPort")
     public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>();
 
-    @OutputPortFieldAnnotation(name="badOutputPort")
     public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>();
   }
 
   public static class CounterOperator extends BaseOperator {
-    @InputPortFieldAnnotation(name="countInputPort")
     final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>() {
       @Override
       final public void process(Object payload) {
@@ -322,7 +319,7 @@ public class LogicalPlanTest {
   @OperatorAnnotation(partitionable = false)
   public static class TestOperatorAnnotationOperator extends BaseOperator {
 
-    @InputPortFieldAnnotation(name = "input1", optional = true)
+    @InputPortFieldAnnotation( optional = true)
     final public transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>() {
       @Override
       public void process(Object tuple) {
@@ -396,7 +393,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise port not connected for input1.outputPort");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Output port connection required: input1.outputPort", e.getMessage());
+      Assert.assertEquals("", "Output port connection required: input1.outport", e.getMessage());
     }
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
@@ -505,10 +502,9 @@ public class LogicalPlanTest {
   }
 
   private class TestAnnotationsOperator extends BaseOperator {
-    @OutputPortFieldAnnotation(name="oport1")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
-    @OutputPortFieldAnnotation(name="oport2", optional=false)
+    @OutputPortFieldAnnotation( optional=false)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
   }
 
@@ -519,9 +515,9 @@ public class LogicalPlanTest {
 
   private class TestAnnotationsOperator3 extends BaseOperator {
     // multiple ports w/o annotation, one of them must be connected
-    @OutputPortFieldAnnotation(name="oport1", optional=true)
+    @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
-    @OutputPortFieldAnnotation(name="oport2", optional=true)
+    @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
   }
 
@@ -534,7 +530,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise: port connection required");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Output port connection required: testAnnotationsOperator.oport2", e.getMessage());
+      Assert.assertEquals("", "Output port connection required: testAnnotationsOperator.outport2", e.getMessage());
     }
 
     TestOutputOperator o2 = dag.addOperator("sink", new TestOutputOperator());
@@ -559,7 +555,6 @@ public class LogicalPlanTest {
   }
 
   public class DuplicatePortOperator extends GenericTestOperator {
-    @OutputPortFieldAnnotation(name=OPORT1)
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
   }
@@ -611,7 +606,7 @@ public class LogicalPlanTest {
       }
     }
 
-    @InputPortFieldAnnotation(name="", optional=true)
+    @InputPortFieldAnnotation( optional=true)
     final public InputPort<Object> inport1 = new SerializableInputPort<Object>() {
       private static final long serialVersionUID = 1L;
 
@@ -680,7 +675,7 @@ public class LogicalPlanTest {
       }
     };
 
-    @OutputPortFieldAnnotation(name="outport", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public transient final DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
   }
 

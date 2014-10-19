@@ -128,7 +128,7 @@ public class LogicalPlan implements Serializable, DAG
 
     public String getPortName()
     {
-      return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
+      return fieldName;
     }
 
     public InputPort<?> getPortObject() {
@@ -190,7 +190,7 @@ public class LogicalPlan implements Serializable, DAG
 
     public String getPortName()
     {
-      return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
+      return fieldName;
     }
 
     public OutputPort<?> getPortObject() {
