@@ -50,6 +50,18 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <executions>
           <execution>
+            <id>copy-dependencies</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeArtifactIds>commons-cli,commons-codec,commons-io,hadoop-common,jettison,log4j,slf4j-api,slf4j-log4j12</includeArtifactIds>
+              <outputDirectory>target/deps</outputDirectory>
+              <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
+          <execution>
             <id>create-client-mvn-generated-classpath</id>
             <phase>generate-resources</phase>
             <goals>
@@ -125,6 +137,29 @@
             <argument>${project.build.directory}/classes/com/datatorrent/stram/license/default_license</argument>
           </arguments>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>app-package-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <finalName>License-${project.version}</finalName>
+              <appendAssemblyId>false</appendAssemblyId>
+              <descriptors>
+                <descriptor>src/assemble/licensePackage.xml</descriptor>
+              </descriptors>
+              <archiverConfig>
+                <defaultDirectoryMode>0755</defaultDirectoryMode>
+              </archiverConfig>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

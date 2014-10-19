@@ -16,6 +16,7 @@ import javax.annotation.Nullable;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -38,14 +39,12 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.RecoverableOperation;
@@ -57,6 +56,7 @@ import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.Operators;
@@ -72,6 +72,7 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>
@@ -143,6 +144,8 @@ public class StreamingContainerManager implements PlanContext
   };
 
   private FSJsonLineFile containerFile;
+  private final ConcurrentMap<Integer, FSJsonLineFile> operatorFiles = Maps.newConcurrentMap();
+
   private final long startTime = System.currentTimeMillis();
 
   private static class EndWindowStats
@@ -307,6 +310,9 @@ public class StreamingContainerManager implements PlanContext
     }
 
     IOUtils.closeQuietly(containerFile);
+    for (FSJsonLineFile operatorFile : operatorFiles.values()) {
+      IOUtils.closeQuietly(operatorFile);
+    }
   }
 
   public void subscribeToEvents(Object listener)
@@ -970,8 +976,9 @@ public class StreamingContainerManager implements PlanContext
         sca.container.bufferServerAddress = InetSocketAddress.createUnresolved(heartbeat.bufferServerHost, heartbeat.bufferServerPort);
         LOG.info("Container {} buffer server: {}", sca.container.getExternalId(), sca.container.bufferServerAddress);
       }
+      long containerStartTime = System.currentTimeMillis();
       sca.container.setState(PTContainer.State.ACTIVE);
-      sca.container.setStartedTime(System.currentTimeMillis());
+      sca.container.setStartedTime(containerStartTime);
       sca.container.setFinishedTime(-1);
       sca.jvmName = heartbeat.jvmName;
       try {
@@ -979,6 +986,23 @@ public class StreamingContainerManager implements PlanContext
       }
       catch (IOException ex) {
         LOG.warn("Cannot write to container file");
+      }
+      for (PTOperator ptOp : sca.container.getOperators()) {
+        try {
+          FSJsonLineFile operatorFile = operatorFiles.get(ptOp.getId());
+          if (operatorFile == null) {
+            operatorFiles.putIfAbsent(ptOp.getId(), new FSJsonLineFile(new Path(this.vars.appPath + "/operators/" + ptOp.getId()), new FsPermission((short)0644)));
+            operatorFile = operatorFiles.get(ptOp.getId());
+          }
+          JSONObject operatorInfo = new JSONObject();
+          operatorInfo.put("name", ptOp.getName());
+          operatorInfo.put("container", sca.container.getExternalId());
+          operatorInfo.put("startTime", containerStartTime);
+          operatorFile.append(operatorInfo);
+        }
+        catch (Exception ex) {
+          LOG.warn("Cannot write to operator file: ", ex);
+        }
       }
     }
 
@@ -1505,15 +1529,20 @@ public class StreamingContainerManager implements PlanContext
               new Object[]{out, operator.getContainer(), operator.checkpoints});
             continue;
           }
-          // following needs to match the concat logic in StreamingContainer
-          String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
-          // delete everything from buffer server prior to new checkpoint
-          BufferServerController bsc = getBufferServerClient(operator);
-          try {
-            bsc.purge(null, sourceIdentifier, operator.checkpoints.getFirst().windowId - 1);
-          }
-          catch (RuntimeException re) {
-            LOG.warn("Failed to purge " + bsc.addr + " " + sourceIdentifier, re);
+
+          for (InputPortMeta ipm : out.logicalStream.getSinks()) {
+            OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+            Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
+            // following needs to match the concat logic in StreamingContainer
+            String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
+            // delete everything from buffer server prior to new checkpoint
+            BufferServerController bsc = getBufferServerClient(operator);
+            try {
+              bsc.purge(null, sourceIdentifier, operator.checkpoints.getFirst().windowId - 1);
+            }
+            catch (RuntimeException re) {
+              LOG.warn("Failed to purge " + bsc.addr + " " + sourceIdentifier, re);
+            }
           }
         }
       }
@@ -1598,19 +1627,23 @@ public class StreamingContainerManager implements PlanContext
           for (PTOperator operator : e.getValue()) {
             for (PTOperator.PTOutput out : operator.getOutputs()) {
               if (!out.isDownStreamInline()) {
-                // following needs to match the concat logic in StreamingContainer
-                String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName);
-                if (operator.getContainer().getState() == PTContainer.State.ACTIVE) {
-                  // TODO: unit test - find way to mock this when testing rest of logic
-                  if (operator.getContainer().bufferServerAddress.getPort() != 0) {
-                    BufferServerController bsc = getBufferServerClient(operator);
-                    // reset publisher (stale operator may still write data until disconnected)
-                    // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
-                    try {
-                      bsc.reset(null, sourceIdentifier, 0);
-                    }
-                    catch (Exception ex) {
-                      LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
+                for (InputPortMeta ipm : out.logicalStream.getSinks()) {
+                  OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+                  Integer codecId = plan.getStreamCodecIdentifier(streamCodecInfo);
+                  // following needs to match the concat logic in StreamingContainer
+                  String sourceIdentifier = Integer.toString(operator.getId()).concat(Component.CONCAT_SEPARATOR).concat(out.portName).concat(Component.CONCAT_SEPARATOR).concat(codecId.toString());
+                  if (operator.getContainer().getState() == PTContainer.State.ACTIVE) {
+                    // TODO: unit test - find way to mock this when testing rest of logic
+                    if (operator.getContainer().bufferServerAddress.getPort() != 0) {
+                      BufferServerController bsc = getBufferServerClient(operator);
+                      // reset publisher (stale operator may still write data until disconnected)
+                      // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
+                      try {
+                        bsc.reset(null, sourceIdentifier, 0);
+                      }
+                      catch (Exception ex) {
+                        LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
+                      }
                     }
                   }
                 }

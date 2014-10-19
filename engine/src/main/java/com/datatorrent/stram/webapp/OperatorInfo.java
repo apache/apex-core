@@ -57,8 +57,6 @@ public class OperatorInfo
   public double cpuPercentageMA;
   @RecordField(type = "stats")
   public long latencyMA;
-  @RecordField(type = "stats")
-  public CheckpointInfo checkpointInfo;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
