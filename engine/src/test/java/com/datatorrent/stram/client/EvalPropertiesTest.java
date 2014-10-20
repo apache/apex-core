@@ -29,5 +29,8 @@ public class EvalPropertiesTest
 
     Assert.assertEquals("Product result is " + (123 * 456) + "...", conf.get("product.result"));
     Assert.assertEquals("Concat result is foobar ... 123 blah", conf.get("concat.result"));
+    Assert.assertEquals("123", conf.get("a.b.c"));
+    Assert.assertEquals("456", conf.get("d.e.f"));
+    Assert.assertEquals("foobar", conf.get("x.y.z"));
   }
 }
