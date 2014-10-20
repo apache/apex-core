@@ -334,18 +334,9 @@ public class OperatorDiscoverer
       });
       try {
         for (Field field : fields) {
-          InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
-          if (inputAnnotation != null) {
+          if (InputPort.class.isAssignableFrom(field.getType())) {
             JSONObject inputPort = new JSONObject();
             inputPort.put("name", field.getName());
-            inputPort.put("optional", inputAnnotation.optional());
-            inputPorts.put(inputPort);
-            continue;
-          }
-          else if (InputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", field.getName());
-            inputPort.put("optional", inputAnnotation == null ? false : inputAnnotation.optional()); // input port that is not annotated is default to be not optional
             inputPort.put("tupleType", LogicalPlan.getPortType(field));
 
             for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
@@ -358,24 +349,22 @@ public class OperatorDiscoverer
                 }
               }
             }
+
+            InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
+            if (inputAnnotation != null) {
+              inputPort.put("optional", inputAnnotation.optional());
+            }
+            else {
+              inputPort.put("optional", false); // input port that is not annotated is default to be not optional
+            }
+
             inputPorts.put(inputPort);
-            continue;
-          }
-          OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
-          if (outputAnnotation != null) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", field.getName());
-            outputPort.put("optional", outputAnnotation.optional());
-            outputPort.put("error", outputAnnotation.error());
-            outputPorts.put(outputPort);
-            //continue;
           }
           else if (OutputPort.class.isAssignableFrom(field.getType())) {
             JSONObject outputPort = new JSONObject();
             outputPort.put("name", field.getName());
-            outputPort.put("optional", outputAnnotation == null ? true : outputAnnotation.optional()); // output port that is not annotated is default to be optional
-            outputPort.put("error", outputAnnotation == null ? false : outputAnnotation.error());
             outputPort.put("tupleType", LogicalPlan.getPortType(field));
+
             for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
               OperatorClassInfo oci = classInfo.get(c.getName());
               if (oci != null) {
@@ -386,6 +375,17 @@ public class OperatorDiscoverer
                 }
               }
             }
+
+            OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
+            if (outputAnnotation != null) {
+              outputPort.put("optional", outputAnnotation.optional());
+              outputPort.put("error", outputAnnotation.error());
+            }
+            else {
+              outputPort.put("optional", true); // output port that is not annotated is default to be optional
+              outputPort.put("error", false);
+            }
+
             outputPorts.put(outputPort);
           }
         }
