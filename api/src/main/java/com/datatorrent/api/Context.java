@@ -18,7 +18,6 @@ package com.datatorrent.api;
 import java.util.Collection;
 import java.util.Map;
 
-import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.*;
