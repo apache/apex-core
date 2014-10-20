@@ -418,6 +418,11 @@
       <version>1.8.3</version>
       <type>jar</type>
     </dependency>
+    <dependency>
+      <groupId>org.mozilla</groupId>
+      <artifactId>rhino</artifactId>
+      <version>1.7R4</version>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>

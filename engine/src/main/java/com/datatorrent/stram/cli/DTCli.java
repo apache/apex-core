@@ -3885,6 +3885,9 @@ public class DTCli
             requiredProperties.remove(entry.getKey());
           }
         }
+
+        StramClientUtils.evalProperties(launchProperties);
+
         File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
         launchProperties.writeToFile(launchPropertiesFile, "");
         launchArgs.add("-conf");
