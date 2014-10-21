@@ -598,7 +598,74 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/{portName}/attributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPorts(@PathParam("operatorName") String operatorName)
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+    JSONObject result = new JSONObject();
+    JSONArray ports = new JSONArray();
+    try {
+      for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
+        JSONObject port = new JSONObject();
+        port.put("name", inputPort.getPortName());
+        port.put("type", "input");
+        ports.put(port);
+      }
+      for (LogicalPlan.OutputPortMeta outputPort : logicalOperator.getOutputStreams().keySet()) {
+        JSONObject port = new JSONObject();
+        port.put("name", outputPort.getPortName());
+        port.put("type", "output");
+        ports.put(port);
+      }
+      result.put("ports", ports);
+    }
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    return result;
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports/{portName}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPort(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName)
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+    JSONObject result = new JSONObject();
+    JSONArray ports = new JSONArray();
+    try {
+      for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
+        if (portName.equals(portName)) {
+          JSONObject port = new JSONObject();
+          port.put("name", inputPort.getPortName());
+          port.put("type", "input");
+          return port;
+        }
+      }
+      for (LogicalPlan.OutputPortMeta outputPort : logicalOperator.getOutputStreams().keySet()) {
+        if (portName.equals(portName)) {
+          JSONObject port = new JSONObject();
+          port.put("name", outputPort.getPortName());
+          port.put("type", "output");
+          return port;
+        }
+      }
+    }
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    throw new NotFoundException();
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports/{portName}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
