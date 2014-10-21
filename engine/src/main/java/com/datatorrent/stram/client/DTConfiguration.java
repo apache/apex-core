@@ -168,18 +168,18 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
       LOG.warn("Name element not found, ignoring property entry");
       return;
     }
-    String name = nodeList.item(0).getTextContent();
+    String name = nodeList.item(0).getTextContent().trim();
     ValueEntry valueEntry = new ValueEntry();
     nodeList = propertyNode.getElementsByTagName("value");
     if (nodeList.getLength() == 0) {
       valueEntry.value = null;
     }
     else {
-      valueEntry.value = nodeList.item(0).getTextContent();
+      valueEntry.value = nodeList.item(0).getTextContent().trim();
     }
     nodeList = propertyNode.getElementsByTagName("description");
     if (nodeList.getLength() > 0) {
-      valueEntry.description = nodeList.item(0).getTextContent();
+      valueEntry.description = nodeList.item(0).getTextContent().trim();
     }
     nodeList = propertyNode.getElementsByTagName("final");
     if (nodeList.getLength() > 0) {
