@@ -320,7 +320,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   /**
-   * Representation of streams in the logical layer. Instances are created through {@link LogicalPlan.addStream}.
+   * Representation of streams in the logical layer. Instances are created through {@link LogicalPlan#addStream}.
    */
   public final class StreamMeta implements DAG.StreamMeta, Serializable
   {
@@ -1011,6 +1011,16 @@ public class LogicalPlan implements Serializable, DAG
             throw new ValidationException("Operator " + n.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!");
           }
         }
+
+        //If operator can not be check-pointed in middle of application window then the checkpoint window count should be
+        // a multiple of application window count
+        if (!n.operatorAnnotation.checkpointableWithinAppWindow()) {
+          if (n.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT) % n.getValue(OperatorContext.APPLICATION_WINDOW_COUNT) != 0) {
+            throw new ValidationException("Operator " + n.getName() + " cannot be check-pointed between an application window " +
+              "but the checkpoint-window-count " + n.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT) +
+              " is not a multiple application-window-count " + n.getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
+          }
+        }
       }
 
       // check that non-optional ports are connected
@@ -1167,7 +1177,7 @@ public class LogicalPlan implements Serializable, DAG
    * Check for cycles in the graph reachable from start node n. This is done by
    * attempting to find strongly connected components.
    *
-   * @see http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm
+   * @see <a href="http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm">http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm</a>
    *
    * @param om
    * @param cycles

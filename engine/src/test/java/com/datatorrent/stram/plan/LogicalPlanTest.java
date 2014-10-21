@@ -733,4 +733,51 @@ public class LogicalPlanTest {
   }
   */
 
+  @Test
+  public void testCheckpointableWithinAppWindowAnnotation()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
+    dag.setAttribute(x, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setAttribute(x, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.validate();
+
+    CheckpointableWithinAppWindowOperator y = dag.addOperator("y", new CheckpointableWithinAppWindowOperator());
+    dag.setAttribute(y, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setAttribute(y, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.validate();
+
+    NotCheckpointableWithinAppWindowOperator z = dag.addOperator("z", new NotCheckpointableWithinAppWindowOperator());
+    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setAttribute(z, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    try {
+      dag.validate();
+      Assert.fail("should fail because chekpoint window count is not a factor of application window count");
+    }
+    catch (ValidationException e) {
+      // expected
+    }
+
+    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 30);
+    dag.validate();
+
+    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 45);
+    try {
+      dag.validate();
+      Assert.fail("should fail because chekpoint window count is not a factor of application window count");
+    }
+    catch (ValidationException e) {
+      // expected
+    }
+  }
+
+  @OperatorAnnotation(checkpointableWithinAppWindow = true)
+  class CheckpointableWithinAppWindowOperator extends GenericTestOperator
+  {
+  }
+
+  @OperatorAnnotation(checkpointableWithinAppWindow = false)
+  class NotCheckpointableWithinAppWindowOperator extends GenericTestOperator
+  {
+  }
 }
