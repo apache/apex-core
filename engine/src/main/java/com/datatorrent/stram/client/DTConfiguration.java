@@ -251,6 +251,21 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     map.remove(key);
   }
 
+  public ValueEntry setInternal(String key, String value) 
+  {
+    ValueEntry valueEntry;
+    if (map.containsKey(key)) {
+      valueEntry = map.get(key);
+      valueEntry.value = value;
+    }
+    else {
+      valueEntry = new ValueEntry();
+      valueEntry.scope = isLocalKey(key) ? Scope.LOCAL : Scope.TRANSIENT;
+      map.put(key, valueEntry);
+    }
+    return valueEntry;
+  }
+
   public ValueEntry set(String key, String value, Scope scope, String description) throws ConfigException
   {
     ValueEntry valueEntry;

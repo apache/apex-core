@@ -33,4 +33,19 @@ public class EvalPropertiesTest
     Assert.assertEquals("456", conf.get("d.e.f"));
     Assert.assertEquals("foobar", conf.get("x.y.z"));
   }
+
+  @Test
+  public void testVariableSubstitution() throws Exception
+  {
+    DTConfiguration conf = new DTConfiguration();
+    conf.set("a.b.c", "123", DTConfiguration.Scope.TRANSIENT, null);
+    conf.set("x.y.z", "foobar", DTConfiguration.Scope.TRANSIENT, null);
+
+    conf.set("var.result", "1111 ${a.b.c} xxx ${x.y.z} yyy", DTConfiguration.Scope.TRANSIENT, null);
+
+    StramClientUtils.evalProperties(conf);
+
+    Assert.assertEquals("1111 123 xxx foobar yyy", conf.get("var.result"));
+
+  }
 }

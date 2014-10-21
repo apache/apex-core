@@ -623,6 +623,18 @@ public class StramClientUtils
 
   public static void evalProperties(DTConfiguration launchProperties)
   {
+    // Using the hadoop configuration to get the values after variable substitution.
+
+    Configuration hadoopConfig = new Configuration(false);
+
+    for (Map.Entry<String, String> entry : launchProperties) {
+      hadoopConfig.set(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, String> entry : hadoopConfig) {
+      // cannot use entry.getValue() because it won't perform variable substitution
+      launchProperties.setInternal(entry.getKey(), hadoopConfig.get(entry.getKey()));
+    }
+
     Pattern pattern = Pattern.compile("\\{% (.+?) %\\}");
 
     ScriptEngineManager manager = new ScriptEngineManager();
