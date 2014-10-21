@@ -780,4 +780,62 @@ public class LogicalPlanTest {
   class NotCheckpointableWithinAppWindowOperator extends GenericTestOperator
   {
   }
+
+  /*
+  These were tests for operator semantics that verified if an operator class implements InputOperator then the same class should not declare input ports.
+  This would be done later when we are able to verify user code at compile-time.
+
+    validation()
+  {
+    if (n.getOperator() instanceof InputOperator) {
+      try {
+        for (Class<?> clazz : n.getOperator().getClass().getInterfaces()) {
+          if (clazz.getName().equals(InputOperator.class.getName())) {
+            for (Field field : n.getOperator().getClass().getDeclaredFields()) {
+              field.setAccessible(true);
+              Object declaredObject = field.get(n.getOperator());
+              if (declaredObject instanceof InputPort) {
+                throw new ValidationException("Operator class implements InputOperator and also declares input ports: " + n.name);
+              }
+            }
+            break;
+          }
+        }
+      }
+      catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+  @Test
+  public void testInvalidInputOperatorDeclaration()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator.InvalidInputOperator inputOperator = dag.addOperator("input", new TestGeneratorInputOperator.InvalidInputOperator());
+    GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
+
+    dag.addStream("stream1", inputOperator.outport, operator2.inport1);
+
+    try {
+      dag.validate();
+      fail("validation should fail");
+    }
+    catch (ValidationException e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testValidInputOperatorDeclaration()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator.ValidGenericOperator operator1 = dag.addOperator("input", new TestGeneratorInputOperator.ValidGenericOperator());
+    GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
+
+    dag.addStream("stream1", operator1.outport, operator2.inport1);
+    dag.validate();
+  }
+  */
 }

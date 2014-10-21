@@ -25,6 +25,7 @@ import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -616,4 +617,59 @@ public class StreamingContainerManagerTest {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
+  @Test
+  public void testValidGenericOperatorDeployInfoType()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    TestGeneratorInputOperator.ValidGenericOperator o2 = dag.addOperator("o2", TestGeneratorInputOperator.ValidGenericOperator.class);
+
+    dag.addStream("stream1", o1.outport1, o2.input);
+
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(scm, "container" + (i + 1));
+    }
+    OperatorMeta o2Meta = dag.getMeta(o2);
+    PTOperator o2Physical = physicalPlan.getOperators(o2Meta).get(0);
+
+    String containerId = o2Physical.getContainer().getExternalId();
+
+    OperatorDeployInfo o1DeployInfo = getDeployInfo(scm.getContainerAgent(containerId)).get(0);
+    Assert.assertEquals("type " + o1DeployInfo, OperatorDeployInfo.OperatorType.GENERIC, o1DeployInfo.type);
+  }
+
+  @Test
+  public void testValidInputOperatorDeployInfoType()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    TestGeneratorInputOperator.ValidInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.ValidInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+
+    dag.addStream("stream1", o1.outport, o2.inport1);
+
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(scm, "container" + (i + 1));
+    }
+    OperatorMeta o1Meta = dag.getMeta(o1);
+    PTOperator o1Physical = physicalPlan.getOperators(o1Meta).get(0);
+
+    String containerId = o1Physical.getContainer().getExternalId();
+
+    OperatorDeployInfo o1DeployInfo = getDeployInfo(scm.getContainerAgent(containerId)).get(0);
+    Assert.assertEquals("type " + o1DeployInfo, OperatorDeployInfo.OperatorType.INPUT, o1DeployInfo.type);
+  }
 }

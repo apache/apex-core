@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
@@ -114,6 +115,32 @@ public class TestGeneratorInputOperator implements InputOperator
 
   @Override
   public void teardown()
+  {
+  }
+
+  public static class InvalidInputOperator extends TestGeneratorInputOperator implements InputOperator
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+  }
+
+  public static class ValidGenericOperator extends TestGeneratorInputOperator
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+  }
+
+  public static class ValidInputOperator extends ValidGenericOperator implements InputOperator
   {
   }
 
