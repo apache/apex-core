@@ -670,13 +670,7 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorName, portName).entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
-      }
-    }
-    return new JSONObject(map);
+    return new JSONObject(dagManager.getPortAttributes(operatorName, portName));
   }
 
   @GET
