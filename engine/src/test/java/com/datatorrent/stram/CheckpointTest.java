@@ -12,9 +12,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.junit.*;
-import org.junit.*;
-import org.junit.Assert;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
