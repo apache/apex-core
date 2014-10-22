@@ -60,6 +60,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.plan.physical.*;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -2182,16 +2183,16 @@ public class StreamingContainerManager implements PlanContext
 
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(logicalOperator.getOperator(), portMap);
-    InputPort<?> inputPort = portMap.inputPorts.get(portName).component;
+    PortContextPair<InputPort<?>> inputPort = portMap.inputPorts.get(portName);
     if (inputPort != null) {
-      return logicalOperator.getMeta(inputPort).getAttributes().clone();
+      return logicalOperator.getMeta(inputPort.component).getAttributes().clone();
     }
     else {
-      OutputPort<?> outputPort = portMap.outputPorts.get(portName).component;
+      PortContextPair<OutputPort<?>> outputPort = portMap.outputPorts.get(portName);
       if (outputPort == null) {
         throw new IllegalArgumentException("Invalid port name " + portName);
       }
-      return logicalOperator.getMeta(outputPort).getAttributes().clone();
+      return logicalOperator.getMeta(outputPort.component).getAttributes().clone();
     }
   }
 
