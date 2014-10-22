@@ -11,7 +11,7 @@ import java.util.*;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import junit.framework.*;
+import org.junit.*;
 import org.junit.*;
 import org.junit.Assert;
 import org.junit.Test;
