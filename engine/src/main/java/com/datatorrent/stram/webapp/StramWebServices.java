@@ -98,7 +98,7 @@ public class StramWebServices
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
 
-  private OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -305,7 +305,6 @@ public class StramWebServices
     try {
       Class<?> clazz = Class.forName(className);
       if (Operator.class.isAssignableFrom(clazz)) {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
         return operatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
@@ -638,8 +637,6 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    JSONObject result = new JSONObject();
-    JSONArray ports = new JSONArray();
     try {
       for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
         if (portName.equals(portName)) {
