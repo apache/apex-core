@@ -25,10 +25,10 @@ import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.stram.util.FSUtil;
 public class FSStorageAgent implements StorageAgent, Serializable
 {
-  private static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
+  protected static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
-  private final transient FileSystem fs;
-  private static final transient Kryo kryo;
+  protected final transient FileSystem fs;
+  protected static final transient Kryo kryo;
 
   static {
     kryo = new Kryo();
