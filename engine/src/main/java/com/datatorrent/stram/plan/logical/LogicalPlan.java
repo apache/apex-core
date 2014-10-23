@@ -12,7 +12,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
-import com.datatorrent.stram.FSStorageAgent;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.google.common.collect.Sets;
 import java.io.*;
 import java.lang.reflect.*;

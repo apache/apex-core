@@ -34,6 +34,8 @@ import org.apache.hadoop.test.MockitoUtil;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;

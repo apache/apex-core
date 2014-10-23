@@ -1,5 +1,6 @@
 package com.datatorrent.stram;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.File;
 import java.io.IOException;

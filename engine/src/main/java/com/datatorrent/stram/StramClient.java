@@ -6,6 +6,7 @@ package com.datatorrent.stram;
 
 import com.datatorrent.api.Context.OperatorContext;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;

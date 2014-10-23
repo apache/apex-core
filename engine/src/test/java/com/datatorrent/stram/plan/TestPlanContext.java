@@ -17,7 +17,7 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
 
-import com.datatorrent.stram.FSStorageAgent;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.plan.physical.PTContainer;
