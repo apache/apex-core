@@ -979,7 +979,7 @@ public class PhysicalPlanTest
       int numberPartitionKeys = (i == 2) ? 2 : 1;
       for (int inputIndex = 0; inputIndex < pUnifier.getInputs().size(); inputIndex++) {
         PTInput input = pUnifier.getInputs().get(inputIndex);
-        Assert.assertEquals("" + pUnifier, "outputPort", input.source.portName);
+        Assert.assertEquals("" + pUnifier, "outport", input.source.portName);
         Assert.assertEquals("" + pUnifier, inputOperators.get(inputIndex), input.source.source);
         Assert.assertEquals("partition keys " + input.partitions, numberPartitionKeys, input.partitions.partitions.size());
       }
@@ -1172,7 +1172,7 @@ public class PhysicalPlanTest
       Assert.assertEquals("" + pUnifier, 2, pUnifier.getInputs().size());
       for (int inputIndex = 0; inputIndex < pUnifier.getInputs().size(); inputIndex++) {
         PTInput input = pUnifier.getInputs().get(inputIndex);
-        Assert.assertEquals("source port name " + pUnifier, "outputPort", input.source.portName);
+        Assert.assertEquals("source port name " + pUnifier, "outport", input.source.portName);
         Assert.assertEquals("" + pUnifier, inputOperators.get(inputIndex), input.source.source);
         Assert.assertEquals("partition keys " + input.partitions, null, input.partitions);
       }
