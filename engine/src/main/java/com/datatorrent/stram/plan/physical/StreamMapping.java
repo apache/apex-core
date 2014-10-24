@@ -197,12 +197,17 @@ public class StreamMapping implements java.io.Serializable
         plan.removePTOperator(oper);
       }
 
+      // Directly getting attribute from map to know if it is set or not as it can be overriden by the input
+      Boolean sourceLastSingle = streamMeta.getSource().getAttributes().get(PortContext.UNIFIER_LAST_SINGLE);
+
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
 
         Map<LogicalPlan.InputPortMeta, PartitionKeys> partKeys = doperEntry.first.partitionKeys;
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
-        boolean lastSingle = doperEntry.second.getValue(PortContext.UNIFIER_LAST_SINGLE);
+        Boolean sinkLastSingle = doperEntry.second.getAttributes().get(PortContext.UNIFIER_LAST_SINGLE);
+        boolean lastSingle = (sinkLastSingle != null) ? sinkLastSingle.booleanValue() :
+                                (sourceLastSingle != null ? sourceLastSingle.booleanValue() : PortContext.UNIFIER_LAST_SINGLE.defaultValue);
 
         if (upstream.size() > 1) {
           if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {

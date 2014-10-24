@@ -91,9 +91,13 @@ public interface Context
     Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
 
     /**
-     * Attribute for output port to specify that the last unifier always be a single unifier. This is useful in MxN
-     * partitioning case when there is a need to unify all the outputs of the M stage into a single operator before
-     * sending the results to the N stage.
+     * Attribute to specify that the last unifier be always a single unifier. This is useful in MxN partitioning case
+     * when there is a need to unify all the outputs of the M stage into a single operator before sending the results to
+     * the N stage. The attribute can be specified either on the output port or the input port, the output port being
+     * the default. The specification on the input port overrides the one specified on the output port. This is useful
+     * in cases where an output port is connected to multiple input ports and different unifier behavior is needed
+     * for the different inputs. In this case the default unifier behavior can be specified on the output port and
+     * exceptions for the individual inputs can be specified on the corresponding input ports.
      */
     Attribute<Boolean> UNIFIER_LAST_SINGLE = new Attribute<Boolean>(Boolean.FALSE);
     /**
