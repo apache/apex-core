@@ -12,6 +12,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.datatorrent.api.DAG.Locality;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;

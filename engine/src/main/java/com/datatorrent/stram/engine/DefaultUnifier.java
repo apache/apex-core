@@ -18,7 +18,6 @@ import com.datatorrent.api.annotation.Stateless;
 @Stateless
 public class DefaultUnifier extends BaseOperator implements Unifier<Object>
 {
-  @OutputPortFieldAnnotation(name = "outputPort")
   final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
 
   @Override

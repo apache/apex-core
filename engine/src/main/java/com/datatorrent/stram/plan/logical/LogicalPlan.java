@@ -11,22 +11,19 @@ import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OperatorAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.stram.FSStorageAgent;
+import com.datatorrent.api.annotation.*;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.google.common.collect.Sets;
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.validation.*;
-import javax.validation.constraints.NotNull;
-import java.io.*;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -120,6 +117,7 @@ public class LogicalPlan implements Serializable, DAG
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
     private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
+    private String tupleTypeString;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -128,7 +126,7 @@ public class LogicalPlan implements Serializable, DAG
 
     public String getPortName()
     {
-      return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
+      return fieldName;
     }
 
     public InputPort<?> getPortObject() {
@@ -172,6 +170,44 @@ public class LogicalPlan implements Serializable, DAG
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+
+    /**
+     * Gets the tuple type.
+     * Note that this can be slow, because we need the port meta to be serializable
+     *
+     * @return the tuple type
+     */
+    public Type getTupleType()
+    {
+      Operator operator = this.operatorMeta.operator;
+      for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass()) {
+        Field[] fields = c.getDeclaredFields();
+        for (Field field : fields) {
+          field.setAccessible(true);
+
+          try {
+            Object portObject = field.get(operator);
+
+            if (portObject instanceof OutputPort) {
+              if (field.getName().equals(this.fieldName)) {
+                return getPortType(field);
+              }
+            }
+          }
+          catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+      throw new RuntimeException("Tuple type cannot be determined.");
+    }
+
+
+    public String getTupleTypeString()
+    {
+      return tupleTypeString;
+    }
+
   }
 
   public final class OutputPortMeta implements DAG.OutputPortMeta, Serializable
@@ -182,6 +218,7 @@ public class LogicalPlan implements Serializable, DAG
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes = new DefaultAttributeMap();
+    private String tupleTypeString;
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -190,7 +227,7 @@ public class LogicalPlan implements Serializable, DAG
 
     public String getPortName()
     {
-      return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
+      return fieldName;
     }
 
     public OutputPort<?> getPortObject() {
@@ -245,10 +282,45 @@ public class LogicalPlan implements Serializable, DAG
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+
+    public String getTupleTypeString()
+    {
+      return tupleTypeString;
+    }
+    /**
+     * Gets the tuple type.
+     * Note that this can be slow, because we need the port meta to be serializable
+     *
+     * @return the tuple type
+     */
+    public Type getTupleType()
+    {
+      Operator operator = this.operatorMeta.operator;
+      for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass()) {
+        Field[] fields = c.getDeclaredFields();
+        for (Field field : fields) {
+          field.setAccessible(true);
+
+          try {
+            Object portObject = field.get(operator);
+
+            if (portObject instanceof InputPort) {
+              if (field.getName().equals(this.fieldName)) {
+                return getPortType(field);
+              }
+            }
+          }
+          catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+      throw new RuntimeException("Tuple type cannot be determined.");
+    }
   }
 
   /**
-   * Representation of streams in the logical layer. Instances are created through {@link LogicalPlan.addStream}.
+   * Representation of streams in the logical layer. Instances are created through {@link LogicalPlan#addStream}.
    */
   public final class StreamMeta implements DAG.StreamMeta, Serializable
   {
@@ -506,6 +578,10 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
+        Type portType = getPortType(field);
+        if (portType != null) {
+          metaPort.tupleTypeString = portType.toString();
+        }
         inPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
@@ -528,6 +604,10 @@ public class LogicalPlan implements Serializable, DAG
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
+        Type portType = getPortType(field);
+        if (portType != null) {
+          metaPort.tupleTypeString = portType.toString();
+        }
         outPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
@@ -931,6 +1011,16 @@ public class LogicalPlan implements Serializable, DAG
             throw new ValidationException("Operator " + n.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!");
           }
         }
+
+        //If operator can not be check-pointed in middle of application window then the checkpoint window count should be
+        // a multiple of application window count
+        if (!n.operatorAnnotation.checkpointableWithinAppWindow()) {
+          if (n.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT) % n.getValue(OperatorContext.APPLICATION_WINDOW_COUNT) != 0) {
+            throw new ValidationException("Operator " + n.getName() + " cannot be check-pointed between an application window " +
+              "but the checkpoint-window-count " + n.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT) +
+              " is not a multiple application-window-count " + n.getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
+          }
+        }
       }
 
       // check that non-optional ports are connected
@@ -1087,7 +1177,7 @@ public class LogicalPlan implements Serializable, DAG
    * Check for cycles in the graph reachable from start node n. This is done by
    * attempting to find strongly connected components.
    *
-   * @see http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm
+   * @see <a href="http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm">http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm</a>
    *
    * @param om
    * @param cycles
@@ -1188,6 +1278,46 @@ public class LogicalPlan implements Serializable, DAG
   public static LogicalPlan read(InputStream is) throws IOException, ClassNotFoundException
   {
     return (LogicalPlan)new ObjectInputStream(is).readObject();
+  }
+
+
+  public static Type getPortType(Field f)
+  {
+    if (f.getGenericType() instanceof ParameterizedType) {
+      ParameterizedType t = (ParameterizedType)f.getGenericType();
+      //LOG.debug("Field type is parameterized: " + Arrays.asList(t.getActualTypeArguments()));
+      //LOG.debug("rawType: " + t.getRawType()); // the port class
+      Type typeArgument = t.getActualTypeArguments()[0];
+      if (typeArgument instanceof Class) {
+        return typeArgument;
+      }
+      else if (typeArgument instanceof TypeVariable) {
+        TypeVariable<?> tv = (TypeVariable<?>)typeArgument;
+        LOG.debug("bounds: " + Arrays.asList(tv.getBounds()));
+        // variable may contain other variables, java.util.Map<java.lang.String, ? extends T2>
+        return tv.getBounds()[0];
+      }
+      else if (typeArgument instanceof GenericArrayType) {
+        LOG.debug("type {} is of GenericArrayType", typeArgument);
+        return typeArgument;
+      }
+      else if (typeArgument instanceof WildcardType) {
+        LOG.debug("type {} is of WildcardType", typeArgument);
+        return typeArgument;
+      }
+      else if (typeArgument instanceof ParameterizedType) {
+        return typeArgument;
+      }
+      else {
+        LOG.error("Type argument is of expected type {}", typeArgument);
+        return null;
+      }
+    }
+    else {
+      // ports are always parameterized
+      LOG.error("No type variable: {}, typeParameters: {}", f.getType(), Arrays.asList(f.getClass().getTypeParameters()));
+      return null;
+    }
   }
 
   @Override

@@ -42,7 +42,7 @@ public class GenericNodeTest
       }
 
     };
-    @InputPortFieldAnnotation(name = "ip2", optional = true)
+    @InputPortFieldAnnotation( optional = true)
     public final transient DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
     {
       @Override
@@ -52,7 +52,7 @@ public class GenericNodeTest
       }
 
     };
-    @OutputPortFieldAnnotation(name = "op", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     DefaultOutputPort<Object> op = new DefaultOutputPort<Object>();
 
     @Override

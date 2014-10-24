@@ -93,15 +93,12 @@ public class LogicalPlanTest {
   }
 
   public static class ValidationOperator extends BaseOperator {
-    @OutputPortFieldAnnotation(name="goodOutputPort")
     public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>();
 
-    @OutputPortFieldAnnotation(name="badOutputPort")
     public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>();
   }
 
   public static class CounterOperator extends BaseOperator {
-    @InputPortFieldAnnotation(name="countInputPort")
     final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>() {
       @Override
       final public void process(Object payload) {
@@ -322,7 +319,7 @@ public class LogicalPlanTest {
   @OperatorAnnotation(partitionable = false)
   public static class TestOperatorAnnotationOperator extends BaseOperator {
 
-    @InputPortFieldAnnotation(name = "input1", optional = true)
+    @InputPortFieldAnnotation( optional = true)
     final public transient DefaultInputPort<Object> input1 = new DefaultInputPort<Object>() {
       @Override
       public void process(Object tuple) {
@@ -396,7 +393,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise port not connected for input1.outputPort");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Output port connection required: input1.outputPort", e.getMessage());
+      Assert.assertEquals("", "Output port connection required: input1.outport", e.getMessage());
     }
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
@@ -505,10 +502,9 @@ public class LogicalPlanTest {
   }
 
   private class TestAnnotationsOperator extends BaseOperator {
-    @OutputPortFieldAnnotation(name="oport1")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
-    @OutputPortFieldAnnotation(name="oport2", optional=false)
+    @OutputPortFieldAnnotation( optional=false)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
   }
 
@@ -519,9 +515,9 @@ public class LogicalPlanTest {
 
   private class TestAnnotationsOperator3 extends BaseOperator {
     // multiple ports w/o annotation, one of them must be connected
-    @OutputPortFieldAnnotation(name="oport1", optional=true)
+    @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
-    @OutputPortFieldAnnotation(name="oport2", optional=true)
+    @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
   }
 
@@ -534,7 +530,7 @@ public class LogicalPlanTest {
       dag.validate();
       Assert.fail("should raise: port connection required");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Output port connection required: testAnnotationsOperator.oport2", e.getMessage());
+      Assert.assertEquals("", "Output port connection required: testAnnotationsOperator.outport2", e.getMessage());
     }
 
     TestOutputOperator o2 = dag.addOperator("sink", new TestOutputOperator());
@@ -559,7 +555,6 @@ public class LogicalPlanTest {
   }
 
   public class DuplicatePortOperator extends GenericTestOperator {
-    @OutputPortFieldAnnotation(name=OPORT1)
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
   }
@@ -611,7 +606,7 @@ public class LogicalPlanTest {
       }
     }
 
-    @InputPortFieldAnnotation(name="", optional=true)
+    @InputPortFieldAnnotation( optional=true)
     final public InputPort<Object> inport1 = new SerializableInputPort<Object>() {
       private static final long serialVersionUID = 1L;
 
@@ -680,7 +675,7 @@ public class LogicalPlanTest {
       }
     };
 
-    @OutputPortFieldAnnotation(name="outport", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public transient final DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
   }
 
@@ -738,4 +733,109 @@ public class LogicalPlanTest {
   }
   */
 
+  @Test
+  public void testCheckpointableWithinAppWindowAnnotation()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
+    dag.setAttribute(x, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setAttribute(x, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.validate();
+
+    CheckpointableWithinAppWindowOperator y = dag.addOperator("y", new CheckpointableWithinAppWindowOperator());
+    dag.setAttribute(y, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setAttribute(y, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    dag.validate();
+
+    NotCheckpointableWithinAppWindowOperator z = dag.addOperator("z", new NotCheckpointableWithinAppWindowOperator());
+    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
+    dag.setAttribute(z, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
+    try {
+      dag.validate();
+      Assert.fail("should fail because chekpoint window count is not a factor of application window count");
+    }
+    catch (ValidationException e) {
+      // expected
+    }
+
+    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 30);
+    dag.validate();
+
+    dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 45);
+    try {
+      dag.validate();
+      Assert.fail("should fail because chekpoint window count is not a factor of application window count");
+    }
+    catch (ValidationException e) {
+      // expected
+    }
+  }
+
+  @OperatorAnnotation(checkpointableWithinAppWindow = true)
+  class CheckpointableWithinAppWindowOperator extends GenericTestOperator
+  {
+  }
+
+  @OperatorAnnotation(checkpointableWithinAppWindow = false)
+  class NotCheckpointableWithinAppWindowOperator extends GenericTestOperator
+  {
+  }
+
+  /*
+  These were tests for operator semantics that verified if an operator class implements InputOperator then the same class should not declare input ports.
+  This would be done later when we are able to verify user code at compile-time.
+
+    validation()
+  {
+    if (n.getOperator() instanceof InputOperator) {
+      try {
+        for (Class<?> clazz : n.getOperator().getClass().getInterfaces()) {
+          if (clazz.getName().equals(InputOperator.class.getName())) {
+            for (Field field : n.getOperator().getClass().getDeclaredFields()) {
+              field.setAccessible(true);
+              Object declaredObject = field.get(n.getOperator());
+              if (declaredObject instanceof InputPort) {
+                throw new ValidationException("Operator class implements InputOperator and also declares input ports: " + n.name);
+              }
+            }
+            break;
+          }
+        }
+      }
+      catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+  @Test
+  public void testInvalidInputOperatorDeclaration()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator.InvalidInputOperator inputOperator = dag.addOperator("input", new TestGeneratorInputOperator.InvalidInputOperator());
+    GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
+
+    dag.addStream("stream1", inputOperator.outport, operator2.inport1);
+
+    try {
+      dag.validate();
+      fail("validation should fail");
+    }
+    catch (ValidationException e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testValidInputOperatorDeclaration()
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator.ValidGenericOperator operator1 = dag.addOperator("input", new TestGeneratorInputOperator.ValidGenericOperator());
+    GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
+
+    dag.addStream("stream1", operator1.outport, operator2.inport1);
+    dag.validate();
+  }
+  */
 }

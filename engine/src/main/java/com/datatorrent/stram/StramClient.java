@@ -6,6 +6,7 @@ package com.datatorrent.stram;
 
 import com.datatorrent.api.Context.OperatorContext;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;
@@ -126,7 +127,8 @@ public class StramClient
       org.apache.commons.beanutils.BeanUtils.class,
       org.apache.http.client.utils.URLEncodedUtils.class,
       org.apache.http.message.BasicHeaderValueParser.class,
-      com.esotericsoftware.minlog.Log.class
+      com.esotericsoftware.minlog.Log.class,
+      org.mozilla.javascript.Scriptable.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 

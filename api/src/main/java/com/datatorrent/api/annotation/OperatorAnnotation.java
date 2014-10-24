@@ -11,7 +11,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation to specify characteristics of an operator.<p>
+ * Annotation to specify characteristics of an operator.
  *
  * @since 0.3.5
  */
@@ -26,4 +26,13 @@ public @interface OperatorAnnotation
    * @return Whether operator can be partitioned or not
    */
   public boolean partitionable() default true;
+
+  /**
+   * Element specifying whether an operator can be check-pointed in the middle of an application window.
+   * Default value is true indicating that it can be. When false the checkpoint window count should be a multiple of
+   * application window count otherwise the dag validation will fail.
+   *
+   * @return whether operator can be checkpointed in middle of an application window.
+   */
+  public boolean checkpointableWithinAppWindow() default true;
 }

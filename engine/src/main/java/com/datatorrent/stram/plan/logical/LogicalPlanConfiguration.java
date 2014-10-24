@@ -5,7 +5,6 @@
 package com.datatorrent.stram.plan.logical;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -18,12 +17,15 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
+
 import javax.validation.ValidationException;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -784,6 +786,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       JSONObject operatorProperties = operator.optJSONObject("properties");
       if (operatorProperties != null) {
         String propertiesPrefix = operatorPrefix + StramElement.PROP.getValue() + ".";
+        @SuppressWarnings("unchecked")
         Iterator<String> iter = operatorProperties.keys();
         while (iter.hasNext()) {
           String key = iter.next();
@@ -793,6 +796,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       JSONObject operatorAttributes = operator.optJSONObject("attributes");
       if (operatorAttributes != null) {
         String attributesPrefix = operatorPrefix + StramElement.ATTR.getValue() + ".";
+        @SuppressWarnings("unchecked")
         Iterator<String> iter = operatorAttributes.keys();
         while (iter.hasNext()) {
           String key = iter.next();
@@ -807,6 +811,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           JSONObject portAttributes = port.optJSONObject("attributes");
           if (portAttributes != null) {
             String portAttributePrefix = portsPrefix + port.getString("name") + "." + StramElement.ATTR.getValue() + ".";
+            @SuppressWarnings("unchecked")
             Iterator<String> iter = portAttributes.keys();
             while (iter.hasNext()) {
               String key = iter.next();

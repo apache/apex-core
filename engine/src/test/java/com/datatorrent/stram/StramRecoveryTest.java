@@ -34,6 +34,8 @@ import org.apache.hadoop.test.MockitoUtil;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
@@ -197,9 +199,9 @@ public class StramRecoveryTest
     cor.setOperatorName("o2");
     CreateStreamRequest csr = new CreateStreamRequest();
     csr.setSourceOperatorName("o1");
-    csr.setSourceOperatorPortName("outputPort");
+    csr.setSourceOperatorPortName("outport");
     csr.setSinkOperatorName("o2");
-    csr.setSinkOperatorPortName("input1");
+    csr.setSinkOperatorPortName("inport1");
     FutureTask<?> lpmf = scm.logicalPlanModification(Lists.newArrayList(cor, csr));
     while (!lpmf.isDone()) {
       scm.monitorHeartbeat();

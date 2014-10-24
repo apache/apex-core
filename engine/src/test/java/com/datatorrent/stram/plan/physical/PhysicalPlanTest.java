@@ -53,7 +53,7 @@ public class PhysicalPlanTest
     public transient Map<Integer, Partition<PartitioningTestOperator>> partitions;
     private boolean fixedCapacity = true;
 
-    @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
+    @InputPortFieldAnnotation(optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
       public Class<? extends StreamCodec<Object>> getStreamCodec() {

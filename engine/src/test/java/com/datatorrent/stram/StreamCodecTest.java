@@ -1312,7 +1312,7 @@ public class StreamCodecTest
   public static class DefaultCodecOperator extends GenericTestOperator
   {
     final static String INPORT_WITH_CODEC = "inportWithCodec";
-    @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
+    @InputPortFieldAnnotation(optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
       public Class<? extends StreamCodec<Object>> getStreamCodec() {

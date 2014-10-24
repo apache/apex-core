@@ -1,5 +1,6 @@
 package com.datatorrent.stram;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.File;
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class PartitioningTest
       }
 
     };
-    @OutputPortFieldAnnotation(name = "output", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
   }
 

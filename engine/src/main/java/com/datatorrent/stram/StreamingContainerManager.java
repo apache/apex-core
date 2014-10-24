@@ -47,6 +47,7 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
@@ -58,8 +59,10 @@ import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.plan.physical.*;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -2173,7 +2176,7 @@ public class StreamingContainerManager implements PlanContext
     return logicalOperator.getAttributes().clone();
   }
 
-  public Attribute.AttributeMap getPortAttributes(String operatorId, String portName)
+  public Map<String, Object> getPortAttributes(String operatorId, String portName)
   {
     OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
@@ -2182,16 +2185,28 @@ public class StreamingContainerManager implements PlanContext
 
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(logicalOperator.getOperator(), portMap);
-    InputPort<?> inputPort = portMap.inputPorts.get(portName).component;
+    PortContextPair<InputPort<?>> inputPort = portMap.inputPorts.get(portName);
     if (inputPort != null) {
-      return logicalOperator.getMeta(inputPort).getAttributes().clone();
+      HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
+      InputPortMeta portMeta = logicalOperator.getMeta(inputPort.component);
+      Map<Attribute<Object>, Object> rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+      for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
+        portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
+      }
+      return portAttributeMap;
     }
     else {
-      OutputPort<?> outputPort = portMap.outputPorts.get(portName).component;
-      if (outputPort == null) {
-        throw new IllegalArgumentException("Invalid port name " + portName);
+      PortContextPair<OutputPort<?>> outputPort = portMap.outputPorts.get(portName);
+      if (outputPort != null) {
+        HashMap<String, Object> portAttributeMap = new HashMap<String, Object>();
+        OutputPortMeta portMeta = logicalOperator.getMeta(outputPort.component);
+        Map<Attribute<Object>, Object> rawAttributes = Attribute.AttributeMap.AttributeInitializer.getAllAttributes(portMeta, Context.PortContext.class);
+        for (Map.Entry<Attribute<Object>, Object> attEntry : rawAttributes.entrySet()) {
+          portAttributeMap.put(attEntry.getKey().getSimpleName(), attEntry.getValue());
+        }
+        return portAttributeMap;
       }
-      return logicalOperator.getMeta(outputPort).getAttributes().clone();
+      throw new IllegalArgumentException("Invalid port name " + portName);
     }
   }
 

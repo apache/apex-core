@@ -23,10 +23,15 @@ import java.io.IOException;
 import java.net.*;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -38,6 +43,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.log4j.DTLoggerFactory;
+import org.mozilla.javascript.Scriptable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -613,6 +619,65 @@ public class StramClientUtils
   {
     String configStatus = conf.get(StramClientUtils.DT_CONFIG_STATUS);
     return "complete".equals(configStatus);
+  }
+
+  public static void evalProperties(DTConfiguration launchProperties)
+  {
+    // Using the hadoop configuration to get the values after variable substitution.
+
+    Configuration hadoopConfig = new Configuration(false);
+
+    for (Map.Entry<String, String> entry : launchProperties) {
+      hadoopConfig.set(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, String> entry : hadoopConfig) {
+      // cannot use entry.getValue() because it won't perform variable substitution
+      launchProperties.setInternal(entry.getKey(), hadoopConfig.get(entry.getKey()));
+    }
+
+    Pattern pattern = Pattern.compile("\\{% (.+?) %\\}");
+
+    ScriptEngineManager manager = new ScriptEngineManager();
+    ScriptEngine engine = manager.getEngineByName("Javascript");
+    org.mozilla.javascript.Context context = org.mozilla.javascript.Context.enter();
+    context.setOptimizationLevel(-1);
+    Scriptable scope = context.initStandardObjects();
+    try {
+      context.evaluateString(scope, "var _prop = {}", "EvalLaunchProperties", 0, null);
+      for (Map.Entry<String, String> entry : launchProperties) {
+        LOG.info("Evaluating: {}", "_prop[\"" + entry.getKey() + "\"] = " + entry.getValue());
+        context.evaluateString(scope, "_prop[\"" + entry.getKey() + "\"] = \"" + StringEscapeUtils.escapeJava(entry.getValue()) + "\"", "EvalLaunchProperties", 0, null);
+      }
+
+      for (Map.Entry<String, String> entry : launchProperties) {
+        String value = entry.getValue();
+
+        Matcher matcher = pattern.matcher(value);
+        if (matcher.find()) {
+          StringBuilder newValue = new StringBuilder();
+          int cursor = 0;
+          do {
+            newValue.append(value.substring(cursor, matcher.start()));
+            String eval = context.evaluateString(scope, matcher.group(1), "EvalLaunchProperties", 0, null).toString();
+            if (eval != null) {
+              newValue.append(eval);
+            }
+            cursor = matcher.end();
+          }
+          while (matcher.find());
+          newValue.append(value.substring(cursor));
+          try {
+            launchProperties.set(entry.getKey(), newValue.toString(), DTConfiguration.Scope.TRANSIENT, null);
+          }
+          catch (DTConfiguration.ConfigException ex) {
+            LOG.error("Caught exception:", ex);
+          }
+        }
+      }
+    }
+    finally {
+      org.mozilla.javascript.Context.exit();
+    }
   }
 
 }

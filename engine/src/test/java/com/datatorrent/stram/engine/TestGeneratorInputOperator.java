@@ -3,22 +3,22 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.BaseOperator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.InputOperator;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 public class TestGeneratorInputOperator implements InputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputOperator.class);
-  public static final String OUTPUT_PORT = "outputPort";
+  public static final String OUTPUT_PORT = "outport";
   public static final String KEY_MAX_TUPLES = "maxTuples";
   private String myConfigProperty;
   private int maxTuples = -1;
@@ -27,7 +27,7 @@ public class TestGeneratorInputOperator implements InputOperator
   private int emitInterval = 1000;
   private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
-  @OutputPortFieldAnnotation(name = "outputPort", optional = false)
+  @OutputPortFieldAnnotation(optional = false)
   public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
 
   public int getMaxTuples()
@@ -115,6 +115,32 @@ public class TestGeneratorInputOperator implements InputOperator
 
   @Override
   public void teardown()
+  {
+  }
+
+  public static class InvalidInputOperator extends TestGeneratorInputOperator implements InputOperator
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+  }
+
+  public static class ValidGenericOperator extends TestGeneratorInputOperator
+  {
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
+    {
+      @Override
+      public void process(Object tuple)
+      {
+      }
+    };
+  }
+
+  public static class ValidInputOperator extends ValidGenericOperator implements InputOperator
   {
   }
 

@@ -98,6 +98,8 @@ public class StramWebServices
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
 
+  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+
   @Inject
   public StramWebServices(final StramAppContext context)
   {
@@ -258,7 +260,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent, @QueryParam("packagePrefixes") String prefixes)
+  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -273,14 +275,6 @@ public class StramWebServices
     }
 
     try {
-      String[] packagePrefixes;
-      if (StringUtils.isBlank(prefixes)) {
-        packagePrefixes = new String[] {"com.datatorrent"};
-      }
-      else {
-        packagePrefixes = StringUtils.split(prefixes, ',');
-      }
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes);
       Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
       for (Class<?> clazz : operatorClasses) {
@@ -311,7 +305,7 @@ public class StramWebServices
     try {
       Class<?> clazz = Class.forName(className);
       if (Operator.class.isAssignableFrom(clazz)) {
-        return OperatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
+        return operatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
         throw new NotFoundException();
@@ -603,7 +597,72 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/{portName}/attributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPorts(@PathParam("operatorName") String operatorName)
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+    JSONObject result = new JSONObject();
+    JSONArray ports = new JSONArray();
+    try {
+      for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
+        JSONObject port = new JSONObject();
+        port.put("name", inputPort.getPortName());
+        port.put("type", "input");
+        ports.put(port);
+      }
+      for (LogicalPlan.OutputPortMeta outputPort : logicalOperator.getOutputStreams().keySet()) {
+        JSONObject port = new JSONObject();
+        port.put("name", outputPort.getPortName());
+        port.put("type", "output");
+        ports.put(port);
+      }
+      result.put("ports", ports);
+    }
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    return result;
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports/{portName}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPort(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName)
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+    try {
+      for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
+        if (portName.equals(portName)) {
+          JSONObject port = new JSONObject();
+          port.put("name", inputPort.getPortName());
+          port.put("type", "input");
+          return port;
+        }
+      }
+      for (LogicalPlan.OutputPortMeta outputPort : logicalOperator.getOutputStreams().keySet()) {
+        if (portName.equals(portName)) {
+          JSONObject port = new JSONObject();
+          port.put("name", outputPort.getPortName());
+          port.put("type", "output");
+          return port;
+        }
+      }
+    }
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    throw new NotFoundException();
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports/{portName}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
@@ -611,13 +670,7 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorName, portName).entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
-      }
-    }
-    return new JSONObject(map);
+    return new JSONObject(dagManager.getPortAttributes(operatorName, portName));
   }
 
   @GET

@@ -52,15 +52,13 @@ public abstract class Operators
     @Override
     public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation a)
     {
-      String portName = (a == null || a.name() == null) ? field.getName() : a.name();
-      inputPorts.put(portName, new PortContextPair<InputPort<?>>(port));
+      inputPorts.put(field.getName(), new PortContextPair<InputPort<?>>(port));
     }
 
     @Override
     public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation a)
     {
-      String portName = (a == null || a.name() == null) ? field.getName() : a.name();
-      outputPorts.put(portName, new PortContextPair<OutputPort<?>>(port));
+      outputPorts.put(field.getName(), new PortContextPair<OutputPort<?>>(port));
     }
   };
 
@@ -69,8 +67,7 @@ public abstract class Operators
     for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass())
     {
       Field[] fields = c.getDeclaredFields();
-      for (int i = 0; i < fields.length; i++) {
-        Field field = fields[i];
+      for (Field field: fields) {
         field.setAccessible(true);
         InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
         OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
@@ -79,7 +76,7 @@ public abstract class Operators
           Object portObject = field.get(operator);
 
           if (portObject instanceof InputPort) {
-             descriptor.addInputPort((Operator.InputPort<?>) portObject, field, inputAnnotation);
+            descriptor.addInputPort((Operator.InputPort<?>) portObject, field, inputAnnotation);
           } else {
             if (inputAnnotation != null) {
               throw new IllegalArgumentException("port is not of type " + InputPort.class.getName() + ": " + field);
@@ -87,7 +84,7 @@ public abstract class Operators
           }
 
           if (portObject instanceof OutputPort) {
-             descriptor.addOutputPort((Operator.OutputPort<?>) portObject, field, outputAnnotation);
+            descriptor.addOutputPort((Operator.OutputPort<?>) portObject, field, outputAnnotation);
           } else {
             if (outputAnnotation != null) {
               throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName() + ": " + field);

@@ -3218,23 +3218,15 @@ public class DTCli
 
       String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
-      String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
-      String[] packagePrefixes;
-      if (StringUtils.isBlank(prefixes)) {
-        packagePrefixes = new String[]{"com.datatorrent"};
-      }
-      else {
-        packagePrefixes = StringUtils.split(prefixes, ',');
-      }
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
         Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         for (Class<? extends Operator> clazz : operatorClasses) {
           try {
-            arr.put(OperatorDiscoverer.describeOperator(clazz));
+            arr.put(operatorDiscoverer.describeOperator(clazz));
           }
           catch (Throwable t) {
             // ignore this class
@@ -3257,18 +3249,10 @@ public class DTCli
     {
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
-      String prefixes = conf.get("dt.cli.operatorPackagePrefixes");
-      String[] packagePrefixes;
-      if (StringUtils.isBlank(prefixes)) {
-        packagePrefixes = new String[]{"com.datatorrent"};
-      }
-      else {
-        packagePrefixes = StringUtils.split(prefixes, ',');
-      }
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefixes, jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        printJson(OperatorDiscoverer.describeOperator(operatorClass));
+        printJson(operatorDiscoverer.describeOperator(operatorClass));
       }
       finally {
         FileUtils.deleteDirectory(tmpDir);
@@ -3901,6 +3885,9 @@ public class DTCli
             requiredProperties.remove(entry.getKey());
           }
         }
+
+        StramClientUtils.evalProperties(launchProperties);
+
         File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
         launchProperties.writeToFile(launchPropertiesFile, "");
         launchArgs.add("-conf");

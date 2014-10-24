@@ -327,8 +327,6 @@ public class StreamingContainerAgent {
    * Create deploy info for operator.
    * <p>
    *
-   * @param dnodeId
-   * @param nodeDecl
    * @return {@link com.datatorrent.stram.api.OperatorDeployInfo}
    *
    */
@@ -336,7 +334,23 @@ public class StreamingContainerAgent {
   {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     Operator operator = oper.getOperatorMeta().getOperator();
-    ndi.type = (operator instanceof InputOperator && oper.getInputs().isEmpty()) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
+    if (operator instanceof InputOperator) {
+      ndi.type = OperatorType.INPUT;
+
+      if (!oper.getInputs().isEmpty()) {
+        //If there are no input ports then it has to be an input operator. But if there are input ports then
+        //we check if any input port is connected which would make it a Generic operator.
+        for (PTOperator.PTInput ptInput : oper.getInputs()) {
+          if (ptInput.logicalStream != null && ptInput.logicalStream.getSource() != null) {
+            ndi.type = OperatorType.GENERIC;
+            break;
+          }
+        }
+      }
+    }
+    else {
+      ndi.type = OperatorType.GENERIC;
+    }
     if (oper.isUnifier()) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }
