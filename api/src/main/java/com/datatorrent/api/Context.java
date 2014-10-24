@@ -99,7 +99,7 @@ public interface Context
      * the inputs. In this case the default unifier behavior can be specified on the output port and individual
      * exceptions can be specified on the corresponding input ports.
      */
-    Attribute<Boolean> UNIFIER_FINAL_SINGLE = new Attribute<Boolean>(Boolean.FALSE);
+    Attribute<Boolean> UNIFIER_SINGLE_FINAL = new Attribute<Boolean>(Boolean.FALSE);
     /**
      * Whether or not to auto record the tuples
      */

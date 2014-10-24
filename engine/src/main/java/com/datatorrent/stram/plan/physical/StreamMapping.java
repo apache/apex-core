@@ -198,16 +198,16 @@ public class StreamMapping implements java.io.Serializable
       }
 
       // Directly getting attribute from map to know if it is set or not as it can be overriden by the input
-      Boolean sourceFinalSingle = streamMeta.getSource().getAttributes().get(PortContext.UNIFIER_FINAL_SINGLE);
+      Boolean sourceSingleFinal = streamMeta.getSource().getAttributes().get(PortContext.UNIFIER_SINGLE_FINAL);
 
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
 
         Map<LogicalPlan.InputPortMeta, PartitionKeys> partKeys = doperEntry.first.partitionKeys;
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
-        Boolean sinkFinalSingle = doperEntry.second.getAttributes().get(PortContext.UNIFIER_FINAL_SINGLE);
-        boolean lastSingle = (sinkFinalSingle != null) ? sinkFinalSingle.booleanValue() :
-                                (sourceFinalSingle != null ? sourceFinalSingle.booleanValue() : PortContext.UNIFIER_FINAL_SINGLE.defaultValue);
+        Boolean sinkSingleFinal = doperEntry.second.getAttributes().get(PortContext.UNIFIER_SINGLE_FINAL);
+        boolean lastSingle = (sinkSingleFinal != null) ? sinkSingleFinal.booleanValue() :
+                                (sourceSingleFinal != null ? sourceSingleFinal.booleanValue() : PortContext.UNIFIER_SINGLE_FINAL.defaultValue);
 
         if (upstream.size() > 1) {
           if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {
