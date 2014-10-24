@@ -94,10 +94,10 @@ public interface Context
      * Attribute to specify that the final unifier be always a single unifier. This is useful when in MxN partitioning
      * case there is a need to unify all the outputs of the M stage into a single unifier before sending the results to
      * the N stage. The attribute can be specified either on the output port or the input port, the output port being
-     * the default. The specification on the input port overrides the one specified on the output port. This is useful
-     * in cases where an output port is connected to multiple input ports and different unifier behavior is needed
-     * for the different inputs. In this case the default unifier behavior can be specified on the output port and
-     * exceptions for the individual inputs can be specified on the corresponding input ports.
+     * the usual. The specification on the input port overrides that specified on the output port. This is useful in
+     * cases when an output port is connected to multiple input ports and different unifier behavior is desired for
+     * the inputs. In this case the default unifier behavior can be specified on the output port and individual
+     * exceptions can be specified on the corresponding input ports.
      */
     Attribute<Boolean> UNIFIER_FINAL_SINGLE = new Attribute<Boolean>(Boolean.FALSE);
     /**

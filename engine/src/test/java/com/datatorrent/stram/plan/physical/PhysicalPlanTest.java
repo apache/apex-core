@@ -1530,7 +1530,7 @@ public class PhysicalPlanTest
   }
 
   @Test
-  public void testFinalSingleInputOverride() {
+  public void testFinalSingleUnifierInputOverride() {
     LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 =  dag.addOperator("o1", GenericTestOperator.class);
@@ -1583,7 +1583,7 @@ public class PhysicalPlanTest
   }
 
   @Test
-  public void testFinalSingleMultiInput() {
+  public void testFinalSingleUnifierMultiInput() {
     LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 =  dag.addOperator("o1", GenericTestOperator.class);
