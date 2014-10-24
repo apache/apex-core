@@ -1128,14 +1128,14 @@ public class PhysicalPlanTest
    * separate unifier is created container local with each downstream partition.
    */
   @Test
-  public void testLastSingleMxNPartitioning() {
+  public void testFinalSingleMxNPartitioning() {
 
     LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
     dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
-    dag.setOutputPortAttribute(o1.outport, PortContext.UNIFIER_LAST_SINGLE, true);
+    dag.setOutputPortAttribute(o1.outport, PortContext.UNIFIER_FINAL_SINGLE, true);
     OperatorMeta o1Meta = dag.getMeta(o1);
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -1418,7 +1418,7 @@ public class PhysicalPlanTest
   }
 
   @Test
-  public void testLastSingleCascadingUnifier() {
+  public void testFinalSingleCascadingUnifier() {
 
     LogicalPlan dag = new LogicalPlan();
 
@@ -1430,7 +1430,7 @@ public class PhysicalPlanTest
     dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
 
     dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_LIMIT, 2);
-    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_LAST_SINGLE, true);
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_FINAL_SINGLE, true);
     OperatorMeta o1Meta = dag.getMeta(o1);
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -1530,7 +1530,7 @@ public class PhysicalPlanTest
   }
 
   @Test
-  public void testLastSingleInputOverride() {
+  public void testFinalSingleInputOverride() {
     LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 =  dag.addOperator("o1", GenericTestOperator.class);
@@ -1539,7 +1539,7 @@ public class PhysicalPlanTest
 
     GenericTestOperator o2 =  dag.addOperator("o2", GenericTestOperator.class);
     dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 2);
-    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_LAST_SINGLE, true);
+    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_FINAL_SINGLE, true);
     OperatorMeta o2Meta = dag.getMeta(o2);
 
     dag.addStream("o1.outport1", o1.outport1, o2.inport1);
@@ -1554,7 +1554,7 @@ public class PhysicalPlanTest
 
     Assert.assertEquals("o1 merge unifiers", 1, plan.getMergeOperators(o1Meta).size());
 
-    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_LAST_SINGLE, false);
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_FINAL_SINGLE, false);
     ctx = new TestPlanContext();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     plan = new PhysicalPlan(dag, ctx);
@@ -1562,8 +1562,8 @@ public class PhysicalPlanTest
 
     Assert.assertEquals("o1 merge unifiers", 1, plan.getMergeOperators(o1Meta).size());
 
-    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_LAST_SINGLE, true);
-    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_LAST_SINGLE, false);
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_FINAL_SINGLE, true);
+    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_FINAL_SINGLE, false);
     ctx = new TestPlanContext();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
     plan = new PhysicalPlan(dag, ctx);
@@ -1583,7 +1583,7 @@ public class PhysicalPlanTest
   }
 
   @Test
-  public void testLastSingleMultiInput() {
+  public void testFinalSingleMultiInput() {
     LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 =  dag.addOperator("o1", GenericTestOperator.class);
@@ -1592,7 +1592,7 @@ public class PhysicalPlanTest
 
     GenericTestOperator o2 =  dag.addOperator("o2", GenericTestOperator.class);
     dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 4);
-    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_LAST_SINGLE, true);
+    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_FINAL_SINGLE, true);
     OperatorMeta o2Meta = dag.getMeta(o2);
 
     GenericTestOperator o3 =  dag.addOperator("o3", GenericTestOperator.class);
