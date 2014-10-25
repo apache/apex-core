@@ -89,6 +89,17 @@ public interface Context
      * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
      */
     Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
+
+    /**
+     * Attribute to specify that the final unifier be always a single unifier. This is useful when in MxN partitioning
+     * case there is a need to unify all the outputs of the M stage into a single unifier before sending the results to
+     * the N stage. The attribute can be specified either on the output port or the input port, the output port being
+     * the usual. The specification on the input port overrides that specified on the output port. This is useful in
+     * cases when an output port is connected to multiple input ports and different unifier behavior is desired for
+     * the inputs. In this case the default unifier behavior can be specified on the output port and individual
+     * exceptions can be specified on the corresponding input ports.
+     */
+    Attribute<Boolean> UNIFIER_SINGLE_FINAL = new Attribute<Boolean>(Boolean.FALSE);
     /**
      * Whether or not to auto record the tuples
      */

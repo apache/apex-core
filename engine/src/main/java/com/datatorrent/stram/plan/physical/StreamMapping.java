@@ -4,9 +4,22 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -19,16 +32,6 @@ import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Encapsulates the mapping of input to output operators, including unifiers. Depending on logical plan setting and
@@ -194,18 +197,24 @@ public class StreamMapping implements java.io.Serializable
         plan.removePTOperator(oper);
       }
 
+      // Directly getting attribute from map to know if it is set or not as it can be overriden by the input
+      Boolean sourceSingleFinal = streamMeta.getSource().getAttributes().get(PortContext.UNIFIER_SINGLE_FINAL);
+
       // link the downstream operators with the unifiers
       for (Pair<PTOperator, InputPortMeta> doperEntry : downstreamOpers) {
 
         Map<LogicalPlan.InputPortMeta, PartitionKeys> partKeys = doperEntry.first.partitionKeys;
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
+        Boolean sinkSingleFinal = doperEntry.second.getAttributes().get(PortContext.UNIFIER_SINGLE_FINAL);
+        boolean lastSingle = (sinkSingleFinal != null) ? sinkSingleFinal.booleanValue() :
+                                (sourceSingleFinal != null ? sourceSingleFinal.booleanValue() : PortContext.UNIFIER_SINGLE_FINAL.defaultValue);
 
         if (upstream.size() > 1) {
-          if (!separateUnifiers && (pks == null || pks.mask == 0)) {
+          if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {
             if (finalUnifier == null) {
               finalUnifier = createUnifier();
             }
-            setInput(doperEntry.first, doperEntry.second, finalUnifier, null);
+            setInput(doperEntry.first, doperEntry.second, finalUnifier, (pks == null) || (pks.mask == 0) ? null : pks);
             if (finalUnifier.inputs.isEmpty()) {
               // set unifier inputs once, regardless how many downstream operators there are
               for (PTOutput out : unifierSources) {

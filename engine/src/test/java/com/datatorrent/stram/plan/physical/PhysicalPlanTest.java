@@ -4,35 +4,23 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.api.Context;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultPartition;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
-import com.datatorrent.api.StatsListener;
-import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
@@ -46,8 +34,6 @@ import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 public class PhysicalPlanTest
 {
@@ -990,11 +976,12 @@ public class PhysicalPlanTest
       Assert.assertTrue("" + pUnifier, pUnifier.isUnifier());
       // input from each upstream partition
       Assert.assertEquals("" + pUnifier, 2, pUnifier.getInputs().size());
-      for (int inputIndex = 0; i < pUnifier.getInputs().size(); i++) {
+      int numberPartitionKeys = (i == 2) ? 2 : 1;
+      for (int inputIndex = 0; inputIndex < pUnifier.getInputs().size(); inputIndex++) {
         PTInput input = pUnifier.getInputs().get(inputIndex);
-        Assert.assertEquals("" + pUnifier, "outputPort", input.source.portName);
+        Assert.assertEquals("" + pUnifier, "outport", input.source.portName);
         Assert.assertEquals("" + pUnifier, inputOperators.get(inputIndex), input.source.source);
-        Assert.assertEquals("partition keys " + input.partitions, 1, input.partitions.partitions.size());
+        Assert.assertEquals("partition keys " + input.partitions, numberPartitionKeys, input.partitions.partitions.size());
       }
       // output to single downstream partition
       Assert.assertEquals("" + pUnifier, 1, pUnifier.getOutputs().size());
@@ -1136,6 +1123,198 @@ public class PhysicalPlanTest
 
   }
 
+  /**
+   * MxN partitioning. When source and sink of a stream are partitioned, a
+   * separate unifier is created container local with each downstream partition.
+   */
+  @Test
+  public void testSingleFinalMxNPartitioning() {
+
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)new PartitioningTest.PartitionLoadWatch()));
+    dag.setOutputPortAttribute(o1.outport, PortContext.UNIFIER_SINGLE_FINAL, true);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(o2, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+    OperatorMeta o2Meta = dag.getMeta(o2);
+
+    dag.addStream("o1.outport1", o1.outport, o2.inport1);
+
+    int maxContainers = 10;
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 6, plan.getContainers().size());
+
+    List<PTOperator> inputOperators = new ArrayList<PTOperator>();
+    for (int i=0; i<2; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
+      Assert.assertEquals("operators " + container, o1Meta.getName(), container.getOperators().get(0).getOperatorMeta().getName());
+      inputOperators.add(container.getOperators().get(0));
+    }
+
+    PTOperator inputUnifier = null;
+    {
+      PTContainer container = plan.getContainers().get(2);
+      Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
+      PTOperator pUnifier = container.getOperators().get(0);
+      Assert.assertEquals("operators " + container, o1Meta.getName(), pUnifier.getOperatorMeta().getName());
+      Assert.assertTrue("single unifier " + pUnifier, pUnifier.isUnifier());
+      Assert.assertEquals("" + pUnifier, 2, pUnifier.getInputs().size());
+      for (int inputIndex = 0; inputIndex < pUnifier.getInputs().size(); inputIndex++) {
+        PTInput input = pUnifier.getInputs().get(inputIndex);
+        Assert.assertEquals("source port name " + pUnifier, "outport", input.source.portName);
+        Assert.assertEquals("" + pUnifier, inputOperators.get(inputIndex), input.source.source);
+        Assert.assertEquals("partition keys " + input.partitions, null, input.partitions);
+      }
+      Assert.assertEquals("number outputs " + pUnifier, 1, pUnifier.getOutputs().size());
+      PTOutput output = pUnifier.getOutputs().get(0);
+      Assert.assertEquals("number inputs " + output, 3, output.sinks.size());
+      for (int inputIndex = 0; inputIndex < output.sinks.size(); ++inputIndex) {
+        Assert.assertEquals("output sink " + output, o2Meta.getName(), output.sinks.get(inputIndex).target.getName());
+        Assert.assertEquals("destination port name " + output, GenericTestOperator.IPORT1, output.sinks.get(inputIndex).portName);
+      }
+      inputUnifier = pUnifier;
+    }
+
+    List<Integer> partitionKeySizes = new ArrayList<Integer>();
+    for (int i=3; i<6; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
+      Assert.assertEquals("operators " + container, o2Meta.getName(), container.getOperators().get(0).getOperatorMeta().getName());
+
+      PTOperator operator = container.getOperators().get(0);
+      Assert.assertEquals("operators " + container, o2Meta.getName(), operator.getOperatorMeta().getName());
+      Assert.assertEquals("number inputs " + operator, 1, operator.getInputs().size());
+      PTInput input = operator.getInputs().get(0);
+      Assert.assertEquals("" + operator, inputUnifier, input.source.source);
+      Assert.assertNotNull("input partitions " + operator, input.partitions);
+      partitionKeySizes.add(input.partitions.partitions.size());
+    }
+
+    Assert.assertEquals("input partition sizes count", 3, partitionKeySizes.size());
+    Collections.sort(partitionKeySizes);
+    Assert.assertEquals("input partition sizes", Arrays.asList(1, 1, 2), partitionKeySizes);
+
+    // Test Dynamic change
+    // for M x N partition
+    // scale down N from 3 to 2 and then from 2 to 1
+    for (int i = 0; i < 2; i++) {
+      List<PTOperator> ptos =  plan.getOperators(o2Meta);
+      Set<PTOperator> expUndeploy = Sets.newHashSet(ptos);
+      for (PTOperator ptOperator : ptos) {
+        //expUndeploy.addAll(ptOperator.upstreamMerge.values());
+        expUndeploy.add(ptOperator);
+        PartitioningTest.PartitionLoadWatch.put(ptOperator, -1);
+        plan.onStatusUpdate(ptOperator);
+      }
+      ctx.backupRequests = 0;
+      ctx.events.remove(0).run();
+      Assert.assertEquals("single unifier ", 1, plan.getMergeOperators(o1Meta).size());
+      Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(o2Meta));
+      // The unifier and o2 operators are expected to be deployed because of partition key changes
+      for (PTOperator ptOperator : plan.getOperators(o2Meta)) {
+        expDeploy.add(ptOperator);
+      }
+      // from 3 to 2 the containers decrease from 5 to 4, but from 2 to 1 the container remains same because single unifier are not inline with single operator partition
+      Assert.assertEquals("number of containers", 5-i, plan.getContainers().size());
+      Assert.assertEquals("number of operators", 2-i, plan.getOperators(o2Meta).size());
+      Assert.assertEquals("undeployed operators " + ctx.undeploy, expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deployed operators " + ctx.deploy, expDeploy, ctx.deploy);
+    }
+
+    // scale up N from 1 to 2 and then from 2 to 3
+    for (int i = 0; i < 2; i++) {
+
+      List<PTOperator> unChangedOps = new LinkedList<PTOperator>(plan.getOperators(o2Meta));
+      PTOperator o2p1 = unChangedOps.remove(0);
+      Set<PTOperator> expUndeploy = Sets.newHashSet(o2p1);
+
+      PartitioningTest.PartitionLoadWatch.put(o2p1, 1);
+
+      plan.onStatusUpdate(o2p1);
+      Assert.assertEquals("repartition event", 1, ctx.events.size());
+      ctx.backupRequests = 0;
+      ctx.events.remove(0).run();
+
+      Assert.assertEquals("single unifier ", 1, plan.getMergeOperators(o1Meta).size());
+      Assert.assertEquals("N partitions after scale up " + o2Meta, 2 + i, plan.getOperators(o2Meta).size());
+
+      for (PTOperator o : plan.getOperators(o2Meta)) {
+        Assert.assertNotNull(o.container);
+        Assert.assertEquals("number operators ", 1, o.container.getOperators().size());
+      }
+      Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(o2Meta));
+      expDeploy.removeAll(unChangedOps);
+      Assert.assertEquals("number of containers", 5 + i , plan.getContainers().size());
+      Assert.assertEquals("undeployed operators" + ctx.undeploy, expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deployed operators" + ctx.deploy, expDeploy, ctx.deploy);
+
+    }
+
+    // scale down M to 1
+    {
+      Set<PTOperator> expUndeploy = Sets.newHashSet();
+      Set<PTOperator> expDeploy = Sets.newHashSet();
+      expUndeploy.addAll(plan.getMergeOperators(o1Meta));
+      for (PTOperator o2p : plan.getOperators(o2Meta)) {
+        expUndeploy.add(o2p);
+        expDeploy.add(o2p);
+      }
+
+      for (PTOperator o1p : plan.getOperators(o1Meta)) {
+        expUndeploy.add(o1p);
+        PartitioningTest.PartitionLoadWatch.put(o1p, -1);
+        plan.onStatusUpdate(o1p);
+      }
+
+      Assert.assertEquals("repartition event", 1, ctx.events.size());
+      ctx.events.remove(0).run();
+
+      Assert.assertEquals("M partitions after scale down " + o1Meta, 1, plan.getOperators(o1Meta).size());
+      expUndeploy.removeAll(plan.getOperators(o1Meta));
+
+      Assert.assertEquals("undeploy", expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deploy", expDeploy, ctx.deploy);
+    }
+
+    // scale up M to 2
+    Assert.assertEquals("M partitions " + o1Meta, 1, plan.getOperators(o1Meta).size());
+    {
+      Set<PTOperator> expUndeploy = Sets.newHashSet();
+      Set<PTOperator> expDeploy = Sets.newHashSet();
+      for (PTOperator o1p : plan.getOperators(o1Meta)) {
+        expUndeploy.add(o1p);
+        PartitioningTest.PartitionLoadWatch.put(o1p, 1);
+        plan.onStatusUpdate(o1p);
+      }
+
+      Assert.assertEquals("repartition event", 1, ctx.events.size());
+      ctx.events.remove(0).run();
+
+      Assert.assertEquals("M partitions after scale up " + o1Meta, 2, plan.getOperators(o1Meta).size());
+      expDeploy.addAll(plan.getOperators(o1Meta));
+      expDeploy.addAll(plan.getMergeOperators(o1Meta));
+      for (PTOperator o2p : plan.getOperators(o2Meta)) {
+        expUndeploy.add(o2p);
+        expDeploy.add(o2p);
+        Assert.assertNotNull(o2p.container);
+        Assert.assertEquals("number operators ", 1, o2p.container.getOperators().size());
+      }
+      Assert.assertEquals("undeploy", expUndeploy, ctx.undeploy);
+      Assert.assertEquals("deploy", expDeploy, ctx.deploy);
+    }
+
+  }
 
   @Test
   public void testCascadingUnifier() {
@@ -1202,13 +1381,13 @@ public class PhysicalPlanTest
       Assert.assertTrue(o1Partitions.contains(container.getOperators().get(0)));
     }
 
-    for (int i=5; i<6; i++) {
+    for (int i=4; i<6; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
       Assert.assertTrue(o1Unifiers.contains(container.getOperators().get(0)));
     }
 
-    for (int i=6; i<8; i++) {
+    for (int i=6; i<9; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 2, container.getOperators().size());
       Assert.assertTrue(o2Partitions.contains(container.getOperators().get(0)));
@@ -1236,6 +1415,232 @@ public class PhysicalPlanTest
       Assert.assertNotNull("container null: " + o, o.getContainer());
     }
 
+  }
+
+  @Test
+  public void testSingleFinalCascadingUnifier() {
+
+    LogicalPlan dag = new LogicalPlan();
+
+    //TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    PartitioningTestOperator o1 = dag.addOperator("o1", PartitioningTestOperator.class);
+    o1.partitionKeys = new Integer[] {0,1,2,3};
+
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, o1.partitionKeys.length);
+    dag.setAttribute(o1, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new PartitioningTest.PartitionLoadWatch()}));
+
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_LIMIT, 2);
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_SINGLE_FINAL, true);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    OperatorMeta o2Meta = dag.getMeta(o2);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 12);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 10, plan.getContainers().size());
+
+    List<PTOperator> o1Partitions = plan.getOperators(o1Meta);
+    Assert.assertEquals("partitions " + o1Meta, 4, o1Partitions.size());
+    Assert.assertEquals("partitioned map " + o1.partitions, 4, o1.partitions.size());
+    List<PTOperator> o2Partitions = plan.getOperators(o2Meta);
+    Assert.assertEquals("partitions " + o1Meta, 3, o2Partitions.size());
+
+    for (PTOperator o : o1Partitions) {
+      Assert.assertEquals("outputs " + o, 1, o.getOutputs().size());
+      for (PTOutput out : o.getOutputs()) {
+        Assert.assertEquals("sinks " + out, 1, out.sinks.size());
+      }
+      Assert.assertNotNull("container " + o, o.getContainer());
+    }
+
+    List<PTOperator> o1Unifiers = plan.getMergeOperators(o1Meta);
+    Assert.assertEquals("o1Unifiers " + o1Meta, 3, o1Unifiers.size()); // 2 cascadingUnifiers and one-downstream partition unifier
+    List<PTOperator> finalUnifiers = new ArrayList<PTOperator>();
+    for (PTOperator o : o1Unifiers) {
+      Assert.assertEquals("inputs " + o, 2, o.getInputs().size());
+      Assert.assertEquals("outputs " + o, 1, o.getOutputs().size());
+      List<PTInput> sinks = o.getOutputs().get(0).sinks;
+      boolean finalUnifier = sinks.size() > 0 ? (sinks.get(0).target.getOperatorMeta() == o2Meta) : false;
+      if (!finalUnifier) {
+        for (PTOutput out : o.getOutputs()) {
+          Assert.assertEquals("sinks " + out, 1, out.sinks.size());
+          Assert.assertTrue(out.sinks.get(0).target.isUnifier());
+        }
+      } else {
+        for (PTOutput out : o.getOutputs()) {
+          Assert.assertEquals("sinks " + out, 3, out.sinks.size());
+          for (PTInput in : out.sinks) {
+            Assert.assertFalse(in.target.isUnifier());
+          }
+        }
+        finalUnifiers.add(o);
+      }
+      Assert.assertNotNull("container " + o, o.getContainer());
+    }
+    Assert.assertEquals("o1 final unifiers", 1, finalUnifiers.size());
+
+    for (int i=0; i<4; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
+      Assert.assertTrue(o1Partitions.contains(container.getOperators().get(0)));
+    }
+
+    for (int i=4; i<7; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
+      Assert.assertTrue(o1Unifiers.contains(container.getOperators().get(0)));
+    }
+
+    for (int i=7; i<10; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
+      Assert.assertTrue(o2Partitions.contains(container.getOperators().get(0)));
+    }
+
+    PTOperator p1 = o1Partitions.get(0);
+    StatsListener l = p1.statsListeners.get(0);
+    Assert.assertTrue("stats handlers " + p1.statsListeners, l instanceof PartitioningTest.PartitionLoadWatch);
+    PartitioningTest.PartitionLoadWatch.put(p1, 1);
+
+    plan.onStatusUpdate(p1);
+
+    Assert.assertEquals("partition scaling triggered", 1, ctx.events.size());
+
+    o1.partitionKeys = new Integer[] {0,1,2,3,4};
+    ctx.events.remove(0).run();
+
+    o1Partitions = plan.getOperators(o1Meta);
+    Assert.assertEquals("partitions " + o1Meta, 5, o1Partitions.size());
+    Assert.assertEquals("partitioned map " + o1.partitions, 5, o1.partitions.size());
+
+    o1Unifiers = plan.getMergeOperators(o1Meta);
+    Assert.assertEquals("o1Unifiers " + o1Meta, 6, o1Unifiers.size()); // 3(l1)x2(l2)
+    for (PTOperator o : o1Unifiers) {
+      Assert.assertNotNull("container null: " + o, o.getContainer());
+    }
+
+  }
+
+  @Test
+  public void testSingleFinalUnifierInputOverride() {
+    LogicalPlan dag = new LogicalPlan();
+
+    GenericTestOperator o1 =  dag.addOperator("o1", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    GenericTestOperator o2 =  dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_SINGLE_FINAL, true);
+    OperatorMeta o2Meta = dag.getMeta(o2);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 10);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 6, plan.getContainers().size());
+
+    Assert.assertEquals("o1 merge unifiers", 1, plan.getMergeOperators(o1Meta).size());
+
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_SINGLE_FINAL, false);
+    ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+    plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 6, plan.getContainers().size());
+
+    Assert.assertEquals("o1 merge unifiers", 1, plan.getMergeOperators(o1Meta).size());
+
+    dag.setOutputPortAttribute(o1.outport1, PortContext.UNIFIER_SINGLE_FINAL, true);
+    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_SINGLE_FINAL, false);
+    ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+    plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
+
+    Set<String> expectedNames = Sets.newHashSet(o1Meta.getName(), o2Meta.getName());
+    for (int i = 3; i < 5; ++i) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("o2 container size", 2, container.getOperators().size());
+
+      Set<String> names = Sets.newHashSet();
+      for (PTOperator operator : container.getOperators()) {
+        names.add(operator.getOperatorMeta().getName());
+      }
+      Assert.assertEquals("o2 container operators", expectedNames, names);
+    }
+  }
+
+  @Test
+  public void testSingleFinalUnifierMultiInput() {
+    LogicalPlan dag = new LogicalPlan();
+
+    GenericTestOperator o1 =  dag.addOperator("o1", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    GenericTestOperator o2 =  dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 4);
+    dag.setInputPortAttribute(o2.inport1, PortContext.UNIFIER_SINGLE_FINAL, true);
+    OperatorMeta o2Meta = dag.getMeta(o2);
+
+    GenericTestOperator o3 =  dag.addOperator("o3", GenericTestOperator.class);
+    dag.setAttribute(o3, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    OperatorMeta o3Meta = dag.getMeta(o3);
+
+    dag.addStream("o1o2o3", o1.outport1, o2.inport1, o3.inport1);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 12);
+
+    TestPlanContext ctx = new TestPlanContext();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    Assert.assertEquals("number of containers", 10, plan.getContainers().size());
+
+    Assert.assertEquals("o1 merge unifiers", 1, plan.getMergeOperators(o1Meta).size());
+
+    // Check the merge unifier
+    {
+      PTContainer container = plan.getContainers().get(3);
+      Assert.assertEquals("number of operators " + container, 1, container.getOperators().size());
+      PTOperator operator = container.getOperators().get(0);
+      Assert.assertTrue("unifier check " + operator, operator.isUnifier());
+      Assert.assertEquals("operator meta " + operator, o1Meta, operator.getOperatorMeta());
+    }
+
+    int numberO2Containers = 0;
+    int numberO3Containers = 0;
+    Set<String> expectedNames = Sets.newHashSet(o1Meta.getName(), o3Meta.getName());
+    for (int i = 4; i < 10; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      List<PTOperator> operators = container.getOperators();
+      Assert.assertTrue("expected operator count " + container, (operators.size() <= 2) && (operators.size() > 0));
+      if (operators.size() == 1) {
+        Assert.assertEquals("operator in container " + container, o2Meta, operators.get(0).getOperatorMeta());
+        ++numberO2Containers;
+      } else if (operators.size() == 2) {
+        Set<String> names = Sets.newHashSet();
+        for (PTOperator operator : container.getOperators()) {
+          names.add(operator.getOperatorMeta().getName());
+        }
+        Assert.assertEquals("container operators " + container, expectedNames, names);
+        ++numberO3Containers;
+      }
+    }
+    Assert.assertEquals("number o2 containers", 4, numberO2Containers);
+    Assert.assertEquals("number o3 containers", 2, numberO3Containers);
   }
 
   @Test
