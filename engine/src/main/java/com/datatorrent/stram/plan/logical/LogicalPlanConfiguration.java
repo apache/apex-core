@@ -40,14 +40,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * Builder for the DAG logical representation of operators and streams from opProps.<p>
+ * Builder for the DAG logical representation of operators and streams from properties.<p>
  * <br>
  * Supports reading as name-value pairs from Hadoop {@link Configuration} or opProps file.
  * <br>
  *
  * @since 0.3.2
  */
-public class LogicalPlanConfiguration implements StreamingApplication {
+public class LogicalPlanConfiguration {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
@@ -719,10 +719,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   private final Properties properties = new Properties();
+  public final Configuration conf;
 
   private final StramConf stramConf = new StramConf();
 
-  public LogicalPlanConfiguration() {
+  public LogicalPlanConfiguration(Configuration conf)
+  {
+    this.conf = conf;
+    this.addFromConfiguration(conf);
   }
 
   /**
@@ -976,9 +980,40 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return Collections.unmodifiableMap(this.stramConf.appAliases);
   }
 
-  @Override
-  public void populateDAG(DAG dag, Configuration conf) {
+  public LogicalPlan createFromProperties(Properties props, String appName) throws IOException
+  {
+    // build DAG from properties
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
+    tb.addFromProperties(props);
+    LogicalPlan dag = new LogicalPlan();
+    tb.populateDAG(dag);
+    // configure with embedded settings
+    tb.prepareDAG(dag, null, appName);
+    // configure with external settings
+    prepareDAG(dag, null, appName);
+    return dag;
+  }
 
+  public LogicalPlan createFromJson(JSONObject json, String appName) throws Exception
+  {
+    // build DAG from properties
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
+    tb.addFromJson(json);
+    LogicalPlan dag = new LogicalPlan();
+    tb.populateDAG(dag);
+    // configure with embedded settings
+    tb.prepareDAG(dag, null, appName);
+    // configure with external settings
+    prepareDAG(dag, null, appName);
+    return dag;
+  }
+
+  /**
+   * Populate the logical plan structure from properties.
+   * @param dag
+   */
+  public void populateDAG(LogicalPlan dag)
+  {
     Configuration pconf = new Configuration(conf);
     for (final String propertyName : this.properties.stringPropertyNames()) {
       String propertyValue = this.properties.getProperty(propertyName);
@@ -1050,13 +1085,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param name
    * @param conf
    */
-  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf)
+  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name)
   {
     // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
-    String connectAddress = conf.get(DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
+    String connectAddress = conf.get(StreamingApplication.DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
     dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
-    app.populateDAG(dag, conf);
-
+    if (app != null) {
+      app.populateDAG(dag, conf);
+    }
     String appAlias = getAppAlias(name);
     String appName = appAlias == null ? name : appAlias;
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
@@ -1067,20 +1103,6 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     // inject external operator configuration
     setOperatorConfiguration(dag, appConfs, appName);
     setStreamConfiguration(dag, appConfs, appName);
-  }
-
-  public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException
-  {
-    Properties topologyProperties = readProperties(tplgPropsFile);
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
-    tb.addFromProperties(topologyProperties);
-    return tb;
-  }
-
-  public static StreamingApplication create(Configuration conf, JSONObject json) throws JSONException
-  {
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
-    return tb.addFromJson(json);
   }
 
   public static Properties readProperties(String filePath) throws IOException

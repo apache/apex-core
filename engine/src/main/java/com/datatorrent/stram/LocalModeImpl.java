@@ -34,19 +34,15 @@ public class LocalModeImpl extends LocalMode {
     if (app == null && conf == null) {
       throw new IllegalArgumentException("Require app or configuration to populate logical plan.");
     }
-
-    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration();
+    if (conf == null) {
+      conf = new Configuration(false);
+    }
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
     String appName = "unknown";
-    if (app == null) {
-      app = lpc;
-    } else {
-      if (conf == null) {
-        conf = new Configuration(false);
-      }
+    if (app != null) {
       appName = app.getClass().getName();
     }
-    lpc.addFromConfiguration(conf);
-    lpc.prepareDAG(lp, app, appName, conf);
+    lpc.prepareDAG(lp, app, appName);
     return lp;
   }
 

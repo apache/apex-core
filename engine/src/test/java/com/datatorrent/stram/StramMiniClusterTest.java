@@ -192,7 +192,7 @@ public class StramMiniClusterTest
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
 
     LOG.info("Initializing Client");
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(conf);
     tb.addFromProperties(dagProps);
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     try {
@@ -215,8 +215,7 @@ public class StramMiniClusterTest
   private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    Configuration appConf = new Configuration(false);
-    lpc.prepareDAG(dag, lpc, "test", appConf);
+    lpc.populateDAG(dag);
     dag.validate();
     return dag;
   }
@@ -238,7 +237,7 @@ public class StramMiniClusterTest
     props.put(StreamingApplication.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
     LOG.info("Initializing Client");
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
     tb.addFromProperties(props);
 
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));

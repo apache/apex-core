@@ -3034,7 +3034,7 @@ public class DTCli
               });
               System.setOut(dummyStream);
             }
-            LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+            LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
             map.put("applicationName", appFactory.getName());
             map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
           }
@@ -3052,7 +3052,7 @@ public class DTCli
           File file = new File(filename);
           StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
           AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
           Map<String, Object> map = new HashMap<String, Object>();
           map.put("applicationName", appFactory.getName());
           map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
@@ -3062,7 +3062,7 @@ public class DTCli
           File file = new File(filename);
           StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
           AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
           Map<String, Object> map = new HashMap<String, Object>();
           map.put("applicationName", appFactory.getName());
           map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
@@ -3283,7 +3283,7 @@ public class DTCli
         }
         else {
           AppFactory appFactory = matchingAppFactories.get(0);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();

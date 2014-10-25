@@ -14,11 +14,13 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
 import java.io.*;
 import java.lang.reflect.Modifier;
 import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -55,8 +57,7 @@ public class StramAppLauncher
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private File jarFile;
   private FileSystem fs;
-  private final Configuration conf;
-  private final LogicalPlanConfiguration propertiesBuilder = new LogicalPlanConfiguration();
+  private final LogicalPlanConfiguration propertiesBuilder;
   private final List<AppFactory> appResourceList = new ArrayList<AppFactory>();
   private LinkedHashSet<URL> launchDependencies;
   private LinkedHashSet<File> deployJars;
@@ -64,7 +65,7 @@ public class StramAppLauncher
 
   public static interface AppFactory
   {
-    StreamingApplication createApp(Configuration conf);
+    LogicalPlan createApp(LogicalPlanConfiguration conf);
 
     String getName();
 
@@ -81,10 +82,10 @@ public class StramAppLauncher
     }
 
     @Override
-    public StreamingApplication createApp(Configuration conf)
+    public LogicalPlan createApp(LogicalPlanConfiguration conf)
     {
       try {
-        return LogicalPlanConfiguration.create(conf, propertyFile.getAbsolutePath());
+        return conf.createFromProperties(LogicalPlanConfiguration.readProperties(propertyFile.getAbsolutePath()), getName());
       }
       catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
@@ -135,10 +136,10 @@ public class StramAppLauncher
     }
 
     @Override
-    public StreamingApplication createApp(Configuration conf)
+    public LogicalPlan createApp(LogicalPlanConfiguration conf)
     {
       try {
-        return LogicalPlanConfiguration.create(conf, json);
+        return conf.createFromJson(json, getName());
       }
       catch (Exception e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
@@ -168,7 +169,7 @@ public class StramAppLauncher
   public StramAppLauncher(File appJarFile, Configuration conf) throws Exception
   {
     this.jarFile = appJarFile;
-    this.conf = conf;
+    this.propertiesBuilder = new LogicalPlanConfiguration(conf);
     init(this.jarFile.getName());
   }
 
@@ -180,13 +181,13 @@ public class StramAppLauncher
     this.fs = fs;
     fs.copyToLocalFile(path, new Path(localJarFile.getAbsolutePath()));
     this.jarFile = localJarFile;
-    this.conf = conf;
+    this.propertiesBuilder = new LogicalPlanConfiguration(conf);
     init(this.jarFile.getName());
   }
 
   public StramAppLauncher(String name, Configuration conf) throws Exception
   {
-    this.conf = conf;
+    this.propertiesBuilder = new LogicalPlanConfiguration(conf);
     init(name);
   }
 
@@ -197,8 +198,6 @@ public class StramAppLauncher
 
   private void init(String tmpName) throws Exception
   {
-    propertiesBuilder.addFromConfiguration(conf);
-
     File baseDir = StramClientUtils.getUserDTDirectory();
     baseDir = new File(new File(baseDir, "appcache"), tmpName);
     baseDir.mkdirs();
@@ -241,7 +240,7 @@ public class StramAppLauncher
       // resolve dependencies
       List<Resolver> resolvers = Lists.newArrayList();
 
-      String resolverConfig = this.conf.get(CLASSPATH_RESOLVERS_KEY_NAME, null);
+      String resolverConfig = this.propertiesBuilder.conf.get(CLASSPATH_RESOLVERS_KEY_NAME, null);
       if (!StringUtils.isEmpty(resolverConfig)) {
         resolvers = new ClassPathResolvers().createResolvers(resolverConfig);
       }
@@ -293,7 +292,7 @@ public class StramAppLauncher
     }
 */
 
-    String libjars = conf.get(LIBJARS_CONF_KEY_NAME);
+    String libjars = propertiesBuilder.conf.get(LIBJARS_CONF_KEY_NAME);
     if (libjars != null) {
       processLibJars(libjars, clUrls);
     }
@@ -377,11 +376,14 @@ public class StramAppLauncher
             }
 
             @Override
-            public StreamingApplication createApp(Configuration conf)
+            public LogicalPlan createApp(LogicalPlanConfiguration conf)
             {
               // load class from current context class loader
               Class<? extends StreamingApplication> c = StramUtils.classForName(className, StreamingApplication.class);
-              return StramUtils.newInstance(c);
+              StreamingApplication app = StramUtils.newInstance(c);
+              LogicalPlan dag = new LogicalPlan();
+              conf.prepareDAG(dag, app, getName());
+              return dag;
             }
 
           };
@@ -414,28 +416,9 @@ public class StramAppLauncher
     return conf;
   }
 
-  public Map<String, String> getAppAliases()
-  {
-    return propertiesBuilder.getAppAliases();
-  }
-
   public LogicalPlanConfiguration getLogicalPlanConfiguration()
   {
     return propertiesBuilder;
-  }
-
-  public LogicalPlan prepareDAG(AppFactory appConfig)
-  {
-    LogicalPlan dag = new LogicalPlan();
-    StreamingApplication app = appConfig.createApp(conf);
-
-    // TODO: this code of choosing which object to call prepareDAG on is a hack and will need cleanup
-    if (app instanceof LogicalPlanConfiguration) {
-      propertiesBuilder.addFromProperties(((LogicalPlanConfiguration)app).getProperties());
-    }
-    propertiesBuilder.prepareDAG(dag, app, appConfig.getName(), conf);
-
-    return dag;
   }
 
   /**
@@ -448,8 +431,8 @@ public class StramAppLauncher
   {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig));
+    propertiesBuilder.conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.LOCAL);
+    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp(propertiesBuilder));
     lc.run();
   }
 
@@ -472,8 +455,9 @@ public class StramAppLauncher
   public ApplicationId launchApp(AppFactory appConfig, byte[] licenseBytes) throws Exception
   {
     loadDependencies();
+    Configuration conf = propertiesBuilder.conf;
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
-    LogicalPlan dag = prepareDAG(appConfig);
+    LogicalPlan dag = appConfig.createApp(propertiesBuilder);
     dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(conf, dag);
     try {

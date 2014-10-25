@@ -32,7 +32,7 @@
       "name": "operator3",
       "class": "com.datatorrent.stram.engine.GenericTestOperator",
       "properties": {
-        "myStringProperty": "myStringPropertyValueFromTemplate"
+        "myStringProperty": "o3StringFromJson"
       }
     },
     {
