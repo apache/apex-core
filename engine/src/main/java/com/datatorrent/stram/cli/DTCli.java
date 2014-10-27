@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Map.Entry;
 
 import javax.ws.rs.core.MediaType;
 
@@ -17,6 +18,7 @@ import jline.console.completer.*;
 import jline.console.history.FileHistory;
 import jline.console.history.History;
 import jline.console.history.MemoryHistory;
+
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -44,6 +46,7 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -51,9 +54,8 @@ import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-
 import com.datatorrent.api.Operator;
-
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.*;
@@ -90,7 +92,6 @@ import com.datatorrent.stram.webapp.StramWebServices;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
-  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
   private Configuration conf;
   private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
@@ -3138,6 +3139,7 @@ public class DTCli
         }
         printJson(appList, "applications");
       }
+      ap.close();
     }
 
   }
@@ -3174,7 +3176,6 @@ public class DTCli
     return tmpDir;
   }
 
-  @SuppressWarnings("static-access")
   public static class GetOperatorClassesCommandLineOptions
   {
     final Options options = new Options();
@@ -3638,82 +3639,6 @@ public class DTCli
 
   }
 
-  private class CreateAlertCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      String fileName = expandFileName(args[2], true);
-      File f = new File(fileName);
-      if (!f.canRead()) {
-        throw new CliException("Cannot read " + fileName);
-      }
-
-      DataInputStream dis = new DataInputStream(new FileInputStream(f));
-      byte[] buffer = new byte[dis.available()];
-      dis.readFully(buffer);
-      final JSONObject json = new JSONObject(new String(buffer));
-      dis.close();
-
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
-      try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
-          }
-
-        });
-        printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
-      }
-    }
-
-  }
-
-  private class DeleteAlertCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
-      try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
-          }
-
-        });
-        printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
-      }
-    }
-
-  }
-
-  private class ListAlertsCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      ClientResponse rsp = getResource(StramWebServices.PATH_ALERTS, currentApp);
-      JSONObject json = rsp.getEntity(JSONObject.class);
-      printJson(json);
-    }
-
-  }
-
   private class GetAppPackageInfoCommand implements Command
   {
     @Override
@@ -3749,6 +3674,23 @@ public class DTCli
       for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
         launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
         requiredProperties.remove(entry.getKey());
+      }
+
+      // settings specified in the user's environment take precedence over defaults in package.
+      // since both are merged into a single -conf option below, apply them on top of the defaults here.
+      File confFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
+      if (confFile.exists()) {
+        Configuration conf = new Configuration(false);
+        conf.addResource(new Path(confFile.toURI()));
+        Iterator<Entry<String, String>> it = conf.iterator();
+        while (it.hasNext()) {
+          Entry<String, String> entry = it.next();
+          // filter relevant entries
+          if (entry.getKey().startsWith(StreamingApplication.DT_PREFIX)) {
+            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+            requiredProperties.remove(entry.getKey());
+          }
+        }
       }
 
       String matchAppName = null;

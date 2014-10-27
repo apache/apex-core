@@ -38,10 +38,7 @@ public class LocalModeImpl extends LocalMode {
       conf = new Configuration(false);
     }
     LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
-    String appName = "unknown";
-    if (app != null) {
-      appName = app.getClass().getName();
-    }
+    String appName = app != null ? app.getClass().getName() : "unknown";
     lpc.prepareDAG(lp, app, appName);
     return lp;
   }
