@@ -7,6 +7,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.PrivilegedExceptionAction;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
@@ -29,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
@@ -1388,8 +1390,9 @@ public class DTCli
   private void handleException(Exception e)
   {
     String msg = e.getMessage();
-    if (e.getCause() != null && e.getCause().getMessage() != null) {
-      msg += ": " + e.getCause().getMessage();
+    Throwable cause = e.getCause();
+    if (cause != null && cause.getMessage() != null) {
+      msg += ": " + cause.getMessage();
     }
     if (msg != null) {
       System.err.println(msg);
@@ -4053,12 +4056,34 @@ public class DTCli
     boolean exactMatch;
   }
 
-  public static void main(String[] args) throws Exception
+  public static void mainHelper(String[] args) throws Exception
   {
     DTCli shell = new DTCli();
     shell.init(args);
     shell.run();
     System.exit(lastCommandError ? 1 : 0);
+  }
+
+  public static void main(final String[] args) throws Exception
+  {
+    String hadoopUserName = System.getenv("HADOOP_USER_NAME");
+    if (UserGroupInformation.isSecurityEnabled() && StringUtils.isNotBlank(hadoopUserName)) {
+      LOG.info("You ({}) are running as user {}", UserGroupInformation.getLoginUser().getShortUserName(), hadoopUserName);
+      UserGroupInformation ugi
+              = UserGroupInformation.createProxyUser(hadoopUserName, UserGroupInformation.getLoginUser());
+      ugi.doAs(new PrivilegedExceptionAction<Void>()
+      {
+        @Override
+        public Void run() throws Exception
+        {
+          mainHelper(args);
+          return null;
+        }
+      });
+    }
+    else {
+      mainHelper(args);
+    }
   }
 
 }
