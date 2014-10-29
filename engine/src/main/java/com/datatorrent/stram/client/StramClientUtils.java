@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -295,7 +296,7 @@ public class StramClientUtils
       fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
-      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
+      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
         new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
@@ -403,7 +404,7 @@ public class StramClientUtils
     }
     else {
       if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, System.getProperty("user.name"));
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
         conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
       }
       try {
@@ -423,15 +424,18 @@ public class StramClientUtils
       return new Path(fs.getHomeDirectory(), "datatorrent");
     }
     else {
-      if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, System.getProperty("user.name"));
-        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
-      }
       try {
+        if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+          dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
+          conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+        }
         URI uri = new URI(dfsRootDir);
         if (uri.isAbsolute()) {
           return new Path(uri);
         }
+      }
+      catch (IOException ex) {
+        LOG.warn("Error getting user login name {}", dfsRootDir, ex);
       }
       catch (URISyntaxException ex) {
         LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
