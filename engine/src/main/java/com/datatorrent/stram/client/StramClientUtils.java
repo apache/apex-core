@@ -67,7 +67,7 @@ public class StramClientUtils
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
   public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
-  public static final String DT_DFS_ROOT_USER = "%USER_HOME%";
+  public static final String DT_DFS_USER_NAME = "%USER_NAME%";
   public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
@@ -292,12 +292,7 @@ public class StramClientUtils
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
     FileSystem fs = null;
     try {
-      fs = FileSystem.newInstance(conf);
-      String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
-      if (dfsRootDir.contains(DT_DFS_ROOT_USER)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_ROOT_USER, Path.getPathWithoutSchemeAndAuthority(fs.getHomeDirectory()).toString());
-        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
-      }
+      fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
       File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
@@ -407,8 +402,8 @@ public class StramClientUtils
       return FileSystem.newInstance(conf);
     }
     else {
-      if (dfsRootDir.contains(DT_DFS_ROOT_USER)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_ROOT_USER, getHomeDirectory(conf).toString());
+      if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, System.getProperty("user.name"));
         conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
       }
       try {
@@ -421,20 +416,6 @@ public class StramClientUtils
     }
   }
 
-  public static Path getHomeDirectory(Configuration configuration) throws IOException
-  {
-    FileSystem fs = null;
-    Path path = null;
-    try {
-      fs = FileSystem.newInstance(configuration);
-      path = Path.getPathWithoutSchemeAndAuthority(fs.getHomeDirectory());
-    }
-    finally {
-      IOUtils.closeQuietly(fs);
-    }
-    return path;
-  }
-
   public static Path getDTDFSRootDir(FileSystem fs, Configuration conf)
   {
     String dfsRootDir = conf.get(DT_DFS_ROOT_DIR);
@@ -442,8 +423,8 @@ public class StramClientUtils
       return new Path(fs.getHomeDirectory(), "datatorrent");
     }
     else {
-      if (dfsRootDir.contains(DT_DFS_ROOT_USER)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_ROOT_USER, Path.getPathWithoutSchemeAndAuthority(fs.getHomeDirectory()).toString());
+      if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, System.getProperty("user.name"));
         conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
       }
       try {
