@@ -4,29 +4,15 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.Context;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.license.License;
-import com.datatorrent.stram.license.LicenseAuthority;
-import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.util.ConfigValidator;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
 import java.io.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.net.*;
-import java.net.URL;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -35,9 +21,14 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.ClientRMProxy;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
@@ -47,8 +38,22 @@ import org.mozilla.javascript.Scriptable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.StreamingApplication;
+
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
+import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigValidator;
+
 /**
- *
  * Collection of utility classes for command line interface package<p>
  * <br>
  * List includes<br>
@@ -63,15 +68,14 @@ public class StramClientUtils
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
   public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
+  public static final String DT_DFS_USER_NAME = "%USER_NAME%";
   public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
 
   /**
-   *
    * TBD<p>
    * <br>
-   *
    */
   public static class YarnClientHelper
   {
@@ -108,12 +112,12 @@ public class StramClientUtils
     {
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-              YarnConfiguration.RM_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_PORT);
+        YarnConfiguration.RM_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
-      return ((ApplicationClientProtocol)rpc.getProxy(
-              ApplicationClientProtocol.class, rmAddress, conf));
+      return ((ApplicationClientProtocol) rpc.getProxy(
+        ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -124,19 +128,17 @@ public class StramClientUtils
     public ApplicationMasterProtocol connectToRM()
     {
       InetSocketAddress rmAddress = conf.getSocketAddr(
-              YarnConfiguration.RM_SCHEDULER_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
+        YarnConfiguration.RM_SCHEDULER_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
-      return ((ApplicationMasterProtocol)rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
+      return ((ApplicationMasterProtocol) rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
     }
 
   }
 
   /**
-   *
-   * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}<p>
-   *
+   * Bunch of utilities that ease repeating interactions with {@link ClientRMProxy}<p>
    */
   public static class ClientRMHelper
   {
@@ -157,7 +159,7 @@ public class StramClientUtils
     /**
      * Monitor the submitted application for completion. Kill application if time expires.
      *
-     * @param appId Application Id of application to be monitored
+     * @param appId         Application Id of application to be monitored
      * @param callback
      * @param timeoutMillis
      * @return true if application completed successfully
@@ -192,16 +194,16 @@ public class StramClientUtils
           }
           else {
             LOG.info("Application finished unsuccessfully."
-                    + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                    + ". Breaking monitoring loop");
+              + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+              + ". Breaking monitoring loop");
             return false;
           }
         }
         else if (YarnApplicationState.KILLED == state
-                || YarnApplicationState.FAILED == state) {
+          || YarnApplicationState.FAILED == state) {
           LOG.info("Application did not finish."
-                  + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                  + ". Breaking monitoring loop");
+            + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+            + ". Breaking monitoring loop");
           return false;
         }
 
@@ -289,15 +291,14 @@ public class StramClientUtils
       addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
     }
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
-
     FileSystem fs = null;
     try {
       fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
-      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
+      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
-                         new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
+        new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
       if (!isDevelopmentMode()) {
         // load node local config file
@@ -313,6 +314,7 @@ public class StramClientUtils
     finally {
       IOUtils.closeQuietly(fs);
     }
+
     //Validate loggers-level settings
     String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
@@ -343,6 +345,7 @@ public class StramClientUtils
         conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, defaultRetryInterval);
       }
     }
+    LOG.info(" conf object in stramclient {}", conf);
     return conf;
   }
 
@@ -400,6 +403,10 @@ public class StramClientUtils
       return FileSystem.newInstance(conf);
     }
     else {
+      if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
+        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+      }
       try {
         return FileSystem.newInstance(new URI(dfsRootDir), conf);
       }
@@ -418,10 +425,17 @@ public class StramClientUtils
     }
     else {
       try {
+        if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+          dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
+          conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+        }
         URI uri = new URI(dfsRootDir);
         if (uri.isAbsolute()) {
           return new Path(uri);
         }
+      }
+      catch (IOException ex) {
+        LOG.warn("Error getting user login name {}", dfsRootDir, ex);
       }
       catch (URISyntaxException ex) {
         LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
@@ -552,7 +566,8 @@ public class StramClientUtils
     // and the checksum will fail if the file is again copied to HDFS
     try {
       new File(fromLocal.getParentFile(), "." + fromLocal.getName() + ".crc").delete();
-    } catch (Exception ex) {
+    }
+    catch (Exception ex) {
       // ignore
     }
     fs.copyFromLocalFile(new Path(fromLocal.toURI()), toDFS);
@@ -570,10 +585,10 @@ public class StramClientUtils
       String licenseId = license.getLicenseId();
 
       List<ApplicationReport> apps = yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE),
-                                                                EnumSet.of(YarnApplicationState.RUNNING,
-                                                                           YarnApplicationState.ACCEPTED,
-                                                                           YarnApplicationState.NEW,
-                                                                           YarnApplicationState.NEW_SAVING));
+        EnumSet.of(YarnApplicationState.RUNNING,
+          YarnApplicationState.ACCEPTED,
+          YarnApplicationState.NEW,
+          YarnApplicationState.NEW_SAVING));
       for (ApplicationReport ar : apps) {
         if (ar.getName().equals(licenseId)) {
           return licenseId;
