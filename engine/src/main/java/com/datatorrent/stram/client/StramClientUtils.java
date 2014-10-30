@@ -614,7 +614,7 @@ public class StramClientUtils
     LicenseAuthority.validateLicense(licenseBytes);
     LogicalPlan lp = new LogicalPlan();
     lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
-    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
+    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64URLSafeString(licenseBytes)); // TODO: obfuscate license passing
     int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
     lp.setAttribute(Context.DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
     lp.setAttribute(LogicalPlan.LICENSE_ROOT, conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
