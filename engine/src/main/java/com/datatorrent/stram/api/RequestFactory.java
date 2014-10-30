@@ -84,6 +84,7 @@ public class RequestFactory
 
         };
       }
+      return null;
     }
 
     return delegate.getRequestExecutor(node, snr);
