@@ -1158,7 +1158,9 @@ public class LogicalPlanConfiguration {
       }
     }
     // direct settings
-    for (Conf conf : opConfs) {
+    // Apply the configurations in reverse order since the higher priority ones are at the beginning
+    for (int i = opConfs.size()-1; i >= 0; i--) {
+      Conf conf = opConfs.get(i);
       opProps.putAll(Maps.fromProperties(conf.properties));
     }
     //properties.remove(OPERATOR_CLASSNAME);

@@ -4,12 +4,31 @@
  */
 package com.datatorrent.stram.plan;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.util.*;
+
+import com.google.common.collect.Sets;
+
+import org.codehaus.jettison.json.JSONObject;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.hadoop.conf.Configuration;
+
 import com.datatorrent.api.*;
-import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
+
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -19,23 +38,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
-import com.google.common.collect.Sets;
-import java.io.*;
-import java.lang.reflect.Field;
-import java.util.*;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jettison.json.JSONObject;
-import org.junit.Assert;
 
 import static org.junit.Assert.*;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LogicalPlanConfigurationTest {
 
@@ -443,6 +447,39 @@ public class LogicalPlanConfigurationTest {
     Assert.assertEquals("", Integer.valueOf(20), dag.getOperatorMeta("operator1").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", Integer.valueOf(2), dag.getOperatorMeta("operator2").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", PartitionLoadWatch.class, dag.getOperatorMeta("operator2").getValue(OperatorContext.STATS_LISTENERS).toArray()[0].getClass());
+  }
+
+  @Test
+  public void testOperatorLevelProperties() {
+    String appName = "app1";
+    final GenericTestOperator operator1 = new GenericTestOperator();
+    final GenericTestOperator operator2 = new GenericTestOperator();
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.addOperator("operator1", operator1);
+        dag.addOperator("operator2", operator2);
+      }
+    };
+
+    Properties props = new Properties();
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(StreamingApplication.DT_PREFIX + "operator.*.myStringProperty", "pv1");
+    props.put(StreamingApplication.DT_PREFIX + "operator.*.booleanProperty", Boolean.TRUE.toString());
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.myStringProperty", "apv1");
+
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+    dagBuilder.addFromProperties(props);
+
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.prepareDAG(dag, app, appPath);
+
+    Assert.assertEquals("apv1", operator1.getMyStringProperty());
+    Assert.assertEquals("pv1", operator2.getMyStringProperty());
+    Assert.assertEquals(true, operator2.isBooleanProperty());
   }
 
   @Test
