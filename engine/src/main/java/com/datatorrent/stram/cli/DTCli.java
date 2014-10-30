@@ -675,20 +675,6 @@ public class DTCli
       null,
       new Arg[]{new Arg("app-id")},
       "Get the information of an app"));
-    /*
-    connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(),
-                                                          new Arg[] {new Arg("name"), new FileArg("file")},
-                                                          null,
-                                                          "Create an alert with the name and the given file that contains the spec"));
-    connectedCommands.put("delete-alert", new CommandSpec(new DeleteAlertCommand(),
-                                                          new Arg[] {new Arg("name")},
-                                                          null,
-                                                          "Delete an alert with the given name"));
-    connectedCommands.put("list-alerts", new CommandSpec(new ListAlertsCommand(),
-                                                         null,
-                                                         null,
-                                                         "List all alerts"));
-    */
     connectedCommands.put("get-recording-info", new CommandSpec(new GetRecordingInfoCommand(),
       null,
       new Arg[]{new Arg("operator-id"), new Arg("start-time")},
@@ -4067,7 +4053,9 @@ public class DTCli
   public static void main(final String[] args) throws Exception
   {
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");
-    if (UserGroupInformation.isSecurityEnabled() && StringUtils.isNotBlank(hadoopUserName)) {
+    if (UserGroupInformation.isSecurityEnabled()
+            && StringUtils.isNotBlank(hadoopUserName)
+            && !hadoopUserName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
       LOG.info("You ({}) are running as user {}", UserGroupInformation.getLoginUser().getShortUserName(), hadoopUserName);
       UserGroupInformation ugi
               = UserGroupInformation.createProxyUser(hadoopUserName, UserGroupInformation.getLoginUser());
