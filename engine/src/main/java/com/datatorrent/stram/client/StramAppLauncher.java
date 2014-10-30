@@ -458,7 +458,7 @@ public class StramAppLauncher
     Configuration conf = propertiesBuilder.conf;
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = appConfig.createApp(propertiesBuilder);
-    dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
+    dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64URLSafeString(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(conf, dag);
     try {
       client.start();
