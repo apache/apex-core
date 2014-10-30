@@ -91,7 +91,7 @@ public interface StatsListener
     /**
      * List of commands to be executed on all deployed operator instances.
      */
-    public List<OperatorCommand> operatorCommands;
+    public List<? extends OperatorCommand> operatorCommands;
 
     private static final long serialVersionUID = 201401201506L;
   }

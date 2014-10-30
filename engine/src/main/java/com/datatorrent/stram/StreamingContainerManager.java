@@ -2106,18 +2106,22 @@ public class StreamingContainerManager implements PlanContext
     }
 
     String operatorName = o.getName();
-    StreamingContainerAgent sca = getContainerAgent(o.getContainer().getExternalId());
     StramToNodeSetPropertyRequest request = new StramToNodeSetPropertyRequest();
     request.setOperatorId(operatorId);
     request.setPropertyKey(propertyName);
     request.setPropertyValue(propertyValue);
-    sca.addOperatorRequest(request);
+    addOperatorRequest(o, request);
     updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
 
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests. so record it here for now.
     recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, operatorId, propertyName, propertyValue));
+  }
 
+  public void addOperatorRequest(PTOperator oper, StramToNodeRequest request)
+  {
+    StreamingContainerAgent sca = getContainerAgent(oper.getContainer().getExternalId());
+    sca.addOperatorRequest(request);
   }
 
   /**

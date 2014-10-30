@@ -21,7 +21,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -29,12 +28,13 @@ import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -200,6 +200,7 @@ public class PhysicalPlan implements Serializable
      */
     public void writeJournal(RecoverableOperation op);
 
+    public void addOperatorRequest(PTOperator oper, StramToNodeRequest request);
   }
 
   private static class StatsListenerProxy implements StatsListener, Serializable
@@ -1295,6 +1296,15 @@ public class PhysicalPlan implements Serializable
               }
             };
             ctx.dispatch(r);
+          }
+        }
+        if (rsp.operatorCommands != null) {
+          for (OperatorCommand cmd : rsp.operatorCommands) {
+            StramToNodeRequest request = new StramToNodeRequest();
+            request.operatorId = oper.getId();
+            request.requestType = StramToNodeRequest.RequestType.CUSTOM;
+            request.cmd = cmd;
+            ctx.addOperatorRequest(oper, request);
           }
         }
       }

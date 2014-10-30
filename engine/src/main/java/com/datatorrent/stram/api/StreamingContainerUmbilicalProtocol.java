@@ -5,6 +5,7 @@
 package com.datatorrent.stram.api;
 
 import com.datatorrent.api.Attribute.AttributeMap;
+
 import java.io.*;
 import java.util.*;
 
@@ -16,6 +17,7 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats;
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -229,7 +231,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class StramToNodeRequest implements Serializable {
     public static enum RequestType
     {
-      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY, SET_LOG_LEVEL
+      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY, SET_LOG_LEVEL, CUSTOM
     }
 
     private static final long serialVersionUID = 1L;
@@ -239,6 +241,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public long recoveryCheckpoint;
     public String portName;
     public boolean deleted;
+    public OperatorCommand cmd;
 
     public boolean isDeleted()
     {

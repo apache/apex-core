@@ -62,7 +62,9 @@ public class RequestFactory
        * For now SET_PROPERTY is not delegated but as soon as its home is found, it should be sent there.
        * No special handling for any fucking thing!
        */
-      if (snr.requestType == StramToNodeRequest.RequestType.SET_PROPERTY) {
+      if (snr.cmd != null) {
+        return snr.cmd;
+      } else if (snr.requestType == StramToNodeRequest.RequestType.SET_PROPERTY) {
         return new OperatorCommand()
         {
           @Override
@@ -82,8 +84,6 @@ public class RequestFactory
 
         };
       }
-
-      return null;
     }
 
     return delegate.getRequestExecutor(node, snr);
