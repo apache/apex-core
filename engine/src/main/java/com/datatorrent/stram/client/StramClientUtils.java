@@ -52,6 +52,7 @@ import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ConfigValidator;
+import java.security.PrivilegedExceptionAction;
 
 /**
  * Collection of utility classes for command line interface package<p>
@@ -692,6 +693,20 @@ public class StramClientUtils
     }
     finally {
       org.mozilla.javascript.Context.exit();
+    }
+  }
+
+  public static <T> T doAs(String userName, PrivilegedExceptionAction<T> action) throws Exception
+  {
+    if (StringUtils.isNotBlank(userName) && !userName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
+      LOG.info("Executing command as {}", userName);
+      UserGroupInformation ugi
+              = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
+      return ugi.doAs(action);
+    }
+    else {
+      LOG.info("Executing command as if there is no login info: {}", userName);
+      return action.run();
     }
   }
 

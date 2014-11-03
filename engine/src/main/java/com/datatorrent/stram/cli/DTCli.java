@@ -901,7 +901,7 @@ public class DTCli
 
   }
 
-  public void init(String[] args) throws IOException
+  public void preImpersonationInit(String[] args) throws IOException
   {
     Signal.handle(new Signal("INT"), new SignalHandler()
     {
@@ -1005,6 +1005,10 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
+  }
+
+  public void init(String[] args) throws IOException
+  {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
     StramAgent.setConfiguration(conf);
 
@@ -4042,16 +4046,17 @@ public class DTCli
     boolean exactMatch;
   }
 
-  public static void mainHelper(String[] args) throws Exception
+  public void mainHelper(String[] args) throws Exception
   {
-    DTCli shell = new DTCli();
-    shell.init(args);
-    shell.run();
+    init(args);
+    run();
     System.exit(lastCommandError ? 1 : 0);
   }
 
   public static void main(final String[] args) throws Exception
   {
+    final DTCli shell = new DTCli();
+    shell.preImpersonationInit(args);
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");
     if (UserGroupInformation.isSecurityEnabled()
             && StringUtils.isNotBlank(hadoopUserName)
@@ -4064,13 +4069,13 @@ public class DTCli
         @Override
         public Void run() throws Exception
         {
-          mainHelper(args);
+          shell.mainHelper(args);
           return null;
         }
       });
     }
     else {
-      mainHelper(args);
+      shell.mainHelper(args);
     }
   }
 
