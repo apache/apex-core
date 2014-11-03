@@ -215,7 +215,8 @@ public class CLIProxy implements Closeable
     String result = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
     if (!err.isEmpty()) {
-      throw new CommandException(err);
+      LOG.error("Command is returning this in stderr: {}", err);
+      //throw new CommandException(err);
     }
     return (result == null) ? null : new JSONObject(result);
   }
