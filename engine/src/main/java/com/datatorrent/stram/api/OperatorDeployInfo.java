@@ -76,7 +76,7 @@ public class OperatorDeployInfo implements Serializable
     /*
     public StreamCodec streamCodec;
     */
-    public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
+    public Map<StreamCodecIdentifier, StreamCodec<?>> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodec<?>>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -149,7 +149,7 @@ public class OperatorDeployInfo implements Serializable
      */
     public String bufferServerHost;
     public int bufferServerPort;
-    public Map<StreamCodecIdentifier, StreamCodecInfo> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodecInfo>();
+    public Map<StreamCodecIdentifier, StreamCodec<?>> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodec<?>>();
     /**
      * Context attributes for output port
      */
@@ -223,50 +223,6 @@ public class OperatorDeployInfo implements Serializable
     public int hashCode()
     {
       return id.hashCode();
-    }
-  }
-
-  public static class StreamCodecInfo implements Serializable
-  {
-    private static final long serialVersionUID = 201410081627L;
-
-    /**
-     * Class name of tuple SerDe (buffer server stream only).
-     */
-    @Deprecated /* use codec instead; feel free to delete the codecClass related code after May 1, 2014 */
-    public String serDeClassName;
-
-    /**
-     * The SerDe object.
-     */
-    public StreamCodec<Object> streamCodec;
-
-    // Stream codecs are matched by reference on purpose
-    @Override
-    public boolean equals(Object o)
-    {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-
-      StreamCodecInfo that = (StreamCodecInfo) o;
-
-      if (serDeClassName != null ? !serDeClassName.equals(that.serDeClassName) : that.serDeClassName != null) {
-        return false;
-      }
-
-      return streamCodec == that.streamCodec;
-    }
-
-    @Override
-    public int hashCode()
-    {
-      int result = serDeClassName != null ? serDeClassName.hashCode() : 0;
-      result = 31 * result + (streamCodec != null ? streamCodec.hashCode() : 0);
-      return result;
     }
   }
 

@@ -941,9 +941,9 @@ public class LogicalPlan implements Serializable, DAG
         if (streamCodec != null) {
           classNames.add(streamCodec.getClass().getName());
         } else {
-          Class<? extends StreamCodec<?>> codecClass = sink.getPortObject().getStreamCodec();
-          if (codecClass != null) {
-            classNames.add(codecClass.getName());
+          StreamCodec<?> codec = sink.getPortObject().getStreamCodec();
+          if (codec != null) {
+            classNames.add(codec.getClass().getName());
           }
         }
       }

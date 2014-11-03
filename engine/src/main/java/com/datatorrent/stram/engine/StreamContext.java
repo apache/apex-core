@@ -22,6 +22,7 @@ import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -34,7 +35,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
 {
   public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
   public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
-  public static final Attribute<StreamCodec<Object>> CODEC = new Attribute<StreamCodec<Object>>(null, null);
+  public static final Attribute<StreamCodec<?>> CODEC = new Attribute<StreamCodec<?>>(new DefaultStatefulStreamCodec<Object>(), null);
 
   @Override
   public AttributeMap getAttributes()

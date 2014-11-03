@@ -151,7 +151,7 @@ public class PhysicalPlan implements Serializable
   private final ConcurrentMap<OperatorMeta, OperatorMeta> pendingRepartition = Maps.newConcurrentMap();
 
   private final AtomicInteger strCodecIdSequence = new AtomicInteger();
-  private final Map<OperatorDeployInfo.StreamCodecInfo, Integer> streamCodecIdentifiers = Maps.newHashMap();
+  private final Map<StreamCodec<?>, Integer> streamCodecIdentifiers = Maps.newHashMap();
 
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
@@ -1374,8 +1374,8 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  public Integer getStreamCodecIdentifier(OperatorDeployInfo.StreamCodecInfo streamCodecInfo) {
-    Integer id = null;
+  public Integer getStreamCodecIdentifier(StreamCodec<?> streamCodecInfo) {
+    Integer id;
     synchronized (streamCodecIdentifiers) {
       id = streamCodecIdentifiers.get(streamCodecInfo);
       if (id == null) {
@@ -1387,7 +1387,7 @@ public class PhysicalPlan implements Serializable
   }
 
   // For tests to lookup the mapping
-  public Map<OperatorDeployInfo.StreamCodecInfo, Integer> getStreamCodecIdentifiers() {
+  public Map<StreamCodec<?>, Integer> getStreamCodecIdentifiers() {
     return Collections.unmodifiableMap(streamCodecIdentifiers);
   }
 

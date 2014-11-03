@@ -44,7 +44,6 @@ import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.ComponentContextPair;
 import com.datatorrent.stram.RecoverableRpcProxy;
-import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.api.*;
@@ -821,7 +820,7 @@ public class StreamingContainer extends YarnContainerMain
 
   @SuppressWarnings("unchecked")
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
-          String connIdentifier, StreamCodec<Object> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
+          String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
           throws UnknownHostException
   {
     String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(connIdentifier);
@@ -864,7 +863,7 @@ public class StreamingContainer extends YarnContainerMain
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
-        Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs = nodi.streamCodecs;
+        Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs = nodi.streamCodecs;
         if ((collection == null) && (streamCodecs.size() == 1)) {
           assert (nodi.bufferServerHost != null) : "resulting stream cannot be inline: " + nodi;
           /*
@@ -872,8 +871,8 @@ public class StreamingContainer extends YarnContainerMain
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = streamCodecs.entrySet().iterator().next();
-          StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
+          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> entry = streamCodecs.entrySet().iterator().next();
+          StreamCodec<?> streamCodec = entry.getValue();
           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
           String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
@@ -910,9 +909,9 @@ public class StreamingContainer extends YarnContainerMain
              * Although there is a node in this container interested in output placed on this stream, there
              * seems to at least one more party interested but placed in a container other than this one.
              */
-            for (Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry : streamCodecs.entrySet()) {
+            for (Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> entry : streamCodecs.entrySet()) {
               OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
-              StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
+              StreamCodec<?> streamCodec = entry.getValue();
 
               String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
@@ -998,9 +997,9 @@ public class StreamingContainer extends YarnContainerMain
           if (nidi.streamCodecs.size() != 1) {
             throw new IllegalStateException("Only one input codec configuration should be present");
           }
-          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> entry = nidi.streamCodecs.entrySet().iterator().next();
+          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> entry = nidi.streamCodecs.entrySet().iterator().next();
           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
-          StreamCodec<Object> streamCodec = getStreamCodec(entry.getValue());
+          StreamCodec<?> streamCodec = entry.getValue();
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -1108,7 +1107,7 @@ public class StreamingContainer extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>((StreamCodec<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
@@ -1142,14 +1141,6 @@ public class StreamingContainer extends YarnContainerMain
 
   }
 
-  private StreamCodec<Object> getStreamCodec(OperatorDeployInfo.StreamCodecInfo streamCodecInfo)
-  {
-    StreamCodec<Object> codec = streamCodecInfo.streamCodec;
-    if (codec == null) {
-      codec = StramUtils.getSerdeInstance(streamCodecInfo.serDeClassName);
-    }
-    return codec;
-  }
   /**
    * Populates oioGroups with owner OIO Node as key and list of corresponding OIO nodes which will run in its thread as value
    * This method assumes that the DAG is valid as per OIO constraints

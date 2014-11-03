@@ -601,7 +601,7 @@ public class LogicalPlanTest {
       }
 
       @Override
-      public Class<? extends StreamCodec<T>> getStreamCodec() {
+      public StreamCodec<T> getStreamCodec() {
         return null;
       }
     }
@@ -669,9 +669,9 @@ public class LogicalPlanTest {
       }
 
       @Override
-      public Class<? extends StreamCodec<Object>> getStreamCodec()
+      public StreamCodec<Object> getStreamCodec()
       {
-        return TestStreamCodec.class;
+        return new TestStreamCodec();
       }
     };
 

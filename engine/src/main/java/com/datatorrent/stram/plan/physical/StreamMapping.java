@@ -19,10 +19,10 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StreamingContainerAgent;
-import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -164,7 +164,7 @@ public class StreamMapping implements java.io.Serializable
       boolean separateUnifiers = false;
       Integer lastId = null;
       for (InputPortMeta ipm : streamMeta.getSinks()) {
-        OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+        StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
         Integer id = plan.getStreamCodecIdentifier(streamCodecInfo);
         if (lastId == null) {
           lastId = id;
@@ -175,7 +175,7 @@ public class StreamMapping implements java.io.Serializable
       }
 
       List<PTOutput> unifierSources = this.upstream;
-      Map<OperatorDeployInfo.StreamCodecInfo, List<PTOutput>> cascadeUnifierSourcesMap = Maps.newHashMap();
+      Map<StreamCodec<?>, List<PTOutput>> cascadeUnifierSourcesMap = Maps.newHashMap();
 
       if (limit > 1 && this.upstream.size() > limit) {
         // cascading unifier
@@ -183,7 +183,7 @@ public class StreamMapping implements java.io.Serializable
           unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
         } else {
           for (InputPortMeta ipm : streamMeta.getSinks()) {
-            OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(ipm);
+            StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(ipm);
             if (!cascadeUnifierSourcesMap.containsKey(streamCodecInfo)) {
               unifierSources = setupCascadingUnifiers(this.upstream, currentUnifiers, limit, 0);
               cascadeUnifierSourcesMap.put(streamCodecInfo, unifierSources);
@@ -237,7 +237,7 @@ public class StreamMapping implements java.io.Serializable
             unifier.inputs.clear();
             List<PTOutput> doperUnifierSources = unifierSources;
             if (separateUnifiers) {
-              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(doperEntry.second);
+              StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(doperEntry.second);
               List<PTOutput> cascadeSources = cascadeUnifierSourcesMap.get(streamCodecInfo);
               if (cascadeSources != null) {
                 doperUnifierSources = cascadeSources;

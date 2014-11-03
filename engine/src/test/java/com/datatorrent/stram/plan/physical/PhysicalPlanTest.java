@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.io.Serializable;
 import java.util.*;
 
 import com.google.common.collect.Lists;
@@ -38,7 +39,8 @@ import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 public class PhysicalPlanTest
 {
 
-  private static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
+  private static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> implements Serializable {
+    private static final long serialVersionUID = 201410301656L;
     @Override
     public int getPartition(Object o) {
       return 0;
@@ -56,8 +58,8 @@ public class PhysicalPlanTest
     @InputPortFieldAnnotation(optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
-      public Class<? extends StreamCodec<Object>> getStreamCodec() {
-        return PartitioningTestStreamCodec.class;
+      public StreamCodec<Object> getStreamCodec() {
+        return new PartitioningTestStreamCodec();
       }
 
       @Override

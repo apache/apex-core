@@ -330,12 +330,12 @@ public class StramRecoveryTest
     dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
-    StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
+    StreamingContainerManager.getInstance(recoveryHandler, dag, false);
 
     // test restore initial snapshot + log
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
-    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
+    StreamingContainerManager scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();
     dag = plan.getLogicalPlan(); // original plan
 

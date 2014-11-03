@@ -133,8 +133,6 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("Registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), Codec.getStringWindowId(context.getFinishedWindowId()), context.getBufferServerAddress()});
-    serde = context.get(StreamContext.CODEC);
-    statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
     super.activate(null, context.getFinishedWindowId());
   }
 
@@ -151,8 +149,19 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void setup(StreamContext context)
   {
+    StreamCodec<?> codec = context.get(StreamContext.CODEC);
+    if (codec == null) {
+      statefulSerde = (StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue;
+    }
+    else if (codec instanceof StatefulStreamCodec) {
+      statefulSerde = (StatefulStreamCodec<Object>)codec;
+    }
+    else {
+      serde = (StreamCodec<Object>)codec;
+    }
   }
 
   @Override

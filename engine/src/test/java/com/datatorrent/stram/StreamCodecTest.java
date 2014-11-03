@@ -1,7 +1,17 @@
 package com.datatorrent.stram;
 
+import java.io.Serializable;
+import java.util.*;
+
+import com.google.common.collect.Lists;
+
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -10,12 +20,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.google.common.collect.Lists;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-
-import java.util.*;
 
 /**
  * Created by Pramod Immaneni <pramod@datatorrent.com> on 9/5/14.
@@ -34,8 +38,7 @@ public class StreamCodecTest
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
-    TestStreamCodec serDe = new TestStreamCodec();
-    dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, serDe);
+    dag.setInputPortAttribute(node3.inport1, Context.PortContext.STREAM_CODEC, new TestStreamCodec());
 
     dag.addStream("n1n2", node1.outport1, node2.inport1);
     dag.addStream("n2n3", node2.outport1, node3.inport1);
@@ -63,15 +66,14 @@ public class StreamCodecTest
     OperatorDeployInfo.OutputDeployInfo n1odi = getOutputDeployInfo(n1di, n1meta.getMeta(node1.outport1));
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
-    checkPresentStreamCodec(n2meta, node2.inport1, n1odi.streamCodecs, id, plan);
-
+    Assert.assertTrue("No user set stream codec", n1odi.streamCodecs.containsValue(null));
 
     OperatorDeployInfo n2di = getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
 
     OperatorDeployInfo.InputDeployInfo n2idi = getInputDeployInfo(n2di, n2meta.getMeta(node2.inport1));
     id = n2meta.getName() + " " + n2idi.portName;
     Assert.assertEquals("number stream codecs " + id, n2idi.streamCodecs.size(), 1);
-    checkPresentStreamCodec(n2meta, node2.inport1, n2idi.streamCodecs, id, plan);
+    Assert.assertTrue("No user set stream codec", n2idi.streamCodecs.containsValue(null));
 
     OperatorDeployInfo.OutputDeployInfo n2odi = getOutputDeployInfo(n2di, n2meta.getMeta(node2.outport1));
     id = n2meta.getName() + " " + n2odi.portName;
@@ -143,8 +145,7 @@ public class StreamCodecTest
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     DefaultCodecOperator node2 = dag.addOperator("node2", DefaultCodecOperator.class);
     DefaultCodecOperator node3 = dag.addOperator("node3", DefaultCodecOperator.class);
-    TestStreamCodec serDe = new TestStreamCodec();
-    dag.setInputPortAttribute(node3.inportWithCodec, Context.PortContext.STREAM_CODEC, serDe);
+    dag.setInputPortAttribute(node3.inportWithCodec, Context.PortContext.STREAM_CODEC, new TestStreamCodec());
 
     dag.addStream("n1n2", node1.outport1, node2.inportWithCodec);
     dag.addStream("n2n3", node2.outport1, node3.inportWithCodec);
@@ -173,7 +174,6 @@ public class StreamCodecTest
     String id = n1meta.getName() + " " + n1odi.portName;
     Assert.assertEquals("number stream codecs " + id, n1odi.streamCodecs.size(), 1);
     checkPresentStreamCodec(n2meta, node2.inportWithCodec, n1odi.streamCodecs, id, plan);
-
 
     OperatorDeployInfo n2di = getSingleOperatorDeployInfo(node2, node2.getName(), dnm);
 
@@ -1166,45 +1166,43 @@ public class StreamCodecTest
     return unifiers;
   }
 
-  private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+  private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier)
   {
-    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
+    StreamCodec<?> streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec null " + id, streamCodecInfo);
-    Assert.assertNull("stream codec object not null " + id, streamCodecInfo.streamCodec);
-    Assert.assertNull("stream codec class not null " + id, streamCodecInfo.serDeClassName);
+    Assert.assertNull("stream codec object not null " + id, streamCodecInfo);
   }
 
-  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
                                     OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec)
   {
     checkStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodec, null);
   }
 
-  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
+  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
                                     OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec, String className)
   {
-    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
+    StreamCodec<?> streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, streamCodecInfo);
-    Assert.assertEquals("stream codec object " + id, streamCodec, streamCodecInfo.streamCodec);
-    Assert.assertEquals("stream codec class " + id, className, streamCodecInfo.serDeClassName);
+    Assert.assertEquals("stream codec object " + id, streamCodec, streamCodecInfo);
   }
 
   private void checkPresentStreamCodec(LogicalPlan.OperatorMeta operatorMeta, Operator.InputPort<?> inputPort,
-                                       Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs,
+                                       Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs,
                                        String id, PhysicalPlan plan )
   {
-    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = StreamingContainerAgent.getStreamCodecInfo(operatorMeta.getMeta(inputPort));
+    StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(operatorMeta.getMeta(inputPort));
     Assert.assertTrue("stream codec identifier not present" + id, isStrCodecPresent(streamCodecInfo, plan));
     OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
     streamCodecIdentifier.id = plan.getStreamCodecIdentifier(streamCodecInfo);
     checkPresentStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
   }
 
-  private void checkPresentStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo> streamCodecs, String id,
-                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, OperatorDeployInfo.StreamCodecInfo streamCodecInfo)
+  private void checkPresentStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
+                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodecInfo)
   {
-    OperatorDeployInfo.StreamCodecInfo opStreamCodecInfo = streamCodecs.get(streamCodecIdentifier);
+    StreamCodec<?> opStreamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, opStreamCodecInfo);
     Assert.assertEquals("stream codec not same " + id, opStreamCodecInfo, streamCodecInfo);
   }
@@ -1279,7 +1277,7 @@ public class StreamCodecTest
   }
 
   // For tests so that it doesn't trigger assignment of a new id
-  public boolean isStrCodecPresent(OperatorDeployInfo.StreamCodecInfo streamCodecInfo, PhysicalPlan plan)
+  public boolean isStrCodecPresent(StreamCodec<?> streamCodecInfo, PhysicalPlan plan)
   {
     return plan.getStreamCodecIdentifiers().containsKey(streamCodecInfo);
   }
@@ -1304,23 +1302,26 @@ public class StreamCodecTest
     }
   }
 
-  public static class DefaultTestStreamCodec extends DefaultStatefulStreamCodec<Object>
+  public static class DefaultTestStreamCodec  extends DefaultStatefulStreamCodec<Object> implements Serializable
   {
 
   }
 
   public static class DefaultCodecOperator extends GenericTestOperator
   {
-    final static String INPORT_WITH_CODEC = "inportWithCodec";
+    private static final DefaultTestStreamCodec codec = new DefaultTestStreamCodec();
+
     @InputPortFieldAnnotation(optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
-      public Class<? extends StreamCodec<Object>> getStreamCodec() {
-        return DefaultTestStreamCodec.class;
+      public StreamCodec<Object> getStreamCodec()
+      {
+        return codec;
       }
 
       @Override
-      final public void process(Object payload) {
+      final public void process(Object payload)
+      {
       }
 
     };

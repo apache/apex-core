@@ -42,17 +42,21 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   protected StreamCodec<Object> serde;
   protected StatefulStreamCodec<Object> statefulSerde;
   protected EventLoop eventloop;
-  private DataStatePair dsp = new DataStatePair();
+  private final DataStatePair dsp;
   CircularBuffer<Slice> offeredFragments;
   CircularBuffer<Slice> polledFragments;
   CircularBuffer<Slice> freeFragments;
   private final ArrayDeque<CircularBuffer<Slice>> backlog;
   private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
-  private AtomicLong readByteCount = new AtomicLong(0);
+  private final AtomicLong readByteCount;
 
   public BufferServerSubscriber(String id, int queueCapacity)
   {
     super(id);
+    this.reservoirs = new BufferReservoir[0];
+    this.reservoirMap = new HashMap<String, BufferReservoir>();
+    this.readByteCount = new AtomicLong(0);
+    this.dsp = new DataStatePair();
     polledFragments = offeredFragments = new CircularBuffer<Slice>(queueCapacity);
     freeFragments = new CircularBuffer<Slice>(queueCapacity);
     backlog = new ArrayDeque<CircularBuffer<Slice>>();
@@ -104,10 +108,19 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void setup(StreamContext context)
   {
-    serde = context.get(StreamContext.CODEC);
-    statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
+    StreamCodec<?> codec = context.get(StreamContext.CODEC);
+    if (codec == null) {
+      statefulSerde = (StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue;
+    }
+    else if (codec instanceof StatefulStreamCodec) {
+      statefulSerde = (StatefulStreamCodec<Object>)codec;
+    }
+    else {
+      serde = (StreamCodec<Object>)codec;
+    }
     baseSeconds = context.getFinishedWindowId() & 0xffffffff00000000L;
   }
 
@@ -123,8 +136,8 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   }
 
   @SuppressWarnings("VolatileArrayField")
-  private volatile BufferReservoir[] reservoirs = new BufferReservoir[0];
-  private HashMap<String, BufferReservoir> reservoirMap = new HashMap<String, BufferReservoir>();
+  private volatile BufferReservoir[] reservoirs;
+  private final HashMap<String, BufferReservoir> reservoirMap;
 
   public SweepableReservoir acquireReservoir(String id, int capacity)
   {
@@ -155,9 +168,9 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
       BufferReservoir[] newReservoirs = new BufferReservoir[reservoirs.length - 1];
 
       int j = 0;
-      for (int i = 0; i < reservoirs.length; i++) {
-        if (reservoirs[i] != r) {
-          newReservoirs[j++] = reservoirs[i];
+      for (BufferReservoir reservoir: reservoirs) {
+        if (reservoir != r) {
+          newReservoirs[j++] = reservoir;
         }
       }
 

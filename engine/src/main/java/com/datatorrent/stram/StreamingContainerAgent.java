@@ -172,7 +172,7 @@ public class StreamingContainerAgent {
             // Create mappings for all non-inline operators
             if (input.target.getContainer() != out.source.getContainer()) {
               InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
-              OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(inputPortMeta);
+              StreamCodec<?> streamCodecInfo = getStreamCodec(inputPortMeta);
               Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
               OperatorDeployInfo.StreamCodecIdentifier inputStreamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
               inputStreamCodecIdentifier.id = id;
@@ -245,7 +245,7 @@ public class StreamingContainerAgent {
         // On the input side there is a unlikely scenario of partitions even for inline stream that is being
         // handled. Always specifying a stream codec configuration in case that scenario happens.
         InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
-        OperatorDeployInfo.StreamCodecInfo streamCodecInfo = getStreamCodecInfo(idInputPortMeta);
+        StreamCodec<?> streamCodecInfo = getStreamCodec(idInputPortMeta);
         Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
         OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
         streamCodecIdentifier.id = id;
@@ -304,23 +304,20 @@ public class StreamingContainerAgent {
   }
 
   // This will not be needed when we change the port to be able to not specify a stream codec class
-  public static OperatorDeployInfo.StreamCodecInfo getStreamCodecInfo(InputPortMeta inputPortMeta)
+  public static StreamCodec<?> getStreamCodec(InputPortMeta inputPortMeta)
   {
-    OperatorDeployInfo.StreamCodecInfo streamCodecInfo = new OperatorDeployInfo.StreamCodecInfo();
     if (inputPortMeta != null) {
       @SuppressWarnings("unchecked")
-      StreamCodec<Object> codec = (StreamCodec<Object>)inputPortMeta.getValue(PortContext.STREAM_CODEC);
+      StreamCodec<?> codec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
       if (codec == null) {
-        Class<? extends StreamCodec<?>> serDeClass = inputPortMeta.getPortObject().getStreamCodec();
-        if (serDeClass != null) {
-          streamCodecInfo.serDeClassName = serDeClass.getName();
-        }
+        // it cannot be this object that gets returned. Depending upon this value is dangerous -- Chetan (Pramod look into this.)
+        codec = inputPortMeta.getPortObject().getStreamCodec();
       }
-      else {
-        streamCodecInfo.streamCodec = codec;
-      }
+
+      return codec;
     }
-    return streamCodecInfo;
+
+    return null;
   }
 
   /**
