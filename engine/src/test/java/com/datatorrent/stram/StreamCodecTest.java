@@ -895,7 +895,7 @@ public class StreamCodecTest
     PhysicalPlan plan = dnm.getPhysicalPlan();
 
     List<PTContainer> containers = plan.getContainers();
-    Assert.assertEquals("number containers", 9, containers.size());
+    Assert.assertEquals("number containers", 7, containers.size());
 
     for (int i = 0; i < containers.size(); ++i) {
       StreamingContainerManagerTest.assignContainer(dnm, "container" + (i + 1));

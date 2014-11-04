@@ -186,6 +186,59 @@ public class PhysicalPlanTest
   }
 
   @Test
+  public void testNumberOfUnifiers()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    dag.addStream("node1.outport1", node1.outport1, node2.inport1);
+    dag.setAttribute(node1, OperatorContext.INITIAL_PARTITION_COUNT, 5);
+    dag.setOutputPortAttribute(node1.outport1, PortContext.UNIFIER_LIMIT, 3);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    List<PTContainer> containers = plan.getContainers();
+    int unifierCount = 0;
+    int totalOperators = 0;
+    for (PTContainer container : containers) {
+      List<PTOperator> operators = container.getOperators();
+      for (PTOperator operator : operators) {
+        totalOperators++;
+        if (operator.isUnifier()) {
+          unifierCount++;
+        }
+      }
+    }
+    Assert.assertEquals("Number of operators", 8, totalOperators);
+    Assert.assertEquals("Number of unifiers", 2, unifierCount);
+  }
+  @Test
+  public void testNumberOfUnifiersWithEvenPartitions()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    dag.addStream("node1.outport1", node1.outport1, node2.inport1);
+    dag.setAttribute(node1, OperatorContext.INITIAL_PARTITION_COUNT, 8);
+    dag.setOutputPortAttribute(node1.outport1, PortContext.UNIFIER_LIMIT, 4);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    List<PTContainer> containers = plan.getContainers();
+    int unifierCount = 0;
+    int totalOperators = 0;
+    for (PTContainer container : containers) {
+      List<PTOperator> operators = container.getOperators();
+      for (PTOperator operator : operators) {
+        totalOperators++;
+        if (operator.isUnifier()) {
+          unifierCount++;
+        }
+      }
+    }
+    Assert.assertEquals("Number of operators", 12, totalOperators);
+    Assert.assertEquals("Number of unifiers", 3, unifierCount);
+  }
+
+  @Test
   public void testRepartitioningScaleUp() {
     LogicalPlan dag = new LogicalPlan();
 
@@ -1412,7 +1465,7 @@ public class PhysicalPlanTest
     Assert.assertEquals("partitioned map " + o1.partitions, 5, o1.partitions.size());
 
     o1Unifiers = plan.getMergeOperators(o1Meta);
-    Assert.assertEquals("o1Unifiers " + o1Meta, 5, o1Unifiers.size()); // 3(l1)x2(l2)
+    Assert.assertEquals("o1Unifiers " + o1Meta, 3, o1Unifiers.size()); // 3(l1)x2(l2)
     for (PTOperator o : o1Unifiers) {
       Assert.assertNotNull("container null: " + o, o.getContainer());
     }
@@ -1524,7 +1577,7 @@ public class PhysicalPlanTest
     Assert.assertEquals("partitioned map " + o1.partitions, 5, o1.partitions.size());
 
     o1Unifiers = plan.getMergeOperators(o1Meta);
-    Assert.assertEquals("o1Unifiers " + o1Meta, 6, o1Unifiers.size()); // 3(l1)x2(l2)
+    Assert.assertEquals("o1Unifiers " + o1Meta, 4, o1Unifiers.size()); // 3(l1)x2(l2)
     for (PTOperator o : o1Unifiers) {
       Assert.assertNotNull("container null: " + o, o.getContainer());
     }

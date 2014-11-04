@@ -105,6 +105,13 @@ public class StreamMapping implements java.io.Serializable
     PTOperator pu = null;
     for (int i=0; i<upstream.size(); i++) {
       if (i % limit == 0) {
+        if (upstream.size() - i < limit) {
+          while(i< upstream.size()) {
+            nextLevel.add(upstream.get(i));
+            i++;
+          }
+          continue;
+        }
         if (!pooledUnifiers.isEmpty()) {
           pu = pooledUnifiers.remove(0);
         } else {
