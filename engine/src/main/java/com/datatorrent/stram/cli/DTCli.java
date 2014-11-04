@@ -3827,6 +3827,9 @@ public class DTCli
         launchProperties.writeToFile(launchPropertiesFile, "");
         launchArgs.add("-conf");
         launchArgs.add(launchPropertiesFile.getCanonicalPath());
+        if (commandLineInfo.localMode) {
+          launchArgs.add("-local");
+        }
         if (commandLineInfo.files != null) {
           launchArgs.add("-files");
           launchArgs.add(commandLineInfo.files);
