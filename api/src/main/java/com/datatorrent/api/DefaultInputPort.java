@@ -53,6 +53,7 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   }
 
   /** {@inheritDoc} */
+  @Override
   public StreamCodec<T> getStreamCodec()
   {
     return null;

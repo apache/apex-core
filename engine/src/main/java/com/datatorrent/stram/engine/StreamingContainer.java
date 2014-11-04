@@ -863,7 +863,7 @@ public class StreamingContainer extends YarnContainerMain
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
-        Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs = nodi.streamCodecs;
+        Map<Integer, StreamCodec<?>> streamCodecs = nodi.streamCodecs;
         if ((collection == null) && (streamCodecs.size() == 1)) {
           assert (nodi.bufferServerHost != null) : "resulting stream cannot be inline: " + nodi;
           /*
@@ -871,9 +871,9 @@ public class StreamingContainer extends YarnContainerMain
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> entry = streamCodecs.entrySet().iterator().next();
+          Map.Entry<Integer, StreamCodec<?>> entry = streamCodecs.entrySet().iterator().next();
           StreamCodec<?> streamCodec = entry.getValue();
-          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
+          Integer streamCodecIdentifier = entry.getKey();
           String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
@@ -909,8 +909,8 @@ public class StreamingContainer extends YarnContainerMain
              * Although there is a node in this container interested in output placed on this stream, there
              * seems to at least one more party interested but placed in a container other than this one.
              */
-            for (Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> entry : streamCodecs.entrySet()) {
-              OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
+            for (Map.Entry<Integer, StreamCodec<?>> entry : streamCodecs.entrySet()) {
+              Integer streamCodecIdentifier = entry.getKey();
               StreamCodec<?> streamCodec = entry.getValue();
 
               String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
@@ -997,8 +997,8 @@ public class StreamingContainer extends YarnContainerMain
           if (nidi.streamCodecs.size() != 1) {
             throw new IllegalStateException("Only one input codec configuration should be present");
           }
-          Map.Entry<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> entry = nidi.streamCodecs.entrySet().iterator().next();
-          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = entry.getKey();
+          Map.Entry<Integer, StreamCodec<?>> entry = nidi.streamCodecs.entrySet().iterator().next();
+          Integer streamCodecIdentifier = entry.getKey();
           StreamCodec<?> streamCodec = entry.getValue();
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
@@ -1025,7 +1025,7 @@ public class StreamingContainer extends YarnContainerMain
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier.id;
+            String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
             context.setPortId(nidi.portName);
             context.put(StreamContext.CODEC, streamCodec);
             context.put(StreamContext.EVENT_LOOP, eventloop);

@@ -1166,22 +1166,22 @@ public class StreamCodecTest
     return unifiers;
   }
 
-  private void checkNotSetStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
-                                          OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier)
+  private void checkNotSetStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
+                                          Integer streamCodecIdentifier)
   {
     StreamCodec<?> streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec null " + id, streamCodecInfo);
     Assert.assertNull("stream codec object not null " + id, streamCodecInfo);
   }
 
-  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
-                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec)
+  private void checkStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
+                                    Integer streamCodecIdentifier, StreamCodec<?> streamCodec)
   {
     checkStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodec, null);
   }
 
-  private void checkStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
-                                    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodec, String className)
+  private void checkStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
+                                    Integer streamCodecIdentifier, StreamCodec<?> streamCodec, String className)
   {
     StreamCodec<?> streamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, streamCodecInfo);
@@ -1189,18 +1189,17 @@ public class StreamCodecTest
   }
 
   private void checkPresentStreamCodec(LogicalPlan.OperatorMeta operatorMeta, Operator.InputPort<?> inputPort,
-                                       Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs,
+                                       Map<Integer, StreamCodec<?>> streamCodecs,
                                        String id, PhysicalPlan plan )
   {
     StreamCodec<?> streamCodecInfo = StreamingContainerAgent.getStreamCodec(operatorMeta.getMeta(inputPort));
     Assert.assertTrue("stream codec identifier not present" + id, isStrCodecPresent(streamCodecInfo, plan));
-    OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
-    streamCodecIdentifier.id = plan.getStreamCodecIdentifier(streamCodecInfo);
+    Integer streamCodecIdentifier = plan.getStreamCodecIdentifier(streamCodecInfo);
     checkPresentStreamCodecInfo(streamCodecs, id, streamCodecIdentifier, streamCodecInfo);
   }
 
-  private void checkPresentStreamCodecInfo(Map<OperatorDeployInfo.StreamCodecIdentifier, StreamCodec<?>> streamCodecs, String id,
-                                           OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier, StreamCodec<?> streamCodecInfo)
+  private void checkPresentStreamCodecInfo(Map<Integer, StreamCodec<?>> streamCodecs, String id,
+                                           Integer streamCodecIdentifier, StreamCodec<?> streamCodecInfo)
   {
     StreamCodec<?> opStreamCodecInfo = streamCodecs.get(streamCodecIdentifier);
     Assert.assertNotNull("stream codec info null " + id, opStreamCodecInfo);

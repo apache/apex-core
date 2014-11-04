@@ -76,7 +76,7 @@ public class OperatorDeployInfo implements Serializable
     /*
     public StreamCodec streamCodec;
     */
-    public Map<StreamCodecIdentifier, StreamCodec<?>> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodec<?>>();
+    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -149,7 +149,7 @@ public class OperatorDeployInfo implements Serializable
      */
     public String bufferServerHost;
     public int bufferServerPort;
-    public Map<StreamCodecIdentifier, StreamCodec<?>> streamCodecs = new HashMap<StreamCodecIdentifier, StreamCodec<?>>();
+    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
     /**
      * Context attributes for output port
      */
@@ -190,40 +190,6 @@ public class OperatorDeployInfo implements Serializable
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201208271958L;
-  }
-
-  // This contains the extra information to identify the buffer server stream endpoint
-  public static class StreamCodecIdentifier implements Serializable
-  {
-    private static final long serialVersionUID = 201410081626L;
-    public Integer id;
-
-    @Override
-    public String toString()
-    {
-      return id.toString();
-    }
-
-    @Override
-    public boolean equals(Object o)
-    {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-
-      StreamCodecIdentifier that = (StreamCodecIdentifier) o;
-
-      return id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode()
-    {
-      return id.hashCode();
-    }
   }
 
   /**

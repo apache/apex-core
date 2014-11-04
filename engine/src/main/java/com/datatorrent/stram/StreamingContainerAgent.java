@@ -174,10 +174,8 @@ public class StreamingContainerAgent {
               InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
               StreamCodec<?> streamCodecInfo = getStreamCodec(inputPortMeta);
               Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
-              OperatorDeployInfo.StreamCodecIdentifier inputStreamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
-              inputStreamCodecIdentifier.id = id;
-              if (!portInfo.streamCodecs.containsKey(inputStreamCodecIdentifier)) {
-                portInfo.streamCodecs.put(inputStreamCodecIdentifier, streamCodecInfo);
+              if (!portInfo.streamCodecs.containsKey(id)) {
+                portInfo.streamCodecs.put(id, streamCodecInfo);
               }
             }
           }
@@ -247,10 +245,7 @@ public class StreamingContainerAgent {
         InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
         StreamCodec<?> streamCodecInfo = getStreamCodec(idInputPortMeta);
         Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
-        OperatorDeployInfo.StreamCodecIdentifier streamCodecIdentifier = new OperatorDeployInfo.StreamCodecIdentifier();
-        streamCodecIdentifier.id = id;
-        inputInfo.streamCodecs.put(streamCodecIdentifier, streamCodecInfo);
-
+        inputInfo.streamCodecs.put(id, streamCodecInfo);
         ndi.inputs.add(inputInfo);
       }
     }
