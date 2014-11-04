@@ -19,6 +19,7 @@ import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.util.CircularBuffer;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
@@ -113,7 +114,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   {
     StreamCodec<?> codec = context.get(StreamContext.CODEC);
     if (codec == null) {
-      statefulSerde = (StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue;
+      statefulSerde = new DefaultStatefulStreamCodec<Object>();
     }
     else if (codec instanceof StatefulStreamCodec) {
       statefulSerde = (StatefulStreamCodec<Object>)codec;
