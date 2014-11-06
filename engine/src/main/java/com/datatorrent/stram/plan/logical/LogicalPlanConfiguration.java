@@ -4,36 +4,25 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.api.*;
-import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.*;
+import java.util.Map.Entry;
+
+import javax.validation.ValidationException;
+
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import java.io.*;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeMap;
-
-import javax.validation.ValidationException;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
@@ -41,11 +30,18 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
+
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  *
@@ -304,7 +300,7 @@ public class LogicalPlanConfiguration {
     private final Map<String, String> appAliases = Maps.newHashMap();
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.APPLICATION, StramElement.GATEWAY, StramElement.TEMPLATE, StramElement.OPERATOR,
-      StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.TEMPLATE, StramElement.ATTR};
+            StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.TEMPLATE, StramElement.ATTR};
 
     StramConf() {
     }
@@ -329,8 +325,8 @@ public class LogicalPlanConfiguration {
   private static class AppConf extends Conf {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.GATEWAY, StramElement.OPERATOR, StramElement.PORT,
-      StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH,
-      StramElement.PROP};
+            StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH,
+            StramElement.PROP};
 
     @SuppressWarnings("unused")
     AppConf() {
@@ -558,8 +554,8 @@ public class LogicalPlanConfiguration {
    */
   private static class OperatorConf extends Conf {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
-      StramElement.ATTR, StramElement.PROP};
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
+            StramElement.ATTR, StramElement.PROP};
 
     @SuppressWarnings("unused")
     OperatorConf() {
@@ -722,7 +718,7 @@ public class LogicalPlanConfiguration {
   private boolean isApplicationTypeConf(Conf conf) {
     return (conf.getElement() == null) || (conf.getElement() == StramElement.APPLICATION);
   }
-   */
+  */
 
   private <T extends Conf> List<T> getMatchingChildConf(List<? extends Conf> confs, String name, StramElement childType) {
     List<T> childConfs = new ArrayList<T>();
@@ -896,8 +892,8 @@ public class LogicalPlanConfiguration {
         return;
       }
       if ((element == StramElement.APPLICATION) || (element == StramElement.OPERATOR) || (element == StramElement.STREAM)
-          || (element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)
-          || (element == StramElement.TEMPLATE)) {
+              || (element == StramElement.PORT) || (element == StramElement.INPUT_PORT) || (element == StramElement.OUTPUT_PORT)
+              || (element == StramElement.TEMPLATE)) {
         if ((index + 1) < keys.length) {
           String name = keys[index+1];
           Conf elConf = addConf(element, name, conf);
@@ -1147,7 +1143,9 @@ public class LogicalPlanConfiguration {
 
   private Map<String,String> getApplicationProperties(List<AppConf> appConfs){
     Map<String, String> appProps = new HashMap<String, String>();
-    for(AppConf conf:appConfs){
+    // Apply the configurations in reverse order since the higher priority ones are at the beginning
+    for(int i = appConfs.size()-1; i >= 0; i--){
+      AppConf conf = appConfs.get(i);
       appProps.putAll(Maps.fromProperties(conf.properties));
     }
     return appProps;
