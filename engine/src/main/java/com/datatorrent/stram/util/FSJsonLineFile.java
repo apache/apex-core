@@ -63,6 +63,7 @@ public class FSJsonLineFile implements Closeable
   @Override
   public void close() throws IOException
   {
+    os.close();
     fs.close();
   }
 

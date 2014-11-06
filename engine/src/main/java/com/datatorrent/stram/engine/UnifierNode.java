@@ -42,7 +42,7 @@ public class UnifierNode extends GenericNode
     }
 
     @Override
-    public Class<? extends StreamCodec<Object>> getStreamCodec()
+    public StreamCodec<Object> getStreamCodec()
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }

@@ -26,9 +26,9 @@ public abstract class FSPartFileAgent extends StramAgent
 
   protected abstract IndexLine parseIndexLine(String line) throws JSONException;
 
-  public FSPartFileAgent(FileSystem fs, Configuration conf)
+  public FSPartFileAgent(FileSystem fs)
   {
-    super(fs, conf);
+    super(fs);
   }
 
   public void setLastIndexLine(String basePath, String line)

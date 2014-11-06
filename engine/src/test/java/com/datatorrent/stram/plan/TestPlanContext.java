@@ -12,14 +12,13 @@ import java.util.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-
-import com.datatorrent.stram.FSStorageAgent;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan.PlanContext;
@@ -102,6 +101,11 @@ public class TestPlanContext implements PlanContext, StorageAgent
 
   @Override
   public void writeJournal(RecoverableOperation op)
+  {
+  }
+
+  @Override
+  public void addOperatorRequest(PTOperator oper, StramToNodeRequest request)
   {
   }
 

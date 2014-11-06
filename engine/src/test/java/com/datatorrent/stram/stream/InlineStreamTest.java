@@ -12,7 +12,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
@@ -20,6 +20,7 @@ import com.datatorrent.api.Sink;
 
 import com.datatorrent.stram.engine.*;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.tuple.Tuple;
 
 /**
@@ -46,7 +47,7 @@ public class InlineStreamTest
     operator2.setup(node2.context);
 
     StreamContext streamContext = new StreamContext("node1->node2");
-    InlineStream stream = new InlineStream(1024);
+    final InlineStream stream = new InlineStream(1024);
     stream.setup(streamContext);
 
     node1.connectOutputPort("output", stream);
@@ -114,8 +115,21 @@ public class InlineStreamTest
       this.wait(200);
     }
 
-    Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
+    Assert.assertNotNull(prev);
+    Assert.assertEquals("processing complete", totalTupleCount, Integer.valueOf(prev.toString()) + 1);
     Assert.assertEquals("active operators", 2, activeNodes.size());
+
+    WaitCondition c = new WaitCondition()
+    {
+      @Override
+      public boolean isComplete()
+      {
+        logger.debug("stream size={}", stream.size());
+        return stream.size() == 0;
+      }
+    };
+
+    Assert.assertTrue("operator should finish processing all events within 1 second", StramTestSupport.awaitCompletion(c, 1000));
 
     stream.deactivate();
     for (Node<?> node : activeNodes.values()) {

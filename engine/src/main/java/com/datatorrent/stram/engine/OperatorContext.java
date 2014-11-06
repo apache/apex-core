@@ -4,13 +4,13 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.api.Attribute.AttributeMap;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.netlet.util.CircularBuffer;

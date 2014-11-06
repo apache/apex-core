@@ -21,7 +21,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -29,11 +28,13 @@ import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -149,6 +150,9 @@ public class PhysicalPlan implements Serializable
   final ConcurrentMap<Integer, PTOperator> allOperators = Maps.newConcurrentMap();
   private final ConcurrentMap<OperatorMeta, OperatorMeta> pendingRepartition = Maps.newConcurrentMap();
 
+  private final AtomicInteger strCodecIdSequence = new AtomicInteger();
+  private final Map<StreamCodec<?>, Integer> streamCodecIdentifiers = Maps.newHashMap();
+
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
       if (index >= maxContainers) {
@@ -196,6 +200,7 @@ public class PhysicalPlan implements Serializable
      */
     public void writeJournal(RecoverableOperation op);
 
+    public void addOperatorRequest(PTOperator oper, StramToNodeRequest request);
   }
 
   private static class StatsListenerProxy implements StatsListener, Serializable
@@ -672,7 +677,16 @@ public class PhysicalPlan implements Serializable
           PTOperator oper = m.partitions.get(i);
           PTOperator sourceOper = sourceMapping.partitions.get(i);
           for (PTOutput sourceOut : sourceOper.outputs) {
+            nextSource:
             if (sourceOut.logicalStream == ipm.getValue()) {
+              //avoid duplicate entries in case of parallel partitions
+              for (PTInput sinkIn : sourceOut.sinks) {
+                //check if the operator is already in the sinks list and also the port name of that sink is same as the
+                // input-port-meta currently being looked at since we allow an output port to connect to multiple inputs of the same operator.
+                if (sinkIn.target == oper && sinkIn.portName.equals(ipm.getKey().getPortName())) {
+                  break nextSource;
+                }
+              }
               PTInput input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
               oper.inputs.add(input);
             }
@@ -741,6 +755,7 @@ public class PhysicalPlan implements Serializable
         for (PTContainer c : this.containers) {
           if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
             LOG.debug("Reusing existing container {} for {}", c, oper);
+            c.setRequiredMemoryMB(0);
             newContainer = c;
           }
         }
@@ -1105,7 +1120,7 @@ public class PhysicalPlan implements Serializable
         // operator partitioned with upstream
         if (upstreamPartitioned != null) {
           // need to have common root
-          if (!upstreamPartitioned.parallelPartitions.contains(m.logicalOperator)) {
+          if (!upstreamPartitioned.parallelPartitions.contains(m.logicalOperator) && upstreamPartitioned != m) {
             String msg = String.format("operator cannot extend multiple partitions (%s and %s)", upstreamPartitioned.logicalOperator, m.logicalOperator);
             throw new AssertionError(msg);
           }
@@ -1283,6 +1298,15 @@ public class PhysicalPlan implements Serializable
             ctx.dispatch(r);
           }
         }
+        if (rsp.operatorCommands != null) {
+          for (OperatorCommand cmd : rsp.operatorCommands) {
+            StramToNodeRequest request = new StramToNodeRequest();
+            request.operatorId = oper.getId();
+            request.requestType = StramToNodeRequest.RequestType.CUSTOM;
+            request.cmd = cmd;
+            ctx.addOperatorRequest(oper, request);
+          }
+        }
       }
     }
   }
@@ -1348,6 +1372,23 @@ public class PhysicalPlan implements Serializable
       }
 */
     }
+  }
+
+  public Integer getStreamCodecIdentifier(StreamCodec<?> streamCodecInfo) {
+    Integer id;
+    synchronized (streamCodecIdentifiers) {
+      id = streamCodecIdentifiers.get(streamCodecInfo);
+      if (id == null) {
+        id = strCodecIdSequence.incrementAndGet();
+        streamCodecIdentifiers.put(streamCodecInfo, id);
+      }
+    }
+    return id;
+  }
+
+  // For tests to lookup the mapping
+  public Map<StreamCodec<?>, Integer> getStreamCodecIdentifiers() {
+    return Collections.unmodifiableMap(streamCodecIdentifiers);
   }
 
 }

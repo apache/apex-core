@@ -3,65 +3,88 @@
  */
 package com.datatorrent.stram.cli;
 
-import com.datatorrent.api.*;
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
-import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.client.*;
-import com.datatorrent.stram.client.AppBundle.AppInfo;
-import com.datatorrent.stram.client.DTConfiguration.Scope;
-import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
-import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
-import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.license.*;
-import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
-import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
-import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
-import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
-import com.datatorrent.stram.plan.logical.*;
-import com.datatorrent.stram.plan.logical.requests.*;
-import com.datatorrent.stram.security.StramUserLogin;
-import com.datatorrent.stram.util.*;
-import com.datatorrent.stram.webapp.OperatorDiscoverer;
-import com.datatorrent.stram.webapp.StramWebServices;
-import com.google.common.collect.Sets;
-import com.sun.jersey.api.client.*;
 import java.io.*;
 import java.lang.management.ManagementFactory;
-import java.net.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.PrivilegedExceptionAction;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Map.Entry;
+
 import javax.ws.rs.core.MediaType;
+
 import jline.console.ConsoleReader;
 import jline.console.completer.*;
-import jline.console.history.*;
+import jline.console.history.FileHistory;
+import jline.console.history.History;
+import jline.console.history.MemoryHistory;
+
 import org.apache.commons.cli.*;
-import org.apache.commons.cli.Options;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
-import org.apache.log4j.*;
+import org.apache.log4j.Appender;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.*;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
+import com.google.common.collect.Sets;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.lib.util.JacksonObjectMapperProvider;
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.client.*;
+import com.datatorrent.stram.client.AppPackage.AppInfo;
+import com.datatorrent.stram.client.DTConfiguration.Scope;
+import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
+import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
+import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
+import com.datatorrent.stram.license.LicenseSection;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper;
+import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper.LicensingAgentProtocolInfo;
+import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
+import com.datatorrent.stram.license.audit.LicenseReport;
+import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.requests.*;
+import com.datatorrent.stram.security.StramUserLogin;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.OperatorDiscoverer;
+import com.datatorrent.stram.webapp.StramWebServices;
+
 /**
- *
  * Provides command line interface for a streaming application on hadoop (yarn)
  * <p>
  *
@@ -71,7 +94,6 @@ import sun.misc.SignalHandler;
 public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
-  private static final long TIMEOUT_AFTER_ACTIVATE_LICENSE = 30000;
   private Configuration conf;
   private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
@@ -457,73 +479,74 @@ public class DTCli
     // Global command specification starts here
     //
     globalCommands.put("help", new CommandSpec(new HelpCommand(),
-                                               null,
-                                               new Arg[] {new CommandArg("command")},
-                                               "Show help"));
+      null,
+      new Arg[]{new CommandArg("command")},
+      "Show help"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(),
-                                                  new Arg[] {new Arg("app-id")},
-                                                  null,
-                                                  "Connect to an app"));
+      new Arg[]{new Arg("app-id")},
+      null,
+      "Connect to an app"));
     globalCommands.put("launch", new OptionsCommandSpec(new LaunchCommand(),
-                                                        new Arg[] {new FileArg("jar-file")},
-                                                        new Arg[] {new Arg("class-name/property-file")},
-                                                        "Launch an app", LAUNCH_OPTIONS.options));
+      new Arg[]{new FileArg("jar-file/json-file/properties-file/app-package-file")},
+      new Arg[]{new Arg("matching-app-name")},
+      "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-                                                       new Arg[] {new Arg("app-id")},
-                                                       null,
-                                                       "Shutdown an app"));
+      new Arg[]{new Arg("app-id")},
+      null,
+      "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(),
-                                                    null,
-                                                    new Arg[] {new Arg("pattern")},
-                                                    "List applications"));
+      null,
+      new Arg[]{new Arg("pattern")},
+      "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-                                                   new Arg[] {new Arg("app-id")},
-                                                   null,
-                                                   "Kill an app"));
+      new Arg[]{new Arg("app-id")},
+      null,
+      "Kill an app"));
     globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
-                                                                   new Arg[] {new FileArg("jar-file")},
-                                                                   new Arg[] {new Arg("class-name")},
-                                                                   "List apps in a jar or show logical plan of an app class",
-                                                                   getShowLogicalPlanCommandLineOptions()));
+      new Arg[]{new FileArg("jar-file/app-package-file")},
+      new Arg[]{new Arg("class-name")},
+      "List apps in a jar or show logical plan of an app class",
+      getShowLogicalPlanCommandLineOptions()));
 
-    globalCommands.put("get-jar-operator-classes", new CommandSpec(new GetJarOperatorClassesCommand(),
-                                                                   new Arg[] {new FileArg("jar-files-comma-separated"), new Arg("package-prefix")},
-                                                                   new Arg[] {new Arg("parent-class-name")},
-                                                                   "List operators in a jar list"));
+    globalCommands.put("get-jar-operator-classes", new OptionsCommandSpec(new GetJarOperatorClassesCommand(),
+      new Arg[]{new FileArg("jar-files-comma-separated")},
+      new Arg[]{new Arg("search-term")},
+      "List operators in a jar list",
+      GET_OPERATOR_CLASSES_OPTIONS.options));
 
     globalCommands.put("get-jar-operator-properties", new CommandSpec(new GetJarOperatorPropertiesCommand(),
-                                                                      new Arg[] {new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
-                                                                      null,
-                                                                      "List properties in specified operator"));
+      new Arg[]{new FileArg("jar-files-comma-separated"), new Arg("operator-class-name")},
+      null,
+      "List properties in specified operator"));
 
     globalCommands.put("alias", new CommandSpec(new AliasCommand(),
-                                                new Arg[] {new Arg("alias-name"), new CommandArg("command")},
-                                                null,
-                                                "Create a command alias"));
+      new Arg[]{new Arg("alias-name"), new CommandArg("command")},
+      null,
+      "Create a command alias"));
     globalCommands.put("source", new CommandSpec(new SourceCommand(),
-                                                 new Arg[] {new FileArg("file")},
-                                                 null,
-                                                 "Execute the commands in a file"));
+      new Arg[]{new FileArg("file")},
+      null,
+      "Execute the commands in a file"));
     globalCommands.put("exit", new CommandSpec(new ExitCommand(),
-                                               null,
-                                               null,
-                                               "Exit the CLI"));
+      null,
+      null,
+      "Exit the CLI"));
     globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(),
-                                                      new Arg[] {new Arg("name")},
-                                                      null,
-                                                      "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
+      new Arg[]{new Arg("name")},
+      null,
+      "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
     globalCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
-                                                               new Arg[] {new FileArg("out-file"), new FileArg("jar-file"), new Arg("class-name")},
-                                                               null,
-                                                               "Dump the properties file of an app class"));
+      new Arg[]{new FileArg("out-file"), new FileArg("jar-file"), new Arg("class-name")},
+      null,
+      "Dump the properties file of an app class"));
     globalCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(),
-                                                       new Arg[] {new Arg("app-id")},
-                                                       null,
-                                                       "Get the information of an app"));
+      new Arg[]{new Arg("app-id")},
+      null,
+      "Get the information of an app"));
     globalCommands.put("set-pager", new CommandSpec(new SetPagerCommand(),
-                                                    new Arg[] {new Arg("on/off")},
-                                                    null,
-                                                    "Set the pager program for output"));
+      new Arg[]{new Arg("on/off")},
+      null,
+      "Set the pager program for output"));
     /*
      globalCommands.put("generate-license-request", new CommandSpec(new GenerateLicenseRequestCommand(),
      null,
@@ -531,198 +554,187 @@ public class DTCli
      "Generate license request"));
      */
     globalCommands.put("activate-license", new CommandSpec(new ActivateLicenseCommand(),
-                                                           null,
-                                                           new Arg[] {new FileArg("license-file")},
-                                                           "Launch the license agent"));
+      null,
+      new Arg[]{new FileArg("license-file")},
+      "Launch the license agent"));
     globalCommands.put("deactivate-license", new CommandSpec(new DeactivateLicenseCommand(),
-                                                             null,
-                                                             new Arg[] {new Arg("license-id")},
-                                                             "Stop the license agent"));
+      null,
+      new Arg[]{new Arg("license-id")},
+      "Stop the license agent"));
     globalCommands.put("list-license-agents", new CommandSpec(new ListLicenseAgentsCommand(),
-                                                              null,
-                                                              null,
-                                                              "Show IDs of all license agents"));
+      null,
+      null,
+      "Show IDs of all license agents"));
     globalCommands.put("show-license-status", new CommandSpec(new ShowLicenseStatusCommand(),
-                                                              null,
-                                                              new Arg[] {new FileArg("license-file")},
-                                                              "Show the status of the license"));
+      null,
+      new Arg[]{new FileArg("license-file")},
+      "Show the status of the license"));
     globalCommands.put("get-config-parameter", new CommandSpec(new GetConfigParameterCommand(),
-                                                               null,
-                                                               new Arg[] {new FileArg("parameter-name")},
-                                                               "Get the configuration parameter"));
-    globalCommands.put("get-app-bundle-info", new CommandSpec(new GetAppBundleInfoCommand(),
-                                                              new Arg[] {new FileArg("app-bundle-file")},
-                                                              null,
-                                                              "Get info on the app bundle file"));
-    globalCommands.put("launch-app-bundle", new OptionsCommandSpec(new LaunchAppBundleCommand(),
-                                                                   new Arg[] {new FileArg("app-bundle-file"), new Arg("app-name")},
-                                                                   null,
-                                                                   "Launch app in the app bundle", LAUNCH_OPTIONS.options));
-    globalCommands.put("get-app-bundle-operators", new CommandSpec(new GetAppBundleOperatorsCommand(),
-                                                              new Arg[] {new FileArg("app-bundle-file"), new Arg("package-prefix")},
-                                                              new Arg[] {new Arg("parent-class")},
-                                                              "Get operators within the given app bundle"));
-    globalCommands.put("get-app-bundle-operator-properties", new CommandSpec(new GetAppBundleOperatorPropertiesCommand(),
-                                                              new Arg[] {new FileArg("app-bundle-file"), new Arg("operator-class")},
-                                                              null,
-                                                              "Get operator properties within the given app bundle"));
+      null,
+      new Arg[]{new FileArg("parameter-name")},
+      "Get the configuration parameter"));
+    globalCommands.put("get-app-package-info", new CommandSpec(new GetAppPackageInfoCommand(),
+      new Arg[]{new FileArg("app-package-file")},
+      null,
+      "Get info on the app package file"));
+    globalCommands.put("get-app-package-operators", new OptionsCommandSpec(new GetAppPackageOperatorsCommand(),
+      new Arg[]{new FileArg("app-package-file")},
+      new Arg[]{new Arg("search-term")},
+      "Get operators within the given app package",
+      GET_OPERATOR_CLASSES_OPTIONS.options));
+    globalCommands.put("get-app-package-operator-properties", new CommandSpec(new GetAppPackageOperatorPropertiesCommand(),
+      new Arg[]{new FileArg("app-package-file"), new Arg("operator-class")},
+      null,
+      "Get operator properties within the given app package"));
+    globalCommands.put("generate-license-report", new CommandSpec(new GenerateLicenseReport(),
+      new Arg[]{new Arg("licenseId"), new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("separator")},
+      new Arg[]{new Arg("topNMemoryUsages")},
+      "Generate the license report for the given month"));
     //
     // Connected command specification starts here
     //
     connectedCommands.put("list-containers", new CommandSpec(new ListContainersCommand(),
-                                                             null,
-                                                             null,
-                                                             "List containers"));
+      null,
+      null,
+      "List containers"));
     connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(),
-                                                            null,
-                                                            new Arg[] {new Arg("pattern")},
-                                                            "List operators"));
+      null,
+      new Arg[]{new Arg("pattern")},
+      "List operators"));
     connectedCommands.put("show-physical-plan", new CommandSpec(new ShowPhysicalPlanCommand(),
-                                                                null,
-                                                                null,
-                                                                "Show physical plan"));
+      null,
+      null,
+      "Show physical plan"));
     connectedCommands.put("kill-container", new CommandSpec(new KillContainerCommand(),
-                                                            new Arg[] {new Arg("container-id")},
-                                                            null,
-                                                            "Kill a container"));
+      new Arg[]{new Arg("container-id")},
+      null,
+      "Kill a container"));
     connectedCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-                                                          null,
-                                                          new Arg[] {new Arg("app-id")},
-                                                          "Shutdown an app"));
+      null,
+      new Arg[]{new Arg("app-id")},
+      "Shutdown an app"));
     connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-                                                      null,
-                                                      new Arg[] {new Arg("app-id")},
-                                                      "Kill an app"));
+      null,
+      new Arg[]{new Arg("app-id")},
+      "Kill an app"));
     connectedCommands.put("wait", new CommandSpec(new WaitCommand(),
-                                                  new Arg[] {new Arg("timeout")},
-                                                  null,
-                                                  "Wait for completion of current application"));
+      new Arg[]{new Arg("timeout")},
+      null,
+      "Wait for completion of current application"));
     connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(),
-                                                             new Arg[] {new Arg("operator-id")},
-                                                             new Arg[] {new Arg("port-name")},
-                                                             "Start recording"));
+      new Arg[]{new Arg("operator-id")},
+      new Arg[]{new Arg("port-name"), new Arg("num-windows")},
+      "Start recording"));
     connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(),
-                                                            new Arg[] {new Arg("operator-id")},
-                                                            new Arg[] {new Arg("port-name")},
-                                                            "Stop recording"));
+      new Arg[]{new Arg("operator-id")},
+      new Arg[]{new Arg("port-name")},
+      "Stop recording"));
     connectedCommands.put("get-operator-attributes", new CommandSpec(new GetOperatorAttributesCommand(),
-                                                                     new Arg[] {new Arg("operator-name")},
-                                                                     new Arg[] {new Arg("attribute-name")},
-                                                                     "Get attributes of an operator"));
+      new Arg[]{new Arg("operator-name")},
+      new Arg[]{new Arg("attribute-name")},
+      "Get attributes of an operator"));
     connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesCommand(),
-                                                                     new Arg[] {new Arg("operator-name")},
-                                                                     new Arg[] {new Arg("property-name")},
-                                                                     "Get properties of an operator"));
+      new Arg[]{new Arg("operator-name")},
+      new Arg[]{new Arg("property-name")},
+      "Get properties of an operator"));
     connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
-                                                                              new Arg[] {new Arg("operator-id")},
-                                                                              new Arg[] {new Arg("property-name")},
-                                                                              "Get properties of an operator"));
+      new Arg[]{new Arg("operator-id")},
+      new Arg[]{new Arg("property-name")},
+      "Get properties of an operator"));
 
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
-                                                                   new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
-                                                                   null,
-                                                                   "Set a property of an operator"));
+      new Arg[]{new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
+      null,
+      "Set a property of an operator"));
     connectedCommands.put("set-physical-operator-property", new CommandSpec(new SetPhysicalOperatorPropertyCommand(),
-                                                                            new Arg[] {new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
-                                                                            null,
-                                                                            "Set a property of an operator"));
+      new Arg[]{new Arg("operator-id"), new Arg("property-name"), new Arg("property-value")},
+      null,
+      "Set a property of an operator"));
     connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(),
-                                                                null,
-                                                                new Arg[] {new Arg("attribute-name")},
-                                                                "Get attributes of the connected app"));
+      null,
+      new Arg[]{new Arg("attribute-name")},
+      "Get attributes of the connected app"));
     connectedCommands.put("get-port-attributes", new CommandSpec(new GetPortAttributesCommand(),
-                                                                 new Arg[] {new Arg("operator-name"), new Arg("port-name")},
-                                                                 new Arg[] {new Arg("attribute-name")},
-                                                                 "Get attributes of a port"));
+      new Arg[]{new Arg("operator-name"), new Arg("port-name")},
+      new Arg[]{new Arg("attribute-name")},
+      "Get attributes of a port"));
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(),
-                                                                       null,
-                                                                       null,
-                                                                       "Begin Logical Plan Change"));
+      null,
+      null,
+      "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
-                                                                      null,
-                                                                      new Arg[] {new FileArg("jar-file"), new Arg("class-name")},
-                                                                      "Show logical plan of an app class",
-                                                                      getShowLogicalPlanCommandLineOptions()));
+      null,
+      new Arg[]{new FileArg("jar-file/app-package-file"), new Arg("class-name")},
+      "Show logical plan of an app class",
+      getShowLogicalPlanCommandLineOptions()));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(),
-                                                                  new Arg[] {new FileArg("out-file")},
-                                                                  new Arg[] {new FileArg("jar-file"), new Arg("class-name")},
-                                                                  "Dump the properties file of an app class"));
+      new Arg[]{new FileArg("out-file")},
+      new Arg[]{new FileArg("jar-file"), new Arg("class-name")},
+      "Dump the properties file of an app class"));
     connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(),
-                                                          null,
-                                                          new Arg[] {new Arg("app-id")},
-                                                          "Get the information of an app"));
-    connectedCommands.put("create-alert", new CommandSpec(new CreateAlertCommand(),
-                                                          new Arg[] {new Arg("name"), new FileArg("file")},
-                                                          null,
-                                                          "Create an alert with the name and the given file that contains the spec"));
-    connectedCommands.put("delete-alert", new CommandSpec(new DeleteAlertCommand(),
-                                                          new Arg[] {new Arg("name")},
-                                                          null,
-                                                          "Delete an alert with the given name"));
-    connectedCommands.put("list-alerts", new CommandSpec(new ListAlertsCommand(),
-                                                         null,
-                                                         null,
-                                                         "List all alerts"));
+      null,
+      new Arg[]{new Arg("app-id")},
+      "Get the information of an app"));
     connectedCommands.put("get-recording-info", new CommandSpec(new GetRecordingInfoCommand(),
-                                                                null,
-                                                                new Arg[] {new Arg("operator-id"), new Arg("start-time")},
-                                                                "Get tuple recording info"));
+      null,
+      new Arg[]{new Arg("operator-id"), new Arg("start-time")},
+      "Get tuple recording info"));
 
     //
     // Logical plan change command specification starts here
     //
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(),
-                                                          null,
-                                                          new Arg[] {new Arg("command")},
-                                                          "Show help"));
+      null,
+      new Arg[]{new Arg("command")},
+      "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(),
-                                                                     new Arg[] {new Arg("operator-name"), new Arg("class-name")},
-                                                                     null,
-                                                                     "Create an operator"));
+      new Arg[]{new Arg("operator-name"), new Arg("class-name")},
+      null,
+      "Create an operator"));
     logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(),
-                                                                   new Arg[] {new Arg("stream-name"), new Arg("from-operator-name"), new Arg("from-port-name"), new Arg("to-operator-name"), new Arg("to-port-name")},
-                                                                   null,
-                                                                   "Create a stream"));
+      new Arg[]{new Arg("stream-name"), new Arg("from-operator-name"), new Arg("from-port-name"), new Arg("to-operator-name"), new Arg("to-port-name")},
+      null,
+      "Create a stream"));
     logicalPlanChangeCommands.put("add-stream-sink", new CommandSpec(new AddStreamSinkCommand(),
-                                                                     new Arg[] {new Arg("stream-name"), new Arg("to-operator-name"), new Arg("to-port-name")},
-                                                                     null,
-                                                                     "Add a sink to an existing stream"));
+      new Arg[]{new Arg("stream-name"), new Arg("to-operator-name"), new Arg("to-port-name")},
+      null,
+      "Add a sink to an existing stream"));
     logicalPlanChangeCommands.put("remove-operator", new CommandSpec(new RemoveOperatorCommand(),
-                                                                     new Arg[] {new Arg("operator-name")},
-                                                                     null,
-                                                                     "Remove an operator"));
+      new Arg[]{new Arg("operator-name")},
+      null,
+      "Remove an operator"));
     logicalPlanChangeCommands.put("remove-stream", new CommandSpec(new RemoveStreamCommand(),
-                                                                   new Arg[] {new Arg("stream-name")},
-                                                                   null,
-                                                                   "Remove a stream"));
+      new Arg[]{new Arg("stream-name")},
+      null,
+      "Remove a stream"));
     logicalPlanChangeCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
-                                                                           new Arg[] {new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
-                                                                           null,
-                                                                           "Set a property of an operator"));
+      new Arg[]{new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
+      null,
+      "Set a property of an operator"));
     logicalPlanChangeCommands.put("set-operator-attribute", new CommandSpec(new SetOperatorAttributeCommand(),
-                                                                            new Arg[] {new Arg("operator-name"), new Arg("attr-name"), new Arg("attr-value")},
-                                                                            null,
-                                                                            "Set an attribute of an operator"));
+      new Arg[]{new Arg("operator-name"), new Arg("attr-name"), new Arg("attr-value")},
+      null,
+      "Set an attribute of an operator"));
     logicalPlanChangeCommands.put("set-port-attribute", new CommandSpec(new SetPortAttributeCommand(),
-                                                                        new Arg[] {new Arg("operator-name"), new Arg("port-name"), new Arg("attr-name"), new Arg("attr-value")},
-                                                                        null,
-                                                                        "Set an attribute of a port"));
+      new Arg[]{new Arg("operator-name"), new Arg("port-name"), new Arg("attr-name"), new Arg("attr-value")},
+      null,
+      "Set an attribute of a port"));
     logicalPlanChangeCommands.put("set-stream-attribute", new CommandSpec(new SetStreamAttributeCommand(),
-                                                                          new Arg[] {new Arg("stream-name"), new Arg("attr-name"), new Arg("attr-value")},
-                                                                          null,
-                                                                          "Set an attribute of a stream"));
+      new Arg[]{new Arg("stream-name"), new Arg("attr-name"), new Arg("attr-value")},
+      null,
+      "Set an attribute of a stream"));
     logicalPlanChangeCommands.put("show-queue", new CommandSpec(new ShowQueueCommand(),
-                                                                null,
-                                                                null,
-                                                                "Show the queue of the plan change"));
+      null,
+      null,
+      "Show the queue of the plan change"));
     logicalPlanChangeCommands.put("submit", new CommandSpec(new SubmitCommand(),
-                                                            null,
-                                                            null,
-                                                            "Submit the plan change"));
+      null,
+      null,
+      "Submit the plan change"));
     logicalPlanChangeCommands.put("abort", new CommandSpec(new AbortCommand(),
-                                                           null,
-                                                           null,
-                                                           "Abort the plan change"));
+      null,
+      null,
+      "Abort the plan change"));
   }
 
   private void printJson(String json) throws IOException
@@ -768,8 +780,8 @@ public class DTCli
       return System.out;
     }
     else {
-      pagerProcess = Runtime.getRuntime().exec(new String[] {"sh", "-c",
-                                                             pagerCommand + " >/dev/tty"});
+      pagerProcess = Runtime.getRuntime().exec(new String[]{"sh", "-c",
+        pagerCommand + " >/dev/tty"});
       return new PrintStream(pagerProcess.getOutputStream());
     }
   }
@@ -802,7 +814,7 @@ public class DTCli
     //LOG.debug("Canonical path: {}", fileName);
     if (expandWildCard) {
       DirectoryScanner scanner = new DirectoryScanner();
-      scanner.setIncludes(new String[] {fileName});
+      scanner.setIncludes(new String[]{fileName});
       scanner.scan();
       String[] files = scanner.getIncludedFiles();
 
@@ -824,7 +836,7 @@ public class DTCli
     // TODO: need to work with other users
     if (fileName.matches("^[a-zA-Z]+:.*")) {
       // it's a URL
-      return new String[] {fileName};
+      return new String[]{fileName};
     }
     if (fileName.startsWith("~" + File.separator)) {
       fileName = System.getProperty("user.home") + fileName.substring(1);
@@ -832,7 +844,7 @@ public class DTCli
     fileName = new File(fileName).getCanonicalPath();
     LOG.debug("Canonical path: {}", fileName);
     DirectoryScanner scanner = new DirectoryScanner();
-    scanner.setIncludes(new String[] {fileName});
+    scanner.setIncludes(new String[]{fileName});
     scanner.scan();
     return scanner.getIncludedFiles();
   }
@@ -889,9 +901,10 @@ public class DTCli
 
   }
 
-  public void init(String[] args) throws IOException
+  public void preImpersonationInit(String[] args) throws IOException
   {
-    Signal.handle(new Signal("INT"), new SignalHandler() {
+    Signal.handle(new Signal("INT"), new SignalHandler()
+    {
       @Override
       public void handle(Signal sig)
       {
@@ -975,14 +988,14 @@ public class DTCli
         break;
     }
 
-    for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[] {org.apache.log4j.Logger.getRootLogger(),
-                                                                         org.apache.log4j.Logger.getLogger(DTCli.class)}) {
+    for (org.apache.log4j.Logger logger : new org.apache.log4j.Logger[]{org.apache.log4j.Logger.getRootLogger(),
+      org.apache.log4j.Logger.getLogger(DTCli.class)}) {
       @SuppressWarnings("unchecked")
       Enumeration<Appender> allAppenders = logger.getAllAppenders();
       while (allAppenders.hasMoreElements()) {
         Appender appender = allAppenders.nextElement();
         if (appender instanceof ConsoleAppender) {
-          ((ConsoleAppender)appender).setThreshold(logLevel);
+          ((ConsoleAppender) appender).setThreshold(logLevel);
         }
       }
     }
@@ -992,8 +1005,12 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
+  }
+
+  public void init(String[] args) throws IOException
+  {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
-    StramAgent.setResourceManagerWebappAddress(conf.get(YarnConfiguration.RM_WEBAPP_ADDRESS));
+    StramAgent.setConfiguration(conf);
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1076,7 +1093,7 @@ public class DTCli
       CommandSpec cs = entry.getValue();
       List<Completer> argCompleters = new LinkedList<Completer>();
       argCompleters.add(new StringsCompleter(command));
-      Arg[] args = (Arg[])ArrayUtils.addAll(cs.requiredArgs, cs.optionalArgs);
+      Arg[] args = (Arg[]) ArrayUtils.addAll(cs.requiredArgs, cs.optionalArgs);
       if (args != null) {
         if (cs instanceof OptionsCommandSpec) {
           // ugly hack because jline cannot dynamically change completer while user types
@@ -1092,7 +1109,7 @@ public class DTCli
               argCompleters.add(new MyFileNameCompleter());
             }
             else if (arg instanceof CommandArg) {
-              argCompleters.add(new StringsCompleter(commands.keySet().toArray(new String[] {})));
+              argCompleters.add(new StringsCompleter(commands.keySet().toArray(new String[]{})));
             }
             else {
               argCompleters.add(MyNullCompleter.INSTANCE);
@@ -1108,7 +1125,7 @@ public class DTCli
     Set<String> set = new TreeSet<String>();
     set.addAll(aliases.keySet());
     set.addAll(macros.keySet());
-    argCompleters.add(new StringsCompleter(set.toArray(new String[] {})));
+    argCompleters.add(new StringsCompleter(set.toArray(new String[]{})));
     for (int i = 0; i < 10; i++) {
       argCompleters.add(new MyFileNameCompleter());
     }
@@ -1147,7 +1164,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf), conf);
+    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf));
   }
 
   public void run() throws IOException
@@ -1174,7 +1191,7 @@ public class DTCli
       //reader.setHandleUserInterrupt(true);
     }
     else {
-      reader.setEchoCharacter((char)0);
+      reader.setEchoCharacter((char) 0);
     }
     setupAgents();
     String line;
@@ -1262,7 +1279,7 @@ public class DTCli
         History history = reader.getHistory();
         if (history instanceof FileHistory) {
           try {
-            ((FileHistory)history).flush();
+            ((FileHistory) history).flush();
           }
           catch (IOException ex) {
             // ignore
@@ -1363,8 +1380,9 @@ public class DTCli
   private void handleException(Exception e)
   {
     String msg = e.getMessage();
-    if (e.getCause() != null && e.getCause().getMessage() != null) {
-      msg += ": " + e.getCause().getMessage();
+    Throwable cause = e.getCause();
+    if (cause != null && cause.getMessage() != null) {
+      msg += ": " + cause.getMessage();
     }
     if (msg != null) {
       System.err.println(msg);
@@ -1376,8 +1394,7 @@ public class DTCli
   private void printWelcomeMessage()
   {
     System.out.println("DT CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
-    String configStatus = conf.get(StramClientUtils.DT_CONFIG_STATUS);
-    if (!"complete".equals(configStatus)) {
+    if (!StramClientUtils.configComplete(conf)) {
       System.err.println("WARNING: Configuration of DataTorrent has not been complete. Please proceed with caution and only in development environment!");
     }
   }
@@ -1417,7 +1434,7 @@ public class DTCli
       os.print(command);
     }
     if (commandSpec instanceof OptionsCommandSpec) {
-      OptionsCommandSpec ocs = (OptionsCommandSpec)commandSpec;
+      OptionsCommandSpec ocs = (OptionsCommandSpec) commandSpec;
       if (ocs.options != null) {
         os.print(" [options]");
       }
@@ -1444,7 +1461,7 @@ public class DTCli
     }
     os.println("\n\t" + commandSpec.description);
     if (commandSpec instanceof OptionsCommandSpec) {
-      OptionsCommandSpec ocs = (OptionsCommandSpec)commandSpec;
+      OptionsCommandSpec ocs = (OptionsCommandSpec) commandSpec;
       if (ocs.options != null) {
         os.println("\tOptions:");
         HelpFormatter formatter = new HelpFormatter();
@@ -1463,7 +1480,7 @@ public class DTCli
   }
 
   private String readLine(ConsoleReader reader)
-          throws IOException
+    throws IOException
   {
     if (forcePrompt == null) {
       prompt = "";
@@ -1485,7 +1502,7 @@ public class DTCli
     else {
       prompt = forcePrompt;
     }
-    String line = reader.readLine(prompt, consolePresent ? null : (char)0);
+    String line = reader.readLine(prompt, consolePresent ? null : (char) 0);
     if (line == null) {
       return null;
     }
@@ -1524,14 +1541,14 @@ public class DTCli
       Object containersObj = json.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
-        containers = (JSONArray)containersObj;
+        containers = (JSONArray) containersObj;
       }
       else {
         containers = new JSONArray();
         containers.put(containersObj);
       }
       if (containersObj != null) {
-        for (int o = containers.length(); o-- > 0;) {
+        for (int o = containers.length(); o-- > 0; ) {
           JSONObject container = containers.getJSONObject(o);
           String id = container.getString("id");
           if (id.equals(containerId) || (shortId != 0 && (id.endsWith("_" + shortId) || id.endsWith("0" + shortId)))) {
@@ -1552,7 +1569,7 @@ public class DTCli
       r = yarnClient.getApplicationReport(app.getApplicationId());
       if (r.getYarnApplicationState() != YarnApplicationState.RUNNING) {
         String msg = String.format("Application %s not running (status %s)",
-                                   r.getApplicationId().getId(), r.getYarnApplicationState());
+          r.getApplicationId().getId(), r.getYarnApplicationState());
         throw new CliException(msg);
       }
     }
@@ -1594,7 +1611,8 @@ public class DTCli
     r = r.path(resourcePath);
 
     try {
-      return wsClient.process(r.getRequestBuilder(), ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>() {
+      return wsClient.process(r.getRequestBuilder(), ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
+      {
         @Override
         public ClientResponse process(WebResource.Builder webResource, Class<ClientResponse> clazz)
         {
@@ -1772,38 +1790,10 @@ public class DTCli
       if (args.length > 1) {
         file = expandFileName(args[1], true);
       }
-      String licenseId = activateLicense(file);
+      String licenseId = StramClientUtils.activateLicense(file, conf);
       System.out.println("Started license agent for " + licenseId);
     }
 
-  }
-
-  protected String activateLicense(String file) throws Exception
-  {
-    byte[] licenseBytes;
-    if (file != null) {
-      licenseBytes = StramClientUtils.getLicense(file, conf);
-    }
-    else {
-      licenseBytes = StramClientUtils.getLicense(conf);
-    }
-    String licenseId = License.getLicenseID(licenseBytes);
-    License.validateLicense(licenseBytes);
-    LogicalPlan lp = new LogicalPlan();
-    lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
-    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64String(licenseBytes)); // TODO: obfuscate license passing
-    int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
-    lp.setAttribute(DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
-    StramClient client = new StramClient(conf, lp);
-    try {
-      client.start();
-      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
-      client.startApplication();
-    }
-    finally {
-      client.stop();
-    }
-    return licenseId;
   }
 
   private class DeactivateLicenseCommand implements Command
@@ -1818,8 +1808,8 @@ public class DTCli
       else {
         byte[] licenseBytes;
         licenseBytes = StramClientUtils.getLicense(conf);
-        licenseId = License.getLicenseID(licenseBytes);
-        License.validateLicense(licenseBytes);
+        licenseId = LicenseAuthority.getLicenseID(licenseBytes);
+        LicenseAuthority.validateLicense(licenseBytes);
       }
       ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
       if (ar == null) {
@@ -1847,7 +1837,7 @@ public class DTCli
     for (ApplicationReport licenseAgent : licenseAgentList) {
       String licenseId = licenseAgent.getName();
       try {
-        LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout);
+        LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout, null);
         ClusterMemoryReportState reportState = lap.protocol.getMemoryMetricReport(new GetMemoryMetricReportRequest()).getReportState();
         LicenseInfo licenseInfo = new LicenseInfo();
         licenseInfo.remainingLicensedMB = reportState.getFreeMemoryMB();
@@ -1871,7 +1861,8 @@ public class DTCli
       try {
         JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> licList = getLicenseAgentList();
-        Collections.sort(licList, new Comparator<ApplicationReport>() {
+        Collections.sort(licList, new Comparator<ApplicationReport>()
+        {
           @Override
           public int compare(ApplicationReport o1, ApplicationReport o2)
           {
@@ -1911,24 +1902,25 @@ public class DTCli
     else {
       licenseBytes = StramClientUtils.getLicense(conf);
     }
-    String licenseID = License.getLicenseID(licenseBytes);
-    LicenseSection[] licenseSections = License.validateGetLicenseSections(licenseBytes);
+    License license = LicenseAuthority.getLicense(licenseBytes);
+    String licenseID = license.getLicenseId();
+    LicenseSection licenseSection = license.getLicenseSection();
     JSONObject licenseObj = new JSONObject();
     licenseObj.put("id", licenseID);
 
     JSONArray sectionArr = new JSONArray();
 
     SimpleDateFormat sdf = new SimpleDateFormat(LicenseSection.DATE_FORMAT);
-    for (LicenseSection section : licenseSections) {
-      JSONObject sectionObj = new JSONObject();
-      sectionObj.put("startDate", sdf.format(section.getStartDate()));
-      sectionObj.put("endDate", sdf.format(section.getEndDate()));
-      sectionObj.put("comment", section.getComment());
-      sectionObj.put("processorList", section.getLicenseSectionInfoAsJSONObj());
-      sectionObj.put("constraint", section.getConstraint());
-      sectionObj.put("url", section.getUrl());
-      sectionArr.put(sectionObj);
-    }
+
+    JSONObject sectionObj = new JSONObject();
+    sectionObj.put("startDate", sdf.format(licenseSection.getStartDate()));
+    sectionObj.put("endDate", sdf.format(licenseSection.getEndDate()));
+    sectionObj.put("comment", licenseSection.getComment());
+    sectionObj.put("processorList", licenseSection.getProcessor().toJSON());
+    sectionObj.put("constraint", licenseSection.getConstraint());
+    sectionObj.put("url", licenseSection.getUrl());
+    sectionArr.put(sectionObj);
+
     licenseObj.put("sections", sectionArr);
     List<ApplicationReport> licList = getLicenseAgentList();
     for (ApplicationReport ar : licList) {
@@ -1989,10 +1981,44 @@ public class DTCli
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
-      StramAppLauncher submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
-      submitApp.loadDependencies();
+      StramAppLauncher submitApp;
       AppFactory appFactory = null;
       String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
+      if (fileName.endsWith(".json")) {
+        File file = new File(fileName);
+        submitApp = new StramAppLauncher(file.getName(), config);
+        appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+        if (matchString != null) {
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON");
+        }
+      }
+      else if (fileName.endsWith(".properties")) {
+        File file = new File(fileName);
+        submitApp = new StramAppLauncher(file.getName(), config);
+        appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+        if (matchString != null) {
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file");
+        }
+      }
+      else {
+        // see if it's an app package
+        AppPackage ap = null;
+        try {
+          ap = new AppPackage(new File(fileName));
+        }
+        catch (Exception ex) {
+          // fall through, it's not an app package
+        }
+        finally {
+          IOUtils.closeQuietly(ap);
+        }
+        if (ap != null) {
+          new LaunchAppPackageCommand().execute(args, reader);
+          return;
+        }
+        submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
+      }
+      submitApp.loadDependencies();
 
       if (commandLineInfo.origAppId != null) {
         // ensure app is not running
@@ -2008,7 +2034,7 @@ public class DTCli
           if (ar.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
             throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " " + ar.getYarnApplicationState());
           }
-          if (matchString == null) {
+          if (appFactory == null && matchString == null) {
             // skip selection if we can match application name from previous run
             List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(), commandLineInfo.exactMatch);
             for (AppFactory af : matchingAppFactories) {
@@ -2031,7 +2057,12 @@ public class DTCli
         try {
           File file = new File(expandFileName(commandLineInfo.args[1], true));
           if (file.exists()) {
-            appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+            if (commandLineInfo.args[1].endsWith(".properties")) {
+              appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+            }
+            else if (commandLineInfo.args[1].endsWith(".json")) {
+              appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+            }
           }
         }
         catch (Throwable t) {
@@ -2142,10 +2173,12 @@ public class DTCli
               });
               System.setOut(dummyStream);
             }
-            String licenseId = License.getLicenseID(licenseBytes);
+            License license = LicenseAuthority.getLicense(licenseBytes);
+            String licenseId = license.getLicenseId();
             LOG.info("Using license {}", licenseId);
             ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
             if (ar == null) {
+              /* SPOI-3161
               try {
                 LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
                 activateLicense(commandLineInfo.licenseFile);
@@ -2167,10 +2200,19 @@ public class DTCli
                 while (ar == null && System.currentTimeMillis() <= timeout);
               }
               catch (Exception ex) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
+                if (license.getLicenseType() == License.LicenseType.EVALUATION) {
+                  throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
+                }
+                else {
+                  LOG.warn("Exception activating license ", ex);
+                }
               }
-              if (ar == null) {
-                throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help");
+              */
+              if (license.getLicenseType() == License.LicenseType.EVALUATION) {
+                throw new CliException("License manager not running. Please activate license");
+              }
+              else {
+                LOG.warn("License manager not running. Please activate license");
               }
             }
             appId = submitApp.launchApp(appFactory, licenseBytes);
@@ -2235,7 +2277,7 @@ public class DTCli
           throw new CliException("No application selected");
         }
         else {
-          apps = new ApplicationReport[] {currentApp};
+          apps = new ApplicationReport[]{currentApp};
         }
       }
       else {
@@ -2251,7 +2293,8 @@ public class DTCli
       for (ApplicationReport app : apps) {
         WebResource r = getStramWebResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
         try {
-          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+          {
             @Override
             public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
             {
@@ -2281,12 +2324,12 @@ public class DTCli
         JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> appList = getApplicationList();
         Collections.sort(appList, new Comparator<ApplicationReport>()
-                 {
-                   @Override
-                   public int compare(ApplicationReport o1, ApplicationReport o2)
-                   {
-                     return o1.getApplicationId().getId() - o2.getApplicationId().getId();
-                   }
+        {
+          @Override
+          public int compare(ApplicationReport o1, ApplicationReport o2)
+          {
+            return o1.getApplicationId().getId() - o2.getApplicationId().getId();
+          }
 
         });
         int totalCnt = 0;
@@ -2456,7 +2499,7 @@ public class DTCli
         Object containersObj = json.get("containers");
         JSONArray containers;
         if (containersObj instanceof JSONArray) {
-          containers = (JSONArray)containersObj;
+          containers = (JSONArray) containersObj;
         }
         else {
           containers = new JSONArray();
@@ -2467,11 +2510,11 @@ public class DTCli
         }
         else {
           JSONArray resultContainers = new JSONArray();
-          for (int o = containers.length(); o-- > 0;) {
+          for (int o = containers.length(); o-- > 0; ) {
             JSONObject container = containers.getJSONObject(o);
             String id = container.getString("id");
             if (id != null && !id.isEmpty()) {
-              for (int argc = args.length; argc-- > 1;) {
+              for (int argc = args.length; argc-- > 1; ) {
                 String s1 = "0" + args[argc];
                 String s2 = "_" + args[argc];
                 if (id.equals(args[argc]) || id.endsWith(s1) || id.endsWith(s2)) {
@@ -2502,7 +2545,7 @@ public class DTCli
         JSONArray arr;
         Object obj = json.get(singleKey);
         if (obj instanceof JSONArray) {
-          arr = (JSONArray)obj;
+          arr = (JSONArray) obj;
         }
         else {
           arr = new JSONArray();
@@ -2543,7 +2586,8 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
       try {
-        printJson(webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        printJson(webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2571,7 +2615,8 @@ public class DTCli
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(containerLongId).path("kill");
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2640,10 +2685,14 @@ public class DTCli
     {
       String opId = args[1];
       String port = null;
-      if (args.length == 3) {
+      long numWindows = 0;
+      if (args.length >= 3) {
         port = args[2];
       }
-      printJson(recordingsAgent.startRecording(currentApp.getApplicationId().toString(), opId, port));
+      if (args.length >= 4) {
+        numWindows = Long.valueOf(args[3]);
+      }
+      printJson(recordingsAgent.startRecording(currentApp.getApplicationId().toString(), opId, port, numWindows));
     }
 
   }
@@ -2701,7 +2750,8 @@ public class DTCli
         r = r.queryParam("attributeName", args[1]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2732,7 +2782,8 @@ public class DTCli
         r = r.queryParam("attributeName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2763,7 +2814,8 @@ public class DTCli
         r = r.queryParam("attributeName", args[3]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2794,7 +2846,8 @@ public class DTCli
         r = r.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2825,7 +2878,8 @@ public class DTCli
         r = r.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2865,7 +2919,8 @@ public class DTCli
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -2892,7 +2947,8 @@ public class DTCli
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       final JSONObject request = new JSONObject();
       request.put(args[2], args[3]);
-      JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+      JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
         @Override
         public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
         {
@@ -2933,6 +2989,18 @@ public class DTCli
 
       if (commandLineInfo.args.length >= 2) {
         String jarfile = expandFileName(commandLineInfo.args[0], true);
+        AppPackage ap = null;
+        // see if the first argument is actually an app package
+        try {
+          ap = new AppPackage(new File(jarfile));
+        }
+        catch (Exception ex) {
+          // fall through
+        }
+        if (ap != null) {
+          new ShowLogicalPlanAppPackageCommand().execute(args, reader);
+          return;
+        }
         String appName = commandLineInfo.args[1];
         StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
         submitApp.loadDependencies();
@@ -2960,7 +3028,7 @@ public class DTCli
               });
               System.setOut(dummyStream);
             }
-            LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+            LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
             map.put("applicationName", appFactory.getName());
             map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
           }
@@ -2973,17 +3041,39 @@ public class DTCli
         }
       }
       else if (commandLineInfo.args.length == 1) {
-        String jarfile = expandFileName(commandLineInfo.args[0], true);
-        StramAppLauncher submitApp = getStramAppLauncher(jarfile, config, commandLineInfo.ignorePom);
-        submitApp.loadDependencies();
-        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
-        List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
-        for (AppFactory appFactory : appFactoryList) {
-          Map<String, Object> m = new HashMap<String, Object>();
-          m.put("name", appFactory.getName());
-          appList.add(m);
+        String filename = expandFileName(commandLineInfo.args[0], true);
+        if (filename.endsWith(".json")) {
+          File file = new File(filename);
+          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+          AppFactory appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("applicationName", appFactory.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          printJson(map);
         }
-        printJson(appList, "applications");
+        else if (filename.endsWith(".properties")) {
+          File file = new File(filename);
+          StramAppLauncher submitApp = new StramAppLauncher(file.getName(), config);
+          AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("applicationName", appFactory.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          printJson(map);
+        }
+        else {
+          StramAppLauncher submitApp = getStramAppLauncher(filename, config, commandLineInfo.ignorePom);
+          submitApp.loadDependencies();
+          List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+          List<AppFactory> appFactoryList = submitApp.getBundledTopologies();
+          for (AppFactory appFactory : appFactoryList) {
+            Map<String, Object> m = new HashMap<String, Object>();
+            m.put("name", appFactory.getName());
+            appList.add(m);
+          }
+          printJson(appList, "applications");
+        }
       }
       else {
         if (currentApp == null) {
@@ -2992,7 +3082,8 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -3002,6 +3093,46 @@ public class DTCli
         });
         printJson(response);
       }
+    }
+
+  }
+
+  private class ShowLogicalPlanAppPackageCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String jarfile = expandFileName(args[1], true);
+      AppPackage ap = new AppPackage(new File(jarfile), true);
+
+      List<AppInfo> applications = ap.getApplications();
+
+      if (args.length >= 3) {
+        for (AppInfo appInfo : applications) {
+          if (args[2].equals(appInfo.name)) {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("applicationName", appInfo.name);
+            if (appInfo.dag != null) {
+              map.put("logicalPlan", LogicalPlanSerializer.convertToMap(appInfo.dag));
+            }
+            if (appInfo.error != null) {
+              map.put("error", appInfo.error);
+            }
+            printJson(map);
+          }
+        }
+      }
+      else {
+        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+        for (AppInfo appInfo : applications) {
+          Map<String, Object> m = new HashMap<String, Object>();
+          m.put("name", appInfo.name);
+          m.put("type", appInfo.type);
+          appList.add(m);
+        }
+        printJson(appList, "applications");
+      }
+      ap.close();
     }
 
   }
@@ -3038,28 +3169,64 @@ public class DTCli
     return tmpDir;
   }
 
+  public static class GetOperatorClassesCommandLineOptions
+  {
+    final Options options = new Options();
+    final Option parent = add(new Option("parent", "Specify the parent class for the operators"));
+
+    private Option add(Option opt)
+    {
+      this.options.addOption(opt);
+      return opt;
+    }
+
+  }
+
+  private static GetOperatorClassesCommandLineOptions GET_OPERATOR_CLASSES_OPTIONS = new GetOperatorClassesCommandLineOptions();
+
+  private static class GetOperatorClassesCommandLineInfo
+  {
+    String parent;
+    String[] args;
+  }
+
+  private static GetOperatorClassesCommandLineInfo getGetOperatorClassesCommandLineInfo(String[] args) throws ParseException
+  {
+    CommandLineParser parser = new PosixParser();
+    GetOperatorClassesCommandLineInfo result = new GetOperatorClassesCommandLineInfo();
+    CommandLine line = parser.parse(GET_OPERATOR_CLASSES_OPTIONS.options, args);
+    result.parent = line.getOptionValue("parent");
+    result.args = line.getArgs();
+    return result;
+  }
+
   private class GetJarOperatorClassesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String parentName = Operator.class.getName();
-      if (args.length > 3) {
-        parentName = args[3];
-      }
-      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(newArgs);
+      String parentName = commandLineInfo.parent != null ? commandLineInfo.parent : Operator.class.getName();
+
+      String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
-        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
+        String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
+        Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         for (Class<? extends Operator> clazz : operatorClasses) {
-          JSONObject classObject = new JSONObject();
-          classObject.put("name", clazz.getName());
-          arr.put(classObject);
+          try {
+            arr.put(operatorDiscoverer.describeOperator(clazz));
+          }
+          catch (Throwable t) {
+            // ignore this class
+          }
         }
-        json.put("classes", arr);
+        json.put("operatorClasses", arr);
         printJson(json);
       }
       finally {
@@ -3077,11 +3244,9 @@ public class DTCli
       String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(args[2], jarFiles);
+        OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
-        JSONObject json = new JSONObject();
-        json.put("properties", OperatorBeanUtils.getClassProperties(operatorClass, 0));
-        printJson(json);
+        printJson(operatorDiscoverer.describeOperator(operatorClass));
       }
       finally {
         FileUtils.deleteDirectory(tmpDir);
@@ -3112,7 +3277,7 @@ public class DTCli
         }
         else {
           AppFactory appFactory = matchingAppFactories.get(0);
-          LogicalPlan logicalPlan = submitApp.prepareDAG(appFactory);
+          LogicalPlan logicalPlan = appFactory.createApp(submitApp.getLogicalPlanConfiguration());
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();
@@ -3127,7 +3292,8 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -3304,7 +3470,8 @@ public class DTCli
         m.put("requests", logicalPlanRequestQueue);
         final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
 
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -3355,7 +3522,7 @@ public class DTCli
             line = reader.readLine("macro def (" + name + ") > ");
           }
           else {
-            line = reader.readLine("", (char)0);
+            line = reader.readLine("", (char) 0);
           }
           if (line.equals("end")) {
             macros.put(name, commands);
@@ -3401,6 +3568,20 @@ public class DTCli
 
   }
 
+  private class GenerateLicenseReport implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      int length = 5;
+      if (args.length > 5) {
+        length = Integer.valueOf(args[5]);
+      }
+      LicenseReport report = new LicenseReport(conf);
+      report.dumpReportToFile(args[1], args[2], args[3], args[4], length);
+    }
+  }
+
   private class GetAppInfoCommand implements Command
   {
     @Override
@@ -3426,7 +3607,8 @@ public class DTCli
         WebServicesClient webServicesClient = new WebServicesClient();
         WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
 
-        response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
+        response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
           {
@@ -3450,99 +3632,25 @@ public class DTCli
 
   }
 
-  private class CreateAlertCommand implements Command
+  private class GetAppPackageInfoCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String fileName = expandFileName(args[2], true);
-      File f = new File(fileName);
-      if (!f.canRead()) {
-        throw new CliException("Cannot read " + fileName);
-      }
-
-      DataInputStream dis = new DataInputStream(new FileInputStream(f));
-      byte[] buffer = new byte[dis.available()];
-      dis.readFully(buffer);
-      final JSONObject json = new JSONObject(new String(buffer));
-      dis.close();
-
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
-      try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).put(clazz, json);
-          }
-
-        });
-        printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
-      }
-    }
-
-  }
-
-  private class DeleteAlertCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_ALERTS + "/" + args[1]);
-      try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).delete(clazz);
-          }
-
-        });
-        printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
-      }
-    }
-
-  }
-
-  private class ListAlertsCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      ClientResponse rsp = getResource(StramWebServices.PATH_ALERTS, currentApp);
-      JSONObject json = rsp.getEntity(JSONObject.class);
-      printJson(json);
-    }
-
-  }
-
-  private class GetAppBundleInfoCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
         jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
-        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ab)));
+        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ap)));
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
   }
 
-  private class LaunchAppBundleCommand implements Command
+  private class LaunchAppPackageCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
@@ -3551,70 +3659,177 @@ public class DTCli
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       LaunchCommandLineInfo commandLineInfo = getLaunchCommandLineInfo(newArgs);
 
-      AppBundle ab = new AppBundle(new File(expandFileName(commandLineInfo.args[0], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
       DTConfiguration launchProperties = new DTConfiguration();
-      Map<String, String> defaultProperties = ab.getDefaultProperties();
-      Set<String> requiredProperties = new TreeSet<String>(ab.getRequiredProperties());
+      Map<String, String> defaultProperties = ap.getDefaultProperties();
+      Set<String> requiredProperties = new TreeSet<String>(ap.getRequiredProperties());
 
       for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
         launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
         requiredProperties.remove(entry.getKey());
       }
 
-      String appName = commandLineInfo.args[1];
-
-      try {
-        List<AppInfo> applications = ab.getApplications();
-        String jarName = null;
-        for (AppInfo appInfo : applications) {
-          if (appName.equals(appInfo.name)) {
-            jarName = ab.tempDirectory() + "/app/" + appInfo.jarName;
+      // settings specified in the user's environment take precedence over defaults in package.
+      // since both are merged into a single -conf option below, apply them on top of the defaults here.
+      File confFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
+      if (confFile.exists()) {
+        Configuration conf = new Configuration(false);
+        conf.addResource(new Path(confFile.toURI()));
+        Iterator<Entry<String, String>> it = conf.iterator();
+        while (it.hasNext()) {
+          Entry<String, String> entry = it.next();
+          // filter relevant entries
+          if (entry.getKey().startsWith(StreamingApplication.DT_PREFIX)) {
+            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+            requiredProperties.remove(entry.getKey());
           }
         }
-        if (jarName == null) {
-          throw new CliException("Application name \"" + appName + "\" is not found in the App Bundle");
+      }
+
+      String matchAppName = null;
+      if (commandLineInfo.args.length > 1) {
+        matchAppName = commandLineInfo.args[1];
+      }
+
+      try {
+        List<AppInfo> applications = new ArrayList<AppInfo>(ap.getApplications());
+
+        if (matchAppName != null) {
+          Iterator<AppInfo> it = applications.iterator();
+          while (it.hasNext()) {
+            AppInfo ai = it.next();
+            if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
+              || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
+              it.remove();
+            }
+          }
         }
+
+        AppInfo selectedApp = null;
+
+        if (applications.isEmpty()) {
+          throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
+        }
+        else if (applications.size() == 1) {
+          selectedApp = applications.get(0);
+        }
+        else {
+          //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
+          TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
+          // Display matching applications
+          for (int i = 0; i < applications.size(); i++) {
+            String appName = applications.get(i).name;
+            appNamesInAlphabeticalOrder.put(appName, i);
+          }
+
+          //Create a mapping between the app display number and original index at matchingAppFactories
+          int index = 1;
+          HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
+          for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
+            //Map display number of the app to original unsorted index
+            displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
+
+            //Display the app names
+            System.out.printf("%3d. %s\n", index++, entry.getKey());
+          }
+
+          // Exit if not in interactive mode
+          if (!consolePresent) {
+            throw new CliException("More than one application in Application Package match '" + matchAppName + "'");
+          }
+          else {
+
+            boolean useHistory = reader.isHistoryEnabled();
+            reader.setHistoryEnabled(false);
+            History previousHistory = reader.getHistory();
+            History dummyHistory = new MemoryHistory();
+            reader.setHistory(dummyHistory);
+            List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+            for (Completer c : completers) {
+              reader.removeCompleter(c);
+            }
+            reader.setHandleUserInterrupt(true);
+            String optionLine;
+            try {
+              optionLine = reader.readLine("Choose application: ");
+            }
+            finally {
+              reader.setHandleUserInterrupt(false);
+              reader.setHistoryEnabled(useHistory);
+              reader.setHistory(previousHistory);
+              for (Completer c : completers) {
+                reader.addCompleter(c);
+              }
+            }
+            try {
+              int option = Integer.parseInt(optionLine);
+              if (0 < option && option <= applications.size()) {
+                int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
+                selectedApp = applications.get(appIndex);
+              }
+            }
+            catch (Exception ex) {
+              // ignore
+            }
+          }
+        }
+
+        if (selectedApp == null) {
+          throw new CliException("No application selected");
+        }
+        String appFile = ap.tempDirectory() + "/app/" + selectedApp.file;
 
         List<String> launchArgs = new ArrayList<String>();
 
         launchArgs.add("launch");
-        if (commandLineInfo.exactMatch) {
-          launchArgs.add("-exactMatch");
-        }
-        List<String> absClassPath = new ArrayList<String>(ab.getClassPath());
+        launchArgs.add("-exactMatch");
+        List<String> absClassPath = new ArrayList<String>(ap.getClassPath());
         for (int i = 0; i < absClassPath.size(); i++) {
           String path = absClassPath.get(i);
           if (!path.startsWith("/")) {
-            absClassPath.set(i, ab.tempDirectory() + "/" + path);
+            absClassPath.set(i, ap.tempDirectory() + "/" + path);
           }
         }
+        StringBuilder libjarsVal = new StringBuilder();
         if (!absClassPath.isEmpty() || commandLineInfo.libjars != null) {
-          launchArgs.add("-libjars");
-          StringBuilder argVal = new StringBuilder();
           if (!absClassPath.isEmpty()) {
-            argVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
+            libjarsVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
           }
           if (commandLineInfo.libjars != null) {
-            if (argVal.length() > 0) {
-              argVal.append(",");
+            if (libjarsVal.length() > 0) {
+              libjarsVal.append(",");
             }
-            argVal.append(commandLineInfo.libjars);
+            libjarsVal.append(commandLineInfo.libjars);
           }
-          launchArgs.add(argVal.toString());
         }
-
+        if (appFile.endsWith(".json") || appFile.endsWith(".properties")) {
+          if (libjarsVal.length() > 0) {
+            libjarsVal.append(",");
+          }
+          libjarsVal.append(ap.tempDirectory()).append("/app/*.jar");
+        }
+        if (libjarsVal.length() > 0) {
+          launchArgs.add("-libjars");
+          launchArgs.add(libjarsVal.toString());
+        }
         if (commandLineInfo.configFile != null) {
           DTConfiguration givenConfig = new DTConfiguration();
-          givenConfig.loadFile(new File(ab.tempDirectory() + "/conf/" + commandLineInfo.configFile));
+          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.configFile));
           for (Map.Entry<String, String> entry : givenConfig) {
             launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
             requiredProperties.remove(entry.getKey());
           }
         }
-        File launchPropertiesFile = new File(ab.tempDirectory(), "launch.xml");
+
+        StramClientUtils.evalProperties(launchProperties);
+
+        File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
         launchProperties.writeToFile(launchPropertiesFile, "");
         launchArgs.add("-conf");
         launchArgs.add(launchPropertiesFile.getCanonicalPath());
+        if (commandLineInfo.localMode) {
+          launchArgs.add("-local");
+        }
         if (commandLineInfo.files != null) {
           launchArgs.add("-files");
           launchArgs.add(commandLineInfo.files);
@@ -3638,76 +3853,93 @@ public class DTCli
             requiredProperties.remove(entry.getKey());
           }
         }
-        launchArgs.add(jarName);
-        launchArgs.add(appName);
+        launchArgs.add(appFile);
+        if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
+          launchArgs.add(selectedApp.name);
+        }
+
+        // now look at whether it is in default configuration
+        for (Map.Entry<String, String> entry : conf) {
+          if (StringUtils.isNotBlank(entry.getValue())) {
+            requiredProperties.remove(entry.getKey());
+          }
+        }
 
         if (requiredProperties.isEmpty()) {
-          new LaunchCommand().execute(launchArgs.toArray(new String[] {}), reader);
+          LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
+          new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
         }
         else {
           throw new CliException("Required properties not set: " + StringUtils.join(requiredProperties, ", "));
         }
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
   }
 
-  private class GetAppBundleOperatorsCommand implements Command
+  private class GetAppPackageOperatorsCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      String[] tmpArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, tmpArgs, 0, args.length - 1);
+      GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(tmpArgs);
+      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
       try {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
-        for (String jar : ab.getAppJars()) {
-          jars.add(ab.tempDirectory() + "/app/" + jar);
+        for (String jar : ap.getAppJars()) {
+          jars.add(ap.tempDirectory() + "/app/" + jar);
         }
-        for (String libJar : ab.getClassPath()) {
-          jars.add(ab.tempDirectory() + "/" + libJar);
+        for (String libJar : ap.getClassPath()) {
+          jars.add(ap.tempDirectory() + "/" + libJar);
         }
         newArgs.add("get-jar-operator-classes");
-        newArgs.add(StringUtils.join(jars, ","));
-        newArgs.add(args[2]);
-        if (args.length > 3) {
-          newArgs.add(args[3]);
+        if (commandLineInfo.parent != null) {
+          newArgs.add("-parent");
+          newArgs.add(commandLineInfo.parent);
         }
-        new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[] {}), reader);
+        newArgs.add(StringUtils.join(jars, ","));
+        for (int i = 1; i < commandLineInfo.args.length; i++) {
+          newArgs.add(commandLineInfo.args[i]);
+        }
+        LOG.debug("Executing: " + newArgs);
+        new GetJarOperatorClassesCommand().execute(newArgs.toArray(new String[]{}), reader);
 
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
   }
 
-  private class GetAppBundleOperatorPropertiesCommand implements Command
+  private class GetAppPackageOperatorPropertiesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppBundle ab = new AppBundle(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
-        for (String jar : ab.getAppJars()) {
-          jars.add(ab.tempDirectory() + "/app/" + jar);
+        for (String jar : ap.getAppJars()) {
+          jars.add(ap.tempDirectory() + "/app/" + jar);
         }
-        for (String libJar : ab.getClassPath()) {
-          jars.add(ab.tempDirectory() + "/" + libJar);
+        for (String libJar : ap.getClassPath()) {
+          jars.add(ap.tempDirectory() + "/" + libJar);
         }
         newArgs.add("get-jar-operator-properties");
         newArgs.add(StringUtils.join(jars, ","));
         newArgs.add(args[2]);
-        new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[] {}), reader);
+        new GetJarOperatorPropertiesCommand().execute(newArgs.toArray(new String[]{}), reader);
       }
       finally {
-        IOUtils.closeQuietly(ab);
+        IOUtils.closeQuietly(ap);
       }
     }
 
@@ -3780,8 +4012,8 @@ public class DTCli
     String archives;
     String licenseFile;
     String origAppId;
-    String[] args;
     boolean exactMatch;
+    String[] args;
   }
 
   @SuppressWarnings("static-access")
@@ -3817,12 +4049,37 @@ public class DTCli
     boolean exactMatch;
   }
 
-  public static void main(String[] args) throws Exception
+  public void mainHelper(String[] args) throws Exception
   {
-    DTCli shell = new DTCli();
-    shell.init(args);
-    shell.run();
+    init(args);
+    run();
     System.exit(lastCommandError ? 1 : 0);
+  }
+
+  public static void main(final String[] args) throws Exception
+  {
+    final DTCli shell = new DTCli();
+    shell.preImpersonationInit(args);
+    String hadoopUserName = System.getenv("HADOOP_USER_NAME");
+    if (UserGroupInformation.isSecurityEnabled()
+            && StringUtils.isNotBlank(hadoopUserName)
+            && !hadoopUserName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
+      LOG.info("You ({}) are running as user {}", UserGroupInformation.getLoginUser().getShortUserName(), hadoopUserName);
+      UserGroupInformation ugi
+              = UserGroupInformation.createProxyUser(hadoopUserName, UserGroupInformation.getLoginUser());
+      ugi.doAs(new PrivilegedExceptionAction<Void>()
+      {
+        @Override
+        public Void run() throws Exception
+        {
+          shell.mainHelper(args);
+          return null;
+        }
+      });
+    }
+    else {
+      shell.mainHelper(args);
+    }
   }
 
 }

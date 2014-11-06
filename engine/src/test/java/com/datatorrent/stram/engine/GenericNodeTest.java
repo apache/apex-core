@@ -10,12 +10,8 @@ import org.junit.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.DefaultInputPort;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Sink;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.*;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.bufferserver.packet.MessageType;
@@ -42,7 +38,7 @@ public class GenericNodeTest
       }
 
     };
-    @InputPortFieldAnnotation(name = "ip2", optional = true)
+    @InputPortFieldAnnotation( optional = true)
     public final transient DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
     {
       @Override
@@ -52,7 +48,7 @@ public class GenericNodeTest
       }
 
     };
-    @OutputPortFieldAnnotation(name = "op", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     DefaultOutputPort<Object> op = new DefaultOutputPort<Object>();
 
     @Override

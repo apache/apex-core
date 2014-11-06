@@ -8,7 +8,6 @@ import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.datatorrent.api.ActivationListener;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.DefaultInputPort;
@@ -36,7 +35,7 @@ public class InputOperatorTest
   static HashMap<String, List<?>> collections = new HashMap<String, List<?>>();
   static AtomicInteger tupleCount = new AtomicInteger();
 
-  public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, ActivationListener<OperatorContext>
+  public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, com.datatorrent.api.Operator.ActivationListener<OperatorContext>
   {
     public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>();
     public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>();

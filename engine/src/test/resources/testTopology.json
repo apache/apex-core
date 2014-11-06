@@ -1,0 +1,85 @@
+{
+  "operators": [
+    {
+      "name": "inputOperator",
+      "class": "com.datatorrent.stram.engine.TestGeneratorInputOperator",
+      "properties": {
+        "myConfigProperty": "myConfigPropertyValue"
+      },
+      "attributes": {
+        "MEMORY_MB" : 64
+      },
+      "ports" : [
+        { "name": "outport",
+          "attributes": {
+            "UNIFIER_LIMIT": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "operator1",
+      "class": "com.datatorrent.stram.engine.GenericTestOperator",
+      "properties": {
+        "myStringProperty": "myStringPropertyValue"
+      }
+    },
+    {
+      "name": "operator2",
+      "class": "com.datatorrent.stram.engine.GenericTestOperator"
+    },
+    {
+      "name": "operator3",
+      "class": "com.datatorrent.stram.engine.GenericTestOperator",
+      "properties": {
+        "myStringProperty": "o3StringFromJson"
+      }
+    },
+    {
+      "name": "operator4",
+      "class": "com.datatorrent.stram.engine.GenericTestOperator",
+      "properties": {
+        "myStringProperty": "overrideOperator4",
+        "stringPropertySetterOnly": "setterOnlyOperator4",
+        "booleanProperty": true
+      }
+    }
+  ],
+  "streams": [
+    {
+      "name": "n1n2",
+      "locality": "CONTAINER_LOCAL",
+      "source": {
+        "operatorName": "operator1",
+        "portName": "outport1"
+      },
+      "sinks": [
+        {
+          "operatorName": "operator2",
+          "portName": "inport1"
+        }
+      ]
+    },
+    {
+      "name": "inputStream",
+      "source": {
+        "operatorName": "inputOperator",
+        "portName": "outport"
+      },
+      "sinks": [
+        {
+          "operatorName": "operator1",
+          "portName": "inport1"
+        },
+        {
+          "operatorName": "operator3",
+          "portName": "inport1"
+        },
+        {
+          "operatorName": "operator4",
+          "portName": "inport1"
+        }
+      ]
+    }
+  ]
+}

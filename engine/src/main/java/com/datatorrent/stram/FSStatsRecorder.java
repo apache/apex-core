@@ -4,20 +4,24 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.StreamCodec;
-import com.datatorrent.api.annotation.RecordField;
-import com.datatorrent.common.util.Slice;
-import com.datatorrent.lib.codec.JsonStreamCodec;
-import com.datatorrent.stram.util.FSPartFileCollection;
-import com.datatorrent.stram.webapp.ContainerInfo;
-import com.datatorrent.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.codec.JsonStreamCodec;
+
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.RecordField;
+
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.stram.util.FSPartFileCollection;
+import com.datatorrent.stram.webapp.ContainerInfo;
+import com.datatorrent.stram.webapp.OperatorInfo;
 
 /**
  * <p>FSStatsRecorder class.</p>

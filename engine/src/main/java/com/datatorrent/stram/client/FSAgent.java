@@ -68,9 +68,19 @@ public class FSAgent
     deleteFile(new Path(path));
   }
 
+  public void deleteFileRecursive(String path) throws IOException
+  {
+    deleteFileRecursive(new Path(path));
+  }
+
   public void deleteFile(Path path) throws IOException
   {
     fileSystem.delete(path, false);
+  }
+
+  public void deleteFileRecursive(Path path) throws IOException
+  {
+    fileSystem.delete(path, true);
   }
 
   public byte[] readFullFileContent(Path path) throws IOException

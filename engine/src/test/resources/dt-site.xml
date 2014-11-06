@@ -38,13 +38,13 @@
 
   <property>
     <name>dt.stream.n1n2.source</name>
-    <value>operator1.output1</value>
+    <value>operator1.outport1</value>
     <description></description>
   </property>
 
   <property>
     <name>dt.stream.n1n2.sinks</name>
-    <value>operator2.input1</value>
+    <value>operator2.inport1</value>
     <description></description>
   </property>
 
@@ -72,13 +72,13 @@
 
   <property>
     <name>dt.stream.n2n3.source</name>
-    <value>operator2.output1</value>
+    <value>operator2.outport1</value>
     <description>Operator 3 receives input from operator 2.</description>
   </property>
 
   <property>
     <name>dt.stream.n2n3.sinks</name>
-    <value>operator3.input1,operator4.input1</value>
+    <value>operator3.inport1,operator4.inport1</value>
     <description>operator3 and operator4 receives input from operator 2.</description>
   </property>
 
@@ -91,13 +91,13 @@
 
   <property>
     <name>dt.stream.n4n5.source</name>
-    <value>operator4.output1</value>
+    <value>operator4.outport1</value>
     <description>Operator 5 receives input from operator 4.</description>
   </property>
 
   <property>
     <name>dt.stream.n4n5.sinks</name>
-    <value>operator5.input1</value>
+    <value>operator5.inport1</value>
     <description>Operator 5 receives input from operator 4.</description>
   </property>
 

@@ -9,6 +9,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,15 +141,15 @@ public class CLIProxy implements Closeable
     return issueCommand("show-logical-plan \"" + jarUri + "\"");
   }
 
-  public JSONObject getAppBundleInfo(String file) throws Exception
+  public JSONObject getAppPackageInfo(String file) throws Exception
   {
-    return issueCommand("get-app-bundle-info \"" + file + "\"");
+    return issueCommand("get-app-package-info \"" + file + "\"");
   }
 
-  public JSONObject launchAppBundle(File appBundleLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
+  public JSONObject launchAppPackage(File appPackageLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
   {
-    StringBuilder sb = new StringBuilder("launch-app-bundle -exactMatch \"");
-    sb.append(appBundleLocalFile.getAbsolutePath());
+    StringBuilder sb = new StringBuilder("launch -exactMatch \"");
+    sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(configName)) {
       sb.append("-conf \"").append(configName).append("\" ");
@@ -161,21 +162,24 @@ public class CLIProxy implements Closeable
     return issueCommand(sb.toString());
   }
 
-  public JSONObject getAppBundleOperatorClasses(File appBundleLocalFile, String parent) throws Exception
+  public JSONObject getAppPackageOperatorClasses(File appPackageLocalFile, String parent, String searchTerm) throws Exception
   {
-    StringBuilder sb = new StringBuilder("get-app-bundle-operators \"");
-    sb.append(appBundleLocalFile.getAbsolutePath());
-    sb.append("\" ");
+    StringBuilder sb = new StringBuilder("get-app-package-operators \"");
     if (!StringUtils.isBlank(parent)) {
-      sb.append("\"").append(parent).append("\"");
+      sb.append("-parent \"").append(parent).append("\"");
+      sb.append("\" ");
+    }
+    sb.append(appPackageLocalFile.getAbsolutePath());
+    if (!StringUtils.isBlank(searchTerm)) {
+      sb.append(" \"").append(StringEscapeUtils.escapeJava(searchTerm)).append("\"");
     }
     return issueCommand(sb.toString());
   }
 
-  public JSONObject getAppBundleOperatorProperties(File appBundleLocalFile, String clazz) throws Exception
+  public JSONObject getAppPackageOperatorProperties(File appPackageLocalFile, String clazz) throws Exception
   {
-    StringBuilder sb = new StringBuilder("get-app-bundle-operator-properties \"");
-    sb.append(appBundleLocalFile.getAbsolutePath());
+    StringBuilder sb = new StringBuilder("get-app-package-operator-properties \"");
+    sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     sb.append("\"").append(clazz).append("\"");
     return issueCommand(sb.toString());
@@ -211,6 +215,7 @@ public class CLIProxy implements Closeable
     String result = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
     if (!err.isEmpty()) {
+      //LOG.error("Command is returning this in stderr: {}", err);
       throw new CommandException(err);
     }
     return (result == null) ? null : new JSONObject(result);

@@ -4,7 +4,6 @@ import org.junit.Assert;
 
 import org.junit.Test;
 
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.engine.GenericOperatorProperty;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -25,7 +24,7 @@ public class GenericOperatorPropertyCodecTest
     LogicalPlan dag = new LogicalPlan();
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<Class<?>, Class<? extends StringCodec<?>>>();
     codecs.put(GenericOperatorProperty.class, GenericOperatorProperty.GenericOperatorPropertyStringCodec.class);
-    dag.setAttribute(DAGContext.STRING_CODECS, codecs);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.STRING_CODECS, codecs);
     dag.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);

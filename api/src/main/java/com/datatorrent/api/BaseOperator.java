@@ -46,6 +46,7 @@ public class BaseOperator implements Operator
 
   /**
    * Set the name property of the operator.
+   *
    * @param name
    */
   public void setName(String name)
@@ -83,6 +84,11 @@ public class BaseOperator implements Operator
   @Override
   public void teardown()
   {
+  }
+
+  public static void shutdown()
+  {
+    throw new ShutdownException();
   }
 
   /**
@@ -160,8 +166,7 @@ public class BaseOperator implements Operator
   {
     for (Class<?> clazz = getClass(); !clazz.equals(Object.class); clazz = clazz.getSuperclass()) {
       Field[] fields = clazz.getDeclaredFields();
-      for (int i = 0; i < fields.length; i++) {
-        final Field field = fields[i];
+      for (Field field: fields) {
         final int modifiers = field.getModifiers();
         if (!(Modifier.isFinal(modifiers) && Modifier.isTransient(modifiers) || Modifier.isStatic(modifiers))) {
           try {

@@ -6,28 +6,29 @@ package com.datatorrent.stram.plan;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.util.*;
 
 import com.google.common.collect.Sets;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.Assert.*;
-
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
+
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -37,6 +38,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
+
+import static org.junit.Assert.*;
 
 public class LogicalPlanConfigurationTest {
 
@@ -55,14 +58,12 @@ public class LogicalPlanConfigurationTest {
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
-    builder.addFromConfiguration(conf);
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration(conf);
 
     LogicalPlan dag = new LogicalPlan();
-    builder.populateDAG(dag, new Configuration(false));
+    builder.populateDAG(dag);
     dag.validate();
 
-//    Map<String, NodeConf> operatorConfs = tb.getAllOperators();
     assertEquals("number of operator confs", 6, dag.getAllOperators().size());
 
     OperatorMeta operator1 = assertNode(dag, "operator1");
@@ -132,7 +133,8 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testLoadFromPropertiesFile() throws IOException {
+  public void testLoadFromPropertiesFile() throws IOException
+  {
       Properties props = new Properties();
       String resourcePath = "/testTopology.properties";
       InputStream is = this.getClass().getResourceAsStream(resourcePath);
@@ -140,11 +142,11 @@ public class LogicalPlanConfigurationTest {
         fail("Could not load " + resourcePath);
       }
       props.load(is);
-      LogicalPlanConfiguration pb = new LogicalPlanConfiguration()
+      LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false))
         .addFromProperties(props);
 
       LogicalPlan dag = new LogicalPlan();
-      pb.populateDAG(dag, new Configuration(false));
+      pb.populateDAG(dag);
       dag.validate();
 
       assertEquals("number of operator confs", 5, dag.getAllOperators().size());
@@ -180,24 +182,80 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
-  public void testAppLevelAttributes() {
+  public void testLoadFromJson() throws Exception
+  {
+    String resourcePath = "/testTopology.json";
+    InputStream is = this.getClass().getResourceAsStream(resourcePath);
+    if (is == null) {
+      fail("Could not load " + resourcePath);
+    }
+    StringWriter writer = new StringWriter();
+
+    IOUtils.copy(is, writer);
+    JSONObject json = new JSONObject(writer.toString());
+
+    Configuration conf = new Configuration(false);
+    conf.set(StreamingApplication.DT_PREFIX + "operator.operator3.prop.myStringProperty", "o3StringFromConf");
+
+    LogicalPlanConfiguration planConf = new LogicalPlanConfiguration(conf);
+    LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");
+    dag.validate();
+
+    assertEquals("number of operator confs", 5, dag.getAllOperators().size());
+    assertEquals("number of root operators", 1, dag.getRootOperators().size());
+
+    StreamMeta s1 = dag.getStream("n1n2");
+    assertNotNull(s1);
+    assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
+
+    OperatorMeta operator3 = dag.getOperatorMeta("operator3");
+    assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
+
+    GenericTestOperator doperator3 = (GenericTestOperator)operator3.getOperator();
+    assertEquals("myStringProperty " + doperator3, "o3StringFromConf", doperator3.getMyStringProperty());
+    assertFalse("booleanProperty " + doperator3, doperator3.booleanProperty);
+
+    OperatorMeta operator4 = dag.getOperatorMeta("operator4");
+    GenericTestOperator doperator4 = (GenericTestOperator)operator4.getOperator();
+    assertEquals("myStringProperty " + doperator4, "overrideOperator4", doperator4.getMyStringProperty());
+    assertEquals("setterOnlyOperator4 " + doperator4, "setterOnlyOperator4", doperator4.propertySetterOnly);
+    assertTrue("booleanProperty " + doperator4, doperator4.booleanProperty);
+
+    StreamMeta input1 = dag.getStream("inputStream");
+    assertNotNull(input1);
+    OperatorMeta inputOperator = dag.getOperatorMeta("inputOperator");
+    Assert.assertEquals("input1 source", inputOperator, input1.getSource().getOperatorWrapper());
+    Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
+    for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
+      targetNodes.add(targetPort.getOperatorWrapper());
+    }
+    Assert.assertEquals("operator attribute " + inputOperator, 64, (int)inputOperator.getValue(OperatorContext.MEMORY_MB));
+    Assert.assertEquals("port attribute " + inputOperator, 8, (int)input1.getSource().getValue(PortContext.UNIFIER_LIMIT));
+    Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorMeta("operator1"), operator3, operator4), targetNodes);
+  }
+
+  @Test
+  public void testAppLevelAttributes()
+  {
     String appName = "app1";
 
     Properties props = new Properties();
-    props.put(StreamingApplication.DT_PREFIX + DAG.CONTAINER_MEMORY_MB.getName(), "123");
+    props.put(StreamingApplication.DT_PREFIX + DAG.MASTER_MEMORY_MB.getName(), "123");
     props.put(StreamingApplication.DT_PREFIX + DAG.APPLICATION_PATH.getName(), "/defaultdir");
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.APPLICATION_PATH.getName(), "/otherdir");
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.STREAMING_WINDOW_SIZE_MILLIS.getName(), "1000");
 
-    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
     dagBuilder.addFromProperties(props);
 
     LogicalPlan dag = new LogicalPlan();
-    dagBuilder.populateDAG(dag, new Configuration(false));
+
+    dagBuilder.populateDAG(dag);
 
     dagBuilder.setApplicationConfiguration(dag, appName,null);
+
     Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
-    Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.CONTAINER_MEMORY_MB));
+    Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.MASTER_MEMORY_MB));
     Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
 
   }
@@ -206,10 +264,10 @@ public class LogicalPlanConfigurationTest {
 	  String appName ="app1";
 	  Properties props =new Properties();
 	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".testprop1","10");
-	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".prop.testprop2","100");
+	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".prop.testprop2", "100");
 	  props.put(StreamingApplication.DT_PREFIX + "application.*.prop.testprop3","1000");
-	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".inncls.a","10000");
-	  LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".inncls.a", "10000");
+	  LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
 	  dagBuilder.addFromProperties(props);
 
 	  LogicalPlan dag = new LogicalPlan();
@@ -235,11 +293,10 @@ public class LogicalPlanConfigurationTest {
     };
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
-    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
-    pb.addFromConfiguration(conf);
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration(conf);
 
     LogicalPlan dag = new LogicalPlan();
-    pb.prepareDAG(dag, app, "testconfig", conf);
+    pb.prepareDAG(dag, app, "testconfig");
 
     Assert.assertTrue("populateDAG called", appInitialized.booleanValue());
     Assert.assertEquals("populateDAG overrides attribute", "hostname:9091", dag.getValue(DAG.GATEWAY_CONNECT_ADDRESS));
@@ -271,7 +328,7 @@ public class LogicalPlanConfigurationTest {
     Operator operator2 = dag.addOperator("operator2", new ValidationTestOperator());
     Operator operator3 = dag.addOperator("operator3", new GenericTestOperator());
 
-    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false));
     pb.addFromProperties(props);
 
     Map<String, String> configProps = pb.getProperties(dag.getMeta(operator1), "appName");
@@ -304,8 +361,7 @@ public class LogicalPlanConfigurationTest {
     GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
     ValidationTestOperator o2 = dag.addOperator("o2", new ValidationTestOperator());
 
-    LogicalPlanConfiguration pb = new LogicalPlanConfiguration();
-    pb.addFromConfiguration(conf);
+    LogicalPlanConfiguration pb = new LogicalPlanConfiguration(conf);
 
     pb.setOperatorProperties(dag, "testSetOperatorProperties");
     Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
@@ -318,22 +374,23 @@ public class LogicalPlanConfigurationTest {
   }
 
   @ApplicationAnnotation(name="AnnotatedAlias")
-  class AnnotatedApplication implements StreamingApplication{
+  class AnnotatedApplication implements StreamingApplication {
 
     @Override
     public void populateDAG(DAG dag, Configuration conf)
     {
-      dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
+      //dag.setAttribute(DAGContext.APPLICATION_NAME, "testApp");
     }
 
   }
+
   @Test
-  public void testAppAlias() {
+  public void testAppNameAttribute() {
     StreamingApplication app = new AnnotatedApplication();
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
 
-    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration(conf);
 
     Properties properties = new Properties();
     properties.put(StreamingApplication.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
@@ -342,9 +399,30 @@ public class LogicalPlanConfigurationTest {
 
     LogicalPlan dag = new LogicalPlan();
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
-    builder.prepareDAG(dag, app, appPath, conf);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME, "testApp");
+    builder.prepareDAG(dag, app, appPath);
 
-    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+    Assert.assertEquals("Application name", "testApp", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
+  }
+
+  @Test
+  public void testAppAlias() {
+    StreamingApplication app = new AnnotatedApplication();
+    Configuration conf = new Configuration(false);
+    conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
+
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration(conf);
+
+    Properties properties = new Properties();
+    properties.put(StreamingApplication.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
+
+    builder.addFromProperties(properties);
+
+    LogicalPlan dag = new LogicalPlan();
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+    builder.prepareDAG(dag, app, appPath);
+
+    Assert.assertEquals("Application name", "TestAliasApp", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
   }
 
 
@@ -354,13 +432,13 @@ public class LogicalPlanConfigurationTest {
     Configuration conf = new Configuration(false);
     conf.addResource(StramClientUtils.DT_SITE_XML_FILE);
 
-    LogicalPlanConfiguration builder = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration builder = new LogicalPlanConfiguration(conf);
 
     LogicalPlan dag = new LogicalPlan();
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
-    builder.prepareDAG(dag, app, appPath, conf);
+    builder.prepareDAG(dag, app, appPath);
 
-    Assert.assertEquals("Application name", "AnnotatedAlias", dag.getAttributes().get(DAGContext.APPLICATION_NAME));
+    Assert.assertEquals("Application name", "AnnotatedAlias", dag.getAttributes().get(com.datatorrent.api.Context.DAGContext.APPLICATION_NAME));
   }
 
   @Test
@@ -381,17 +459,50 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.STATS_LISTENERS.getName(), PartitionLoadWatch.class.getName());
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "20");
 
-    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
     dagBuilder.addFromProperties(props);
 
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
 
     LogicalPlan dag = new LogicalPlan();
-    dagBuilder.prepareDAG(dag, app, appPath, new Configuration(false));
+    dagBuilder.prepareDAG(dag, app, appPath);
 
     Assert.assertEquals("", Integer.valueOf(20), dag.getOperatorMeta("operator1").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", Integer.valueOf(2), dag.getOperatorMeta("operator2").getValue(OperatorContext.APPLICATION_WINDOW_COUNT));
     Assert.assertEquals("", PartitionLoadWatch.class, dag.getOperatorMeta("operator2").getValue(OperatorContext.STATS_LISTENERS).toArray()[0].getClass());
+  }
+
+  @Test
+  public void testOperatorLevelProperties() {
+    String appName = "app1";
+    final GenericTestOperator operator1 = new GenericTestOperator();
+    final GenericTestOperator operator2 = new GenericTestOperator();
+    StreamingApplication app = new StreamingApplication() {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.addOperator("operator1", operator1);
+        dag.addOperator("operator2", operator2);
+      }
+    };
+
+    Properties props = new Properties();
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(StreamingApplication.DT_PREFIX + "operator.*.myStringProperty", "pv1");
+    props.put(StreamingApplication.DT_PREFIX + "operator.*.booleanProperty", Boolean.TRUE.toString());
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.myStringProperty", "apv1");
+
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+    dagBuilder.addFromProperties(props);
+
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.prepareDAG(dag, app, appPath);
+
+    Assert.assertEquals("apv1", operator1.getMyStringProperty());
+    Assert.assertEquals("pv1", operator2.getMyStringProperty());
+    Assert.assertEquals(true, operator2.isBooleanProperty());
   }
 
   @Test
@@ -415,18 +526,18 @@ public class LogicalPlanConfigurationTest {
     Properties props = new Properties();
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
-    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.input1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
-    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.output1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.inputport.inport1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator2.outputport.outport1." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.port.*." + PortContext.QUEUE_CAPACITY.getName(), "" + 16 * 1024);
-    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.input2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.inport2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
 
-    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
     dagBuilder.addFromProperties(props);
 
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
 
     LogicalPlan dag = new LogicalPlan();
-    dagBuilder.prepareDAG(dag, app, appPath, new Configuration(false));
+    dagBuilder.prepareDAG(dag, app, appPath);
     //dagBuilder.populateDAG(dag, new Configuration(false));
 
     //dagBuilder.setApplicationConfiguration(dag, appName);
@@ -444,11 +555,11 @@ public class LogicalPlanConfigurationTest {
   @Test
   public void testInvalidAttribute() throws Exception {
 
-    Assert.assertNotSame(0, DAGContext.serialVersionUID);
-    Set<Attribute<Object>> appAttributes = AttributeInitializer.getAttributes(DAGContext.class);
+    Assert.assertNotSame(0, com.datatorrent.api.Context.DAGContext.serialVersionUID);
+    Set<Attribute<Object>> appAttributes = AttributeInitializer.getAttributes(com.datatorrent.api.Context.DAGContext.class);
     Attribute<Object> attribute = new Attribute<Object>("", null);
 
-    Field nameField = AttributeMap.Attribute.class.getDeclaredField("name");
+    Field nameField = Attribute.class.getDeclaredField("name");
     nameField.setAccessible(true);
     nameField.set(attribute, "NOT_CONFIGURABLE");
     nameField.setAccessible(false);
@@ -460,11 +571,11 @@ public class LogicalPlanConfigurationTest {
     Properties props = new Properties();
     props.put(StreamingApplication.DT_PREFIX + "attr.NOT_CONFIGURABLE", "value");
 
-    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
     dagBuilder.addFromProperties(props);
 
     try {
-      dagBuilder.prepareDAG(new LogicalPlan(), dagBuilder, "", new Configuration(false));
+      dagBuilder.prepareDAG(new LogicalPlan(), null, "");
       Assert.fail("Exception expected");
     } catch (Exception e) {
       Assert.assertThat("Attribute not configurable", e.getMessage(), RegexMatcher.matches("Attribute does not support property configuration: NOT_CONFIGURABLE.*"));
@@ -478,7 +589,7 @@ public class LogicalPlanConfigurationTest {
     props.put(invalidAttribute, "value");
 
     try {
-      new LogicalPlanConfiguration().addFromProperties(props);
+      new LogicalPlanConfiguration(new Configuration(false)).addFromProperties(props);
       Assert.fail("Exception expected");
     } catch (Exception e) {
       Assert.assertThat("Invalid attribute name", e.getMessage(), RegexMatcher.matches("Invalid attribute reference: " + invalidAttribute));
@@ -488,9 +599,9 @@ public class LogicalPlanConfigurationTest {
 
   @Test
   public void testAttributesCodec() {
-    Assert.assertNotSame(null, new Long[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID});
+    Assert.assertNotSame(null, new Long[] {com.datatorrent.api.Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID});
     @SuppressWarnings("unchecked")
-    Set<Class<? extends Context>> contextClasses = Sets.newHashSet(DAGContext.class, OperatorContext.class, PortContext.class);
+    Set<Class<? extends Context>> contextClasses = Sets.newHashSet(com.datatorrent.api.Context.DAGContext.class, OperatorContext.class, PortContext.class);
     for (Class<?> c : contextClasses) {
       for (Attribute<Object> attr : AttributeInitializer.getAttributes(c)) {
         Assert.assertNotNull(attr.name + " codec", attr.codec);

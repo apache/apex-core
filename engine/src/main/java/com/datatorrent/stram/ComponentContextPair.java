@@ -6,7 +6,7 @@ package com.datatorrent.stram;
 
 
 import com.datatorrent.api.Component;
-import com.datatorrent.api.ComponentComplementPair;
+import com.datatorrent.api.Component.ComponentComplementPair;
 import com.datatorrent.api.Context;
 
 

@@ -48,7 +48,7 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
@@ -190,6 +190,12 @@ public class StramWebServicesTest extends JerseyTest
     public long getLicenseInfoLastUpdate()
     {
       return 0;
+    }
+
+    @Override
+    public boolean isGatewayConnected()
+    {
+      return false;
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")

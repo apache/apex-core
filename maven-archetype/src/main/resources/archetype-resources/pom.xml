@@ -7,12 +7,15 @@
   <artifactId>${artifactId}</artifactId>
   <packaging>jar</packaging>
 
+  <!-- change these to the appropriate values -->
+  <name>My DataTorrent Application</name>
+  <description>My DataTorrent Application Description</description>
+
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
     <datatorrent.version>${archetypeVersion}</datatorrent.version>
+    <datatorrent.apppackage.classpath>lib/*.jar</datatorrent.apppackage.classpath>
   </properties>
-
-  <name>My DataTorrent Application</name>
 
   <!-- repository to provide the DataTorrent artifacts -->
   <repositories>
@@ -72,25 +75,56 @@
                <includeScope>runtime</includeScope>
              </configuration>
            </execution>
+           <execution>
+             <id>unpack</id>
+             <phase>package</phase>
+             <goals>
+               <goal>unpack</goal>
+             </goals>
+             <configuration>
+               <artifactItems>
+                 <artifactItem>
+                   <groupId>${project.groupId}</groupId>
+                   <artifactId>${project.artifactId}</artifactId>
+                   <version>${project.version}</version>
+                   <type>jar</type>
+                   <includes>META-INF/MANIFEST.MF</includes>
+                   <outputDirectory>target</outputDirectory>
+                 </artifactItem>
+               </artifactItems>
+             </configuration>
+           </execution>
          </executions>
        </plugin>
+
        <plugin>
          <artifactId>maven-assembly-plugin</artifactId>
          <executions>
            <execution>
-             <id>app-bundle-assembly</id>
+             <id>app-package-assembly</id>
              <phase>package</phase>
              <goals>
                <goal>single</goal>
              </goals>
              <configuration>
-               <finalName>${project.build.finalName}</finalName>
+               <finalName>DTApp-${project.artifactId}-${project.version}</finalName>
+               <appendAssemblyId>false</appendAssemblyId>
                <descriptors>
-                 <descriptor>src/assemble/appBundle.xml</descriptor>
+                 <descriptor>src/assemble/appPackage.xml</descriptor>
                </descriptors>
                <archiverConfig>
                  <defaultDirectoryMode>0755</defaultDirectoryMode>
                </archiverConfig>                  
+               <archive>
+                 <manifestEntries>
+                   <Class-Path>${datatorrent.apppackage.classpath}</Class-Path>
+                   <DT-Engine-Version>${datatorrent.version}</DT-Engine-Version>
+                   <DT-App-Package-Name>${project.artifactId}</DT-App-Package-Name>
+                   <DT-App-Package-Version>${project.version}</DT-App-Package-Version>
+                   <DT-App-Package-Display-Name>${project.name}</DT-App-Package-Display-Name>
+                   <DT-App-Package-Description>${project.description}</DT-App-Package-Description>
+                 </manifestEntries>
+               </archive>
              </configuration>
            </execution>
          </executions>
@@ -106,7 +140,7 @@
       <version>${datatorrent.version}</version>
       <!-- 
            If you know your application do not need the transitive dependencies that are pulled in by malhar-library,
-           Uncomment the following to reduce the size of your app bundle. 
+           Uncomment the following to reduce the size of your app package. 
       -->
       <!--    
       <exclusions>

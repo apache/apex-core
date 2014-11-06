@@ -34,6 +34,8 @@ import org.apache.hadoop.test.MockitoUtil;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
@@ -197,9 +199,9 @@ public class StramRecoveryTest
     cor.setOperatorName("o2");
     CreateStreamRequest csr = new CreateStreamRequest();
     csr.setSourceOperatorName("o1");
-    csr.setSourceOperatorPortName("outputPort");
+    csr.setSourceOperatorPortName("outport");
     csr.setSinkOperatorName("o2");
-    csr.setSinkOperatorPortName("input1");
+    csr.setSinkOperatorPortName("inport1");
     FutureTask<?> lpmf = scm.logicalPlanModification(Lists.newArrayList(cor, csr));
     while (!lpmf.isDone()) {
       scm.monitorHeartbeat();
@@ -328,12 +330,12 @@ public class StramRecoveryTest
     dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
-    StreamingContainerManager scm = StreamingContainerManager.getInstance(recoveryHandler, dag, false);
+    StreamingContainerManager.getInstance(recoveryHandler, dag, false);
 
     // test restore initial snapshot + log
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
-    scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
+    StreamingContainerManager scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     PhysicalPlan plan = scm.getPhysicalPlan();
     dag = plan.getLogicalPlan(); // original plan
 

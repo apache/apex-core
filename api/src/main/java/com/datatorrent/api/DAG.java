@@ -15,7 +15,7 @@
  */
 package com.datatorrent.api;
 
-import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Context.DAGContext;
 import java.io.Serializable;
 
 /**

@@ -9,7 +9,7 @@ import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context;
 
 import com.datatorrent.stram.webapp.AppInfo;
@@ -29,7 +29,7 @@ public interface StramAppContext extends Context
   ApplicationAttemptId getApplicationAttemptId();
 
   String getApplicationName();
-  
+
   String getApplicationDocLink();
 
   long getStartTime();
@@ -59,9 +59,11 @@ public interface StramAppContext extends Context
   long getTotalLicensedMB();
 
   long getAllocatedMB();
-  
+
   long getLicenseInfoLastUpdate();
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);
+
+  boolean isGatewayConnected();
 }

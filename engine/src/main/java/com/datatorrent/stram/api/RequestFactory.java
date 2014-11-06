@@ -62,13 +62,16 @@ public class RequestFactory
        * For now SET_PROPERTY is not delegated but as soon as its home is found, it should be sent there.
        * No special handling for any fucking thing!
        */
-      if (snr.requestType == StramToNodeRequest.RequestType.SET_PROPERTY) {
+      if (snr.cmd != null) {
+        return snr.cmd;
+      } else if (snr.requestType == StramToNodeRequest.RequestType.SET_PROPERTY) {
         return new OperatorCommand()
         {
           @Override
           public void execute(Operator operator, int id, long windowId) throws IOException
           {
-            final Map<String, String> properties = Collections.singletonMap(snr.setPropertyKey, snr.setPropertyValue);
+            StramToNodeSetPropertyRequest snspr = (StramToNodeSetPropertyRequest)snr;
+            final Map<String, String> properties = Collections.singletonMap(snspr.getPropertyKey(), snspr.getPropertyValue());
             logger.info("Setting property {} on operator {}", properties, operator);
             LogicalPlanConfiguration.setOperatorProperties(operator, properties);
           }
@@ -81,7 +84,6 @@ public class RequestFactory
 
         };
       }
-
       return null;
     }
 

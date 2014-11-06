@@ -14,8 +14,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAGContext;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -35,7 +35,7 @@ public class AlertsManagerTest
   public void testAlertManager() throws JSONException
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
     dag.addOperator("o", GenericTestOperator.class);
@@ -72,15 +72,15 @@ public class AlertsManagerTest
     JSONArray actions = new JSONArray();
     JSONObject action = new JSONObject();
     filter.put("class", GenericTestOperator.class.getName());
-    filter.put("inputPort", "input1");
-    filter.put("outputPort", "output1");
+    filter.put("inputPort", GenericTestOperator.IPORT1);
+    filter.put("outputPort", GenericTestOperator.OPORT1);
     escalation.put("class", GenericTestOperator.class.getName());
-    escalation.put("inputPort", "input1");
+    escalation.put("inputPort", GenericTestOperator.IPORT1);
     action.put("class", GenericTestOperator.class.getName());
-    action.put("outputPort", "output1");
-    action.put("inputPort", "input1");
+    action.put("outputPort", GenericTestOperator.OPORT1);
+    action.put("inputPort", GenericTestOperator.IPORT1);
     actions.put(action);
-    json.put("streamName", "o.output1");
+    json.put("streamName", "o." + GenericTestOperator.OPORT1);
     json.put("filter", filter);
     json.put("escalation", escalation);
     json.put("actions", actions);

@@ -16,14 +16,11 @@
 package com.datatorrent.api;
 
 import java.util.Collection;
+import java.util.Map;
 
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StringCodec.Collection2String;
-import com.datatorrent.api.StringCodec.Integer2String;
-import com.datatorrent.api.StringCodec.Object2String;
-import com.datatorrent.api.StringCodec.String2String;
+import com.datatorrent.api.StringCodec.*;
 import com.datatorrent.api.annotation.Stateless;
 
 /**
@@ -40,7 +37,7 @@ public interface Context
    *
    * @return attributes defined for the current context.
    */
-  public AttributeMap getAttributes();
+  public com.datatorrent.api.Attribute.AttributeMap getAttributes();
 
   /**
    * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
@@ -50,7 +47,7 @@ public interface Context
    * @param key - Attribute to identify the attribute.
    * @return The value for the attribute if found or the defaultValue passed in as argument.
    */
-  public <T> T getValue(AttributeMap.Attribute<T> key);
+  public <T> T getValue(Attribute<T> key);
 
   /**
    * Custom stats provided by the operator implementation. Reported as part of operator stats in the context of the
@@ -60,23 +57,10 @@ public interface Context
    */
   void setCounters(Object counters);
 
-  /**
-   * Custom operator stats that can be defined by an operator implementation to communicate information from the
-   * execution environment to the application master. Treated by the engine as opaque object.
-   * <p>
-   * Implementation needs to be {@link java.io.Serializable} and, if desired, can implement
-   * {@link java.io.Externalizable} to use an alternative serialization mechanism.
-   *
-   * @deprecated Custom counters do not need to implement this interface any longer.
-   */
-  @SuppressWarnings("MarkerInterface")
-  interface Counters
-  {
-  }
-
   interface CountersAggregator
   {
-   Object aggregate(Collection<?> countersList);
+    Object aggregate(Collection<?> countersList);
+
   }
 
   public interface PortContext extends Context
@@ -105,6 +89,17 @@ public interface Context
      * the unifier), enabling horizontal scale by overcoming the single unifier bottleneck.
      */
     Attribute<Integer> UNIFIER_LIMIT = new Attribute<Integer>(Integer.MAX_VALUE);
+
+    /**
+     * Attribute to specify that the final unifier be always a single unifier. This is useful when in MxN partitioning
+     * case there is a need to unify all the outputs of the M stage into a single unifier before sending the results to
+     * the N stage. The attribute can be specified either on the output port or the input port, the output port being
+     * the usual. The specification on the input port overrides that specified on the output port. This is useful in
+     * cases when an output port is connected to multiple input ports and different unifier behavior is desired for
+     * the inputs. In this case the default unifier behavior can be specified on the output port and individual
+     * exceptions can be specified on the corresponding input ports.
+     */
+    Attribute<Boolean> UNIFIER_SINGLE_FINAL = new Attribute<Boolean>(Boolean.FALSE);
     /**
      * Whether or not to auto record the tuples
      */
@@ -255,6 +250,179 @@ public interface Context
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);
+  }
+
+  /**
+   * <p>
+   * DAGContext interface.</p>
+   *
+   * @since 0.3.2
+   */
+  interface DAGContext extends Context
+  {
+    /**
+     * Name under which the application will be shown in the resource manager.
+     * If not set, the default is the configuration Java class or property file name.
+     */
+    Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
+    /**
+     * URL to the application's documentation.
+     * If not set, "app-documentation-unavailable" is the default.
+     */
+    Attribute<String> APPLICATION_DOC_LINK = new Attribute<String>("app-documentation-unavailable");
+    /**
+     * Application instance identifier. An application with the same name can run in multiple instances, each with a
+     * unique identifier. The identifier is set by the client that submits the application and can be used in operators
+     * along with the operator ID to segregate output etc.
+     * <p>
+     * When running in distributed mode, the value is the YARN application id as shown in the resource manager (example:
+     * <code>application_1355713111917_0002</code>). Note that only the full id string uniquely identifies an application,
+     * the integer offset will reset on RM restart.
+     */
+    Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
+    /**
+     * Comma separated list of jar file dependencies to be deployed with the application.
+     * The launcher will combine the list with built-in dependencies and those specified
+     * that are made available through the distributed file system to application master
+     * and child containers.
+     */
+    Attribute<String> LIBRARY_JARS = new Attribute<String>(new String2String());
+    /**
+     * Comma separated list of files to be deployed with the application.
+     * The launcher will include the files into the final set of resources
+     * that are made available through the distributed file system to application master
+     * and child containers.
+     */
+    Attribute<String> FILES = new Attribute<String>(new String2String());
+    /**
+     * Comma separated list of archives to be deployed with the application.
+     * The launcher will include the archives into the final set of resources
+     * that are made available through the distributed file system to application master
+     * and child containers.
+     */
+    Attribute<String> ARCHIVES = new Attribute<String>(new String2String());
+    /**
+     * The maximum number of containers (excluding the application master) that the application is allowed to request.
+     * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
+     * Example: DAG with several operators and all streams container local would require one container,
+     * only one container will be requested from the resource manager.
+     */
+    Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
+    /**
+     * Dump extra debug information in launcher, master and containers.
+     */
+    Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
+    /**
+     * @deprecated As of release 1.0.2, replaced by {@link OperatorContext#MEMORY_MB}
+     */
+    @Deprecated
+    Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
+    /**
+     * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
+     */
+    Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());
+    /**
+     * The amount of memory to be requested for the application master. Not used in local mode.
+     * Default value is 1GB.
+     */
+    Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(1024);
+    /**
+     * The amount of memory each buffer server will try to use at maximum. There is a buffer server in each container,
+     * so the memory allocated here directly affects the RAM available for the rest of the operators running in the container.
+     * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
+     * not be adhered to.
+     */
+    Attribute<Integer> BUFFER_SERVER_MEMORY_MB = new Attribute<Integer>(8 * 64);
+    /**
+     * Where to spool the data once the buffer server capacity is reached.
+     */
+    Attribute<Boolean> EXPERIMENTAL_BUFFER_SPOOLING = new Attribute<Boolean>(true);
+    /**
+     * The streaming window size to use for the application. It is specified in milliseconds. Default value is 500ms.
+     */
+    Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);
+    /**
+     * The time interval for saving the operator state. It is specified as a multiple of streaming windows. The operator
+     * state is saved periodically with interval equal to the checkpoint interval. Default value is 60 streaming windows.
+     */
+    Attribute<Integer> CHECKPOINT_WINDOW_COUNT = new Attribute<Integer>(60);
+    /**
+     * The path to store application dependencies, recording and other generated files for application master and containers.
+     */
+    Attribute<String> APPLICATION_PATH = new Attribute<String>(new String2String());
+    /**
+     * The size limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
+     * in files. When a file size reaches this limit a new file is created and tuples start getting stored in the new file. Default value is 128k.
+     */
+    Attribute<Integer> TUPLE_RECORDING_PART_FILE_SIZE = new Attribute<Integer>(128 * 1024);
+    /**
+     * The time limit for a file where tuple recordings are stored. When tuples are being recorded they are stored
+     * in files. When a tuple recording file creation time falls beyond the time limit window from the current time a new file
+     * is created and the tuples start getting stored in the new file. Default value is 30hrs.
+     */
+    Attribute<Integer> TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new Attribute<Integer>(30 * 60 * 60 * 1000);
+    /**
+     * Address to which the application side connects to DT Gateway, in the form of host:port. This will override "dt.gateway.listenAddress" in the configuration.
+     */
+    Attribute<String> GATEWAY_CONNECT_ADDRESS = new Attribute<String>(new String2String());
+    /**
+     * Whether or not gateway is expecting SSL connection.
+     */
+    Attribute<Boolean> GATEWAY_USE_SSL = new Attribute<Boolean>(false);
+    /**
+     * The username for logging in to the gateway, if authentication is enabled.
+     */
+    Attribute<String> GATEWAY_USER_NAME = new Attribute<String>(new String2String());
+    /**
+     * The password for logging in to the gateway, if authentication is enabled.
+     */
+    Attribute<String> GATEWAY_PASSWORD = new Attribute<String>(new String2String());
+    /**
+     * Maximum number of simultaneous heartbeat connections to process. Default value is 30.
+     */
+    Attribute<Integer> HEARTBEAT_LISTENER_THREAD_COUNT = new Attribute<Integer>(30);
+    /**
+     * How frequently should operators heartbeat to stram. Recommended setting is
+     * 1000ms. Value 0 will disable heartbeat (for unit testing). Default value is 1000ms.
+     */
+    Attribute<Integer> HEARTBEAT_INTERVAL_MILLIS = new Attribute<Integer>(1000);
+    /**
+     * Timeout for master to identify a hung container (full GC etc.). Timeout will result in container restart.
+     * Default value is 30s.
+     */
+    Attribute<Integer> HEARTBEAT_TIMEOUT_MILLIS = new Attribute<Integer>(30 * 1000);
+    /**
+     * Timeout for allocating container resources. Default value is 60s.
+     */
+    Attribute<Integer> RESOURCE_ALLOCATION_TIMEOUT_MILLIS = new Attribute<Integer>(Integer.MAX_VALUE);
+    /**
+     * Maximum number of windows that can be pending for statistics calculation. Statistics are computed when
+     * the metrics are available from all operators for a window. If the information is not available from all operators then
+     * the window is pending. When the number of pending windows reaches this limit the information for the oldest window
+     * is purged. Default value is 1000 windows.
+     */
+    Attribute<Integer> STATS_MAX_ALLOWABLE_WINDOWS_LAG = new Attribute<Integer>(1000);
+    /**
+     * Whether or not we record statistics. The statistics are recorded for each heartbeat if enabled. The default value is false.
+     */
+    Attribute<Boolean> ENABLE_STATS_RECORDING = new Attribute<Boolean>(false);
+    /**
+     * The time interval for throughput calculation. The throughput is periodically calculated with interval greater than or
+     * equal to the throughput calculation interval. The default value is 10s.
+     */
+    Attribute<Integer> THROUGHPUT_CALCULATION_INTERVAL = new Attribute<Integer>(10000);
+    /**
+     * The maximum number of samples to use when calculating throughput. In practice fewer samples may be used
+     * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
+     */
+    Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
+    /**
+     * The string codec map for classes that are to be set or get through properties as strings.
+     * Only supports string codecs that have a constructor with no arguments
+     */
+    Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
+    @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
+    long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
   }
 
   long serialVersionUID = AttributeInitializer.initialize(Context.class);

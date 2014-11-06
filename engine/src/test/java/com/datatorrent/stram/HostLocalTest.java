@@ -62,7 +62,7 @@ public class HostLocalTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
@@ -102,7 +102,7 @@ public class HostLocalTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
 
@@ -142,7 +142,7 @@ public class HostLocalTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);

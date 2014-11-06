@@ -75,7 +75,7 @@ public class TupleRecorderTest
   {
     FileSystem fs = new LocalFileSystem();
     try {
-      TupleRecorder recorder = new TupleRecorder();
+      TupleRecorder recorder = new TupleRecorder("application_test_id_1");
       recorder.getStorage().setBytesPerPartFile(4096);
       recorder.getStorage().setLocalMode(true);
       recorder.getStorage().setBasePath("file://" + testWorkDir.getAbsolutePath() + "/recordings");
@@ -229,7 +229,7 @@ public class TupleRecorderTest
 
   private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op, int numPorts) throws Exception
   {
-    localCluster.getStreamingContainerManager().startRecording(op.getId(), null);
+    localCluster.getStreamingContainerManager().startRecording(op.getId(), null, 0);
 
     WaitCondition c = new WaitCondition()
     {
@@ -240,7 +240,7 @@ public class TupleRecorderTest
       }
 
     };
-    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
+    Assert.assertTrue("Should get a tuple recorder within 5 seconds", StramTestSupport.awaitCompletion(c, 5000));
     TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;

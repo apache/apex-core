@@ -127,7 +127,7 @@ public class ProcessingModeTests
     lc.run();
   }
 
-  public static class CollectorOperator extends BaseOperator implements CheckpointListener
+  public static class CollectorOperator extends BaseOperator implements com.datatorrent.api.Operator.CheckpointListener
   {
     public static HashSet<Long> collection = new HashSet<Long>(20);
     public static ArrayList<Long> duplicates = new ArrayList<Long>();
@@ -235,7 +235,7 @@ public class ProcessingModeTests
   public void testNonLinearOperatorRecovery() throws InterruptedException
   {
     final HashSet<Object> collection = new HashSet<Object>();
-    AttributeMap.DefaultAttributeMap map = new AttributeMap.DefaultAttributeMap();
+    com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap map = new com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap();
     map.put(OperatorContext.CHECKPOINT_WINDOW_COUNT, 0);
     map.put(OperatorContext.PROCESSING_MODE, processingMode);
 

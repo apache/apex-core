@@ -56,7 +56,7 @@ public interface Partitioner<T>
    * use the default partitioning, this method should return null.
    *
    * @param partitions - Current set of partitions
-   * @param incrementalCapacity - The count of more instances of this operator can the infrastructure support. If this number is positive,
+   * @param incrementalCapacity - The count of more instances of this operator the cluster can support. If this number is positive,
    * @return New partitioning. Partitions from input list which should not be
    * changed can be returned as they are.
    */
@@ -163,7 +163,7 @@ public interface Partitioner<T>
      *
      * @return attributes defined for the current context.
      */
-    public AttributeMap getAttributes();
+    public com.datatorrent.api.Attribute.AttributeMap getAttributes();
 
   }
 

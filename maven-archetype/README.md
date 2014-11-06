@@ -6,13 +6,13 @@ How to Generate a DataTorrent Application Project Template
 
 Run the following command
 
-    mvn archetype:generate -DarchetypeGroupId=com.datatorrent -DarchetypeArtifactId=dt-app-archetype -DarchetypeVersion=1.0.4-SNAPSHOT -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp -Dversion=1.0-SNAPSHOT
+    mvn archetype:generate -DarchetypeGroupId=com.datatorrent -DarchetypeArtifactId=dt-app-archetype -DarchetypeVersion=2.0.0-SNAPSHOT -DgroupId=com.example -Dpackage=com.example.mydtapp -DartifactId=mydtapp -Dversion=1.0-SNAPSHOT
 
 Using your favorite IDE, open the project that has just been created by the above command.
 Write your application code and optionally operator code 
 
 Change to the project directory created by the maven archetype and run mvn install
 
-    cd mydtapp; mvn install
+    cd mydtapp; mvn package
 
-The DT App Bundle will be at target/mydtapp-1.0-SNAPSHOT-appBundle.zip
+The DT App Package will be at target/DTApp-mydtapp-1.0-SNAPSHOT.jar

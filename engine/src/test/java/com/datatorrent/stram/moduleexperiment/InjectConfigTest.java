@@ -4,6 +4,18 @@
  */
 package com.datatorrent.stram.moduleexperiment;
 
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -12,21 +24,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.spi.TypeEncounter;
 import com.google.inject.spi.TypeListener;
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Field;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-import org.apache.commons.beanutils.BeanUtilsBean;
-import org.apache.commons.beanutils.ConvertUtilsBean;
-import org.apache.commons.beanutils.Converter;
-import org.apache.commons.beanutils.PropertyUtilsBean;
-import org.apache.hadoop.conf.Configuration;
+
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
@@ -34,6 +32,12 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.beanutils.BeanUtilsBean;
+import org.apache.commons.beanutils.ConvertUtilsBean;
+import org.apache.commons.beanutils.Converter;
+import org.apache.commons.beanutils.PropertyUtilsBean;
+import org.apache.hadoop.conf.Configuration;
 
 public class InjectConfigTest {
 
@@ -262,7 +266,7 @@ public class InjectConfigTest {
     	propertyUtilsBean.setProperty(testBean, "intProp", "s1");
     	Assert.fail("should throw exception");
     } catch (Exception e) {
-        Assert.assertTrue(""+e, e.getMessage().contains("argument type mismatch - had objects of type \"java.lang.String\" but expected signature \"int\""));
+        Assert.assertEquals(e.getClass(), IllegalArgumentException.class);
     }
 
     try {

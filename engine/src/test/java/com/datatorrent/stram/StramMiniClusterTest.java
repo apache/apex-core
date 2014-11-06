@@ -3,16 +3,8 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URL;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import static java.lang.Thread.sleep;
@@ -26,10 +18,6 @@ import com.sun.jersey.api.client.WebResource;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.junit.Assert.assertEquals;
@@ -61,14 +49,13 @@ import org.apache.hadoop.yarn.util.Records;
 
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ShipContainingJars;
 
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.YarnClientHelper;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
@@ -193,11 +180,11 @@ public class StramMiniClusterTest
 
     dagProps.put(StreamingApplication.DT_PREFIX + "operator.module2.classname", GenericTestOperator.class.getName());
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outputPort");
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.source", "numGen.outport");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.fromNumGen.sinks", "module1.inport1");
 
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.output1");
-    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.input1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.source", "module1.outport1");
+    dagProps.put(StreamingApplication.DT_PREFIX + "stream.n1n2.sinks", "module2.inport1");
 
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.MASTER_MEMORY_MB.getName(), "128");
     dagProps.setProperty(StreamingApplication.DT_PREFIX + "operator.*." + OperatorContext.MEMORY_MB.getName(), "512");
@@ -205,7 +192,7 @@ public class StramMiniClusterTest
     dagProps.setProperty(StreamingApplication.DT_PREFIX + LogicalPlan.CONTAINERS_MAX_COUNT.getName(), "2");
 
     LOG.info("Initializing Client");
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(conf);
     tb.addFromProperties(dagProps);
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     try {
@@ -228,8 +215,7 @@ public class StramMiniClusterTest
   private LogicalPlan createDAG(LogicalPlanConfiguration lpc) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    Configuration appConf = new Configuration(false);
-    lpc.prepareDAG(dag, lpc, "test", appConf);
+    lpc.populateDAG(dag);
     dag.validate();
     return dag;
   }
@@ -251,7 +237,7 @@ public class StramMiniClusterTest
     props.put(StreamingApplication.DT_PREFIX + "module.module1.classname", GenericTestOperator.class.getName());
 
     LOG.info("Initializing Client");
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
     tb.addFromProperties(props);
 
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
@@ -359,7 +345,7 @@ public class StramMiniClusterTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, "target/" + this.getClass().getName());
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
     dag.getContextAttributes(badOperator).put(OperatorContext.RECOVERY_ATTEMPTS, 1);
 
@@ -389,34 +375,12 @@ public class StramMiniClusterTest
     }
   }
 
-  @ShipContainingJars(classes = {javax.jms.Message.class})
   protected class ShipJarsBaseOperator extends BaseOperator
   {
   }
 
-  @ShipContainingJars(classes = {Logger.class})
   protected class ShipJarsOperator extends ShipJarsBaseOperator
   {
-  }
-
-  @Test
-  public void testShipContainingJars()
-  {
-    LogicalPlan dag = new LogicalPlan();
-    dag.getClassNames();
-    LinkedHashSet<String> baseJars = StramClient.findJars(dag);
-
-    dag = new LogicalPlan();
-    dag.addOperator("foo", new ShipJarsOperator());
-    dag.getClassNames();
-    LinkedHashSet<String> jars = StramClient.findJars(dag);
-
-    // operator class from test + 3 annotated dependencies
-    Assert.assertEquals("" + jars, baseJars.size() + 3, jars.size());
-
-    Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
-    Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));
-    Assert.assertTrue("", jars.contains(JarFinder.getJar(com.esotericsoftware.kryo.Kryo.class)));
   }
 
   @Ignore // thomas knows why this is disabled

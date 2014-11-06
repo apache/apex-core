@@ -4,9 +4,21 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -29,39 +41,22 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.Context;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DAGContext;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.google.common.base.CaseFormat;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 /**
  *
- * Builder for the DAG logical representation of operators and streams from opProps.<p>
+ * Builder for the DAG logical representation of operators and streams from properties.<p>
  * <br>
  * Supports reading as name-value pairs from Hadoop {@link Configuration} or opProps file.
  * <br>
  *
  * @since 0.3.2
  */
-public class LogicalPlanConfiguration implements StreamingApplication {
+public class LogicalPlanConfiguration {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanConfiguration.class);
 
@@ -69,6 +64,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public static final String GATEWAY_LISTEN_ADDRESS_PROP = "listenAddress";
   public static final String GATEWAY_LISTEN_ADDRESS = GATEWAY_PREFIX + GATEWAY_LISTEN_ADDRESS_PROP;
   public static final String GATEWAY_STATIC_RESOURCE_DIRECTORY = GATEWAY_PREFIX + "staticResourceDirectory";
+  public static final String GATEWAY_ALLOW_CROSS_ORIGIN = GATEWAY_PREFIX + "allowCrossOrigin";
 
   public static final String STREAM_PREFIX = StreamingApplication.DT_PREFIX + "stream.";
   public static final String LICENSE_PREFIX = StreamingApplication.DT_PREFIX + "license.";
@@ -93,7 +89,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final String WILDCARD_PATTERN = ".*";
 
   static {
-    Object serial[] = new Object[] {DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
+    Object serial[] = new Object[] {Context.DAGContext.serialVersionUID, OperatorContext.serialVersionUID, PortContext.serialVersionUID};
     LOG.debug("Initialized attributes {}", serial);
   }
 
@@ -363,7 +359,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     @Override
     public Class<? extends Context> getAttributeContextClass()
     {
-      return DAGContext.class;
+      return Context.DAGContext.class;
     }
 
     @Override
@@ -738,10 +734,14 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   }
 
   private final Properties properties = new Properties();
+  public final Configuration conf;
 
   private final StramConf stramConf = new StramConf();
 
-  public LogicalPlanConfiguration() {
+  public LogicalPlanConfiguration(Configuration conf)
+  {
+    this.conf = conf;
+    this.addFromConfiguration(conf);
   }
 
   /**
@@ -777,23 +777,95 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   public String getAppAlias(String appPath) {
     String appAlias;
     if (appPath.endsWith(CLASS_SUFFIX)) {
-      String className = appPath.replace("/", ".").substring(0, appPath.length()-CLASS_SUFFIX.length());
-      appAlias = stramConf.appAliases.get(className);
-      if(appAlias == null){
-        try {
-          ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(className).getAnnotation(ApplicationAnnotation.class);
-          if (an != null && !StringUtils.isBlank(an.name())) {
-            appAlias = an.name();
-          }
-        } catch (ClassNotFoundException e) {
-          LOG.warn("Unable to load class: ", e);
+      appPath = appPath.replace("/", ".").substring(0, appPath.length() - CLASS_SUFFIX.length());
+    }
+    appAlias = stramConf.appAliases.get(appPath);
+    if (appAlias == null) {
+      try {
+        ApplicationAnnotation an = Thread.currentThread().getContextClassLoader().loadClass(appPath).getAnnotation(ApplicationAnnotation.class);
+        if (an != null && StringUtils.isNotBlank(an.name())) {
+          appAlias = an.name();
         }
       }
-    } else {
-      appAlias = stramConf.appAliases.get(appPath);
+      catch (ClassNotFoundException e) {
+        // ignore
+      }
     }
     return appAlias;
   }
+
+  public LogicalPlanConfiguration addFromJson(JSONObject json) throws JSONException
+  {
+    Properties prop = new Properties();
+    JSONArray operatorArray = json.getJSONArray("operators");
+    for (int i = 0; i < operatorArray.length(); i++) {
+      JSONObject operator = operatorArray.getJSONObject(i);
+      String operatorPrefix = StreamingApplication.DT_PREFIX + StramElement.OPERATOR.getValue() + "." + operator.getString("name") + ".";
+      prop.setProperty(operatorPrefix + "classname", operator.getString("class"));
+      JSONObject operatorProperties = operator.optJSONObject("properties");
+      if (operatorProperties != null) {
+        String propertiesPrefix = operatorPrefix + StramElement.PROP.getValue() + ".";
+        @SuppressWarnings("unchecked")
+        Iterator<String> iter = operatorProperties.keys();
+        while (iter.hasNext()) {
+          String key = iter.next();
+          prop.setProperty(propertiesPrefix + key, operatorProperties.get(key).toString());
+        }
+      }
+      JSONObject operatorAttributes = operator.optJSONObject("attributes");
+      if (operatorAttributes != null) {
+        String attributesPrefix = operatorPrefix + StramElement.ATTR.getValue() + ".";
+        @SuppressWarnings("unchecked")
+        Iterator<String> iter = operatorAttributes.keys();
+        while (iter.hasNext()) {
+          String key = iter.next();
+          prop.setProperty(attributesPrefix + key, operatorAttributes.getString(key));
+        }
+      }
+      JSONArray portArray = operator.optJSONArray("ports");
+      if (portArray != null) {
+        String portsPrefix = operatorPrefix + StramElement.PORT.getValue() + ".";
+        for (int j = 0; j < portArray.length(); j++) {
+          JSONObject port = portArray.getJSONObject(j);
+          JSONObject portAttributes = port.optJSONObject("attributes");
+          if (portAttributes != null) {
+            String portAttributePrefix = portsPrefix + port.getString("name") + "." + StramElement.ATTR.getValue() + ".";
+            @SuppressWarnings("unchecked")
+            Iterator<String> iter = portAttributes.keys();
+            while (iter.hasNext()) {
+              String key = iter.next();
+              prop.setProperty(portAttributePrefix + key, portAttributes.getString(key));
+            }
+          }
+        }
+      }
+    }
+
+    JSONArray streamArray = json.getJSONArray("streams");
+    for (int i = 0; i < streamArray.length(); i++) {
+      JSONObject stream = streamArray.getJSONObject(i);
+      String name = stream.optString("name", "stream-" + i);
+      String streamPrefix = StreamingApplication.DT_PREFIX + StramElement.STREAM.getValue() + "." + name + ".";
+      JSONObject source = stream.getJSONObject("source");
+      prop.setProperty(streamPrefix + STREAM_SOURCE, source.getString("operatorName") + "." + source.getString("portName"));
+      JSONArray sinks = stream.getJSONArray("sinks");
+      StringBuilder sinkPropertyValue = new StringBuilder();
+      for (int j = 0; j < sinks.length(); j++) {
+        if (sinkPropertyValue.length() > 0) {
+          sinkPropertyValue.append(",");
+        }
+        JSONObject sink = sinks.getJSONObject(j);
+        sinkPropertyValue.append(sink.getString("operatorName") + "." + sink.getString("portName"));
+      }
+      prop.setProperty(streamPrefix + STREAM_SINKS, sinkPropertyValue.toString());
+      String locality = stream.optString("locality", null);
+      if (locality != null) {
+        prop.setProperty(streamPrefix + STREAM_LOCALITY, locality);
+      }
+    }
+    return addFromProperties(prop);
+  }
+
 
   /**
    * Read node configurations from opProps. The opProps can be in any
@@ -864,10 +936,12 @@ public class LogicalPlanConfiguration implements StreamingApplication {
           prop = getCompleteKey(keys, index+1);
         } else {
           prop = getCompleteKey(keys, index);
+          /*
           if (conf.getAttributeContextClass() != null) {
             LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
                 getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
           }
+          */
         }
         if (prop != null) {
           conf.setProperty(prop, propertyValue);
@@ -921,9 +995,40 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     return Collections.unmodifiableMap(this.stramConf.appAliases);
   }
 
-  @Override
-  public void populateDAG(DAG dag, Configuration conf) {
+  public LogicalPlan createFromProperties(Properties props, String appName) throws IOException
+  {
+    // build DAG from properties
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
+    tb.addFromProperties(props);
+    LogicalPlan dag = new LogicalPlan();
+    tb.populateDAG(dag);
+    // configure with embedded settings
+    tb.prepareDAG(dag, null, appName);
+    // configure with external settings
+    prepareDAG(dag, null, appName);
+    return dag;
+  }
 
+  public LogicalPlan createFromJson(JSONObject json, String appName) throws Exception
+  {
+    // build DAG from properties
+    LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
+    tb.addFromJson(json);
+    LogicalPlan dag = new LogicalPlan();
+    tb.populateDAG(dag);
+    // configure with embedded settings
+    tb.prepareDAG(dag, null, appName);
+    // configure with external settings
+    prepareDAG(dag, null, appName);
+    return dag;
+  }
+
+  /**
+   * Populate the logical plan structure from properties.
+   * @param dag
+   */
+  public void populateDAG(LogicalPlan dag)
+  {
     Configuration pconf = new Configuration(conf);
     for (final String propertyName : this.properties.stringPropertyNames()) {
       String propertyValue = this.properties.getProperty(propertyName);
@@ -932,7 +1037,8 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
     AppConf appConf = this.stramConf.getChild(WILDCARD, StramElement.APPLICATION);
     if (appConf == null) {
-      throw new IllegalArgumentException(String.format("Application configuration not found"));
+      LOG.warn("Application configuration not found. Probably an empty app.");
+      return;
     }
 
     Map<String, OperatorConf> operators = appConf.getChildren(StramElement.OPERATOR);
@@ -992,35 +1098,25 @@ public class LogicalPlanConfiguration implements StreamingApplication {
    * @param app
    * @param dag
    * @param name
-   * @param conf
    */
-  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name, Configuration conf) {
+  public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name)
+  {
+    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
+    String connectAddress = conf.get(StreamingApplication.DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
+    dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
+    if (app != null) {
+      app.populateDAG(dag, conf);
+    }
     String appAlias = getAppAlias(name);
-
-    List<AppConf> appConfs = stramConf.getMatchingChildConf(appAlias, StramElement.APPLICATION);
-
-    // set application level attributes first to make them available to populateDAG
-    setApplicationConfiguration(dag, appConfs,app);
-
-    app.populateDAG(dag, conf);
-
-    if (appAlias != null) {
-      dag.setAttribute(DAG.APPLICATION_NAME, appAlias);
-    } else {
-      if (dag.getAttributes().get(DAG.APPLICATION_NAME) == null) {
-        dag.getAttributes().put(DAG.APPLICATION_NAME, name);
-      }
+    String appName = appAlias == null ? name : appAlias;
+    List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
+    setApplicationConfiguration(dag, appConfs, app);
+    if (dag.getAttributes().get(Context.DAGContext.APPLICATION_NAME) == null) {
+      dag.setAttribute(Context.DAGContext.APPLICATION_NAME, appName);
     }
     // inject external operator configuration
-    setOperatorConfiguration(dag, appConfs, appAlias);
-    setStreamConfiguration(dag, appConfs, appAlias);
-  }
-
-  public static StreamingApplication create(Configuration conf, String tplgPropsFile) throws IOException {
-    Properties topologyProperties = readProperties(tplgPropsFile);
-    LogicalPlanConfiguration tb = new LogicalPlanConfiguration();
-    tb.addFromProperties(topologyProperties);
-    return tb;
+    setOperatorConfiguration(dag, appConfs, appName);
+    setStreamConfiguration(dag, appConfs, appName);
   }
 
   public static Properties readProperties(String filePath) throws IOException
@@ -1083,7 +1179,9 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       }
     }
     // direct settings
-    for (Conf conf : opConfs) {
+    // Apply the configurations in reverse order since the higher priority ones are at the beginning
+    for (int i = opConfs.size()-1; i >= 0; i--) {
+      Conf conf = opConfs.get(i);
       opProps.putAll(Maps.fromProperties(conf.properties));
     }
     //properties.remove(OPERATOR_CLASSNAME);
@@ -1190,15 +1288,15 @@ public class LogicalPlanConfiguration implements StreamingApplication {
   private static final Map<String, Attribute<?>> legacyKeyMap = Maps.newHashMap();
 
   static {
-    legacyKeyMap.put("appName", DAGContext.APPLICATION_NAME);
-    legacyKeyMap.put("libjars", DAGContext.LIBRARY_JARS);
-    legacyKeyMap.put("maxContainers", DAGContext.CONTAINERS_MAX_COUNT);
-    legacyKeyMap.put("containerMemoryMB", DAGContext.CONTAINER_MEMORY_MB);
-    legacyKeyMap.put("containerJvmOpts", DAGContext.CONTAINER_JVM_OPTIONS);
-    legacyKeyMap.put("masterMemoryMB", DAGContext.MASTER_MEMORY_MB);
-    legacyKeyMap.put("windowSizeMillis", DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
-    legacyKeyMap.put("appPath", DAGContext.APPLICATION_PATH);
-    legacyKeyMap.put("allocateResourceTimeoutMillis", DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS);
+    legacyKeyMap.put("appName", Context.DAGContext.APPLICATION_NAME);
+    legacyKeyMap.put("libjars", Context.DAGContext.LIBRARY_JARS);
+    legacyKeyMap.put("maxContainers", Context.DAGContext.CONTAINERS_MAX_COUNT);
+    legacyKeyMap.put("containerMemoryMB", Context.DAGContext.CONTAINER_MEMORY_MB);
+    legacyKeyMap.put("containerJvmOpts", Context.DAGContext.CONTAINER_JVM_OPTIONS);
+    legacyKeyMap.put("masterMemoryMB", Context.DAGContext.MASTER_MEMORY_MB);
+    legacyKeyMap.put("windowSizeMillis", Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    legacyKeyMap.put("appPath", Context.DAGContext.APPLICATION_PATH);
+    legacyKeyMap.put("allocateResourceTimeoutMillis", Context.DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS);
   }
 
   /**
@@ -1213,19 +1311,21 @@ public class LogicalPlanConfiguration implements StreamingApplication {
 
   private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs,StreamingApplication app) {
     // Make the gateway address available as an application attribute
-    for (Conf appConf : appConfs) {
-      Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
-      if (gwConf != null) {
-        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_LISTEN_ADDRESS_PROP);
-        if (gatewayAddress != null) {
-          dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, gatewayAddress);
-          break;
-        }
-      }
+//    for (Conf appConf : appConfs) {
+//      Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
+//      if (gwConf != null) {
+//        String gatewayAddress = gwConf.properties.getProperty(GATEWAY_LISTEN_ADDRESS_PROP);
+//        if (gatewayAddress != null) {
+//          dag.setAttribute(DAGContext.GATEWAY_CONNECT_ADDRESS, gatewayAddress);
+//          break;
+//        }
+//      }
+//    }
+    setAttributes(Context.DAGContext.class, appConfs, dag.getAttributes());
+    if (app != null) {
+      Map<String, String> appProps = getApplicationProperties(appConfs);
+      setApplicationProperties(app, appProps);
     }
-    setAttributes(DAGContext.class, appConfs, dag.getAttributes());
-    Map<String, String> appProps = getApplicationProperties(appConfs);
-    setApplicationProperties(app,appProps);
   }
 
   private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName) {
@@ -1289,7 +1389,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
       attributeMap.put(clazz, m);
     }
     Attribute<Object> attr = m.get(configKey);
-    if (attr == null && clazz == DAGContext.class) {
+    if (attr == null && clazz == Context.DAGContext.class) {
       isDeprecated = true;
       @SuppressWarnings({ "rawtypes", "unchecked" })
       Attribute<Object> tmp = (Attribute)legacyKeyMap.get(configKey);
@@ -1312,7 +1412,7 @@ public class LogicalPlanConfiguration implements StreamingApplication {
     conf.setAttribute(attr, attrValue);
   }
 
-  private void setAttributes(Class<?> clazz, List<? extends Conf> confs, AttributeMap attributeMap) {
+  private void setAttributes(Class<?> clazz, List<? extends Conf> confs, Attribute.AttributeMap attributeMap) {
     Set<Attribute<Object>> processedAttributes = Sets.newHashSet();
     if (confs.size() > 0) {
       for (Conf conf : confs) {

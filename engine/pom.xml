@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>dt-framework</artifactId>
-    <version>1.0.4-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>dt-stram</artifactId>
@@ -49,6 +49,18 @@
       <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
         <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeArtifactIds>commons-cli,commons-codec,commons-io,hadoop-common,jettison,log4j,slf4j-api,slf4j-log4j12</includeArtifactIds>
+              <outputDirectory>target/deps</outputDirectory>
+              <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
           <execution>
             <id>create-client-mvn-generated-classpath</id>
             <phase>generate-resources</phase>
@@ -118,13 +130,36 @@
             <!-- automatically creates the classpath using all project dependencies,
                  also adding the project build directory -->
             <classpath/>
-            <argument>com.datatorrent.stram.license.DefaultLicense</argument>
+            <argument>com.datatorrent.stram.license.LicenseAuthority</argument>
             <argument>-propertiesFile</argument>
-            <argument>${basedir}/src/main/license/default_license_properties</argument>
+            <argument>${basedir}/src/main/license/defaultlicenseproperties</argument>
             <argument>-outputFile</argument>
             <argument>${project.build.directory}/classes/com/datatorrent/stram/license/default_license</argument>
           </arguments>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>app-package-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <finalName>License-${project.version}</finalName>
+              <appendAssemblyId>false</appendAssemblyId>
+              <descriptors>
+                <descriptor>src/assemble/licensePackage.xml</descriptor>
+              </descriptors>
+              <archiverConfig>
+                <defaultDirectoryMode>0755</defaultDirectoryMode>
+              </archiverConfig>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -167,7 +202,7 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>src/main/x-java</outputDirectory>
+              <outputDirectory>target/generated-sources/main/x-java</outputDirectory>
               <resources>
                 <resource>
                   <directory>../malhar/library/src/main/java/com/datatorrent/lib/codec</directory>
@@ -186,6 +221,7 @@
                     <include>PubSubMessageCodec.java</include>
                     <include>PubSubWebSocketClient.java</include>
                     <include>NumberAggregate.java</include>
+                    <include>FSStorageAgent.java</include>
                   </includes>
                 </resource>
               </resources>
@@ -196,7 +232,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.8</version>
+        <version>1.9.1</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -205,7 +241,7 @@
             </goals>
             <configuration>
               <sources>
-                <source>src/main/x-java</source>
+                <source>target/generated-sources/main/x-java</source>
               </sources>
             </configuration>
           </execution>
@@ -223,7 +259,7 @@
     <dependency>
       <groupId>com.esotericsoftware.kryo</groupId>
       <artifactId>kryo</artifactId>
-      <version>2.23.0</version>
+      <version>2.24.0</version>
       <!-- scope>provided</scope would like the kryo version to be determined by what the user has -->
     </dependency>
     <dependency>
@@ -244,10 +280,6 @@
       <version>0.5</version>
       <exclusions>
         <exclusion>
-          <artifactId>commons-beanutils</artifactId>
-          <groupId>commons-beanutils</groupId>
-        </exclusion>
-        <exclusion>
           <artifactId>commons-beanutils-core</artifactId>
           <groupId>commons-beanutils</groupId>
         </exclusion>
@@ -261,7 +293,13 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>4.2.5</version>
+      <version>4.3.5</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-codec</groupId>
+          <artifactId>commons-codec</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.sun.jersey.contribs</groupId>
@@ -304,11 +342,6 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>dt-api</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-beanutils</groupId>
-      <artifactId>commons-beanutils</artifactId>
-      <version>1.8.3</version>
     </dependency>
     <dependency>
       <artifactId>jackson-mapper-asl</artifactId>
@@ -379,6 +412,17 @@
       <groupId>net.lingala.zip4j</groupId>
       <artifactId>zip4j</artifactId>
       <version>1.3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <version>1.8.3</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.mozilla</groupId>
+      <artifactId>rhino</artifactId>
+      <version>1.7R4</version>
     </dependency>
   </dependencies>
   <profiles>

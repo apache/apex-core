@@ -4,37 +4,57 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.license.util.Util;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.datatorrent.stram.util.ConfigValidator;
-import com.google.common.base.Preconditions;
 import java.io.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.net.*;
-import java.net.URL;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
-import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.ClientRMProxy;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
+import org.apache.log4j.DTLoggerFactory;
+import org.mozilla.javascript.Scriptable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.log4j.DTLoggerFactory;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.StreamingApplication;
+
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
+import com.datatorrent.stram.license.util.Util;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ConfigValidator;
+import java.security.PrivilegedExceptionAction;
 
 /**
- *
  * Collection of utility classes for command line interface package<p>
  * <br>
  * List includes<br>
@@ -49,15 +69,14 @@ public class StramClientUtils
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
   public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
+  public static final String DT_DFS_USER_NAME = "%USER_NAME%";
   public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
 
   /**
-   *
    * TBD<p>
    * <br>
-   *
    */
   public static class YarnClientHelper
   {
@@ -94,12 +113,12 @@ public class StramClientUtils
     {
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-              YarnConfiguration.RM_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_PORT);
+        YarnConfiguration.RM_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
-      return ((ApplicationClientProtocol)rpc.getProxy(
-              ApplicationClientProtocol.class, rmAddress, conf));
+      return ((ApplicationClientProtocol) rpc.getProxy(
+        ApplicationClientProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -110,19 +129,17 @@ public class StramClientUtils
     public ApplicationMasterProtocol connectToRM()
     {
       InetSocketAddress rmAddress = conf.getSocketAddr(
-              YarnConfiguration.RM_SCHEDULER_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
-              YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
+        YarnConfiguration.RM_SCHEDULER_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
       LOG.debug("Connecting to ResourceManager at " + rmAddress);
-      return ((ApplicationMasterProtocol)rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
+      return ((ApplicationMasterProtocol) rpc.getProxy(ApplicationMasterProtocol.class, rmAddress, conf));
     }
 
   }
 
   /**
-   *
-   * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}<p>
-   *
+   * Bunch of utilities that ease repeating interactions with {@link ClientRMProxy}<p>
    */
   public static class ClientRMHelper
   {
@@ -143,7 +160,7 @@ public class StramClientUtils
     /**
      * Monitor the submitted application for completion. Kill application if time expires.
      *
-     * @param appId Application Id of application to be monitored
+     * @param appId         Application Id of application to be monitored
      * @param callback
      * @param timeoutMillis
      * @return true if application completed successfully
@@ -178,16 +195,16 @@ public class StramClientUtils
           }
           else {
             LOG.info("Application finished unsuccessfully."
-                    + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                    + ". Breaking monitoring loop");
+              + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+              + ". Breaking monitoring loop");
             return false;
           }
         }
         else if (YarnApplicationState.KILLED == state
-                || YarnApplicationState.FAILED == state) {
+          || YarnApplicationState.FAILED == state) {
           LOG.info("Application did not finish."
-                  + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                  + ". Breaking monitoring loop");
+            + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+            + ". Breaking monitoring loop");
           return false;
         }
 
@@ -232,6 +249,20 @@ public class StramClientUtils
     }
   }
 
+  public static File getInstallationDir()
+  {
+    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
+    try {
+      if (resource == null) {
+        return null;
+      }
+      return new File(resource.toURI()).getParentFile().getParentFile();
+    }
+    catch (URISyntaxException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   public static boolean isDevelopmentMode()
   {
     return getUserDTDirectory().equals(getConfigDir());
@@ -261,14 +292,14 @@ public class StramClientUtils
       addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
     }
     addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
-
+    FileSystem fs = null;
     try {
+      fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
-      FileSystem fs = newFileSystemInstance(conf);
       // load global settings from DFS
-      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", System.getProperty("user.name")));
+      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
-                         new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
+        new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
       if (!isDevelopmentMode()) {
         // load node local config file
@@ -281,6 +312,10 @@ public class StramClientUtils
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     }
+    finally {
+      IOUtils.closeQuietly(fs);
+    }
+
     //Validate loggers-level settings
     String loggersLevel = conf.get(DTLoggerFactory.DT_LOGGERS_LEVEL);
     if (loggersLevel != null) {
@@ -300,10 +335,18 @@ public class StramClientUtils
     // We are overriding this to be 10 seconds maximum.
     //
 
-    int rmConnectMaxWait = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
+    int rmConnectMaxWait = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
     if (rmConnectMaxWait > RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE) {
+      LOG.info("Overriding {} assigned value of {} to {} because the assigned value is too big.", YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, rmConnectMaxWait, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
       conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_MAX_WAIT_MS, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE);
+      int rmConnectRetryInterval = conf.getInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, YarnConfiguration.DEFAULT_RESOURCEMANAGER_CONNECT_MAX_WAIT_MS);
+      int defaultRetryInterval = Math.max(500, RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE / 5);
+      if (rmConnectRetryInterval > defaultRetryInterval) {
+        LOG.info("Overriding {} assigned value of {} to {} because the assigned value is too big.", YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, rmConnectRetryInterval, defaultRetryInterval);
+        conf.setInt(YarnConfiguration.RESOURCEMANAGER_CONNECT_RETRY_INTERVAL_MS, defaultRetryInterval);
+      }
     }
+    LOG.info(" conf object in stramclient {}", conf);
     return conf;
   }
 
@@ -361,6 +404,10 @@ public class StramClientUtils
       return FileSystem.newInstance(conf);
     }
     else {
+      if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
+        conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+      }
       try {
         return FileSystem.newInstance(new URI(dfsRootDir), conf);
       }
@@ -379,10 +426,17 @@ public class StramClientUtils
     }
     else {
       try {
+        if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
+          dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
+          conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
+        }
         URI uri = new URI(dfsRootDir);
         if (uri.isAbsolute()) {
           return new Path(uri);
         }
+      }
+      catch (IOException ex) {
+        LOG.warn("Error getting user login name {}", dfsRootDir, ex);
       }
       catch (URISyntaxException ex) {
         LOG.warn("{} is not a valid URI. Using the default filesystem to construct the path", dfsRootDir, ex);
@@ -444,6 +498,9 @@ public class StramClientUtils
    */
   public static void changeDTEnvironment(String key, String value) throws IOException
   {
+    if (isDevelopmentMode()) {
+      throw new IllegalStateException("Cannot change DT environment in development mode.");
+    }
     URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
     if (resource == null) {
       File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_ENV_SH_FILE);
@@ -510,9 +567,147 @@ public class StramClientUtils
     // and the checksum will fail if the file is again copied to HDFS
     try {
       new File(fromLocal.getParentFile(), "." + fromLocal.getName() + ".crc").delete();
-    } catch (Exception ex) {
+    }
+    catch (Exception ex) {
       // ignore
     }
     fs.copyFromLocalFile(new Path(fromLocal.toURI()), toDFS);
   }
+
+  public static String checkAndActivateCurrentLicense(Configuration conf) throws Exception
+  {
+    // start the license manager
+    YarnClient yarnClient = YarnClient.createYarnClient();
+    try {
+      yarnClient.init(conf);
+      yarnClient.start();
+      byte[] licenseBytes = StramClientUtils.getLicense(conf);
+      License license = LicenseAuthority.getLicense(licenseBytes);
+      String licenseId = license.getLicenseId();
+
+      List<ApplicationReport> apps = yarnClient.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE_LICENSE),
+        EnumSet.of(YarnApplicationState.RUNNING,
+          YarnApplicationState.ACCEPTED,
+          YarnApplicationState.NEW,
+          YarnApplicationState.NEW_SAVING));
+      for (ApplicationReport ar : apps) {
+        if (ar.getName().equals(licenseId)) {
+          return licenseId;
+        }
+      }
+      return StramClientUtils.activateLicense(null, conf);
+    }
+    finally {
+      yarnClient.stop();
+    }
+  }
+
+  public static String activateLicense(String file, Configuration conf) throws Exception
+  {
+    byte[] licenseBytes;
+    if (file != null) {
+      licenseBytes = StramClientUtils.getLicense(file, conf);
+    }
+    else {
+      licenseBytes = StramClientUtils.getLicense(conf);
+    }
+    String licenseId = LicenseAuthority.getLicenseID(licenseBytes);
+    LicenseAuthority.validateLicense(licenseBytes);
+    LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(DAG.APPLICATION_NAME, licenseId);
+    lp.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64URLSafeString(licenseBytes)); // TODO: obfuscate license passing
+    int licenseMasterMemoryMB = StramClientUtils.getLicenseMasterMemory(conf);
+    lp.setAttribute(Context.DAGContext.MASTER_MEMORY_MB, licenseMasterMemoryMB);
+    lp.setAttribute(LogicalPlan.LICENSE_ROOT, conf.get(StramClientUtils.DT_DFS_ROOT_DIR));
+    StramClient client = new StramClient(conf, lp);
+    try {
+      client.start();
+      client.setApplicationType(StramClient.YARN_APPLICATION_TYPE_LICENSE);
+      client.startApplication();
+    }
+    finally {
+      client.stop();
+    }
+    return licenseId;
+  }
+
+  public static boolean configComplete(Configuration conf)
+  {
+    String configStatus = conf.get(StramClientUtils.DT_CONFIG_STATUS);
+    return "complete".equals(configStatus);
+  }
+
+  public static void evalProperties(DTConfiguration launchProperties)
+  {
+    // Using the hadoop configuration to get the values after variable substitution.
+
+    Configuration hadoopConfig = new Configuration(false);
+
+    for (Map.Entry<String, String> entry : launchProperties) {
+      hadoopConfig.set(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, String> entry : hadoopConfig) {
+      // cannot use entry.getValue() because it won't perform variable substitution
+      launchProperties.setInternal(entry.getKey(), hadoopConfig.get(entry.getKey()));
+    }
+
+    Pattern pattern = Pattern.compile("\\{% (.+?) %\\}");
+
+    ScriptEngineManager manager = new ScriptEngineManager();
+    ScriptEngine engine = manager.getEngineByName("Javascript");
+    org.mozilla.javascript.Context context = org.mozilla.javascript.Context.enter();
+    context.setOptimizationLevel(-1);
+    Scriptable scope = context.initStandardObjects();
+    try {
+      context.evaluateString(scope, "var _prop = {}", "EvalLaunchProperties", 0, null);
+      for (Map.Entry<String, String> entry : launchProperties) {
+        LOG.info("Evaluating: {}", "_prop[\"" + entry.getKey() + "\"] = " + entry.getValue());
+        context.evaluateString(scope, "_prop[\"" + entry.getKey() + "\"] = \"" + StringEscapeUtils.escapeJava(entry.getValue()) + "\"", "EvalLaunchProperties", 0, null);
+      }
+
+      for (Map.Entry<String, String> entry : launchProperties) {
+        String value = entry.getValue();
+
+        Matcher matcher = pattern.matcher(value);
+        if (matcher.find()) {
+          StringBuilder newValue = new StringBuilder();
+          int cursor = 0;
+          do {
+            newValue.append(value.substring(cursor, matcher.start()));
+            String eval = context.evaluateString(scope, matcher.group(1), "EvalLaunchProperties", 0, null).toString();
+            if (eval != null) {
+              newValue.append(eval);
+            }
+            cursor = matcher.end();
+          }
+          while (matcher.find());
+          newValue.append(value.substring(cursor));
+          try {
+            launchProperties.set(entry.getKey(), newValue.toString(), DTConfiguration.Scope.TRANSIENT, null);
+          }
+          catch (DTConfiguration.ConfigException ex) {
+            LOG.error("Caught exception:", ex);
+          }
+        }
+      }
+    }
+    finally {
+      org.mozilla.javascript.Context.exit();
+    }
+  }
+
+  public static <T> T doAs(String userName, PrivilegedExceptionAction<T> action) throws Exception
+  {
+    if (StringUtils.isNotBlank(userName) && !userName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
+      LOG.info("Executing command as {}", userName);
+      UserGroupInformation ugi
+              = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
+      return ugi.doAs(action);
+    }
+    else {
+      LOG.info("Executing command as if there is no login info: {}", userName);
+      return action.run();
+    }
+  }
+
 }

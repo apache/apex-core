@@ -42,7 +42,7 @@ public class TupleRecorder
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
   private long startTime = System.currentTimeMillis();
-  private String containerId;
+  private final String appId;
   private int nextPortIndex = 0;
   private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
@@ -50,6 +50,8 @@ public class TupleRecorder
   private int numSubscribers = 0;
   private SharedPubSubWebSocketClient wsClient;
   private String recordingNameTopic;
+  private long numWindows = Long.MAX_VALUE; // number of windows to record
+  private Runnable stopProcedure; // stop procedure to execute
   private final FSPartFileCollection storage = new FSPartFileCollection()
   {
     @Override
@@ -87,6 +89,11 @@ public class TupleRecorder
     }
 
   };
+
+  public TupleRecorder(String appId)
+  {
+    this.appId = appId;
+  }
 
   public FSPartFileCollection getStorage()
   {
@@ -144,22 +151,6 @@ public class TupleRecorder
     throw new IllegalStateException("Tuple recorder has already started");
   }
 
-  /**
-   * @return the containerId
-   */
-  public String getContainerId()
-  {
-    return containerId;
-  }
-
-  /**
-   * @param containerId the containerId to set
-   */
-  public void setContainerId(String containerId)
-  {
-    this.containerId = containerId;
-  }
-
   /* defined for json information */
   public static class PortInfo
   {
@@ -179,7 +170,7 @@ public class TupleRecorder
   public static class RecordInfo
   {
     public long startTime;
-    public String containerId;
+    public String appId;
     public Map<String, Object> properties = new HashMap<String, Object>();
   }
 
@@ -257,7 +248,7 @@ public class TupleRecorder
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
-      recordInfo.containerId = containerId;
+      recordInfo.appId = appId;
 
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
@@ -286,7 +277,7 @@ public class TupleRecorder
       storage.writeMetaData(bos.toByteArray());
 
       if (wsClient != null) {
-        recordingNameTopic = "tupleRecorder." + getStartTime();
+        recordingNameTopic = "applications." + appId + ".tupleRecorder." + getStartTime();
         setupWsClient();
       }
     }
@@ -357,6 +348,9 @@ public class TupleRecorder
       catch (IOException ex) {
         logger.error("Exception caught in endWindow", ex);
       }
+    }
+    if (stopProcedure != null && --numWindows <= 0) {
+      stopProcedure.run();
     }
   }
 
@@ -438,6 +432,12 @@ public class TupleRecorder
     catch (Exception ex) {
       logger.warn("Error publishing tuple data", ex);
     }
+  }
+
+  public void setNumWindows(long numWindows, Runnable stopProcedure)
+  {
+    this.numWindows = numWindows;
+    this.stopProcedure = stopProcedure;
   }
 
   public class RecorderSink implements Sink<Object>

@@ -16,10 +16,13 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.ProcessingMode;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.stram.api.Checkpoint;
@@ -36,6 +39,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PTOperator.State;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.webapp.ContainerInfo;
 
@@ -120,6 +124,8 @@ public class StreamingContainerAgent {
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
     HashSet<PTOperator.PTOutput> publishers = new HashSet<PTOperator.PTOutput>();
 
+    PhysicalPlan physicalPlan = dnmgr.getPhysicalPlan();
+
     for (PTOperator oper : operators) {
       if (oper.getState() != State.PENDING_DEPLOY) {
         LOG.debug("Skipping deploy for operator {} state {}", oper, oper.getState());
@@ -161,10 +167,17 @@ public class StreamingContainerAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
-          if (streamMeta.getStreamCodec() != null) {
-            portInfo.streamCodec = streamMeta.getStreamCodec();
-          } else if (streamMeta.getCodecClass() != null) {
-            portInfo.serDeClassName = streamMeta.getCodecClass().getName();
+          // Build the stream codec configuration of all sinks connected to this port
+          for (PTOperator.PTInput input : out.sinks) {
+            // Create mappings for all non-inline operators
+            if (input.target.getContainer() != out.source.getContainer()) {
+              InputPortMeta inputPortMeta = getIdentifyingInputPortMeta(input);
+              StreamCodec<?> streamCodecInfo = getStreamCodec(inputPortMeta);
+              Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
+              if (!portInfo.streamCodecs.containsKey(id)) {
+                portInfo.streamCodecs.put(id, streamCodecInfo);
+              }
+            }
           }
         }
 
@@ -188,10 +201,10 @@ public class StreamingContainerAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getName();
         inputInfo.portName = in.portName;
-        for (Map.Entry<InputPortMeta, StreamMeta> e : oper.getOperatorMeta().getInputStreams().entrySet()) {
-          if (e.getValue() == streamMeta) {
-            inputInfo.contextAttributes = e.getKey().getAttributes();
-          }
+        InputPortMeta inputPortMeta = getInputPortMeta(oper.getOperatorMeta(), streamMeta);
+
+        if (inputPortMeta != null) {
+          inputInfo.contextAttributes = inputPortMeta.getAttributes();
         }
 
         if (inputInfo.contextAttributes == null && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
@@ -227,11 +240,12 @@ public class StreamingContainerAgent {
           inputInfo.bufferServerPort = addr.getPort();
         }
 
-        if (streamMeta.getStreamCodec() != null) {
-          inputInfo.streamCodec = streamMeta.getStreamCodec();
-        } else if (streamMeta.getCodecClass() != null) {
-          inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
-        }
+        // On the input side there is a unlikely scenario of partitions even for inline stream that is being
+        // handled. Always specifying a stream codec configuration in case that scenario happens.
+        InputPortMeta idInputPortMeta = getIdentifyingInputPortMeta(in);
+        StreamCodec<?> streamCodecInfo = getStreamCodec(idInputPortMeta);
+        Integer id = physicalPlan.getStreamCodecIdentifier(streamCodecInfo);
+        inputInfo.streamCodecs.put(id, streamCodecInfo);
         ndi.inputs.add(inputInfo);
       }
     }
@@ -239,12 +253,72 @@ public class StreamingContainerAgent {
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
   }
 
+  public static InputPortMeta getInputPortMeta(LogicalPlan.OperatorMeta operatorMeta, StreamMeta streamMeta)
+  {
+    InputPortMeta inputPortMeta = null;
+    Map<InputPortMeta, StreamMeta> inputStreams = operatorMeta.getInputStreams();
+    for (Map.Entry<InputPortMeta, StreamMeta> entry : inputStreams.entrySet()) {
+      if (entry.getValue() == streamMeta) {
+        inputPortMeta = entry.getKey();
+        break;
+      }
+    }
+    return inputPortMeta;
+  }
+
+  public static InputPortMeta getIdentifyingInputPortMeta(PTOperator.PTInput input)
+  {
+    InputPortMeta inputPortMeta;
+    PTOperator inputTarget = input.target;
+    StreamMeta streamMeta = input.logicalStream;
+    if (!inputTarget.isUnifier()) {
+      inputPortMeta = getInputPortMeta(inputTarget.getOperatorMeta(), streamMeta);
+    } else {
+      PTOperator destTarget = getIdentifyingOperator(inputTarget);
+      inputPortMeta = getInputPortMeta(destTarget.getOperatorMeta(), streamMeta);
+    }
+    return inputPortMeta;
+  }
+
+  public static PTOperator getIdentifyingOperator(PTOperator operator)
+  {
+    while ((operator != null) && operator.isUnifier()) {
+      PTOperator idOperator = null;
+      List<PTOperator.PTOutput> outputs = operator.getOutputs();
+      // Since it is a unifier, getting the downstream operator it is connected to which is on the first port
+      if (outputs.size() > 0) {
+        List<PTOperator.PTInput> sinks = outputs.get(0).sinks;
+        if (sinks.size() > 0) {
+          PTOperator.PTInput sink = sinks.get(0);
+          idOperator = sink.target;
+        }
+      }
+      operator = idOperator;
+    }
+    return operator;
+  }
+
+  // This will not be needed when we change the port to be able to not specify a stream codec class
+  public static StreamCodec<?> getStreamCodec(InputPortMeta inputPortMeta)
+  {
+    if (inputPortMeta != null) {
+      @SuppressWarnings("unchecked")
+      StreamCodec<?> codec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
+      if (codec == null) {
+        // it cannot be this object that gets returned. Depending upon this value is dangerous -- Chetan (Pramod look into this.)
+        codec = inputPortMeta.getPortObject().getStreamCodec();
+      }
+
+      return codec;
+    }
+
+    return null;
+  }
+
   /**
    * Create deploy info for operator.
    * <p>
    *
-   * @param dnodeId
-   * @param nodeDecl
    * @return {@link com.datatorrent.stram.api.OperatorDeployInfo}
    *
    */
@@ -252,7 +326,23 @@ public class StreamingContainerAgent {
   {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     Operator operator = oper.getOperatorMeta().getOperator();
-    ndi.type = (operator instanceof InputOperator && oper.getInputs().isEmpty()) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
+    if (operator instanceof InputOperator) {
+      ndi.type = OperatorType.INPUT;
+
+      if (!oper.getInputs().isEmpty()) {
+        //If there are no input ports then it has to be an input operator. But if there are input ports then
+        //we check if any input port is connected which would make it a Generic operator.
+        for (PTOperator.PTInput ptInput : oper.getInputs()) {
+          if (ptInput.logicalStream != null && ptInput.logicalStream.getSource() != null) {
+            ndi.type = OperatorType.GENERIC;
+            break;
+          }
+        }
+      }
+    }
+    else {
+      ndi.type = OperatorType.GENERIC;
+    }
     if (oper.isUnifier()) {
       ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     }

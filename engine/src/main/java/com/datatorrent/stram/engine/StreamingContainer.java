@@ -29,7 +29,7 @@ import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -44,7 +44,6 @@ import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.ComponentContextPair;
 import com.datatorrent.stram.RecoverableRpcProxy;
-import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.StramUtils.YarnContainerMain;
 import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.api.*;
@@ -64,7 +63,7 @@ import com.datatorrent.stram.stream.*;
  */
 public class StreamingContainer extends YarnContainerMain
 {
-  public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + DAGContext.APPLICATION_PATH.getName();
+  public static final String PROP_APP_PATH = StreamingApplication.DT_PREFIX + Context.DAGContext.APPLICATION_PATH.getName();
   private final transient String jvmName;
   private final String containerId;
   private final transient StreamingContainerUmbilicalProtocol umbilical;
@@ -131,14 +130,14 @@ public class StreamingContainer extends YarnContainerMain
     this.requestFactory = new RequestFactory();
     ctx.attributes.put(ContainerContext.REQUEST_FACTORY, requestFactory);
 
-    heartbeatIntervalMillis = ctx.getValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS);
+    heartbeatIntervalMillis = ctx.getValue(Context.DAGContext.HEARTBEAT_INTERVAL_MILLIS);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.getValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
-    checkpointWindowCount = ctx.getValue(DAGContext.CHECKPOINT_WINDOW_COUNT);
+    windowWidthMillis = ctx.getValue(Context.DAGContext.STREAMING_WINDOW_SIZE_MILLIS);
+    checkpointWindowCount = ctx.getValue(Context.DAGContext.CHECKPOINT_WINDOW_COUNT);
 
     fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
-    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(DAGContext.STRING_CODECS);
+    Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(Context.DAGContext.STRING_CODECS);
     if (codecs != null) {
       StringCodecs.loadConverters(codecs);
     }
@@ -147,10 +146,10 @@ public class StreamingContainer extends YarnContainerMain
       if (ctx.deployBufferServer) {
         eventloop.start();
 
-        int bufferServerRAM = ctx.getValue(DAGContext.BUFFER_SERVER_MEMORY_MB);
+        int bufferServerRAM = ctx.getValue(Context.DAGContext.BUFFER_SERVER_MEMORY_MB);
         int blockCount;
         int blocksize;
-        if (bufferServerRAM < DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
+        if (bufferServerRAM < Context.DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
           blockCount = 8;
           blocksize = bufferServerRAM / blockCount;
           if (blocksize < 1) {
@@ -163,7 +162,7 @@ public class StreamingContainer extends YarnContainerMain
         }
         // start buffer server, if it was not set externally
         bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount);
-        if (ctx.getValue(DAGContext.EXPERIMENTAL_BUFFER_SPOOLING)) {
+        if (ctx.getValue(Context.DAGContext.EXPERIMENTAL_BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());
         }
         SocketAddress bindAddr = bufferServer.run(eventloop);
@@ -688,14 +687,14 @@ public class StreamingContainer extends YarnContainerMain
           continue;
         }
 
-        if (e.getValue().getOperator() instanceof CheckpointListener) {
+        if (e.getValue().getOperator() instanceof Operator.CheckpointListener) {
           if (nr == null) {
             nr = new OperatorCommand()
             {
               @Override
               public void execute(Operator operator, int id, long windowId) throws IOException
               {
-                ((CheckpointListener)operator).committed(lastCommittedWindowId);
+                ((Operator.CheckpointListener)operator).committed(lastCommittedWindowId);
               }
 
             };
@@ -803,7 +802,6 @@ public class StreamingContainer extends YarnContainerMain
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent = getValue(OperatorContext.STORAGE_AGENT, ndi);
       assert (backupAgent != null);
-
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
       ctx.attributes.put(OperatorContext.ACTIVATION_WINDOW_ID, ndi.checkpoint.windowId);
       logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
@@ -822,27 +820,24 @@ public class StreamingContainer extends YarnContainerMain
 
   @SuppressWarnings("unchecked")
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
-          String sourceIdentifier, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
+          String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
           throws UnknownHostException
   {
-    String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+    String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(connIdentifier);
 
     StreamContext bssc = new StreamContext(nodi.declaredStreamId);
-    bssc.setSourceId(sourceIdentifier);
+    bssc.setPortId(nodi.portName);
+    bssc.setSourceId(connIdentifier);
     bssc.setSinkId(sinkIdentifier);
     bssc.setFinishedWindowId(finishedWindowId);
-    if (nodi.streamCodec != null) {
-      bssc.put(StreamContext.CODEC, (StreamCodec<Object>)nodi.streamCodec);
-    } else {
-      bssc.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nodi.serDeClassName));
-    }
+    bssc.put(StreamContext.CODEC, streamCodec);
     bssc.put(StreamContext.EVENT_LOOP, eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
     if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
-    Stream publisher = fastPublisherSubscriber ? new FastPublisher(sourceIdentifier, queueCapacity * 256) : new BufferServerPublisher(sourceIdentifier, queueCapacity);
+    Stream publisher = fastPublisherSubscriber ? new FastPublisher(connIdentifier, queueCapacity * 256) : new BufferServerPublisher(connIdentifier, queueCapacity);
     return new HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>>(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(publisher, bssc));
   }
 
@@ -868,24 +863,31 @@ public class StreamingContainer extends YarnContainerMain
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
-        if (collection == null) {
-          assert (nodi.bufferServerHost != null): "resulting stream cannot be inline: " + nodi;
+        Map<Integer, StreamCodec<?>> streamCodecs = nodi.streamCodecs;
+        if ((collection == null) && (streamCodecs.size() == 1)) {
+          assert (nodi.bufferServerHost != null) : "resulting stream cannot be inline: " + nodi;
           /*
            * Let's create a stream to carry the data to the Buffer Server.
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
+          Map.Entry<Integer, StreamCodec<?>> entry = streamCodecs.entrySet().iterator().next();
+          StreamCodec<?> streamCodec = entry.getValue();
+          Integer streamCodecIdentifier = entry.getKey();
+          String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
+
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                  deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
+                  deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
           newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
-        }
-        else {
+        } else {
           /*
            * In this case we have 2 possibilities, either we have 1 inline or multiple streams.
            * Since we cannot tell at this point, we assume that we will have multiple streams and
            * plan accordingly. we possibly will come to this code block multiple times. We create
            * the MuxStream only the first time and use it for subsequent calls of this block.
+           *
+           * There is also the possibility that we have a stream with multiple sinks having distinct codecs
            */
           ComponentContextPair<Stream, StreamContext> pair = newStreams.get(sourceIdentifier);
           if (pair == null) {
@@ -907,19 +909,25 @@ public class StreamingContainer extends YarnContainerMain
              * Although there is a node in this container interested in output placed on this stream, there
              * seems to at least one more party interested but placed in a container other than this one.
              */
-            SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                    deployBufferServerPublisher(sourceIdentifier, checkpointWindowId, queueCapacity, nodi);
-            newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
+            for (Map.Entry<Integer, StreamCodec<?>> entry : streamCodecs.entrySet()) {
+              Integer streamCodecIdentifier = entry.getKey();
+              StreamCodec<?> streamCodec = entry.getValue();
 
-            String sinkIdentifier = pair.context.getSinkId();
-            if (sinkIdentifier == null) {
-              pair.context.setSinkId(deployBufferServerPublisher.getKey());
-            }
-            else {
-              pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
-            }
+              String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
-            ((Stream.MultiSinkCapableStream)pair.component).setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
+              SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
+                      deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+              newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
+
+              String sinkIdentifier = pair.context.getSinkId();
+              if (sinkIdentifier == null) {
+                pair.context.setSinkId(deployBufferServerPublisher.getKey());
+              } else {
+                pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
+              }
+
+              ((Stream.MultiSinkCapableStream) pair.component).setSink(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue().component);
+            }
           }
         }
       }
@@ -986,6 +994,12 @@ public class StreamingContainer extends YarnContainerMain
         Node<?> node = nodes.get(ndi.id);
 
         for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
+          if (nidi.streamCodecs.size() != 1) {
+            throw new IllegalStateException("Only one input codec configuration should be present");
+          }
+          Map.Entry<Integer, StreamCodec<?>> entry = nidi.streamCodecs.entrySet().iterator().next();
+          Integer streamCodecIdentifier = entry.getKey();
+          StreamCodec<?> streamCodec = entry.getValue();
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(Component.CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(Component.CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -1011,20 +1025,19 @@ public class StreamingContainer extends YarnContainerMain
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
-            if (nidi.streamCodec != null) {
-              context.put(StreamContext.CODEC, (StreamCodec<Object>)nidi.streamCodec);
-            } else {
-              context.put(StreamContext.CODEC, StramUtils.getSerdeInstance(nidi.serDeClassName));
-            }
+            String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
+            context.setPortId(nidi.portName);
+            context.put(StreamContext.CODEC, streamCodec);
             context.put(StreamContext.EVENT_LOOP, eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
-            context.setSourceId(sourceIdentifier);
+            //context.setSourceId(sourceIdentifier);
+            context.setSourceId(connIdentifier);
             context.setSinkId(sinkIdentifier);
             context.setFinishedWindowId(checkpoint.windowId);
 
             BufferServerSubscriber subscriber = fastPublisherSubscriber
-                                                ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity)
-                                                : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
+                    ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
+                    : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
             SweepableReservoir reservoir = subscriber.acquireReservoir(sinkIdentifier, queueCapacity);
             if (checkpoint.windowId >= 0) {
               node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, reservoir, checkpoint.windowId));
@@ -1094,11 +1107,7 @@ public class StreamingContainer extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              StreamCodec<Object> streamCodec = (StreamCodec<Object>)nidi.streamCodec;
-              if (streamCodec == null) {
-                streamCodec = StramUtils.getSerdeInstance(nidi.serDeClassName);
-              }
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>((StreamCodec<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
@@ -1452,10 +1461,10 @@ public class StreamingContainer extends YarnContainerMain
    * @param deployInfo Operator context if applicable otherwise null.
    * @return Value of the operator
    */
-  private <T> T getValue(AttributeMap.Attribute<T> key, com.datatorrent.api.Context.PortContext portContext, OperatorDeployInfo deployInfo)
+  private <T> T getValue(Attribute<T> key, com.datatorrent.api.Context.PortContext portContext, OperatorDeployInfo deployInfo)
   {
     if (portContext != null) {
-      AttributeMap attributes = portContext.getAttributes();
+      Attribute.AttributeMap attributes = portContext.getAttributes();
       if (attributes != null) {
         T attr = attributes.get(key);
         if (attr != null) {
@@ -1465,7 +1474,7 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     if (deployInfo != null) {
-      AttributeMap attributes = deployInfo.contextAttributes;
+      Attribute.AttributeMap attributes = deployInfo.contextAttributes;
       if (attributes != null) {
         T attr = attributes.get(key);
         if (attr != null) {
@@ -1480,7 +1489,7 @@ public class StreamingContainer extends YarnContainerMain
   private <T> T getValue(Attribute<T> key, OperatorDeployInfo deployInfo)
   {
     if (deployInfo != null) {
-      AttributeMap attributes = deployInfo.contextAttributes;
+      Attribute.AttributeMap attributes = deployInfo.contextAttributes;
       if (attributes != null) {
         T attr = attributes.get(key);
         if (attr != null) {

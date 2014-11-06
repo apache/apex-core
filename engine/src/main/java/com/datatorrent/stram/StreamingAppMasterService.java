@@ -4,9 +4,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
-import com.datatorrent.api.*;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -23,13 +20,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.common.collect.Maps;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -67,10 +66,15 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
 
+import com.datatorrent.api.*;
+import com.datatorrent.api.Context.DAGContext;
+
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.license.License;
+import com.datatorrent.stram.license.LicenseAuthority;
 import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -82,8 +86,6 @@ import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
 
-import com.google.common.collect.Maps;
-
 /**
  * Streaming Application Master
  *
@@ -93,8 +95,8 @@ public class StreamingAppMasterService extends CompositeService
 {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingAppMasterService.class);
   private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
-  private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE/2;
-  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE/2;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = Long.MAX_VALUE / 2;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = Long.MAX_VALUE / 2;
   private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 24 * 60 * 60 * 1000;
   private static final int NUMBER_MISSED_HEARTBEATS = 30;
   private AMRMClient<ContainerRequest> amRmClient;
@@ -123,6 +125,7 @@ public class StreamingAppMasterService extends CompositeService
   private final ClusterAppStats stats = new ClusterAppStats();
   private StramDelegationTokenManager delegationTokenManager = null;
   private LicensingAgentClient licenseClient;
+  private License.LicenseType licenseType;
 
   public StreamingAppMasterService(ApplicationAttemptId appAttemptID)
   {
@@ -276,7 +279,7 @@ public class StreamingAppMasterService extends CompositeService
       super(null, null);
     }
 
-    ClusterAppContextImpl(AttributeMap attributes)
+    ClusterAppContextImpl(Attribute.AttributeMap attributes)
     {
       super(attributes, null);
     }
@@ -392,6 +395,15 @@ public class StreamingAppMasterService extends CompositeService
       return 0;
     }
 
+    @Override
+    public boolean isGatewayConnected()
+    {
+      if (StreamingAppMasterService.this.dnmgr != null) {
+        return StreamingAppMasterService.this.dnmgr.isGatewayConnected();
+      }
+      return false;
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201309112304L;
   }
@@ -496,8 +508,9 @@ public class StreamingAppMasterService extends CompositeService
     String licenseBase64 = dag.getValue(LogicalPlan.LICENSE);
     if (licenseBase64 != null) {
       byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
-      String licenseId = License.getLicenseID(licenseBytes);
-      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), licenseId);
+      License license = LicenseAuthority.getLicense(licenseBytes);
+      this.licenseType = license.getLicenseType();
+      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), license);
       addService(this.licenseClient);
     }
 
@@ -526,7 +539,7 @@ public class StreamingAppMasterService extends CompositeService
     }
     catch (Throwable throwable) {
       // SPOI-2687. As part of Pivotal Certification, we need to catch ClassNotFoundException as Pivotal was using Jetty 7 where as other distros are using Jetty 6.
-     // LOG.error("can't set the log to null: ", throwable);
+      // LOG.error("can't set the log to null: ", throwable);
     }
 
     try {
@@ -579,7 +592,7 @@ public class StreamingAppMasterService extends CompositeService
   /**
    * Main run function for the application master
    *
-   * @throws YarnRemoteException
+   * @throws YarnException
    */
   @SuppressWarnings("SleepWhileInLoop")
   private void execute() throws YarnException, IOException
@@ -683,9 +696,12 @@ public class StreamingAppMasterService extends CompositeService
           }
           if (requiredMemory > availableLicensedMemory) {
             LOG.warn("Insufficient licensed memory to request resources: required {}m available {}m", requiredMemory, availableLicensedMemory);
-            requestResources = false;
+            if (licenseType == License.LicenseType.EVALUATION) {
+              requestResources = false;
+            }
           }
         }
+
         if (requestResources) {
           StreamingContainerAgent.ContainerStartRequest csr;
           while ((csr = dnmgr.containerStartRequests.poll()) != null) {
@@ -730,7 +746,10 @@ public class StreamingAppMasterService extends CompositeService
       // CDH reporting incorrect resources, see SPOI-1846, YARN-1959. Workaround for now.
       //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       int availableMemory = availableLicensedMemory;
-      dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
+      //SPOI-2942: locking physical plan only when license type is evaluation
+      if (this.licenseType == License.LicenseType.EVALUATION) {
+        dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
+      }
 
       // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
@@ -927,9 +946,10 @@ public class StreamingAppMasterService extends CompositeService
   /**
    * Ask RM to allocate given no. of containers to this Application Master
    *
-   * @param requestedContainers Containers to ask for from RM
+   * @param containerRequests  Containers to ask for from RM
+   * @param releasedContainers
    * @return Response from RM to AM with allocated containers
-   * @throws YarnRemoteException
+   * @throws YarnException
    */
   private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerId> releasedContainers) throws YarnException, IOException
   {

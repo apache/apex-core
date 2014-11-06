@@ -11,14 +11,18 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
+
 import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -31,7 +35,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
 {
   public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
   public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
-  public static final Attribute<StreamCodec<Object>> CODEC = new Attribute<StreamCodec<Object>>(null, null);
+  public static final Attribute<StreamCodec<?>> CODEC = new Attribute<StreamCodec<?>>(new DefaultStatefulStreamCodec<Object>(), null);
 
   @Override
   public AttributeMap getAttributes()
@@ -81,6 +85,7 @@ public class StreamContext extends DefaultAttributeMap implements Context
   private int mask;
   private Set<Integer> partitions;
   private String id;
+  private String portId;
 
   /**
    *
@@ -181,6 +186,16 @@ public class StreamContext extends DefaultAttributeMap implements Context
   public void setSinkId(String downstreamNodeId)
   {
     this.sinkId = downstreamNodeId;
+  }
+
+  public String getPortId()
+  {
+    return portId;
+  }
+
+  public void setPortId(String portId)
+  {
+    this.portId = portId;
   }
 
   @Override

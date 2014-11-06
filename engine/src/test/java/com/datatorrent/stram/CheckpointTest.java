@@ -11,10 +11,7 @@ import java.util.*;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import junit.framework.*;
 import org.junit.*;
-import org.junit.Assert;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +72,7 @@ public class CheckpointTest
 
   private static class MockInputOperator extends BaseOperator implements InputOperator
   {
-    @OutputPortFieldAnnotation(name = "outputPort", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
     private transient int windowCount;
 
@@ -83,7 +80,7 @@ public class CheckpointTest
     public void beginWindow(long windowId)
     {
       if (++windowCount == 3) {
-        Operator.Util.shutdown();
+        BaseOperator.shutdown();
       }
     }
 
@@ -142,8 +139,6 @@ public class CheckpointTest
 
     Assert.assertEquals("checkpoints " + o1p1 + " " + o1p1.checkpoints, 2, o1p1.checkpoints.size());
 
-    Assert.assertNotNull("checkpoint not null for statefull operator " + o1p1,o1p1.stats.checkpointStatsObj);
-    Assert.assertEquals("checkpoint size for operator " + o1p1,60,o1p1.stats.checkpointStatsObj.checkpointSize);
     for (Checkpoint cp : o1p1.checkpoints) {
       Object load = fssa.load(o1p1.getId(), cp.windowId);
       Assert.assertEquals("Stored Operator and Saved State", load.getClass(), o1p1.getOperatorMeta().getOperator().getClass());
@@ -228,8 +223,6 @@ public class CheckpointTest
     Assert.assertEquals("checkpoint " + o1p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o2p1, cp3, o1p1.getRecoveryCheckpoint());
     Assert.assertEquals("checkpoint " + o3SLp1, cp5, o3SLp1.getRecoveryCheckpoint());
-
-    Assert.assertNull("checkpoint null for stateless operator " + o3SLp1, o3SLp1.stats.checkpointStatsObj);
 
     o2p1.checkpoints.add(cp4);
     dnm.updateRecoveryCheckpoints(o1p1, new UpdateCheckpointsContext(clock));

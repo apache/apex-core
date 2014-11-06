@@ -20,13 +20,14 @@ public class GenericTestOperator extends BaseOperator {
 
   private static final Logger LOG = LoggerFactory.getLogger(GenericTestOperator.class);
 
-  public static final String IPORT1 = "input1";
-  public static final String IPORT2 = "input2";
-  public static final String OPORT1 = "output1";
+  public static final String IPORT1 = "inport1";
+  public static final String IPORT2 = "inport2";
+  public static final String OPORT1 = "outport1";
+  public static final String OPORT2 = "outport2";
 
   public volatile Object inport1Tuple = null;
 
-  @InputPortFieldAnnotation(name=IPORT1, optional=true)
+  @InputPortFieldAnnotation(optional=true)
   final public transient InputPort<Object> inport1 = new DefaultInputPort<Object>() {
     @Override
     final public void process(Object t) {
@@ -39,7 +40,7 @@ public class GenericTestOperator extends BaseOperator {
     }
   };
 
-  @InputPortFieldAnnotation(name=IPORT2, optional=true)
+  @InputPortFieldAnnotation(optional=true)
   final public transient InputPort<Object> inport2 = new DefaultInputPort<Object>() {
     @Override
     final public void process(Object payload) {
@@ -51,8 +52,11 @@ public class GenericTestOperator extends BaseOperator {
     }
   };
 
-  @OutputPortFieldAnnotation(name=OPORT1, optional=true)
+  @OutputPortFieldAnnotation(optional=true)
   final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+
+  @OutputPortFieldAnnotation(optional=true)
+  final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
 
   private String emitFormat;
 

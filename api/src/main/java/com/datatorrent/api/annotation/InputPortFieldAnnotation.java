@@ -28,17 +28,9 @@ import java.lang.annotation.*;
 public @interface InputPortFieldAnnotation
 {
   /**
-   * Alternative name of the port. When this parameter is not defined or set to empty string,
-   * the name of the field is used.
-   *
-   * @return - name of the parameter.
-   */
-  public String name();
-  /**
    * Whether this port connection is optional. When true, you may choose not to connect the port.
    *
    * @return - true if port is optional, false otherwise.
    */
   public boolean optional() default false;
-
 }

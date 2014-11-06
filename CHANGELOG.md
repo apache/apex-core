@@ -1,5 +1,175 @@
 #Release Notes - Streaming Platform
 
+## Version 1.0.4
+
+## Bug
+* [SPOI-2346] - ExactlyOnceTest#testLinearInputOperatorRecovery hangs
+* [SPOI-2511] - ResourceManager HA support
+* [SPOI-2625] - uninstall.sh should print message that reminds users of running DT applications
+* [SPOI-2922] - Counters Aggregator gets lost when an operator is parallel partitioned - test fix
+* [SPOI-2939] - AppBundles test resource refers to fixed version
+* [SPOI-2967] - Mobile demo dies after couple of days
+* [SPOI-2979] - App Bundle unit test should load properties.xml
+* [SPOI-2991] - [kafka-yarn] Archive resource to use less space in HDFS
+* [SPOI-2993] - appBundle with conflicting names in config and ApplicationAnnotation can't launch in CLI with either name
+* [SPOI-2995] - Generate MANIFEST.MF automatically instead of requiring user to change it
+* [SPOI-2999] - Investigate application integration to Vertica
+* [SPOI-3012] - launch application throws NPE when yarn.application.classpath is not defined
+* [SPOI-3015] - DTGateway log grows indefinitely
+* [SPOI-3019] - Investigate how many objects per second (with a single field) using JPA can be written to vertica
+* [SPOI-3027] - Sandbox GATEWAY_CONNECT_ADDRESS change to support VMWare
+* [SPOI-3055] - NullPointerException When Repartitioning Too Frequently
+* [SPOI-3074] - NullPointerException in AppMaster
+* [SPOI-3079] - NPE while launching application
+* [SPOI-3080] - Content-disposition: attachment for container logs
+* [SPOI-3091] - Null Pointer Exception/Internal Server Error When Getting Operator Stats
+* [SPOI-3092] - DefaultUnifier of a port in an operator does not function correctly when the port has more than one sinks
+
+## Improvement
+* [SPOI-2821] - Add bucket processed time
+* [SPOI-2891] - DTGateway default log setting too verbose
+* [SPOI-2938] - Document AppBundles development and deployment
+* [SPOI-3044] - gateway should show the full stack trace of the origin upon error when proxying
+
+## New Feature
+* [SPOI-2720] - API Call for determining if an application's stram can connect to the gateway
+* [SPOI-2981] - HDS - File Format
+* [SPOI-2982] - HDS - Writing Data Files
+* [SPOI-2983] - HDS - Bucket Meta Data
+* [SPOI-2984] - HDS - WAL
+* [SPOI-2986] - HDS - Bucket Management
+* [SPOI-3031] - Add ability to specify number of recording windows
+* [SPOI-3032] - Delete request for recording
+* [SPOI-3033] - Provide byte offset for each line when grepping container log
+* [SPOI-3049] - Ingestion streamlet design for first cut
+
+## Task
+* [SPOI-1734] - Licensing Agent Logging for Audit
+* [SPOI-2810] - Update document with details on password authentication
+* [SPOI-2906] - Write documentation on App Bundle
+* [SPOI-2908] - Prototype kafka-on-yarn
+* [SPOI-2934] - Add application id to the tuple record topic
+* [SPOI-2962] - Create operator to write events in bucket file and write index files for keys
+* [SPOI-2963] - Change query processor operator to fetch events based on indices
+* [SPOI-2996] - Support launch-app-bundle command without the appname argument
+* [SPOI-3006] - Create a LATLON to MGRS converter utility
+* [SPOI-3009] - Create a utility to calculate MD5 hash
+* [SPOI-3010] - Create a utility for Blowfish
+* [SPOI-3014] - Update sandbox release docs
+* [SPOI-3026] - Change the name app bundle to app package and the extension zip to jar
+* [SPOI-3036] - Review issue with ingestion
+* [SPOI-3050] - A first cut at design for ingestion streamlet
+* [SPOI-3051] - License work
+* [SPOI-3108] - Add REST API to get the entire hadoop configuration
+* [SPOI-3121] - HDS - File Format - Performance testing TFile / DTFile
+* [SPOI-2985] - HDS - File Format - Performance testing - HFile
+* [SPOI-2987] - HDS - File Format - Performance testing - MapFile
+* [SPOI-3122] - HDS - File Format - HFile implementation
+* [SPOI-3017] - HDS - File Format - Common Interface
+* [SPOI-3100] - Create the SinglePointCalculator 
+* [SPOI-3103] - Create Synchronizer Operator
+* [SPOI-3104] - Create Persister to store the data
+
+
+## Bug
+* [MLHR-1223] - JDBC Store doesn't support connection properties
+* [MLHR-1253] - documenting keyhashvalpair
+* [MLHR-1255] - db api in malhar lib has KeyValueStore interface which is similar to db/cache/Store api 
+* [MLHR-1260] - AngularJS Migrations - Metrics Grouping
+* [MLHR-1268] - AbstractBatchTransactionableStoreOutputOperator add to library db is same as public abstract class AbstractAggregateTransactionableStoreOutputOperator
+* [MLHR-1269] - Mobile demo dies after couple of days
+* [MLHR-1319] - AngularJS Migration - WebSocket Service
+* [MLHR-1320] - AngularJS Migration - Page Visibility API
+* [MLHR-1323] - stram events links broken (angular)
+* [MLHR-1325] - Wrong "track by" in physical operators list
+* [MLHR-1328] - "inspect" button in appslist broken
+* [MLHR-1335] - dtPageHref directive does not update href of element on changes
+* [MLHR-1336] - Container shorthand directive not watching value changes
+* [MLHR-1342] - Allow DAG widgets to be vertically resized (using jquery resizable)
+* [MLHR-1344] - AngularJS Migration - Metrics Chart
+* [MLHR-1345] - AngularJS Migration - Physical Operator Page - Chart
+* [MLHR-1346] - Test for AbstractFSDirectoryInputOperator fails sporadically
+* [MLHR-1359] - AngularJS Migration - Dashboard Widgets Vertical Resize
+* [MLHR-1364] - BucketManager while reading values doesn't ensure that latest value for a key is read
+* [MLHR-1368] - AngularJS Migration - App Instance Page - Overview Grouping
+* [MLHR-1374] - Remove all occurrences of dag.setAttribute(DAG.APPLICATION_NAME, "xxx") in demos code
+
+
+## Improvement
+* [MLHR-1263] - Migrate JDBC non-transaction output operator to new db api and move it to lib
+* [MLHR-1322] - Changing Machine Data Operator and Stream Names
+* [MLHR-1324] - appState directive should be renamed to something more generic
+* [MLHR-1327] - Assume lodash is global throughout console
+* [MLHR-1343] - Use userStorage to store height of stram events
+* [MLHR-1351] - Allow transformResponse to set a fetchError
+* [MLHR-1353] - Centralize location of breadcrumbs
+* [MLHR-1360] - Put dashboards on the left
+
+## New Feature
+* [MLHR-419] - DAG Widget with AngularJS
+* [MLHR-1220] - Send the "unsubscribe" webSocket message for topic when no more listeners
+* [MLHR-1239] - AngularJS Migration - Physical DAG View
+* [MLHR-1240] - AngularJS Migration - Logical DAG View
+* [MLHR-1243] - Angular JS Migration - Current/Recover Window Id Metrics
+* [MLHR-1245] - AngularJS Migration - Partitions/Container Metrics
+* [MLHR-1246] - AngularJS Migrations - DAG View Zoom
+* [MLHR-1247] - AngularJS Migration - Physical View
+* [MLHR-1248] - AngularJS Migration - Container View
+* [MLHR-1249] - AngularJS Migration - Landing Page High-Level Metrics
+* [MLHR-1250] - AngularJS Migration - Charts
+* [MLHR-1251] - AngularJS Migration - Gauge Widget
+* [MLHR-1252] - AngularJS Migration - DAG View Base Renderer
+* [MLHR-1278] - AngularJS Migration - App Instance Page - Logical View
+* [MLHR-1279] - AngularJS Migration - App Instance Page - Physical View
+* [MLHR-1280] - AngularJS Migration - App Instance Page - Physical DAG View
+* [MLHR-1283] - AngularJS Migration - App Instance Page - Metric View
+* [MLHR-1298] - AngularJS Migration - Physical Operator Page - Overview
+* [MLHR-1299] - AngularJS Migration - Physical Operator Page - Port List
+* [MLHR-1300] - AngularJS Migration - Physical Operator Page - Properties
+* [MLHR-1303] - AngularJS Migration - Logical Operator Page - Overview
+* [MLHR-1305] - AngularJS Migration - Logical Operator Page - Partitions
+* [MLHR-1306] - AngularJS Migration - Logical Operator Page - Chart
+* [MLHR-1308] - AngularJS Migration - Logical Operator Page - Properties
+* [MLHR-1313] - AngularJS Migration - App Instance Page - Physical View - Container List
+* [MLHR-1314] - AngularJS Migration - App Instance Page - Physical View - Operators
+* [MLHR-1315] - AngularJS Migration - App Instance Page - Logical View - Chart
+* [MLHR-1316] - AngularJS Migration - App Instance Page - Logical View - Stream List
+* [MLHR-1321] - AngularJS Migration - Distribution Build with Gulp
+* [MLHR-1334] - Front-End Build with Gulp - WebSocket Proxy
+* [MLHR-1337] - Front-End Build with Gulp - JS/CSS Revisions
+* [MLHR-1338] - Front-End Build with Gulp - Angular Templates Injection
+* [MLHR-1341] - create userStorage service for user settings
+* [MLHR-1358] - Breadcrumbs to jump between collection elements
+* [MLHR-1361] - Logical/Physical DAG - Stream Locality Legend
+* [MLHR-1365] - AngularJS Migration - Widget Settings Modal - Height Management
+
+## Task
+* [MLHR-1208] - Convert contrib apps to app bundles
+* [MLHR-1244] - Update tuple recorder topic to use "applications.<appid>.tupleRecorder.<startTime>"
+* [MLHR-1254] - Create a test case for UniqueValueCountAppender
+* [MLHR-1264] - Start Logical Operator Page
+* [MLHR-1265] - Start Physical Operator Page
+* [MLHR-1266] - Start Container Page View
+* [MLHR-1271] - Container Page: overview
+* [MLHR-1273] - Container Page: operator list
+* [MLHR-1275] - Container Page: log viewer
+* [MLHR-1276] - Container Page: page module
+* [MLHR-1284] - Stream View: overview
+* [MLHR-1285] - Stream View: page module
+* [MLHR-1289] - Port View: page module
+* [MLHR-1302] - Operations Landing Page: memory gauge
+* [MLHR-1311] - Vertical Resize (malhar-angular-dashboard)
+* [MLHR-1318] - Move webSocket service to malhar-angular-widgets
+* [MLHR-1326] - Create .jshintrc for IDE/editor, grunt tasks
+* [MLHR-1330] - Document gulp usage in README
+* [MLHR-1333] - add "gulp coverage" task
+* [MLHR-1339] - Need a dynamic partitioner for File processing operator where the count of the operator instances is controlled by the backlog present
+* [MLHR-1348] - Change app bundle to app package on all demos
+* [MLHR-1349] - Link tables to userStorage service
+* [MLHR-1372] - Adding the tool-tip capability to console
+* [MLHR-1376] - Add counters and counters aggregator to mobile demo
+
+
 
 ## Version 1.0.3
 

@@ -1,5 +1,6 @@
 package com.datatorrent.stram;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.File;
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class PartitioningTest
       }
 
     };
-    @OutputPortFieldAnnotation(name = "output", optional = true)
+    @OutputPortFieldAnnotation( optional = true)
     public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
   }
 
@@ -104,7 +105,7 @@ public class PartitioningTest
         if (blockEndStream) {
           return;
         }
-        Operator.Util.shutdown();
+        BaseOperator.shutdown();
       }
 
       if (first) {
@@ -265,6 +266,10 @@ public class PartitioningTest
 
     partitions = assertNumberPartitions(3, lc, dag.getMeta(collector));
     Assert.assertTrue("container reused", lc.dnmgr.getPhysicalPlan().getContainers().containsAll(containers));
+
+    for (PTContainer container : lc.dnmgr.getPhysicalPlan().getContainers()) {
+      Assert.assertEquals("memory", (int)OperatorContext.MEMORY_MB.defaultValue, container.getRequiredMemoryMB());
+    }
 
     // check deployment
     for (PTOperator p: partitions) {

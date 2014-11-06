@@ -4,16 +4,20 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.api.AttributeMap;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import java.io.Serializable;
-import java.util.List;
-import java.util.Set;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.StreamCodec;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -62,12 +66,17 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Class name of tuple SerDe (buffer server stream only).
      */
+    /*
     @Deprecated
     public String serDeClassName;
+    */
     /**
      * The SerDe object.
      */
+    /*
     public StreamCodec streamCodec;
+    */
+    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
@@ -99,7 +108,7 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T get = contextAttributes.get(key);
       if (get == null) {
@@ -140,15 +149,7 @@ public class OperatorDeployInfo implements Serializable
      */
     public String bufferServerHost;
     public int bufferServerPort;
-    /**
-     * Class name of tuple SerDe (buffer server stream only).
-     */
-    @Deprecated
-    public String serDeClassName;
-    /**
-     * The SerDe object.
-     */
-    public StreamCodec streamCodec;
+    public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
     /**
      * Context attributes for output port
      */
@@ -171,7 +172,7 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    public <T> T getValue(AttributeMap.Attribute<T> key)
+    public <T> T getValue(Attribute<T> key)
     {
       T attr = contextAttributes.get(key);
       if (attr == null) {

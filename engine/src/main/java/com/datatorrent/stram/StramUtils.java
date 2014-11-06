@@ -10,9 +10,7 @@ import java.util.Map;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.log4j.DTLoggerFactory;
 
-import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 
 /**
  *
@@ -23,17 +21,6 @@ import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
  */
 public abstract class StramUtils
 {
-  @SuppressWarnings({"unchecked"})
-  public static StreamCodec<Object> getSerdeInstance(String className)
-  {
-    if (className != null) {
-      return newInstance(classForName(className, StreamCodec.class));
-    }
-    else {
-      return new DefaultStatefulStreamCodec<Object>();
-    }
-  }
-
   public static <T> Class<? extends T> classForName(String className, Class<T> superClass)
   {
     try {

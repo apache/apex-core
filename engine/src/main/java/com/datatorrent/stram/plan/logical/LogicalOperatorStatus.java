@@ -6,8 +6,6 @@ package com.datatorrent.stram.plan.logical;
 
 import java.io.Serializable;
 
-import com.datatorrent.api.Context.Counters;
-
 /**
  * <p>LogicalOperatorStatus class.</p>
  *

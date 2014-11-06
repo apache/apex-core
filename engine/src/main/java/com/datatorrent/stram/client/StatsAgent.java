@@ -91,9 +91,9 @@ public final class StatsAgent extends FSPartFileAgent
     public ObjectMapperString stats;
   }
 
-  public StatsAgent(FileSystem fs, Configuration conf)
+  public StatsAgent(FileSystem fs)
   {
-    super(fs, conf);
+    super(fs);
   }
 
   public String getOperatorStatsDirectory(String appId, String opName)

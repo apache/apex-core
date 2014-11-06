@@ -14,9 +14,13 @@ import com.sun.jersey.api.client.*;
 import java.util.Map;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.NewCookie;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +33,8 @@ import org.slf4j.LoggerFactory;
  */
 public class StramAgent extends FSAgent
 {
+  private static final int MAX_REDIRECTS = 5;
+
   private static class StramWebServicesInfo
   {
     StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath, String secToken)
@@ -72,7 +78,7 @@ public class StramAgent extends FSAgent
   protected static String resourceManagerWebappAddress;
   private static final Map<String, StramWebServicesInfo> webServicesInfoMap = new LRUCache<String, StramWebServicesInfo>(100, true);
   protected static String defaultStramRoot = null;
-  protected Configuration conf;
+  protected static Configuration conf;
 
   public class AppNotFoundException extends Exception
   {
@@ -92,15 +98,14 @@ public class StramAgent extends FSAgent
 
   }
 
-  public StramAgent(FileSystem fs, Configuration conf)
+  public StramAgent(FileSystem fs)
   {
     super(fs);
-    this.conf = conf;
   }
 
-  public static void setResourceManagerWebappAddress(String addr)
+  public static void setConfiguration(Configuration conf)
   {
-    resourceManagerWebappAddress = addr;
+    StramAgent.conf = conf;
   }
 
   public static void setDefaultStramRoot(String dir)
@@ -188,41 +193,67 @@ public class StramAgent extends FSAgent
 
   private static StramWebServicesInfo retrieveWebServicesInfo(String appId)
   {
-    String url = "http://" + resourceManagerWebappAddress + "/proxy/" + appId + WebServices.PATH;
-    /*
-     // Currently proxy does not support secure mode hence using rpc to get the tracking url in that case
-     if (UserGroupInformation.isSecurityEnabled()) {
-     StramClientUtils.YarnClientHelper yarnClient = new StramClientUtils.YarnClientHelper(new Configuration());
-     try {
-     StramClientUtils.ClientRMHelper clientRM = new StramClientUtils.ClientRMHelper(yarnClient);
-     ApplicationReport report = clientRM.getApplicationReport(appId);
-     if (report != null) {
-     url = "http://" + report.getOriginalTrackingUrl() + WebServices.PATH;
-     } else {
-     LOG.warn("No matching application found for {} in yarn", appId);
-     return null;
-     }
-     } catch (Exception ex) {
-     LOG.warn("Cannot get the tracking url for {} from yarn", appId);
-     LOG.warn("Caught exception", ex);
-     return null;
-     }
-     }
-     */
+    YarnClient yarnClient = YarnClient.createYarnClient();
+    String url;
+    try {
+      yarnClient.init(conf);
+      yarnClient.start();
+      ApplicationReport ar = yarnClient.getApplicationReport(ConverterUtils.toApplicationId(appId));
+      String trackingUrl = ar.getTrackingUrl();
+      if (!trackingUrl.startsWith("http://")
+              && !trackingUrl.startsWith("https://")) {
+        url = "http://" + trackingUrl;
+      }
+      else {
+        url = trackingUrl;
+      }
+      if (StringUtils.isBlank(url)) {
+        LOG.error("Cannot get tracking url from YARN");
+        return null;
+      }
+      if (url.endsWith("/")) {
+        url = url.substring(0, url.length() - 1);
+      }
+      url += WebServices.PATH;
+    }
+    catch (Exception ex) {
+      LOG.error("Caught exception when retrieving web services info", ex);
+      return null;
+    }
+    finally {
+      yarnClient.stop();
+    }
+
     WebServicesClient webServicesClient = new WebServicesClient();
     try {
       JSONObject response;
       String secToken = null;
-      LOG.debug("Accessing url {}", url);
+      ClientResponse clientResponse;
+      int i = 0;
+      while (true) {
+        LOG.debug("Accessing url {}", url);
+        clientResponse = webServicesClient.process(url,
+                                                   ClientResponse.class,
+                                                   new WebServicesClient.GetWebServicesHandler<ClientResponse>());
+        String val = clientResponse.getHeaders().getFirst("Refresh");
+        if (val == null) {
+          break;
+        }
+        int index = val.indexOf("url=");
+        if (index < 0) {
+          break;
+        }
+        url = val.substring(index + 4);
+        if (i++ > MAX_REDIRECTS) {
+          LOG.error("Cannot get web service info -- exceeded the max number of redirects");
+          return null;
+        }
+      }
+
       if (!UserGroupInformation.isSecurityEnabled()) {
-        response = new JSONObject(webServicesClient.process(url,
-                                                            String.class,
-                                                            new WebServicesClient.GetWebServicesHandler<String>()));
+        response = new JSONObject(clientResponse.getEntity(String.class));
       }
       else {
-        ClientResponse clientResponse = webServicesClient.process(url,
-                                                                  ClientResponse.class,
-                                                                  new WebServicesClient.GetWebServicesHandler<ClientResponse>());
         if (UserGroupInformation.isSecurityEnabled()) {
           for (NewCookie nc : clientResponse.getCookies()) {
             if (LOG.isDebugEnabled()) {

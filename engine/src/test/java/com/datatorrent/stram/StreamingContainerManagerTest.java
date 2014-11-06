@@ -4,32 +4,15 @@
  */
 package com.datatorrent.stram;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.*;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
-
-import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
-import com.datatorrent.api.DAGContext;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
 
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.Checkpoint;
@@ -44,6 +27,7 @@ import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -51,10 +35,22 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -65,7 +61,7 @@ public class StreamingContainerManagerTest {
     ndi.name = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
-    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap();
+    ndi.contextAttributes = new com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap();
     ndi.contextAttributes.put(OperatorContext.SPIN_MILLIS, 100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
@@ -113,7 +109,7 @@ public class StreamingContainerManagerTest {
   public void testGenerateDeployInfo() {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -211,7 +207,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(DAGContext.APPLICATION_PATH, testMeta.dir);
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
@@ -260,7 +256,7 @@ public class StreamingContainerManagerTest {
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getName(), nidi.declaredStreamId);
       Assert.assertEquals("partition for " + containerId, Sets.newHashSet(node2.partitionKeys[i]), nidi.partitionKeys);
-      Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
+      Assert.assertEquals("number stream codecs for " + nidi, 1, nidi.streamCodecs.size());
     }
 
     // unifier
@@ -596,7 +592,7 @@ public class StreamingContainerManagerTest {
     return getNodeDeployInfo(di, nodeConf) != null;
   }
 
-  private static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca) {
+  public static List<OperatorDeployInfo> getDeployInfo(StreamingContainerAgent sca) {
     return sca.getDeployInfoList(sca.container.getOperators());
   }
 
@@ -618,8 +614,63 @@ public class StreamingContainerManagerTest {
     return null;
   }
 
-  private static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
+  public static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
     return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
+  @Test
+  public void testValidGenericOperatorDeployInfoType()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    TestGeneratorInputOperator.ValidGenericOperator o2 = dag.addOperator("o2", TestGeneratorInputOperator.ValidGenericOperator.class);
+
+    dag.addStream("stream1", o1.outport1, o2.input);
+
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(scm, "container" + (i + 1));
+    }
+    OperatorMeta o2Meta = dag.getMeta(o2);
+    PTOperator o2Physical = physicalPlan.getOperators(o2Meta).get(0);
+
+    String containerId = o2Physical.getContainer().getExternalId();
+
+    OperatorDeployInfo o1DeployInfo = getDeployInfo(scm.getContainerAgent(containerId)).get(0);
+    Assert.assertEquals("type " + o1DeployInfo, OperatorDeployInfo.OperatorType.GENERIC, o1DeployInfo.type);
+  }
+
+  @Test
+  public void testValidInputOperatorDeployInfoType()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
+
+    TestGeneratorInputOperator.ValidInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.ValidInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+
+    dag.addStream("stream1", o1.outport, o2.inport1);
+
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    PhysicalPlan physicalPlan = scm.getPhysicalPlan();
+    List<PTContainer> containers = physicalPlan.getContainers();
+    for (int i = 0; i < containers.size(); ++i) {
+      assignContainer(scm, "container" + (i + 1));
+    }
+    OperatorMeta o1Meta = dag.getMeta(o1);
+    PTOperator o1Physical = physicalPlan.getOperators(o1Meta).get(0);
+
+    String containerId = o1Physical.getContainer().getExternalId();
+
+    OperatorDeployInfo o1DeployInfo = getDeployInfo(scm.getContainerAgent(containerId)).get(0);
+    Assert.assertEquals("type " + o1DeployInfo, OperatorDeployInfo.OperatorType.INPUT, o1DeployInfo.type);
+  }
 }

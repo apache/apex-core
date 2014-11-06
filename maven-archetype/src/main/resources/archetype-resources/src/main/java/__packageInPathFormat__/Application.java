@@ -27,13 +27,10 @@ public class Application implements StreamingApplication
     // Replace this code with the DAG you want to build
 
     SeedEventGenerator seedGen = dag.addOperator("seedGen", SeedEventGenerator.class);
-    seedGen.setSeedstart(1);
-    seedGen.setSeedend(10);
     seedGen.addKeyData("x", 0, 10);
     seedGen.addKeyData("y", 0, 100);
 
     ConsoleOutputOperator cons = dag.addOperator("console", new ConsoleOutputOperator());
-    cons.setStringFormat("hello: %s");
 
     dag.addStream("seeddata", seedGen.val_list, cons.input).setLocality(Locality.CONTAINER_LOCAL);
   }

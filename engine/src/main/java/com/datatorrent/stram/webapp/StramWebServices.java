@@ -5,7 +5,6 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
@@ -42,14 +41,10 @@ import org.apache.log4j.DTLoggerFactory;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
-import com.datatorrent.api.AttributeMap.Attribute;
-import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.StringCodec;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramAppContext;
@@ -62,7 +57,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
-import com.datatorrent.stram.util.OperatorBeanUtils;
 
 /**
  *
@@ -103,6 +97,8 @@ public class StramWebServices
   private StreamingContainerManager dagManager;
   private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
   private boolean initialized = false;
+
+  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -264,7 +260,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getOperatorClasses(@QueryParam("packagePrefix") String packagePrefix, @QueryParam("parent") String parent)
+  public JSONObject getOperatorClasses(@QueryParam("q") String searchTerm, @QueryParam("parent") String parent)
   {
     JSONObject result = new JSONObject();
     JSONArray classNames = new JSONArray();
@@ -278,13 +274,8 @@ public class StramWebServices
       }
     }
 
-    if (StringUtils.isBlank(packagePrefix)) {
-      packagePrefix = "com.datatorrent";
-    }
-
     try {
-      OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(packagePrefix);
-      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
+      Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent, searchTerm);
 
       for (Class<?> clazz : operatorClasses) {
         JSONObject j = new JSONObject();
@@ -292,7 +283,7 @@ public class StramWebServices
         classNames.put(j);
       }
 
-      result.put("classes", classNames);
+      result.put("operatorClasses", classNames);
     }
     catch (ClassNotFoundException ex) {
       throw new NotFoundException();
@@ -305,6 +296,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATOR_CLASSES + "/{className}")
   @Produces(MediaType.APPLICATION_JSON)
+  @SuppressWarnings("unchecked")
   public JSONObject describeOperator(@PathParam("className") String className)
   {
     if (className == null) {
@@ -312,67 +304,15 @@ public class StramWebServices
     }
     try {
       Class<?> clazz = Class.forName(className);
-      if (OperatorDiscoverer.isInstantiableOperatorClass(clazz)) {
-        JSONObject response = new JSONObject();
-        JSONArray inputPorts = new JSONArray();
-        JSONArray outputPorts = new JSONArray();
-        JSONArray properties = OperatorBeanUtils.getClassProperties(clazz, 0);
-
-        Field[] fields = clazz.getFields();
-        Arrays.sort(fields, new Comparator<Field>() {
-          @Override
-          public int compare(Field a, Field b)
-          {
-            return a.getName().compareTo(b.getName());
-          }
-
-        });
-        for (Field field : fields) {
-          InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
-          if (inputAnnotation != null) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", inputAnnotation.name());
-            inputPort.put("optional", inputAnnotation.optional());
-            inputPorts.put(inputPort);
-            continue;
-          }
-          else if (InputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", field.getName());
-            inputPort.put("optional", false); // input port that is not annotated is default to be non-optional
-            inputPorts.put(inputPort);
-            continue;
-          }
-          OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
-          if (outputAnnotation != null) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", outputAnnotation.name());
-            outputPort.put("optional", outputAnnotation.optional());
-            outputPorts.put(outputPort);
-            //continue;
-          }
-          else if (OutputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", field.getName());
-            outputPort.put("optional", true); // output port that is not annotated is default to be optional
-            outputPorts.put(outputPort);
-            //continue;
-          }
-        }
-        response.put("properties", properties);
-        response.put("inputPorts", inputPorts);
-        response.put("outputPorts", outputPorts);
-        return response;
+      if (Operator.class.isAssignableFrom(clazz)) {
+        return operatorDiscoverer.describeOperator((Class<? extends Operator>)clazz);
       }
       else {
-        throw new UnsupportedOperationException();
+        throw new NotFoundException();
       }
     }
-    catch (ClassNotFoundException ex) {
-      throw new NotFoundException();
-    }
     catch (Exception ex) {
-      throw new RuntimeException(ex);
+      throw new NotFoundException();
     }
   }
 
@@ -389,22 +329,32 @@ public class StramWebServices
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject startRecording(@PathParam("opId") String opId)
+  public JSONObject startRecording(@PathParam("opId") String opId, String content) throws JSONException
   {
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
-    dagManager.startRecording(Integer.valueOf(opId), null);
+    long numWindows = 0;
+    if (StringUtils.isNotBlank(content)) {
+      JSONObject r = new JSONObject(content);
+      numWindows = r.getLong("numWindows");
+    }
+    dagManager.startRecording(Integer.valueOf(opId), null, numWindows);
     return response;
   }
 
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName)
+  public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName, String content) throws JSONException
   {
     LOG.debug("Start recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
-    dagManager.startRecording(Integer.valueOf(opId), portName);
+    long numWindows = 0;
+    if (StringUtils.isNotBlank(content)) {
+      JSONObject r = new JSONObject(content);
+      numWindows = r.getLong("numWindows");
+    }
+    dagManager.startRecording(Integer.valueOf(opId), portName, numWindows);
     return response;
   }
 
@@ -647,7 +597,72 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/{portName}/attributes")
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPorts(@PathParam("operatorName") String operatorName)
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+    JSONObject result = new JSONObject();
+    JSONArray ports = new JSONArray();
+    try {
+      for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
+        JSONObject port = new JSONObject();
+        port.put("name", inputPort.getPortName());
+        port.put("type", "input");
+        ports.put(port);
+      }
+      for (LogicalPlan.OutputPortMeta outputPort : logicalOperator.getOutputStreams().keySet()) {
+        JSONObject port = new JSONObject();
+        port.put("name", outputPort.getPortName());
+        port.put("type", "output");
+        ports.put(port);
+      }
+      result.put("ports", ports);
+    }
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    return result;
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports/{portName}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getPort(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName)
+  {
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorName);
+    if (logicalOperator == null) {
+      throw new NotFoundException();
+    }
+    try {
+      for (LogicalPlan.InputPortMeta inputPort : logicalOperator.getInputStreams().keySet()) {
+        if (portName.equals(portName)) {
+          JSONObject port = new JSONObject();
+          port.put("name", inputPort.getPortName());
+          port.put("type", "input");
+          return port;
+        }
+      }
+      for (LogicalPlan.OutputPortMeta outputPort : logicalOperator.getOutputStreams().keySet()) {
+        if (portName.equals(portName)) {
+          JSONObject port = new JSONObject();
+          port.put("name", outputPort.getPortName());
+          port.put("type", "output");
+          return port;
+        }
+      }
+    }
+    catch (JSONException ex) {
+      throw new RuntimeException(ex);
+    }
+    throw new NotFoundException();
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorName}/ports/{portName}/attributes")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortAttributes(@PathParam("operatorName") String operatorName, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
   {
@@ -655,13 +670,7 @@ public class StramWebServices
     if (logicalOperator == null) {
       throw new NotFoundException();
     }
-    HashMap<String, Object> map = new HashMap<String, Object>();
-    for (Entry<Attribute<?>, Object> entry : dagManager.getPortAttributes(operatorName, portName).entrySet()) {
-      if (attributeName == null || entry.getKey().name.equals(attributeName)) {
-        map.put(entry.getKey().name, entry.getValue());
-      }
-    }
-    return new JSONObject(map);
+    return new JSONObject(dagManager.getPortAttributes(operatorName, portName));
   }
 
   @GET
@@ -781,6 +790,7 @@ public class StramWebServices
   @PUT
   @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
+  @Deprecated
   public Object createAlert(String content, @PathParam("name") String name) throws JSONException, IOException
   {
     return dagManager.getAlertsManager().createAlert(name, content);
@@ -789,6 +799,7 @@ public class StramWebServices
   @DELETE
   @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
+  @Deprecated
   public Object deleteAlert(@PathParam("name") String name) throws JSONException, IOException
   {
     return dagManager.getAlertsManager().deleteAlert(name);
@@ -797,6 +808,7 @@ public class StramWebServices
   @GET
   @Path(PATH_ALERTS + "/{name}")
   @Produces(MediaType.APPLICATION_JSON)
+  @Deprecated
   public Object getAlert(@PathParam("name") String name) throws JSONException, IOException
   {
     JSONObject alert = dagManager.getAlertsManager().getAlert(name);
@@ -827,7 +839,7 @@ public class StramWebServices
    for (Class<? extends Operator> clazz : operatorClasses) {
    jsonArray.put(clazz.getName());
    }
-   response.put("classes", jsonArray);
+   response.put("operatorClasses", jsonArray);
    return response;
    }
    */

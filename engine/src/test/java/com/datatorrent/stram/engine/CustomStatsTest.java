@@ -4,13 +4,11 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.Lists;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,15 +17,16 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
-
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorStats;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.google.common.collect.Lists;
 
 public class CustomStatsTest
 {
@@ -40,11 +39,13 @@ public class CustomStatsTest
       private String message;
       private boolean attributeListenerCalled;
       private static final long serialVersionUID = -8096838101190642798L;
+      private boolean currentPropVal;
     }
 
     public static class TestStatsListener implements StatsListener, Serializable
     {
       private static final long serialVersionUID = 1L;
+      private boolean lastPropVal;
 
       @Override
       public Response processStats(BatchedOperatorStats stats)
@@ -52,8 +53,24 @@ public class CustomStatsTest
         for (OperatorStats os : stats.getLastWindowedStats()) {
           Assert.assertNotNull("custom stats", os.counters);
           ((TestOperatorStats)os.counters).attributeListenerCalled = true;
+          lastPropVal = ((TestOperatorStats)os.counters).currentPropVal;
         }
-        return null;
+        Response rsp = new Response();
+        rsp.operatorCommands = Lists.newArrayList(new SetPropertyCommand());
+        return rsp;
+      }
+
+      public static class SetPropertyCommand implements OperatorCommand, Serializable
+      {
+        private static final long serialVersionUID = 1L;
+        @Override
+        public void execute(Operator oper, int arg1, long arg2) throws IOException
+        {
+          if (oper instanceof TestOperator) {
+            LOG.debug("Setting property");
+            ((TestOperator)oper).propVal = true;
+          }
+        }
       }
     }
 
@@ -61,6 +78,7 @@ public class CustomStatsTest
     private static Object lastCustomStats = null;
     private static Thread processStatsThread = null;
     private static Thread definePartitionsThread = null;
+    private transient boolean propVal;
 
     @Override
     public void partitioned(Map<Integer, Partition<TestOperator>> partitions)
@@ -101,6 +119,7 @@ public class CustomStatsTest
       super.endWindow();
       TestOperatorStats counters = new TestOperatorStats();
       counters.message = "interesting";
+      counters.currentPropVal = this.propVal;
       context.setCounters(counters);
       //LOG.debug("set custom stats");
     }
@@ -133,7 +152,8 @@ public class CustomStatsTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 1);
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{new TestStatsListener()}));
+    TestStatsListener sl = new TestStatsListener();
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Lists.newArrayList((StatsListener)sl));
     //dag.setAttribute(testOper, OperatorContext.INITIAL_PARTITION_COUNT, 1);
 
     GenericTestOperator collector = dag.addOperator("Collector", new GenericTestOperator());
@@ -148,12 +168,22 @@ public class CustomStatsTest
       LOG.debug("Waiting for stats");
     }
 
+    while (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+      if (sl.lastPropVal) {
+        break;
+      }
+      Thread.sleep(100);
+      LOG.debug("Waiting for property set");
+    }
+
+
     lc.shutdown();
 
     Assert.assertNotNull("custom stats received", TestOperator.lastCustomStats);
     Assert.assertEquals("custom stats message", "interesting", ((TestOperatorStats)TestOperator.lastCustomStats).message);
     Assert.assertTrue("attribute defined stats listener called", ((TestOperatorStats)TestOperator.lastCustomStats).attributeListenerCalled);
     Assert.assertSame("single thread", TestOperator.definePartitionsThread, TestOperator.processStatsThread);
+    Assert.assertTrue("property set", sl.lastPropVal);
   }
 
 }

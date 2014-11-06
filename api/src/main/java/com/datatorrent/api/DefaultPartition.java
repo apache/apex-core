@@ -1,4 +1,4 @@
-  /*
+/*
  * Copyright (c) 2013 DataTorrent, Inc. ALL Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +22,7 @@ import java.util.Map;
 
 import com.google.common.collect.Sets;
 
-import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
@@ -40,7 +40,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
   private final PartitionPortMap partitionKeys;
   private final T partitionable;
   private final int loadIndicator;
-  private final AttributeMap attributes = new DefaultAttributeMap();
+  private final com.datatorrent.api.Attribute.AttributeMap attributes = new DefaultAttributeMap();
   private final BatchedOperatorStats stats;
 
   public DefaultPartition(T partitionable, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator, BatchedOperatorStats stats)
@@ -89,7 +89,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
   }
 
   @Override
-  public AttributeMap getAttributes()
+  public com.datatorrent.api.Attribute.AttributeMap getAttributes()
   {
     return attributes;
   }
@@ -117,7 +117,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
         return false;
       }
 
-      for (Integer bb : collection1.partitions) {
+      for (Integer bb: collection1.partitions) {
         if (!collection2.partitions.contains(bb)) {
           return false;
         }
@@ -144,7 +144,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
     @Override
     public void putAll(Map<? extends InputPort<?>, ? extends PartitionKeys> m)
     {
-      for (Map.Entry<? extends InputPort<?>, ? extends PartitionKeys> entry : m.entrySet()) {
+      for (Map.Entry<? extends InputPort<?>, ? extends PartitionKeys> entry: m.entrySet()) {
         put(entry.getKey(), entry.getValue());
       }
     }
@@ -180,7 +180,7 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
    * partitions will be assigned 2 keys. This logic is used for default partitioning and can be used to implement
    * {@link Partitioner}.
    *
-   * @param <T> Type of the partitionable object
+   * @param <T>        Type of the partitionable object
    * @param partitions
    * @param inputPort
    */

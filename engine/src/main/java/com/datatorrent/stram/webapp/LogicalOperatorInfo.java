@@ -8,8 +8,6 @@ import java.util.*;
 import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 
-import com.datatorrent.api.Context.Counters;
-
 /**
  * <p>LogicalOperatorInfo class.</p>
  *
