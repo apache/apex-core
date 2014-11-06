@@ -37,11 +37,12 @@ public class StramAgent extends FSAgent
 
   private static class StramWebServicesInfo
   {
-    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath, String secToken)
+    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath, String user, String secToken)
     {
       this.appMasterTrackingUrl = appMasterTrackingUrl;
       this.version = version;
       this.appPath = appPath;
+      this.user = user;
       if (secToken != null) {
         securityInfo = new SecurityInfo(secToken);
       }
@@ -50,6 +51,7 @@ public class StramAgent extends FSAgent
     String appMasterTrackingUrl;
     String version;
     String appPath;
+    String user;
     SecurityInfo securityInfo;
   }
 
@@ -191,6 +193,11 @@ public class StramAgent extends FSAgent
     }
   }
 
+  public static String getUser(String appid)
+  {
+    return getWebServicesInfo(appid).user;
+  }
+
   private static StramWebServicesInfo retrieveWebServicesInfo(String appId)
   {
     YarnClient yarnClient = YarnClient.createYarnClient();
@@ -272,7 +279,8 @@ public class StramAgent extends FSAgent
                                            new WebServicesClient.GetWebServicesHandler<JSONObject>());
       String appMasterUrl = response.getString("appMasterTrackingUrl");
       String appPath = response.getString("appPath");
-      return new StramWebServicesInfo(appMasterUrl, version, appPath, secToken);
+      String user = response.getString("user");
+      return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken);
     }
     catch (Exception ex) {
       LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);
