@@ -32,6 +32,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.util.FSPartFileCollection;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  *
@@ -256,8 +257,8 @@ public class TupleRecorderTest
     line = br.readLine();
     Assert.assertEquals("version should be 1.2", "1.2", line);
     line = br.readLine();
-    System.out.println("LINE: " + line);
-    Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
+    JSONObject json = new JSONObject(line);
+    Assert.assertEquals("Start time verification", startTime, json.getLong("startTime"));
     
     for (int i = 0; i < numPorts; i++) {
       line = br.readLine();
