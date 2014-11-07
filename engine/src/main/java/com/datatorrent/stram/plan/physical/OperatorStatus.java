@@ -35,7 +35,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   {
     public String portName;
     public long totalTuples;
-    public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
+    public String recordingId;
     public final TimedMovingAverageLong tuplesPMSMA;
     public final TimedMovingAverageLong bufferServerBytesPMSMA;
     public final TimedMovingAverageLong queueSizePSMA;
@@ -56,7 +56,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final VersionedLong currentWindowId = statsRevs.newVersionedLong();
   public final VersionedLong tuplesProcessedPSMA = statsRevs.newVersionedLong();
   public final VersionedLong tuplesEmittedPSMA = statsRevs.newVersionedLong();
-  public long recordingStartTime = Stats.INVALID_TIME_MILLIS;
+  public String recordingId;
   public final TimedMovingAverageLong cpuNanosPMSMA;
   public final MovingAverageLong latencyMA;
   public final Map<String, PortStatus> inputPortStatusList = new ConcurrentHashMap<String, PortStatus>();

@@ -2728,8 +2728,8 @@ public class DTCli
       }
       else {
         String opId = args[1];
-        long startTime = Long.valueOf(args[2]);
-        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, startTime);
+        String id = args[2];
+        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, id);
         printJson(new JSONObject(mapper.writeValueAsString(recordingInfo)));
       }
     }

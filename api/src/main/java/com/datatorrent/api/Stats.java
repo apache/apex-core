@@ -45,7 +45,7 @@ public interface Stats extends Serializable
      * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
      * INVALID_TIME_MILLIS otherwise.
      */
-    public long recordingStartTime = INVALID_TIME_MILLIS;
+    public String recordingId;
 
     public static class PortStats implements Stats
     {
@@ -59,7 +59,7 @@ public interface Stats extends Serializable
        * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
        * INVALID_TIME_MILLIS otherwise.
        */
-      public long recordingStartTime = INVALID_TIME_MILLIS;
+      public String recordingId;
 
       public PortStats(String id)
       {
