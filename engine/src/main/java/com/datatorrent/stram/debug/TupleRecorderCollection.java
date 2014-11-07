@@ -13,10 +13,6 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
-import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
-import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
-import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
@@ -110,7 +106,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
     return String.valueOf(operatorId).concat(Component.CONCAT_SEPARATOR).concat(portname);
   }
 
-  private void startRecording(final Node<?> node, int operatorId, final String portName, long numWindows)
+  private void startRecording(String id, final Node<?> node, int operatorId, final String portName, long numWindows)
   {
     PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
     OperatorIdPortNamePair operatorIdPortNamePair = new OperatorIdPortNamePair(operatorId, portName);
@@ -160,7 +156,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         }
       }
 
-      TupleRecorder tupleRecorder = new TupleRecorder(appId);
+      TupleRecorder tupleRecorder = new TupleRecorder(id, appId);
       tupleRecorder.setWebSocketClient(wsClient);
 
       HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
@@ -188,7 +184,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       }
       if (!sinkMap.isEmpty()) {
         logger.debug("Started recording on {} through {}", operatorIdPortNamePair, System.identityHashCode(this));
-        String basePath = appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
+        String basePath = appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getId();
         tupleRecorder.getStorage().setBasePath(basePath);
         tupleRecorder.getStorage().setBytesPerPartFile(tupleRecordingPartFileSize);
         tupleRecorder.getStorage().setMillisPerPartFile(tupleRecordingPartFileTimeMillis);
@@ -294,17 +290,17 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   {
     Node<?> node = nae.getNode();
     if (node.context.getValue(OperatorContext.AUTO_RECORD)) {
-      startRecording(node, node.getId(), null, 0);
+      startRecording(null, node, node.getId(), null, 0);
     }
     else {
       for (Map.Entry<String, PortContextPair<InputPort<?>>> entry : node.getPortMappingDescriptor().inputPorts.entrySet()) {
         if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
-          startRecording(node, node.getId(), entry.getKey(), 0);
+          startRecording(null, node, node.getId(), entry.getKey(), 0);
         }
       }
       for (Map.Entry<String, PortContextPair<OutputPort<?>>> entry : node.getPortMappingDescriptor().outputPorts.entrySet()) {
         if (entry.getValue().context != null && entry.getValue().context.getValue(PortContext.AUTO_RECORD)) {
-          startRecording(node, node.getId(), entry.getKey(), 0);
+          startRecording(null, node, node.getId(), entry.getKey(), 0);
         }
       }
     }
@@ -325,35 +321,37 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
       for (OperatorStats os : node.windowStats) {
         if (os.inputPorts != null) {
           for (PortStats ps : os.inputPorts) {
-            ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+            ps.recordingId = null;
           }
         }
         if (os.outputPorts != null) {
           for (PortStats ps : os.outputPorts) {
-            ps.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+            ps.recordingId = null;
           }
         }
       }
     }
     for (OperatorHeartbeat node : stats.operators) {
-      long recordingStartTime;
+      String recordingId;
       TupleRecorder tupleRecorder = get(new OperatorIdPortNamePair(node.nodeId, null));
       if (tupleRecorder == null) {
-        recordingStartTime = Stats.INVALID_TIME_MILLIS;
+        recordingId = null;
         for (Map.Entry<OperatorIdPortNamePair, TupleRecorder> entry : this.entrySet()) {
           if (entry.getKey().operatorId == node.nodeId) {
             for (OperatorStats os : node.windowStats) {
               if (os.inputPorts != null) {
                 for (PortStats ps : os.inputPorts) {
                   if (ps.id.equals(entry.getKey().portName)) {
-                    ps.recordingStartTime = entry.getValue().getStartTime();
+                    ps.recordingId = entry.getValue().getId();
+                    break;
                   }
                 }
               }
               if (os.outputPorts != null) {
                 for (PortStats ps : os.outputPorts) {
                   if (ps.id.equals(entry.getKey().portName)) {
-                    ps.recordingStartTime = entry.getValue().getStartTime();
+                    ps.recordingId = entry.getValue().getId();
+                    break;
                   }
                 }
               }
@@ -362,11 +360,11 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
         }
       }
       else {
-        recordingStartTime = tupleRecorder.getStartTime();
+        recordingId = tupleRecorder.getId();
       }
 
       for (OperatorStats os : node.windowStats) {
-        os.recordingStartTime = recordingStartTime;
+        os.recordingId = recordingId;
       }
     }
   }
@@ -384,7 +382,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               StramToNodeStartRecordingRequest r = (StramToNodeStartRecordingRequest) snr;
-              startRecording(node, operatorId, r.getPortName(), r.getNumWindows());
+              startRecording(r.getId(), node, operatorId, r.getPortName(), r.getNumWindows());
             }
 
             @Override

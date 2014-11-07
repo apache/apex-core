@@ -20,7 +20,6 @@ import javax.xml.bind.annotation.XmlType;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 
 import org.apache.hadoop.fs.FileSystem;
@@ -43,6 +42,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   public static class RecordingInfo
   {
+    public String id;
     @JsonSerialize(using = ToStringSerializer.class)
     public long startTime;
     public String containerId;
@@ -121,10 +121,10 @@ public final class RecordingsAgent extends FSPartFileAgent
     return appPath + Path.SEPARATOR + "recordings";
   }
 
-  public String getRecordingDirectory(String appId, String opId, long startTime)
+  public String getRecordingDirectory(String appId, String opId, String id)
   {
     String dir = getRecordingsDirectory(appId, opId);
-    return (dir == null) ? null : dir + Path.SEPARATOR + String.valueOf(startTime);
+    return (dir == null) ? null : dir + Path.SEPARATOR + id;
   }
 
   @Override
@@ -287,8 +287,8 @@ public final class RecordingsAgent extends FSPartFileAgent
         LocatedFileStatus lfs = ri.next();
         if (lfs.isDirectory()) {
           try {
-            Long startTime = Long.valueOf(lfs.getPath().getName());
-            result.add(getRecordingInfoHelper(appId, opId, startTime, containers));
+            String id = lfs.getPath().getName();
+            result.add(getRecordingInfoHelper(appId, opId, id, containers));
           }
           catch (NumberFormatException ex) {
             // ignore
@@ -304,22 +304,23 @@ public final class RecordingsAgent extends FSPartFileAgent
     return result;
   }
 
-  public RecordingInfo getRecordingInfo(String appId, String opId, long startTime)
+  public RecordingInfo getRecordingInfo(String appId, String opId, String id)
   {
     Set<String> containers = getRunningContainerIds(appId);
-    return getRecordingInfoHelper(appId, opId, startTime, containers);
+    return getRecordingInfoHelper(appId, opId, id, containers);
   }
 
-  private RecordingInfo getRecordingInfoHelper(String appId, String opId, long startTime, Set<String> containers)
+  private RecordingInfo getRecordingInfoHelper(String appId, String opId, String id, Set<String> containers)
   {
     RecordingInfo info = new RecordingInfo();
+    info.id = id;
     info.appId = appId;
     info.operatorId = opId;
 
     BufferedReader br = null;
     IndexFileBufferedReader ifbr = null;
     try {
-      String dir = getRecordingDirectory(appId, opId, startTime);
+      String dir = getRecordingDirectory(appId, opId, id);
       if (dir == null) {
         throw new Exception("recording directory is null");
       }
@@ -430,26 +431,26 @@ public final class RecordingsAgent extends FSPartFileAgent
     OFFSET, WINDOW, TIME
   };
 
-  public TuplesInfo getTuplesInfoByTime(String appId, String opId, long startTime, long fromTime, long toTime, long limit, String[] ports)
+  public TuplesInfo getTuplesInfoByTime(String appId, String opId, String id, long fromTime, long toTime, long limit, String[] ports)
   {
-    return getTuplesInfo(appId, opId, startTime, fromTime, toTime, limit, ports, QueryType.TIME);
+    return getTuplesInfo(appId, opId, id, fromTime, toTime, limit, ports, QueryType.TIME);
   }
 
-  public TuplesInfo getTuplesInfoByOffset(String appId, String opId, long startTime, long offset, long limit, String[] ports)
+  public TuplesInfo getTuplesInfoByOffset(String appId, String opId, String id, long offset, long limit, String[] ports)
   {
-    return getTuplesInfo(appId, opId, startTime, offset, 0, limit, ports, QueryType.OFFSET);
+    return getTuplesInfo(appId, opId, id, offset, 0, limit, ports, QueryType.OFFSET);
   }
 
-  public TuplesInfo getTuplesInfoByWindow(String appId, String opId, long startTime, long startWindow, long limit, String[] ports)
+  public TuplesInfo getTuplesInfoByWindow(String appId, String opId, String id, long startWindow, long limit, String[] ports)
   {
-    return getTuplesInfo(appId, opId, startTime, startWindow, 0, limit, ports, QueryType.WINDOW);
+    return getTuplesInfo(appId, opId, id, startWindow, 0, limit, ports, QueryType.WINDOW);
   }
 
-  private TuplesInfo getTuplesInfo(String appId, String opId, long startTime, long low, long high, long limit, String[] ports, QueryType queryType)
+  private TuplesInfo getTuplesInfo(String appId, String opId, String id, long low, long high, long limit, String[] ports, QueryType queryType)
   {
     TuplesInfo info = new TuplesInfo();
     info.startOffset = -1;
-    String dir = getRecordingDirectory(appId, opId, startTime);
+    String dir = getRecordingDirectory(appId, opId, id);
     if (dir == null) {
       return null;
     }
