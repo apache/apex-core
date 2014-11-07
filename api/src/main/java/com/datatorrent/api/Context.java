@@ -15,7 +15,9 @@
  */
 package com.datatorrent.api;
 
+import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
@@ -61,6 +63,19 @@ public interface Context
   {
     Object aggregate(Collection<?> countersList);
 
+  }
+
+  /**
+   * The interface to control the container JVM Opts based on the operator(s) configuration
+   */
+  public interface ContainerOptConfigurator extends Serializable
+  {
+    /**
+     * Get the container JVM opts based on the operator(s) configuration.
+     * @param operatorMetaList The list of operators that are assigned to the container
+     * @return The JVM options for the container
+     */
+    String getJVMOptions(List<DAG.OperatorMeta> operatorMetaList);
   }
 
   public interface PortContext extends Context
@@ -180,6 +195,11 @@ public interface Context
      * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement for containers.
      */
     Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
+    /**
+     * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
+     */
+    Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
+
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
@@ -416,6 +436,10 @@ public interface Context
      * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
      */
     Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
+    /**
+     * The agent which can be used to find the jvm options for the container.
+     */
+    Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<ContainerOptConfigurator>(new Object2String<ContainerOptConfigurator>());
     /**
      * The string codec map for classes that are to be set or get through properties as strings.
      * Only supports string codecs that have a constructor with no arguments

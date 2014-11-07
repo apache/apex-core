@@ -91,6 +91,11 @@ public class StreamingContainerAgent {
     return initCtx;
   }
 
+  public PTContainer getContainer()
+  {
+    return container;
+  }
+
   public boolean hasPendingWork() {
     for (PTOperator oper : container.getOperators()) {
       if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {

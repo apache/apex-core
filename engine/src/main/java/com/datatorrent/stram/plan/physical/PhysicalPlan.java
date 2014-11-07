@@ -424,7 +424,7 @@ public class PhysicalPlan implements Serializable
         container.operators.add(mEntry.getValue());
       }
     }
-    int memoryMB = pOperator.getOperatorMeta().getValue2(OperatorContext.MEMORY_MB);
+    int memoryMB = pOperator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
     container.setRequiredMemoryMB(container.getRequiredMemoryMB() + memoryMB);
   }
 
@@ -559,9 +559,9 @@ public class PhysicalPlan implements Serializable
       return;
     }
 
-    int memoryPerPartition = currentMapping.logicalOperator.getValue2(OperatorContext.MEMORY_MB);
+    int memoryPerPartition = currentMapping.logicalOperator.getValue(OperatorContext.MEMORY_MB);
     for (OperatorMeta pp : currentMapping.parallelPartitions) {
-      memoryPerPartition += pp.getValue2(OperatorContext.MEMORY_MB);
+      memoryPerPartition += pp.getValue(OperatorContext.MEMORY_MB);
     }
     int requiredMemoryMB = (newPartitions.size() - currentPartitions.size()) * memoryPerPartition;
     if (requiredMemoryMB > availableMemoryMB) {
@@ -747,7 +747,7 @@ public class PhysicalPlan implements Serializable
           newContainer = inlineOper.container;
           break;
         }
-        memoryMB += inlineOper.operatorMeta.getValue2(OperatorContext.MEMORY_MB);
+        memoryMB += inlineOper.operatorMeta.getValue(OperatorContext.MEMORY_MB);
       }
 
       if (newContainer == null) {
@@ -787,7 +787,7 @@ public class PhysicalPlan implements Serializable
     try {
       LOG.debug("Writing activation checkpoint {} {} {}", checkpoint, oper, oo);
       long windowId = oper.isOperatorStateLess() ? Stateless.WINDOW_ID : checkpoint.windowId;
-      oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).save(oo, oper.id, windowId);
+      oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT).save(oo, oper.id, windowId);
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + oper, e);
@@ -801,7 +801,7 @@ public class PhysicalPlan implements Serializable
   public Operator loadOperator(PTOperator oper) {
     try {
       LOG.debug("Loading state for {}", oper);
-      return (Operator)oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).load(oper.id, oper.isOperatorStateLess() ? Stateless.WINDOW_ID : oper.recoveryCheckpoint.windowId);
+      return (Operator)oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT).load(oper.id, oper.isOperatorStateLess() ? Stateless.WINDOW_ID : oper.recoveryCheckpoint.windowId);
     } catch (IOException e) {
       throw new RuntimeException("Failed to read partition state for " + oper, e);
     }
@@ -999,7 +999,7 @@ public class PhysicalPlan implements Serializable
     try {
       synchronized (oper.checkpoints) {
         for (Checkpoint checkpoint : oper.checkpoints) {
-          oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).delete(oper.id, checkpoint.windowId);
+          oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT).delete(oper.id, checkpoint.windowId);
         }
       }
     } catch (IOException e) {
@@ -1353,7 +1353,7 @@ public class PhysicalPlan implements Serializable
   public void syncCheckpoints(long startTime, long currentTime) throws IOException
   {
     for (PTOperator oper : getAllOperators().values()) {
-      StorageAgent sa = oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT);
+      StorageAgent sa = oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT);
       long[] windowIds = sa.getWindowIds(oper.getId());
       Arrays.sort(windowIds);
       oper.checkpoints.clear();

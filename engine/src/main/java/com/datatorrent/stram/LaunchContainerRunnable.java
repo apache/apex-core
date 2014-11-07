@@ -4,18 +4,10 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.engine.StreamingContainer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.*;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
@@ -30,28 +22,32 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
-import org.apache.hadoop.yarn.api.records.LocalResource;
-import org.apache.hadoop.yarn.api.records.LocalResourceType;
-import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
+
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.client.StramClientUtils;
+import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
 
 /**
  *
- * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming operators<p>
+ * Runnable to connect to the {@link StreamingContainerManager} and launch the container that will host streaming operators<p>
  * <br>
  *
  * @since 0.3.2
@@ -65,19 +61,21 @@ public class LaunchContainerRunnable implements Runnable
   private final ByteBuffer tokens;
   private final Container container;
   private final NMClientAsync nmClient;
+  private final StreamingContainerAgent sca;
 
   /**
    * @param lcontainer Allocated container
    * @param nmClient
-   * @param dag
-   * @param tokens
+   * @param sca
+   * @param +tokens
    */
-  public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, LogicalPlan dag, ByteBuffer tokens)
+  public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, StreamingContainerAgent sca, ByteBuffer tokens)
   {
     this.container = lcontainer;
     this.nmClient = nmClient;
-    this.dag = dag;
+    this.dag = sca.getContainer().getPlan().getLogicalPlan();
     this.tokens = tokens;
+    this.sca = sca;
   }
 
   private void setClasspath(Map<String, String> env)
@@ -231,9 +229,14 @@ public class LaunchContainerRunnable implements Runnable
       }
     }
 
-    // container size is variable
-    // set -Xmx based on allocated memory size; default heap size 75% of total memory
-    vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
+    List<DAG.OperatorMeta> operatorMetaList = Lists.newArrayList();
+    for(PTOperator operator: sca.getContainer().getOperators()){
+      operatorMetaList.add(operator.getOperatorMeta());
+    }
+    Context.ContainerOptConfigurator containerOptConfigurator = dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR);
+    jvmOpts = containerOptConfigurator.getJVMOptions(operatorMetaList);
+    LOG.info("Jvm opts {} for container {}",jvmOpts,container.getId());
+    vargs.add(jvmOpts);
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
