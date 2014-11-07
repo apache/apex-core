@@ -1508,7 +1508,7 @@ public class StreamingContainerManager implements PlanContext
       PTOperator operator = p.getFirst();
       if (!operator.isOperatorStateLess()) {
         try {
-          operator.getOperatorMeta().getValue2(OperatorContext.STORAGE_AGENT).delete(operator.getId(), p.getSecond());
+          operator.getOperatorMeta().getValue(OperatorContext.STORAGE_AGENT).delete(operator.getId(), p.getSecond());
           //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
         }
         catch (Exception e) {

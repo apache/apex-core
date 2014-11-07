@@ -571,7 +571,7 @@ public class PhysicalPlanTest
   private void setActivationCheckpoint(PTOperator oper, long windowId)
   {
     try {
-      oper.operatorMeta.getValue2(OperatorContext.STORAGE_AGENT).save(oper.operatorMeta.getOperator(), oper.id, windowId);
+      oper.operatorMeta.getValue(OperatorContext.STORAGE_AGENT).save(oper.operatorMeta.getOperator(), oper.id, windowId);
       oper.setRecoveryCheckpoint(new Checkpoint(3, 0, 0));
     } catch (Exception e) {
       Assert.fail(e.toString());

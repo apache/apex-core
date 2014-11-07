@@ -222,6 +222,7 @@
                     <include>PubSubWebSocketClient.java</include>
                     <include>NumberAggregate.java</include>
                     <include>FSStorageAgent.java</include>
+                    <include>BasicContainerOptConfigurator.java</include>
                   </includes>
                 </resource>
               </resources>
