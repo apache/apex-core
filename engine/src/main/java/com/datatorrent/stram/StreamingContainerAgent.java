@@ -303,20 +303,20 @@ public class StreamingContainerAgent {
     return operator;
   }
 
-  // This will not be needed when we change the port to be able to not specify a stream codec class
   public static StreamCodec<?> getStreamCodec(InputPortMeta inputPortMeta)
   {
     if (inputPortMeta != null) {
-      @SuppressWarnings("unchecked")
       StreamCodec<?> codec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
       if (codec == null) {
         // it cannot be this object that gets returned. Depending upon this value is dangerous -- Chetan (Pramod look into this.)
         codec = inputPortMeta.getPortObject().getStreamCodec();
+        if (codec != null) {
+          // don't create codec multiple times - it will assign a new identifier
+          inputPortMeta.getAttributes().put(PortContext.STREAM_CODEC, codec);
+        }
       }
-
       return codec;
     }
-
     return null;
   }
 
