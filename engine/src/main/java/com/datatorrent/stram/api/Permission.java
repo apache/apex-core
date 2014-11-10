@@ -57,6 +57,10 @@ public enum Permission
    */
   MANAGE_USERS,
   /**
+   * Manage roles (create/delete roles)
+   */
+  MANAGE_ROLES,
+  /**
    * View system alerts
    */
   VIEW_SYSTEM_ALERTS,
