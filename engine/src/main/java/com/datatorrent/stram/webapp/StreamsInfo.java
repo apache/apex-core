@@ -40,8 +40,7 @@ public class StreamsInfo {
 
   /**
    *
-   * @return List<StreamInfo>
-   *
+   * @return list of stream info
    */
   public List<StreamInfo> getStreams() {
     return Collections.unmodifiableList(streams);
