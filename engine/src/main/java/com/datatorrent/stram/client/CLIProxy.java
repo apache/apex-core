@@ -152,7 +152,7 @@ public class CLIProxy implements Closeable
     sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(configName)) {
-      sb.append("-conf \"").append(configName).append("\" ");
+      sb.append("-apconf \"").append(configName).append("\" ");
     }
     for (Map.Entry<String, String> property : overrideProperties.entrySet()) {
       sb.append("-D \"").append(property.getKey()).append("=").append(property.getValue()).append("\" ");

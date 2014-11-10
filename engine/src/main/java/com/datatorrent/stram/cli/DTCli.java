@@ -3812,9 +3812,17 @@ public class DTCli
           launchArgs.add("-libjars");
           launchArgs.add(libjarsVal.toString());
         }
+        if (commandLineInfo.apConfigFile != null) {
+          DTConfiguration givenConfig = new DTConfiguration();
+          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.apConfigFile));
+          for (Map.Entry<String, String> entry : givenConfig) {
+            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+            requiredProperties.remove(entry.getKey());
+          }
+        }
         if (commandLineInfo.configFile != null) {
           DTConfiguration givenConfig = new DTConfiguration();
-          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.configFile));
+          givenConfig.loadFile(new File(commandLineInfo.configFile));
           for (Map.Entry<String, String> entry : givenConfig) {
             launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
             requiredProperties.remove(entry.getKey());
@@ -3951,6 +3959,7 @@ public class DTCli
     final Options options = new Options();
     final Option local = add(new Option("local", "Run application in local mode."));
     final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf"));
+    final Option apConfigFile = add(OptionBuilder.withArgName("app package configuration file").hasArg().withDescription("Specify an application configuration file within the app package if launching an app package.").create("apconf"));
     final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
     final Option libjars = add(OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars"));
     final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files"));
@@ -3977,6 +3986,7 @@ public class DTCli
     CommandLine line = parser.parse(LAUNCH_OPTIONS.options, args);
     result.localMode = line.hasOption(LAUNCH_OPTIONS.local.getOpt());
     result.configFile = line.getOptionValue(LAUNCH_OPTIONS.configFile.getOpt());
+    result.apConfigFile = line.getOptionValue(LAUNCH_OPTIONS.apConfigFile.getOpt());
     result.ignorePom = line.hasOption(LAUNCH_OPTIONS.ignorePom.getOpt());
     String[] defs = line.getOptionValues(LAUNCH_OPTIONS.defProperty.getOpt());
     if (defs != null) {
@@ -4006,6 +4016,7 @@ public class DTCli
     boolean localMode;
     boolean ignorePom;
     String configFile;
+    String apConfigFile;
     Map<String, String> overrideProperties;
     String libjars;
     String files;
