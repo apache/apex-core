@@ -95,6 +95,8 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private Configuration conf;
+  private FileSystem fs;
+  private StramAgent stramAgent;
   private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
@@ -367,13 +369,13 @@ public class DTCli
       appLauncher = new StramAppLauncher(jf, config);
     }
     else {
-      FileSystem fs = FileSystem.newInstance(uri, conf);
+      FileSystem tmpFs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
-        appLauncher = new StramAppLauncher(fs, path, config);
+        appLauncher = new StramAppLauncher(tmpFs, path, config);
       }
       finally {
-        fs.close();
+        tmpFs.close();
       }
     }
     if (appLauncher != null) {
@@ -1010,7 +1012,8 @@ public class DTCli
   public void init(String[] args) throws IOException
   {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
-    StramAgent.setConfiguration(conf);
+    fs = StramClientUtils.newFileSystemInstance(conf);
+    stramAgent = new StramAgent(fs, conf);
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1164,7 +1167,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf));
+    recordingsAgent = new RecordingsAgent(stramAgent);
   }
 
   public void run() throws IOException
@@ -1600,7 +1603,7 @@ public class DTCli
     WebResource r;
 
     try {
-      r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+      r = stramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
     }
     catch (IncompatibleVersionException ex) {
       throw new CliException("Incompatible stram version", ex);
@@ -1642,7 +1645,7 @@ public class DTCli
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
     try {
-      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      WebResource wr = stramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
       if (wr == null) {
         throw new CliException("Cannot access the application master for this application.");
       }
@@ -3149,15 +3152,15 @@ public class DTCli
           files[i] = uri.getPath();
         }
         else {
-          FileSystem fs = FileSystem.newInstance(uri, conf);
+          FileSystem tmpFs = FileSystem.newInstance(uri, conf);
           try {
             Path srcPath = new Path(uri.getPath());
             Path dstPath = new Path(tmpDir.getAbsolutePath(), String.valueOf(i) + srcPath.getName());
-            fs.copyToLocalFile(srcPath, dstPath);
+            tmpFs.copyToLocalFile(srcPath, dstPath);
             files[i] = dstPath.toUri().getPath();
           }
           finally {
-            fs.close();
+            tmpFs.close();
           }
         }
       }

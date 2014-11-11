@@ -91,9 +91,9 @@ public final class StatsAgent extends FSPartFileAgent
     public ObjectMapperString stats;
   }
 
-  public StatsAgent(FileSystem fs)
+  public StatsAgent(StramAgent stramAgent)
   {
-    super(fs);
+    super(stramAgent);
   }
 
   public String getOperatorStatsDirectory(String appId, String opName)
@@ -108,7 +108,7 @@ public final class StatsAgent extends FSPartFileAgent
 
   public String getStatsDirectory(String appId)
   {
-    String appPath = getAppPath(appId);
+    String appPath = stramAgent.getAppPath(appId);
     if (appPath == null) {
       return null;
     }
@@ -154,13 +154,13 @@ public final class StatsAgent extends FSPartFileAgent
     BufferedReader br = null;
     IndexFileBufferedReader ifbr = null;
     try {
-      FileStatus fileStatus = fileSystem.getFileStatus(path);
+      FileStatus fileStatus = stramAgent.getFileSystem().getFileStatus(path);
       if (!fileStatus.isDirectory()) {
         return null;
       }
 
       // META file processing
-      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.META_FILE))));
+      br = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.0")) {
@@ -178,7 +178,7 @@ public final class StatsAgent extends FSPartFileAgent
         info.containers.put(index, containerInfo);
       }
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
 
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
@@ -225,13 +225,13 @@ public final class StatsAgent extends FSPartFileAgent
     IndexFileBufferedReader ifbr = null;
 
     try {
-      FileStatus fileStatus = fileSystem.getFileStatus(path);
+      FileStatus fileStatus = stramAgent.getFileSystem().getFileStatus(path);
       if (!fileStatus.isDirectory()) {
         return null;
       }
 
       // META file processing
-      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.META_FILE))));
+      br = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.0")) {
@@ -243,7 +243,7 @@ public final class StatsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
@@ -283,7 +283,7 @@ public final class StatsAgent extends FSPartFileAgent
     IndexFileBufferedReader ifbr = null;
 
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       StatsIndexLine indexLine;
       String lastProcessPartFile = null;
       while ((indexLine = (StatsIndexLine)ifbr.readIndexLine()) != null) {
@@ -301,7 +301,7 @@ public final class StatsAgent extends FSPartFileAgent
             }
           }
 
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
           try {
             processOperatorPartFile(partBr, startTime, endTime, result);
           }
@@ -315,7 +315,7 @@ public final class StatsAgent extends FSPartFileAgent
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
-          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
           processOperatorPartFile(partBr, startTime, endTime, result);
         }
       }
@@ -366,7 +366,7 @@ public final class StatsAgent extends FSPartFileAgent
     BufferedReader br = null;
     String lastProcessPartFile = null;
     try {
-      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
+      br = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))));
       String line;
 
       while ((line = br.readLine()) != null) {
@@ -387,7 +387,7 @@ public final class StatsAgent extends FSPartFileAgent
           }
         }
 
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
         try {
           processContainerPartFile(partBr, startTime, endTime, result);
         }
@@ -399,7 +399,7 @@ public final class StatsAgent extends FSPartFileAgent
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
-          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
           processContainerPartFile(partBr, startTime, endTime, result);
         }
       }

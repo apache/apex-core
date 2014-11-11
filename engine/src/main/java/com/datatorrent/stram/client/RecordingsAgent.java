@@ -21,8 +21,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.fs.*;
-
-import org.apache.hadoop.fs.FileSystem;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.std.ToStringSerializer;
 import org.codehaus.jettison.json.*;
@@ -102,9 +100,9 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   }
 
-  public RecordingsAgent(FileSystem fs)
+  public RecordingsAgent(StramAgent stramAgent)
   {
-    super(fs);
+    super(stramAgent);
   }
 
   public String getRecordingsDirectory(String appId, String opId)
@@ -114,7 +112,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   public String getRecordingsDirectory(String appId)
   {
-    String appPath = getAppPath(appId);
+    String appPath = stramAgent.getAppPath(appId);
     if (appPath == null) {
       return null;
     }
@@ -197,7 +195,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     Set<String> result = new HashSet<String>();
     try {
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appId);
+      WebResource wr = stramAgent.getStramWebResource(webServicesClient, appId);
       if (wr == null) {
         return result;
       }
@@ -235,12 +233,12 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     Path path = new Path(dir);
     try {
-      FileStatus fileStatus = fileSystem.getFileStatus(path);
+      FileStatus fileStatus = stramAgent.getFileSystem().getFileStatus(path);
 
       if (!fileStatus.isDirectory()) {
         return result;
       }
-      RemoteIterator<LocatedFileStatus> ri = fileSystem.listLocatedStatus(path);
+      RemoteIterator<LocatedFileStatus> ri = stramAgent.getFileSystem().listLocatedStatus(path);
       while (ri.hasNext()) {
         LocatedFileStatus lfs = ri.next();
         if (lfs.isDirectory()) {
@@ -277,12 +275,12 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     Path path = new Path(dir);
     try {
-      FileStatus fileStatus = fileSystem.getFileStatus(path);
+      FileStatus fileStatus = stramAgent.getFileSystem().getFileStatus(path);
 
       if (!fileStatus.isDirectory()) {
         return result;
       }
-      RemoteIterator<LocatedFileStatus> ri = fileSystem.listLocatedStatus(path);
+      RemoteIterator<LocatedFileStatus> ri = stramAgent.getFileSystem().listLocatedStatus(path);
       while (ri.hasNext()) {
         LocatedFileStatus lfs = ri.next();
         if (lfs.isDirectory()) {
@@ -328,14 +326,14 @@ public final class RecordingsAgent extends FSPartFileAgent
       Path path = new Path(dir);
       JSONObject json;
 
-      FileStatus fileStatus = fileSystem.getFileStatus(path);
+      FileStatus fileStatus = stramAgent.getFileSystem().getFileStatus(path);
       HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>();
       if (!fileStatus.isDirectory()) {
         throw new Exception(path + " is not a directory");
       }
 
       // META file processing
-      br = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.META_FILE))));
+      br = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.META_FILE))));
       String line;
       line = br.readLine();
       if (!line.equals("1.2")) {
@@ -375,7 +373,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       }
 
       // INDEX file processing
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       info.windowIdRanges = new ArrayList<TupleRecorder.Range>();
       long prevHiWindowId = -1;
       RecordingsIndexLine indexLine;
@@ -456,7 +454,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
     IndexFileBufferedReader ifbr = null;
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       long currentOffset = 0;
       boolean readPartFile = false;
       MutableLong numRemainingTuples = new MutableLong(limit);
@@ -513,7 +511,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
         if (readPartFile) {
           lastProcessPartFile = indexLine.partFile;
-          BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
+          BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
           try {
             processPartFile(partBr, queryType, low, high, limit, ports,
                             numRemainingTuples, currentTimestamp, currentWindowLow, currentOffset, info);
@@ -531,7 +529,7 @@ public final class RecordingsAgent extends FSPartFileAgent
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null) {
-          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
           processPartFile(partBr, queryType, low, high, limit, ports,
                           numRemainingTuples, currentTimestamp, new MutableLong(), currentOffset, info);
         }
@@ -624,7 +622,7 @@ public final class RecordingsAgent extends FSPartFileAgent
   public String startRecording(String appId, String opId, String portName, long numWindows) throws IncompatibleVersionException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
-    WebResource wr = getStramWebResource(webServicesClient, appId);
+    WebResource wr = stramAgent.getStramWebResource(webServicesClient, appId);
     if (wr == null) {
       throw new WebApplicationException(404);
     }
@@ -657,7 +655,7 @@ public final class RecordingsAgent extends FSPartFileAgent
   public String stopRecording(String appId, String opId, String portName) throws IncompatibleVersionException
   {
     WebServicesClient webServicesClient = new WebServicesClient();
-    WebResource wr = getStramWebResource(webServicesClient, appId);
+    WebResource wr = stramAgent.getStramWebResource(webServicesClient, appId);
     if (wr == null) {
       throw new WebApplicationException(404);
     }
