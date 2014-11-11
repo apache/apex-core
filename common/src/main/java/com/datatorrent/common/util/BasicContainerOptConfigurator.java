@@ -44,9 +44,9 @@ public class BasicContainerOptConfigurator implements Context.ContainerOptConfig
   private static final String XSS = "-Xss";
   private static final String[] OPT_LIST = new String[]{XMS, XMX, XSS};
   private static final String GENERIC = "Generic";
-  private static final long GB_TO_B = 1024 * 1024 * 1024;
-  private static final long MB_TO_B = 1024 * 1024;
-  private static final long KB_TO_B = 1024;
+  private static final int GB_TO_B = 1024 * 1024 * 1024;
+  private static final int MB_TO_B = 1024 * 1024;
+  private static final int KB_TO_B = 1024;
 
   @Override
   public String getJVMOptions(List<DAG.OperatorMeta> operatorMetaList)
