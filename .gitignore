@@ -11,3 +11,4 @@ node_modules/
 .idea/
 *~
 x-java
+gateway/src/main/htdocs
