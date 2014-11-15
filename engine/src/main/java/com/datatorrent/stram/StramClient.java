@@ -562,7 +562,7 @@ public class StramClient
       pri.setPriority(amPriority);
       appContext.setPriority(pri);
       // Set the queue to which this application is to be submitted in the RM
-      appContext.setQueue(amQueue);
+      appContext.setQueue(dag.getAttributes().get(LogicalPlan.QUEUE_NAME));
 
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
