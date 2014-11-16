@@ -249,13 +249,36 @@ public class LogicalPlanConfigurationTest {
     dagBuilder.addFromProperties(props);
 
     LogicalPlan dag = new LogicalPlan();
-    dagBuilder.setApplicationConfiguration(dag, appName);
+
+    dagBuilder.populateDAG(dag);
+
+    dagBuilder.setApplicationConfiguration(dag, appName,null);
+
     Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
     Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.MASTER_MEMORY_MB));
     Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
 
   }
+  @Test
+  public void testAppLevelProperties() {
+	  String appName ="app1";
+	  Properties props =new Properties();
+	  props.put(StreamingApplication.DT_PREFIX + "application."+appName+".testprop1","10");
+	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".prop.testprop2", "100");
+	  props.put(StreamingApplication.DT_PREFIX + "application.*.prop.testprop3","1000");
+	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".inncls.a", "10000");
+	  LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+	  dagBuilder.addFromProperties(props);
 
+	  LogicalPlan dag = new LogicalPlan();
+	  TestApplication app1Test=new TestApplication();
+
+	  dagBuilder.setApplicationConfiguration(dag, appName,app1Test);
+	  Assert.assertEquals("",Integer.valueOf(10),app1Test.getTestprop1());
+	  Assert.assertEquals("",Integer.valueOf(100),app1Test.getTestprop2());
+	  Assert.assertEquals("",Integer.valueOf(1000),app1Test.getTestprop3());
+	  Assert.assertEquals("",Integer.valueOf(10000),app1Test.getInncls().getA());
+  }
   @Test
   public void testPrepareDAG() {
     final MutableBoolean appInitialized = new MutableBoolean(false);
@@ -587,4 +610,62 @@ public class LogicalPlanConfigurationTest {
   }
 
   private static final Logger logger = LoggerFactory.getLogger(LogicalPlanConfigurationTest.class);
+
+  public static class TestApplication implements StreamingApplication {
+    Integer testprop1;
+    Integer testprop2;
+    Integer testprop3;
+    TestInnerClass inncls;
+    public TestApplication() {
+      inncls=new TestInnerClass();
+    }
+
+    public Integer getTestprop1() {
+      return testprop1;
+    }
+
+    public void setTestprop1(Integer testprop1) {
+      this.testprop1 = testprop1;
+    }
+
+    public Integer getTestprop2() {
+      return testprop2;
+    }
+
+    public void setTestprop2(Integer testprop2) {
+      this.testprop2 = testprop2;
+    }
+
+    public Integer getTestprop3() {
+      return testprop3;
+    }
+
+    public void setTestprop3(Integer testprop3) {
+      this.testprop3 = testprop3;
+    }
+
+    public TestInnerClass getInncls() {
+      return inncls;
+    }
+
+    public void setInncls(TestInnerClass inncls) {
+      this.inncls = inncls;
+    }
+
+    @Override
+    public void populateDAG(DAG dag, Configuration conf) {
+
+    }
+    public class TestInnerClass{
+      Integer a;
+
+      public Integer getA() {
+        return a;
+      }
+
+      public void setA(Integer a) {
+        this.a = a;
+      }
+    }
+  }
 }

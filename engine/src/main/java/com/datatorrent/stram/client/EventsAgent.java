@@ -9,9 +9,7 @@ import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.*;
 import java.util.*;
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.FileSystem;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.std.ToStringSerializer;
@@ -49,14 +47,14 @@ public final class EventsAgent extends FSPartFileAgent
     public Map<String, Object> data;
   }
 
-  public EventsAgent(FileSystem fs)
+  public EventsAgent(StramAgent stramAgent)
   {
-    super(fs);
+    super(stramAgent);
   }
 
   private String getEventsDirectory(String appId)
   {
-    String appPath = getAppPath(appId);
+    String appPath = stramAgent.getAppPath(appId);
     if (appPath == null) {
       return null;
     }
@@ -97,7 +95,7 @@ public final class EventsAgent extends FSPartFileAgent
     IndexFileBufferedReader ifbr = null;
     LinkedList<Pair<String, Long>> partFiles = new LinkedList<Pair<String, Long>>();
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       EventsIndexLine indexLine;
       while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
         if (indexLine.isEndLine) {
@@ -129,7 +127,7 @@ public final class EventsAgent extends FSPartFileAgent
     for (Pair<String, Long> partFile : partFiles) {
       BufferedReader partBr = null;
       try {
-        partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, partFile.first))));
+        partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, partFile.first))));
         processPartFile(partBr, null, null, offset, limit, result);
        offset = 0;
         lastProcessPartFile = partFile.first;
@@ -146,7 +144,7 @@ public final class EventsAgent extends FSPartFileAgent
     try {
       String extraPartFile = getNextPartFile(lastProcessPartFile);
       if (extraPartFile != null && limit > 0) {
-        partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+        partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
         processPartFile(partBr, null, null, 0, Integer.MAX_VALUE, result);
       }
     }
@@ -171,7 +169,7 @@ public final class EventsAgent extends FSPartFileAgent
     }
     IndexFileBufferedReader ifbr = null;
     try {
-      ifbr = new IndexFileBufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
+      ifbr = new IndexFileBufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, FSPartFileCollection.INDEX_FILE))), dir);
       EventsIndexLine indexLine;
       String lastProcessPartFile = null;
       while ((indexLine = (EventsIndexLine)ifbr.readIndexLine()) != null) {
@@ -191,7 +189,7 @@ public final class EventsAgent extends FSPartFileAgent
           }
         }
 
-        BufferedReader partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, indexLine.partFile))));
+        BufferedReader partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, indexLine.partFile))));
         try {
           offset = processPartFile(partBr, fromTime, toTime, offset, limit, result);
           limit -= result.size();
@@ -204,7 +202,7 @@ public final class EventsAgent extends FSPartFileAgent
       try {
         String extraPartFile = getNextPartFile(lastProcessPartFile);
         if (extraPartFile != null && limit > 0) {
-          partBr = new BufferedReader(new InputStreamReader(fileSystem.open(new Path(dir, extraPartFile))));
+          partBr = new BufferedReader(new InputStreamReader(stramAgent.getFileSystem().open(new Path(dir, extraPartFile))));
           processPartFile(partBr, fromTime, toTime, offset, limit, result);
         }
       }

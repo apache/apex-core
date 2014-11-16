@@ -95,6 +95,8 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private Configuration conf;
+  private FileSystem fs;
+  private StramAgent stramAgent;
   private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
@@ -367,13 +369,13 @@ public class DTCli
       appLauncher = new StramAppLauncher(jf, config);
     }
     else {
-      FileSystem fs = FileSystem.newInstance(uri, conf);
+      FileSystem tmpFs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
-        appLauncher = new StramAppLauncher(fs, path, config);
+        appLauncher = new StramAppLauncher(tmpFs, path, config);
       }
       finally {
-        fs.close();
+        tmpFs.close();
       }
     }
     if (appLauncher != null) {
@@ -1010,7 +1012,8 @@ public class DTCli
   public void init(String[] args) throws IOException
   {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
-    StramAgent.setConfiguration(conf);
+    fs = StramClientUtils.newFileSystemInstance(conf);
+    stramAgent = new StramAgent(fs, conf);
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1164,7 +1167,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf));
+    recordingsAgent = new RecordingsAgent(stramAgent);
   }
 
   public void run() throws IOException
@@ -1600,7 +1603,7 @@ public class DTCli
     WebResource r;
 
     try {
-      r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+      r = stramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
     }
     catch (IncompatibleVersionException ex) {
       throw new CliException("Incompatible stram version", ex);
@@ -1642,7 +1645,7 @@ public class DTCli
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
     try {
-      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      WebResource wr = stramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
       if (wr == null) {
         throw new CliException("Cannot access the application master for this application.");
       }
@@ -2728,8 +2731,8 @@ public class DTCli
       }
       else {
         String opId = args[1];
-        long startTime = Long.valueOf(args[2]);
-        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, startTime);
+        String id = args[2];
+        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, id);
         printJson(new JSONObject(mapper.writeValueAsString(recordingInfo)));
       }
     }
@@ -3149,15 +3152,15 @@ public class DTCli
           files[i] = uri.getPath();
         }
         else {
-          FileSystem fs = FileSystem.newInstance(uri, conf);
+          FileSystem tmpFs = FileSystem.newInstance(uri, conf);
           try {
             Path srcPath = new Path(uri.getPath());
             Path dstPath = new Path(tmpDir.getAbsolutePath(), String.valueOf(i) + srcPath.getName());
-            fs.copyToLocalFile(srcPath, dstPath);
+            tmpFs.copyToLocalFile(srcPath, dstPath);
             files[i] = dstPath.toUri().getPath();
           }
           finally {
-            fs.close();
+            tmpFs.close();
           }
         }
       }
@@ -3812,9 +3815,17 @@ public class DTCli
           launchArgs.add("-libjars");
           launchArgs.add(libjarsVal.toString());
         }
+        if (commandLineInfo.apConfigFile != null) {
+          DTConfiguration givenConfig = new DTConfiguration();
+          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.apConfigFile));
+          for (Map.Entry<String, String> entry : givenConfig) {
+            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+            requiredProperties.remove(entry.getKey());
+          }
+        }
         if (commandLineInfo.configFile != null) {
           DTConfiguration givenConfig = new DTConfiguration();
-          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.configFile));
+          givenConfig.loadFile(new File(commandLineInfo.configFile));
           for (Map.Entry<String, String> entry : givenConfig) {
             launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
             requiredProperties.remove(entry.getKey());
@@ -3827,6 +3838,9 @@ public class DTCli
         launchProperties.writeToFile(launchPropertiesFile, "");
         launchArgs.add("-conf");
         launchArgs.add(launchPropertiesFile.getCanonicalPath());
+        if (commandLineInfo.localMode) {
+          launchArgs.add("-local");
+        }
         if (commandLineInfo.files != null) {
           launchArgs.add("-files");
           launchArgs.add(commandLineInfo.files);
@@ -3948,6 +3962,7 @@ public class DTCli
     final Options options = new Options();
     final Option local = add(new Option("local", "Run application in local mode."));
     final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf"));
+    final Option apConfigFile = add(OptionBuilder.withArgName("app package configuration file").hasArg().withDescription("Specify an application configuration file within the app package if launching an app package.").create("apconf"));
     final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
     final Option libjars = add(OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars"));
     final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files"));
@@ -3974,6 +3989,7 @@ public class DTCli
     CommandLine line = parser.parse(LAUNCH_OPTIONS.options, args);
     result.localMode = line.hasOption(LAUNCH_OPTIONS.local.getOpt());
     result.configFile = line.getOptionValue(LAUNCH_OPTIONS.configFile.getOpt());
+    result.apConfigFile = line.getOptionValue(LAUNCH_OPTIONS.apConfigFile.getOpt());
     result.ignorePom = line.hasOption(LAUNCH_OPTIONS.ignorePom.getOpt());
     String[] defs = line.getOptionValues(LAUNCH_OPTIONS.defProperty.getOpt());
     if (defs != null) {
@@ -4003,6 +4019,7 @@ public class DTCli
     boolean localMode;
     boolean ignorePom;
     String configFile;
+    String apConfigFile;
     Map<String, String> overrideProperties;
     String libjars;
     String files;

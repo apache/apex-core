@@ -4,21 +4,9 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.api.*;
-import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.stram.StramUtils;
-import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.google.common.base.CaseFormat;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
@@ -26,17 +14,34 @@ import java.util.Map.Entry;
 
 import javax.validation.ValidationException;
 
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.*;
+import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
+
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  *
@@ -320,7 +325,8 @@ public class LogicalPlanConfiguration {
   private static class AppConf extends Conf {
 
     private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.GATEWAY, StramElement.OPERATOR, StramElement.PORT,
-            StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH};
+            StramElement.INPUT_PORT, StramElement.OUTPUT_PORT, StramElement.STREAM, StramElement.ATTR, StramElement.CLASS, StramElement.PATH,
+            StramElement.PROP};
 
     @SuppressWarnings("unused")
     AppConf() {
@@ -350,6 +356,11 @@ public class LogicalPlanConfiguration {
     public Class<? extends Context> getAttributeContextClass()
     {
       return Context.DAGContext.class;
+    }
+
+    @Override
+    public StramElement getDefaultChildElement() {
+      return StramElement.PROP;
     }
 
   }
@@ -534,7 +545,7 @@ public class LogicalPlanConfiguration {
      * @param defaults
      */
     void setDefaultProperties(Properties defaults) {
-        super.defaults = defaults;
+      super.defaults = defaults;
     }
   }
 
@@ -543,7 +554,7 @@ public class LogicalPlanConfiguration {
    */
   private static class OperatorConf extends Conf {
 
-    private static final StramElement[] CHILD_ELEMENTS = new StramElement[] {StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
+    private static final StramElement[] CHILD_ELEMENTS = new StramElement[]{StramElement.PORT, StramElement.INPUT_PORT, StramElement.OUTPUT_PORT,
             StramElement.ATTR, StramElement.PROP};
 
     @SuppressWarnings("unused")
@@ -744,7 +755,7 @@ public class LogicalPlanConfiguration {
       Entry<String, String> e = it.next();
       // filter relevant entries
       if (e.getKey().startsWith(prefix)) {
-         props.put(e.getKey(), e.getValue());
+        props.put(e.getKey(), e.getValue());
       }
     }
     return props;
@@ -924,7 +935,7 @@ public class LogicalPlanConfiguration {
           /*
           if (conf.getAttributeContextClass() != null) {
             LOG.warn("Please specify the property {} using the {} keyword as {}", prop, StramElement.PROP.getValue(),
-                        getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
+                getCompleteKey(keys, 0, index) + "." + StramElement.PROP.getValue() + "." + getCompleteKey(keys, index));
           }
           */
         }
@@ -1083,7 +1094,6 @@ public class LogicalPlanConfiguration {
    * @param app
    * @param dag
    * @param name
-   * @param conf
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name)
   {
@@ -1096,7 +1106,7 @@ public class LogicalPlanConfiguration {
     String appAlias = getAppAlias(name);
     String appName = appAlias == null ? name : appAlias;
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
-    setApplicationConfiguration(dag, appConfs);
+    setApplicationConfiguration(dag, appConfs, app);
     if (dag.getAttributes().get(Context.DAGContext.APPLICATION_NAME) == null) {
       dag.setAttribute(Context.DAGContext.APPLICATION_NAME, appName);
     }
@@ -1131,6 +1141,15 @@ public class LogicalPlanConfiguration {
     return getProperties(ow, opConfs, appName);
   }
 
+  private Map<String,String> getApplicationProperties(List<AppConf> appConfs){
+    Map<String, String> appProps = new HashMap<String, String>();
+    // Apply the configurations in reverse order since the higher priority ones are at the beginning
+    for(int i = appConfs.size()-1; i >= 0; i--){
+      AppConf conf = appConfs.get(i);
+      appProps.putAll(Maps.fromProperties(conf.properties));
+    }
+    return appProps;
+  }
   /**
    * Get the configuration opProps for the given operator.
    * These can be operator specific settings or settings from matching templates.
@@ -1228,6 +1247,20 @@ public class LogicalPlanConfiguration {
     }
   }
 
+  public static StreamingApplication setApplicationProperties(StreamingApplication application, Map<String, String> properties)
+  {
+    try {
+      BeanUtils.populate(application, properties);
+      return application;
+    }
+    catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting application properties", e);
+    }
+    catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting application properties", e);
+    }
+  }
+
   public static BeanMap getOperatorProperties(Operator operator)
   {
     return new BeanMap(operator);
@@ -1269,12 +1302,12 @@ public class LogicalPlanConfiguration {
    * @param dag
    * @param appName
    */
-  public void setApplicationConfiguration(final LogicalPlan dag, String appName) {
+  public void setApplicationConfiguration(final LogicalPlan dag, String appName,StreamingApplication app) {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
-    setApplicationConfiguration(dag, appConfs);
+    setApplicationConfiguration(dag, appConfs,app);
   }
 
-  private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs) {
+  private void setApplicationConfiguration(final LogicalPlan dag, List<AppConf> appConfs,StreamingApplication app) {
     // Make the gateway address available as an application attribute
 //    for (Conf appConf : appConfs) {
 //      Conf gwConf = appConf.getChild(null, StramElement.GATEWAY);
@@ -1287,6 +1320,10 @@ public class LogicalPlanConfiguration {
 //      }
 //    }
     setAttributes(Context.DAGContext.class, appConfs, dag.getAttributes());
+    if (app != null) {
+      Map<String, String> appProps = getApplicationProperties(appConfs);
+      setApplicationProperties(app, appProps);
+    }
   }
 
   private void setOperatorConfiguration(final LogicalPlan dag, List<AppConf> appConfs, String appName) {

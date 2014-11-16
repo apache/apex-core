@@ -1055,16 +1055,16 @@ public class StreamingContainerManager implements PlanContext
         long totalCpuTimeUsed = 0;
         int statCount = 0;
         long maxDequeueTimestamp = -1;
-        oper.stats.recordingStartTime = Stats.INVALID_TIME_MILLIS;
+        oper.stats.recordingId = null;
 
         final OperatorStatus status = oper.stats;
         status.statsRevs.checkout();
 
         for (Map.Entry<String, PortStatus> entry : status.inputPortStatusList.entrySet()) {
-          entry.getValue().recordingStartTime = Stats.INVALID_TIME_MILLIS;
+          entry.getValue().recordingId = null;
         }
         for (Map.Entry<String, PortStatus> entry : status.outputPortStatusList.entrySet()) {
-          entry.getValue().recordingStartTime = Stats.INVALID_TIME_MILLIS;
+          entry.getValue().recordingId = null;
         }
         for (ContainerStats.OperatorStats stats : statsList) {
 
@@ -1076,9 +1076,7 @@ public class StreamingContainerManager implements PlanContext
             }
           }
 
-          if (stats.recordingStartTime > oper.stats.recordingStartTime) {
-            oper.stats.recordingStartTime = stats.recordingStartTime;
-          }
+          oper.stats.recordingId = stats.recordingId;
 
           /* report all the other stuff */
 
@@ -1096,10 +1094,7 @@ public class StreamingContainerManager implements PlanContext
                 status.inputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
-
-              if (s.recordingStartTime > ps.recordingStartTime) {
-                ps.recordingStartTime = s.recordingStartTime;
-              }
+              ps.recordingId = s.recordingId;
 
               tuplesProcessed += s.tupleCount;
               endWindowStats.dequeueTimestamps.put(s.id, s.endWindowTimestamp);
@@ -1142,9 +1137,7 @@ public class StreamingContainerManager implements PlanContext
                 status.outputPortStatusList.put(s.id, ps);
               }
               ps.totalTuples += s.tupleCount;
-              if (s.recordingStartTime > ps.recordingStartTime) {
-                ps.recordingStartTime = s.recordingStartTime;
-              }
+              ps.recordingId = s.recordingId;
 
               tuplesEmitted += s.tupleCount;
               Pair<Integer, String> operatorPortName = new Pair<Integer, String>(oper.getId(), s.id);
@@ -1515,7 +1508,7 @@ public class StreamingContainerManager implements PlanContext
       PTOperator operator = p.getFirst();
       if (!operator.isOperatorStateLess()) {
         try {
-          operator.getOperatorMeta().getValue2(OperatorContext.STORAGE_AGENT).delete(operator.getId(), p.getSecond());
+          operator.getOperatorMeta().getValue(OperatorContext.STORAGE_AGENT).delete(operator.getId(), p.getSecond());
           //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
         }
         catch (Exception e) {
@@ -1768,7 +1761,7 @@ public class StreamingContainerManager implements PlanContext
 
     if (operator.stats != null) {
       OperatorStatus os = operator.stats;
-      oi.recordingStartTime = os.recordingStartTime;
+      oi.recordingId = os.recordingId;
       oi.totalTuplesProcessed = os.totalTuplesProcessed.get();
       oi.totalTuplesEmitted = os.totalTuplesEmitted.get();
       oi.tuplesProcessedPSMA = os.tuplesProcessedPSMA.get();
@@ -1789,7 +1782,7 @@ public class StreamingContainerManager implements PlanContext
         pinfo.tuplesPSMA = Math.round(ps.tuplesPMSMA.getAvg() * 1000);
         pinfo.bufferServerBytesPSMA = Math.round(ps.bufferServerBytesPMSMA.getAvg() * 1000);
         pinfo.queueSizePSMA = Math.round(ps.queueSizePSMA.getAvg() * 1000);
-        pinfo.recordingStartTime = ps.recordingStartTime;
+        pinfo.recordingId = ps.recordingId;
         oi.addPort(pinfo);
       }
       for (PortStatus ps : os.outputPortStatusList.values()) {
@@ -1799,7 +1792,7 @@ public class StreamingContainerManager implements PlanContext
         pinfo.totalTuples = ps.totalTuples;
         pinfo.tuplesPSMA = Math.round(ps.tuplesPMSMA.getAvg() * 1000);
         pinfo.bufferServerBytesPSMA = Math.round(ps.bufferServerBytesPMSMA.getAvg() * 1000);
-        pinfo.recordingStartTime = ps.recordingStartTime;
+        pinfo.recordingId = ps.recordingId;
         oi.addPort(pinfo);
       }
     }
@@ -2016,7 +2009,7 @@ public class StreamingContainerManager implements PlanContext
     throw new NotFoundException("Operator ID " + operatorId + " not found");
   }
 
-  public void startRecording(int operId, String portName, long numWindows)
+  public void startRecording(String id, int operId, String portName, long numWindows)
   {
     StreamingContainerAgent sca = getContainerAgentFromOperatorId(operId);
     StramToNodeStartRecordingRequest request = new StramToNodeStartRecordingRequest();
@@ -2025,6 +2018,7 @@ public class StreamingContainerManager implements PlanContext
       request.setPortName(portName);
     }
     request.setNumWindows(numWindows);
+    request.setId(id);
     sca.addOperatorRequest(request);
     PTOperator operator = plan.getAllOperators().get(operId);
     if (operator != null) {

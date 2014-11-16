@@ -802,7 +802,7 @@ public class StreamingAppMasterService extends CompositeService
             //ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
             tokens = LaunchContainerRunnable.getTokens(ugi, delegationToken);
           }
-          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, dag, tokens);
+          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient,sca, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
           // launchThreads.add(launchThread);
           // launchThread.start();

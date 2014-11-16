@@ -512,19 +512,11 @@ public class LogicalPlan implements Serializable, DAG
     {
       T attr = attributes.get(key);
       if (attr == null) {
+        attr =  LogicalPlan.this.getValue(key);
+      }
+      if(attr == null){
         return key.defaultValue;
       }
-
-      return attr;
-    }
-
-    public <T> T getValue2(Attribute<T> key)
-    {
-      T attr = attributes.get(key);
-      if (attr == null) {
-        return LogicalPlan.this.getValue(key);
-      }
-
       return attr;
     }
 

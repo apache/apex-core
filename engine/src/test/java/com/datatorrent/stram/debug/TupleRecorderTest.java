@@ -23,6 +23,7 @@ import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
@@ -31,6 +32,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.datatorrent.stram.util.FSPartFileCollection;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  *
@@ -75,7 +77,7 @@ public class TupleRecorderTest
   {
     FileSystem fs = new LocalFileSystem();
     try {
-      TupleRecorder recorder = new TupleRecorder("application_test_id_1");
+      TupleRecorder recorder = new TupleRecorder(null, "application_test_id_1");
       recorder.getStorage().setBytesPerPartFile(4096);
       recorder.getStorage().setLocalMode(true);
       recorder.getStorage().setBasePath("file://" + testWorkDir.getAbsolutePath() + "/recordings");
@@ -229,7 +231,8 @@ public class TupleRecorderTest
 
   private void testRecordingOnOperator(final StramLocalCluster localCluster, final PTOperator op, int numPorts) throws Exception
   {
-    localCluster.getStreamingContainerManager().startRecording(op.getId(), null, 0);
+    String id = "xyz";
+    localCluster.getStreamingContainerManager().startRecording(id, op.getId(), null, 0);
 
     WaitCondition c = new WaitCondition()
     {
@@ -245,7 +248,7 @@ public class TupleRecorderTest
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
     String line;
-    File dir = new File(testWorkDir, "recordings/" + op.getId() + "/" + startTime);
+    File dir = new File(testWorkDir, "recordings/" + op.getId() + "/" + id);
     File file;
 
     file = new File(dir, "meta.txt");
@@ -254,7 +257,9 @@ public class TupleRecorderTest
     line = br.readLine();
     Assert.assertEquals("version should be 1.2", "1.2", line);
     line = br.readLine();
-    Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
+    JSONObject json = new JSONObject(line);
+    Assert.assertEquals("Start time verification", startTime, json.getLong("startTime"));
+    
     for (int i = 0; i < numPorts; i++) {
       line = br.readLine();
       Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
