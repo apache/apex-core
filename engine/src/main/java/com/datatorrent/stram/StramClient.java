@@ -72,8 +72,6 @@ public class StramClient
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
   private final int amPriority = 0;
-  // Queue for App master
-  private final String amQueue = "default";
   private ApplicationId appId;
   private final LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
