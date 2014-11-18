@@ -72,8 +72,6 @@ public class StramClient
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
   private final int amPriority = 0;
-  // Queue for App master
-  private final String amQueue = "default";
   private ApplicationId appId;
   private final LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
@@ -562,7 +560,7 @@ public class StramClient
       pri.setPriority(amPriority);
       appContext.setPriority(pri);
       // Set the queue to which this application is to be submitted in the RM
-      appContext.setQueue(amQueue);
+      appContext.setQueue(dag.getAttributes().get(LogicalPlan.QUEUE_NAME));
 
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);

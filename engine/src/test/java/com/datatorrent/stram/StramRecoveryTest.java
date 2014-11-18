@@ -327,6 +327,7 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null));
     dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars1");
+    dag.setAttribute(LogicalPlan.QUEUE_NAME, "queue1");
     dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
@@ -353,6 +354,7 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
     dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars2");
+    dag.setAttribute(LogicalPlan.QUEUE_NAME, "queue2");
     StramClient sc = new StramClient(new Configuration(false), dag);
     try {
       sc.start();
@@ -367,6 +369,7 @@ public class StramRecoveryTest
     Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
     Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
     Assert.assertEquals("modified libjars", "libjars2", dag.getValue(LogicalPlan.LIBRARY_JARS));
+    Assert.assertEquals("modified queue name", "queue2", dag.getValue(LogicalPlan.QUEUE_NAME));
 
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
