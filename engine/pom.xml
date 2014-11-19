@@ -209,6 +209,7 @@
                   <targetPath>com/datatorrent/lib/codec</targetPath>
                   <includes>
                     <include>JsonStreamCodec.java</include>
+                    <include>KryoSerializableStreamCodec.java</include>
                   </includes>
                 </resource>
                 <resource>

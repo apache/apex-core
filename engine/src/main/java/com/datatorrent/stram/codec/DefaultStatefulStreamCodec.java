@@ -28,6 +28,8 @@ import com.datatorrent.common.util.Slice;
  *
  * Requires kryo and its dependencies in deployment
  *
+ * Do not use when partitioning is involved.
+ *
  * @param <T>
  * @since 0.3.2
  */
