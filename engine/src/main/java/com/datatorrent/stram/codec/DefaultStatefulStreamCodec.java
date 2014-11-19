@@ -60,11 +60,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
         input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
-          //logger.debug("registering class {} => {}", pair.classname, pair.id);
-          register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
-          if (classResolver.nextAvailableRegistrationId <= pair.id) {
-            classResolver.nextAvailableRegistrationId = pair.id + 1;
-          }
+          classResolver.registerExplicit(pair);
         }
       }
       catch (Throwable th) {
@@ -188,7 +184,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
 
     @Override
     @SuppressWarnings("rawtypes")
-    public Registration registerImplicit(Class type)
+    public synchronized Registration registerImplicit(Class type)
     {
       while (getRegistration(nextAvailableRegistrationId) != null) {
         nextAvailableRegistrationId++;
@@ -197,6 +193,18 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
       //logger.debug("adding new classid pair {} => {}", nextAvailableRegistrationId, type.getName());
       pairs.add(new ClassIdPair(nextAvailableRegistrationId, type.getName()));
       return register(new Registration(type, kryo.getDefaultSerializer(type), nextAvailableRegistrationId++));
+    }
+
+    // Synchronizing with implicit registration as receive and send happen asynchronously
+    public synchronized void registerExplicit(ClassIdPair pair) throws ClassNotFoundException
+    {
+      //logger.debug("registering class {} => {}", pair.classname, pair.id);
+      pairs.add(pair);
+      Class type = Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader());
+      register(new Registration(type, kryo.getDefaultSerializer(type), pair.id));
+      if (nextAvailableRegistrationId <= pair.id) {
+        nextAvailableRegistrationId = pair.id + 1;
+      }
     }
 
     public void init()
