@@ -56,7 +56,7 @@
     <module>flume</module>
     <module>gateway</module>
     <module>certification</module>
-    <module>maven-archetype</module>
+    <module>dt-app-archetype</module>
   </modules>
 
   <build>

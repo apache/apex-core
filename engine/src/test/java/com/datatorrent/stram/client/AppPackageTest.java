@@ -21,10 +21,10 @@ public class AppPackageTest
   @Test
   public void testAppPackage() throws Exception
   {
-    AppPackage ab = new AppPackage(new File("src/test/resources/testAppPackage.jar"), true);
+    AppPackage ap = new AppPackage(new File("src/test/resources/testAppPackage/testAppPackage.jar"), true);
     JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
     jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
-    JSONObject json = new JSONObject(jomp.getContext(null).writeValueAsString(ab));
+    JSONObject json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
 
     Assert.assertEquals("pi-demo", json.getString("appPackageName"));
     Assert.assertEquals("1.0-SNAPSHOT", json.getString("appPackageVersion"));
