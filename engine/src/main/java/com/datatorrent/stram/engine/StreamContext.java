@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.datatorrent.lib.codec.KryoSerializableStreamCodec;
-
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
@@ -24,6 +22,7 @@ import com.datatorrent.api.Context;
 import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -36,9 +35,9 @@ public class StreamContext extends DefaultAttributeMap implements Context
 {
   public static final Attribute<InetSocketAddress> BUFFER_SERVER_ADDRESS = new Attribute<InetSocketAddress>(null, null);
   public static final Attribute<EventLoop> EVENT_LOOP = new Attribute<EventLoop>(null, null);
-  //Stateful stream codec in its current form not suitable when operators are partitioned
-  //public static final Attribute<StreamCodec<?>> CODEC = new Attribute<StreamCodec<?>>(new DefaultStatefulStreamCodec<Object>(), null);
-  public static final Attribute<StreamCodec<?>> CODEC = new Attribute<StreamCodec<?>>(new KryoSerializableStreamCodec<Object>(), null);
+  // -- strike that Stateful stream codec in its current form not suitable when operators are partitioned
+  public static final Attribute<StreamCodec<?>> CODEC = new Attribute<StreamCodec<?>>(new DefaultStatefulStreamCodec<Object>(), null);
+  //public static final Attribute<StreamCodec<?>> CODEC = new Attribute<StreamCodec<?>>(new KryoSerializableStreamCodec<Object>(), null);
 
   @Override
   public AttributeMap getAttributes()

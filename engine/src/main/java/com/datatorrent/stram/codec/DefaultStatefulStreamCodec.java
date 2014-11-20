@@ -28,8 +28,6 @@ import com.datatorrent.common.util.Slice;
  *
  * Requires kryo and its dependencies in deployment
  *
- * Do not use when partitioning is involved.
- *
  * @param <T>
  * @since 0.3.2
  */
@@ -137,6 +135,12 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     classResolver.unregisterImplicitlyRegisteredTypes();
   }
 
+  @Override
+  public StatefulStreamCodec<T> getPartitionedInstance()
+  {
+    return new DefaultStatefulStreamCodec<T>();
+  }
+
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 
@@ -201,7 +205,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     public synchronized void registerExplicit(ClassIdPair pair) throws ClassNotFoundException
     {
       //logger.debug("registering class {} => {}", pair.classname, pair.id);
-      pairs.add(pair);
+      //pairs.add(pair);
       Class type = Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader());
       register(new Registration(type, kryo.getDefaultSerializer(type), pair.id));
       if (nextAvailableRegistrationId <= pair.id) {

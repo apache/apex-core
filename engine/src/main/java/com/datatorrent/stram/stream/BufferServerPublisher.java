@@ -154,11 +154,10 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   {
     StreamCodec<?> codec = context.get(StreamContext.CODEC);
     if (codec == null) {
-      //statefulSerde = (StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue;
-      serde = (StreamCodec<Object>)StreamContext.CODEC.defaultValue;
+      statefulSerde = ((StatefulStreamCodec<Object>)StreamContext.CODEC.defaultValue).getPartitionedInstance();
     }
     else if (codec instanceof StatefulStreamCodec) {
-      statefulSerde = (StatefulStreamCodec<Object>)codec;
+      statefulSerde = ((StatefulStreamCodec<Object>)codec).getPartitionedInstance();
     }
     else {
       serde = (StreamCodec<Object>)codec;
