@@ -2,8 +2,7 @@
 #set( $symbol_dollar = '$' )
 #set( $symbol_escape = '\' )
 /**
- * Copyright (c) 2012-2014 DataTorrent, Inc.
- * All rights reserved.
+ * Put your copyright and license info here.
  */
 package ${package};
 
