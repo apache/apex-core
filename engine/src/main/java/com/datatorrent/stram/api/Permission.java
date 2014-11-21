@@ -14,6 +14,8 @@ public enum Permission
 
   /**
    * View applications launched by others
+   *//**
+   * View applications launched by others
    */
   VIEW_OTHERS_APPS,
   /**
@@ -47,7 +49,7 @@ public enum Permission
   /**
    * Launch App Packages
    */
-  LAUNCH_APP_PACKAGES,
+  LAUNCH_APPS,
   /**
    * Manage App Packages
    */
