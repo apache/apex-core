@@ -81,9 +81,9 @@ if [ "$DT_CLASSPATH" != "" ]; then
 fi
 
 if [ ! -x "$DT_HADOOP" ]; then
-  echoerr "Warning: hadoop executable not found.  Running standalone."
+  echoerr "Warning: hadoop executable not found.  Running standalone with ${DT_JAVA:-java}."
   export CLASSPATH=$DT_CLASSPATH
-  java $DT_CLIENT_OPTS com.datatorrent.stram.cli.DTCli "$@"
+  "${DT_JAVA:-java}" $DT_CLIENT_OPTS com.datatorrent.stram.cli.DTCli "$@"
 else
   export HADOOP_USER_CLASSPATH_FIRST=1
   # remove hadoop and duplicate slf4j binding (bash replace is too slow)
