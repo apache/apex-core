@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+  <property>
+    <name>dt.test.1</name>
+    <value>local-fs-config</value>
+  </property>
+  <property>
+    <name>dt.test.2</name>
+    <value>local-fs-config</value>
+  </property>
+</configuration>
