@@ -3839,7 +3839,7 @@ public class DTCli
           launchArgs.add(commandLineInfo.archives);
         }
         if (commandLineInfo.origAppId != null) {
-          launchArgs.add("-origAppId");
+          launchArgs.add("-originalAppId");
           launchArgs.add(commandLineInfo.origAppId);
         }
         if (commandLineInfo.licenseFile != null) {
