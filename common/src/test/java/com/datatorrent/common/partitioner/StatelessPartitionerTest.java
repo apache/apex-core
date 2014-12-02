@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.lib.algo;
+package com.datatorrent.lib.partitioner;
 
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.api.Context.OperatorContext;
@@ -137,7 +137,7 @@ public class StatelessPartitionerTest
   public void objectPropertyTest()
   {
     Object2String<StatelessPartitioner<DummyOperator>> propertyReader = new Object2String<StatelessPartitioner<DummyOperator>>();
-    StatelessPartitioner<DummyOperator> partitioner = propertyReader.fromString("com.datatorrent.lib.algo.StatelessPartitioner:3");
+    StatelessPartitioner<DummyOperator> partitioner = propertyReader.fromString("com.datatorrent.lib.partitioner.StatelessPartitioner:3");
     Assert.assertEquals(3, partitioner.getPartitionCount());
   }
 
@@ -145,7 +145,7 @@ public class StatelessPartitionerTest
   public void launchPartitionTestApp()
   {
     Configuration conf = new Configuration(false);
-    conf.set("dt.operator.DummyOutput.attr.PARTITIONER", "com.datatorrent.lib.algo.StatelessPartitioner:3");
+    conf.set("dt.operator.DummyOutput.attr.PARTITIONER", "com.datatorrent.lib.partitioner.StatelessPartitioner:3");
 
     LocalMode lma = LocalMode.newInstance();
 
