@@ -41,7 +41,7 @@ public class PubSubMessageCodec<T>
   /**
    *
    * @param message
-   * @return
+   * @return A PubSubMessage.
    * @throws IOException
    */
   @SuppressWarnings({"unchecked"})

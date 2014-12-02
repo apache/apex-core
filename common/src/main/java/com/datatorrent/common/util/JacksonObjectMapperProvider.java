@@ -51,7 +51,7 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
 
   /** {@inheritDoc}
    * @param type
-   * @return
+   * @return An object mapper.
    */
   @Override
   public ObjectMapper getContext(Class<?> type)
