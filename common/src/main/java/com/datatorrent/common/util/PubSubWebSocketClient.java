@@ -220,9 +220,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
   }
 
   /**
-   * <p>isConnectionOpen.</p>
    *
-   * @return
+   * @return true if the connection is open; false otherwise.
    */
   public boolean isConnectionOpen()
   {
@@ -235,7 +234,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @param topic
    * @param mapper
    * @param data
-   * @return
+   * @return publish message.
    * @throws IOException
    * @deprecated
    */
@@ -253,7 +252,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @param topic
    * @param data
    * @param codec
-   * @return
+   * @return publish message.
    * @throws IOException
    */
   public static <T> String constructPublishMessage(String topic, T data, PubSubMessageCodec<T> codec) throws IOException
@@ -286,7 +285,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    *
    * @param topic
    * @param mapper
-   * @return
+   * @return subscribe  message.
    * @throws IOException
    * @deprecated
    */
@@ -303,7 +302,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @param <T>
    * @param topic
    * @param codec
-   * @return
+   * @return subscribe message.
    * @throws IOException
    */
   public static <T> String constructSubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
@@ -331,7 +330,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    *
    * @param topic
    * @param mapper
-   * @return
+   * @return un-subscribe message.
    * @throws IOException
    * @deprecated
    */
@@ -348,7 +347,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @param <T>
    * @param topic
    * @param codec
-   * @return
+   * @return un-subscribe message.
    * @throws IOException
    */
   public static <T> String constructUnsubscribeMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
@@ -376,7 +375,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    *
    * @param topic
    * @param mapper
-   * @return
+   * @return subscribe num subscriber message.
    * @throws IOException
    * @deprecated
    */
@@ -393,7 +392,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @param <T>
    * @param topic
    * @param codec
-   * @return
+   * @return subscribe num subscriber message.
    * @throws IOException
    */
   public static <T> String constructSubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
@@ -421,7 +420,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    *
    * @param topic
    * @param mapper
-   * @return
+   * @return un-subscribe num subscriber message.
    * @throws IOException
    * @deprecated
    */
@@ -438,7 +437,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * @param <T>
    * @param topic
    * @param codec
-   * @return
+   * @return un-subscribe num subscribers message.
    * @throws IOException
    */
   public static <T> String constructUnsubscribeNumSubscribersMessage(String topic, PubSubMessageCodec<T> codec) throws IOException
