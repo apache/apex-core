@@ -11,7 +11,7 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
-
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
@@ -27,7 +27,6 @@ import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -40,17 +39,16 @@ import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.*;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -211,7 +209,7 @@ public class StreamingContainerManagerTest {
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
-    dag.setAttribute(node2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    node2.setPartitionCount(3);
     dag.setOutputPortAttribute(node2.outport1, PortContext.QUEUE_CAPACITY, 1111);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
     dag.setInputPortAttribute(node3.inport1, PortContext.QUEUE_CAPACITY, 2222);
@@ -320,7 +318,7 @@ public class StreamingContainerManagerTest {
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
 
-    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
     dag.addStream("o1.outport", o1.outport, o2.inport1);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 

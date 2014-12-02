@@ -4,37 +4,9 @@
  */
 package com.datatorrent.stram;
 
-import java.io.*;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.List;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.junit.Assert;
-
-import com.google.common.collect.Lists;
-
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.mutable.MutableInt;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.ipc.RPC.Server;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.test.MockitoUtil;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-
 import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.Journal.SetOperatorState;
@@ -44,15 +16,38 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHea
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
-import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
-import com.datatorrent.stram.plan.logical.requests.CreateStreamRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.requests.CreateStreamRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+import com.google.common.collect.Lists;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.util.List;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.ipc.RPC.Server;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.test.MockitoUtil;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StramRecoveryTest
 {
@@ -66,12 +61,12 @@ public class StramRecoveryTest
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     PartitioningTestOperator o2 = dag.addOperator("o2", PartitioningTestOperator.class);
+    o2.setPartitionCount(3);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 
     dag.addStream("o1.outport1", o1.outport1, o2.inport1, o2.inportWithCodec);
     dag.addStream("mergeStream", o2.outport1, o3.inport1);
 
-    dag.getMeta(o2).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 3);
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     TestPlanContext ctx = new TestPlanContext();

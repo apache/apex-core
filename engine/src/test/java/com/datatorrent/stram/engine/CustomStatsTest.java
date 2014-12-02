@@ -4,17 +4,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator;
@@ -27,6 +16,15 @@ import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListen
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CustomStatsTest
 {
@@ -86,7 +84,7 @@ public class CustomStatsTest
     }
 
     @Override
-    public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, int partitionCnt)
     {
       List<Partition<TestOperator>> newPartitions = Lists.newArrayList();
       newPartitions.addAll(partitions);

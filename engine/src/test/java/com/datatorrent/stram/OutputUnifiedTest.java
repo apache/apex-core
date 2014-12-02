@@ -4,16 +4,10 @@
  */
 package com.datatorrent.stram;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
@@ -24,6 +18,11 @@ import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.stream.OiOEndWindowTest.TestInputOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
+import java.net.InetSocketAddress;
+import java.util.List;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
 
 /**
  *
@@ -47,7 +46,7 @@ public class OutputUnifiedTest
     GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
-    dag.setAttribute(op1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(op1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
 
     TestOutputOperator op2 = new TestOutputOperator();
     dag.addOperator("op2", op2);
@@ -79,12 +78,12 @@ public class OutputUnifiedTest
     GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
 
-    dag.setAttribute(op1, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setAttribute(op1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
 
     TestOutputOperator op2 = new TestOutputOperator();
     dag.addOperator("op2", op2);
 
-    dag.setAttribute(op2, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(op2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
 
     dag.addStream("s1", i1.output, op1.inport1);
     dag.addStream("s2", op1.outport1, op2.inport);
@@ -110,7 +109,7 @@ public class OutputUnifiedTest
     TestInputOperator i1 = new TestInputOperator();
     dag.addOperator("i1", i1);
 
-    dag.setAttribute(i1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(i1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
 
     GenericTestOperator op1 = new GenericTestOperator();
     dag.addOperator("op1", op1);
