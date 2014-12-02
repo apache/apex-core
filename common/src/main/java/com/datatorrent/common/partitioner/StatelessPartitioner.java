@@ -165,7 +165,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    *
    * @param partitions
    * List of new partitions
-   * @return
+   * @return The new operators.
    */
   public static <T extends Operator> Collection<Partition<T>> repartition(Collection<Partition<T>> partitions)
   {
@@ -238,7 +238,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    *
    * @param <T> The operator type
    * @param partitions
-   * @return
+   * @return The new operators.
    */
   public static <T extends Operator> Collection<Partition<T>> repartitionInputOperator(Collection<Partition<T>> partitions)
   {
