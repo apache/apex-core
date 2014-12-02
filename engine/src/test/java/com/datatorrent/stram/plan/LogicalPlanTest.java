@@ -12,6 +12,7 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
@@ -23,22 +24,24 @@ import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.common.collect.Maps;
-import org.junit.Assert;
-import org.junit.Test;
-
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Serializable;
+import java.util.*;
 import javax.validation.*;
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Serializable;
-import java.util.*;
+import org.junit.Assert;
 
 import static org.junit.Assert.*;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LogicalPlanTest {
+  private static final Logger logger = LoggerFactory.getLogger(LogicalPlanTest.class);
 
   @Test
   public void testCycleDetection() {
@@ -331,7 +334,7 @@ public class LogicalPlanTest {
   public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitioner<TestOperatorAnnotationOperator2> {
 
     @Override
-    public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int partitionCnt)
     {
       return null;
     }
@@ -340,7 +343,6 @@ public class LogicalPlanTest {
     public void partitioned(Map<Integer, Partition<TestOperatorAnnotationOperator2>> partitions)
     {
     }
-
   }
 
   @Test
@@ -348,18 +350,16 @@ public class LogicalPlanTest {
     LogicalPlan dag = new LogicalPlan();
     TestOperatorAnnotationOperator operator = dag.addOperator("operator1", TestOperatorAnnotationOperator.class);
 
-    dag.setAttribute(operator, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(operator, OperatorContext.PARTITIONER, new StatelessPartitioner<TestOperatorAnnotationOperator>(2));
 
     try {
       dag.validate();
       Assert.fail("should raise operator is not partitionable for operator1");
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Operator " + operator.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set", e.getMessage());
+      Assert.assertEquals("", "Operator " + operator.getName() + " provides partitioning capabilities but the annotation on the operator class declares it non partitionable!", e.getMessage());
     }
 
-    dag.setAttribute(operator, OperatorContext.INITIAL_PARTITION_COUNT, 0);
-    dag.validate();
-
+    dag.setAttribute(operator, OperatorContext.PARTITIONER, null);
     dag.setInputPortAttribute(operator.input1, PortContext.PARTITION_PARALLEL, true);
 
     try {
