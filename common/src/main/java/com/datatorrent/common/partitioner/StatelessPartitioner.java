@@ -15,13 +15,6 @@
  */
 package com.datatorrent.lib.partitioner;
 
-import com.datatorrent.api.DefaultPartition;
-import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitioner;
-import com.datatorrent.api.Partitioner.Partition;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,9 +22,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import javax.validation.constraints.Min;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.DefaultPartition;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Partitioner;
+import com.datatorrent.api.Partitioner.Partition;
 
 /**
  * This is a simple partitioner which creates partitionCount number of clones of an operator.
@@ -92,13 +96,13 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
 
   @Override
   @SuppressWarnings("unchecked")
-  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int partitionCnt)
+  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity)
   {
     int tempPartitionCount;
 
     //Do parallel partitioning
-    if(partitionCnt != 0) {
-      tempPartitionCount = partitionCnt;
+    if(incrementalCapacity != 0) {
+      tempPartitionCount = incrementalCapacity;
     }
     //Do normal partitioning
     else {
@@ -110,7 +114,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
 
     logger.debug("entering define partitions, partitionCount {} incrementalCapacity {}",
                  tempPartitionCount,
-                 partitionCnt);
+                 incrementalCapacity);
     T operator = partitions.iterator().next().getPartitionedInstance();
     Collection<Partition<T>> newPartitions = null;
 

@@ -15,7 +15,18 @@
  */
 package com.datatorrent.lib.partitioner;
 
+import java.util.Collection;
+
+import com.google.common.collect.Lists;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import org.apache.hadoop.conf.Configuration;
+
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import com.datatorrent.lib.stream.DevNull;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DefaultOutputPort;
@@ -26,12 +37,6 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.lib.stream.DevNull;
-import com.google.common.collect.Lists;
-import java.util.Collection;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class StatelessPartitionerTest
 {
