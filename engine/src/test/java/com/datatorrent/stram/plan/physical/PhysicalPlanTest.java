@@ -5,6 +5,21 @@
 package com.datatorrent.stram.plan.physical;
 
 
+import java.io.Serializable;
+import java.util.*;
+
+import javax.validation.constraints.Min;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -13,7 +28,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
+
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
@@ -27,15 +42,6 @@ import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import java.io.Serializable;
-import java.util.*;
-import javax.validation.constraints.Min;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PhysicalPlanTest
 {
@@ -87,14 +93,14 @@ public class PhysicalPlanTest
     };
 
     @Override
-    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int partitionCnt)
+    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
     {
-      logger.debug("PartitionTest entering define partitions {} {}",partitions.size(), partitionCnt);
+      logger.debug("PartitionTest entering define partitions {} {}",partitions.size(), incrementalCapacity);
 
       int tempPartitionCount;
 
-      if(partitionCnt != 0) {
-        tempPartitionCount = partitionCnt;
+      if(incrementalCapacity != 0) {
+        tempPartitionCount = incrementalCapacity;
       }
       else {
         tempPartitionCount = partitionCount;
