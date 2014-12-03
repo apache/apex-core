@@ -983,17 +983,11 @@ public class LogicalPlan implements Serializable, DAG
       if (n.operatorAnnotation != null) {
         // Check if partition property of the operator is being honored
         if (!n.operatorAnnotation.partitionable()) {
-          // Check if INITIAL_PARTITION_COUNT is set
-          int partitionCount = n.getValue(OperatorContext.INITIAL_PARTITION_COUNT);
-          if (partitionCount > 1) {
-            throw new ValidationException("Operator " + n.getName() + " is not partitionable but INITIAL_PARTITION_COUNT attribute is set" );
-          } else {
-            // Check if any of the input ports have partition attributes set
-            for (InputPortMeta pm : portMapping.inPortMap.values()) {
-              Boolean paralellPartition = pm.getValue(PortContext.PARTITION_PARALLEL);
-              if (paralellPartition) {
-                throw new ValidationException("Operator " + n.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set" );
-              }
+          // Check if any of the input ports have partition attributes set
+          for (InputPortMeta pm: portMapping.inPortMap.values()) {
+            Boolean paralellPartition = pm.getValue(PortContext.PARTITION_PARALLEL);
+            if (paralellPartition) {
+              throw new ValidationException("Operator " + n.getName() + " is not partitionable but PARTITION_PARALLEL attribute is set");
             }
           }
 

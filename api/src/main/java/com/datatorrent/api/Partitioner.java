@@ -15,12 +15,11 @@
  */
 package com.datatorrent.api;
 
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 
 /**
  * Components which want to have control over how they are partitioned may implement
@@ -56,11 +55,11 @@ public interface Partitioner<T>
    * use the default partitioning, this method should return null.
    *
    * @param partitions - Current set of partitions
-   * @param incrementalCapacity - The count of more instances of this operator the cluster can support. If this number is positive,
+   * @param partitionCount - The count of more instances of this operator the cluster can support. If this number is positive,
    * @return New partitioning. Partitions from input list which should not be
    * changed can be returned as they are.
    */
-  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
+  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int partitionCount);
 
   /**
    * The engine calls this method to notify partitioner of the changes to partitioning.

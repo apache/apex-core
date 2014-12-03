@@ -4,45 +4,42 @@
  */
 package com.datatorrent.stram;
 
+
+import com.datatorrent.api.*;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
-
-import com.datatorrent.api.*;
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAG.Locality;
-
-import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class HostLocalTest
 {
   public static class PartitioningTestOperator extends GenericTestOperator implements Partitioner<PartitioningTestOperator>
   {
     @Override
-    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
+    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int partitionCnt)
     {
-      List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(incrementalCapacity + 1);
+      List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(partitionCnt + 1);
       for (int i = 0; i < 1; i++) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
         newPartitions.add(p);
       }
-      for (int i = 1; i < 1 + incrementalCapacity; i++) {
+      for (int i = 1; i < 1 + partitionCnt; i++) {
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(new PartitioningTestOperator());
         p.getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
         newPartitions.add(p);
@@ -68,7 +65,7 @@ public class HostLocalTest
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", PartitioningTestOperator.class);
-    dag.getMeta(partitioned).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.getMeta(partitioned).getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     dag.getMeta(partitioned).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
 
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1);

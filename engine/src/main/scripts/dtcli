@@ -35,6 +35,12 @@ for conf_dir in "${script_dir}/../conf" "$HOME/.dt"; do
     [[ -f "${conf_dir}/dt-env.sh" ]] && . "${conf_dir}/dt-env.sh"
 done
 
+# In development mode, if configuration files are not found, locate DT_HADOOP manually
+if [ -z "${DT_HADOOP}" ]; then
+  HADOOP_SEARCH_PATH="${HADOOP_PREFIX}/bin:${HADOOP_HOME}/bin:${PATH}:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:."
+  DT_HADOOP=`PATH=${HADOOP_SEARCH_PATH} && command -v hadoop 2>/dev/null`
+fi
+
 if [ "$DT_CLIENT_OPTS" = "" ]; then
 #  DT_CLIENT_OPTS="-Xmx1024m -XX:MaxPermSize=512m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
   DT_CLIENT_OPTS="-Xmx1024m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
@@ -51,7 +57,6 @@ fi
 
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode
-  #echoerr "Setting classpath from: $MVN_GENERATED_PATH"
   DT_CORE_JAR=`ls $BUILD_DIR/dt-stram-*.jar | grep -vE "tests.jar|sources.jar|javadoc.jar" | head -1`
   if [ ! -f "$DT_CORE_JAR" ]; then
     echoerr "Error: Cannot find $DT_CORE_JAR";
@@ -69,11 +74,8 @@ else
   DT_CLASSPATH=$BASEDIR/lib'/*'":${DT_CLASSPATH}"
 fi
 
-#echoerr "$DT_CLASSPATH"
-
-if [ "$DT_CLASSPATH" != "" ]; then
-  if test -z "$HADOOP_CLASSPATH"
-  then
+if [ -n "$DT_CLASSPATH" ]; then
+  if [ -z "$HADOOP_CLASSPATH" ]; then
     export HADOOP_CLASSPATH="$DT_CLASSPATH"
   else
     export HADOOP_CLASSPATH="$HADOOP_CLASSPATH:$DT_CLASSPATH"

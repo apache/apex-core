@@ -225,6 +225,13 @@
                     <include>BasicContainerOptConfigurator.java</include>
                   </includes>
                 </resource>
+                <resource>
+                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/partitioner</directory>
+                  <targetPath>com/datatorrent/lib/partitioner</targetPath>
+                  <includes>
+                    <include>StatelessPartitioner.java</include>
+                  </includes>
+                </resource>
               </resources>
             </configuration>
           </execution>
