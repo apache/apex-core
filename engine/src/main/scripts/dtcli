@@ -57,6 +57,9 @@ if [ -f "$MVN_GENERATED_PATH" ]; then
     echoerr "Error: Cannot find $DT_CORE_JAR";
     exit 1;
   fi
+  HADOOP_SEARCH_PATH="${HADOOP_PREFIX}/bin:${HADOOP_HOME}/bin:${PATH}:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:."
+  DT_HADOOP=`PATH=${HADOOP_SEARCH_PATH} && command -v hadoop 2>/dev/null`
+  [[ $? -eq 0 ]] && echo "${DT_HADOOP}"
   DT_CLASSPATH="$DT_CLASSPATH:$DT_CORE_JAR"
   DT_CLASSPATH=$DT_CLASSPATH:`cat $MVN_GENERATED_PATH`
 else
