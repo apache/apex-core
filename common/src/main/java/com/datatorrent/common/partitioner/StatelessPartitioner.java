@@ -35,7 +35,6 @@ import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner;
-import com.datatorrent.api.Partitioner.Partition;
 
 /**
  * This is a simple partitioner which creates partitionCount number of clones of an operator.
@@ -95,7 +94,6 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity)
   {
     int tempPartitionCount;
@@ -118,9 +116,9 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
     T operator = partitions.iterator().next().getPartitionedInstance();
     Collection<Partition<T>> newPartitions = null;
 
-    //first call to define partitions
     if(partitions.iterator().next().getStats() == null) {
-      logger.debug("first call to define partitions");
+      //first call to define partitions
+      //logger.debug("first call to define partitions");
       newPartitions = Lists.newArrayList();
 
       for (int partitionCounter = 0;
@@ -138,10 +136,8 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       }
     }
     else {
-      logger.debug("subsequent call to define partitions");
+      //logger.debug("subsequent call to define partitions");
       //define partitions is being called again
-
-      //Repartitioning input operator
       if(partition.getPartitionKeys().isEmpty()) {
         newPartitions = repartitionInputOperator(partitions);
       }
