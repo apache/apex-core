@@ -325,11 +325,6 @@ public interface Context
      */
     Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
     /**
-     * @deprecated As of release 1.0.2, replaced by {@link OperatorContext#MEMORY_MB}
-     */
-    @Deprecated
-    Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
-    /**
      * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
      */
     Attribute<String> CONTAINER_JVM_OPTIONS = new Attribute<String>(new String2String());

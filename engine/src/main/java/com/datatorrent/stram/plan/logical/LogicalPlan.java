@@ -1064,16 +1064,6 @@ public class LogicalPlan implements Serializable, DAG
       validateProcessingMode(om, visited);
     }
 
-    handleDeprecation();
-  }
-
-  @SuppressWarnings("deprecation")
-  private void handleDeprecation()
-  {
-    if (attributes.contains(DAGContext.CONTAINER_MEMORY_MB)) {
-      LOG.warn("{} is deprecated, use {} instead", DAGContext.CONTAINER_MEMORY_MB, OperatorContext.MEMORY_MB);
-      attributes.put(OperatorContext.MEMORY_MB, attributes.get(CONTAINER_MEMORY_MB));
-    }
   }
 
   /*

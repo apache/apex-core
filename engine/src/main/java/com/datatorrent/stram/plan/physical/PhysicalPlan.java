@@ -4,9 +4,26 @@
  */
 package com.datatorrent.stram.plan.physical;
 
-import com.datatorrent.api.*;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.datatorrent.api.Context.CountersAggregator;
+import javax.annotation.Nullable;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang.StringUtils;
+
+import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -15,7 +32,8 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import static com.datatorrent.api.Context.CountersAggregator;
+
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -28,20 +46,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.*;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.Nullable;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -62,7 +66,6 @@ import org.slf4j.LoggerFactory;
  */
 public class PhysicalPlan implements Serializable
 {
-  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
   private static final long serialVersionUID = 201312112033L;
   private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
@@ -492,7 +495,6 @@ public class PhysicalPlan implements Serializable
       PTOperator p = addPTOperator(m, partition, Checkpoint.INITIAL_CHECKPOINT);
       operatorIdToPartition.put(p.getId(), partition);
     }
-    //updateStreamMappings(m);
 
     if (partitioner != null) {
       partitioner.partitioned(operatorIdToPartition);
@@ -557,12 +559,12 @@ public class PhysicalPlan implements Serializable
       newPartitions = partitioner.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions),
                                                    incrementalCapacity);
     }
-
+/*
     if (newPartitions == null) {
       Collection<Partition<Operator>> tempCurrentPartitions = Lists.newArrayList();
 
-      for(DefaultPartition<Operator> partition: currentPartitions) {
-        tempCurrentPartitions.add((Partition<Operator>) partition);
+      for (DefaultPartition<Operator> partition : currentPartitions) {
+        tempCurrentPartitions.add(partition);
       }
 
       if (!currentMapping.logicalOperator.getInputStreams().isEmpty()) {
@@ -571,7 +573,7 @@ public class PhysicalPlan implements Serializable
         newPartitions = StatelessPartitioner.repartitionInputOperator(tempCurrentPartitions);
       }
     }
-
+*/
     if (newPartitions.isEmpty()) {
       LOG.warn("Empty partition list after repartition: {}", currentMapping.logicalOperator);
       return;
@@ -1177,15 +1179,8 @@ public class PhysicalPlan implements Serializable
     this.logicalToPTOperator.put(om, pnodes);
     if (upstreamPartitioned != null) {
       // parallel partition
-      // TODO: remove partition keys, disable stats listeners
-      logger.debug("Operator {} should be partitioned to {} partitions",
-                   pnodes.logicalOperator.getName(),
-                   upstreamPartitioned.partitions.size());
+      //LOG.debug("Operator {} should be partitioned to {} partitions", pnodes.logicalOperator.getName(), upstreamPartitioned.partitions.size());
       initPartitioning(pnodes, upstreamPartitioned.partitions.size());
-      //for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
-      //  // TODO: the initial checkpoint has to be derived from upstream operators
-      //  addPTOperator(pnodes, null, Checkpoint.INITIAL_CHECKPOINT);
-      //}
     } else {
       initPartitioning(pnodes, 0);
     }

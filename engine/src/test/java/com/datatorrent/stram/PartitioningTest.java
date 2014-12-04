@@ -1,10 +1,24 @@
 package com.datatorrent.stram;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import static java.lang.Thread.sleep;
+
+import com.google.common.collect.Sets;
+
+import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import com.datatorrent.lib.util.FSStorageAgent;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
-import com.datatorrent.lib.util.FSStorageAgent;
+
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
@@ -14,16 +28,6 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
-import com.google.common.collect.Sets;
-import java.io.File;
-import java.io.IOException;
-import static java.lang.Thread.sleep;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.junit.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PartitioningTest
 {
@@ -334,7 +338,7 @@ public class PartitioningTest
 
     @Override
     public Collection<Partition<PartitionableInputOperator>> definePartitions(Collection<Partition<PartitionableInputOperator>> partitions,
-                                                                              int partitionCnt)
+                                                                              int incrementalCapacity)
     {
       List<Partition<PartitionableInputOperator>> newPartitions = new ArrayList<Partition<PartitionableInputOperator>>(3);
       Iterator<? extends Partition<PartitionableInputOperator>> iterator = partitions.iterator();
