@@ -16,7 +16,6 @@ import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import com.datatorrent.common.util.Slice;
 
 /**
@@ -190,7 +189,6 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
 
     @Override
     @SuppressWarnings("rawtypes")
-    //public synchronized Registration registerImplicit(Class type)
     public Registration registerImplicit(Class type)
     {
       while (getRegistration(nextAvailableRegistrationId) != null) {
@@ -202,9 +200,6 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
       return register(new Registration(type, kryo.getDefaultSerializer(type), nextAvailableRegistrationId++));
     }
 
-    // Synchronizing with implicit registration as receive and send happen asynchronously
-    // Not needed as they will be called in two different instances
-    //public synchronized void registerExplicit(ClassIdPair pair) throws ClassNotFoundException
     public void registerExplicit(ClassIdPair pair) throws ClassNotFoundException
     {
       //logger.debug("registering class {} => {}", pair.classname, pair.id);
