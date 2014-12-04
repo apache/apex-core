@@ -3221,15 +3221,22 @@ public class DTCli
         Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
+        JSONObject portClassHier = new JSONObject();
+
         for (Class<? extends Operator> clazz : operatorClasses) {
           try {
-            arr.put(operatorDiscoverer.describeOperator(clazz));
-          }
-          catch (Throwable t) {
+            JSONObject oper = operatorDiscoverer.describeOperator(clazz);
+
+            // add class hier info to portClassHier
+            operatorDiscoverer.buildPortClassHier(oper, portClassHier);
+
+            arr.put(oper);
+          } catch (Throwable t) {
             // ignore this class
           }
         }
         json.put("operatorClasses", arr);
+        json.put("portClassHier", portClassHier);
         printJson(json);
       }
       finally {

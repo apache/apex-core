@@ -54,6 +54,7 @@ public class OperatorDiscoverer
   private final ClassLoader classLoader;
   private static final int MAX_PROPERTY_LEVELS = 5;
   private final String dtOperatorDoclinkPrefix = "https://www.datatorrent.com/docs/apidocs/index.html";
+  public static final String PORT_TYPE_INFO_KEY = "portTypeInfo";
 
   private final Map<String, OperatorClassInfo> classInfo = new HashMap<String, OperatorClassInfo>();
 
@@ -322,6 +323,9 @@ public class OperatorDiscoverer
       JSONArray outputPorts = new JSONArray();
       JSONArray properties = getClassProperties(clazz);
 
+      TypeDiscoverer td = new TypeDiscoverer();
+      JSONArray portTypeInfo = td.getPortTypes(clazz);
+
       Field[] fields = clazz.getFields();
       Arrays.sort(fields, new Comparator<Field>()
           {
@@ -337,7 +341,6 @@ public class OperatorDiscoverer
           if (InputPort.class.isAssignableFrom(field.getType())) {
             JSONObject inputPort = new JSONObject();
             inputPort.put("name", field.getName());
-            inputPort.put("tupleType", LogicalPlan.getPortType(field));
 
             for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
               OperatorClassInfo oci = classInfo.get(c.getName());
@@ -363,7 +366,6 @@ public class OperatorDiscoverer
           else if (OutputPort.class.isAssignableFrom(field.getType())) {
             JSONObject outputPort = new JSONObject();
             outputPort.put("name", field.getName());
-            outputPort.put("tupleType", LogicalPlan.getPortType(field));
 
             for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
               OperatorClassInfo oci = classInfo.get(c.getName());
@@ -392,6 +394,7 @@ public class OperatorDiscoverer
 
         response.put("name", clazz.getName());
         response.put("properties", properties);
+        response.put(PORT_TYPE_INFO_KEY, portTypeInfo);
         response.put("inputPorts", inputPorts);
         response.put("outputPorts", outputPorts);
 
@@ -513,5 +516,83 @@ public class OperatorDiscoverer
       }
     }
     return deCameled.toString();
+  }
+
+  /**
+   * Enrich portClassHier with class/interface names that map to a list of parent classes/interfaces.
+   * For any class encountered, find its parents too.
+   *
+   * @param oper Operator to work on
+   * @param portClassHier In-Out param that contains a mapping of class/interface to its parents
+   */
+  public void buildPortClassHier(JSONObject oper, JSONObject portClassHier) {
+    try {
+      JSONArray ports = oper.getJSONArray(OperatorDiscoverer.PORT_TYPE_INFO_KEY);
+      int num_ports = ports.length();
+      for (int i = 0; i < num_ports; i++) {
+        JSONObject port = ports.getJSONObject(i);
+
+        String type;
+        try {
+          type = port.getString("type");
+        } catch (JSONException e) {
+          // no type key
+          continue;
+        }
+
+        try {
+          // load the port type class
+          Class portClazz = classLoader.loadClass(type.replaceAll("\\bclass ", "").replaceAll("\\binterface ", ""));
+
+          // iterate up the class hierarchy to populate the portClassHier map
+          while (portClazz != null) {
+            ArrayList<String> parents = new ArrayList<String>();
+
+            String portClazzName = portClazz.toString();
+            if (portClassHier.has(portClazzName)) {
+              // already present in portClassHier, so we can stop
+              break;
+            }
+
+            // interfaces and Object are at the top of the tree, so we can just put them
+            // in portClassHier with empty parents, then move on.
+            if (portClazz.isInterface() || portClazzName.equals("java.lang.Object")) {
+              portClassHier.put(portClazzName, parents);
+              break;
+            }
+
+            // look at superclass first
+            Class superClazz = portClazz.getSuperclass();
+            try {
+              String superClazzName = superClazz.toString();
+              parents.add(superClazzName);
+            } catch (NullPointerException e) {
+              LOG.info("Superclass is null for `{}` ({})", portClazz, superClazz);
+            }
+            // then look at interfaces implemented in this port
+            for (Class intf : portClazz.getInterfaces()) {
+              String intfName = intf.toString();
+              if (!portClassHier.has(intfName)) {
+                // add the interface to portClassHier
+                portClassHier.put(intfName, new ArrayList<String>());
+              }
+              parents.add(intfName);
+            }
+
+            // now store class=>parents mapping in portClassHier
+            portClassHier.put(portClazzName, parents);
+
+            // walk up the hierarchy for the next iteration
+            portClazz = superClazz;
+          }
+        } catch (ClassNotFoundException e) {
+          LOG.info("Could not make class from `{}`", type);
+        }
+      }
+    } catch (JSONException e) {
+      // should not reach this
+      LOG.error("JSON Exception {}", e);
+      throw new RuntimeException(e);
+    }
   }
 }

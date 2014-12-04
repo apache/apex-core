@@ -51,7 +51,7 @@ public class TypeDiscoverer
         Class<?> rawTypeClass = (Class<?>)rawType;
         TypeVariable<?>[] typeParameters = rawTypeClass.getTypeParameters();
         if (actualTypeArguments.length != typeParameters.length) {
-          throw new AssertionError("type paramters don't match for " + type);
+          throw new AssertionError("type parameters don't match for " + type);
         }
         for (int i=0; i<typeParameters.length; i++) {
           LOG.debug("{} tv {} bounds {} type arg {}", rawTypeClass.getSimpleName(), typeParameters[i].getName(), typeParameters[i].getBounds(), actualTypeArguments[i]);
@@ -64,7 +64,7 @@ public class TypeDiscoverer
   /**
    * Recursively resolve any type parameters against the type arguments in this context.
    * @param type
-   * @param typeMeta
+   * @param meta
    */
   private void resolveTypeParameters(Type type, JSONObject meta) throws JSONException
   {
