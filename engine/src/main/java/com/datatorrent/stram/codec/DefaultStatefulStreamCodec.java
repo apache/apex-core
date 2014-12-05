@@ -135,7 +135,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   }
 
   @Override
-  public StatefulStreamCodec<T> getPartitionedInstance()
+  public StatefulStreamCodec<T> getPerStreamInstance()
   {
     return new DefaultStatefulStreamCodec<T>();
   }

@@ -74,6 +74,6 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
    */
   public void resetState();
 
-  public StatefulStreamCodec<T> getPartitionedInstance();
+  public StatefulStreamCodec<T> getPerStreamInstance();
 
 }
