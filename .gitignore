@@ -11,4 +11,5 @@ node_modules/
 .idea/
 *~
 x-java
+nb-configuration.xml
 gateway/src/main/htdocs

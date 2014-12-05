@@ -27,6 +27,8 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+import com.datatorrent.api.StatsListener.Response;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 
 import com.datatorrent.stram.PartitioningTest;
@@ -40,11 +42,71 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+import com.datatorrent.stram.plan.physical.PhysicalPlan.LoadIndicator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
 public class PhysicalPlanTest
 {
+    /**
+   * Stats listener for throughput based partitioning.
+   * Used when thresholds are configured on operator through attributes.
+   */
+  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
+  {
+    private static final Logger logger = LoggerFactory.getLogger(PartitionLoadWatch.class);
+    private static final long serialVersionUID = 201312231633L;
+    public long evalIntervalMillis = 30*1000;
+    private final long tpsMin;
+    private final long tpsMax;
+    private long lastEvalMillis;
+    private long lastTps = 0;
+
+    private PartitionLoadWatch(long min, long max) {
+      this.tpsMin = min;
+      this.tpsMax = max;
+    }
+
+    protected LoadIndicator getLoadIndicator(int operatorId, long tps) {
+      if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
+        lastTps = tps;
+        if (tps < tpsMin) {
+          return new LoadIndicator(-1, String.format("Tuples per second %d is less than the minimum %d", tps, tpsMin));
+        }
+        else {
+          return new LoadIndicator(1, String.format("Tuples per second %d is greater than the maximum %d", tps, tpsMax));
+        }
+      }
+      lastTps = tps;
+      return new LoadIndicator(0, null);
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats status)
+    {
+
+      long tps = status.getTuplesProcessedPSMA();
+
+      if(tps == 0L) {
+        tps = status.getTuplesEmittedPSMA();
+      }
+
+      Response rsp = new Response();
+      LoadIndicator loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
+      rsp.loadIndicator = loadIndicator.indicator;
+      if (rsp.loadIndicator != 0) {
+        if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
+          lastEvalMillis = System.currentTimeMillis();
+          logger.debug("Requesting repartitioning {} {}", rsp.loadIndicator, tps);
+          rsp.repartitionRequired = true;
+          rsp.repartitionNote = loadIndicator.note;
+        }
+      }
+      return rsp;
+    }
+
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanTest.class);
 
   private static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> implements Serializable {
@@ -293,9 +355,9 @@ public class PhysicalPlanTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta o2Meta = dag.getOperatorMeta(o2.getName());
+    o2Meta.getAttributes().put(OperatorContext.STATS_LISTENERS,
+                               (Collection<StatsListener>) Lists.newArrayList((StatsListener) new PartitionLoadWatch(0, 5)));
     o2Meta.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(1));
-    o2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MIN, 0);
-    o2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
@@ -311,8 +373,8 @@ public class PhysicalPlanTest
     PTOperator o2p1 = o2Partitions.get(0);
     Assert.assertEquals("stats handlers " + o2p1, 1, o2p1.statsListeners.size());
     StatsListener sl = o2p1.statsListeners.get(0);
-    Assert.assertTrue("stats handlers " + o2p1.statsListeners, sl instanceof PhysicalPlan.PartitionLoadWatch);
-    ((PhysicalPlan.PartitionLoadWatch)sl).evalIntervalMillis = -1; // no delay
+    Assert.assertTrue("stats handlers " + o2p1.statsListeners, sl instanceof PartitionLoadWatch);
+    ((PartitionLoadWatch)sl).evalIntervalMillis = -1; // no delay
 
     setThroughput(o2p1, 10);
     plan.onStatusUpdate(o2p1);
@@ -452,9 +514,9 @@ public class PhysicalPlanTest
     dag.getAttributes().put(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(o2.getName());
+    node2Meta.getAttributes().put(OperatorContext.STATS_LISTENERS,
+                                  (Collection<StatsListener>) Lists.newArrayList((StatsListener) new PartitionLoadWatch(3, 5)));
     node2Meta.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(8));
-    node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MIN, 3);
-    node2Meta.getAttributes().put(OperatorContext.PARTITION_TPS_MAX, 5);
 
     TestPlanContext ctx = new TestPlanContext();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, ctx);
@@ -483,9 +545,9 @@ public class PhysicalPlanTest
     // verify load update generates expected events per configuration
     Assert.assertEquals("stats handlers " + po, 1, po.statsListeners.size());
     StatsListener l = po.statsListeners.get(0);
-    Assert.assertTrue("stats handlers " + po.statsListeners, l instanceof PhysicalPlan.PartitionLoadWatch);
+    Assert.assertTrue("stats handlers " + po.statsListeners, l instanceof PartitionLoadWatch);
 
-    ((PhysicalPlan.PartitionLoadWatch)l).evalIntervalMillis = -1; // no delay
+    ((PartitionLoadWatch)l).evalIntervalMillis = -1; // no delay
 
     setThroughput(po, 5);
     plan.onStatusUpdate(po);
