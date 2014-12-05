@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,6 +20,8 @@ import org.junit.Test;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
+
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -68,7 +71,7 @@ public class HostLocalTest
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", PartitioningTestOperator.class);
-    dag.getMeta(partitioned).getAttributes().put(OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.getMeta(partitioned).getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
     dag.getMeta(partitioned).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
 
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1);

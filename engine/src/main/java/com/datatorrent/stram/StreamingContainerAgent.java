@@ -363,8 +363,7 @@ public class StreamingContainerAgent {
       if (agent == null) {
         agent = initCtx.getValue(OperatorContext.STORAGE_AGENT);
       }
-      // pick the checkpoint most recently written to HDFS
-      // this should be handled differently. What happens to the checkpoint reported?
+      // pick checkpoint most recently written
       try {
         long[] windowIds = agent.getWindowIds(oper.getId());
         long checkpointId = Stateless.WINDOW_ID;
@@ -378,7 +377,7 @@ public class StreamingContainerAgent {
         }
       }
       catch (Exception e) {
-          throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
+        throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
       }
     }
 
@@ -386,7 +385,7 @@ public class StreamingContainerAgent {
     ndi.checkpoint = checkpoint;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
-    // clone the map as StramChild assumes ownership and may add non-serializable attributes
+    // clone map before modifying it
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
     if (oper.isOperatorStateLess()) {
       ndi.contextAttributes.put(OperatorContext.STATELESS, true);

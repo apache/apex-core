@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Lists;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -21,12 +23,12 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorStats;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.google.common.collect.Lists;
 
 public class CustomStatsTest
 {

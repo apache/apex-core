@@ -11,15 +11,17 @@ package com.datatorrent.stram.api;
 
 public enum Permission
 {
-
   /**
    * View applications launched by others
    */
-  VIEW_OTHERS_APPS,
   /**
-   * Edit and kill applications launched by others
+   * View applications launched by others
    */
-  EDIT_AND_KILL_OTHERS_APPS,
+  VIEW_OTHER_USERS_APPS,
+  /**
+   * Manage applications launched by others
+   */
+  MANAGE_OTHER_USERS_APPS,
   /**
    * View global settings
    */
@@ -47,7 +49,7 @@ public enum Permission
   /**
    * Launch App Packages
    */
-  LAUNCH_APP_PACKAGES,
+  LAUNCH_APPS,
   /**
    * Manage App Packages
    */
