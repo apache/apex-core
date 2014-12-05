@@ -5,6 +5,7 @@ package com.datatorrent.stram.stream;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicLong;
+import static java.lang.Thread.sleep;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,14 +16,11 @@ import com.datatorrent.bufferserver.client.Publisher;
 import com.datatorrent.bufferserver.packet.*;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.netlet.EventLoop;
-import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.tuple.Tuple;
-
-import static java.lang.Thread.sleep;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>
@@ -155,10 +153,10 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   {
     StreamCodec<?> codec = context.get(StreamContext.CODEC);
     if (codec == null) {
-      statefulSerde = new DefaultStatefulStreamCodec<Object>();
+      statefulSerde = ((StatefulStreamCodec < Object >)StreamContext.CODEC.defaultValue).newInstance();
     }
     else if (codec instanceof StatefulStreamCodec) {
-      statefulSerde = (StatefulStreamCodec<Object>)codec;
+      statefulSerde = ((StatefulStreamCodec<Object>)codec).newInstance();
     }
     else {
       serde = (StreamCodec<Object>)codec;
