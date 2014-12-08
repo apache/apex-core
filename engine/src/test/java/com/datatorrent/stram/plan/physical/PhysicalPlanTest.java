@@ -27,8 +27,6 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
-import com.datatorrent.api.StatsListener.BatchedOperatorStats;
-import com.datatorrent.api.StatsListener.Response;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
@@ -355,7 +353,7 @@ public class PhysicalPlanTest
 
     OperatorMeta o2Meta = dag.getOperatorMeta(o2.getName());
     o2Meta.getAttributes().put(OperatorContext.STATS_LISTENERS,
-                               (Collection<StatsListener>) Lists.newArrayList((StatsListener) new PartitionLoadWatch(0, 5)));
+                               Lists.newArrayList((StatsListener) new PartitionLoadWatch(0, 5)));
     o2Meta.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(1));
 
     TestPlanContext ctx = new TestPlanContext();
@@ -514,7 +512,7 @@ public class PhysicalPlanTest
 
     OperatorMeta node2Meta = dag.getOperatorMeta(o2.getName());
     node2Meta.getAttributes().put(OperatorContext.STATS_LISTENERS,
-                                  (Collection<StatsListener>) Lists.newArrayList((StatsListener) new PartitionLoadWatch(3, 5)));
+                                  Lists.newArrayList((StatsListener) new PartitionLoadWatch(3, 5)));
     node2Meta.getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(8));
 
     TestPlanContext ctx = new TestPlanContext();
