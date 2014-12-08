@@ -13,13 +13,13 @@ import javax.validation.constraints.Min;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -30,7 +30,6 @@ import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.api.StatsListener.Response;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
@@ -716,14 +715,14 @@ public class PhysicalPlanTest
     Assert.assertEquals("" + newPartitions.get(0).getPartitionKeys(), 0, newPartitions.get(0).getPartitionKeys().values().iterator().next().mask);
 
     List<Partition<Operator>> tempList = Collections.singletonList((Partition<Operator>) new DefaultPartition<Operator>(operator, newPartitions.get(0).getPartitionKeys(), -1, null));
-    tempNewPartitions = StatelessPartitioner.repartition((Collection<Partition<Operator>>) tempList);
+    tempNewPartitions = StatelessPartitioner.repartition(tempList);
     newPartitions.clear();
     newPartitions.addAll(tempNewPartitions);
     Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
 
     // split back into two
     tempList = Collections.singletonList((Partition<Operator>)new DefaultPartition<Operator>(operator, newPartitions.get(0).getPartitionKeys(), 1, null));
-    tempNewPartitions = StatelessPartitioner.repartition((Collection<Partition<Operator>>) tempList);
+    tempNewPartitions = StatelessPartitioner.repartition(tempList);
     newPartitions.clear();
     newPartitions.addAll(tempNewPartitions);
     Assert.assertEquals("" + newPartitions, 2, newPartitions.size());
@@ -951,7 +950,7 @@ public class PhysicalPlanTest
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    dag.getMeta(o2).getAttributes().put(OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
 
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 
@@ -1835,9 +1834,28 @@ public class PhysicalPlanTest
     Assert.assertEquals("memory container 2", 4000, plan.getContainers().get(1).getRequiredMemoryMB());
   }
 
+  private class TestPartitioner<T extends Operator> extends StatelessPartitioner<T>
+  {
+    private static final long serialVersionUID = 1L;
+    @Override
+    public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity)
+    {
+      Collection<Partition<T>> newPartitions = super.definePartitions(partitions, incrementalCapacity);
+      if (incrementalCapacity > 0 && newPartitions.size() < incrementalCapacity) {
+        // parallel partitioned, fill to requested count
+        for (int i=newPartitions.size(); i<incrementalCapacity; i++) {
+          newPartitions.add(new DefaultPartition<T>(partitions.iterator().next().getPartitionedInstance()));
+        }
+      }
+      return newPartitions;
+    }
+  }
+
   @Test
   public void testDefaultPartitionerWithParallel() throws InterruptedException
   {
+    final MutableInt loadInd = new MutableInt();
+
     StatsListener listener = new StatsListener()
     {
       @Override
@@ -1845,6 +1863,7 @@ public class PhysicalPlanTest
       {
         Response response = new Response();
         response.repartitionRequired = true;
+        response.loadIndicator = loadInd.intValue();
         return response;
       }
     };
@@ -1856,6 +1875,8 @@ public class PhysicalPlanTest
     dag.setAttribute(nodeX, Context.OperatorContext.STATS_LISTENERS, Lists.newArrayList(listener));
 
     GenericTestOperator nodeY = dag.addOperator("Y", GenericTestOperator.class);
+    dag.setAttribute(nodeY, Context.OperatorContext.PARTITIONER, new TestPartitioner<GenericTestOperator>());
+
     GenericTestOperator nodeZ = dag.addOperator("Z", GenericTestOperator.class);
 
     dag.addStream("Stream1", nodeX.outport1, nodeY.inport1, nodeZ.inport1);
@@ -1875,7 +1896,6 @@ public class PhysicalPlanTest
     LogicalPlan.OperatorMeta metaOfX = dag.getMeta(nodeX);
     LogicalPlan.OperatorMeta metaOfY = dag.getMeta(nodeY);
 
-    // Sanity check that physical operators have been allocated for n1meta and n2meta
     Assert.assertEquals("number operators " + metaOfX.getName(), 2, plan.getOperators(metaOfX).size());
     Assert.assertEquals("number operators " + metaOfY.getName(), 2, plan.getOperators(metaOfY).size());
 
@@ -1893,11 +1913,12 @@ public class PhysicalPlanTest
       }
     }
 
-    //Invoke redo-partition of PhysicalPlan
+    //Invoke redo-partition of PhysicalPlan, no partition change
+    loadInd.setValue(0);
     for (PTOperator ptOperator : ptOfX) {
       plan.onStatusUpdate(ptOperator);
     }
-    ctx.events.get(0).run();
+    ctx.events.remove(0).run();
 
     for(PTOperator physicalX : ptOfX){
       Assert.assertEquals("2 streams " + physicalX.getOutputs(), 2, physicalX.getOutputs().size());
@@ -1910,6 +1931,26 @@ public class PhysicalPlanTest
         Assert.assertEquals(2, dopers.size());
       }
     }
+
+    //scale up by splitting first partition
+    loadInd.setValue(1);
+    plan.onStatusUpdate(ptOfX.get(0));
+    ctx.events.get(0).run();
+
+    List<PTOperator> ptOfXScaleUp = plan.getOperators(metaOfX);
+    Assert.assertEquals("3 partitons " + ptOfXScaleUp, 3, ptOfXScaleUp.size());
+    for(PTOperator physicalX : ptOfXScaleUp){
+      Assert.assertEquals("2 streams " + physicalX.getOutputs(), 2, physicalX.getOutputs().size());
+      for(PTOutput outputPort : physicalX.getOutputs()) {
+        Set<PTOperator> dopers = Sets.newHashSet();
+        Assert.assertEquals("sink of " + metaOfX.getName() + " id " + physicalX.id + " port "+ outputPort.portName, 2, outputPort.sinks.size());
+        for (PTInput inputPort : outputPort.sinks) {
+          dopers.add(inputPort.target);
+        }
+        Assert.assertEquals(2, dopers.size());
+      }
+    }
+
   }
 
 }
