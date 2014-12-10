@@ -259,12 +259,14 @@ public class StramAgent extends FSAgent
 
   public String getWebServicesVersion(String appid)
   {
-    return getWebServicesInfo(appid).version;
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : info.version;
   }
 
   public AppSharingInfo getSharingInfo(String appid)
   {
-    return getWebServicesInfo(appid).sharingInfo;
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : info.sharingInfo;
   }
 
   public WebResource getStramWebResource(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
@@ -305,17 +307,14 @@ public class StramAgent extends FSAgent
 
   public String getAppPath(String appId)
   {
-    try {
-      return getWebServicesInfo(appId).appPath;
-    }
-    catch (Exception ex) {
-      return getAppsRoot() + "/" + appId;
-    }
+    StramWebServicesInfo info = getWebServicesInfo(appId);
+    return info == null ? getAppsRoot() + "/" + appId : info.appPath;
   }
 
   public String getUser(String appid)
   {
-    return getWebServicesInfo(appid).user;
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : info.appPath;
   }
 
   private StramWebServicesInfo retrieveWebServicesInfo(String appId)
