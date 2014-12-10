@@ -15,18 +15,17 @@
  */
 package com.datatorrent.api;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+import com.google.common.collect.Sets;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -37,6 +36,7 @@ import com.datatorrent.api.StatsListener.BatchedOperatorStats;
  */
 public class DefaultPartition<T> implements Partitioner.Partition<T>
 {
+  private List<InputPort<?>> inputPortList;
   private final PartitionPortMap partitionKeys;
   private final T partitionable;
   private final int loadIndicator;
@@ -56,6 +56,16 @@ public class DefaultPartition<T> implements Partitioner.Partition<T>
   public DefaultPartition(T partitionable)
   {
     this(partitionable, new PartitionPortMap(), 0, null);
+  }
+
+  public void setInputPortList(List<InputPort<?>> inputPortList)
+  {
+    this.inputPortList = inputPortList;
+  }
+
+  public List<InputPort<?>> getInputPortList()
+  {
+    return inputPortList;
   }
 
   @Override

@@ -42,10 +42,9 @@ public interface Stats extends Serializable
     public Object counters;
 
     /**
-     * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
-     * INVALID_TIME_MILLIS otherwise.
+     * If there is a recording on the operator, this contains the recording id, otherwise null
      */
-    public long recordingStartTime = INVALID_TIME_MILLIS;
+    public String recordingId;
 
     public static class PortStats implements Stats
     {
@@ -56,10 +55,9 @@ public interface Stats extends Serializable
       public long bufferServerBytes;
       public int queueSize;
       /**
-       * Time in milliseconds returned by System.currentTimeMillis() if recording has started on this component.
-       * INVALID_TIME_MILLIS otherwise.
+       * If there is a recording on the port, this contains the recording id, otherwise null
        */
-      public long recordingStartTime = INVALID_TIME_MILLIS;
+      public String recordingId;
 
       public PortStats(String id)
       {

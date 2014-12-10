@@ -14,7 +14,6 @@ import java.util.Map.Entry;
 
 import javax.validation.ValidationException;
 
-import com.google.common.base.CaseFormat;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -1282,7 +1281,7 @@ public class LogicalPlanConfiguration {
       setOperatorProperties(ow.getOperator(), opProps);
     }
   }
-
+/*
   private static final Map<String, Attribute<?>> legacyKeyMap = Maps.newHashMap();
 
   static {
@@ -1296,7 +1295,7 @@ public class LogicalPlanConfiguration {
     legacyKeyMap.put("appPath", Context.DAGContext.APPLICATION_PATH);
     legacyKeyMap.put("allocateResourceTimeoutMillis", Context.DAGContext.RESOURCE_ALLOCATION_TIMEOUT_MILLIS);
   }
-
+*/
   /**
    * Set the application configuration.
    * @param dag
@@ -1387,17 +1386,6 @@ public class LogicalPlanConfiguration {
       attributeMap.put(clazz, m);
     }
     Attribute<Object> attr = m.get(configKey);
-    if (attr == null && clazz == Context.DAGContext.class) {
-      isDeprecated = true;
-      @SuppressWarnings({ "rawtypes", "unchecked" })
-      Attribute<Object> tmp = (Attribute)legacyKeyMap.get(configKey);
-      attr = tmp;
-      if (attr == null) {
-        String simpleName = CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, configKey);
-        attr = m.get(simpleName);
-      }
-    }
-
     if (attr == null) {
       throw new ValidationException("Invalid attribute reference: " + getCompleteKey(keys, 0));
     }

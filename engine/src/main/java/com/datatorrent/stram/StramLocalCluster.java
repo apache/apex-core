@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.ProtocolSignature;
@@ -122,8 +123,12 @@ public class StramLocalCluster implements Runnable, Controller
         return r;
       }
       try {
-        //LOG.debug("processing heartbeat " + msg.getContainerId());
-        return dnmgr.processHeartbeat(msg);
+        ContainerHeartbeatResponse rsp = dnmgr.processHeartbeat(msg);
+        if (rsp != null) {
+          // clone to not share attributes (stream codec etc.) between threads.
+          rsp = SerializationUtils.clone(rsp);
+        }
+        return rsp;
       }
       finally {
         LocalStreamingContainer c = childContainers.get(msg.getContainerId());

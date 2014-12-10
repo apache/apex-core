@@ -91,6 +91,11 @@ public class StreamingContainerAgent {
     return initCtx;
   }
 
+  public PTContainer getContainer()
+  {
+    return container;
+  }
+
   public boolean hasPendingWork() {
     for (PTOperator oper : container.getOperators()) {
       if (oper.getState() == PTOperator.State.PENDING_DEPLOY) {
@@ -298,20 +303,20 @@ public class StreamingContainerAgent {
     return operator;
   }
 
-  // This will not be needed when we change the port to be able to not specify a stream codec class
   public static StreamCodec<?> getStreamCodec(InputPortMeta inputPortMeta)
   {
     if (inputPortMeta != null) {
-      @SuppressWarnings("unchecked")
       StreamCodec<?> codec = inputPortMeta.getValue(PortContext.STREAM_CODEC);
       if (codec == null) {
         // it cannot be this object that gets returned. Depending upon this value is dangerous -- Chetan (Pramod look into this.)
         codec = inputPortMeta.getPortObject().getStreamCodec();
+        if (codec != null) {
+          // don't create codec multiple times - it will assign a new identifier
+          inputPortMeta.getAttributes().put(PortContext.STREAM_CODEC, codec);
+        }
       }
-
       return codec;
     }
-
     return null;
   }
 
@@ -358,8 +363,7 @@ public class StreamingContainerAgent {
       if (agent == null) {
         agent = initCtx.getValue(OperatorContext.STORAGE_AGENT);
       }
-      // pick the checkpoint most recently written to HDFS
-      // this should be handled differently. What happens to the checkpoint reported?
+      // pick checkpoint most recently written
       try {
         long[] windowIds = agent.getWindowIds(oper.getId());
         long checkpointId = Stateless.WINDOW_ID;
@@ -373,7 +377,7 @@ public class StreamingContainerAgent {
         }
       }
       catch (Exception e) {
-          throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
+        throw new RuntimeException("Failed to determine checkpoint window id " + oper, e);
       }
     }
 
@@ -381,7 +385,7 @@ public class StreamingContainerAgent {
     ndi.checkpoint = checkpoint;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
-    // clone the map as StramChild assumes ownership and may add non-serializable attributes
+    // clone map before modifying it
     ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
     if (oper.isOperatorStateLess()) {
       ndi.contextAttributes.put(OperatorContext.STATELESS, true);

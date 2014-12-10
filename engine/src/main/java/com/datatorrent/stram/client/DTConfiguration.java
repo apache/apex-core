@@ -287,10 +287,11 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
 
   public static boolean isLocalKey(String key)
   {
-    return key.equals(StramClientUtils.DT_DFS_ROOT_DIR) ||
-            key.equals(LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS) ||
-            key.equals(StramClientUtils.DT_CONFIG_STATUS) ||
-            key.equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName());
+    return key.equals(StramClientUtils.DT_DFS_ROOT_DIR)
+            || key.equals(LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS)
+            || key.equals(StramClientUtils.DT_CONFIG_STATUS)
+            || key.equals(StramClientUtils.DT_VERSION)
+            || key.equals(StreamingApplication.DT_PREFIX + LogicalPlan.GATEWAY_CONNECT_ADDRESS.getName());
   }
 
   public JSONObject toJSONObject()

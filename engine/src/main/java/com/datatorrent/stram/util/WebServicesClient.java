@@ -18,15 +18,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.http.auth.AuthSchemeProvider;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.AuthSchemes;
 import org.apache.http.client.params.AuthPolicy;
+import org.apache.http.config.Lookup;
+import org.apache.http.config.RegistryBuilder;
 import org.apache.http.impl.auth.SPNegoSchemeFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.PoolingClientConnectionManager;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
 /**
  * <p>WebServicesClient class.</p>
@@ -39,13 +44,13 @@ public class WebServicesClient
 
   private static final Logger LOG = LoggerFactory.getLogger(WebServicesClient.class);
 
-  private static final PoolingClientConnectionManager connectionManager;
+  private static final PoolingHttpClientConnectionManager connectionManager;
   private static final CredentialsProvider credentialsProvider;
 
   private final Client client;
 
   static {
-    connectionManager = new PoolingClientConnectionManager();
+    connectionManager = new PoolingHttpClientConnectionManager();
     connectionManager.setMaxTotal(200);
     connectionManager.setDefaultMaxPerRoute(5);
     credentialsProvider = new BasicCredentialsProvider();
@@ -68,10 +73,14 @@ public class WebServicesClient
 
   public WebServicesClient() {
     if (UserGroupInformation.isSecurityEnabled()) {
-      DefaultHttpClient httpClient = new DefaultHttpClient(connectionManager);
-      httpClient.setCredentialsProvider(credentialsProvider);
-      httpClient.getAuthSchemes().register(AuthPolicy.SPNEGO, new SPNegoSchemeFactory(true));
-      ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClient, new BasicCookieStore(), false);
+      HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
+      httpClientBuilder.setConnectionManager(connectionManager);
+      httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+      Lookup<AuthSchemeProvider> authProviders = RegistryBuilder.<AuthSchemeProvider>create()
+              .register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory(true))
+              .build();
+      httpClientBuilder.setDefaultAuthSchemeRegistry(authProviders);
+      ApacheHttpClient4Handler httpClientHandler = new ApacheHttpClient4Handler(httpClientBuilder.build(), new BasicCookieStore(), false);
       client = new Client(httpClientHandler);
     } else {
       client = Client.create();

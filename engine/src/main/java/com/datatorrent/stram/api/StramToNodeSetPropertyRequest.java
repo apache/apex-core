@@ -4,7 +4,6 @@
 package com.datatorrent.stram.api;
 
 import java.io.Serializable;
-import java.util.Map;
 
 /**
  * <p>StramToNodeChangeLoggersRequest class.</p>

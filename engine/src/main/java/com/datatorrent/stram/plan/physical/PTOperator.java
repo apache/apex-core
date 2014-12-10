@@ -20,6 +20,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -277,8 +278,20 @@ public class PTOperator implements java.io.Serializable
     return pkeys;
   }
 
-  public void setPartitionKeys(Map<InputPort<?>, PartitionKeys> keys) {
-    this.partitionKeys = OperatorPartitions.convertPartitionKeys(this, keys);
+  public void setPartitionKeys(Map<InputPort<?>, PartitionKeys> portKeys) {
+    if (portKeys == null) {
+      this.partitionKeys = Collections.emptyMap();
+      return;
+    }
+    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(portKeys.size());
+    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : portKeys.entrySet()) {
+      LogicalPlan.InputPortMeta pportMeta = operatorMeta.getMeta(portEntry.getKey());
+      if (pportMeta == null) {
+        throw new AssertionError("Invalid port reference " + portEntry);
+      }
+      partitionKeys.put(pportMeta, portEntry.getValue());
+    }
+    this.partitionKeys = partitionKeys;
   }
 
   public boolean isUnifier()

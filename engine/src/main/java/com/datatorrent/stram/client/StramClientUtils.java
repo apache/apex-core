@@ -68,6 +68,7 @@ public class StramClientUtils
 {
   public static final String DT_LICENSE_FILE = LogicalPlanConfiguration.LICENSE_PREFIX + "file";
   public static final String DT_LICENSE_MASTER_MEMORY = LogicalPlanConfiguration.LICENSE_PREFIX + "MASTER_MEMORY_MB";
+  public static final String DT_VERSION = StreamingApplication.DT_PREFIX + "version";
   public static final String DT_DFS_ROOT_DIR = StreamingApplication.DT_PREFIX + "dfsRootDirectory";
   public static final String DT_DFS_USER_NAME = "%USER_NAME%";
   public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";

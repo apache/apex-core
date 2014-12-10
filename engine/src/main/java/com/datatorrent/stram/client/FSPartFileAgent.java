@@ -7,8 +7,6 @@ package com.datatorrent.stram.client;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.codehaus.jettison.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,16 +17,16 @@ import org.slf4j.LoggerFactory;
  * @author David Yan <david@datatorrent.com>
  * @since 0.9.0
  */
-public abstract class FSPartFileAgent extends StramAgent
+public abstract class FSPartFileAgent 
 {
   private static final Logger LOG = LoggerFactory.getLogger(FSPartFileAgent.class);
   private final Map<String, String> lastIndexLines = new HashMap<String, String>();
-
+  protected final StramAgent stramAgent;
   protected abstract IndexLine parseIndexLine(String line) throws JSONException;
 
-  public FSPartFileAgent(FileSystem fs)
+  public FSPartFileAgent(StramAgent stramAgent)
   {
-    super(fs);
+    this.stramAgent = stramAgent;
   }
 
   public void setLastIndexLine(String basePath, String line)

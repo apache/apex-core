@@ -15,7 +15,9 @@
  */
 package com.datatorrent.api;
 
+import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
@@ -61,6 +63,19 @@ public interface Context
   {
     Object aggregate(Collection<?> countersList);
 
+  }
+
+  /**
+   * The interface to control the container JVM Opts based on the operator(s) configuration
+   */
+  public interface ContainerOptConfigurator extends Serializable
+  {
+    /**
+     * Get the container JVM opts based on the operator(s) configuration.
+     * @param operatorMetaList The list of operators that are assigned to the container
+     * @return The JVM options for the container
+     */
+    String getJVMOptions(List<DAG.OperatorMeta> operatorMetaList);
   }
 
   public interface PortContext extends Context
@@ -142,30 +157,6 @@ public interface Context
      */
     Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(new Integer2String());
     /**
-     * Count of initial partitions for the operator. The number is interpreted as follows:
-     * <p>
-     * Default partitioning (operator does not implement {@link Partitioner}):<br>
-     * The platform creates the initial partitions by cloning the operator from the logical plan.<br>
-     * Default partitioning does not consider operator state on split or merge.
-     * <p>
-     * Operator implements {@link Partitioner}:<br>
-     * Value given as initial capacity hint to {@link Partitioner#definePartitions(java.util.Collection, int)}
-     * The operator implementation controls instance number and initialization on a per partition basis.
-     */
-    Attribute<Integer> INITIAL_PARTITION_COUNT = new Attribute<Integer>(1);
-    /**
-     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning. When this
-     * attribute is set and partitioning is enabled if the number of tuples per second falls below the specified rate
-     * the physical operators are consolidated into fewer operators till the rate goes above the specified minimum.
-     */
-    Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
-    /**
-     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning. When this
-     * attribute is set and partitioning is enabled if the number of tuples per second goes above the specified rate new
-     * physical operators are spawned till the rate again goes below the specified maximum.
-     */
-    Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
-    /**
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
@@ -180,6 +171,11 @@ public interface Context
      * Memory resource that the operator requires for optimal functioning. Used to calculate total memory requirement for containers.
      */
     Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
+    /**
+     * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
+     */
+    Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
+
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
@@ -309,14 +305,13 @@ public interface Context
      */
     Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
     /**
+     * The queue to which the application should be submitted..
+     */
+    Attribute<String> QUEUE_NAME = new Attribute<String>("default");
+    /**
      * Dump extra debug information in launcher, master and containers.
      */
     Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
-    /**
-     * @deprecated As of release 1.0.2, replaced by {@link OperatorContext#MEMORY_MB}
-     */
-    @Deprecated
-    Attribute<Integer> CONTAINER_MEMORY_MB = new Attribute<Integer>(1024);
     /**
      * The options to be pass to JVM when launching the containers. Options such as java maximum heap size can be specified here.
      */
@@ -416,6 +411,10 @@ public interface Context
      * if the THROUGHPUT_CALCULATION_INTERVAL is exceeded. Default value is 1000 samples.
      */
     Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
+    /**
+     * The agent which can be used to find the jvm options for the container.
+     */
+    Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<ContainerOptConfigurator>(new Object2String<ContainerOptConfigurator>());
     /**
      * The string codec map for classes that are to be set or get through properties as strings.
      * Only supports string codecs that have a constructor with no arguments

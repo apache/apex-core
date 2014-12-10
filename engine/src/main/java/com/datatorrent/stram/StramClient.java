@@ -4,16 +4,14 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.api.Context.OperatorContext;
-
-import com.datatorrent.lib.util.FSStorageAgent;
-import com.datatorrent.stram.client.StramClientUtils;
-import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.engine.StreamingContainer;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-
-import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,14 +38,17 @@ import org.apache.log4j.DTLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.util.*;
+import com.google.common.base.Objects;
+import com.google.common.collect.Lists;
+
+import com.datatorrent.api.Context.OperatorContext;
+
+import com.datatorrent.lib.util.FSStorageAgent;
+import com.datatorrent.lib.util.BasicContainerOptConfigurator;
+import com.datatorrent.stram.client.StramClientUtils;
+import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.engine.StreamingContainer;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  * Submits application to YARN<p>
@@ -71,8 +72,6 @@ public class StramClient
   // Application master specific info to register a new Application with RM/ASM
   // App master priority
   private final int amPriority = 0;
-  // Queue for App master
-  private final String amQueue = "default";
   private ApplicationId appId;
   private final LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
@@ -426,6 +425,9 @@ public class StramClient
         // use conf client side to pickup any proxy settings from dt-site.xml
         dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(checkpointPath.toString(), conf));
       }
+      if(dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR) == null){
+        dag.setAttribute(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR,new BasicContainerOptConfigurator());
+      }
 
       // Set the log4j properties if needed
       if (!log4jPropFile.isEmpty()) {
@@ -558,7 +560,7 @@ public class StramClient
       pri.setPriority(amPriority);
       appContext.setPriority(pri);
       // Set the queue to which this application is to be submitted in the RM
-      appContext.setQueue(amQueue);
+      appContext.setQueue(dag.getAttributes().get(LogicalPlan.QUEUE_NAME));
 
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);

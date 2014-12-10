@@ -222,6 +222,14 @@
                     <include>PubSubWebSocketClient.java</include>
                     <include>NumberAggregate.java</include>
                     <include>FSStorageAgent.java</include>
+                    <include>BasicContainerOptConfigurator.java</include>
+                  </includes>
+                </resource>
+                <resource>
+                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/partitioner</directory>
+                  <targetPath>com/datatorrent/lib/partitioner</targetPath>
+                  <includes>
+                    <include>StatelessPartitioner.java</include>
                   </includes>
                 </resource>
               </resources>

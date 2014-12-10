@@ -41,7 +41,8 @@ public class TupleRecorder
   private final HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = WindowGenerator.MIN_WINDOW_ID - 1;
   private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
-  private long startTime = System.currentTimeMillis();
+  private long startTime = Stats.INVALID_TIME_MILLIS;
+  private String id;
   private final String appId;
   private int nextPortIndex = 0;
   private final HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
@@ -90,8 +91,9 @@ public class TupleRecorder
 
   };
 
-  public TupleRecorder(String appId)
+  public TupleRecorder(String id, String appId)
   {
+    this.id = id;
     this.appId = appId;
   }
 
@@ -147,8 +149,9 @@ public class TupleRecorder
     if (this.startTime == Stats.INVALID_TIME_MILLIS) {
       this.startTime = startTime;
     }
-
-    throw new IllegalStateException("Tuple recorder has already started");
+    else {
+      throw new IllegalStateException("Tuple recorder has already started at " + this.startTime);
+    }
   }
 
   /* defined for json information */
@@ -202,6 +205,11 @@ public class TupleRecorder
     return startTime;
   }
 
+  public String getId()
+  {
+    return id;
+  }
+
   public void addInputPortInfo(String portName, String streamName)
   {
     PortInfo portInfo = new PortInfo();
@@ -240,8 +248,10 @@ public class TupleRecorder
   {
     try {
       storage.setup();
-      // this is the right place to init startTime, please enable the following call and disable the assignment in the constructor!
-      //setStartTime(System.currentTimeMillis());
+      setStartTime(System.currentTimeMillis());
+      if (id == null) {
+        id = String.valueOf(startTime);
+      }
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       bos.write((VERSION + "\n").getBytes());

@@ -51,12 +51,15 @@ import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.StringCodecs;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
+import java.text.SimpleDateFormat;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  *
@@ -326,6 +329,17 @@ public class StramWebServices
     return new JSONObject();
   }
 
+  private static String getTupleRecordingId()
+  {
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
+    String val = sdf.format(new Date());
+    val += "-";
+    byte[] r = new byte[4];
+    new Random().nextBytes(r);
+    val += Base64.encodeBase64URLSafeString(r);
+    return val;
+  }
+
   @POST
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
@@ -336,9 +350,11 @@ public class StramWebServices
     long numWindows = 0;
     if (StringUtils.isNotBlank(content)) {
       JSONObject r = new JSONObject(content);
-      numWindows = r.getLong("numWindows");
+      numWindows = r.optLong("numWindows", 0);
     }
-    dagManager.startRecording(Integer.valueOf(opId), null, numWindows);
+    String id = getTupleRecordingId();
+    dagManager.startRecording(id, Integer.valueOf(opId), null, numWindows);
+    response.put("id", id);
     return response;
   }
 
@@ -352,9 +368,11 @@ public class StramWebServices
     long numWindows = 0;
     if (StringUtils.isNotBlank(content)) {
       JSONObject r = new JSONObject(content);
-      numWindows = r.getLong("numWindows");
+      numWindows = r.optLong("numWindows", 0);
     }
-    dagManager.startRecording(Integer.valueOf(opId), portName, numWindows);
+    String id = getTupleRecordingId();
+    dagManager.startRecording(id, Integer.valueOf(opId), portName, numWindows);
+    response.put("id", id);
     return response;
   }
 

@@ -95,6 +95,8 @@ public class DTCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(DTCli.class);
   private Configuration conf;
+  private FileSystem fs;
+  private StramAgent stramAgent;
   private final YarnClient yarnClient = YarnClient.createYarnClient();
   private ApplicationReport currentApp = null;
   private boolean consolePresent;
@@ -367,13 +369,13 @@ public class DTCli
       appLauncher = new StramAppLauncher(jf, config);
     }
     else {
-      FileSystem fs = FileSystem.newInstance(uri, conf);
+      FileSystem tmpFs = FileSystem.newInstance(uri, conf);
       try {
         Path path = new Path(uri.getPath());
-        appLauncher = new StramAppLauncher(fs, path, config);
+        appLauncher = new StramAppLauncher(tmpFs, path, config);
       }
       finally {
-        fs.close();
+        tmpFs.close();
       }
     }
     if (appLauncher != null) {
@@ -1010,7 +1012,8 @@ public class DTCli
   public void init(String[] args) throws IOException
   {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
-    StramAgent.setConfiguration(conf);
+    fs = StramClientUtils.newFileSystemInstance(conf);
+    stramAgent = new StramAgent(fs, conf);
 
     // Need to initialize security before starting RPC for the credentials to
     // take effect
@@ -1164,7 +1167,7 @@ public class DTCli
 
   private void setupAgents() throws IOException
   {
-    recordingsAgent = new RecordingsAgent(StramClientUtils.newFileSystemInstance(conf));
+    recordingsAgent = new RecordingsAgent(stramAgent);
   }
 
   public void run() throws IOException
@@ -1600,7 +1603,7 @@ public class DTCli
     WebResource r;
 
     try {
-      r = StramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
+      r = stramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
     }
     catch (IncompatibleVersionException ex) {
       throw new CliException("Incompatible stram version", ex);
@@ -1642,7 +1645,7 @@ public class DTCli
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     appReport = assertRunningApp(appReport); // or else "N/A" might be there..
     try {
-      WebResource wr = StramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
+      WebResource wr = stramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
       if (wr == null) {
         throw new CliException("Cannot access the application master for this application.");
       }
@@ -2728,8 +2731,8 @@ public class DTCli
       }
       else {
         String opId = args[1];
-        long startTime = Long.valueOf(args[2]);
-        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, startTime);
+        String id = args[2];
+        RecordingInfo recordingInfo = recordingsAgent.getRecordingInfo(currentApp.getApplicationId().toString(), opId, id);
         printJson(new JSONObject(mapper.writeValueAsString(recordingInfo)));
       }
     }
@@ -3149,15 +3152,15 @@ public class DTCli
           files[i] = uri.getPath();
         }
         else {
-          FileSystem fs = FileSystem.newInstance(uri, conf);
+          FileSystem tmpFs = FileSystem.newInstance(uri, conf);
           try {
             Path srcPath = new Path(uri.getPath());
             Path dstPath = new Path(tmpDir.getAbsolutePath(), String.valueOf(i) + srcPath.getName());
-            fs.copyToLocalFile(srcPath, dstPath);
+            tmpFs.copyToLocalFile(srcPath, dstPath);
             files[i] = dstPath.toUri().getPath();
           }
           finally {
-            fs.close();
+            tmpFs.close();
           }
         }
       }
@@ -3660,123 +3663,99 @@ public class DTCli
       LaunchCommandLineInfo commandLineInfo = getLaunchCommandLineInfo(newArgs);
 
       AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
-      DTConfiguration launchProperties = new DTConfiguration();
-      Map<String, String> defaultProperties = ap.getDefaultProperties();
-      Set<String> requiredProperties = new TreeSet<String>(ap.getRequiredProperties());
-
-      for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
-        launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
-        requiredProperties.remove(entry.getKey());
-      }
-
-      // settings specified in the user's environment take precedence over defaults in package.
-      // since both are merged into a single -conf option below, apply them on top of the defaults here.
-      File confFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
-      if (confFile.exists()) {
-        Configuration conf = new Configuration(false);
-        conf.addResource(new Path(confFile.toURI()));
-        Iterator<Entry<String, String>> it = conf.iterator();
-        while (it.hasNext()) {
-          Entry<String, String> entry = it.next();
-          // filter relevant entries
-          if (entry.getKey().startsWith(StreamingApplication.DT_PREFIX)) {
-            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
-            requiredProperties.remove(entry.getKey());
-          }
-        }
-      }
-
       String matchAppName = null;
       if (commandLineInfo.args.length > 1) {
         matchAppName = commandLineInfo.args[1];
       }
 
-      try {
-        List<AppInfo> applications = new ArrayList<AppInfo>(ap.getApplications());
+      List<AppInfo> applications = new ArrayList<AppInfo>(ap.getApplications());
 
-        if (matchAppName != null) {
-          Iterator<AppInfo> it = applications.iterator();
-          while (it.hasNext()) {
-            AppInfo ai = it.next();
-            if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
-              || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
-              it.remove();
-            }
+      if (matchAppName != null) {
+        Iterator<AppInfo> it = applications.iterator();
+        while (it.hasNext()) {
+          AppInfo ai = it.next();
+          if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
+                  || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
+            it.remove();
           }
         }
+      }
 
-        AppInfo selectedApp = null;
+      AppInfo selectedApp = null;
 
-        if (applications.isEmpty()) {
-          throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
+      if (applications.isEmpty()) {
+        throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
+      }
+      else if (applications.size() == 1) {
+        selectedApp = applications.get(0);
+      }
+      else {
+        //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
+        TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
+        // Display matching applications
+        for (int i = 0; i < applications.size(); i++) {
+          String appName = applications.get(i).name;
+          appNamesInAlphabeticalOrder.put(appName, i);
         }
-        else if (applications.size() == 1) {
-          selectedApp = applications.get(0);
+
+        //Create a mapping between the app display number and original index at matchingAppFactories
+        int index = 1;
+        HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
+        for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
+          //Map display number of the app to original unsorted index
+          displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
+
+          //Display the app names
+          System.out.printf("%3d. %s\n", index++, entry.getKey());
+        }
+
+        // Exit if not in interactive mode
+        if (!consolePresent) {
+          throw new CliException("More than one application in Application Package match '" + matchAppName + "'");
         }
         else {
-          //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
-          TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
-          // Display matching applications
-          for (int i = 0; i < applications.size(); i++) {
-            String appName = applications.get(i).name;
-            appNamesInAlphabeticalOrder.put(appName, i);
+
+          boolean useHistory = reader.isHistoryEnabled();
+          reader.setHistoryEnabled(false);
+          History previousHistory = reader.getHistory();
+          History dummyHistory = new MemoryHistory();
+          reader.setHistory(dummyHistory);
+          List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+          for (Completer c : completers) {
+            reader.removeCompleter(c);
           }
-
-          //Create a mapping between the app display number and original index at matchingAppFactories
-          int index = 1;
-          HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
-          for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
-            //Map display number of the app to original unsorted index
-            displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
-
-            //Display the app names
-            System.out.printf("%3d. %s\n", index++, entry.getKey());
+          reader.setHandleUserInterrupt(true);
+          String optionLine;
+          try {
+            optionLine = reader.readLine("Choose application: ");
           }
-
-          // Exit if not in interactive mode
-          if (!consolePresent) {
-            throw new CliException("More than one application in Application Package match '" + matchAppName + "'");
-          }
-          else {
-
-            boolean useHistory = reader.isHistoryEnabled();
-            reader.setHistoryEnabled(false);
-            History previousHistory = reader.getHistory();
-            History dummyHistory = new MemoryHistory();
-            reader.setHistory(dummyHistory);
-            List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+          finally {
+            reader.setHandleUserInterrupt(false);
+            reader.setHistoryEnabled(useHistory);
+            reader.setHistory(previousHistory);
             for (Completer c : completers) {
-              reader.removeCompleter(c);
-            }
-            reader.setHandleUserInterrupt(true);
-            String optionLine;
-            try {
-              optionLine = reader.readLine("Choose application: ");
-            }
-            finally {
-              reader.setHandleUserInterrupt(false);
-              reader.setHistoryEnabled(useHistory);
-              reader.setHistory(previousHistory);
-              for (Completer c : completers) {
-                reader.addCompleter(c);
-              }
-            }
-            try {
-              int option = Integer.parseInt(optionLine);
-              if (0 < option && option <= applications.size()) {
-                int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
-                selectedApp = applications.get(appIndex);
-              }
-            }
-            catch (Exception ex) {
-              // ignore
+              reader.addCompleter(c);
             }
           }
+          try {
+            int option = Integer.parseInt(optionLine);
+            if (0 < option && option <= applications.size()) {
+              int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
+              selectedApp = applications.get(appIndex);
+            }
+          }
+          catch (Exception ex) {
+            // ignore
+          }
         }
+      }
 
-        if (selectedApp == null) {
-          throw new CliException("No application selected");
-        }
+      if (selectedApp == null) {
+        throw new CliException("No application selected");
+      }
+
+      try {
+        DTConfiguration launchProperties = getLaunchAppPackageProperties(ap, commandLineInfo);
         String appFile = ap.tempDirectory() + "/app/" + selectedApp.file;
 
         List<String> launchArgs = new ArrayList<String>();
@@ -3812,16 +3791,6 @@ public class DTCli
           launchArgs.add("-libjars");
           launchArgs.add(libjarsVal.toString());
         }
-        if (commandLineInfo.configFile != null) {
-          DTConfiguration givenConfig = new DTConfiguration();
-          givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.configFile));
-          for (Map.Entry<String, String> entry : givenConfig) {
-            launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
-            requiredProperties.remove(entry.getKey());
-          }
-        }
-
-        StramClientUtils.evalProperties(launchProperties);
 
         File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
         launchProperties.writeToFile(launchPropertiesFile, "");
@@ -3846,38 +3815,84 @@ public class DTCli
           launchArgs.add("-license");
           launchArgs.add(commandLineInfo.licenseFile);
         }
-        if (commandLineInfo.overrideProperties != null) {
-          for (Map.Entry<String, String> entry : commandLineInfo.overrideProperties.entrySet()) {
-            launchArgs.add("-D");
-            launchArgs.add(entry.getKey() + "=" + entry.getValue());
-            requiredProperties.remove(entry.getKey());
-          }
-        }
         launchArgs.add(appFile);
         if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
           launchArgs.add(selectedApp.name);
         }
 
-        // now look at whether it is in default configuration
-        for (Map.Entry<String, String> entry : conf) {
-          if (StringUtils.isNotBlank(entry.getValue())) {
-            requiredProperties.remove(entry.getKey());
-          }
-        }
-
-        if (requiredProperties.isEmpty()) {
-          LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
-          new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
-        }
-        else {
-          throw new CliException("Required properties not set: " + StringUtils.join(requiredProperties, ", "));
-        }
+        LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
+        new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
       }
       finally {
         IOUtils.closeQuietly(ap);
       }
     }
 
+  }
+
+  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, LaunchCommandLineInfo commandLineInfo) throws Exception
+  {
+    DTConfiguration launchProperties = new DTConfiguration();
+    Map<String, String> defaultProperties = ap.getDefaultProperties();
+    Set<String> requiredProperties = new TreeSet<String>(ap.getRequiredProperties());
+
+    for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
+      launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+      requiredProperties.remove(entry.getKey());
+    }
+
+      // settings specified in the user's environment take precedence over defaults in package.
+    // since both are merged into a single -conf option below, apply them on top of the defaults here.
+    File confFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE);
+    if (confFile.exists()) {
+      Configuration userConf = new Configuration(false);
+      userConf.addResource(new Path(confFile.toURI()));
+      Iterator<Entry<String, String>> it = userConf.iterator();
+      while (it.hasNext()) {
+        Entry<String, String> entry = it.next();
+        // filter relevant entries
+        if (entry.getKey().startsWith(StreamingApplication.DT_PREFIX)) {
+          launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+          requiredProperties.remove(entry.getKey());
+        }
+      }
+    }
+
+    if (commandLineInfo.apConfigFile != null) {
+      DTConfiguration givenConfig = new DTConfiguration();
+      givenConfig.loadFile(new File(ap.tempDirectory() + "/conf/" + commandLineInfo.apConfigFile));
+      for (Map.Entry<String, String> entry : givenConfig) {
+        launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+        requiredProperties.remove(entry.getKey());
+      }
+    }
+    if (commandLineInfo.configFile != null) {
+      DTConfiguration givenConfig = new DTConfiguration();
+      givenConfig.loadFile(new File(commandLineInfo.configFile));
+      for (Map.Entry<String, String> entry : givenConfig) {
+        launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+        requiredProperties.remove(entry.getKey());
+      }
+    }
+    if (commandLineInfo.overrideProperties != null) {
+      for (Map.Entry<String, String> entry : commandLineInfo.overrideProperties.entrySet()) {
+        launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+        requiredProperties.remove(entry.getKey());
+      }
+    }
+
+    // now look at whether it is in default configuration
+    for (Map.Entry<String, String> entry : conf) {
+      if (StringUtils.isNotBlank(entry.getValue())) {
+        requiredProperties.remove(entry.getKey());
+      }
+    }
+    if (!requiredProperties.isEmpty()) {
+      throw new CliException("Required properties not set: " + StringUtils.join(requiredProperties, ", "));
+    }
+
+    StramClientUtils.evalProperties(launchProperties);
+    return launchProperties;
   }
 
   private class GetAppPackageOperatorsCommand implements Command
@@ -3951,6 +3966,7 @@ public class DTCli
     final Options options = new Options();
     final Option local = add(new Option("local", "Run application in local mode."));
     final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf"));
+    final Option apConfigFile = add(OptionBuilder.withArgName("app package configuration file").hasArg().withDescription("Specify an application configuration file within the app package if launching an app package.").create("apconf"));
     final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
     final Option libjars = add(OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar files to include in the classpath.").create("libjars"));
     final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied to the cluster.").create("files"));
@@ -3970,13 +3986,14 @@ public class DTCli
 
   private static LaunchCommandLineOptions LAUNCH_OPTIONS = new LaunchCommandLineOptions();
 
-  private static LaunchCommandLineInfo getLaunchCommandLineInfo(String[] args) throws ParseException
+  static LaunchCommandLineInfo getLaunchCommandLineInfo(String[] args) throws ParseException
   {
     CommandLineParser parser = new PosixParser();
     LaunchCommandLineInfo result = new LaunchCommandLineInfo();
     CommandLine line = parser.parse(LAUNCH_OPTIONS.options, args);
     result.localMode = line.hasOption(LAUNCH_OPTIONS.local.getOpt());
     result.configFile = line.getOptionValue(LAUNCH_OPTIONS.configFile.getOpt());
+    result.apConfigFile = line.getOptionValue(LAUNCH_OPTIONS.apConfigFile.getOpt());
     result.ignorePom = line.hasOption(LAUNCH_OPTIONS.ignorePom.getOpt());
     String[] defs = line.getOptionValues(LAUNCH_OPTIONS.defProperty.getOpt());
     if (defs != null) {
@@ -4001,11 +4018,12 @@ public class DTCli
     return result;
   }
 
-  private static class LaunchCommandLineInfo
+  static class LaunchCommandLineInfo
   {
     boolean localMode;
     boolean ignorePom;
     String configFile;
+    String apConfigFile;
     Map<String, String> overrideProperties;
     String libjars;
     String files;
