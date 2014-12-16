@@ -14,9 +14,6 @@ public enum Permission
   /**
    * View applications launched by others
    */
-  /**
-   * View applications launched by others
-   */
   VIEW_OTHER_USERS_APPS,
   /**
    * Manage applications launched by others
@@ -43,17 +40,21 @@ public enum Permission
    */
   MANAGE_LICENSES,
   /**
-   * View App Packages
-   */
-  VIEW_APP_PACKAGES,
-  /**
    * Launch App Packages
    */
   LAUNCH_APPS,
   /**
-   * Manage App Packages
+   * Upload App Packages
    */
-  MANAGE_APP_PACKAGES,
+  UPLOAD_APP_PACKAGES,
+  /**
+   * View other users' App Packages
+   */
+  VIEW_OTHER_USERS_APP_PACKAGES,
+  /**
+   * Manage other users' App Packages
+   */
+  MANAGE_OTHER_USERS_APP_PACKAGES,
   /**
    * Manage users (create/delete users, change password)
    */
