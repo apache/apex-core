@@ -38,7 +38,7 @@ done
 # In development mode, if configuration files are not found, locate DT_HADOOP manually
 if [ -z "${DT_HADOOP}" ]; then
   HADOOP_SEARCH_PATH="${HADOOP_PREFIX}/bin:${HADOOP_HOME}/bin:${PATH}:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:."
-  DT_HADOOP=`PATH=${HADOOP_SEARCH_PATH} && command -v hadoop 2>/dev/null`
+  export DT_HADOOP=`PATH=${HADOOP_SEARCH_PATH} && command -v hadoop 2>/dev/null`
 fi
 
 if [ "$DT_CLIENT_OPTS" = "" ]; then

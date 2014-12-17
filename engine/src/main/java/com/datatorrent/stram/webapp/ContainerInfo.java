@@ -20,7 +20,7 @@ public class ContainerInfo {
   @RecordField(type = "meta", publish = false)
   public String host;
   public String state;
-  @RecordField(type = "meta", publish = false)
+  @RecordField(type = "meta")
   public String jvmName;
   public long lastHeartbeat;
   @RecordField(type = "stats")

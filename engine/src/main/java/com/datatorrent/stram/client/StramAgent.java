@@ -12,8 +12,6 @@ import com.datatorrent.stram.webapp.WebServices;
 import com.sun.jersey.api.client.*;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.NewCookie;
 import org.apache.commons.io.IOUtils;
@@ -26,7 +24,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -54,7 +51,7 @@ public class StramAgent extends FSAgent
         securityInfo = new SecurityInfo(secToken);
       }
       try {
-        this.sharingInfo = new AppSharingInfo(sharingInfo);
+        this.sharingInfo = new SharingInfo(sharingInfo);
       }
       catch (JSONException ex) {
         LOG.error("Caught exception when processing sharing info", ex);
@@ -66,7 +63,7 @@ public class StramAgent extends FSAgent
     String appPath;
     String user;
     SecurityInfo securityInfo;
-    AppSharingInfo sharingInfo;
+    SharingInfo sharingInfo;
   }
 
   private static class SecurityInfo
@@ -88,111 +85,6 @@ public class StramAgent extends FSAgent
       return ((System.currentTimeMillis() - issueTime) >= expiryInterval);
     }
 
-  }
-
-  public static class AppSharingInfo
-  {
-    private final Set<String> readOnlyRoles = new TreeSet<String>();
-    private final Set<String> readOnlyUsers = new TreeSet<String>();
-    private final Set<String> readWriteRoles = new TreeSet<String>();
-    private final Set<String> readWriteUsers = new TreeSet<String>();
-    private boolean readOnlyEveryone = false;
-    private boolean readWriteEveryone = false;
-
-    public AppSharingInfo(JSONObject json) throws JSONException
-    {
-      if (json == null) {
-        return;
-      }
-      JSONObject readOnly = json.optJSONObject("readOnly");
-      JSONObject readWrite = json.optJSONObject("readWrite");
-      if (readOnly != null) {
-        JSONArray users = readOnly.optJSONArray("users");
-        if (users != null) {
-          for (int i = 0; i < users.length(); i++) {
-            readOnlyUsers.add(users.getString(i));
-          }
-        }
-        JSONArray roles = readOnly.optJSONArray("roles");
-        if (roles != null) {
-          for (int i = 0; i < roles.length(); i++) {
-            readOnlyRoles.add(roles.getString(i));
-          }
-        }
-        readOnlyEveryone = readOnly.optBoolean("everyone", false);
-      }
-      if (readWrite != null) {
-        JSONArray users = readWrite.optJSONArray("users");
-        if (users != null) {
-          for (int i = 0; i < users.length(); i++) {
-            readWriteUsers.add(users.getString(i));
-          }
-        }
-        JSONArray roles = readWrite.optJSONArray("roles");
-        if (roles != null) {
-          for (int i = 0; i < roles.length(); i++) {
-            readWriteRoles.add(roles.getString(i));
-          }
-        }
-        readWriteEveryone = readWrite.optBoolean("everyone", false);
-      }
-    }
-
-    public boolean canRead(String userName, Set<String> roles)
-    {
-      if (canWrite(userName, roles)) {
-        return true;
-      }
-      if (readOnlyEveryone) {
-        return true;
-      }
-      if (readOnlyUsers.contains(userName)) {
-        return true;
-      }
-      for (String role : roles) {
-        if (readOnlyRoles.contains(role)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    public boolean canWrite(String userName, Set<String> roles)
-    {
-      if (readWriteEveryone) {
-        return true;
-      }
-      if (readWriteUsers.contains(userName)) {
-        return true;
-      }
-      for (String role : roles) {
-        if (readWriteRoles.contains(role)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    public JSONObject toJSONObject()
-    {
-      JSONObject result = new JSONObject();
-      JSONObject readOnly = new JSONObject();
-      JSONObject readWrite = new JSONObject();
-      try {
-        readOnly.put("users", new JSONArray(readOnlyUsers));
-        readOnly.put("roles", new JSONArray(readOnlyRoles));
-        readOnly.put("everyone", readOnlyEveryone);
-        readWrite.put("users", new JSONArray(readWriteUsers));
-        readWrite.put("roles", new JSONArray(readWriteRoles));
-        readWrite.put("everyone", readWriteEveryone);
-        result.put("readOnly", readOnly);
-        result.put("readWrite", readWrite);
-      }
-      catch (JSONException ex) {
-        throw new RuntimeException(ex);
-      }
-      return result;
-    }
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAgent.class);
@@ -259,12 +151,14 @@ public class StramAgent extends FSAgent
 
   public String getWebServicesVersion(String appid)
   {
-    return getWebServicesInfo(appid).version;
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : info.version;
   }
 
-  public AppSharingInfo getSharingInfo(String appid)
+  public SharingInfo getSharingInfo(String appid)
   {
-    return getWebServicesInfo(appid).sharingInfo;
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : info.sharingInfo;
   }
 
   public WebResource getStramWebResource(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
@@ -305,17 +199,14 @@ public class StramAgent extends FSAgent
 
   public String getAppPath(String appId)
   {
-    try {
-      return getWebServicesInfo(appId).appPath;
-    }
-    catch (Exception ex) {
-      return getAppsRoot() + "/" + appId;
-    }
+    StramWebServicesInfo info = getWebServicesInfo(appId);
+    return info == null ? getAppsRoot() + "/" + appId : info.appPath;
   }
 
   public String getUser(String appid)
   {
-    return getWebServicesInfo(appid).user;
+    StramWebServicesInfo info = getWebServicesInfo(appid);
+    return info == null ? null : info.appPath;
   }
 
   private StramWebServicesInfo retrieveWebServicesInfo(String appId)

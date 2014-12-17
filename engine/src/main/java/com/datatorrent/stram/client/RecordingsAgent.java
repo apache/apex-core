@@ -268,7 +268,7 @@ public final class RecordingsAgent extends FSPartFileAgent
 
   private List<RecordingInfo> getRecordingInfoHelper(String appId, String opId, Set<String> containers)
   {
-    ArrayList<RecordingInfo> result = new ArrayList<RecordingInfo>();
+    List<RecordingInfo> result = new ArrayList<RecordingInfo>();
     String dir = getRecordingsDirectory(appId, opId);
     if (dir == null) {
       return result;
@@ -286,7 +286,10 @@ public final class RecordingsAgent extends FSPartFileAgent
         if (lfs.isDirectory()) {
           try {
             String id = lfs.getPath().getName();
-            result.add(getRecordingInfoHelper(appId, opId, id, containers));
+            RecordingInfo recordingInfo = getRecordingInfoHelper(appId, opId, id, containers);
+            if (recordingInfo != null) {
+              result.add(recordingInfo);
+            }
           }
           catch (NumberFormatException ex) {
             // ignore
