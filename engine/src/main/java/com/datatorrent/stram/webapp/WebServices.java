@@ -20,7 +20,7 @@ import org.codehaus.jettison.json.JSONObject;
 @Path(WebServices.PATH)
 public class WebServices
 {
-  public static final String VERSION = "v1";
+  public static final String VERSION = "v2";
   public static final String PATH = "/ws";
 
   @GET
