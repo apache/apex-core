@@ -4,14 +4,15 @@
  */
 package com.datatorrent.gateway;
 
-import com.datatorrent.gateway.security.AuthDatabase;
-import com.datatorrent.gateway.security.AuthenticationException;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -21,13 +22,15 @@ import org.eclipse.jetty.websocket.WebSocketServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.gateway.security.DTPrincipal;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.lib.util.PubSubMessage;
 import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
 import com.datatorrent.lib.util.PubSubMessageCodec;
+
+import com.datatorrent.gateway.security.AuthDatabase;
+import com.datatorrent.gateway.security.AuthenticationException;
+import com.datatorrent.gateway.security.DTPrincipal;
 import com.datatorrent.stram.util.LRUCache;
-import javax.servlet.http.Cookie;
 
 
 /**
@@ -121,30 +124,36 @@ public class PubSubWebSocketServlet extends WebSocketServlet
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
   {
-    if (DTGateway.WEB_AUTH_TYPE_PASSWORD.equals(gateway.getWebAuthType())) {
-      Cookie[] cookies = request.getCookies();
-      if (cookies != null) {
-        for (Cookie cookie : cookies) {
-          if ("session".equals(cookie.getName())) {
-            try {
-              AuthDatabase auth = gateway.getAuthDatabase();
-              DTPrincipal principal = auth.authenticateSession(cookie.getValue());
-              request.setAttribute(AUTH_ATTRIBUTE, principal);
-            }
-            catch (AuthenticationException ex) {
+    DTPrincipal principal = null;
+    AuthDatabase auth = gateway.getAuthDatabase();
+    if (gateway.isDTSessionHandled()) {
+      //if (DTGateway.WEB_AUTH_TYPE_PASSWORD.equals(gateway.getWebAuthType())) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+          for (Cookie cookie : cookies) {
+            if ("session".equals(cookie.getName())) {
+              try {
+                principal = auth.authenticateSession(cookie.getValue());
+                //request.setAttribute(AUTH_ATTRIBUTE, principal);
+              } catch (AuthenticationException ex) {
               /* commenting this out to allow anonymous publish from stram
                throw new WebApplicationException(ex, Status.FORBIDDEN);
                */
+              }
+              //super.service(request, response);
             }
-            //super.service(request, response);
           }
         }
-      }
       /* commenting this out to allow anonymous publish from stram
        throw new WebApplicationException(Status.UNAUTHORIZED);
        */
+      //}
+    } else if (gateway.isHadoopAuthFilterHandled()){
+      principal = auth.getUser(request.getUserPrincipal().getName());
     }
-     
+    if (principal != null) {
+      request.setAttribute(AUTH_ATTRIBUTE, principal);
+    }
     super.service(request, response);
   }
 
