@@ -11,7 +11,10 @@ import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -124,6 +127,7 @@ public class PubSubWebSocketServlet extends WebSocketServlet
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
   {
+    boolean handled = false;
     DTPrincipal principal = null;
     AuthDatabase auth = gateway.getAuthDatabase();
     if (gateway.isDTSessionHandled()) {
@@ -148,13 +152,32 @@ public class PubSubWebSocketServlet extends WebSocketServlet
        throw new WebApplicationException(Status.UNAUTHORIZED);
        */
       //}
-    } else if (gateway.isHadoopAuthFilterHandled()){
-      principal = auth.getUser(request.getUserPrincipal().getName());
+    } else if (gateway.isHadoopAuthFilterHandled()) {
+      final UserHolder userHolder = new UserHolder();
+      gateway.getHadoopAuthFilter().doFilter(request, response, new FilterChain()
+      {
+        @Override
+        public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse) throws IOException, ServletException
+        {
+          userHolder.username = ((HttpServletRequest)servletRequest).getUserPrincipal().getName();
+        }
+      });
+      if (response.getStatus() == HttpServletResponse.SC_OK) {
+        principal = auth.getUser(userHolder.username);
+      } else {
+        handled = true;
+      }
     }
-    if (principal != null) {
-      request.setAttribute(AUTH_ATTRIBUTE, principal);
+    if (!handled) {
+      if (principal != null) {
+        request.setAttribute(AUTH_ATTRIBUTE, principal);
+      }
+      super.service(request, response);
     }
-    super.service(request, response);
+  }
+
+  private class UserHolder {
+    public String username;
   }
 
   @Override
