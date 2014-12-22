@@ -7,18 +7,16 @@ package com.datatorrent.stram.api;
  *
  * @author David Yan <david@datatorrent.com>
  */
-
-
 public enum Permission
 {
   /**
    * View applications launched by others
    */
-  VIEW_OTHER_USERS_APPS,
+  VIEW_OTHER_USERS_APPS(true),
   /**
    * Manage applications launched by others
    */
-  MANAGE_OTHER_USERS_APPS,
+  MANAGE_OTHER_USERS_APPS(true),
   /**
    * View global settings
    */
@@ -30,7 +28,7 @@ public enum Permission
   /**
    * Access proxy to RM
    */
-  ACCESS_RM_PROXY,
+  ACCESS_RM_PROXY(true),
   /**
    * View licenses
    */
@@ -50,19 +48,19 @@ public enum Permission
   /**
    * View other users' App Packages
    */
-  VIEW_OTHER_USERS_APP_PACKAGES,
+  VIEW_OTHER_USERS_APP_PACKAGES(true),
   /**
    * Manage other users' App Packages
    */
-  MANAGE_OTHER_USERS_APP_PACKAGES,
+  MANAGE_OTHER_USERS_APP_PACKAGES(true),
   /**
    * Manage users (create/delete users, change password)
    */
-  MANAGE_USERS,
+  MANAGE_USERS(true),
   /**
    * Manage roles (create/delete roles)
    */
-  MANAGE_ROLES,
+  MANAGE_ROLES(true),
   /**
    * View system alerts
    */
@@ -70,5 +68,22 @@ public enum Permission
   /**
    * Manage system alerts
    */
-  MANAGE_SYSTEM_ALERTS
+  MANAGE_SYSTEM_ALERTS;
+
+  private boolean adminOnly = false;
+
+  Permission()
+  {
+  }
+
+  Permission(boolean adminOnly)
+  {
+    this.adminOnly = adminOnly;
+  }
+
+  public boolean isAdminOnly()
+  {
+    return adminOnly;
+  }
+
 }
