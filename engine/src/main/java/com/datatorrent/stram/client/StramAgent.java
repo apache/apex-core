@@ -4,16 +4,21 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
-import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
-import com.datatorrent.stram.security.StramWSFilter;
-import com.datatorrent.stram.util.*;
-import com.datatorrent.stram.webapp.WebServices;
-import com.sun.jersey.api.client.*;
 import java.io.IOException;
 import java.util.Map;
+
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.NewCookie;
+
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -24,10 +29,14 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.util.ConverterUtils;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
+import com.datatorrent.stram.client.WebServicesVersionConversion.VersionConversionFilter;
+import com.datatorrent.stram.security.StramWSFilter;
+import com.datatorrent.stram.util.HeaderClientFilter;
+import com.datatorrent.stram.util.LRUCache;
+import com.datatorrent.stram.util.WebServicesClient;
+import com.datatorrent.stram.webapp.WebServices;
 
 /**
  * <p>Abstract StramAgent class.</p>
@@ -206,7 +215,7 @@ public class StramAgent extends FSAgent
   public String getUser(String appid)
   {
     StramWebServicesInfo info = getWebServicesInfo(appid);
-    return info == null ? null : info.appPath;
+    return info == null ? null : info.user;
   }
 
   private StramWebServicesInfo retrieveWebServicesInfo(String appId)
