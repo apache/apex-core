@@ -50,7 +50,7 @@ public class StramAgent extends FSAgent
 
   private static class StramWebServicesInfo
   {
-    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath, String user, String secToken, JSONObject sharingInfo)
+    StramWebServicesInfo(String appMasterTrackingUrl, String version, String appPath, String user, String secToken, JSONObject permissionsInfo)
     {
       this.appMasterTrackingUrl = appMasterTrackingUrl;
       this.version = version;
@@ -60,10 +60,15 @@ public class StramAgent extends FSAgent
         securityInfo = new SecurityInfo(secToken);
       }
       try {
-        this.sharingInfo = new SharingInfo(sharingInfo);
+        if (permissionsInfo != null) {
+          this.permissionsInfo = new PermissionsInfo(permissionsInfo);
+        }
+        else {
+          this.permissionsInfo = null;
+        }
       }
       catch (JSONException ex) {
-        LOG.error("Caught exception when processing sharing info", ex);
+        LOG.error("Caught exception when processing permissions info", ex);
       }
     }
 
@@ -72,7 +77,7 @@ public class StramAgent extends FSAgent
     String appPath;
     String user;
     SecurityInfo securityInfo;
-    SharingInfo sharingInfo;
+    PermissionsInfo permissionsInfo;
   }
 
   private static class SecurityInfo
@@ -164,10 +169,10 @@ public class StramAgent extends FSAgent
     return info == null ? null : info.version;
   }
 
-  public SharingInfo getSharingInfo(String appid)
+  public PermissionsInfo getPermissionsInfo(String appid)
   {
     StramWebServicesInfo info = getWebServicesInfo(appid);
-    return info == null ? null : info.sharingInfo;
+    return info == null ? null : info.permissionsInfo;
   }
 
   public WebResource getStramWebResource(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
@@ -300,14 +305,14 @@ public class StramAgent extends FSAgent
       String appMasterUrl = response.getString("appMasterTrackingUrl");
       String appPath = response.getString("appPath");
       String user = response.getString("user");
-      JSONObject sharingInfo = null;
+      JSONObject permissionsInfo = null;
       FSDataInputStream is = null;
       try {
-        is = fileSystem.open(new Path(appPath, "sharing"));
-        sharingInfo = new JSONObject(IOUtils.toString(is));
+        is = fileSystem.open(new Path(appPath, "permissions.json"));
+        permissionsInfo = new JSONObject(IOUtils.toString(is));
       }
       catch (JSONException ex) {
-        LOG.error("Error reading from the sharing info. Ignoring", ex);
+        LOG.error("Error reading from the permissions info. Ignoring", ex);
       }
       catch (IOException ex) {
         // ignore
@@ -315,7 +320,7 @@ public class StramAgent extends FSAgent
       finally {
         IOUtils.closeQuietly(is);
       }
-      return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, sharingInfo);
+      return new StramWebServicesInfo(appMasterUrl, version, appPath, user, secToken, permissionsInfo);
     }
     catch (Exception ex) {
       LOG.debug("Caught exception when retrieving web service info for app " + appId, ex);

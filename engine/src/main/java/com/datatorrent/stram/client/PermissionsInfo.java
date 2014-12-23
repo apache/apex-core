@@ -13,7 +13,7 @@ import org.codehaus.jettison.json.JSONObject;
  *
  * @author David Yan <david@datatorrent.com>
  */
-public class SharingInfo
+public class PermissionsInfo
 {
 
   private final Set<String> readOnlyRoles = new TreeSet<String>();
@@ -23,11 +23,12 @@ public class SharingInfo
   private boolean readOnlyEveryone = false;
   private boolean readWriteEveryone = false;
 
-  public SharingInfo(JSONObject json) throws JSONException
+  public PermissionsInfo()
   {
-    if (json == null) {
-      return;
-    }
+  }
+
+  public PermissionsInfo(JSONObject json) throws JSONException
+  {
     JSONObject readOnly = json.optJSONObject("readOnly");
     JSONObject readWrite = json.optJSONObject("readWrite");
     if (readOnly != null) {
@@ -60,6 +61,56 @@ public class SharingInfo
       }
       readWriteEveryone = readWrite.optBoolean("everyone", false);
     }
+  }
+
+  public void addReadOnlyRole(String role)
+  {
+    readOnlyRoles.add(role);
+  }
+
+  public void removeReadOnlyRole(String role)
+  {
+    readOnlyRoles.remove(role);
+  }
+
+  public void addReadOnlyUser(String user)
+  {
+    readOnlyUsers.add(user);
+  }
+
+  public void removeReadOnlyUser(String user)
+  {
+    readOnlyUsers.remove(user);
+  }
+
+  public void setReadOnlyEveryone(boolean readOnlyEveryone)
+  {
+    this.readOnlyEveryone = readOnlyEveryone;
+  }
+
+  public void addReadWriteRole(String role)
+  {
+    readWriteRoles.add(role);
+  }
+
+  public void removeReadWriteRole(String role)
+  {
+    readWriteRoles.remove(role);
+  }
+
+  public void addReadWriteUser(String user)
+  {
+    readWriteRoles.add(user);
+  }
+
+  public void removeReadWriteUser(String user)
+  {
+    readWriteUsers.remove(user);
+  }
+
+  public void setReadWriteEveryone(boolean readWriteEveryone)
+  {
+    this.readWriteEveryone = readWriteEveryone;
   }
 
   public boolean canRead(String userName, Set<String> roles)

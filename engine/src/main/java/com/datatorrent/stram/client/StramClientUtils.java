@@ -74,6 +74,8 @@ public class StramClientUtils
   public static final String DT_DFS_USER_NAME = "%USER_NAME%";
   public static final String DT_CONFIG_STATUS = StreamingApplication.DT_PREFIX + "configStatus";
   public static final String SUBDIR_APPS = "apps";
+  public static final String SUBDIR_PROFILES = "profiles";
+  public static final String SUBDIR_CONF = "conf";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
 
   /**
@@ -454,7 +456,12 @@ public class StramClientUtils
 
   public static Path getDTDFSConfigDir(FileSystem fs, Configuration conf)
   {
-    return new Path(getDTDFSRootDir(fs, conf), "conf");
+    return new Path(getDTDFSRootDir(fs, conf), SUBDIR_CONF);
+  }
+
+  public static Path getDTDFSProfilesDir(FileSystem fs, Configuration conf)
+  {
+    return new Path(getDTDFSRootDir(fs, conf), SUBDIR_PROFILES);
   }
 
   public static byte[] getLicense(Configuration conf) throws IOException, URISyntaxException

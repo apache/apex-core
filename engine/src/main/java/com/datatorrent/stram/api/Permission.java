@@ -26,6 +26,14 @@ public enum Permission
    */
   EDIT_GLOBAL_CONFIG,
   /**
+   * View other users' settings
+   */
+  VIEW_OTHER_USERS_CONFIG(true),
+  /**
+   * Edit other users' settings
+   */
+  EDIT_OTHER_USERS_CONFIG(true),
+  /**
    * Access proxy to RM
    */
   ACCESS_RM_PROXY(true),
