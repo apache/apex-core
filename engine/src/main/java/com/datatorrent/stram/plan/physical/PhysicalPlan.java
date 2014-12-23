@@ -80,60 +80,6 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  /**
-   * Stats listener for throughput based partitioning.
-   * Used when thresholds are configured on operator through attributes.
-   */
-  public static class PartitionLoadWatch implements StatsListener, java.io.Serializable
-  {
-    private static final long serialVersionUID = 201312231633L;
-    public long evalIntervalMillis = 30*1000;
-    private final long tpsMin;
-    private final long tpsMax;
-    private final PMapping operMapping;
-    private long lastEvalMillis;
-    private long lastTps = 0;
-
-    private PartitionLoadWatch(PMapping operMapping, long min, long max) {
-      this.tpsMin = min;
-      this.tpsMax = max;
-      this.operMapping = operMapping;
-    }
-
-    protected LoadIndicator getLoadIndicator(int operatorId, long tps) {
-      if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
-        lastTps = tps;
-        if (tps < tpsMin) {
-          return new LoadIndicator(-1, String.format("Tuples per second %d is less than the minimum %d", tps, tpsMin));
-        }
-        else {
-          return new LoadIndicator(1, String.format("Tuples per second %d is greater than the maximum %d", tps, tpsMax));
-        }
-      }
-      lastTps = tps;
-      return new LoadIndicator(0, null);
-    }
-
-    @Override
-    public Response processStats(BatchedOperatorStats status)
-    {
-      long tps = operMapping.logicalOperator.getInputStreams().isEmpty() ? status.getTuplesEmittedPSMA() : status.getTuplesProcessedPSMA();
-      Response rsp = new Response();
-      LoadIndicator loadIndicator = getLoadIndicator(status.getOperatorId(), tps);
-      rsp.loadIndicator = loadIndicator.indicator;
-      if (rsp.loadIndicator != 0) {
-        if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
-          lastEvalMillis = System.currentTimeMillis();
-          LOG.debug("Requesting repartitioning for {}/{} {} {}", new Object[] {operMapping.logicalOperator, status.getOperatorId(), rsp.loadIndicator, tps});
-          rsp.repartitionRequired = true;
-          rsp.repartitionNote = loadIndicator.note;
-        }
-      }
-      return rsp;
-    }
-
-  }
-
   private final AtomicInteger idSequence = new AtomicInteger();
   final AtomicInteger containerSeq = new AtomicInteger();
   private LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
@@ -460,15 +406,6 @@ public class PhysicalPlan implements Serializable
         collection.add(firstPartition);
       }
       partitions = collection;
-    }
-
-    int minTps = m.logicalOperator.getValue(OperatorContext.PARTITION_TPS_MIN);
-    int maxTps = m.logicalOperator.getValue(OperatorContext.PARTITION_TPS_MAX);
-    if (maxTps > minTps) {
-      if (m.statsHandlers == null) {
-        m.statsHandlers = new ArrayList<StatsListener>(1);
-      }
-      m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
     Collection<StatsListener> statsListeners = m.logicalOperator.getValue(OperatorContext.STATS_LISTENERS);

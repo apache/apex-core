@@ -16,7 +16,6 @@ import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import com.datatorrent.common.util.Slice;
 
 /**
@@ -60,11 +59,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
         input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
-          //logger.debug("registering class {} => {}", pair.classname, pair.id);
-          register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
-          if (classResolver.nextAvailableRegistrationId <= pair.id) {
-            classResolver.nextAvailableRegistrationId = pair.id + 1;
-          }
+          classResolver.registerExplicit(pair);
         }
       }
       catch (Throwable th) {
@@ -139,6 +134,12 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     classResolver.unregisterImplicitlyRegisteredTypes();
   }
 
+  @Override
+  public StatefulStreamCodec<T> getPerStreamInstance()
+  {
+    return new DefaultStatefulStreamCodec<T>();
+  }
+
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 
@@ -197,6 +198,17 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
       //logger.debug("adding new classid pair {} => {}", nextAvailableRegistrationId, type.getName());
       pairs.add(new ClassIdPair(nextAvailableRegistrationId, type.getName()));
       return register(new Registration(type, kryo.getDefaultSerializer(type), nextAvailableRegistrationId++));
+    }
+
+    public void registerExplicit(ClassIdPair pair) throws ClassNotFoundException
+    {
+      //logger.debug("registering class {} => {}", pair.classname, pair.id);
+      //pairs.add(pair);
+      Class type = Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader());
+      register(new Registration(type, kryo.getDefaultSerializer(type), pair.id));
+      if (nextAvailableRegistrationId <= pair.id) {
+        nextAvailableRegistrationId = pair.id + 1;
+      }
     }
 
     public void init()

@@ -6,12 +6,20 @@ package com.datatorrent.stram.client;
 
 import java.io.*;
 import java.net.*;
+import java.security.PrivilegedExceptionAction;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
+
+import org.mozilla.javascript.Scriptable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
@@ -34,12 +42,6 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.log4j.DTLoggerFactory;
-import org.mozilla.javascript.Scriptable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
@@ -52,7 +54,6 @@ import com.datatorrent.stram.license.util.Util;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.util.ConfigValidator;
-import java.security.PrivilegedExceptionAction;
 
 /**
  * Collection of utility classes for command line interface package<p>
@@ -288,11 +289,7 @@ public class StramClientUtils
 
   public static Configuration addDTSiteResources(Configuration conf)
   {
-    conf.addResource(DT_DEFAULT_XML_FILE);
-    if (!isDevelopmentMode()) {
-      addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
-    }
-    addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
+    addDTLocalResources(conf);
     FileSystem fs = null;
     try {
       fs = newFileSystemInstance(conf);
@@ -349,6 +346,15 @@ public class StramClientUtils
     }
     LOG.info(" conf object in stramclient {}", conf);
     return conf;
+  }
+
+  public static void addDTLocalResources(Configuration conf)
+  {
+    conf.addResource(DT_DEFAULT_XML_FILE);
+    if (!isDevelopmentMode()) {
+      addDTSiteResources(conf, new File(StramClientUtils.getConfigDir(), StramClientUtils.DT_SITE_XML_FILE));
+    }
+    addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
   }
 
   private static Configuration addDTSiteResources(Configuration conf, File confFile)

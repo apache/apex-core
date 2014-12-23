@@ -66,8 +66,7 @@ import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.Dumm
  * Also test non-existent urls.
  * Adapted from MR.
  *
- *  /ws/v1/stram
- *  /ws/v1/stram/info
+ *  /ws/v2/stram /ws/v2/stram/info
  */
 public class StramWebServicesTest extends JerseyTest
 {
@@ -412,7 +411,7 @@ public class StramWebServicesTest extends JerseyTest
     WebResource r = resource();
     String responseStr = "";
     try {
-      responseStr = r.path("ws").path("v1").path("invalid")
+      responseStr = r.path("ws").path("v2").path("invalid")
               .accept(MediaType.APPLICATION_JSON).get(String.class);
       fail("should have thrown exception on invalid uri");
     }

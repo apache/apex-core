@@ -51,7 +51,6 @@ import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.StringCodecs;
-import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;

@@ -157,18 +157,6 @@ public interface Context
      */
     Attribute<Integer> RECOVERY_ATTEMPTS = new Attribute<Integer>(new Integer2String());
     /**
-     * The minimum rate of tuples below which the physical operators are consolidated in dynamic partitioning. When this
-     * attribute is set and partitioning is enabled if the number of tuples per second falls below the specified rate
-     * the physical operators are consolidated into fewer operators till the rate goes above the specified minimum.
-     */
-    Attribute<Integer> PARTITION_TPS_MIN = new Attribute<Integer>(0);
-    /**
-     * The maximum rate of tuples above which new physical operators are spawned in dynamic partitioning. When this
-     * attribute is set and partitioning is enabled if the number of tuples per second goes above the specified rate new
-     * physical operators are spawned till the rate again goes below the specified maximum.
-     */
-    Attribute<Integer> PARTITION_TPS_MAX = new Attribute<Integer>(0);
-    /**
      * Specify a listener to process and optionally react to operator status updates.
      * The handler will be called for each physical operator as statistics are updated during heartbeat processing.
      */
