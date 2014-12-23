@@ -1,12 +1,13 @@
 package com.datatorrent.stram.engine;
 
+import java.io.Serializable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.api.annotation.Stateless;
 
 /**
@@ -16,7 +17,7 @@ import com.datatorrent.api.annotation.Stateless;
  * @since 0.3.2
  */
 @Stateless
-public class DefaultUnifier extends BaseOperator implements Unifier<Object>
+public class DefaultUnifier implements Unifier<Object>, Serializable
 {
   final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
 
@@ -24,6 +25,26 @@ public class DefaultUnifier extends BaseOperator implements Unifier<Object>
   public void process(Object tuple)
   {
     outputPort.emit(tuple);
+  }
+
+  @Override
+  public void beginWindow(long windowId)
+  {
+  }
+
+  @Override
+  public void endWindow()
+  {
+  }
+
+  @Override
+  public void setup(OperatorContext context)
+  {
+  }
+
+  @Override
+  public void teardown()
+  {
   }
 
   @SuppressWarnings("unused")

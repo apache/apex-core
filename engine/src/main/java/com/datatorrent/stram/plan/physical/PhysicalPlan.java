@@ -312,9 +312,9 @@ public class PhysicalPlan implements Serializable
       boolean upstreamDeployed = true;
 
       for (StreamMeta s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorWrapper())) {
+        if (s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorMeta())) {
           pendingNodes.push(n);
-          pendingNodes.push(s.getSource().getOperatorWrapper());
+          pendingNodes.push(s.getSource().getOperatorMeta());
           upstreamDeployed = false;
           break;
         }
@@ -560,10 +560,10 @@ public class PhysicalPlan implements Serializable
     while (!parallelPartitions.isEmpty()) {
       OperatorMeta ppMeta = parallelPartitions.pop();
       for (StreamMeta s : ppMeta.getInputStreams().values()) {
-        if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorWrapper()) && parallelPartitions.contains(s.getSource().getOperatorWrapper())) {
+        if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorMeta()) && parallelPartitions.contains(s.getSource().getOperatorMeta())) {
           parallelPartitions.push(ppMeta);
-          parallelPartitions.remove(s.getSource().getOperatorWrapper());
-          parallelPartitions.push(s.getSource().getOperatorWrapper());
+          parallelPartitions.remove(s.getSource().getOperatorMeta());
+          parallelPartitions.push(s.getSource().getOperatorMeta());
           continue pendingLoop;
         }
       }
@@ -690,13 +690,13 @@ public class PhysicalPlan implements Serializable
         ug = new StreamMapping(opm.getValue(), this);
         m.outputStreams.put(opm.getKey(), ug);
       }
-      LOG.debug("update stream mapping for {} {}", opm.getKey().getOperatorWrapper(), opm.getKey().getPortName());
+      LOG.debug("update stream mapping for {} {}", opm.getKey().getOperatorMeta(), opm.getKey().getPortName());
       ug.setSources(m.partitions);
       ug.redoMapping();
     }
 
     for (Map.Entry<InputPortMeta, StreamMeta> ipm : m.logicalOperator.getInputStreams().entrySet()) {
-      PMapping sourceMapping = this.logicalToPTOperator.get(ipm.getValue().getSource().getOperatorWrapper());
+      PMapping sourceMapping = this.logicalToPTOperator.get(ipm.getValue().getSource().getOperatorMeta());
 
       if (ipm.getKey().getValue(PortContext.PARTITION_PARALLEL)) {
         if (sourceMapping.partitions.size() < m.partitions.size()) {
@@ -1157,7 +1157,7 @@ public class PhysicalPlan implements Serializable
     PMapping upstreamPartitioned = null;
 
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : om.getInputStreams().entrySet()) {
-      PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
+      PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorMeta());
       if (e.getKey().getValue(PortContext.PARTITION_PARALLEL).equals(true)) {
         // operator partitioned with upstream
         if (upstreamPartitioned != null) {
@@ -1223,7 +1223,7 @@ public class PhysicalPlan implements Serializable
       }
     }
     // remove outgoing connections for logical stream
-    PMapping m = this.logicalToPTOperator.get(sm.getSource().getOperatorWrapper());
+    PMapping m = this.logicalToPTOperator.get(sm.getSource().getOperatorMeta());
     for (PTOperator oper : m.partitions) {
       List<PTOutput> outputsCopy = Lists.newArrayList(oper.outputs);
       for (PTOutput out : oper.outputs) {
@@ -1253,8 +1253,8 @@ public class PhysicalPlan implements Serializable
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : ipm.getOperatorWrapper().getInputStreams().entrySet()) {
       if (inputEntry.getKey() == ipm) {
         // initialize outputs for existing operators
-        for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : inputEntry.getValue().getSource().getOperatorWrapper().getOutputStreams().entrySet()) {
-          PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorWrapper());
+        for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : inputEntry.getValue().getSource().getOperatorMeta().getOutputStreams().entrySet()) {
+          PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorMeta());
           for (PTOperator oper : sourceOpers.partitions) {
             setupOutput(sourceOpers, oper, outputEntry); // idempotent
             undeployOpers.add(oper);

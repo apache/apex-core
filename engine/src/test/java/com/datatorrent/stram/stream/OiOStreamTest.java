@@ -517,8 +517,8 @@ public class OiOStreamTest
                        ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(0));
     Assert.assertFalse("nonOIO: Thread Ids of input operator and intermediate operator2",
                        ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
-    Assert.assertFalse("nonOIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0) == ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
-    Assert.assertFalse("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId == ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
+    Assert.assertNotEquals("nonOIO: Thread Ids of two intermediate operators", ThreadIdValidatingGenericIntermediateOperator.threadList.get(0), ThreadIdValidatingGenericIntermediateOperator.threadList.get(1));
+    Assert.assertNotEquals("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
 
     /*
      * This test makes sure that since all operators in diamond are ThreadLocal, they indeed share a thread

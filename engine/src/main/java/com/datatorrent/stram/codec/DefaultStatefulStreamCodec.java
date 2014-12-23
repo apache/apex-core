@@ -134,12 +134,6 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     classResolver.unregisterImplicitlyRegisteredTypes();
   }
 
-  @Override
-  public StatefulStreamCodec<T> getPerStreamInstance()
-  {
-    return new DefaultStatefulStreamCodec<T>();
-  }
-
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 

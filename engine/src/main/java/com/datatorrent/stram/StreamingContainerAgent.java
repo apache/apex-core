@@ -30,6 +30,7 @@ import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
+import com.datatorrent.stram.api.OperatorDeployInfo.UnifierDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.datatorrent.stram.engine.OperatorContext;
@@ -149,7 +150,6 @@ public class StreamingContainerAgent {
         portInfo.declaredStreamId = streamMeta.getName();
         portInfo.portName = out.portName;
 
-        //portInfo.contextAttributes = streamMeta.getSource().getAttributes();
         portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
 
         boolean outputUnified = false;
@@ -329,27 +329,33 @@ public class StreamingContainerAgent {
    */
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator oper)
   {
-    OperatorDeployInfo ndi = new OperatorDeployInfo();
-    Operator operator = oper.getOperatorMeta().getOperator();
-    if (operator instanceof InputOperator) {
-      ndi.type = OperatorType.INPUT;
+    OperatorDeployInfo ndi;
 
-      if (!oper.getInputs().isEmpty()) {
-        //If there are no input ports then it has to be an input operator. But if there are input ports then
-        //we check if any input port is connected which would make it a Generic operator.
-        for (PTOperator.PTInput ptInput : oper.getInputs()) {
-          if (ptInput.logicalStream != null && ptInput.logicalStream.getSource() != null) {
-            ndi.type = OperatorType.GENERIC;
-            break;
+    if (oper.isUnifier()) {
+      UnifierDeployInfo udi = new UnifierDeployInfo(); /* the constructor auto sets the type */
+      udi.operatorAttributes = oper.getUnifiedOperatorMeta().getAttributes().clone();
+      ndi = udi;
+    }
+    else {
+      ndi = new OperatorDeployInfo();
+      Operator operator = oper.getOperatorMeta().getOperator();
+      if (operator instanceof InputOperator) {
+        ndi.type = OperatorType.INPUT;
+
+        if (!oper.getInputs().isEmpty()) {
+          //If there are no input ports then it has to be an input operator. But if there are input ports then
+          //we check if any input port is connected which would make it a Generic operator.
+          for (PTOperator.PTInput ptInput: oper.getInputs()) {
+            if (ptInput.logicalStream != null && ptInput.logicalStream.getSource() != null) {
+              ndi.type = OperatorType.GENERIC;
+              break;
+            }
           }
         }
       }
-    }
-    else {
-      ndi.type = OperatorType.GENERIC;
-    }
-    if (oper.isUnifier()) {
-      ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
+      else {
+        ndi.type = OperatorType.GENERIC;
+      }
     }
 
     Checkpoint checkpoint = oper.getRecoveryCheckpoint();
