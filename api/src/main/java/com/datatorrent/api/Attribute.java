@@ -111,7 +111,7 @@ public class Attribute<T> implements Serializable
    *
    * @since 0.3.2
    */
-  public static interface AttributeMap
+  public static interface AttributeMap extends Cloneable
   {
     /**
      * Return the attribute value for the given key. If the map does not have an
@@ -146,17 +146,17 @@ public class Attribute<T> implements Serializable
 
     /**
      * Clone the current map.
-     *
      * @return a shallow copy of this AtrributeMap.
+     * @throws java.lang.CloneNotSupportedException
      */
-    AttributeMap clone();
+    AttributeMap clone() throws CloneNotSupportedException;
 
     /**
      * DefaultAttributeMap is the default implementation of AttributeMap. It's backed by a map internally.
      */
     public static class DefaultAttributeMap implements AttributeMap, Serializable
     {
-      private final HashMap<Attribute<?>, Object> map;
+      private HashMap<Attribute<?>, Object> map;
 
       public DefaultAttributeMap()
       {
@@ -183,10 +183,12 @@ public class Attribute<T> implements Serializable
       }
 
       @Override
-      @SuppressWarnings(value = {"unchecked", "CloneDeclaresCloneNotSupported", "CloneDoesntCallSuperClone"})
-      public DefaultAttributeMap clone()
+      @SuppressWarnings(value = {"unchecked"})
+      public DefaultAttributeMap clone() throws CloneNotSupportedException
       {
-        return new DefaultAttributeMap((HashMap<Attribute<?>, Object>)map.clone());
+        DefaultAttributeMap clone = (DefaultAttributeMap)super.clone();
+        clone.map = (HashMap< Attribute< ?>, Object>)map.clone();
+        return clone;
       }
 
       @Override

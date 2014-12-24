@@ -75,6 +75,7 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
+import java.util.logging.Level;
 import org.codehaus.jettison.json.JSONObject;
 
 /**
@@ -814,11 +815,16 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext(String containerId)
   {
-    // the logical plan is not to be serialized via RPC, clone attributes only
-    StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
-    scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
-    scc.startWindowMillis = this.vars.windowStartMillis;
-    return scc;
+    try {
+      // the logical plan is not to be serialized via RPC, clone attributes only
+      StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
+      scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
+      scc.startWindowMillis = this.vars.windowStartMillis;
+      return scc;
+    }
+    catch (CloneNotSupportedException ex) {
+      throw new RuntimeException("Cannot clone DAG attributes", ex);
+    }
   }
 
   public StreamingContainerAgent getContainerAgent(String containerId)
@@ -2162,7 +2168,12 @@ public class StreamingContainerManager implements PlanContext
   public Attribute.AttributeMap getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
-    return lp.getAttributes().clone();
+    try {
+      return lp.getAttributes().clone();
+    }
+    catch (CloneNotSupportedException ex) {
+      throw new RuntimeException("Cannot clone DAG attributes", ex);
+    }
   }
 
   public Attribute.AttributeMap getOperatorAttributes(String operatorId)
@@ -2171,7 +2182,12 @@ public class StreamingContainerManager implements PlanContext
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
-    return logicalOperator.getAttributes().clone();
+    try {
+      return logicalOperator.getAttributes().clone();
+    }
+    catch (CloneNotSupportedException ex) {
+      throw new RuntimeException("Cannot clone operator attributes", ex);
+    }
   }
 
   public Map<String, Object> getPortAttributes(String operatorId, String portName)

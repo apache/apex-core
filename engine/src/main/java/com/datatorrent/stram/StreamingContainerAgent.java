@@ -150,7 +150,12 @@ public class StreamingContainerAgent {
         portInfo.declaredStreamId = streamMeta.getName();
         portInfo.portName = out.portName;
 
-        portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
+        try {
+          portInfo.contextAttributes = streamMeta.getSource().getAttributes().clone();
+        }
+        catch (CloneNotSupportedException ex) {
+          throw new RuntimeException("Cannot clone attributes", ex);
+        }
 
         boolean outputUnified = false;
         for (PTOperator.PTInput input : out.sinks) {
@@ -333,7 +338,12 @@ public class StreamingContainerAgent {
 
     if (oper.isUnifier()) {
       UnifierDeployInfo udi = new UnifierDeployInfo(); /* the constructor auto sets the type */
-      udi.operatorAttributes = oper.getUnifiedOperatorMeta().getAttributes().clone();
+      try {
+        udi.operatorAttributes = oper.getUnifiedOperatorMeta().getAttributes().clone();
+      }
+      catch (CloneNotSupportedException ex) {
+        throw new RuntimeException("Cannot clone unifier attributes", ex);
+      }
       ndi = udi;
     }
     else {
@@ -391,8 +401,13 @@ public class StreamingContainerAgent {
     ndi.checkpoint = checkpoint;
     ndi.name = oper.getOperatorMeta().getName();
     ndi.id = oper.getId();
-    // clone map before modifying it
-    ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
+    try {
+      // clone map before modifying it
+      ndi.contextAttributes = oper.getOperatorMeta().getAttributes().clone();
+    }
+    catch (CloneNotSupportedException ex) {
+      throw new RuntimeException("Cannot clone operator attributes", ex);
+    }
     if (oper.isOperatorStateLess()) {
       ndi.contextAttributes.put(OperatorContext.STATELESS, true);
     }
