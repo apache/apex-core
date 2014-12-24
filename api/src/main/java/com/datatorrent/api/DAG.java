@@ -203,6 +203,15 @@ public interface DAG extends DAGContext, Serializable
   public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
 
   /**
+   * Set an attribute on the unifier for an output of an operator.
+   * @param <T> Object type of the attribute
+   * @param port The port for which the unifier is needed.
+   * @param key The attribute which needs to be tuned.
+   * @param value The new value of the attribute.
+   */
+  public abstract <T> void setUnifierAtrribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
+
+  /**
    * <p>setInputPortAttribute.</p>
    */
   public abstract <T> void setInputPortAttribute(Operator.InputPort<?> port, Attribute<T> key, T value);
