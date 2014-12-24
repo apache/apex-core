@@ -183,7 +183,7 @@ public class Attribute<T> implements Serializable
       }
 
       @Override
-      @SuppressWarnings(value = {"unchecked"})
+      @SuppressWarnings("unchecked")
       public DefaultAttributeMap clone() throws CloneNotSupportedException
       {
         DefaultAttributeMap clone = (DefaultAttributeMap)super.clone();
