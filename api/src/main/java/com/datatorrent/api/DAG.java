@@ -15,8 +15,9 @@
  */
 package com.datatorrent.api;
 
-import com.datatorrent.api.Context.DAGContext;
 import java.io.Serializable;
+
+import com.datatorrent.api.Context.DAGContext;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -33,12 +34,13 @@ import java.io.Serializable;
  */
 public interface DAG extends DAGContext, Serializable
 {
-  public interface InputPortMeta extends Serializable, PortContext
+  interface InputPortMeta extends Serializable, PortContext
   {
   }
 
-  public interface OutputPortMeta extends Serializable, PortContext
+  interface OutputPortMeta extends Serializable, PortContext
   {
+    OperatorMeta getUnifierMeta();
   }
 
   /**
@@ -47,7 +49,7 @@ public interface DAG extends DAGContext, Serializable
    * significant performance gains. Optimizations are subject to resource
    * availability.
    */
-  public enum Locality {
+  enum Locality {
     /**
      * Adjacent operators should be deployed into the same executing thread,
      * effectively serializing the computation. This setting is beneficial
@@ -96,6 +98,7 @@ public interface DAG extends DAGContext, Serializable
      * override due to other settings or constraints.
      *
      * @param locality
+     * @return Object that describes the meta for the stream.
      */
     public StreamMeta setLocality(Locality locality);
 
@@ -125,20 +128,26 @@ public interface DAG extends DAGContext, Serializable
    * If the class extends {@link BaseOperator}, the name is passed on to the instance.
    * Throws exception if the name is already linked to another operator instance.
    *
-   * @param <T>
-   * @param name
-   * @param clazz
-   * @return <T extends Operator> T
+   * @param <T> Concrete type of the operator
+   * @param name Logical name of the operator used to identify the operator in the DAG
+   * @param clazz Concrete class with default constructor so that instance of it can be initialized and added to the DAG.
+   * @return Instance of the operator that has been added to the DAG.
    */
   public abstract <T extends Operator> T addOperator(String name, Class<T> clazz);
 
   /**
    * <p>addOperator.</p>
+   * @param <T> Concrete type of the operator
+   * @param name Logical name of the operator used to identify the operator in the DAG
+   * @param operator Instance of the operator that needs to be added to the DAG
+   * @return Instance of the operator that has been added to the DAG.
    */
   public abstract <T extends Operator> T addOperator(String name, T operator);
 
   /**
    * <p>addStream.</p>
+   * @param id Identifier of the stream that will be used to identify stream in DAG
+   * @return
    */
   public abstract StreamMeta addStream(String id);
 

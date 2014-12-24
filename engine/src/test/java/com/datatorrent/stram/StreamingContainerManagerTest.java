@@ -206,10 +206,17 @@ public class StreamingContainerManagerTest {
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
-
+    //
+    //            ,---> node2----,
+    //            |              |
+    //    node1---+---> node2----+--->unifier--->node3
+    //            |              |
+    //            '---> node2----'
+    //
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
     node2.setPartitionCount(3);
+    dag.setAttribute(node2, OperatorContext.SPIN_MILLIS, 10); /* this should not affect anything materially */
     dag.setOutputPortAttribute(node2.outport1, PortContext.QUEUE_CAPACITY, 1111);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
     dag.setInputPortAttribute(node3.inport1, PortContext.QUEUE_CAPACITY, 2222);
@@ -263,7 +270,7 @@ public class StreamingContainerManagerTest {
     List<OperatorDeployInfo> cUnifier = getDeployInfo(dnm.getContainerAgent(o2Unifiers.get(0).getContainer().getExternalId()));
     Assert.assertEquals("number operators " + cUnifier, 1, cUnifier.size());
 
-    OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier,  dag.getMeta(node2));
+    OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier, dag.getMeta(node2).getMeta(node2.outport1).getUnifierMeta());
     Assert.assertNotNull("unifier for " + node2, mergeNodeDI);
     Assert.assertEquals("type " + mergeNodeDI, OperatorDeployInfo.OperatorType.UNIFIER, mergeNodeDI.type);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());

@@ -13,6 +13,7 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.lib.util.FSStorageAgent;
+import com.datatorrent.stram.engine.DefaultUnifier;
 import com.google.common.collect.Sets;
 import java.io.*;
 import java.lang.reflect.*;
@@ -213,16 +214,32 @@ public class LogicalPlan implements Serializable, DAG
   public final class OutputPortMeta implements DAG.OutputPortMeta, Serializable
   {
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 201412091633L;
     private OperatorMeta operatorMeta;
+    private OperatorMeta unifierMeta;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
-    private final DefaultAttributeMap attributes = new DefaultAttributeMap();
+    private final DefaultAttributeMap attributes;
     private String tupleTypeString;
 
-    public OperatorMeta getOperatorWrapper()
+    public OutputPortMeta()
+    {
+      this.attributes = new DefaultAttributeMap();
+    }
+
+    public OperatorMeta getOperatorMeta()
     {
       return operatorMeta;
+    }
+
+    @Override
+    public OperatorMeta getUnifierMeta()
+    {
+      if (unifierMeta == null) {
+        unifierMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#unifier",  getUnifier());
+      }
+
+      return unifierMeta;
     }
 
     public String getPortName()
@@ -243,11 +260,16 @@ public class LogicalPlan implements Serializable, DAG
       for (Map.Entry<OutputPort<?>, OutputPortMeta> e : operatorMeta.getPortMapping().outPortMap.entrySet()) {
         if (e.getValue() == this) {
           Unifier<?> unifier = e.getKey().getUnifier();
+          if (unifier == null) {
+            break;
+          }
+          LOG.debug("User supplied unifier is {}", unifier);
           return unifier;
         }
       }
 
-      return null;
+      LOG.debug("Using default unifier for {}", this);
+      return new DefaultUnifier();
     }
 
     @Override
@@ -361,7 +383,7 @@ public class LogicalPlan implements Serializable, DAG
     public StreamMeta setSource(Operator.OutputPort<?> port)
     {
       OutputPortMeta portMeta = assertGetPortMeta(port);
-      OperatorMeta om = portMeta.getOperatorWrapper();
+      OperatorMeta om = portMeta.getOperatorMeta();
       if (om.outputStreams.containsKey(portMeta)) {
         String msg = String.format("Operator %s already connected to %s", om.name, om.outputStreams.get(portMeta).id);
         throw new IllegalArgumentException(msg);
@@ -406,7 +428,7 @@ public class LogicalPlan implements Serializable, DAG
       }
       this.sinks.clear();
       if (this.source != null) {
-        this.source.getOperatorWrapper().outputStreams.remove(this.source);
+        this.source.getOperatorMeta().outputStreams.remove(this.source);
       }
       this.source = null;
       streams.remove(this.id);
@@ -1208,7 +1230,7 @@ public class LogicalPlan implements Serializable, DAG
   private void validateProcessingMode(OperatorMeta om, Set<OperatorMeta> visited)
   {
     for (StreamMeta is : om.getInputStreams().values()) {
-      if (!visited.contains(is.getSource().getOperatorWrapper())) {
+      if (!visited.contains(is.getSource().getOperatorMeta())) {
         // process all inputs first
         return;
       }

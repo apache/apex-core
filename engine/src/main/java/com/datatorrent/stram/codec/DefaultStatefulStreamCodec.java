@@ -134,12 +134,6 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
     classResolver.unregisterImplicitlyRegisteredTypes();
   }
 
-  @Override
-  public StatefulStreamCodec<T> getPerStreamInstance()
-  {
-    return new DefaultStatefulStreamCodec<T>();
-  }
-
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 
@@ -224,6 +218,12 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
       }
     }
 
+  }
+
+  @Override
+  public DefaultStatefulStreamCodec<T> newInstance()
+  {
+    return new DefaultStatefulStreamCodec<T>();
   }
 
   private static final Logger logger = LoggerFactory.getLogger(DefaultStatefulStreamCodec.class);

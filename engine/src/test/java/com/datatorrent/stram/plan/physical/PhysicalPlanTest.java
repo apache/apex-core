@@ -13,13 +13,15 @@ import javax.validation.constraints.Min;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.lang3.mutable.MutableInt;
+
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -28,6 +30,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
@@ -628,7 +631,7 @@ public class PhysicalPlanTest
     Assert.assertEquals("partitions " + o1Partitions, 2, o1Partitions.size());
     PTOperator o1p1 = o1Partitions.get(0);
     PTOperator p1Doper = o1p1.getOutputs().get(0).sinks.get(0).target;
-    Assert.assertTrue("", p1Doper.getOperatorMeta() == o1Meta);
+    Assert.assertSame("", p1Doper.getOperatorMeta(), o1Meta.getMeta(o1.output).getUnifierMeta());
     Assert.assertTrue("unifier ", p1Doper.isUnifier());
 
     Collection<PTOperator> o1Unifiers = plan.getMergeOperators(o1Meta);
@@ -1019,7 +1022,7 @@ public class PhysicalPlanTest
     Assert.assertEquals("unifier " + o4Meta + ": " + o4Unifiers, 1, o4Unifiers.size());
     PTContainer container4 = plan.getContainers().get(3);
     Assert.assertEquals("number operators " + container4, 1, container4.getOperators().size());
-    Assert.assertEquals("operators " + container4, o4Meta, container4.getOperators().get(0).getOperatorMeta());
+    Assert.assertEquals("operators " + container4, o4Meta.getMeta(o4.outport1).getUnifierMeta(), container4.getOperators().get(0).getOperatorMeta());
     Assert.assertTrue("unifier " + o4, container4.getOperators().get(0).isUnifier());
     Assert.assertEquals("unifier inputs" + container4.getOperators().get(0).getInputs(), 2, container4.getOperators().get(0).getInputs().size());
     Assert.assertEquals("unifier outputs" + container4.getOperators().get(0).getOutputs(), 1, container4.getOperators().get(0).getOutputs().size());
@@ -1131,14 +1134,14 @@ public class PhysicalPlanTest
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 2, container.getOperators().size());
       Assert.assertEquals("operators " + container, o2Meta.getName(), container.getOperators().get(0).getOperatorMeta().getName());
-      Set<String> expectedLogicalNames = Sets.newHashSet(o1Meta.getName(), o2Meta.getName());
+      Set<String> expectedLogicalNames = Sets.newHashSet(o1Meta.getMeta(o1.outport).getUnifierMeta().getName(), o2Meta.getName());
       Map<String, PTOperator> actualOperators = new HashMap<String, PTOperator>();
       for (PTOperator p : container.getOperators()) {
         actualOperators.put(p.getOperatorMeta().getName(), p);
       }
       Assert.assertEquals("", expectedLogicalNames, actualOperators.keySet());
 
-      PTOperator pUnifier = actualOperators.get(o1Meta.getName());
+      PTOperator pUnifier = actualOperators.get(o1Meta.getMeta(o1.outport).getUnifierMeta().getName());
       Assert.assertNotNull("" + pUnifier, pUnifier.getContainer());
       Assert.assertTrue("" + pUnifier, pUnifier.isUnifier());
       // input from each upstream partition
@@ -1334,7 +1337,7 @@ public class PhysicalPlanTest
       PTContainer container = plan.getContainers().get(2);
       Assert.assertEquals("number operators " + container, 1, container.getOperators().size());
       PTOperator pUnifier = container.getOperators().get(0);
-      Assert.assertEquals("operators " + container, o1Meta.getName(), pUnifier.getOperatorMeta().getName());
+      Assert.assertEquals("operators " + container, o1Meta.getMeta(o1.outport).getUnifierMeta().getName(), pUnifier.getOperatorMeta().getName());
       Assert.assertTrue("single unifier " + pUnifier, pUnifier.isUnifier());
       Assert.assertEquals("" + pUnifier, 2, pUnifier.getInputs().size());
       for (int inputIndex = 0; inputIndex < pUnifier.getInputs().size(); inputIndex++) {
@@ -1735,7 +1738,7 @@ public class PhysicalPlanTest
     plan = new PhysicalPlan(dag, ctx);
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
 
-    Set<String> expectedNames = Sets.newHashSet(o1Meta.getName(), o2Meta.getName());
+    Set<String> expectedNames = Sets.newHashSet(o1Meta.getMeta(o1.outport1).getUnifierMeta().getName(), o2Meta.getName());
     for (int i = 3; i < 5; ++i) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("o2 container size", 2, container.getOperators().size());
@@ -1783,12 +1786,12 @@ public class PhysicalPlanTest
       Assert.assertEquals("number of operators " + container, 1, container.getOperators().size());
       PTOperator operator = container.getOperators().get(0);
       Assert.assertTrue("unifier check " + operator, operator.isUnifier());
-      Assert.assertEquals("operator meta " + operator, o1Meta, operator.getOperatorMeta());
+      Assert.assertEquals("operator meta " + operator, o1Meta.getMeta(o1.outport1).getUnifierMeta(), operator.getOperatorMeta());
     }
 
     int numberO2Containers = 0;
     int numberO3Containers = 0;
-    Set<String> expectedNames = Sets.newHashSet(o1Meta.getName(), o3Meta.getName());
+    Set<String> expectedNames = Sets.newHashSet(o1Meta.getMeta(o1.outport1).getUnifierMeta().getName(), o3Meta.getName());
     for (int i = 4; i < 10; i++) {
       PTContainer container = plan.getContainers().get(i);
       List<PTOperator> operators = container.getOperators();

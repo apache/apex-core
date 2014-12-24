@@ -17,13 +17,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.PortContext;
-import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StreamingContainerAgent;
-import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -79,27 +78,23 @@ public class StreamMapping implements java.io.Serializable
 
   private PTOperator createUnifier()
   {
-    Unifier<?> unifier = streamMeta.getSource().getUnifier();
-    LOG.debug("User supplied unifier is {}", unifier);
-    if (unifier == null) {
-      LOG.debug("Using default unifier for {}", streamMeta.getSource());
-      unifier = new DefaultUnifier();
-    }
+    OperatorMeta um = streamMeta.getSource().getUnifierMeta();
+    PTOperator pu = plan.newOperator(um, um.getName());
+
+    Operator unifier = um.getOperator();
     PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
     Operators.describe(unifier, mergeDesc);
     if (mergeDesc.outputPorts.size() != 1) {
-      throw new AssertionError("Unifier should have single output port, found: " + mergeDesc.outputPorts);
+      throw new AssertionError("Unifier must have a single output port, instead found : " + mergeDesc.outputPorts);
     }
 
-    OperatorMeta om = streamMeta.getSource().getOperatorWrapper();
-    PTOperator pu = plan.newOperator(om, om.getName() + "#merge#" + streamMeta.getSource().getPortName());
-
-    pu.unifierClass = unifier.getClass();
+    pu.unifiedOperatorMeta = streamMeta.getSource().getOperatorMeta();
     pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
     plan.newOpers.put(pu, unifier);
     return pu;
   }
 
+  @SuppressWarnings("AssignmentToForLoopParameter")
   private List<PTOutput> setupCascadingUnifiers(List<PTOutput> upstream, List<PTOperator> pooledUnifiers, int limit, int level) {
     List<PTOutput> nextLevel = Lists.newArrayList();
     PTOperator pu = null;
@@ -213,7 +208,7 @@ public class StreamMapping implements java.io.Serializable
         Map<LogicalPlan.InputPortMeta, PartitionKeys> partKeys = doperEntry.first.partitionKeys;
         PartitionKeys pks = partKeys != null ? partKeys.get(doperEntry.second) : null;
         Boolean sinkSingleFinal = doperEntry.second.getAttributes().get(PortContext.UNIFIER_SINGLE_FINAL);
-        boolean lastSingle = (sinkSingleFinal != null) ? sinkSingleFinal.booleanValue() :
+        boolean lastSingle = (sinkSingleFinal != null) ? sinkSingleFinal :
                                 (sourceSingleFinal != null ? sourceSingleFinal.booleanValue() : PortContext.UNIFIER_SINGLE_FINAL.defaultValue);
 
         if (upstream.size() > 1) {
@@ -295,8 +290,8 @@ public class StreamMapping implements java.io.Serializable
   }
 
   private void addInput(PTOperator target, PTOutput upstreamOut, PartitionKeys pks) {
-    StreamMeta streamMeta = upstreamOut.logicalStream;
-    PTInput input = new PTInput("<merge#" + streamMeta.getSource().getPortName() + ">", streamMeta, target, pks, upstreamOut);
+    StreamMeta lStreamMeta = upstreamOut.logicalStream;
+    PTInput input = new PTInput("<merge#" + lStreamMeta.getSource().getPortName() + ">", lStreamMeta, target, pks, upstreamOut);
     target.inputs.add(input);
   }
 

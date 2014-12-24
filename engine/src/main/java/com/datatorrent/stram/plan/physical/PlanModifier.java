@@ -84,7 +84,7 @@ public class PlanModifier {
   {
     StreamMeta sm = logicalPlan.getStream(id);
     if (sm != null) {
-      if (sm.getSource().getOperatorWrapper().getMeta(source) != sm.getSource()) {
+      if (sm.getSource().getOperatorMeta().getMeta(source) != sm.getSource()) {
         throw new AssertionError(String.format("Stream %s already connected to %s", sm, sm.getSource()));
       }
     } else {
@@ -216,7 +216,7 @@ public class PlanModifier {
     // remove associated sinks
     Map<InputPortMeta, StreamMeta> inputStreams = om.getInputStreams();
     for (Map.Entry<InputPortMeta, StreamMeta> e : inputStreams.entrySet()) {
-      if (e.getKey().getOperatorWrapper() == om) {
+      if (e.getKey().getOperatorMeta() == om) {
         if (e.getValue().getSinks().size() == 1) {
           // drop stream
           e.getValue().remove();

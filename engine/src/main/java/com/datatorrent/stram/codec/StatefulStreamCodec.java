@@ -74,6 +74,14 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
    */
   public void resetState();
 
-  public StatefulStreamCodec<T> getPerStreamInstance();
-
+  /**
+   * Provide a new instance of the current object.
+   *
+   * As the StatefulStreamCodec builds its state according to the events that it processes since the last
+   * reset state, we cannot share the same codec across multiple streams. For this reason, the engine may
+   * internally need to make multiple copies of the StatefulStreamCodec.
+   *
+   * @return new instance of this codec for which the state has been reset.
+   */
+  public StatefulStreamCodec<T> newInstance();
 }

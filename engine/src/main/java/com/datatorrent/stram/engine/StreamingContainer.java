@@ -49,6 +49,7 @@ import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.ContainerEvent.*;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
+import com.datatorrent.stram.api.OperatorDeployInfo.UnifierDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -802,16 +803,24 @@ public class StreamingContainer extends YarnContainerMain
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent = getValue(OperatorContext.STORAGE_AGENT, ndi);
       assert (backupAgent != null);
-      OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, containerContext);
+
+      Context parentContext;
+      if (ndi instanceof UnifierDeployInfo) {
+        OperatorContext unifiedOperatorContext = new OperatorContext(0, ((UnifierDeployInfo)ndi).operatorAttributes, containerContext);
+        parentContext = new PortContext(ndi.inputs.get(0).contextAttributes, unifiedOperatorContext);
+        massageUnifierDeployInfo(ndi);
+      }
+      else {
+        parentContext = containerContext;
+      }
+
+      OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, parentContext);
       ctx.attributes.put(OperatorContext.ACTIVATION_WINDOW_ID, ndi.checkpoint.windowId);
       logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
       Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Stateless.WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
 
-      if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-        massageUnifierDeployInfo(ndi);
-      }
       node.setId(ndi.id);
       nodes.put(ndi.id, node);
       logger.debug("Marking deployed {}", node);

@@ -4,8 +4,6 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.api.Attribute;
-import com.datatorrent.api.Attribute.AttributeMap;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +13,9 @@ import java.util.Set;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Attribute.AttributeMap;
+import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.StreamCodec;
@@ -25,13 +26,56 @@ import com.datatorrent.api.StreamCodec;
  *
  * @since 0.3.2
  */
-public class OperatorDeployInfo implements Serializable
+public class OperatorDeployInfo implements Serializable, OperatorContext
 {
+  @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   private static final long serialVersionUID = 201208271956L;
+
+  @Override
+  public int getId()
+  {
+    return id;
+  }
+
+  @Override
+  public AttributeMap getAttributes()
+  {
+    return contextAttributes;
+  }
+
+  @Override
+  public <T> T getValue(Attribute<T> key)
+  {
+    T get = contextAttributes.get(key);
+    if (get == null) {
+      return key.defaultValue;
+    }
+
+    return get;
+  }
+
+  @Override
+  public void setCounters(Object counters)
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
 
   public enum OperatorType
   {
     INPUT, UNIFIER, GENERIC, OIO
+  }
+
+  public static class UnifierDeployInfo extends OperatorDeployInfo
+  {
+    public AttributeMap operatorAttributes;
+
+    public UnifierDeployInfo()
+    {
+      type = OperatorType.UNIFIER;
+    }
+
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201412091818L;
   }
 
   /**
@@ -67,15 +111,15 @@ public class OperatorDeployInfo implements Serializable
      * Class name of tuple SerDe (buffer server stream only).
      */
     /*
-    @Deprecated
-    public String serDeClassName;
-    */
+     @Deprecated
+     public String serDeClassName;
+     */
     /**
      * The SerDe object.
      */
     /*
-    public StreamCodec streamCodec;
-    */
+     public StreamCodec streamCodec;
+     */
     public Map<Integer, StreamCodec<?>> streamCodecs = new HashMap<Integer, StreamCodec<?>>();
     /**
      * Partition keys for the input stream. Null w/o partitioning.

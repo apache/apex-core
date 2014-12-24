@@ -87,7 +87,7 @@ public class LogicalPlanConfigurationTest {
 
     // output/input stream object same
     assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getMeta(((GenericTestOperator)operator1.getOperator()).outport1)));
-    assertEquals("n1n2 source", operator1, n1n2.getSource().getOperatorWrapper());
+    assertEquals("n1n2 source", operator1, n1n2.getSource().getOperatorMeta());
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
 
@@ -171,7 +171,7 @@ public class LogicalPlanConfigurationTest {
 
       StreamMeta input1 = dag.getStream("inputStream");
       assertNotNull(input1);
-      Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorWrapper());
+      Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorMeta());
       Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
       for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
         targetNodes.add(targetPort.getOperatorWrapper());
@@ -224,7 +224,7 @@ public class LogicalPlanConfigurationTest {
     StreamMeta input1 = dag.getStream("inputStream");
     assertNotNull(input1);
     OperatorMeta inputOperator = dag.getOperatorMeta("inputOperator");
-    Assert.assertEquals("input1 source", inputOperator, input1.getSource().getOperatorWrapper());
+    Assert.assertEquals("input1 source", inputOperator, input1.getSource().getOperatorMeta());
     Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
     for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
       targetNodes.add(targetPort.getOperatorWrapper());

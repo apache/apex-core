@@ -168,7 +168,7 @@ public class PTOperator implements java.io.Serializable
   final int id;
   private final String name;
   Map<InputPortMeta, PartitionKeys> partitionKeys;
-  Class<?> unifierClass;
+  OperatorMeta unifiedOperatorMeta; /* this is the meta for the operator for which this unifier exists */
   List<PTInput> inputs;
   List<PTOutput> outputs;
   public final LinkedList<Checkpoint> checkpoints;
@@ -296,22 +296,27 @@ public class PTOperator implements java.io.Serializable
 
   public boolean isUnifier()
   {
-    return unifierClass != null;
+    return unifiedOperatorMeta != null;
+  }
+
+  public OperatorMeta getUnifiedOperatorMeta()
+  {
+    return unifiedOperatorMeta;
   }
 
   public Class<?> getUnifierClass()
   {
-    return unifierClass;
+    if (unifiedOperatorMeta == null) {
+      throw new IllegalStateException("OperatorMeta does not support this method, please call isUnifier before making this call");
+    }
+
+    return operatorMeta.getOperator().getClass();
   }
 
   public boolean isOperatorStateLess()
   {
     if (operatorMeta.getDAG().getValue(OperatorContext.STATELESS) || operatorMeta.getValue(OperatorContext.STATELESS)) {
       return true;
-    }
-
-    if (unifierClass != null) {
-      return unifierClass.isAnnotationPresent(Stateless.class);
     }
 
     return operatorMeta.getOperator().getClass().isAnnotationPresent(Stateless.class);
