@@ -35,6 +35,7 @@ import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
+import com.datatorrent.common.util.DTThrowable;
 
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
@@ -1410,7 +1411,13 @@ public class LogicalPlanConfiguration {
           }
           else {
             if (processedAttributes.add(attribute)) {
-              attributeMap.put(attribute, attribute.codec.fromString(e.getValue()));
+              try {
+                attributeMap.put(attribute, attribute.codec.fromString(e.getValue()));
+              }
+              catch (Exception ex) {
+                LOG.error("Could not set value '{}' for attribute {}", e.getValue(), attribute, ex);
+                DTThrowable.rethrow(ex);
+              }
             }
           }
         }
