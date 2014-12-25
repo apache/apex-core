@@ -249,7 +249,7 @@ public class StramAgent extends FSAgent
       url += WebServices.PATH;
     }
     catch (Exception ex) {
-      LOG.error("Caught exception when retrieving web services info", ex);
+      //LOG.error("Caught exception when retrieving web services info", ex);
       return null;
     }
     finally {
