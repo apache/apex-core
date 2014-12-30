@@ -77,7 +77,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("Registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), Codec.getStringWindowId(context.getFinishedWindowId()), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    activate(null, context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getFinishedWindowId());
+    activate(null, context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getFinishedWindowId(), freeFragments.capacity());
   }
 
   @Override

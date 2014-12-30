@@ -416,12 +416,12 @@ public class DataList
         // error
         throw new RuntimeException("problemo!");
       }
-      if (index.intValue() < oldestBlockIndex) {
-        oldestBlockIndex = index.intValue();
+      if (index < oldestBlockIndex) {
+        oldestBlockIndex = index;
         oldestReadOffset = entry.getValue().getReadOffset();
         status.slowestConsumer = entry.getKey();
       }
-      else if (index.intValue() == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
+      else if (index == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
         oldestReadOffset = entry.getValue().getReadOffset();
         status.slowestConsumer = entry.getKey();
       }
