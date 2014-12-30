@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+  <property>
+    <name>dt.test.1</name>
+    <value>app-package-config</value>
+  </property>
+  <property>
+    <name>dt.test.2</name>
+    <value>app-package-config</value>
+  </property>
+  <property>
+    <name>dt.test.3</name>
+    <value>app-package-config</value>
+  </property>
+</configuration>

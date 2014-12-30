@@ -1,0 +1,4 @@
+DT-Engine-Version: 1.0.0
+DT-App-Package-Name: pi-demo
+DT-App-Package-Version: 1.0-SNAPSHOT
+Class-Path: lib/*.jar

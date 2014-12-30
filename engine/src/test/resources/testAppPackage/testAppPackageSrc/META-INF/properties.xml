@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+  <property>
+    <name>dt.test.default.1</name>
+    <value>package-default</value>
+  </property>
+  <property>
+    <name>dt.test.default.2</name>
+    <value>package-default</value>
+  </property>
+  <property>
+    <name>dt.test.default.3</name>
+    <value>package-default</value>
+  </property>
+  <property>
+    <name>dt.test.default.4</name>
+    <value>package-default</value>
+  </property>
+  <property>
+    <name>dt.test.default.5</name>
+    <value>package-default</value>
+  </property>
+  <property>
+    <name>dt.test.required.1</name>
+  </property>
+  <property>
+    <name>dt.test.required.2</name>
+  </property>
+</configuration>
