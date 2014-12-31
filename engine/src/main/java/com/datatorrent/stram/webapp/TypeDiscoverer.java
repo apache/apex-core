@@ -5,12 +5,10 @@
 package com.datatorrent.stram.webapp;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
-import java.util.Arrays;
 import java.util.Map;
 
 import org.codehaus.jettison.json.JSONArray;
@@ -142,43 +140,6 @@ public class TypeDiscoverer
     return null;
   }
 
-  private static Type getPortType(Field f)
-  {
-    if (f.getGenericType() instanceof ParameterizedType) {
-      ParameterizedType t = (ParameterizedType)f.getGenericType();
-      //LOG.debug("Field type is parameterized: " + Arrays.asList(t.getActualTypeArguments()));
-      //LOG.debug("rawType: " + t.getRawType()); // the port class
-      Type typeArgument = t.getActualTypeArguments()[0];
-      if (typeArgument instanceof Class) {
-         return typeArgument;
-      } else if (typeArgument instanceof TypeVariable) {
-        TypeVariable<?> tv = (TypeVariable<?>)typeArgument;
-        LOG.debug("bounds: " + Arrays.asList(tv.getBounds()));
-        // variable may contain other variables, java.util.Map<java.lang.String, ? extends T2>
-        return tv.getBounds()[0];
-      } else if (typeArgument instanceof GenericArrayType) {
-        LOG.debug("type {} is of GenericArrayType", typeArgument);
-        return typeArgument;
-      } else if (typeArgument instanceof WildcardType) {
-        LOG.debug("type {} is of WildcardType", typeArgument);
-        return typeArgument;
-      } else if (typeArgument instanceof ParameterizedType) {
-        return typeArgument;
-      } else {
-        // ports are always parameterized
-        throw new IllegalArgumentException("No type variable: " + typeArgument + ", typeParameters: " + Arrays.asList(f.getClass().getTypeParameters()));
-      }
-    } else {
-      LOG.debug("Field is not parameterized: " + f.getGenericType());
-      if (Operator.Port.class.isAssignableFrom(f.getType())) {
-        Type t = findTypeArgument(f.getType(), Operator.Port.class);
-        LOG.debug("Field is of type {}", t);
-        return t;
-      }
-      throw new IllegalArgumentException("Cannot determine type argument for field " + f);
-    }
-  }
-
   public JSONArray getPortTypes(Class<?> operatorClass)
   {
     Class<?> c = operatorClass;
@@ -194,13 +155,15 @@ public class TypeDiscoverer
         getParameterizedTypeArguments(superClassType);
       }
 
-      //TypeVariable<?>[] typeParameters = c.getTypeParameters();
-      //for (TypeVariable<?> tv : typeParameters) {
-      //  LOG.debug("{} tv {} bounds {}", c.getSimpleName(), tv, tv.getBounds());
-      // }
       for (Field f : c.getDeclaredFields()) {
-        if (Operator.InputPort.class.isAssignableFrom(f.getType()) || Operator.OutputPort.class.isAssignableFrom(f.getType())) {
-          Type t = getPortType(f);
+        if (Operator.Port.class.isAssignableFrom(f.getType())) {
+          Type t;
+          if (f.getGenericType() instanceof ParameterizedType) {
+            t = ((ParameterizedType)f.getGenericType()).getActualTypeArguments()[0];
+          } else {
+            t = findTypeArgument(f.getType(), Operator.Port.class);
+            LOG.debug("Field is of type {}", t);
+          }
           LOG.debug("field {} class {} type {}", f.getName(), f.getType(), t);
           JSONObject meta = new JSONObject();
           try {

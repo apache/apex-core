@@ -90,4 +90,30 @@ public class TypeDiscoveryTest
     Assert.assertEquals("outportList type", "class java.lang.Number", val);
   }
 
+  static class ParameterizedTypeOperator<T> extends BaseOperator
+  {
+    public transient final OutputPort<T> output = new DefaultOutputPort<T>();
+  }
+
+  static class StringParameterOperator extends ParameterizedTypeOperator<String>
+  {
+  }
+
+  @Test
+  public void testTypeDiscovery2() throws Exception
+  {
+    TypeDiscoverer td = new TypeDiscoverer();
+    JSONArray json = td.getPortTypes(StringParameterOperator.class);
+    //System.out.println(json.toString(2));
+    //System.out.println(td.typeArguments);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode root = mapper.readTree(json.toString(2));
+    String val = root.get(0).path("name").asText();
+    Assert.assertEquals("port name", "output", val);
+
+    val = root.get(0).path("type").asText();
+    Assert.assertEquals("port type", "class java.lang.String", val);
+  }
+
 }
