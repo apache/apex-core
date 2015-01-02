@@ -78,20 +78,20 @@ public enum Permission
    */
   MANAGE_SYSTEM_ALERTS;
 
-  private boolean adminOnly = false;
+  private boolean admin = false;
 
   Permission()
   {
   }
 
-  Permission(boolean adminOnly)
+  Permission(boolean admin)
   {
-    this.adminOnly = adminOnly;
+    this.admin = admin;
   }
 
-  public boolean isAdminOnly()
+  public boolean isAdmin()
   {
-    return adminOnly;
+    return admin;
   }
 
 }
