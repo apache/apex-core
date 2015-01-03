@@ -7,9 +7,8 @@ package com.datatorrent.stram.client;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
-import net.lingala.zip4j.core.ZipFile;
+import com.datatorrent.stram.support.StramTestSupport;
 import net.lingala.zip4j.exception.ZipException;
-import net.lingala.zip4j.model.ZipParameters;
 import org.apache.commons.io.FileUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -19,10 +18,10 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Set;
-import java.util.TreeSet;
 
 /**
  *
@@ -51,11 +50,7 @@ public class AppPackageTest
 
         // Set up jar file to use with constructor
         testFolder.create();
-        file = new File(testFolder.getRoot(), jarPath);
-        ZipFile zipFile = new ZipFile(file);
-        ZipParameters zipParameters = new ZipParameters();
-        zipParameters.setIncludeRootFolder(false);
-        zipFile.createZipFileFromFolder("src/test/resources/testAppPackage/testAppPackageSrc", zipParameters, false, Long.MAX_VALUE);
+        file = StramTestSupport.createAppPackageFile(new File(testFolder.getRoot(), jarPath));
 
         // Set up test instance
         ap = new AppPackage(file, true);

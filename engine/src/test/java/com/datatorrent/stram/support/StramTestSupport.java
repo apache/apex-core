@@ -9,7 +9,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.zip.ZipException;
 
+import net.lingala.zip4j.core.ZipFile;
+import net.lingala.zip4j.model.ZipParameters;
 import org.apache.commons.io.FileUtils;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -85,6 +88,21 @@ abstract public class StramTestSupport
       }
       Thread.sleep(20);
     }
+  }
+
+  /**
+   * Create an appPackage zip using the sample appPackage located in
+   * src/test/resources/testAppPackage/testAppPackageSrc.
+   * @param file  The file whose path will be used to create the appPackage zip
+   * @return      The File object that can be used in the AppPackage constructor.
+   * @throws net.lingala.zip4j.exception.ZipException
+   */
+  public static File createAppPackageFile(File file) throws net.lingala.zip4j.exception.ZipException {
+    ZipFile zipFile = new ZipFile(file);
+    ZipParameters zipParameters = new ZipParameters();
+    zipParameters.setIncludeRootFolder(false);
+    zipFile.createZipFileFromFolder("src/test/resources/testAppPackage/testAppPackageSrc", zipParameters, false, Long.MAX_VALUE);
+    return file;
   }
 
   public interface WaitCondition

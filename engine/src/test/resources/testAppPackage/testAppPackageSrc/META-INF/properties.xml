@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <configuration>
   <property>
-    <name>dt.test.default.1</name>
-    <value>package-default</value>
+    <name>dt.test.1</name>
+    <value>launch-define</value>
   </property>
   <property>
-    <name>dt.test.default.2</name>
-    <value>package-default</value>
+    <name>dt.test.2</name>
+    <value>local-fs-config</value>
   </property>
   <property>
-    <name>dt.test.default.3</name>
-    <value>package-default</value>
+    <name>dt.test.3</name>
+    <value>app-package-config</value>
   </property>
   <property>
-    <name>dt.test.default.4</name>
-    <value>package-default</value>
+    <name>dt.test.4</name>
+    <value>user-home-config</value>
   </property>
   <property>
-    <name>dt.test.default.5</name>
+    <name>dt.test.5</name>
     <value>package-default</value>
   </property>
   <property>

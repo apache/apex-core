@@ -8,4 +8,12 @@
     <name>dt.test.2</name>
     <value>local-fs-config</value>
   </property>
+  <property>
+    <name>dt.test.required.1</name>
+    <value>local-fs-required-1</value>
+  </property>
+  <property>
+    <name>dt.test.required.2</name>
+    <value>local-fs-required-2</value>
+  </property>
 </configuration>
