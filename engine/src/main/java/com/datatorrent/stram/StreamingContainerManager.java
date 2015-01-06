@@ -75,7 +75,6 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
-import java.util.logging.Level;
 import org.codehaus.jettison.json.JSONObject;
 
 /**
@@ -2118,6 +2117,7 @@ public class StreamingContainerManager implements PlanContext
     recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, operatorId, propertyName, propertyValue));
   }
 
+  @Override
   public void addOperatorRequest(PTOperator oper, StramToNodeRequest request)
   {
     StreamingContainerAgent sca = getContainerAgent(oper.getContainer().getExternalId());
