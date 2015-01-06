@@ -432,6 +432,13 @@
       <artifactId>rhino</artifactId>
       <version>1.7R4</version>
     </dependency>
+    <dependency>
+      <!-- We need this direct dependency because without this, it throws method not found exception on Amazon EMR version of hadoop 2.4.
+      Amazon EMR hadoop has commons-codec-1.2 in its classpath. -->
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.10</version>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>
