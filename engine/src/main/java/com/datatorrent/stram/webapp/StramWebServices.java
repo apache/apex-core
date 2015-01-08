@@ -127,8 +127,8 @@ public class StramWebServices
     httpResponse.setContentType(null);
     if (!initialized) {
       Map<Class<?>, Class<? extends StringCodec<?>>> codecs = dagManager.getApplicationAttributes().get(DAGContext.STRING_CODECS);
+      StringCodecs.loadConverters(codecs);
       if (codecs != null) {
-        StringCodecs.loadConverters(codecs);
         SimpleModule sm = new SimpleModule("DTSerializationModule", new Version(1, 0, 0, null));
         for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
           try {
@@ -770,14 +770,14 @@ public class StramWebServices
         JSONObject jsonObj = (JSONObject)jsonArray.get(i);
         LogicalPlanRequest requestObj = (LogicalPlanRequest)Class.forName(LogicalPlanRequest.class.getPackage().getName() + "." + jsonObj.getString("requestType")).newInstance();
         @SuppressWarnings("unchecked")
-        Map<String, Object> properties = BeanUtils.describe(requestObj);
+        Map<String, String> properties = BeanUtils.describe(requestObj);
         @SuppressWarnings("unchecked")
         Iterator<String> keys = jsonObj.keys();
 
         while (keys.hasNext()) {
           String key = keys.next();
           if (!key.equals("requestType")) {
-            properties.put(key, jsonObj.get(key));
+            properties.put(key, jsonObj.get(key).toString());
           }
         }
         BeanUtils.populate(requestObj, properties);

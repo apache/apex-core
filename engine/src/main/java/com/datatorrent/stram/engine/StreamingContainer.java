@@ -139,9 +139,7 @@ public class StreamingContainer extends YarnContainerMain
     fastPublisherSubscriber = ctx.getValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER);
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = ctx.getValue(Context.DAGContext.STRING_CODECS);
-    if (codecs != null) {
-      StringCodecs.loadConverters(codecs);
-    }
+    StringCodecs.loadConverters(codecs);
 
     try {
       if (ctx.deployBufferServer) {

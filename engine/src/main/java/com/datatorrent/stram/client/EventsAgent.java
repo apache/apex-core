@@ -44,7 +44,7 @@ public final class EventsAgent extends FSPartFileAgent
     @JsonSerialize(using = ToStringSerializer.class)
     public long timestamp;
     public String type;
-    public Map<String, Object> data;
+    public Map<String, String> data;
   }
 
   public EventsAgent(StramAgent stramAgent)

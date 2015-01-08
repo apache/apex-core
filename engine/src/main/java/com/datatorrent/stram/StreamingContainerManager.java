@@ -272,9 +272,7 @@ public class StreamingContainerManager implements PlanContext
   private void setupStringCodecs()
   {
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = this.plan.getLogicalPlan().getAttributes().get(Context.DAGContext.STRING_CODECS);
-    if (codecs != null) {
-      StringCodecs.loadConverters(codecs);
-    }
+    StringCodecs.loadConverters(codecs);
   }
 
   private void setupWsClient()

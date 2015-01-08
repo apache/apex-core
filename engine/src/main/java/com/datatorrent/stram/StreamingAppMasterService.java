@@ -483,10 +483,7 @@ public class StreamingAppMasterService extends CompositeService
     dag = this.dnmgr.getLogicalPlan();
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = dag.getAttributes().get(DAG.STRING_CODECS);
-    if (codecs != null) {
-      LOG.debug("LOADING CONVERTERS {}", Thread.currentThread().getId());
-      StringCodecs.loadConverters(codecs);
-    }
+    StringCodecs.loadConverters(codecs);
 
     LOG.info("Starting application with {} operators in {} containers", dnmgr.getPhysicalPlan().getAllOperators().size(), dnmgr.getPhysicalPlan().getContainers().size());
 

@@ -3,6 +3,8 @@
  */
 package com.datatorrent.stram;
 
+import java.net.URI;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,7 +25,8 @@ import com.datatorrent.common.util.DTThrowable;
  */
 public class StringCodecs
 {
-  private static Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<Class<?>, Class<? extends StringCodec<?>>>();
+  private static final ConcurrentHashMap<ClassLoader, Boolean> classLoaders = new ConcurrentHashMap<ClassLoader, Boolean>();
+  private static final Map<Class<?>, Class<? extends StringCodec<?>>> codecs = new HashMap<Class<?>, Class<? extends StringCodec<?>>>();
   private static final Logger LOG = LoggerFactory.getLogger(StringCodecs.class);
 
   private StringCodecs()
@@ -31,8 +34,9 @@ public class StringCodecs
     // no creation of instances
   }
 
-  static {
-    LOG.debug("Loading default string converter");
+  public static void loadDefaultConverters()
+  {
+    LOG.debug("Loading default converters for BeanUtils");
     ConvertUtils.register(new Converter()
     {
       @Override
@@ -63,6 +67,15 @@ public class StringCodecs
       }
 
     }, String.class);
+
+    ConvertUtils.register(new Converter()
+    {
+      @Override
+      public Object convert(Class type, Object value)
+      {
+        return URI.create(value.toString());
+      }
+    }, URI.class);
   }
 
   public static void clear()
@@ -75,12 +88,38 @@ public class StringCodecs
 
   public static void loadConverters(Map<Class<?>, Class<? extends StringCodec<?>>> map)
   {
+    check();
+    if (map == null) {
+      return;
+    }
     for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : map.entrySet()) {
       try {
         register(entry.getValue(), entry.getKey());
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         DTThrowable.rethrow(ex);
+      }
+    }
+  }
+
+  public static void check()
+  {
+    if (classLoaders.putIfAbsent(Thread.currentThread().getContextClassLoader(), Boolean.TRUE) == null) {
+      loadDefaultConverters();
+      for (Map.Entry<Class<?>, Class<? extends StringCodec<?>>> entry : codecs.entrySet()) {
+        try {
+          final StringCodec<?> codecInstance = entry.getValue().newInstance();
+          ConvertUtils.register(new Converter()
+          {
+            @Override
+            public Object convert(Class type, Object value)
+            {
+              return codecInstance.fromString(value.toString());
+            }
+
+          }, entry.getKey());
+        } catch (Exception ex) {
+          throw new RuntimeException(ex);
+        }
       }
     }
   }
@@ -93,6 +132,7 @@ public class StringCodecs
 
   public static <T> void register(final Class<? extends StringCodec<?>> codec, final Class<T> clazz) throws InstantiationException, IllegalAccessException
   {
+    check();
     final StringCodec<?> codecInstance = codec.newInstance();
     ConvertUtils.register(new Converter()
     {

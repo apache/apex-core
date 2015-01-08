@@ -3,6 +3,7 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.io.*;
@@ -58,6 +59,7 @@ public class AppPackage extends JarFile implements Closeable
     public String displayName;
     public LogicalPlan dag;
     public String error;
+    public String errorStackTrace;
 
     public AppInfo(String name, String file, String type)
     {
@@ -230,12 +232,13 @@ public class AppPackage extends JarFile implements Closeable
             }
             AppInfo appInfo = new AppInfo(appName, entry.getName(), "class");
             appInfo.displayName = appFactory.getDisplayName();
-            appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             try {
+              appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
               appInfo.dag.validate();
             }
             catch (Exception ex) {
               appInfo.error = ex.getMessage();
+              appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
             }
             applications.add(appInfo);
           }
@@ -263,12 +266,14 @@ public class AppPackage extends JarFile implements Closeable
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
           appInfo.displayName = appFactory.getDisplayName();
+          StringCodecs.check();
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
           }
           catch (Exception ex) {
-            appInfo.error = ex.getMessage() + ": " + ExceptionUtils.getStackTrace(ex);
+            appInfo.error = ex.getMessage();
+            appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
           }
           applications.add(appInfo);
         }
@@ -284,12 +289,13 @@ public class AppPackage extends JarFile implements Closeable
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "properties");
           appInfo.displayName = appFactory.getDisplayName();
-          appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
           try {
+            appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
           }
           catch (Throwable t) {
             appInfo.error = t.getMessage();
+            appInfo.errorStackTrace = ExceptionUtils.getStackTrace(t);
           }
           applications.add(appInfo);
         }
