@@ -266,7 +266,6 @@ public class AppPackage extends JarFile implements Closeable
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
           appInfo.displayName = appFactory.getDisplayName();
-          StringCodecs.check();
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();

@@ -440,6 +440,7 @@ public class StramAppLauncher
   {
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     Thread.currentThread().setContextClassLoader(cl);
+    StringCodecs.check();
     return cl;
   }
 

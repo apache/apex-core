@@ -1985,7 +1985,6 @@ public class DTCli
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
-      StringCodecs.check();
       StramAppLauncher submitApp;
       AppFactory appFactory = null;
       String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
