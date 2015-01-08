@@ -60,6 +60,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
@@ -1984,6 +1985,7 @@ public class DTCli
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
       String fileName = expandFileName(commandLineInfo.args[0], true);
+      StringCodecs.check();
       StramAppLauncher submitApp;
       AppFactory appFactory = null;
       String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
