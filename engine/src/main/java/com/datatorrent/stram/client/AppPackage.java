@@ -11,6 +11,7 @@ import java.util.jar.*;
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -262,12 +263,12 @@ public class AppPackage extends JarFile implements Closeable
           stramAppLauncher.loadDependencies();
           AppInfo appInfo = new AppInfo(appFactory.getName(), entry.getName(), "json");
           appInfo.displayName = appFactory.getDisplayName();
-          appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
           try {
+            appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
           }
           catch (Exception ex) {
-            appInfo.error = ex.getMessage();
+            appInfo.error = ex.getMessage() + ": " + ExceptionUtils.getStackTrace(ex);
           }
           applications.add(appInfo);
         }
