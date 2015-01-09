@@ -201,6 +201,10 @@ public class CLIProxy implements Closeable
         String line;
         while (true) {
           line = br.readLine();
+          if (line == null) {
+            LOG.warn("Unexpected EOF encountered from CLI proxy.");
+            return sb.toString();
+          }
           LOG.debug("From CLI, received: {}", line);
           if (COMMAND_DELIMITER.equals(line)) {
             break;

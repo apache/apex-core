@@ -60,7 +60,6 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
@@ -1174,6 +1173,7 @@ public class DTCli
   public void run() throws IOException
   {
     ConsoleReader reader = new ConsoleReader();
+    reader.setExpandEvents(false);
     reader.setBellEnabled(false);
     try {
       processSourceFile(StramClientUtils.getConfigDir() + "/clirc_system", reader);
