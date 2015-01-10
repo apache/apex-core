@@ -28,12 +28,12 @@ public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
   }
 
   @Override
-  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
+  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId, int bufferSize)
   {
     tupleCount.set(0);
     firstPayload = lastPayload = null;
     resetPayloads.clear();
-    super.activate(version, type, sourceId, mask, partitions, windowId);
+    super.activate(version, type, sourceId, mask, partitions, windowId, bufferSize);
   }
 
   @Override

@@ -65,7 +65,7 @@ public class Server implements ServerListener
     this.blockSize = blocksize;
     this.numberOfCacheBlocks = numberOfCacheBlocks;
     serverHelperExecutor = Executors.newSingleThreadExecutor(new NameableThreadFactory("ServerHelper"));
-    storageHelperExecutor = Executors.newSingleThreadExecutor(new NameableThreadFactory("StorageHelper"));
+    storageHelperExecutor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(numberOfCacheBlocks), new NameableThreadFactory("StorageHelper"), new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
   public void setSpoolStorage(Storage storage)
@@ -399,11 +399,17 @@ public class Server implements ServerListener
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
           AbstractLengthPrependerClient subscriber;
+
+//          /* for backward compatibility - set the buffer size to 16k - EXPERIMENTAL */
+          int bufferSize = subscriberRequest.getBufferSize();
+//          if (bufferSize == 0) {
+//            bufferSize = 16 * 1024;
+//          }
           if (subscriberRequest.getVersion().equals(Tuple.FAST_VERSION)) {
-            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions());
+            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions(), bufferSize);
           }
           else {
-            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions())
+            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions(), bufferSize)
             {
               @Override
               public int readSize()
@@ -467,9 +473,9 @@ public class Server implements ServerListener
     private final int mask;
     private final int[] partitions;
 
-    Subscriber(String type, int mask, int[] partitions)
+    Subscriber(String type, int mask, int[] partitions, int bufferSize)
     {
-      super(1024, 16 * 1024);
+      super(1024, bufferSize);
       this.type = type;
       this.mask = mask;
       this.partitions = partitions;
