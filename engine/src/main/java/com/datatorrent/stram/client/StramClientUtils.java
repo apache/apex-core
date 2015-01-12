@@ -293,11 +293,12 @@ public class StramClientUtils
   {
     addDTLocalResources(conf);
     FileSystem fs = null;
+    File targetGlobalFile = null;
     try {
       fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
-      File targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
+      targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
       fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
         new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
@@ -307,12 +308,13 @@ public class StramClientUtils
       }
       // load user config file
       addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
-    }
-    finally {
+    } finally {
+      if (targetGlobalFile != null) {
+        targetGlobalFile.delete();
+      }
       IOUtils.closeQuietly(fs);
     }
 
