@@ -219,10 +219,50 @@ public class CLIProxy implements Closeable
     String result = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
     if (!err.isEmpty()) {
-      //LOG.error("Command is returning this in stderr: {}", err);
+      LOG.error("Command is returning this in stderr: {}", err);
       throw new CommandException(err);
     }
     return (result == null) ? null : new JSONObject(result);
+  }
+
+  public JSONObject issueCommandRaw(String command) throws Exception
+  {
+    OutputStream os = process.getOutputStream();
+    LOG.debug("Issuing command to CLI: {}", command);
+    os.write((command + "\n").getBytes());
+    os.flush();
+    Callable<String> readTask = new Callable<String>()
+    {
+
+      @Override
+      public String call() throws Exception
+      {
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while (true) {
+          line = br.readLine();
+          if (line == null) {
+            LOG.warn("Unexpected EOF encountered from CLI proxy.");
+            return sb.toString();
+          }
+          LOG.debug("From CLI, received: {}", line);
+          if (COMMAND_DELIMITER.equals(line)) {
+            break;
+          }
+          sb.append(line).append("\n");
+        }
+        return sb.toString();
+      }
+
+    };
+    Future<String> future = executor.submit(readTask);
+    String out = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    String err = errorGobbler.getContent();
+
+    JSONObject result = new JSONObject();
+    result.put("out", out);
+    result.put("err", err);
+    return result;
   }
 
   private void consumePrompt() throws IOException
