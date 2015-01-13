@@ -263,7 +263,6 @@ public interface Context
     Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
     /**
      * URL to the application's documentation.
-     * If not set, "app-documentation-unavailable" is the default.
      */
     Attribute<String> APPLICATION_DOC_LINK = new Attribute<String>(new String2String());
 
@@ -272,8 +271,8 @@ public interface Context
      * <p>
      * Please note that if the string <code>"{appId}"</code> is present in this atttribute value, the
      * DataTorrent UI Console will replace it with the full application ID. For example, if it is set
-     * to <code>"/my/appdata/dashboard?appId={appId}"</code>, it will be converted to
-     * <code>"/my/appdata/dashboard?appId=application_1355713111917_0002"</code>.
+     * to <code>"http://mynetwork.net/my/appdata/dashboard?appId={appId}"</code>, it will be converted to
+     * <code>"http://mynetwork.net/my/appdata/dashboard?appId=application_1355713111917_0002"</code>.
      * </p>
      */
     Attribute<String> APPLICATION_DATA_LINK = new Attribute<String>(new String2String());
