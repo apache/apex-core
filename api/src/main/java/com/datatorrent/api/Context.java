@@ -263,9 +263,19 @@ public interface Context
     Attribute<String> APPLICATION_NAME = new Attribute<String>("unknown-application-name");
     /**
      * URL to the application's documentation.
-     * If not set, "app-documentation-unavailable" is the default.
      */
-    Attribute<String> APPLICATION_DOC_LINK = new Attribute<String>("app-documentation-unavailable");
+    Attribute<String> APPLICATION_DOC_LINK = new Attribute<String>(new String2String());
+
+    /**
+     * URL to the application's app data, if any. If not set, an empty string is the default.
+     * <p>
+     * Please note that if the string <code>"{appId}"</code> is present in this atttribute value, the
+     * DataTorrent UI Console will replace it with the full application ID. For example, if it is set
+     * to <code>"http://mynetwork.net/my/appdata/dashboard?appId={appId}"</code>, it will be converted to
+     * <code>"http://mynetwork.net/my/appdata/dashboard?appId=application_1355713111917_0002"</code>.
+     * </p>
+     */
+    Attribute<String> APPLICATION_DATA_LINK = new Attribute<String>(new String2String());
     /**
      * Application instance identifier. An application with the same name can run in multiple instances, each with a
      * unique identifier. The identifier is set by the client that submits the application and can be used in operators
