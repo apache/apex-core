@@ -30,7 +30,7 @@ public class CLIProxy implements Closeable
   private final ExecutorService executor = Executors.newFixedThreadPool(1);
   private StreamGobbler errorGobbler;
   private final Map<String, String> env = new HashMap<String, String>();
-  private static final long TIMEOUT_MILLIS = 30000;
+  private long commandTimeoutMillis = 60000;
   private static final String COMMAND_DELIMITER = "___COMMAND_DELIMITER___";
 
   @SuppressWarnings("serial")
@@ -51,6 +51,11 @@ public class CLIProxy implements Closeable
   public void putenv(String key, String value)
   {
     env.put(key, value);
+  }
+
+  public void setCommandTimeoutMillis(long commandTimeoutMillis)
+  {
+    this.commandTimeoutMillis = commandTimeoutMillis;
   }
 
   public void start() throws IOException
@@ -216,7 +221,7 @@ public class CLIProxy implements Closeable
 
     };
     Future<String> future = executor.submit(readTask);
-    String result = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    String result = future.get(commandTimeoutMillis, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
     if (!err.isEmpty()) {
       LOG.error("Command is returning this in stderr: {}", err);
@@ -256,7 +261,7 @@ public class CLIProxy implements Closeable
 
     };
     Future<String> future = executor.submit(readTask);
-    String out = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    String out = future.get(commandTimeoutMillis, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
 
     JSONObject result = new JSONObject();
