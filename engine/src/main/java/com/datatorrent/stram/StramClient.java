@@ -80,9 +80,6 @@ public class StramClient
   private final String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  private LinkedHashSet<String> libjars;
-  private String files;
-  private String archives;
   private String originalAppId;
   private String applicationType = YARN_APPLICATION_TYPE;
 
@@ -273,9 +270,6 @@ public class StramClient
     // process dependencies
     LinkedHashSet<String> localJarFiles = findJars(dag);
 
-    if (libjars != null) {
-      localJarFiles.addAll(libjars);
-    }
     YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
       + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
@@ -610,19 +604,9 @@ public class StramClient
     return rmClient.waitForCompletion(appId, callback, clientTimeout);
   }
 
-  public void setFiles(String files)
-  {
-    this.files = files;
-  }
-
   public void setLibJars(LinkedHashSet<String> libjars)
   {
     this.libjars = libjars;
-  }
-
-  public void setArchives(String archives)
-  {
-    this.archives = archives;
   }
 
   public void setApplicationType(String type)
