@@ -178,11 +178,6 @@ public class StramClient
       localJarFiles.add(jar);
     }
 
-    String libJarsPath = dag.getValue(LogicalPlan.LIBRARY_JARS);
-    if (!StringUtils.isEmpty(libJarsPath)) {
-      String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, LIB_JARS_SEP);
-      localJarFiles.addAll(Arrays.asList(libJars));
-    }
     LOG.info("Local jar file dependencies: " + localJarFiles);
 
     return localJarFiles;
@@ -400,24 +395,7 @@ public class StramClient
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
 
       LOG.info("libjars: {}", libJarsCsv);
-      dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
-
-      if (files != null) {
-        String[] localFiles = files.split(",");
-        String filesCsv = copyFromLocal(fs, appPath, localFiles);
-        LOG.info("files: {}", filesCsv);
-        dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
-        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
-      }
-
-      if (archives != null) {
-        String[] localFiles = archives.split(",");
-        String archivesCsv = copyFromLocal(fs, appPath, localFiles);
-        LOG.info("archives: {}", archivesCsv);
-        dag.getAttributes().put(LogicalPlan.ARCHIVES, archivesCsv);
-        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
-      }
 
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */

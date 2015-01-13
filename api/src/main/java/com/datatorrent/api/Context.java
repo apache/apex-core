@@ -277,20 +277,6 @@ public interface Context
      */
     Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
     /**
-     * Comma separated list of jar file dependencies to be deployed with the application.
-     * The launcher will combine the list with built-in dependencies and those specified
-     * that are made available through the distributed file system to application master
-     * and child containers.
-     */
-    Attribute<String> LIBRARY_JARS = new Attribute<String>(new String2String());
-    /**
-     * Comma separated list of files to be deployed with the application.
-     * The launcher will include the files into the final set of resources
-     * that are made available through the distributed file system to application master
-     * and child containers.
-     */
-    Attribute<String> FILES = new Attribute<String>(new String2String());
-    /**
      * Comma separated list of archives to be deployed with the application.
      * The launcher will include the archives into the final set of resources
      * that are made available through the distributed file system to application master

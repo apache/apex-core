@@ -14,8 +14,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.Nullable;
 
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.io.IOUtils;
@@ -32,22 +38,21 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
+
+import com.datatorrent.lib.util.FSStorageAgent;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
@@ -75,7 +80,6 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
-import org.codehaus.jettison.json.JSONObject;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>
@@ -2463,9 +2467,6 @@ public class StreamingContainerManager implements PlanContext
 
       lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
       lp.setAttribute(LogicalPlan.APPLICATION_PATH, newApp.assertAppPath());
-      lp.setAttribute(LogicalPlan.LIBRARY_JARS, newApp.getValue(LogicalPlan.LIBRARY_JARS));
-      lp.setAttribute(LogicalPlan.FILES, newApp.getValue(LogicalPlan.LIBRARY_JARS));
-      lp.setAttribute(LogicalPlan.ARCHIVES, newApp.getValue(LogicalPlan.ARCHIVES));
       lp.setAttribute(LogicalPlan.QUEUE_NAME, newApp.getValue(LogicalPlan.QUEUE_NAME));
 
       this.finals = new FinalVars(finals, lp);
