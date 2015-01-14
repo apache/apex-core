@@ -53,6 +53,7 @@ public class DTLoggerFactoryTest
   {
     Map<String, String> changes = Maps.newHashMap();
     changes.put("com.datatorrent.*", "DEBUG");
+    changes.put("com.datatorrent.stram.engine.*", "ERROR");
     DTLoggerFactory.getInstance().changeLoggersLevel(changes);
 
     LoggerFactory.getLogger(DTConfiguration.class);
@@ -66,6 +67,20 @@ public class DTLoggerFactoryTest
 
     LoggerFactory.getLogger(StreamingContainer.class);
     org.apache.log4j.Logger stramChildLogger = LogManager.getLogger(StreamingContainer.class);
-    Assert.assertEquals(stramChildLogger.getLevel(), Level.DEBUG);
+    Assert.assertEquals(stramChildLogger.getLevel(), Level.ERROR);
+  }
+
+  @Test
+  public void testGetPatternLevels()
+  {
+    Map<String, String> changes = Maps.newHashMap();
+    changes.put("com.datatorrent.io.fs.*", "DEBUG");
+    changes.put("com.datatorrent.io.*", "ERROR");
+    DTLoggerFactory.getInstance().changeLoggersLevel(changes);
+
+    Map<String, String> levels = DTLoggerFactory.getInstance().getPatternLevels();
+
+    Assert.assertEquals(levels.get("com.datatorrent.io.fs.*"), "DEBUG");
+    Assert.assertEquals(levels.get("com.datatorrent.io.*"), "ERROR");
   }
 }
