@@ -16,7 +16,6 @@ import javax.annotation.Nullable;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +31,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,12 +39,14 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.lib.util.FSStorageAgent;
@@ -75,7 +77,6 @@ import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
 import com.datatorrent.stram.webapp.*;
-import org.codehaus.jettison.json.JSONObject;
 
 /**
  * Tracks topology provisioning/allocation to containers<p>
@@ -804,18 +805,27 @@ public class StreamingContainerManager implements PlanContext
     container.setFinishedTime(-1);
     writeJournal(SetContainerState.newInstance(container));
 
-    StreamingContainerAgent sca = new StreamingContainerAgent(container, newStreamingContainerContext(resource.containerId), this);
+    StreamingContainerAgent sca = new StreamingContainerAgent(container, newStreamingContainerContext(container), this);
     containers.put(resource.containerId, sca);
     LOG.debug("Assigned container {} priority {}", resource.containerId, resource.priority);
     return sca;
   }
 
-  private StreamingContainerContext newStreamingContainerContext(String containerId)
+  private StreamingContainerContext newStreamingContainerContext(PTContainer container)
   {
     try {
+      int bufferServerMemory = 0;
+      Iterator<PTOperator> operatorIterator = container.getOperators().iterator();
+
+      while (operatorIterator.hasNext()) {
+        bufferServerMemory += operatorIterator.next().getBufferServerMemory();
+      }
+      LOG.debug("Buffer Server Memory {}", bufferServerMemory);
+
       // the logical plan is not to be serialized via RPC, clone attributes only
       StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
-      scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
+      scc.attributes.put(ContainerContext.IDENTIFIER, container.getExternalId());
+      scc.attributes.put(ContainerContext.BUFFER_SERVER_MB, bufferServerMemory);
       scc.startWindowMillis = this.vars.windowStartMillis;
       return scc;
     }
@@ -2378,7 +2388,7 @@ public class StreamingContainerManager implements PlanContext
         for (PTContainer c : plan.getContainers()) {
           if (c.getExternalId() != null) {
             LOG.debug("Restore container agent {} for {}", c.getExternalId(), c);
-            StreamingContainerAgent sca = new StreamingContainerAgent(c, scm.newStreamingContainerContext(c.getExternalId()), scm);
+            StreamingContainerAgent sca = new StreamingContainerAgent(c, scm.newStreamingContainerContext(c), scm);
             scm.containers.put(c.getExternalId(), sca);
           }
           else {

@@ -4,12 +4,22 @@
  */
 package com.datatorrent.stram.plan.physical;
 
+import java.util.*;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
@@ -18,13 +28,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
-import java.util.*;
 
 /**
  *
@@ -276,6 +279,17 @@ public class PTOperator implements java.io.Serializable
       }
     }
     return pkeys;
+  }
+
+  public int getBufferServerMemory()
+  {
+    int bufferServerMemory = 0;
+    for (int i = 0; i < outputs.size(); i++) {
+      if (!outputs.get(i).isDownStreamInline()) {
+        bufferServerMemory += outputs.get(i).logicalStream.getSource().getValue(Context.PortContext.BUFFER_MB);
+      }
+    }
+    return bufferServerMemory;
   }
 
   public void setPartitionKeys(Map<InputPort<?>, PartitionKeys> portKeys) {

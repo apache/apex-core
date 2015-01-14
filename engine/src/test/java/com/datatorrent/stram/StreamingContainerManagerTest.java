@@ -4,6 +4,21 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.*;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -11,11 +26,13 @@ import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
+
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.OperatorDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.InputDeployInfo;
 import com.datatorrent.stram.api.OperatorDeployInfo.OutputDeployInfo;
@@ -37,18 +54,6 @@ import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.*;
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -114,6 +119,7 @@ public class StreamingContainerManagerTest {
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
     GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
 
+    dag.setOutputPortAttribute(o1.outport,PortContext.BUFFER_MB,256);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
     dag.setOutputPortAttribute(o1.outport, PortContext.SPIN_MILLIS, 99);
 
@@ -163,6 +169,8 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull(o2.getName() + " assigned to " + sca2.container.getExternalId(), o2DI);
     Assert.assertNotNull(o3.getName() + " assigned to " + sca2.container.getExternalId(), o3DI);
 
+    Assert.assertTrue("The buffer server memory for container 1", 256 == sca1.getInitContext().getValue(ContainerContext.BUFFER_SERVER_MB));
+    Assert.assertTrue("The buffer server memory for container 2", 0 == sca2.getInitContext().getValue(ContainerContext.BUFFER_SERVER_MB));
     // buffer server input o2 from o1
     InputDeployInfo c2o2i1 = getInputDeployInfo(o2DI, "o1.outport");
     Assert.assertNotNull("stream connection for container2", c2o2i1);
@@ -494,7 +502,7 @@ public class StreamingContainerManagerTest {
 
     // assign container
     String containerId = "container1";
-    StreamingContainerAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 0, null), InetSocketAddress.createUnresolved("localhost", 0));
+    StreamingContainerAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 512, null), InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertNotNull(sca);
 
     Assert.assertEquals(PTContainer.State.ALLOCATED, o1p1.getContainer().getState());

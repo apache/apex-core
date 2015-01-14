@@ -13,26 +13,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.Nullable;
 
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang.StringUtils;
-
-import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
-
-import static com.datatorrent.api.Context.CountersAggregator;
 
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
@@ -46,6 +44,8 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.physical.PTOperator.HostOperatorSet;
 import com.datatorrent.stram.plan.physical.PTOperator.PTInput;
 import com.datatorrent.stram.plan.physical.PTOperator.PTOutput;
+
+import static com.datatorrent.api.Context.CountersAggregator;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -349,6 +349,10 @@ public class PhysicalPlan implements Serializable
       }
     }
 
+    for (PTContainer container : containers) {
+      updateContainerMemoryWithBufferServer(container);
+    }
+
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
       initCheckpoint(operEntry.getKey(), operEntry.getValue(), Checkpoint.INITIAL_CHECKPOINT);
     }
@@ -373,6 +377,15 @@ public class PhysicalPlan implements Serializable
     }
     int memoryMB = pOperator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
     container.setRequiredMemoryMB(container.getRequiredMemoryMB() + memoryMB);
+  }
+
+  private void updateContainerMemoryWithBufferServer(PTContainer container)
+  {
+    int bufferServerMemory = 0;
+    for (PTOperator operator : container.getOperators()) {
+      bufferServerMemory += operator.getBufferServerMemory();
+    }
+    container.setRequiredMemoryMB(container.getRequiredMemoryMB() + bufferServerMemory);
   }
 
   private void initPartitioning(PMapping m, int partitionCnt)
@@ -516,7 +529,17 @@ public class PhysicalPlan implements Serializable
     }
 
     int memoryPerPartition = currentMapping.logicalOperator.getValue(OperatorContext.MEMORY_MB);
+    for (Map.Entry<OutputPortMeta, StreamMeta> stream : currentMapping.logicalOperator.getOutputStreams().entrySet()) {
+      if (stream.getValue().getLocality() != Locality.THREAD_LOCAL && stream.getValue().getLocality() != Locality.CONTAINER_LOCAL) {
+        memoryPerPartition += stream.getKey().getValue(PortContext.BUFFER_MB);
+      }
+    }
     for (OperatorMeta pp : currentMapping.parallelPartitions) {
+      for (Map.Entry<OutputPortMeta, StreamMeta> stream : pp.getOutputStreams().entrySet()) {
+        if (stream.getValue().getLocality() != Locality.THREAD_LOCAL && stream.getValue().getLocality() != Locality.CONTAINER_LOCAL) {
+          memoryPerPartition += stream.getKey().getValue(PortContext.BUFFER_MB);
+        }
+      }
       memoryPerPartition += pp.getValue(OperatorContext.MEMORY_MB);
     }
     int requiredMemoryMB = (mainPC.newPartitions.size() - mainPC.currentPartitions.size()) * memoryPerPartition;
@@ -739,6 +762,7 @@ public class PhysicalPlan implements Serializable
     Set<PTContainer> newContainers = Sets.newHashSet();
     Set<PTContainer> releaseContainers = Sets.newHashSet();
     assignContainers(newContainers, releaseContainers);
+
     this.undeployOpers.removeAll(newOpers.keySet());
     //make sure all the new operators are included in deploy operator list
     this.deployOpers.addAll(this.newOpers.keySet());
@@ -777,6 +801,7 @@ public class PhysicalPlan implements Serializable
           break;
         }
         memoryMB += inlineOper.operatorMeta.getValue(OperatorContext.MEMORY_MB);
+        memoryMB += inlineOper.getBufferServerMemory();
       }
 
       if (newContainer == null) {
@@ -784,8 +809,9 @@ public class PhysicalPlan implements Serializable
         for (PTContainer c : this.containers) {
           if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
             LOG.debug("Reusing existing container {} for {}", c, oper);
-            c.setRequiredMemoryMB(0);
             newContainer = c;
+            setContainer(oper, newContainer);
+            newContainer.setRequiredMemoryMB(0);
           }
         }
 
@@ -793,12 +819,16 @@ public class PhysicalPlan implements Serializable
           // get new container
           LOG.debug("New container for: " + oper);
           newContainer = new PTContainer(this);
-          containers.add(newContainer);
           newContainers.add(newContainer);
+          setContainer(oper, newContainer);
         }
+      }else{
+        setContainer(oper, newContainer);
       }
-
-      setContainer(oper, newContainer);
+    }
+    for (PTContainer c : newContainers) {
+      updateContainerMemoryWithBufferServer(c);
+      containers.add(c);
     }
 
     // release containers that are no longer used
