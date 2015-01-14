@@ -429,7 +429,6 @@ public class LogicalPlan implements Serializable, DAG
     /*
      * Used for  OIO validation,
      *  value null => node not visited yet
-     *  value -1  => node visited and not oio
      *  other value => represents the root oio node for this node
      */
     private transient Integer oioRoot = null;
@@ -1060,7 +1059,7 @@ public class LogicalPlan implements Serializable, DAG
   /**
    * Helper method for validateThreadLocal method, runs recursively
    * For a given operator, visits all upstream operators in DFS, validates and marks them as visited
-   * returns hashcode of owner oio node if it exists, else returns -1
+   * returns hashcode of owner oio node if it exists, else returns hashcode of the supplied node
    */
   private Integer getOioRoot(OperatorMeta om) {
     // operators which were already marked a visited
