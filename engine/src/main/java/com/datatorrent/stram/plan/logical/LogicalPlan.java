@@ -1039,7 +1039,7 @@ public class LogicalPlan implements Serializable, DAG
       Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
 
       // validation fail as each input stream should have a common OIO root
-      if (oioStreamRoot == -1){
+      if (om.oioRoot != null && oioStreamRoot != om.oioRoot){
         String msg = String.format("Locality %s invalid for operator %s with multiple input streams as at least one of the input streams is not originating from common OIO owner node",
                                    Locality.THREAD_LOCAL, om, Locality.THREAD_LOCAL);
         throw new ValidationException(msg);
@@ -1073,27 +1073,20 @@ public class LogicalPlan implements Serializable, DAG
       case 1:
         StreamMeta sm = om.inputStreams.values().iterator().next();
         if (sm.locality == Locality.THREAD_LOCAL) {
-          Integer oioStreamRoot = getOioRoot(sm.source.operatorMeta);
-          if (oioStreamRoot == -1) {
-            om.oioRoot = sm.source.operatorMeta.hashCode();
-          }
-          else {
-            om.oioRoot = oioStreamRoot;
-          }
-          return om.oioRoot;
+          om.oioRoot = getOioRoot(sm.source.operatorMeta);
         }
         else {
-          om.oioRoot = -1;
-          return om.hashCode();
+          om.oioRoot = om.hashCode();
         }
+        break;
       case 0:
-        om.oioRoot = -1;
-        return om.hashCode();
-
+        om.oioRoot = om.hashCode();
+        break;
       default:
         validateThreadLocal(om);
-        return om.oioRoot;
     }
+
+    return om.oioRoot;
   }
 
   /**

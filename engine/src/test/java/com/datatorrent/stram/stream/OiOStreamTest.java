@@ -377,6 +377,10 @@ public class OiOStreamTest
     public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
   }
 
+  public static class ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts extends ThreadIdValidatingGenericIntermediateOperator {
+    public final transient DefaultOutputPort<Long> output2 = new DefaultOutputPort<Long>();
+  }
+
   public static class ThreadIdValidatingGenericOperatorWithTwoInputPorts implements Operator
   {
     public static long threadId;
@@ -600,5 +604,53 @@ public class OiOStreamTest
     Assert.assertTrue("OIO:: inputOperator1 : ThreadIdValidatingGenericIntermediateOperator", ThreadIdValidatingGenericIntermediateOperator.threadList.contains(ThreadIdValidatingInputOperator.threadId));
   }
 
+  @Test
+  public void validateOiOTwoPortBetweenOperatorsImplementation() throws Exception
+  {
+    LogicalPlan lp = new LogicalPlan();
+    lp.setAttribute(com.datatorrent.api.Context.OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
+    ThreadIdValidatingInputOperator inputOperator = lp.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts intermediateOperator = lp.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts());
+    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = lp.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
+
+    StreamMeta stream1 = lp.addStream("OiOinput", inputOperator.output, intermediateOperator.input);
+    StreamMeta stream2 = lp.addStream("OiOintermediateOutput1", intermediateOperator.output, outputOperator.input);
+    StreamMeta stream3 = lp.addStream("OiOintermediateOutput2", intermediateOperator.output2, outputOperator.input2);
+
+    StramLocalCluster slc;
+
+    /*
+     * The first test makes sure that when they are not ThreadLocal they use different threads
+     */
+    ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadList.clear();
+    ThreadIdValidatingOutputOperator.threadList.clear();
+    lp.validate();
+    slc = new StramLocalCluster(lp);
+    slc.run();
+
+    Assert.assertEquals("nonOIO: Number of threads", 1, ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadList.size());
+    Assert.assertNotEquals("nonOIO: Thread Ids of input operator and intermediate operator",
+                       ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadId);
+    Assert.assertNotEquals("nonOIO: Thread Ids of intermediate and output operators", ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadId, ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
+    Assert.assertNotEquals("nonOIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
+
+    /*
+     * This test makes sure that since all streams between two operators are thread local, they indeed share a thread
+     */
+    ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadList.clear();
+    ThreadIdValidatingOutputOperator.threadList.clear();
+    stream2.setLocality(Locality.THREAD_LOCAL);
+    stream3.setLocality(Locality.THREAD_LOCAL);
+    lp.validate();
+    slc = new StramLocalCluster(lp);
+    slc.run();
+
+    Assert.assertEquals("OIO: Number of threads", 1, ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadList.size());
+    Assert.assertNotEquals("OIO: Thread Ids of input operator and intermediate operator",
+                        ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadId);
+    Assert.assertEquals("OIO: Thread Ids of intermediate and output operators", ThreadIdValidatingGenericIntermediateOperatorWithTwoOutputPorts.threadId, ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
+    Assert.assertNotEquals("OIO: Thread Ids of input and output operators", ThreadIdValidatingInputOperator.threadId, ThreadIdValidatingGenericOperatorWithTwoInputPorts.threadId);
+  }
   private static final Logger logger = LoggerFactory.getLogger(OiOStreamTest.class);
 }
