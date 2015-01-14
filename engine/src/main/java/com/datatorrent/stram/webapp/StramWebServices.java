@@ -923,4 +923,22 @@ public class StramWebServices
     }
     return response;
   }
+
+  @GET
+  @Path(PATH_LOGGERS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONObject getLoggerLevels() throws JSONException {
+    init();
+    JSONObject response = new JSONObject();
+    JSONArray levelsArray = new JSONArray();
+    Map<String, String> currentLevels = DTLoggerFactory.getInstance().getPatternLevels();
+    for (Entry<String, String> lvl : currentLevels.entrySet()) {
+      JSONObject node = new JSONObject();
+      node.put("target", lvl.getKey());
+      node.put("logLevel", lvl.getValue());
+      levelsArray.put(node);
+    }
+    response.put("loggers", levelsArray);
+    return response;
+  }
 }

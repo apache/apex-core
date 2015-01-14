@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
+import com.google.common.base.Function;
 import org.apache.log4j.spi.LoggerFactory;
 import org.apache.log4j.spi.LoggerRepository;
 import org.apache.log4j.spi.RepositorySelector;
@@ -41,6 +42,16 @@ public class DTLoggerFactory implements LoggerFactory
 
   private final ConcurrentMap<String, Logger> loggerMap;
   private final Map<String, Level> patternLevel;
+
+  public ImmutableMap<String, String> getPatternLevels() {
+    return ImmutableMap.copyOf(Maps.transformValues(patternLevel, new Function<Level, String>(){
+      @Override
+      public String apply(Level input) {
+        return input == null ? "" : input.toString();
+      }
+    }));
+  }
+
   private final Map<String, Pattern> patterns;
   private boolean initialized = false;
 
