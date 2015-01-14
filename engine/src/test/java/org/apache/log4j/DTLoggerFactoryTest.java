@@ -74,13 +74,13 @@ public class DTLoggerFactoryTest
   public void testGetPatternLevels()
   {
     Map<String, String> changes = Maps.newHashMap();
-    changes.put("com.datatorrent.*", "DEBUG");
+    changes.put("com.datatorrent.io.fs.*", "DEBUG");
     changes.put("com.datatorrent.io.*", "ERROR");
     DTLoggerFactory.getInstance().changeLoggersLevel(changes);
 
     Map<String, String> levels = DTLoggerFactory.getInstance().getPatternLevels();
 
-    Assert.assertEquals(levels.get("com.datatorrent.*"), "DEBUG");
+    Assert.assertEquals(levels.get("com.datatorrent.io.fs.*"), "DEBUG");
     Assert.assertEquals(levels.get("com.datatorrent.io.*"), "ERROR");
   }
 }
