@@ -366,7 +366,6 @@ public class StramRecoveryTest
     Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
     Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
     Assert.assertEquals("modified libjars", "libjars2", dag.getValue(LogicalPlan.LIBRARY_JARS));
-
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     Assert.assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());
