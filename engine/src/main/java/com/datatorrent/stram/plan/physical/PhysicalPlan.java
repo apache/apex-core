@@ -780,6 +780,7 @@ public class PhysicalPlan implements Serializable
     for (PTOperator o  : this.newOpers.keySet()) {
       mxnUnifiers.addAll(o.upstreamMerge.values());
     }
+    Set<PTContainer> updatedContainers =  Sets.newHashSet();
 
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
 
@@ -809,28 +810,22 @@ public class PhysicalPlan implements Serializable
         for (PTContainer c : this.containers) {
           if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
             LOG.debug("Reusing existing container {} for {}", c, oper);
+            c.setRequiredMemoryMB(0);
             newContainer = c;
-            setContainer(oper, newContainer);
-            newContainer.setRequiredMemoryMB(0);
+            break;
           }
         }
-
         if (newContainer == null) {
           // get new container
           LOG.debug("New container for: " + oper);
           newContainer = new PTContainer(this);
           newContainers.add(newContainer);
-          setContainer(oper, newContainer);
+          containers.add(newContainer);
         }
-      }else{
-        setContainer(oper, newContainer);
+        updatedContainers.add(newContainer);
       }
+      setContainer(oper, newContainer);
     }
-    for (PTContainer c : newContainers) {
-      updateContainerMemoryWithBufferServer(c);
-      containers.add(c);
-    }
-
     // release containers that are no longer used
     for (PTContainer c : this.containers) {
       if (c.operators.isEmpty()) {
@@ -838,6 +833,9 @@ public class PhysicalPlan implements Serializable
         releaseContainers.add(c);
         containers.remove(c);
       }
+    }
+    for (PTContainer c : updatedContainers) {
+      updateContainerMemoryWithBufferServer(c);
     }
   }
 

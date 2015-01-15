@@ -289,7 +289,7 @@ public class PartitioningTest
         memory += operator.getBufferServerMemory();
         memory += operator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
       }
-      Assert.assertEquals("memory", memory, container.getAllocatedMemoryMB());
+      Assert.assertEquals("memory", memory, container.getRequiredMemoryMB());
     }
 
     PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
