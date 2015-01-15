@@ -2008,6 +2008,8 @@ public class DTCli
       if (commandLineInfo.licenseFile != null) {
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
+      config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue: "default");
+
       String fileName = expandFileName(commandLineInfo.args[0], true);
       StramAppLauncher submitApp;
       AppFactory appFactory = null;
@@ -3847,10 +3849,15 @@ public class DTCli
           launchArgs.add("-license");
           launchArgs.add(commandLineInfo.licenseFile);
         }
+        if (commandLineInfo.queue != null) {
+          launchArgs.add("-queue");
+          launchArgs.add(commandLineInfo.queue);
+        }
         launchArgs.add(appFile);
         if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
           launchArgs.add(selectedApp.name);
         }
+
 
         LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
         new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
@@ -4007,6 +4014,7 @@ public class DTCli
     final Option ignorePom = add(new Option("ignorepom", "Do not run maven to find the dependency"));
     final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg().withDescription("Specify original application identifier for restart.").create("originalAppId"));
     final Option exactMatch = add(new Option("exactMatch", "Only consider applications with exact app name"));
+    final Option queue = add(OptionBuilder.withArgName("queue name").hasArg().withDescription("Specify the queue to launch the application").create("license"));
 
     private Option add(Option opt)
     {
@@ -4044,6 +4052,7 @@ public class DTCli
     result.files = line.getOptionValue(LAUNCH_OPTIONS.files.getOpt());
     result.archives = line.getOptionValue(LAUNCH_OPTIONS.archives.getOpt());
     result.licenseFile = line.getOptionValue(LAUNCH_OPTIONS.license.getOpt());
+    result.queue = line.getOptionValue(LAUNCH_OPTIONS.queue.getOpt());
     result.args = line.getArgs();
     result.origAppId = line.getOptionValue(LAUNCH_OPTIONS.originalAppID.getOpt());
     result.exactMatch = line.hasOption("exactMatch");
@@ -4059,6 +4068,7 @@ public class DTCli
     Map<String, String> overrideProperties;
     String libjars;
     String files;
+    String queue;
     String archives;
     String licenseFile;
     String origAppId;
