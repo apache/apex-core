@@ -85,8 +85,7 @@ public interface Context
      */
     Attribute<Integer> QUEUE_CAPACITY = new Attribute<Integer>(1024);
     /**
-     * The amount of memory buffer server that this operator requires. There is a buffer server in each container. This is used to calculate total buffer server memory for container
-     * This amount is taken from the operator MEMORY_MB.
+     * The amount of buffer memory this port requires. There is a buffer server in each container. This is used to calculate total buffer server memory for container.
      * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
      * not be adhered to.
      */
