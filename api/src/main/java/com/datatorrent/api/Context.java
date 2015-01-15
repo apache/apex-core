@@ -321,10 +321,6 @@ public interface Context
      */
     Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
     /**
-     * The queue to which the application should be submitted..
-     */
-    Attribute<String> QUEUE_NAME = new Attribute<String>("default");
-    /**
      * Dump extra debug information in launcher, master and containers.
      */
     Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);

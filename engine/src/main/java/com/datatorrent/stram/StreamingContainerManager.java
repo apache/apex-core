@@ -2476,7 +2476,6 @@ public class StreamingContainerManager implements PlanContext
       lp.setAttribute(LogicalPlan.LIBRARY_JARS, newApp.getValue(LogicalPlan.LIBRARY_JARS));
       lp.setAttribute(LogicalPlan.FILES, newApp.getValue(LogicalPlan.LIBRARY_JARS));
       lp.setAttribute(LogicalPlan.ARCHIVES, newApp.getValue(LogicalPlan.ARCHIVES));
-      lp.setAttribute(LogicalPlan.QUEUE_NAME, newApp.getValue(LogicalPlan.QUEUE_NAME));
 
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);
