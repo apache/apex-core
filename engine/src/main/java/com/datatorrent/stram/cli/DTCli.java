@@ -1984,7 +1984,7 @@ public class DTCli
       if (commandLineInfo.licenseFile != null) {
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
-      config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue: "default");
+      config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
 
       String fileName = expandFileName(commandLineInfo.args[0], true);
       StramAppLauncher submitApp;
