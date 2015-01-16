@@ -1993,7 +1993,7 @@ public class DTCli
         submitApp = new StramAppLauncher(file.getName(), config);
         appFactory = new StramAppLauncher.JsonFileAppFactory(file);
         if (matchString != null) {
-          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON");
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON", matchString);
         }
       }
       else if (fileName.endsWith(".properties")) {
@@ -2001,7 +2001,7 @@ public class DTCli
         submitApp = new StramAppLauncher(file.getName(), config);
         appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
         if (matchString != null) {
-          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file");
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
         }
       }
       else {
