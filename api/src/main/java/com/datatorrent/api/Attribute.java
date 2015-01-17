@@ -36,8 +36,8 @@ import com.datatorrent.common.util.DTThrowable;
  * Attribute represents the attribute which can be set on various components in the system.
  *
  * @param <T> type of the value which can be stored against the attribute.
- *
  * @author Chetan Narsude  <chetan@datatorrent.com>
+ * @since 2.0.0
  */
 public class Attribute<T> implements Serializable
 {

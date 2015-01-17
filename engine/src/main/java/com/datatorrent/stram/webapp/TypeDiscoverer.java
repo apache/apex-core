@@ -22,6 +22,8 @@ import com.google.common.collect.Maps;
 
 /**
  * Introspect operator for generic type parameters and arguments to determine port types.
+ *
+ * @since 2.0.0
  */
 public class TypeDiscoverer
 {
