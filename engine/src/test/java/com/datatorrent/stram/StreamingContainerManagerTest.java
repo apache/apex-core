@@ -119,7 +119,7 @@ public class StreamingContainerManagerTest {
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
     GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
 
-    dag.setOutputPortAttribute(o1.outport,PortContext.BUFFER_MB,256);
+    dag.setOutputPortAttribute(o1.outport,PortContext.BUFFER_MEMORY_MB,256);
     dag.addStream("o1.outport", o1.outport, o2.inport1);
     dag.setOutputPortAttribute(o1.outport, PortContext.SPIN_MILLIS, 99);
 

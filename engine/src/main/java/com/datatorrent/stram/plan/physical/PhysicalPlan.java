@@ -531,13 +531,13 @@ public class PhysicalPlan implements Serializable
     int memoryPerPartition = currentMapping.logicalOperator.getValue(OperatorContext.MEMORY_MB);
     for (Map.Entry<OutputPortMeta, StreamMeta> stream : currentMapping.logicalOperator.getOutputStreams().entrySet()) {
       if (stream.getValue().getLocality() != Locality.THREAD_LOCAL && stream.getValue().getLocality() != Locality.CONTAINER_LOCAL) {
-        memoryPerPartition += stream.getKey().getValue(PortContext.BUFFER_MB);
+        memoryPerPartition += stream.getKey().getValue(PortContext.BUFFER_MEMORY_MB);
       }
     }
     for (OperatorMeta pp : currentMapping.parallelPartitions) {
       for (Map.Entry<OutputPortMeta, StreamMeta> stream : pp.getOutputStreams().entrySet()) {
         if (stream.getValue().getLocality() != Locality.THREAD_LOCAL && stream.getValue().getLocality() != Locality.CONTAINER_LOCAL) {
-          memoryPerPartition += stream.getKey().getValue(PortContext.BUFFER_MB);
+          memoryPerPartition += stream.getKey().getValue(PortContext.BUFFER_MEMORY_MB);
         }
       }
       memoryPerPartition += pp.getValue(OperatorContext.MEMORY_MB);

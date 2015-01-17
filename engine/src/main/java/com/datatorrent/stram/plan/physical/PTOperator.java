@@ -286,7 +286,7 @@ public class PTOperator implements java.io.Serializable
     int bufferServerMemory = 0;
     for (int i = 0; i < outputs.size(); i++) {
       if (!outputs.get(i).isDownStreamInline()) {
-        bufferServerMemory += outputs.get(i).logicalStream.getSource().getValue(Context.PortContext.BUFFER_MB);
+        bufferServerMemory += outputs.get(i).logicalStream.getSource().getValue(Context.PortContext.BUFFER_MEMORY_MB);
       }
     }
     return bufferServerMemory;

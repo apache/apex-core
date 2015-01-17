@@ -89,7 +89,7 @@ public interface Context
      * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
      * not be adhered to.
      */
-    Attribute<Integer> BUFFER_MB= new Attribute<Integer>(8 * 64);
+    Attribute<Integer> BUFFER_MEMORY_MB = new Attribute<Integer>(8 * 64);
     /**
      * Poll period in milliseconds when the port buffer reaches its limits.
      */
