@@ -44,6 +44,7 @@ import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
@@ -51,6 +52,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
@@ -685,5 +687,39 @@ public class StreamingContainerManagerTest {
 
     OperatorDeployInfo o1DeployInfo = getDeployInfo(scm.getContainerAgent(containerId)).get(0);
     Assert.assertEquals("type " + o1DeployInfo, OperatorDeployInfo.OperatorType.INPUT, o1DeployInfo.type);
+  }
+
+
+  private void testDownStreamPartition(Locality locality) throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+    dag.addStream("o1Output1", o1.outport, o2.inport1).setLocality(locality);
+
+    int maxContainers = 5;
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+    dag.validate();
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertEquals("number of containers", 1, plan.getContainers().size());
+
+    PTContainer container1 = plan.getContainers().get(0);
+    Assert.assertEquals("number operators " + container1, 3, container1.getOperators().size());
+    StramLocalCluster slc = new StramLocalCluster(dag);
+    slc.run(5000);
+  }
+
+  @Test
+  public void testOIODownstreamPartition() throws Exception
+  {
+    testDownStreamPartition(Locality.THREAD_LOCAL);
+  }
+
+  @Test
+  public void testContainerLocalDownstreamPartition() throws Exception
+  {
+    testDownStreamPartition(Locality.CONTAINER_LOCAL);
   }
 }
