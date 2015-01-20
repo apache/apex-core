@@ -10,17 +10,14 @@ import java.util.*;
 
 import javax.validation.constraints.Min;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.commons.lang3.mutable.MutableInt;
-
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -31,6 +28,7 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
 import com.datatorrent.stram.api.Checkpoint;
@@ -1831,8 +1829,9 @@ public class PhysicalPlanTest
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
-    Assert.assertEquals("memory container 1", 2048, plan.getContainers().get(0).getRequiredMemoryMB());
-    Assert.assertEquals("memory container 2", 4000, plan.getContainers().get(1).getRequiredMemoryMB());
+    Assert.assertEquals("memory container 1", 2560, plan.getContainers().get(0).getRequiredMemoryMB());
+    Assert.assertEquals("memory container 2", 4512, plan.getContainers().get(1).getRequiredMemoryMB());
+    Assert.assertEquals("number of operators in container 1", 2, plan.getContainers().get(0).getOperators().size());
   }
 
   private class TestPartitioner<T extends Operator> extends StatelessPartitioner<T>

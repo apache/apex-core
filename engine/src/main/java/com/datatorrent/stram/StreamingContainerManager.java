@@ -19,6 +19,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
+
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,9 +41,6 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
 
 import com.datatorrent.lib.util.FSStorageAgent;
 
@@ -297,7 +297,7 @@ public class StreamingContainerManager implements PlanContext
         wsClient.setup();
       }
       catch (Exception ex) {
-        LOG.warn("Cannot establish websocket connection to {}", gatewayAddress);
+        LOG.warn("Cannot establish websocket connection to {}", gatewayAddress, ex);
       }
     }
   }
@@ -808,18 +808,27 @@ public class StreamingContainerManager implements PlanContext
     container.setFinishedTime(-1);
     writeJournal(SetContainerState.newInstance(container));
 
-    StreamingContainerAgent sca = new StreamingContainerAgent(container, newStreamingContainerContext(resource.containerId), this);
+    StreamingContainerAgent sca = new StreamingContainerAgent(container, newStreamingContainerContext(container), this);
     containers.put(resource.containerId, sca);
     LOG.debug("Assigned container {} priority {}", resource.containerId, resource.priority);
     return sca;
   }
 
-  private StreamingContainerContext newStreamingContainerContext(String containerId)
+  private StreamingContainerContext newStreamingContainerContext(PTContainer container)
   {
     try {
+      int bufferServerMemory = 0;
+      Iterator<PTOperator> operatorIterator = container.getOperators().iterator();
+
+      while (operatorIterator.hasNext()) {
+        bufferServerMemory += operatorIterator.next().getBufferServerMemory();
+      }
+      LOG.debug("Buffer Server Memory {}", bufferServerMemory);
+
       // the logical plan is not to be serialized via RPC, clone attributes only
       StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
-      scc.attributes.put(ContainerContext.IDENTIFIER, containerId);
+      scc.attributes.put(ContainerContext.IDENTIFIER, container.getExternalId());
+      scc.attributes.put(ContainerContext.BUFFER_SERVER_MB, bufferServerMemory);
       scc.startWindowMillis = this.vars.windowStartMillis;
       return scc;
     }
@@ -2382,7 +2391,7 @@ public class StreamingContainerManager implements PlanContext
         for (PTContainer c : plan.getContainers()) {
           if (c.getExternalId() != null) {
             LOG.debug("Restore container agent {} for {}", c.getExternalId(), c);
-            StreamingContainerAgent sca = new StreamingContainerAgent(c, scm.newStreamingContainerContext(c.getExternalId()), scm);
+            StreamingContainerAgent sca = new StreamingContainerAgent(c, scm.newStreamingContainerContext(c), scm);
             scm.containers.put(c.getExternalId(), sca);
           }
           else {
@@ -2467,7 +2476,6 @@ public class StreamingContainerManager implements PlanContext
 
       lp.setAttribute(LogicalPlan.APPLICATION_ID, appId);
       lp.setAttribute(LogicalPlan.APPLICATION_PATH, newApp.assertAppPath());
-      lp.setAttribute(LogicalPlan.QUEUE_NAME, newApp.getValue(LogicalPlan.QUEUE_NAME));
 
       this.finals = new FinalVars(finals, lp);
       StorageAgent sa = lp.getValue(OperatorContext.STORAGE_AGENT);

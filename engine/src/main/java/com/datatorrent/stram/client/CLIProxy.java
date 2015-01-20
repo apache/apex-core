@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
+import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.StreamGobbler;
 import java.io.*;
 import java.util.*;
@@ -31,6 +32,7 @@ public class CLIProxy implements Closeable
   private StreamGobbler errorGobbler;
   private final Map<String, String> env = new HashMap<String, String>();
   private long commandTimeoutMillis = 60000;
+  private boolean debug = false;
   private static final String COMMAND_DELIMITER = "___COMMAND_DELIMITER___";
 
   @SuppressWarnings("serial")
@@ -43,9 +45,14 @@ public class CLIProxy implements Closeable
 
   }
 
-  public CLIProxy(String dtCliCommand)
+  public CLIProxy()
+  {
+  }
+
+  public CLIProxy(String dtCliCommand, boolean debug)
   {
     this.dtCliCommand = dtCliCommand;
+    this.debug = debug;
   }
 
   public void putenv(String key, String value)
@@ -60,7 +67,21 @@ public class CLIProxy implements Closeable
 
   public void start() throws IOException
   {
-    ProcessBuilder pb = new ProcessBuilder(dtCliCommand != null ? dtCliCommand : "dtcli", "-r", "-f", COMMAND_DELIMITER + "\n");
+    List<String> parameters = new ArrayList<String>();
+    parameters.add(dtCliCommand != null ? dtCliCommand : "dtcli");
+    parameters.add("-r");
+    if (debug) {
+      parameters.add("-vvvv");
+    }
+    if (StramUserLogin.getPrincipal() != null && StramUserLogin.getKeytab() != null) {
+      parameters.add("-kp");
+      parameters.add(StramUserLogin.getPrincipal());
+      parameters.add("-kt");
+      parameters.add(StramUserLogin.getKeytab());
+    }
+    parameters.add("-f");
+    parameters.add(COMMAND_DELIMITER + "\n");
+    ProcessBuilder pb = new ProcessBuilder(parameters);
     pb.environment().putAll(env);
     process = pb.start();
     errorGobbler = new StreamGobbler(process.getErrorStream());

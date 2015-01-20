@@ -62,6 +62,7 @@ public class LaunchContainerRunnable implements Runnable
   private final Container container;
   private final NMClientAsync nmClient;
   private final StreamingContainerAgent sca;
+  private static final int MB_TO_B = 1024 * 1024;
 
   /**
    * @param lcontainer Allocated container
@@ -201,11 +202,14 @@ public class LaunchContainerRunnable implements Runnable
     }
 
     List<DAG.OperatorMeta> operatorMetaList = Lists.newArrayList();
+    int bufferServerMemory = 0;
     for(PTOperator operator: sca.getContainer().getOperators()){
+      bufferServerMemory += operator.getBufferServerMemory();
       operatorMetaList.add(operator.getOperatorMeta());
     }
     Context.ContainerOptConfigurator containerOptConfigurator = dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR);
     jvmOpts = containerOptConfigurator.getJVMOptions(operatorMetaList);
+    jvmOpts = parseJvmOpts(jvmOpts, ((long) bufferServerMemory) * MB_TO_B);
     LOG.info("Jvm opts {} for container {}",jvmOpts,container.getId());
     vargs.add(jvmOpts);
 
@@ -236,6 +240,31 @@ public class LaunchContainerRunnable implements Runnable
     vargsFinal.add(mergedCommand.toString());
     return vargsFinal;
 
+  }
+
+  private String parseJvmOpts(String jvmOpts, long memory)
+  {
+    String xmx = "-Xmx";
+    StringBuilder builder = new StringBuilder();
+    if (jvmOpts != null && jvmOpts.length() > 1) {
+      String[] splits = jvmOpts.split("(\\s+)");
+      boolean foundProperty = false;
+      for (String split : splits) {
+        if (split.startsWith(xmx)) {
+          foundProperty = true;
+          long heapSize = Long.valueOf(split.substring(xmx.length()));
+          heapSize += memory;
+          builder.append(xmx).append(heapSize).append(" ");
+        }
+        else {
+          builder.append(split).append(" ");
+        }
+      }
+      if (!foundProperty) {
+        builder.append(xmx).append(memory);
+      }
+    }
+    return builder.toString();
   }
 
   public static ByteBuffer getTokens(StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress) throws IOException

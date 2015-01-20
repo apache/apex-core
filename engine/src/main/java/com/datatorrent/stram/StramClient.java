@@ -81,6 +81,7 @@ public class StramClient
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   private String originalAppId;
+  private String queueName;
   private String applicationType = YARN_APPLICATION_TYPE;
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
@@ -532,7 +533,7 @@ public class StramClient
       pri.setPriority(amPriority);
       appContext.setPriority(pri);
       // Set the queue to which this application is to be submitted in the RM
-      appContext.setQueue(dag.getAttributes().get(LogicalPlan.QUEUE_NAME));
+      appContext.setQueue(queueName);
 
       // Submit the application to the applications manager
       // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
@@ -614,4 +615,13 @@ public class StramClient
     this.originalAppId = appId;
   }
 
+  public String getQueueName()
+  {
+    return queueName;
+  }
+
+  public void setQueueName(String queueName)
+  {
+    this.queueName = queueName;
+  }
 }

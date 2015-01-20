@@ -124,6 +124,8 @@ public class DTCli
   private Thread commandThread;
   private String prompt;
   private String forcePrompt;
+  private String kerberosPrincipal;
+  private String kerberosKeyTab;
 
   private static class FileLineReader extends ConsoleReader
   {
@@ -931,7 +933,10 @@ public class DTCli
     options.addOption("r", false, "JSON Raw mode");
     options.addOption("p", true, "JSONP padding function");
     options.addOption("h", false, "Print this help");
-    options.addOption("f", true, "Use the given prompt at all time");
+    options.addOption("f", true, "Use the specified prompt at all time");
+    options.addOption("kp", true, "Use the specified kerberos principal");
+    options.addOption("kt", true, "Use the specified kerberos keytab");
+
     CommandLineParser parser = new BasicParser();
     try {
       CommandLine cmd = parser.parse(options, args);
@@ -965,9 +970,24 @@ public class DTCli
         formatter.printHelp(DTCli.class.getSimpleName(), options);
         System.exit(0);
       }
+      if (cmd.hasOption("kp")) {
+        kerberosPrincipal = cmd.getOptionValue("kp");
+      }
+      if (cmd.hasOption("kt")) {
+        kerberosKeyTab = cmd.getOptionValue("kt");
+      }
     }
     catch (ParseException ex) {
       System.err.println("Invalid argument: " + ex);
+      System.exit(1);
+    }
+
+    if (kerberosPrincipal == null && kerberosKeyTab != null) {
+      System.err.println("Kerberos key tab is specified but not the kerberos principal. Please specify it using the -kp option.");
+      System.exit(1);
+    }
+    if (kerberosPrincipal != null && kerberosKeyTab == null) {
+      System.err.println("Kerberos principal is specified but not the kerberos key tab. Please specify it using the -kt option.");
       System.exit(1);
     }
 
@@ -1007,17 +1027,21 @@ public class DTCli
         LOG.debug("Command to be executed: {}", command);
       }
     }
+    if (kerberosPrincipal != null && kerberosKeyTab != null) {
+      StramUserLogin.authenticate(kerberosPrincipal, kerberosKeyTab);
+    } else {
+      Configuration config = new YarnConfiguration();
+      StramClientUtils.addDTLocalResources(config);
+      StramUserLogin.attemptAuthentication(config);
+    }
   }
 
-  public void init(String[] args) throws IOException
+  public void init() throws IOException
   {
     conf = StramClientUtils.addDTSiteResources(new YarnConfiguration());
     fs = StramClientUtils.newFileSystemInstance(conf);
     stramAgent = new StramAgent(fs, conf);
 
-    // Need to initialize security before starting RPC for the credentials to
-    // take effect
-    StramUserLogin.attemptAuthentication(conf);
     yarnClient.init(conf);
     yarnClient.start();
     LOG.debug("Yarn Client initialized and started");
@@ -1984,6 +2008,8 @@ public class DTCli
       if (commandLineInfo.licenseFile != null) {
         commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
       }
+      config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
+
       String fileName = expandFileName(commandLineInfo.args[0], true);
       StramAppLauncher submitApp;
       AppFactory appFactory = null;
@@ -1993,7 +2019,7 @@ public class DTCli
         submitApp = new StramAppLauncher(file.getName(), config);
         appFactory = new StramAppLauncher.JsonFileAppFactory(file);
         if (matchString != null) {
-          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON");
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON", matchString);
         }
       }
       else if (fileName.endsWith(".properties")) {
@@ -2001,7 +2027,7 @@ public class DTCli
         submitApp = new StramAppLauncher(file.getName(), config);
         appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
         if (matchString != null) {
-          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file");
+          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
         }
       }
       else {
@@ -3823,10 +3849,15 @@ public class DTCli
           launchArgs.add("-license");
           launchArgs.add(commandLineInfo.licenseFile);
         }
+        if (commandLineInfo.queue != null) {
+          launchArgs.add("-queue");
+          launchArgs.add(commandLineInfo.queue);
+        }
         launchArgs.add(appFile);
         if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
           launchArgs.add(selectedApp.name);
         }
+
 
         LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
         new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
@@ -3983,6 +4014,7 @@ public class DTCli
     final Option ignorePom = add(new Option("ignorepom", "Do not run maven to find the dependency"));
     final Option originalAppID = add(OptionBuilder.withArgName("application id").hasArg().withDescription("Specify original application identifier for restart.").create("originalAppId"));
     final Option exactMatch = add(new Option("exactMatch", "Only consider applications with exact app name"));
+    final Option queue = add(OptionBuilder.withArgName("queue name").hasArg().withDescription("Specify the queue to launch the application").create("queue"));
 
     private Option add(Option opt)
     {
@@ -4020,6 +4052,7 @@ public class DTCli
     result.files = line.getOptionValue(LAUNCH_OPTIONS.files.getOpt());
     result.archives = line.getOptionValue(LAUNCH_OPTIONS.archives.getOpt());
     result.licenseFile = line.getOptionValue(LAUNCH_OPTIONS.license.getOpt());
+    result.queue = line.getOptionValue(LAUNCH_OPTIONS.queue.getOpt());
     result.args = line.getArgs();
     result.origAppId = line.getOptionValue(LAUNCH_OPTIONS.originalAppID.getOpt());
     result.exactMatch = line.hasOption("exactMatch");
@@ -4035,6 +4068,7 @@ public class DTCli
     Map<String, String> overrideProperties;
     String libjars;
     String files;
+    String queue;
     String archives;
     String licenseFile;
     String origAppId;
@@ -4075,9 +4109,9 @@ public class DTCli
     boolean exactMatch;
   }
 
-  public void mainHelper(String[] args) throws Exception
+  public void mainHelper() throws Exception
   {
-    init(args);
+    init();
     run();
     System.exit(lastCommandError ? 1 : 0);
   }
@@ -4089,8 +4123,8 @@ public class DTCli
     String hadoopUserName = System.getenv("HADOOP_USER_NAME");
     if (UserGroupInformation.isSecurityEnabled()
             && StringUtils.isNotBlank(hadoopUserName)
-            && !hadoopUserName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
-      LOG.info("You ({}) are running as user {}", UserGroupInformation.getLoginUser().getShortUserName(), hadoopUserName);
+            && !hadoopUserName.equals(UserGroupInformation.getLoginUser().getUserName())) {
+      LOG.info("You ({}) are running as user {}", UserGroupInformation.getLoginUser().getUserName(), hadoopUserName);
       UserGroupInformation ugi
               = UserGroupInformation.createProxyUser(hadoopUserName, UserGroupInformation.getLoginUser());
       ugi.doAs(new PrivilegedExceptionAction<Void>()
@@ -4098,13 +4132,13 @@ public class DTCli
         @Override
         public Void run() throws Exception
         {
-          shell.mainHelper(args);
+          shell.mainHelper();
           return null;
         }
       });
     }
     else {
-      shell.mainHelper(args);
+      shell.mainHelper();
     }
   }
 

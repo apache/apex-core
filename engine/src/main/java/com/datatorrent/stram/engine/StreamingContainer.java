@@ -41,6 +41,7 @@ import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
+import com.datatorrent.common.util.Slice;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.ComponentContextPair;
 import com.datatorrent.stram.RecoverableRpcProxy;
@@ -145,10 +146,11 @@ public class StreamingContainer extends YarnContainerMain
       if (ctx.deployBufferServer) {
         eventloop.start();
 
-        int bufferServerRAM = ctx.getValue(Context.DAGContext.BUFFER_SERVER_MEMORY_MB);
+        int bufferServerRAM = ctx.getValue(ContainerContext.BUFFER_SERVER_MB);
+        logger.debug("buffer server memory {}", bufferServerRAM);
         int blockCount;
         int blocksize;
-        if (bufferServerRAM < Context.DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
+        if (bufferServerRAM < ContainerContext.BUFFER_SERVER_MB.defaultValue) {
           blockCount = 8;
           blocksize = bufferServerRAM / blockCount;
           if (blocksize < 1) {
@@ -1114,7 +1116,7 @@ public class StreamingContainer extends YarnContainerMain
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>((StreamCodec<Object>)streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>) streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
               ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
             }
 
@@ -1513,6 +1515,27 @@ public class StreamingContainer extends YarnContainerMain
     logger.debug("handle change logger request");
     DTLoggerFactory.getInstance().changeLoggersLevel(request.getTargetChanges());
   }
+
+  private final StreamCodec<Object> nonSerializingStreamCodec = new StreamCodec<Object>()
+  {
+    @Override
+    public Object fromByteArray(Slice fragment)
+    {
+      return null;
+    }
+
+    @Override
+    public Slice toByteArray(Object o)
+    {
+      return null;
+    }
+
+    @Override
+    public int getPartition(Object o)
+    {
+      return o.hashCode();
+    }
+  };
 
   private static final Logger logger = LoggerFactory.getLogger(StreamingContainer.class);
 }

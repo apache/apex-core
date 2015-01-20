@@ -4,21 +4,22 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import static java.lang.Thread.sleep;
 
-import com.google.common.collect.Sets;
-
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
+import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.engine.Node;
@@ -28,6 +29,8 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
+
+import static java.lang.Thread.sleep;
 
 public class PartitioningTest
 {
@@ -255,6 +258,8 @@ public class PartitioningTest
     for (PTOperator oper : partitions) {
       containers.add(oper.getContainer());
     }
+    Assert.assertTrue("Number of containers are 5", 5 == lc.dnmgr.getPhysicalPlan().getContainers().size());
+
     PTOperator splitPartition = partitions.get(0);
     PartitionLoadWatch.put(splitPartition, 1);
     LOG.debug("Triggered split for {}", splitPartition);
@@ -269,16 +274,23 @@ public class PartitioningTest
     partitions = assertNumberPartitions(3, lc, dag.getMeta(collector));
     Assert.assertTrue("container reused", lc.dnmgr.getPhysicalPlan().getContainers().containsAll(containers));
 
-    for (PTContainer container : lc.dnmgr.getPhysicalPlan().getContainers()) {
-      Assert.assertEquals("memory", (int)OperatorContext.MEMORY_MB.defaultValue, container.getRequiredMemoryMB());
-    }
-
     // check deployment
     for (PTOperator p: partitions) {
       StramTestSupport.waitForActivation(lc, p);
     }
 
     PartitionLoadWatch.remove(splitPartition);
+
+    //Assert.assertTrue("Number of containers are 5", 5 == lc.dnmgr.getPhysicalPlan().getContainers().size());
+
+    for (PTContainer container : lc.dnmgr.getPhysicalPlan().getContainers()) {
+      int memory = 0;
+      for(PTOperator operator: container.getOperators()){
+        memory += operator.getBufferServerMemory();
+        memory += operator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
+      }
+      Assert.assertEquals("memory", memory, container.getRequiredMemoryMB());
+    }
 
     PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
     LocalStreamingContainer c = StramTestSupport.waitForActivation(lc, planInput);

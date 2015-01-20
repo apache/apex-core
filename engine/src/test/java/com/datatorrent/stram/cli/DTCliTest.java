@@ -25,7 +25,7 @@ public class DTCliTest
     File appPackageFile = StramTestSupport.createAppPackageFile(new File("src/test/resources/testAppPackage/testAppPackage.jar"));
     try {
       DTCli cli = new DTCli();
-      cli.init(new String[]{});
+      cli.init();
       // set launch command options
       DTCli.LaunchCommandLineInfo commandLineInfo = DTCli.getLaunchCommandLineInfo(new String[]{"-D", "dt.test.1=launch-define", "-apconf", "my-app-conf1.xml", "-conf", "src/test/resources/testAppPackage/local-conf.xml"});
       // process and look at launch config

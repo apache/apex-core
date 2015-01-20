@@ -4,8 +4,10 @@
 package com.datatorrent.stram.api;
 
 /**
+ * <p>Permission class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 2.0.0
  */
 public enum Permission
 {

@@ -10,8 +10,10 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 /**
+ * <p>PermissionsInfo class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 2.0.0
  */
 public class PermissionsInfo
 {

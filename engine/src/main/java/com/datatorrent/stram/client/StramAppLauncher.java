@@ -4,17 +4,6 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.stram.*;
-import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
-import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
-import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
 import java.io.*;
 import java.lang.reflect.Modifier;
 import java.net.*;
@@ -35,6 +24,22 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.api.annotation.ApplicationAnnotation;
+
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.StringCodecs;
+import com.datatorrent.stram.client.ClassPathResolvers.JarFileContext;
+import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
+import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+
 /**
  * Launch a streaming application packaged as jar file
  * <p>
@@ -53,6 +58,7 @@ public class StramAppLauncher
   public static final String FILES_CONF_KEY_NAME = "tmpfiles";
   public static final String ARCHIVES_CONF_KEY_NAME = "tmparchives";
   public static final String ORIGINAL_APP_ID = "tmpOriginalAppId";
+  public static final String QUEUE_NAME = "queueName";
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
   private File jarFile;
@@ -475,6 +481,7 @@ public class StramAppLauncher
         }
       }
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
+      client.setQueueName(conf.get(QUEUE_NAME));
       client.startApplication();
       return client.getApplicationReport().getApplicationId();
     }

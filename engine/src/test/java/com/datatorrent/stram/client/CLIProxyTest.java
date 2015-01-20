@@ -18,7 +18,7 @@ public class CLIProxyTest
   {
     String dtcliCommand = System.getProperty("user.dir") + "/src/main/scripts/dtcli";
     System.out.println("dtcli command is " + dtcliCommand);
-    CLIProxy cp = new CLIProxy(dtcliCommand);
+    CLIProxy cp = new CLIProxy(dtcliCommand, false);
     cp.start();
     System.out.println(cp.issueCommand("list-apps"));
 

@@ -85,6 +85,12 @@ public interface Context
      */
     Attribute<Integer> QUEUE_CAPACITY = new Attribute<Integer>(1024);
     /**
+     * The amount of buffer memory this port requires. There is a buffer server in each container. This is used to calculate total buffer server memory for container.
+     * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
+     * not be adhered to.
+     */
+    Attribute<Integer> BUFFER_MEMORY_MB = new Attribute<Integer>(8 * 64);
+    /**
      * Poll period in milliseconds when the port buffer reaches its limits.
      */
     Attribute<Integer> SPIN_MILLIS = new Attribute<Integer>(10);
@@ -175,7 +181,6 @@ public interface Context
      * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
      */
     Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
-
     /**
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
@@ -301,10 +306,6 @@ public interface Context
      */
     Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
     /**
-     * The queue to which the application should be submitted..
-     */
-    Attribute<String> QUEUE_NAME = new Attribute<String>("default");
-    /**
      * Dump extra debug information in launcher, master and containers.
      */
     Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
@@ -317,13 +318,6 @@ public interface Context
      * Default value is 1GB.
      */
     Attribute<Integer> MASTER_MEMORY_MB = new Attribute<Integer>(1024);
-    /**
-     * The amount of memory each buffer server will try to use at maximum. There is a buffer server in each container,
-     * so the memory allocated here directly affects the RAM available for the rest of the operators running in the container.
-     * Also due to the nature of the application, if buffer server needs to use more RAM, from time to time, this number may
-     * not be adhered to.
-     */
-    Attribute<Integer> BUFFER_SERVER_MEMORY_MB = new Attribute<Integer>(8 * 64);
     /**
      * Where to spool the data once the buffer server capacity is reached.
      */

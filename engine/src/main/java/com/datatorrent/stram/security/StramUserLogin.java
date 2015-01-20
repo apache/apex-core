@@ -26,6 +26,8 @@ public class StramUserLogin
   private static final String DT_AUTH_PREFIX = StreamingApplication.DT_PREFIX + "authentication.";
   private static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX +  "principal";
   private static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
+  private static String principal;
+  private static String keytab;
 
   public static void attemptAuthentication(Configuration conf) throws IOException {
     if (UserGroupInformation.isSecurityEnabled()) {
@@ -40,7 +42,9 @@ public class StramUserLogin
             && (keytab != null) && !keytab.isEmpty()) {
       try {
         UserGroupInformation.loginUserFromKeytab(principal, keytab);
-        LOG.info("Login user " + UserGroupInformation.getCurrentUser().getUserName());
+        LOG.info("Login user {}", UserGroupInformation.getCurrentUser().getUserName());
+        StramUserLogin.principal = principal;
+        StramUserLogin.keytab = keytab;
       }
       catch (IOException ie) {
         LOG.error("Error login user with principal {}", principal, ie);
@@ -48,4 +52,15 @@ public class StramUserLogin
       }
     }
   }
+
+  public static String getPrincipal()
+  {
+    return principal;
+  }
+
+  public static String getKeytab()
+  {
+    return keytab;
+  }
+
 }

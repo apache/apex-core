@@ -1,8 +1,507 @@
-#Release Notes - Streaming Platform
+DataTorrent RTS - Release Notes
+========================================================================================================================
 
-## Version 1.0.4
+Version 2.0.0
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
+* [SPOI-3054] - # Of Tuples Produced != Number Of Tuples Output By Unifier When Repartitioning
+* [SPOI-3210] - HDHT DTFile reader bug
+* [SPOI-3340] - Settings in ~/.dt/dt-site.xml don't override app package defaults
+* [SPOI-3349] - Can we document how to enable password security in gateway
+* [SPOI-3365] - Launch App Package does not honor -local option
+* [SPOI-3369] - Implement the pam authentication as a hadoop authentication handler
+* [SPOI-3396] - launch command should be able to specify local conf file when launching app package
+* [SPOI-3397] - DT Gateway doesn't start on Mapr 4.0.1
+* [SPOI-3402] - Checking the UID for Dtadmin
+* [SPOI-3419] - KafkaAdsDimensionsDemo demo available with installer fails
+* [SPOI-3420] - Installation issues on HDP 2.2
+* [SPOI-3469] - gateway, dtcli fail to start in development mode
+* [SPOI-3503] - AppPackage tests produce 100+GB files
+* [SPOI-3522] - MaxEventsPerSecond for Flume Ingestor should adjust for partitioned instances
+* [SPOI-3528] - Installer does not show relevant error if nonexistent env file passed as argument and finishes silently with defaults
+* [SPOI-3548] - browser inconsistencies with table
+* [SPOI-3550] - Confusing Breadcrumb navigation on Application Page
+* [SPOI-3555] - Unifier names should not be links to nonexistent pages
+* [SPOI-3594] - Systems Diagnostic produces conflicting results for Hadoop installation
+* [SPOI-3595] - Correctly Implement the clone method in platform.
+* [SPOI-3608] - User Profile and User Management should not show when auth is disabled
+* [SPOI-3613] - RBAC Configuration screen is completely missing after recent changes
+* [SPOI-3628] - Pubsub websocket auth not working with kerberos frontend authentication
+* [SPOI-3638] - Cant assign roles to user in console
+* [SPOI-3644] - Develop Tab Can not be seen on naviagation bar 
+* [SPOI-3646] - Error creating new config xml file in package
+* [SPOI-3647] - MR Operator demo throws null pointer exception
+* [SPOI-3648] - Cant add admin permissions to existing roles
+* [SPOI-3654] - In passwd policy user can not change own password using ui console
+* [SPOI-3657] - Can't Launch Apps Using ui console if user is not the same as dtgateway user
+* [SPOI-3663] - modify certification scripts and gateway proxy to upload demo jars from repackaged malhar demos
+* [SPOI-3665] - DataTorrent logo link broken in console
+* [SPOI-3670] - Update DTCliTest to create app package like AppPackageTest.java
+* [SPOI-3672] - Uploaded license not used when launching app
+* [SPOI-3674] - License info not updated after license upload until page reload
+* [SPOI-3675] - Display Error in Sandbox. License Manager Error:null
+* [SPOI-3682] - doubleclick select active kills containers
+* [SPOI-3684] - Gateway deletes JSON app silently (no error) on PUT
+* [SPOI-3685] - Error message in launch app modal is not red
+* [SPOI-3686] - Launch properties do not get sent with the launch request
+* [SPOI-3689] - AppPackages APIs give 404 not found messages
+* [SPOI-3690] - APIs falsely report role assignments
+* [SPOI-3691] - API /ws/v1/config/hadoopInstallDirectory does not work
+* [SPOI-3708] - Gateway shows License error after license agent gets back to normal
+* [SPOI-3710] - Sandbox packaging invalid due to HDFS dependency
+* [SPOI-3712] - Exclamation point in DT cli tries to expand "event"
+* [SPOI-3713] - When CLI has a problem running a CLIProxy command, there is out of memory error from the gateway
+* [SPOI-3714] - Launch button from other screens should bring up launch modal
+* [SPOI-3716] - locality performance benchmarks operators failing with OOM exception
+* [SPOI-3717] - Insufficient license memory for Node Local Performance benckmark application
+* [SPOI-3718] - change high availability certification benchmarking to compare number of active containers instead of total number of containers
+* [SPOI-3720] - License manager not found returned from Gateway even though it returns valid license including agent info
+* [SPOI-3721] - Changes to XMLConfig to incorporate changed properties
+* [SPOI-3725] - NullPointerException in Certification-initDemo for PerformanceBenchmarkForFixedNumberOfTuples
+* [SPOI-3729] - Thread local validation failure for multiple ports between two operators
+* [SPOI-3732] - Get User Info APIs creates users
+* [SPOI-3733] - Can't Launch Apps Using UI or gateway APIs in kerberos environment
+* [SPOI-3734] - Remove macro from cli  for application or add relevant application
+* [SPOI-3754] - Gateway can only restore roles once
+
+### Improvement
+* [SPOI-2036] - Ensure that definePartitions and partitioned are called for parallel partitioned operators
+* [SPOI-2955] - Provide tool-tip capability to RTS UI
+* [SPOI-3194] - Support PAM authentication mechanism as an agent for LDAP
+* [SPOI-3304] - Reorganize code to ensure easy consumability
+* [SPOI-3345] - Delete OperatorContext.PartitionTPSMax and .PartitionTPSMin 
+* [SPOI-3346] - Delete OperatorContext.InitialPartitionCount
+* [SPOI-3366] - Update Eval license for RTS 2.0
+* [SPOI-3401] - Switch installer, gateway, console from using HADOOP_PREFIX to hadoop executable
+* [SPOI-3404] - Provide support for viewing/collecting YARN logs across the cluster
+* [SPOI-3415] - Remove defaults from dt-site.xml and add version
+* [SPOI-3418] - Remove dependency on /etc/datatorrent
+* [SPOI-3447] - Partitioning of couchbase input operator
+* [SPOI-3525] - Messages shown in installer and uninstaller are longer than 80 characters
+* [SPOI-3554] - Log-Level Setter for angular
+* [SPOI-3626] - appPackageDisplayName in /ws/v1/appPackages
+* [SPOI-3667] - Confirmation box to shutdown or kill apps should have "warm" colors
+* [SPOI-3668] - DTGateway logs are flooded with permission WARN logs
+* [SPOI-3694] - Populate launch properties with required properties of app
+* [SPOI-3697] - Add content-disposition so that app package download has a reasonable file name when downloaded from browser
+* [SPOI-3698] - Support URI codec out the box so that UI can set URI operator properties
+
+### New Feature
+* [SPOI-3393] - Track recordings by a generated ID rather than startTime
+* [SPOI-3422] - Restore default roles with backend
+* [SPOI-3683] - Add download button to app package
+* [SPOI-3753] - "Reset to Defaults" for user roles
+
+### Task
+* [SPOI-2809] - Implement password authentication as a hadoop authentication type
+* [SPOI-3115] - Update document with password authentication once UI supports user mgmt
+* [SPOI-3239] - HDHT store removal support
+* [SPOI-3351] - Abstract the reconciler used in Guava and Rainier to malhar
+* [SPOI-3368] - Configuration handling on major version upgrade
+* [SPOI-3371] - CLI to doAs the user specified by HADOOP_USER_NAME if security is enabled
+* [SPOI-3372] - Gateway REST service to only return rows the user is authorized to view
+* [SPOI-3373] - Gateway Websocket service to only publish to subscribers with info individual subscribers are authorized to view
+* [SPOI-3374] - Gateway to return 403 Forbidden for resources the user is not authorized to view or operations the user is not authorized to perform
+* [SPOI-3375] - Gateway support for permission based authorization
+* [SPOI-3376] - Gateway REST call to show what permissions the current user has
+* [SPOI-3377] - Gateway REST call to support role and permission management
+* [SPOI-3378] - HTTP Header auth support in Gateway 
+* [SPOI-3381] - Implement Kerberos group to role mapping
+* [SPOI-3385] - Gateway ACL support at the application level
+* [SPOI-3390] - LDAP/AD support in Gateway
+* [SPOI-3405] - Implement Kerberos security context and security context filter in Gateway
+* [SPOI-3443] - Ingestion Application repo and package
+* [SPOI-3472] - Installer testing
+* [SPOI-3485] - Console repository relocation
+* [SPOI-3486] - Create HDHT section in Application Developer Guide
+* [SPOI-3517] - Document JVM_OPTIONS and QUEUE_NAME features in user docs
+* [SPOI-3519] - Add PAM auth user docs
+* [SPOI-3520] - Update RBAC user docs
+* [SPOI-3521] - Console user docs updates
+* [SPOI-3536] - Create hdfs output operator to write table files
+* [SPOI-3537] - write hdfs writer for small files to copy to vertica
+* [SPOI-3538] - Combine small file writer with vertica writer
+* [SPOI-3540] - Sandbox updates to support app package launches from console
+* [SPOI-3593] - Clean up import functionality for demo apps
+* [SPOI-3610] - Implement RBAC features for App Packages
+* [SPOI-3619] - Update console for the new app package REST API
+* [SPOI-3627] - Convert our REST API from v1 to v2 as we have made some backward incompatible changes in the REST API
+* [SPOI-3631] - Test HDHT recovery
+* [SPOI-3632] - Upgrade and test demos on 2.0.0
+* [SPOI-3633] - Set certain sensitive permissions "admin" role only
+* [SPOI-3634] - Allow default app instance and app package permissions for each user
+* [SPOI-3635] - Remove INITITAL_PARTITION_COUNT from demo app pkg properties
+* [SPOI-3636] - Upgrade and test demos on 2.0.0
+* [SPOI-3650] - Test demos on sandbox on dt 2.0.0
+* [SPOI-3651] - benchmarks for dt 2.0.0
+* [SPOI-3652] - list of current benchmarks
+* [SPOI-3653] - Document property changes needed run demos on 2.0.0
+* [SPOI-3661] - Update security section in operations guide
+* [SPOI-3662] - Operations Guide: Update application configuration section
+* [SPOI-3669] - Remove gateway jars api usage from benchmarking and use app pkg api instead
+* [SPOI-3695] - Documentation on System Alerts in the Gateway
+* [SPOI-3700] - run app memory usage benchmarks for 2.0
+* [SPOI-3701] - run performance benchmarks for 2.0
+* [SPOI-3702] - run high availability benchmarks for 2.0
+* [SPOI-3703] - Run Fs output operator benchmark
+* [SPOI-3704] - run performance across tuple size benchmarks for 2.0
+* [SPOI-3705] - Change jars api usage to apps package api usage in certification
+* [SPOI-3706] - Convert Malhar benchmark module to app package
+* [SPOI-3730] - Getting Started Guide updates
+
+### Bug
+* [MLHR-1237] - Scrolling log viewer with mouse does not trigger getting more log content
+* [MLHR-1242] - "last heartbeat" in killed container list shows date in 1969
+* [MLHR-1443] - Attempt reconnect if web socket connection is dropped
+* [MLHR-1523] - Physical operator ids sorted lexicographically
+* [MLHR-1552] - Port JMS Input operator changes to library.
+* [MLHR-1553] - shutdown and kill cmds still visible when ended apps are selected
+* [MLHR-1588] - New installation does not walk through welcome steps
+* [MLHR-1590] - App Instance dashboard cannot find Logical DAG widget for starting app
+* [MLHR-1591] - pending undeploy does not have an icon or color associated
+* [MLHR-1592] - webSocket does not reconnect if user logs out then logs back in
+* [MLHR-1593] - Installer should be ok with 404 errors when fetching HadoopLocation and dfsRootDirectory
+* [MLHR-1594] - DFS permissions error during install does not provide resolution steps
+* [MLHR-1595] - Installer asks for login even if auth is disabled
+* [MLHR-1606] - Change EDIT_AND_KILL_OTHERS_APPS to MANAGE_OTHERS_APPS
+* [MLHR-1609] - Physical Operators have an invalid heartbeat when PENDING_DEPLOY
+* [MLHR-1611] - Do not try to put or edit admin role in auth management page
+* [MLHR-1612] - New containers from websocket do not get jvm name
+* [MLHR-1615] - Feedback for retrieving ended apps
+* [MLHR-1619] - When launching app package, allow launch time parameters to be specified
+* [MLHR-1622] - YahooFinanceApplication throws null pointer exception on 2.0
+* [MLHR-1627] - Make twitter credentials into requiredProperties in app package
+* [MLHR-1631] - NullPointerException in launching HDFSBenchmarking App:TupleSize property missing in appResponse
+
+### Improvement
+* [MLHR-1190] - Infinite scroll mechanism in stram events widget
+* [MLHR-1234] - Add version information to system diagnostics screen
+* [MLHR-1555] - Remove dashboard component from main operations page
+* [MLHR-1571] - Height of app list should be determined by available space
+* [MLHR-1596] - Extract two-way infinite scroll behavior into directive
+* [MLHR-1597] - Fix FTP Input operator
+* [MLHR-1602] - Partitioning of couchbase input operator
+
+### New Feature
+* [MLHR-1228] - create profile storage object
+* [MLHR-1261] - AngularJS Migration - Tuple Viewer
+* [MLHR-1262] - AngularJS Migration - Tuple Recording
+* [MLHR-1354] - Auth management support in the UI
+
+### Story
+* [MLHR-975] - Migration from Backbone to Angular
+
+### Task
+* [MLHR-1292] - Recording View
+* [MLHR-1331] - Update the tuple recording topic
+* [MLHR-1586] - Remove DirectoryScanInputOperator from library
+* [MLHR-1601] - Re-arrange logstream app in dt application package format
+* [MLHR-1608] - Create a Block reader which emits Slice and doesn't read ahead of a block boundary
+* [MLHR-1617] - Sensitive permission assignment need dialog box warning with consequences
+* [MLHR-1618] - Update console for the new app package REST API
+* [MLHR-1623] - Create synchronizer for asynchronously processing streaming data for committed windows
+* [MLHR-1626] - Write unit tests for AbstractSynchronizer
+
+### Bug
+* [SPOI-2946] - Provide a tool that generates a license report based on license audit logs
+* [SPOI-2974] - Better error handling when license is expired
+* [SPOI-3147] - Issues with dynamic partitioning of Block readers 
+* [SPOI-3192] - Send proxy user when making web service calls from gateway
+* [SPOI-3267] - HDHT Operator crash when launching application against existing store
+* [SPOI-3271] - Change port stats propogation test to check for cumulative buffer server bytes
+* [SPOI-3286] - HDHT WAL recovery crashing with NegativeArraySizeException
+* [SPOI-3287] - Research the types of data that can be stored in hive orc files
+* [SPOI-3288] - NullPointerException in StreamingContainerManager-> fillLogicalOperatorInfo
+* [SPOI-3289] - App Packages launch not reading required properties from dt-site.xml
+* [SPOI-3293] - Incorrect application name when launching JSON app.
+* [SPOI-3294] - Configuration setting from property.xml not effective for JSON app
+* [SPOI-3296] - npm install fails for malhar-ui-console
+* [SPOI-3297] - Remove keys from metric list in app dashboard widget.
+* [SPOI-3300] - Two operators named "Dimension Computation"
+* [SPOI-3305] - Create Sales Demo JSON Input Generator
+* [SPOI-3306] - Change Event Schema to default to Sales Schema
+* [SPOI-3309] - DT flume sink not draining under some circumstances
+* [SPOI-3313] - Setting attributes with JSON and properties app needs cleanup
+* [SPOI-3319] - NPE in FSStatsRecorder
+* [SPOI-3320] - The platform should use user folder in hdfs for storage
+* [SPOI-3323] - Gateway resource leak when RM is not running and/or during network problem 
+* [SPOI-3325] - HDHT DTFile clean cache when reader close
+* [SPOI-3338] - Application level operator properties do not override "global" operator properties
+* [SPOI-3343] - Gateway was stuck
+
+### Improvement
+* [SPOI-2918] - Document Counters
+* [SPOI-3188] - Ability to interpret an input operator as a regular operator 
+* [SPOI-3312] - OperatorAnnotation that enforces checkpointing to happen at application window boundary
+* [SPOI-3317] - Add sales generator tuples per window randomization controls
+* [SPOI-3318] - Add more dimensions and aggregates to Sales demo
+* [SPOI-3321] - Improve data variation between categories, regions, and discounts
+* [SPOI-3329] - Implement simple variable substitution in properties files
+
+### New Feature
+* [SPOI-2014] - Support for doc link for an operator 
+* [SPOI-2931] - Make sure app packages work in sandbox
+* [SPOI-2989] - HDHT - Recovery
+
+### Task
+* [SPOI-2663] - Certify datatorrent on a CDH5 secure cluster
+* [SPOI-2702] - HDS - Generic time series query
+* [SPOI-2843] - Tracker ticket for work related to app package in Malhar
+* [SPOI-2945] - Allow application to start even if license manager is not running for production license file
+* [SPOI-2950] - Generate monthly alerts when the memory used crosses the licensed memory
+* [SPOI-3022] - Run jpa and jdbc tests on vertica installation in cluster
+* [SPOI-3098] - Scrub all components that make it to the release list of jiras
+* [SPOI-3119] - Generate audit logs in the applications as well
+* [SPOI-3153] - Certify datatorrent on HDP secure cluster
+* [SPOI-3156] - Tool to generate license report from a single Hadoop grid
+* [SPOI-3158] - Webservice for license report
+* [SPOI-3160] - Uptime debugging for license mgr
+* [SPOI-3161] - license mgr should write memory reported by each app in the logs
+* [SPOI-3184] - Test case to reproduce locality issue in CDH
+* [SPOI-3229] - New app will launch for production license even if no memory is available in license
+* [SPOI-3261] - Kafka one to many dynamic partitioning pilot
+* [SPOI-3269] - Support contact update
+* [SPOI-3278] - Research elastic search functionality to build operators
+* [SPOI-3280] - Create a model parser that loads the model mapping file and generates sql mapping
+* [SPOI-3282] - Create a vertica output operator
+* [SPOI-3283] - Start License Manager as part of Installation
+* [SPOI-3284] - Watch dog process for License Manager in Gateway
+* [SPOI-3299] - O15 demo: Dictionary for keys
+* [SPOI-3307] - Add Enrichment operator data file
+* [SPOI-3315] - O15 demo: Update widget configuration for sales schema
+* [SPOI-3335] - Kafka offset manager
+* [SPOI-3339] - Move FSStorageAgent to Malhar
+* [SPOI-3352] - Process OperatorCommand returned by stats listener
+* [SPOI-3411] - Create a feed processor operator that converts input event to table rows
+* [SPOI-3412] - Create gzip input operator
+* [SPOI-3413] - Create pluggable functions for each column based given function name and parameters
+* [SPOI-3414] - Create Table controller to handle value generation for each column including user defined functions
+* [SPOI-3561] - Recording View: links to start and stop recording
+* [SPOI-3562] - Recording View: page module
+* [SPOI-3565] - Container Page (angular)
+
+### Bug
+* [MLHR-1267] - AngularJS Migration - Dashboard Layout Lock
+* [MLHR-1352] - Custom directive for breadcrumbs
+* [MLHR-1489] - Create a hive output operator that can write to hive orc files
+* [MLHR-1500] - Cleanup of the junit.framework.Assert 
+* [MLHR-1505] - Stram event error closes when clicking on stack trace
+* [MLHR-1506] - Stram event collection removes events
+* [MLHR-1512] - UI Console - Dashboard Reset
+* [MLHR-1532] - Table says "loading" when active filter result is 0 rows
+* [MLHR-1541] - Add orc file output to adsdimension demo
+* [MLHR-1542] - App Data Framework - WebSocket Support
+* [MLHR-1585] - Installer fails with auth enabled
+
+### Improvement
+* [MLHR-1256] - Create a new landing dashboard
+* [MLHR-1432] - Add confirm for deleting an app package
+* [MLHR-1451] - Loading feedback for malhar-angular-table
+* [MLHR-1452] - Loading feedback for app packages and package apps
+* [MLHR-1454] - Performance Tuning for malhar-angular-table
+* [MLHR-1499] - Idempotent State Manager
+* [MLHR-1531] - App overview does not show started time
+* [MLHR-1540] - Remove stram events from physical view
+* [MLHR-1543] - Switch to gulp in malhar-angular-table
+* [MLHR-1549] - Short operator properties should be shown in line
+
+### New Feature
+* [MLHR-1282] - AngularJS Migration - App Instance Page - Alerts Recordings View
+* [MLHR-1301] - AngularJS Migration - Physical Operator Page - Recordings
+* [MLHR-1317] - AngularJS Migration - App Instance Page - Logical View - Log Levels
+* [MLHR-1362] - AngularJS Migration - App Instance Page - Stram Events Widget Resize
+* [MLHR-1370] - AngularJS Migration - Container View - Chart
+* [MLHR-1428] - Dashboard Component - Option to Disable Vertical Resize
+* [MLHR-1462] - Socket.IO Kafka Communication Protocol
+* [MLHR-1463] - UI Console - Client Settings
+* [MLHR-1464] - Kafka App Data - Server Socket.IO Node.js
+* [MLHR-1465] - Kafka Socket.IO Service - Latency
+* [MLHR-1466] - Kafka Server - Query Cache
+* [MLHR-1470] - Dashboard Builder Integration
+* [MLHR-1486] - UI Console - Deploy Scripts
+* [MLHR-1488] - App Package Dag Viewer - Handle Case when DAG is empty
+* [MLHR-1491] - App Data UI - Runtime Configuration for Default Dashboard/Widgets/Queries
+* [MLHR-1495] - Kafka Debug Widget - Kafka Producer/Consumer Topics
+* [MLHR-1498] - Provide Ability to Reset Dashboard Configuration 
+* [MLHR-1502] - App Data Server - Fetch Latest Kafka Offset
+* [MLHR-1514] - App Data Server - EventEmitter
+* [MLHR-1515] - App Data Server - UML Diagrams
+* [MLHR-1520] - App Data UI - Table Widget
+* [MLHR-1521] - App Data UI - WebSocket Support
+* [MLHR-1530] - App Data UI - Table Widget
+
+### Story
+* [MLHR-1295] - AngularJS Migration - Logical Operator Page
+* [MLHR-1296] - AngularJS Migration - Physical Operator Page
+
+### Task
+* [MLHR-1270] - Container Page (angular)
+* [MLHR-1272] - Container Page: memory gauge
+* [MLHR-1274] - Container Page: metric chart
+* [MLHR-1281] - Stream View
+* [MLHR-1286] - Stream View: sources table
+* [MLHR-1287] - Stream View: sinks
+* [MLHR-1288] - Port View
+* [MLHR-1290] - Port View: overview
+* [MLHR-1291] - Port View: chart
+* [MLHR-1293] - Recording View: page module
+* [MLHR-1294] - Recording View: links to start and stop recording
+* [MLHR-1307] - Installation Wizard
+* [MLHR-1310] - Info Menu Links
+* [MLHR-1312] - Lock Layout (malhar-angular-dashboard)
+* [MLHR-1453] - System Diagnostics Page
+* [MLHR-1460] - Installation Wizard: welcome page
+* [MLHR-1461] - Installation Wizard: hadoop config page
+* [MLHR-1467] - Installation Wizard: license screen
+* [MLHR-1482] - Installation Wizard: summary screen
+* [MLHR-1483] - Installation Wizard: license upload
+* [MLHR-1496] - Create an operator for Solr
+* [MLHR-1516] - Annotate new FS output operators
+* [MLHR-1518] - WebSocket support for dimension demo
+* [MLHR-1574] - UI Auth: support for current password auth
+* [MLHR-1575] - UI Auth: Managing role and permissions
+
+### Sub-task
+* [SPOI-3123] - Add troubleshooting section to Operations and Installation Guide
+* [SPOI-3124] - Check for vmem/pmem ratio during System Diagnostics test
+* [SPOI-3129] - Integrate Kafka query protocol for AdsDimension demo.
+* [SPOI-3154] - Setup AdsDimension demo on cluster
+* [SPOI-3226] - Create JSON AdInfo Generator for App Builder Demo
+* [SPOI-3227] - Crate JSON to Map converter for App Builder Demo
+* [SPOI-3228] - Create shared dimensions computation schema for App Builder Demo
+
+### Bug
+* [SPOI-1667] - Drop of Performance for Machine demo
+* [SPOI-2742] - Core dumps on EMR
+* [SPOI-2942] - Disable physical plan locking when there is no available license memory
+* [SPOI-2947] - Provide a tool that distributes memory and generates licenses that can be deployed on multiple clusters
+* [SPOI-3018] - Investigate raw performance of vertica jdbc
+* [SPOI-3024] - Adding Virtual Mem to Physical Memory setting in Readme file
+* [SPOI-3025] - Can't see the container logs from DT Console in Pivotal installation
+* [SPOI-3053] - Continual Repartitioning Of Operator Causes Out Of Memory Exception
+* [SPOI-3081] - Core StatsTest.testPortStatsPropagation Failing
+* [SPOI-3107] - Failed to load Logical Plan 
+* [SPOI-3132] - User Interface Guide URL  specified in current Sandbox gives 404
+* [SPOI-3181] - dtgateway script: $PATH is being appended to repeatedly when gateway has trouble starting
+* [SPOI-3187] - HDHT query results partition duplication
+* [SPOI-3190] - HDHT AdsDimension demo last bar should grow
+* [SPOI-3195] - Operator class exception when loading app package
+* [SPOI-3196] - CLI returns Perm Gen Space errors when there are too many classes to inspect in app package
+* [SPOI-3197] - Provide meta information for operators that can be used by DAG builder
+* [SPOI-3198] - App Package archetype is erroneously including app package manifest in the low level jar file
+* [SPOI-3213] - Newer maven versions (>3.1) do not work with copy-maven-plugin in app package archetype
+* [SPOI-3215] - Duplicate streams in OperatorDeploymentInfo with default partition/parallel partitioning 
+* [SPOI-3232] - Mobile demo not dynamically partitioning
+* [SPOI-3262] - Issue with serialization of xml cartesian product operator
+* [SPOI-3319] - NPE in FSStatsRecorder
+
+### Improvement
+* [SPOI-1967] - Accept Password for Private Key
+* [SPOI-2997] - License file content updates
+* [SPOI-3083] - Ability to save DAG as a DT App Package
+* [SPOI-3084] - Operator Library Browser
+* [SPOI-3087] - Properties Section
+* [SPOI-3088] - Attributes Section
+* [SPOI-3089] - Operators needed for demo
+* [SPOI-3102] - FileSplitter needs to be idempotent
+* [SPOI-3136] - Add a check to see if stram is connected to THIS gateway
+
+### New Feature
+* [SPOI-3142] - Ability to take Logical Plan Serialization JSON to construct a DAG and launch it
+* [SPOI-3148] - App Package REST API needs to allow PUT of json logical plan for adding/replacing application in app package
+* [SPOI-3149] - Ability to launch a json-specified app within app package
+* [SPOI-3185] - Import demo app packages from dtgateway fs
+* [SPOI-3186] - Group app packages under demos folder in release
+* [SPOI-3189] - Add display name and description to app package's manifest
+* [SPOI-3199] - XML Javadoc
+* [SPOI-3266] - Provide Ability to Allow Cross Origin Access
+
+### Task
+* [SPOI-3039] - Print data upon license mgr app start
+* [SPOI-3061] - Add port tuple type in logical plan serialization
+* [SPOI-3067] - Remove time-bombed public/private key pair from the code
+* [SPOI-3068] - Make sure the release process (sandbox, installer binary) is okay with the time bound key pair removed from the code
+* [SPOI-3069] - Remove the entire request blob process and generate license straight from customer info and license info
+* [SPOI-3070] - Device ID change in license
+* [SPOI-3071] - Generate License web tool to prompt for password for the private key
+* [SPOI-3126] - O15 - Generic Dimension Computation/Store Operator
+* [SPOI-3128] - HDHT - AdsDimension app integration for internal demo 
+* [SPOI-3130] - HDHT - Test files with varying block sizes
+* [SPOI-3134] - Add a organization field in license file
+* [SPOI-3162] - Kafka ingestion demo
+* [SPOI-3164] - Integrate Kafka Query frontend into demos
+* [SPOI-3165] - Ability to return JSON app as-is from app package through REST
+* [SPOI-3166] - Ability to delete JSON apps from app package
+* [SPOI-3167] - Ability to save incomplete json-based app to an app package
+* [SPOI-3179] - Investigate how IDEs parse javadoc
+* [SPOI-3182] - Complete dag annotations spec
+* [SPOI-3193] - Investigate pluggable authorization mechanisms supported by Hadoop
+* [SPOI-3200] - Generate resource file containing javadoc comments and custom tags
+* [SPOI-3201] - Configure default javadoc doclet in pom to include custom tags
+* [SPOI-3202] - Transform xml javadoc resources file to contain only comments and tags
+* [SPOI-3203] - Add javadoc resource file to the class jar at maven build
+* [SPOI-3206] - Add field and method comments to transformed xml javadoc
+* [SPOI-3217] - Limit events DTFlumeSink pumps into the dag
+* [SPOI-3219] - Help diagnose launch issue
+* [SPOI-3225] - Check and fix machine and twitter hash tag demos
+* [SPOI-3236] - displayName should be available from appPackage/applications call
+
+### Bug
+* [MLHR-1347] - Create a block reader in library which is capable of dynamic partitioning itself
+* [MLHR-1366] - HdfsBucketStore is not completely covered by unit test cases
+* [MLHR-1367] - Add Counter Aggregators For Monitoring AbstractThroughputFSDirectoryInputOperator
+* [MLHR-1373] - Container log download link
+* [MLHR-1404] - App Package File Upload
+* [MLHR-1407] - App List Kill App Selection Issue
+* [MLHR-1410] - Add a "remove" option to the "set/subscribe" method of BaseCollection
+* [MLHR-1412] - App Package archetype is erroneously including app package manifest in the low level jar file
+* [MLHR-1419] - Xml cartesian product operator has kryo serialization errors in some cases
+* [MLHR-1422] - UI Physical tab-> sorting by operator id is by lexical order not numerical
+* [MLHR-1423] - app instance page does not update when state goes ACCEPTED => RUNNING
+* [MLHR-1426] - favicon not being handled in gulp build
+* [MLHR-1436] - Uptime shows -1 day even when the app is runing for some time
+* [MLHR-1438] - AdsDimensionsWithHDSDemo - Expose Aggregation in Operator Properties
+* [MLHR-1442] - Move the recipient property for the machine data to config
+* [MLHR-1557] - subscribe handler on app instance alters original ws message
+* [MLHR-1558] - Palette in the Apps List does not update after one app gets killed
+
+### Improvement
+* [MLHR-1427] - Make app name link to instance page as well in AppsList
+
+### New Feature
+* [MLHR-1388] - Base DAG Viewer
+* [MLHR-1389] - App Package List Page
+* [MLHR-1390] - Applications/Package Info Page
+* [MLHR-1391] - App Package REST API Integration
+* [MLHR-1392] - App Package CRUD
+* [MLHR-1406] - UI Support of app package import
+* [MLHR-1408] - Allow Shutting Down/Killing Multiple Applications
+* [MLHR-1424] - UI Grid 3 Integration - Fonts
+* [MLHR-1429] - Dashboard Component - Configurable Widget
+* [MLHR-1430] - Kafka UI Demo
+* [MLHR-1431] - Visual Data Demo Update
+
+### Story
+* [MLHR-1241] - App Package support in UI
+* [MLHR-1357] - UI Dashboard Front Page Design
+
+### Task
+* [MLHR-1079] - Normalize timestamps for info pages
+* [MLHR-1104] - Design App Package and Upload/Launch Feature
+* [MLHR-1105] - Polish simplified (current) app data alert feature
+* [MLHR-1207] - Convert demo apps to app packages
+* [MLHR-1309] - License Info
+* [MLHR-1363] - Create file splitter that breaks file into blocks and emits block metadata and a block reader 
+* [MLHR-1415] - Clean-up Hdfs Output operators in library and incorporate the features of fault-tolerant Writer
+* [MLHR-1503] - Remove deprecated jdbc package from contrib
+
+
+
+Version 1.0.4
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
 * [SPOI-2346] - ExactlyOnceTest#testLinearInputOperatorRecovery hangs
 * [SPOI-2511] - ResourceManager HA support
 * [SPOI-2625] - uninstall.sh should print message that reminds users of running DT applications
@@ -25,13 +524,13 @@
 * [SPOI-3091] - Null Pointer Exception/Internal Server Error When Getting Operator Stats
 * [SPOI-3092] - DefaultUnifier of a port in an operator does not function correctly when the port has more than one sinks
 
-## Improvement
+### Improvement
 * [SPOI-2821] - Add bucket processed time
 * [SPOI-2891] - DTGateway default log setting too verbose
 * [SPOI-2938] - Document AppBundles development and deployment
 * [SPOI-3044] - gateway should show the full stack trace of the origin upon error when proxying
 
-## New Feature
+### New Feature
 * [SPOI-2720] - API Call for determining if an application's stram can connect to the gateway
 * [SPOI-2981] - HDS - File Format
 * [SPOI-2982] - HDS - Writing Data Files
@@ -43,7 +542,7 @@
 * [SPOI-3033] - Provide byte offset for each line when grepping container log
 * [SPOI-3049] - Ingestion streamlet design for first cut
 
-## Task
+### Task
 * [SPOI-1734] - Licensing Agent Logging for Audit
 * [SPOI-2810] - Update document with details on password authentication
 * [SPOI-2906] - Write documentation on App Bundle
@@ -71,7 +570,7 @@
 * [SPOI-3104] - Create Persister to store the data
 
 
-## Bug
+### Bug
 * [MLHR-1223] - JDBC Store doesn't support connection properties
 * [MLHR-1253] - documenting keyhashvalpair
 * [MLHR-1255] - db api in malhar lib has KeyValueStore interface which is similar to db/cache/Store api 
@@ -95,7 +594,7 @@
 * [MLHR-1374] - Remove all occurrences of dag.setAttribute(DAG.APPLICATION_NAME, "xxx") in demos code
 
 
-## Improvement
+### Improvement
 * [MLHR-1263] - Migrate JDBC non-transaction output operator to new db api and move it to lib
 * [MLHR-1322] - Changing Machine Data Operator and Stream Names
 * [MLHR-1324] - appState directive should be renamed to something more generic
@@ -105,7 +604,7 @@
 * [MLHR-1353] - Centralize location of breadcrumbs
 * [MLHR-1360] - Put dashboards on the left
 
-## New Feature
+### New Feature
 * [MLHR-419] - DAG Widget with AngularJS
 * [MLHR-1220] - Send the "unsubscribe" webSocket message for topic when no more listeners
 * [MLHR-1239] - AngularJS Migration - Physical DAG View
@@ -143,7 +642,7 @@
 * [MLHR-1361] - Logical/Physical DAG - Stream Locality Legend
 * [MLHR-1365] - AngularJS Migration - Widget Settings Modal - Height Management
 
-## Task
+### Task
 * [MLHR-1208] - Convert contrib apps to app bundles
 * [MLHR-1244] - Update tuple recorder topic to use "applications.<appid>.tupleRecorder.<startTime>"
 * [MLHR-1254] - Create a test case for UniqueValueCountAppender
@@ -171,9 +670,10 @@
 
 
 
-## Version 1.0.3
+Version 1.0.3
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-2620] - S3 reader error
 * [SPOI-2673] - Move the Kafka Exactly Once Producer to Malhar Library
 * [SPOI-2775] - Log file being processed on seperate port to monitor progress by input operators.
@@ -208,14 +708,14 @@
 * [SPOI-2936] - Historical data store high level design
 * [SPOI-2937] - Gateway throwing exception while launching app 
 
-## Improvement
+### Improvement
 * [SPOI-2811] - Show input record in alert information dialog
 * [SPOI-2812] - Show top gateways for all defect aggregates and possibly all aggregates
 * [SPOI-2881] - Show actual memory usage in dashboard
 * [SPOI-2891] - DTGateway default log setting too verbose
 * [SPOI-2911] - Create a Bean2String codec
 
-## New Feature
+### New Feature
 * [SPOI-2228] - Gateway to load and to allow manipulation of app bundles
 * [SPOI-2753] - Front End POC - Aggregates Table
 * [SPOI-2757] - Front End POC - Kafka Operations
@@ -229,14 +729,12 @@
 * [SPOI-2879] - Kafka Request/Response Debug Collapsible Panel
 * [SPOI-2896] - Unique identifier for stram events
 
-## Story
-* [SPOI-2825] - Parent JIRA for App Bundle for 1.0.3
-* [SPOI-2830] - Parent jira for facilitating trouble shooting and debugging in 1.0.3
+### Story
 * [SPOI-2835] - Streamlet Design - 1.0.3
-* [SPOI-2836] - Parent JIRA for Kafka integration for 1.0.3
+* [SPOI-2836] - Kafka integration for 1.0.3
 * [SPOI-2851] - Platform Excellence - 1.0.3
 
-## Task
+### Task
 * [SPOI-2212] - Determine logistics of application bundles
 * [SPOI-2521] - Add counters for checkpointo operations
 * [SPOI-2546] - Pi demo does not seem to work in 512MB
@@ -244,7 +742,7 @@
 * [SPOI-2684] - Automated distro certification - collect minimum requirements
 * [SPOI-2786] - Include setters and getters for output fields in the event
 * [SPOI-2795] - Add top 3 gateways to alert aggregate csv in HDFS
-* [SPOI-2802] - Amla: Dynamic partitioning for S3 input operator.
+* [SPOI-2802] - Dynamic partitioning for S3 input operator.
 * [SPOI-2822] - Add operator to write cdr events to hdfs
 * [SPOI-2823] - Fetch events from hdfs for alert events query response
 * [SPOI-2846] - Partition Aggregations operator
@@ -255,7 +753,7 @@
 * [SPOI-2890] - Update support contacts to malhar-users group
 * [SPOI-2914] - Configure Store operator to join logger and tracker stream.
 
-## Sub-task
+### Sub-task
 * [SPOI-2747] - Total emitted window of an operator keeps on increasing even when it has stopped emitting
 * [SPOI-2850] - Sort out the dependencies for dt-flume so we do not include the jars which are already part of dt dist and hadoop dist
 * [SPOI-2873] - Deprecate ShipContainingJars.
@@ -263,25 +761,25 @@
 * [SPOI-2907] - Counters appear in physical plan only when a Counters aggregator or a stats listener is set on the operator
 
 
-## Bug
+### Bug
 * [MLHR-1176] - Update demo section of README.md
 * [MLHR-1219] - Non-chrome browsers cannot parse date format from date picker
 * [MLHR-1227] - AbstractKafkaOutputOperator fails with java.lang.NoClassDefFoundError: com/yammer/metrics/Metrics
 * [MLHR-1235] - close button on gateway info modal does not close the modal
 
-## Improvement
+### Improvement
 * [MLHR-1213] - Use trackBy for malhar-angular-table
 * [MLHR-1216] - DB key value store manager enhancement
 * [MLHR-1218] - Clicking on an open stram log event should close it in UI
 
-## New Feature
+### New Feature
 * [MLHR-1212] - Make scrollbar draggable on malhar-angular-table
 * [MLHR-1225] - Logical Operator Table
 * [MLHR-1226] - Stram Event widget
 * [MLHR-1229] - Provide better widget options dialog
 * [MLHR-1231] - Custom template/controller for widget options
 
-## Task
+### Task
 * [MLHR-1205] - Restructure directory structure in angular console
 * [MLHR-1206] - Change malhar pom to use provided scope to prevent DT and hadoop jars from being sucked into the runtime classpath
 * [MLHR-1210] - Create script to automatically add scripts to index.html
@@ -289,9 +787,10 @@
 
 
 
-## Version 1.0.2
+Version 1.0.2
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-431] - Fix mergeSort operator to actually do mergeSort
 * [SPOI-2499] - Provide license delegation tokens in secure environment
 * [SPOI-2500] - Provide new delegation token before an old one expires in secure enviroment
@@ -328,7 +827,7 @@
 * [SPOI-2798] - Request for log content outside of range results in 500, long request time
 * [SPOI-2839] - set-operator-property broken in master
 
-## Improvement
+### Improvement
 * [SPOI-2602] - Containers published via websocket should only contain live containers and recently finished containers
 * [SPOI-2610] - Parent: Automatic unobfuscation tool
 * [SPOI-2613] - Create web tool to run unobfuscator
@@ -337,7 +836,7 @@
 * [SPOI-2736] - Merge /systemAlerts/alerts and /systemAlerts/inAlerts API calls
 * [SPOI-2751] - Include sandbox README.html with docs.zip and on website
 
-## New Feature
+### New Feature
 * [SPOI-950] - Specify memory requirements on per operator basis (duplicate)
 * [SPOI-2220] - Gateway App Bundle API spec
 * [SPOI-2339] - Enable container size for each operator(s)
@@ -364,10 +863,9 @@
 * [SPOI-2756] - Front End POC - Alert Modal
 * [SPOI-2804] - Create a hbase operator that uses a config to map incoming csv tuples to hbase table data and saves them in hbase
 
-## Story
+### Story
 * [SPOI-2455] - HDFS storage layer for 1.0.2
 * [SPOI-2565] - Front End Server - Define cache policy for push data in Node.js
-* [SPOI-2567] - Parent jira for misc issues for 1.0.2
 * [SPOI-2571] - Parent jira for Hadoop Summit work
 * [SPOI-2590] - Parent: GA Testing
 * [SPOI-2611] - Parent jira for facilitating trouble shooting and debugging in 1.0.2
@@ -377,18 +875,16 @@
 * [SPOI-2667] - Automate distro certification and make it part of CI for 1.0.2
 * [SPOI-2781] - Determine which fields are present in output that are not present in input
 
-## Task
+### Task
 * [SPOI-2341] - Update on authentication and authorization in Yarn-open source
 * [SPOI-2434] - Short document on deduper checkpointing scheme
 * [SPOI-2440] - Kafka support in POC for 1.0.2
-* [SPOI-2485] - Directory Scan Operator from Amla Pilot
 * [SPOI-2509] - Investigate how to use Kafka to replace the pub/sub mechanism in Gateway
 * [SPOI-2532] - Join Operator
 * [SPOI-2534] - Add support of getting container info of dead applications and dead containers
 * [SPOI-2535] - Add support for retrieving Aggregated Counters from Response processStats of StatsListener
 * [SPOI-2542] - Get user to look at instructions before .bin file download
 * [SPOI-2544] - Twitter demo "feedMultiplier" should be RW and test to ensure that it can be changed in runtime
-* [SPOI-2545] - Amla - Notifications should vanish quickly. Too disruptive
 * [SPOI-2548] - Memory gauge always shows 100%
 * [SPOI-2549] - Total memory on right corner needs to be discussed
 * [SPOI-2552] - Need to list certified Distros on site
@@ -397,10 +893,8 @@
 * [SPOI-2569] - Add the Rewind Feature 
 * [SPOI-2573] - Integrate the Scoring of the quality logs  into the DAG
 * [SPOI-2574] - Add counter calculation in hdfs operator
-* [SPOI-2581] - Parent jira for cluster management in 1.0.2
 * [SPOI-2584] - DT counters as Key,Val (String,Number)
 * [SPOI-2585] - Troubleshooting work for reporting min, max, ave, ... on resources
-* [SPOI-2587] - Tracking Jira for moving Olive operators to Malhar
 * [SPOI-2591] - GA Testing: CDH5 end-to-end
 * [SPOI-2592] - GA Testing: HDP2 end-to-end
 * [SPOI-2593] - GA Testing: MapR end-to-end
@@ -441,7 +935,7 @@
 * [SPOI-2732] - Create a multi level key map with multiple keys
 * [SPOI-2733] - Create a CSV lookup class to load CSV and lookup values based on row keys
 * [SPOI-2735] - Ensure all dimemsions are implemented and covered by test
-* [SPOI-2763] - Create a csv parser framework that can handle the different csv file formats in Rainier
+* [SPOI-2763] - Create a csv parser framework that can handle the different csv file formats
 * [SPOI-2764] - Create a template application
 * [SPOI-2765] - Create the template configuration file
 * [SPOI-2766] - Create kafka input for the application 
@@ -459,7 +953,7 @@
 * [SPOI-2800] - Install a kafka web-console in our cluster
 * [SPOI-2805] - Investigate yarn log aggregation to see how this fits into our container logs API
 
-## Sub-task
+### Sub-task
 * [SPOI-2725] - Create skeleton App
 * [SPOI-2728] - Convert the Skeleton Operators into Real Operators - Part I
 * [SPOI-2739] - File input operator
@@ -468,7 +962,7 @@
 * [SPOI-2777] - Gateway throws a bunch of exceptions when trying to install using rpm
 
 
-## Bug
+### Bug
 * [MLHR-724] - RabbitMQ test timing issue
 * [MLHR-1128] - Breadcrumbs should say physical operator, not operator on port page
 * [MLHR-1129] - DAG should not display underneath controls
@@ -487,7 +981,7 @@
 * [MLHR-1195] - App master container is not showing proper metrics
 * [MLHR-1202] - failureCount missing for physical operators
 
-## Improvement
+### Improvement
 * [MLHR-1132] - Improvements to errors in the stram events widget
 * [MLHR-1146] - Only get active containers for initial container list
 * [MLHR-1167] - UI support for searching log levels of classes
@@ -495,7 +989,7 @@
 * [MLHR-1194] - Align app counts with labels in cluster overview widget
 * [MLHR-1209] - Support JMS providers other than ActiveMQ
 
-## New Feature
+### New Feature
 * [MLHR-921] - Installer - List of Errors/Codes
 * [MLHR-1111] - Container Log Widget, using new REST call
 * [MLHR-1121] - Front End Server - Kafka Query JSON
@@ -519,10 +1013,10 @@
 * [MLHR-1187] - UI for adding system alerts
 * [MLHR-1193] - Create Basic Counters and its aggregator in library
 
-## Story
+### Story
 * [MLHR-1178] - AngularJS Migration for 1.0.2
 
-## Task
+### Task
 * [MLHR-960] - Create a Tableau output adapter
 * [MLHR-1090] - Create first resource objects (models) for angular console
 * [MLHR-1106] - Improve ended app page
@@ -535,29 +1029,28 @@
 * [MLHR-1172] - Create a Cassandra read operator
 * [MLHR-1173] - Create a Cassandra write operator
 
-## Sub-task
+### Sub-task
 * [MLHR-1163] - Wireframe for DAG builder
 
 
 
 
-## Version 1.0.1
+Version 1.0.1
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-1404] - Create seperate environment for node0 for demos
 * [SPOI-1952] - Operation and Install guide review
 * [SPOI-2203] - Configure adsDimesions and machine data to use minimum memory
-* [SPOI-2273] - Test Amla2
 * [SPOI-2340] - License Agent is persisting state in a wrong location
-* [SPOI-2382] - Alphonso: latency in the app shows as zero
 * [SPOI-2397] - Monitoring and fixing the bugs in Customer demos
 * [SPOI-2408] - Verify DT Platform on HDP 2.1
 * [SPOI-2410] - Master script to restart hadoop on the cluster
 * [SPOI-2411] - Not able to starte license with 0.9.5 release
 * [SPOI-2420] - Core doesn't compile with hadoop 2.4
-* [SPOI-2448] - Help Olive deploy xml ingestion demo on their cluster
-* [SPOI-2449] - Help Olive deploy golden gate demo on their cluster
-* [SPOI-2450] - Help Olive deploy twitter sentiment demo on their cluster
+* [SPOI-2448] - Test xml ingestion demo on a cluster
+* [SPOI-2449] - Test golden gate demo on a cluster
+* [SPOI-2450] - Test twitter sentiment demo on a cluster
 * [SPOI-2474] - Containers not provisioned diagnostics error
 * [SPOI-2477] - LicenceAgent client fails with NPE
 * [SPOI-2489] - Operator downstream of EXACTLY_ONCE operator not checkpointing
@@ -575,14 +1068,14 @@
 * [SPOI-2556] - Add demo guides to documentation index
 
 
-## Improvement
+### Improvement
 * [SPOI-2210] - Default license generation should be part of build process
 * [SPOI-2468] - README for certifications and benchmarks
 * [SPOI-2482] - DTCli should handle ^C more gracefully
 * [SPOI-2494] - Add HTTP Get operator to Malhar
 * [SPOI-2555] - Include README, LICENSE, and CHANGELOG in docs
 
-## New Feature
+### New Feature
 * [SPOI-406] - Document and test download to work with Hortonworks HDP 2.0
 * [SPOI-408] - Certify with MapR (Hadoop 2.3) release in 1.0.1
 * [SPOI-1146] - API for retrieving raw Container Logs
@@ -598,14 +1091,14 @@
 * [SPOI-2519] - add grep feature when getting container log
 * [SPOI-2526] - Add REST call to return info of historical containers
 
-## Task
+### Task
 * [SPOI-62] - Buffer Server logging
 * [SPOI-1206] - Review Licensing of Third Party Libraries
 * [SPOI-1745] - Document Demo Application Setup
 * [SPOI-1784] - License agent app to have webservice
 * [SPOI-2199] - Readme file for AWS installation
 * [SPOI-2223] - Test if all the applications with reduced container memory sizes run in sandbox 0.9.4.
-* [SPOI-2348] - Amla - Enable checkpoint for aggregator operator
+* [SPOI-2348] - Enable checkpoint for aggregator operator
 * [SPOI-2354] - Certify demos on 0.9.4 sandbox
 * [SPOI-2370] - Fully automate Hadoop cluster restart
 * [SPOI-2379] - Certify DT with Hadoop 2.3/CDH
@@ -627,13 +1120,10 @@
 * [SPOI-2451] - Gateway Load Test
 * [SPOI-2457] - Widget Library
 * [SPOI-2458] - Generate certification report for HDP 2.1
-* [SPOI-2463] - Send testing procedure and plans for Amla pilot
 * [SPOI-2466] - Monitoring and notifications for cluster
 * [SPOI-2475] - Document process to certify demo re-start
 * [SPOI-2476] - Document process for grid restart
 * [SPOI-2483] - Node.js Kafka Client POC
-* [SPOI-2484] - Operators from Olive POC
-* [SPOI-2502] - Olive Demo: Benchmarking->html demo for olive
 * [SPOI-2513] - Create demos ui service wrapper compatible with CentOS
 * [SPOI-2517] - Configure customer demos ui for as a service
 * [SPOI-2531] - HDFSOutputOperator write with exactly once semantics
@@ -644,12 +1134,12 @@
 * [SPOI-2553] - Holding ticket for Malhar maintenance work
 
 
-## Sub-task
+### Sub-task
 * [MLHR-774] - Terms of service license
 * [MLHR-976] - Implement table module for angular
 
 
-## Bug
+### Bug
 * [MLHR-998] - Compilation error while using UniqueValueCount operator.
 * [MLHR-1054] - Update topic and rest calls for Logical/Physical Split
 * [MLHR-1056] - Rename demo apps to include Demo suffix
@@ -664,7 +1154,7 @@
 * [MLHR-1138] - Remove unused CPU columns in logical operator table
 
 
-## Improvement
+### Improvement
 * [MLHR-1092] - Add environment variable override to rename demo apps
 * [MLHR-1098] - Improved code coverage for malhar-angular-dashboard
 * [MLHR-1099] - Extend dataModelOptions with non-serializable defaults
@@ -673,7 +1163,7 @@
 * [MLHR-1119] - Add a confirm box when killing app master container
 * [MLHR-1120] - Save range selection between page loads for stram events
 
-## New Feature
+### New Feature
 * [MLHR-783] - DAG should adjust in height as the widget height changes
 * [MLHR-784] - WidgetOutputOperator - Schema Update
 * [MLHR-984] - STRAM decisions widget
@@ -686,13 +1176,13 @@
 * [MLHR-1097] - Implement storage on malhar-angular-dashboard
 * [MLHR-1118] - Add storage hash for clearing out invalid dashboards
 
-## Story
+### Story
 * [MLHR-719] - Time Series Forecasting
 * [MLHR-1060] - Widget Library
 * [MLHR-1061] - Dashboard Component
 * [MLHR-1082] - Parent jira for Real Time ETL Application
 
-## Task
+### Task
 * [MLHR-700] - Develop operator for calculating Coefficient of Determination (RSquare)
 * [MLHR-841] - Demo guide for machine data application
 * [MLHR-850] - Demo guide for Ads Dimension demo
@@ -718,9 +1208,10 @@
 
 
 
-## Version 1.0.0
+Version 1.0.0
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-2086] - creation of logs directory under .dt folder of user
 * [SPOI-2497] - Remove hard-coded "hdfs" scheme 
 * [SPOI-2501] - dt.log not written under CDH5 GA
@@ -729,35 +1220,37 @@
 * [SPOI-2607] - Install page should only list error (not warnings) issues
 * [SPOI-2609] - When yarn.scheduler.minimum-allocation-mb is set to 256, PiDemo fails with NPE
 
-## Improvement
+### Improvement
 * [SPOI-2522] - Replace InputPort.getStreamCodec method with an attribute on InputPort called StreamCodec
 * [SPOI-2576] - Change local install from .datatorrent to datatorrent directory
 * [SPOI-2603] - installer complains about gateway has trouble starting but it actually runs OK
 * [SPOI-2637] - Improve the Getting Started Guide
 
-## Task
+### Task
 * [SPOI-2520] - Change the name of the CustomStats to Counters
 * [SPOI-2578] - Check dir before mkdir call (MapR requirement)
 * [SPOI-2579] - Take out launch from gateway webservice spec document
 * [SPOI-2649] - Update software license
 
-## Bug
+### Bug
 * [MLHR-1101] - Install errors formatting
 * [MLHR-1103] - Change installer instructions for DFS directory path
 
 
-## Version 0.9.5.1
+Version 0.9.5.1
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-2554] - Third party libraries which are required for demos are missing from /opt/datatorrent/releases/version/lib/
 * [MLHR-1113] - AdsDimension demo fails to launch
 * [MLHR-1114] - FraudDetect demo fails to launch
 * [MLHR-1115] - MachineData demo fails to launch
 
 
-## Version 0.9.5
+Version 0.9.5
+------------------------------------------------------------------------------------------------------------------------
 
-## Sub-task
+### Sub-task
 * [SPOI-1692] - Certify fault tolerance for multiple containers failure
 * [SPOI-1693] - Develop automated test scenario for StrAM failure to certify one of high availability aspects. 
 * [SPOI-2008] - Setup virtual cluster for high availability certification
@@ -772,10 +1265,10 @@
 * [SPOI-2277] - Support HTTPS and auth in pubsub connection from stram to Gateway
 * [SPOI-2291] - Copy GW configurations to HDFS on every write
 
-## Technical task
+### Technical task
 * [SPOI-2005] - Verify and add Machine demo to app memory usage automation
 
-## Bug
+### Bug
 * [SPOI-1801] - Mobile app has two logical input gen - Need to handle containers on servers with two diff clocks
 * [SPOI-1890] - Application behavior when resources are not available
 * [SPOI-1954] - Incorrect Processed Stats
@@ -794,25 +1287,12 @@
 * [SPOI-2288] - NullPointerException in buffer server
 * [SPOI-2289] - FSStorageAgent store throws java.nio.channels.ClosedChannelException 
 * [SPOI-2295] - Monitoring and fixing the bugs in Customer demos
-* [SPOI-2296] - Amla POC UI - Display/Mobile Navigation
 * [SPOI-2297] - Mobile Demo going to unstable state due to out of order tuple sequence error
 * [SPOI-2298] - Events returned from REST API has funky keys
-* [SPOI-2299] - Amla POC - Top N Format
-* [SPOI-2300] - Amla POC - WebSocket Output Rate 2000 events/sec
 * [SPOI-2302] - Normalize WebSocket & REST format for Stram Events
-* [SPOI-2305] - Amla POC - Inconsistencies in JSON
-* [SPOI-2308] - Amla POC does not publish WebSocket Data
 * [SPOI-2314] - Fix application names
 * [SPOI-2315] - node1 application launch-xxx macros not working after upgrade
-* [SPOI-2317] - Amla - Pub list hangs sometimes
-* [SPOI-2319] - Amla - Mockup shows 'format' in the form of blocks while we show it just as numbers
-* [SPOI-2320] - Amla - With just integer values diplayed, the columns should be center aligned
-* [SPOI-2321] - Amla - Location of PubMatic logo and Pub/DSP name should be as per the mockup
-* [SPOI-2329] - Amla - asof showed twice when selected
-* [SPOI-2330] - Amla - Time range is changing
-* [SPOI-2336] - Amla POC UI - Handle Inactive Page
 * [SPOI-2342] - DTCLI ignoring annotated Application Names
-* [SPOI-2343] - Amla - eCPM seems wrong
 * [SPOI-2344] - dtcli fails to load dt-env.sh
 * [SPOI-2349] - Update default license to 4 months
 * [SPOI-2357] - Unable to launch application using launch alias, if the application names shown in the dtcli list are picked from dt-site.xml.
@@ -841,7 +1321,7 @@
 * [SPOI-2435] - Latest changes to latency calculation break tests.
 
 
-## Improvement
+### Improvement
 * [SPOI-1376] - Have app specific configuration to stram-site.xml in sandbox
 * [SPOI-1855] - Ability to continue/shutdown application
 * [SPOI-1986] - In Logical View do not include the unifier stats
@@ -855,25 +1335,19 @@
 * [SPOI-2405] - Add more params to /ws/v1/applications/{appid}/events call
 * [SPOI-2407] - Need ability to supply the class name representing the property
 
-## New Feature
+### New Feature
 * [SPOI-91] - Design and implement a socket adapter operator
 * [SPOI-2007] - Automation to certify High Availability
 * [SPOI-2012] - Run the app-memory-usage with lower container sizes starting from 128M to 512M when the grid is restarted.
 * [SPOI-2249] - Simple user authentication / authorization support in the UI
-* [SPOI-2275] - Amla POC - WebSocket Topics Spec
-* [SPOI-2276] - Amla POC UI - Connect Widgets to WebSocket Data Source
-* [SPOI-2304] - Amla POC UI - DSP Data
-* [SPOI-2306] - Amla POC UI - Publisher/DSP List Loading Indicator
-* [SPOI-2307] - Amla POC UI - Widgets Height
 * [SPOI-2355] - Add REST call to make existing license file the current license
 * [SPOI-2386] - REST call to retrieve the datatorrent conf directory
 * [SPOI-2399] - Starter Web Application
 
-## Story
+### Story
 * [SPOI-2215] - Password protect the dashboard
-* [SPOI-2254] - Amla Dimensions UI
 
-## Task
+### Task
 * [SPOI-746] - DT Phome home customer side work
 * [SPOI-1642] - Certify support for node failure
 * [SPOI-2045] - Discuss license cleanup/improvements
@@ -883,24 +1357,10 @@
 * [SPOI-2117] - An error during uninstall
 * [SPOI-2118] - 1 yr license mail not getting mailed
 * [SPOI-2145] - Set up separate access to jars for big customers 
-* [SPOI-2176] - Download all files from S3 for Amla POC
-* [SPOI-2177] - Use HDFSInputAdaper (Amla)
-* [SPOI-2178] - Amla: Filters HashMap from HDFSLoader
-* [SPOI-2179] - Map timestamp to daily times for Amla
-* [SPOI-2180] - Use redis operator to write per minute window (increment) for Amla
-* [SPOI-2181] - Leverage Ads demo UI to use for Amla
-* [SPOI-2182] - Manage relations for Amla project
-* [SPOI-2183] - Aggregate impressions for Amla
-* [SPOI-2184] - Aggregate revenue per site id for Amla
-* [SPOI-2185] - Create repo for Amla
-* [SPOI-2186] - Add Kafka adapter to Olive project
-* [SPOI-2189] - Compute 5 dimensions nC1 for Amla
+* [SPOI-2178] - Filters HashMap from HDFSLoader
 * [SPOI-2190] - Create web page (navigator and table view) for 5 dimensions and 2 computations
-* [SPOI-2191] - Create web socket input for query on Amla
-* [SPOI-2197] - Get Oracle 11g install for development on Amla
 * [SPOI-2201] - Create a upgrade license page
 * [SPOI-2202] - Upgrade Machine Data to latest code
-* [SPOI-2204] - Support Amla engineer ramp up her Sandbox
 * [SPOI-2211] - Getting too many deprecated warnings in demos
 * [SPOI-2213] - Be able to diagnose Stram decisions
 * [SPOI-2214] - Ability to access Stram decisions for failed/finished/killed app
@@ -913,26 +1373,9 @@
 * [SPOI-2226] - Issues with Ads demo
 * [SPOI-2233] - Remove max num container parameter that is included by default
 * [SPOI-2234] - Give warning when operators are automatically inlined
-* [SPOI-2236] - Get Goldengate install for development on Amla
 * [SPOI-2237] - CPU column on logical view
 * [SPOI-2243] - Use hammerdb to generate load against Oracle
 * [SPOI-2256] - Document certification suite used to certify datatorrent platform
-* [SPOI-2258] - First mock for Amla
-* [SPOI-2259] - Second mock for Amla
-* [SPOI-2260] - Urls for Amla 2nd project
-* [SPOI-2261] - Index page s for Amla
-* [SPOI-2263] - Index page 2 for Amla
-* [SPOI-2264] - Dimensional computations for dsp
-* [SPOI-2265] - Dimensional computations for pubs on Amla
-* [SPOI-2266] - Lists of pubs for Amla
-* [SPOI-2267] - List of dsp for Amla
-* [SPOI-2268] - Integration websocket adapter for recieving query from UI in Amla
-* [SPOI-2271] - Per minute buckets for a pub for Amla 2
-* [SPOI-2272] - Per minute bucket for each dsp in Amla2
-* [SPOI-2274] - Restart Grid
-* [SPOI-2279] - Ensure that minimum container size is down to 128MB on grid
-* [SPOI-2280] - Remove obsfuscation on grid
-* [SPOI-2281] - Grid must have a long license
 * [SPOI-2286] - Implement Goldengate java handler to capture db change and send to kafka
 * [SPOI-2290] - Hide configuration and launch app for GA
 * [SPOI-2292] - Add to README: not recommended to launch more than one gateway
@@ -940,20 +1383,6 @@
 * [SPOI-2303] - Make DFS error keys more fine grained 
 * [SPOI-2309] - Use connection to RM to guess the cluster accessible IP address for GATEWAY_CONNECT_ADDRESS
 * [SPOI-2310] - Allow different filesystem from fs.defaultFS for dt.dfsRootDirectory
-* [SPOI-2311] - Put Amla logo
-* [SPOI-2312] - Mobile Amla POC data is empty
-* [SPOI-2313] - Amla POC - times, and date do not match
-* [SPOI-2322] - Amla- Inconsistency in the way of displaying values
-* [SPOI-2323] - Amla - Show serial numbers in the tables
-* [SPOI-2324] - Amla has Mobile web | Mobile App
-* [SPOI-2326] - Amla change titles on the list boxes
-* [SPOI-2327] - Amla - Need to finetune memory
-* [SPOI-2328] - Amla - Demo scale
-* [SPOI-2331] - Change line to bar chart
-* [SPOI-2332] - Amla - Have nav on top and below
-* [SPOI-2333] - Amla - Have nav on top and below
-* [SPOI-2334] - Amla - Add proprietary tag
-* [SPOI-2337] - Amla - Change column headers
 * [SPOI-2338] - The "#" in the boxes should not change
 * [SPOI-2351] - Bundle the default passwd file (with admin/admin) in the installer
 * [SPOI-2362] - Create service wrappers for Apache Hadoop on Sandbox
@@ -964,7 +1393,7 @@
 * [SPOI-2421] - Update end-user documentation
 
 
-## Sub-task
+### Sub-task
 * [MLHR-726] - Time Series Forecasting Operator using Holt's Linear Trend Model
 * [MLHR-933] - Time Series Forecasting using Holt-Winters' Seasonal Method
 * [MLHR-965] - create non transactional output operator
@@ -974,7 +1403,7 @@
 * [MLHR-1040] - Develop incremental model creation for Holt-Winters' Multiplicative Method Time-Series Forecasting
 
 
-## Bug
+### Bug
 * [MLHR-778] - Logical Operators list has no palette
 * [MLHR-857] - Machinedata demo stop working with new Redis operator
 * [MLHR-963] - create output operator to add historical data to supplied datastore
@@ -1006,7 +1435,7 @@
 * [MLHR-1074] - Remove stram events page/widget from 0.9.5
 
 
-## Improvement
+### Improvement
 * [MLHR-721] - Migrate database cache lookup to the new db framework
 * [MLHR-985] - AdsDimension: Plug-in Dimension Unifier 
 * [MLHR-1010] - Remove info icon from installer text
@@ -1018,7 +1447,7 @@
 * [MLHR-1062] - Install Wizard examples of Hadoop and DFS path
 * [MLHR-1069] - License summary section in Install Wizard
 
-## New Feature
+### New Feature
 * [MLHR-684] - Invalidate dashboard state from previous versions
 * [MLHR-881] - ETL Web App - Packaging
 * [MLHR-882] - ETL Web App - Dashboard
@@ -1028,11 +1457,11 @@
 * [MLHR-1052] - Bar Chart Widget
 * [MLHR-1053] - Widget Library - Demo Application
 
-## Story
+### Story
 * [MLHR-703] - Logstream UI
 * [MLHR-709] - Widgets Library as Independent Project
 
-## Task
+### Task
 * [MLHR-661] - Migrate JDBC adapters to use the new database adapter interface
 * [MLHR-866] - Annotate all stateless operators in Malhar as such
 * [MLHR-868] - Demo Guide for Map-Reduce Operator - LogsCountApplication
@@ -1059,9 +1488,10 @@
 
 
 
-## Version 0.9.4
+Version 0.9.4
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-455] - Cleanup maven repository workaround in install.sh
 * [SPOI-1636] - Update all node1 demo to 0.9.3 release
 * [SPOI-1774] - Thread local performance drop from 65M to 40 M tuplesProcessed/sec
@@ -1149,7 +1579,7 @@
 * [SPOI-2241] - DAG Firefox 28 Support
 
 
-## Improvement
+### Improvement
 * [SPOI-1311] - Review platform documentation
 * [SPOI-1567] - Certify against commercial Hadoop distributions
 * [SPOI-1769] - Trying to kill a non dt app can return a better message
@@ -1185,7 +1615,7 @@
 * [SPOI-2175] - Notify user about local DTGateway management during installation
 * [SPOI-2188] - Installer - Register Instructions
 
-## New Feature
+### New Feature
 * [SPOI-328] - Add annotation to declare the operator stateless
 * [SPOI-393] - High Availability for STRAM
 * [SPOI-868] - Setting operator properties as different types
@@ -1223,10 +1653,10 @@
 * [SPOI-2196] - Gateway REST API to return properties of an operator in a jar 
 * [SPOI-2200] - Installer - License Flow
 
-## Story
+### Story
 * [SPOI-1608] - Platform Benchmarking (Platform1 and Platform2)
 
-## Task
+### Task
 * [SPOI-722] - Document ads demo (add comments to codebase)
 * [SPOI-1403] - HDFS Operator Benchmark
 * [SPOI-1411] - Deprecate old Malhar webdemos once logstream is available
@@ -1314,7 +1744,7 @@
 * [SPOI-2240] - Set Up DataTorrent Demos on Dev Environment
 
 
-## Sub-task
+### Sub-task
 * [SPOI-1682] - Too many mbassy threads!!!
 * [SPOI-1718] - Update HA Documentation
 * [SPOI-1729] - Restore operator recovery checkpoints in AM recovery 
@@ -1340,7 +1770,7 @@
 
 
 
-## Bug
+### Bug
 * [MLHR-729] - Columns in table wrap in Firefox
 * [MLHR-730] - Dev server does not escape double-quotes in error message
 * [MLHR-732] - Links Outline in Firefox
@@ -1375,7 +1805,7 @@
 * [MLHR-991] - DAG Stream Locality
 
 
-## Improvement
+### Improvement
 * [MLHR-731] - Compile LESS on the fly in dev environment
 * [MLHR-735] - Remove unused bundling make commands, update README
 * [MLHR-745] - Add icon to left widget manager drawer
@@ -1400,7 +1830,7 @@
 * [MLHR-948] - Remove mock issues from SummaryView in installer wizard
 * [MLHR-993] - Demo UI - Default Applications Names for Application Discovery
 
-## New Feature
+### New Feature
 * [MLHR-688] - Discard Real-Time Updates When Page is not Active
 * [MLHR-757] - Dashboard - Save Widget Width to Local Storage
 * [MLHR-759] - Dashboard - Widget Definitions Collection
@@ -1439,7 +1869,7 @@
 * [MLHR-925] - Installer Update
 * [MLHR-934] - Allow overrides to $.().modal(options) for Modals
 
-## Story
+### Story
 * [MLHR-705] - Node.js Pub/Sub Service
 * [MLHR-708] - Evaluate Node.js Pub/Sub Services
 * [MLHR-710] - Pie Chart Data Model
@@ -1452,7 +1882,7 @@
 * [MLHR-802] - Web Demos - Distribution Package
 * [MLHR-803] - Installer (Wizard) Page
 
-## Task
+### Task
 * [MLHR-349] - Add build script to Malhar/front
 * [MLHR-402] - Logstream - aggregate top hits and bytes for URL, geo DMA, IP, URL/status code, url
 * [MLHR-651] - Use compatible version of jersey/jackson/jetty in Malhar
@@ -1492,7 +1922,7 @@
 * [MLHR-981] - CLONE - Demo guide for Yahoo finance application - launch this copy
 * [MLHR-982] - CLONE - Demo guide for Yahoo finance application with Derby SQL - launch this copy
 
-## Sub-task
+### Sub-task
 * [MLHR-678] - Time Series Forecasting with Simple Linear Regression
 * [MLHR-718] - Time Series Forecasting using Simple/Single Exponential Smoothing
 * [MLHR-726] - Time Series Forecasting Operator using Holt's Linear Trend Model
@@ -1502,9 +1932,10 @@
 
 
 
-## Version 0.9.3
+Version 0.9.3
+------------------------------------------------------------------------------------------------------------------------
 
-## New Feature
+### New Feature
 * [SPOI-261] - Design a general purpose read from stream and write to cassandra
 * [SPOI-400] - Each streaming application should license check
 * [SPOI-1622] - Input operator - XML parser
@@ -1517,7 +1948,7 @@
 * [SPOI-1823] - Gateway REST API - Get Running Applications List
 * [SPOI-1829] - Semantic URLs for Web Apps
 
-## Improvement
+### Improvement
 * [SPOI-1202] - Provide a way to check whether an operator is partitioned
 * [SPOI-1783] - Add allocatedMB to main application list
 * [SPOI-1789] - Change frequency of heartbeats to license app
@@ -1525,11 +1956,11 @@
 * [SPOI-1816] - support simple variable substitution in the cli
 * [SPOI-1835] - support gateway status command
 
-## Story
+### Story
 * [SPOI-1320] - Support MQTT protocol
 * [SPOI-1542] - Input operator - Directory Scan
 
-## Bug
+### Bug
 * [SPOI-1696] - Make de-duper dynamically partitionable
 * [SPOI-1704] - Stram enforcement to lock physical plan changes when license memory limit is reached
 * [SPOI-1706] - Design a enforcement format for the license policy
@@ -1552,7 +1983,7 @@
 * [SPOI-1842] - Investigate the possibility of engine obfuscation jar not containing any references to license package path
 * [SPOI-1880] - GET nonexistent container returns 500 error
 
-## Task
+### Task
 * [SPOI-1375] - All sandbox apps must work in 8G VM. Need to test each
 * [SPOI-1467] - DB lookup for Cassandra
 * [SPOI-1507] - datatorrent.com webapp development - pilot test of Angular and WP integration
@@ -1579,13 +2010,13 @@
 * [SPOI-1825] - Update end user documentation
 * [SPOI-1832] - Support CDH default log4j setup
 
-## Sub-task
+### Sub-task
 * [SPOI-1451] - Show critical path
 * [SPOI-1721] - Augment the Partitionable interface to inform of all the partitions which actually were deployed
 * [SPOI-1733] - Container heartbeat RPC failover
 
 
-## New Feature
+### New Feature
 * [MLHR-5] - UI component for license information
 * [MLHR-6] - Google Line Chart Widget
 * [MLHR-7] - Gauge Widget
@@ -1613,10 +2044,10 @@
 * [MLHR-697] - Dashboard App - Node.js Configuration
 * [MLHR-698] - Dashboard App - WebSocket/REST API Configuration
 
-## Improvement
+### Improvement
 * [MLHR-686] - Deglobalize the visibly component
 
-## Bug
+### Bug
 * [MLHR-4] - Use new livechart module for OpChart Widget
 * [MLHR-13] - Console status column display
 * [MLHR-648] - Update Issues section in README files 
@@ -1629,12 +2060,12 @@
 * [MLHR-725] - WindowId Formatter
 * [MLHR-739] - Stream Locality Toggle fails for DAG view
 
-## Story
+### Story
 * [MLHR-1] - Reusable Dashboard Component with AngularJS
 * [MLHR-2] - Dashboard Widgets
 * [MLHR-3] - Dashboard App
 
-## Task
+### Task
 * [MLHR-321] - Directory Scan operator
 * [MLHR-452] - Create a De-duplication operator
 * [MLHR-603] - Supports upload of dependency jars
@@ -1649,9 +2080,10 @@
 
 
 
-## Version 0.9.2
+Version 0.9.2
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-1327] - AtLeastOnceTest.testInlineOperatorsRecovery intermittent failure
 * [SPOI-1342] - DTCli should check license and relay the information with each application launched
 * [SPOI-1383] - Last window id and recovery window id do not update on 0.9
@@ -1684,14 +2116,14 @@
 * [SPOI-1744] - Recording says ended even if the recording is still going on
 
 
-## Improvement
+### Improvement
 * [SPOI-1098] - event recorder logging improvements
 * [SPOI-1370] - Make the partition logic available to the end-users
 * [SPOI-1448] - DAG Visualization - Stream Types
 * [SPOI-1603] - BufferServerStatsCollection - dont check against bufferserverpublisher and subscriber
 * [SPOI-1613] - Update the User Interface guide to reflect latest version (0.9.1)
 
-## New Feature
+### New Feature
 * [SPOI-165] - Parent jira for authentication
 * [SPOI-170] - Stream should authenticate before allowing an operator to connect
 * [SPOI-258] - Develop Flume Sink and corresponding DT input adapter
@@ -1706,7 +2138,7 @@
 * [SPOI-1621] - Input operator - CDR parser using CSV 
 * [SPOI-1699] - Add locality (and maybe id?) to physical streams in REST calls
 
-## Task
+### Task
 * [SPOI-1689] - Map Reduce Monitor Web App
 * [SPOI-739] - Hadoop 2.2 certification
 * [SPOI-763] - Competition study
@@ -1728,7 +2160,7 @@
 * [SPOI-1742] - Update end-user documentation
 
 
-## Sub-task
+### Sub-task
 * [SPOI-919] - Certify secure mode with Hadoop 2.2.0
 * [SPOI-966] - Create a licensing agent application
 * [SPOI-1413] - Flume sink part 
@@ -1740,7 +2172,7 @@
 * [SPOI-1723] - The default license generation should be integrated with build
 * [SPOI-1731] - Sync execution layer deployment state after recovery
 
-## GitHub - DataTorrent/Malhar
+### GitHub - DataTorrent/Malhar
 * [616] - fix #615 Update Web Apps Instructions
 * [615] - Update Web Apps Instructions
 * [614] - corrected typo
@@ -1974,9 +2406,10 @@
 * [104] - Map Reduce Monitor Application
 
 
-## Version 0.9.1
+Version 0.9.1
+------------------------------------------------------------------------------------------------------------------------
 
-## New Feature
+### New Feature
 * [SPOI-377] - Input adapter for CouchDB
 * [SPOI-378] - Output Adapter for CouchDb
 * [SPOI-410] - Document and test download to work with Cloudera CDH5
@@ -1998,7 +2431,7 @@
 * [SPOI-1235] - Add support for "DB lookup" functionality 
 * [SPOI-1236] - Provide support for Cassandra NoSQL database
 
-## Bug
+### Bug
 * [SPOI-600] - Twitter demo failed when I did two simulteneouce operator/container kill
 * [SPOI-993] - Plan modification gives NPE when the containers aren't deployed yet
 * [SPOI-1280] - Recording Chart widget shows up with "X"
@@ -2025,7 +2458,7 @@
 * [SPOI-1614] - Front files not included during builds after migration to Malhar
 
 
-## Improvement
+### Improvement
 * [SPOI-1005] - CLI: create a default clirc that is controlled by the installer
 * [SPOI-1099] - Display app master implementation version
 * [SPOI-1110] - BufferServer Stats should be passed as part of the port stats?
@@ -2044,7 +2477,7 @@
 * [SPOI-1605] - Make default dashes into logical and physical for Instance
 * [SPOI-1606] - Remove various metrics from logical operator list
 
-## Task
+### Task
 * [SPOI-907] - Create Application DAG visualization
 * [SPOI-1002] - List application names instead of class names where available
 * [SPOI-1140] - Annotate dag visualization with stream throughout and other data
@@ -2085,7 +2518,7 @@
 * [SPOI-1602] - Documentation index update to include Gateway API and Scalability Doc
 * [SPOI-1607] - Update docs for 0.9.1 release
 
-## Sub-task
+### Sub-task
 * [SPOI-1447] - Show stream throughput
 * [SPOI-1449] - DAG Visualization - Latency. Show latency per path/compute
 * [SPOI-1450] - Show partitionable operators
@@ -2106,7 +2539,7 @@
 * [SPOI-1594] - Define code style standards, integrate a hinter
 * [SPOI-1595] - Create tests for more js files
 
-## GitHub - DataTorrent/Malhar
+### GitHub - DataTorrent/Malhar
 * [335] - Fix issue316 issue317 pull
 * [331] - fix #330 Logical DAG Metrics
 * [330] - Logical DAG Metrics
@@ -2150,9 +2583,10 @@
 * [20] - Can not serialize Configuration Object
 
 
-## Version 0.9.0
+Version 0.9.0
+------------------------------------------------------------------------------------------------------------------------
 
-## Improvement
+### Improvement
 * [SPOI-437] - Create more granular RESTful API calls in Stram for various entities in an instance 
 * [SPOI-446] - Compute aggregate values for application instance on server side
 * [SPOI-465] - Increase unit test coverage to at least 50%
@@ -2171,7 +2605,7 @@
 * [SPOI-1295] - Make UI compatible with Backbone v1.1.0
 * [SPOI-1333] - Show stream locality in Streams widget 
 
-## New Feature
+### New Feature
 * [SPOI-66] - App wide "do not autorecord" parameter
 * [SPOI-90] - Define and implement Apache server adapter node
 * [SPOI-117] - Boolean operator node
@@ -2196,7 +2630,7 @@
 * [SPOI-1402] - Add capability to look up past alerts by timestamp
 * [SPOI-1235] - Add support for "DB lookup" functionality 
 
-## Bug
+### Bug
 * [SPOI-440] - Change throughput calculation to use endWindow time
 * [SPOI-727] - Document demo for charts
 * [SPOI-904] - Tupleviewer: jump to valid index greater than total - visible fails
@@ -2233,7 +2667,7 @@
 * [SPOI-1391] - CPU percentage for operators are 100x too large
 
 
-## Task
+### Task
 * [SPOI-634] - Enable unit tests in CI
 * [SPOI-716] - Compare original javascript with new script operators (Python, Bash)
 * [SPOI-720] - Coding conventions for Malhar GitHub
@@ -2316,7 +2750,7 @@
 * [SPOI-1399] - Add two new docs to the 0.9 release, to the website
 * [SPOI-1400] - Add timestamp for each tuple in tuple recordings
 
-## Sub-task
+### Sub-task
 * [SPOI-1109] - Change the frontend code to so that the recording information is received as part of the stats
 * [SPOI-1135] - Beautify "Twitter Top URLs" demo
 * [SPOI-1156] - mocha-phantomjs fails on test
@@ -2341,7 +2775,7 @@
 * [SPOI-1395] - Enable build testing for front
 * [SPOI-1396] - Enable build testing from Core
 
-## GitHub - DataTorrent/Malhar
+### GitHub - DataTorrent/Malhar
 * [288] - Machine Demo Circular Keys. Squashed commit of the following:
 * [286] - Ads Dimensions Demo - REST API
 * [285] - Machine Data Demo - No Data Behavior 
@@ -2519,9 +2953,10 @@
 * [4] - Make alert throttle operator window id based instead of wall clock time.
 
 
-## Version 0.3.5
+Version 0.3.5
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-349] - InlineStream undeploy error
 * [SPOI-766] - Process for certification of 0.3.3 launch on demo server
 * [SPOI-953] - Implement Exactly Once
@@ -2561,10 +2996,10 @@
 * [SPOI-1147] - Cannot kill "running" or relaunch "killed" application instance from AppLIst widget
 * [SPOI-1157] - NoSuchElementException in stramcli
 
-## Epic
+### Epic
 * [SPOI-870] - Alerts parent jira for phase I
 
-## Improvement
+### Improvement
 * [SPOI-462] - Feature to specify that an operator cannot be partitioned.
 * [SPOI-523] - Document OS style guidelines
 * [SPOI-750] - Performance Metrics Widget Unit Test
@@ -2582,7 +3017,7 @@
 * [SPOI-1119] - Remove Malhar subtree dependency from Core
 * [SPOI-1125] - Utilize new "optional" attribute with alert template parameters
 
-## New Feature
+### New Feature
 * [SPOI-641] - Setting partition on operator not supporting partitioning must result in error.
 * [SPOI-810] - Create a line charting module using d3.js
 * [SPOI-831] - Create REST API call for uploading JAR files
@@ -2613,7 +3048,7 @@
 * [SPOI-1116] - Move Machine Gen Demo to Node.js
 
 
-## Task
+### Task
 * [SPOI-843] - Evaluate current market features
 * [SPOI-846] - Implement exactly once
 * [SPOI-855] - Dynamic re-partitioning happens on a snapshot, need to do a moving average by default
@@ -2657,7 +3092,7 @@
 * [SPOI-1132] - Create Training session 1
 * [SPOI-1151] - AngularJS Integration
 
-## Sub-task
+### Sub-task
 * [SPOI-876] - Allow for saving alert configurations as templates for future use, back-end
 * [SPOI-877] - Allow for saving alert configurations as templates for future use, front-end
 * [SPOI-978] - Fix dependency among open source and platform
@@ -2667,7 +3102,7 @@
 * [SPOI-1113] - Remove child module poc build from framework build
 * [SPOI-1176] - Remove malhar subtree from Core
 
-## GitHub - DataTorrent/Malhar
+### GitHub - DataTorrent/Malhar
 * [90] - Fixed generics usage and renamed operator classes as per convention
 * [89] - Added operator to convert json byte stream to java hash map
 * [87] - Added operator to convert json byte stream to java hash map
@@ -2709,9 +3144,10 @@
 * [15] - Cleanup malhar-library input operator packages
 
 
-## Version 0.3.4
+Version 0.3.4
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-569] - Ads demo charting is not stable; Needs cleanup
 * [SPOI-570] - Mobile demo does not run forever
 * [SPOI-599] - Sometimes in the metrics charts widget some charts are flat
@@ -2771,7 +3207,7 @@
 * [SPOI-997] - Compute throughput as rolling average
 
 
-## Improvement
+### Improvement
 * [SPOI-434] - Ability to subscribe to buffer server stream at next begin window
 * [SPOI-450] - CLI: Allow wildcard in launch file name
 * [SPOI-463] - The appMetrics widget should remember the choices on the graphs (on/off)
@@ -2790,7 +3226,7 @@
 * [SPOI-901] - Add palette for containers list
 * [SPOI-938] - Centralize reused templates for links
 
-## New Feature
+### New Feature
 * [SPOI-70] - Parent JIra: Webservices for Streaming Application
 * [SPOI-73] - Job completed report
 * [SPOI-74] - Reporting: Job completion report should have the list of persisted files per node
@@ -2830,7 +3266,7 @@
 * [SPOI-949] - Documentation processor from markdown to html
 
 
-## Task
+### Task
 * [SPOI-60] - Streaming app master logging
 * [SPOI-191] - Enable compression for end of window data or for throttled N tuples (N sent together)
 * [SPOI-198] - Evaluate if buffer server should retain data in a compressed state
@@ -2931,7 +3367,7 @@
 * [SPOI-985] - Macro argument expansion in stramcli
 * [SPOI-1006] - Update @since tags for 0.3.4
 
-## Sub-task
+### Sub-task
 * [SPOI-880] - Investigate options for sandbox environment
 * [SPOI-922] - Sandbox default hadoop configurations
 * [SPOI-923] - Sandbox demo script and application launcher
@@ -2941,7 +3377,7 @@
 * [SPOI-990] - Add launch-demo macro to clirc during install
 * [SPOI-1004] - End user license agreement updates
 
-## GitHub - DataTorrent/Malhar
+### GitHub - DataTorrent/Malhar
 * [12] - Site Stats Operator and TopNOperator issues
 * [10] - getTopN() function returns ArrayList in com.datatorrent.lib.util.TopNSort class
 * [9] - Another Bug in offer(E e) function of com.datatorrent.lib.util.TopNSort.java
@@ -2954,9 +3390,10 @@
 * [1] - Console Operators
 
 
-## Version 0.3.3
+Version 0.3.3
+------------------------------------------------------------------------------------------------------------------------
 
-## Bug
+### Bug
 * [SPOI-418] - Duplicate - Demos need better documentation
 * [SPOI-438] - Remove outdated zookeeper dependency from contrib test scope
 * [SPOI-456] - CLI: kill-container should accept container number
@@ -2981,7 +3418,7 @@
 * [SPOI-673] - Operator List Widget only needs appId, not whole app model instance
 * [SPOI-733] - Incorrect documentation in README.txt developer version
 
-## Improvement
+### Improvement
 * [SPOI-454] - CLI: Feedback when not connected to app
 * [SPOI-467] - Backbone.js MVC: View -> Model -> Data Source
 * [SPOI-469] - Normalize naming convention for all modules
@@ -3000,7 +3437,7 @@
 * [SPOI-621] - The DataSource should URL-Encode port name in the getPort method
 * [SPOI-676] - Return better response for apps.list when no apps running
 
-## New Feature
+### New Feature
 * [SPOI-135] - Webservice: Provide statistics per streaming operator
 * [SPOI-397] - Download Parent Jira
 * [SPOI-402] - Document demo examples
@@ -3013,7 +3450,7 @@
 * [SPOI-598] - Daemon to serve historical stats data
 * [SPOI-700] - Remove demo/groupby
 
-## Sub-task
+### Sub-task
 * [SPOI-453] - Update the mobile demo to version with map
 * [SPOI-513] - Move JavaSerializationStreamCodec operator to library/util package
 * [SPOI-515] - GitHub Release: Review/format source and docs for library/io/AxctiveMQ Input Operator.
@@ -3086,10 +3523,10 @@
 * [SPOI-690] - Move com.library.io.helper  test to sample library.
 * [SPOI-691] - Review source code/docs for library/logs operator.
 
-## Technical task
+### Technical task
 * [SPOI-557] - Review/change code for MergeSort Operator
 
-## Task
+### Task
 * [SPOI-205] - Protocol for stram to change network/message bus parameters of the outstream of output adapter dnode
 * [SPOI-324] - Performance data to be written to HDFS
 * [SPOI-459] - Test installation on OS X
@@ -3142,7 +3579,8 @@
 
 
 
-## Version 0.3.2
+Version 0.3.2
+------------------------------------------------------------------------------------------------------------------------
 
 ### Bug
 * [SPOI-29] - Pig: A inner join node
@@ -3213,11 +3651,11 @@
 * [SPOI-495] - The recording tab should show list of recordings by operator or by operator:port
 * [SPOI-496] - Securitiy UI (sign-in, get token from deamon, etc.)
 
-## Story
+### Story
 * [SPOI-371] - Review Storm features vs our open source plan
 * [SPOI-372] - Ensure that premium feature implementation is hard for outsiders to do on the open source tree
 
-## Task
+### Task
 * [SPOI-14] - Dynamic run time optimization framework: Load balancing and load shedding
 * [SPOI-39] - Should be able to track window id through the DAG
 * [SPOI-40] - Output messages of each node should be persisted/buffered
