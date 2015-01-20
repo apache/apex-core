@@ -604,11 +604,6 @@ public class StramClient
     return rmClient.waitForCompletion(appId, callback, clientTimeout);
   }
 
-  public void setLibJars(LinkedHashSet<String> libjars)
-  {
-    this.libjars = libjars;
-  }
-
   public void setApplicationType(String type)
   {
     this.applicationType = type;

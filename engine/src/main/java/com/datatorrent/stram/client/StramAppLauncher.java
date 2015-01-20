@@ -474,9 +474,6 @@ public class StramAppLauncher
           libjars.add(deployJar.getAbsolutePath());
         }
       }
-      client.setLibJars(libjars);
-      client.setFiles(conf.get(FILES_CONF_KEY_NAME));
-      client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
       client.startApplication();
       return client.getApplicationReport().getApplicationId();
