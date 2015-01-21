@@ -480,6 +480,9 @@ public class StramAppLauncher
           libjars.add(deployJar.getAbsolutePath());
         }
       }
+
+      client.setResources(libjars);
+      client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
       client.setQueueName(conf.get(QUEUE_NAME));
       client.startApplication();

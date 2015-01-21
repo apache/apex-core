@@ -38,6 +38,7 @@ import org.apache.log4j.DTLoggerFactory;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
+import com.datatorrent.stram.client.StramClientUtils;
 
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -147,6 +148,30 @@ public class LaunchContainerRunnable implements Runnable
     // Set the environment
     ctx.setEnvironment(containerEnv);
     ctx.setTokens(tokens);
+
+    // Set the local resources
+    Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
+
+    // add resources for child VM
+    try {
+      // child VM dependencies
+      FileSystem fs = StramClientUtils.newFileSystemInstance(nmClient.getConfig());
+      try {
+        addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
+        String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
+        if (archives != null) {
+          addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
+        }
+        ctx.setLocalResources(localResources);
+      }
+      finally {
+        fs.close();
+      }
+    }
+    catch (IOException e) {
+      LOG.error("Failed to prepare local resources.", e);
+      return;
+    }
 
     // Set the necessary command to execute on the allocated container
     List<CharSequence> vargs = getChildVMCommand(container.getId().toString());

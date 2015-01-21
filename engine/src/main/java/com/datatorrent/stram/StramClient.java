@@ -83,6 +83,8 @@ public class StramClient
   private String originalAppId;
   private String queueName;
   private String applicationType = YARN_APPLICATION_TYPE;
+  private String archives;
+  private LinkedHashSet<String> resources;
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
@@ -176,6 +178,12 @@ public class StramClient
       localJarFiles.add(jar);
     }
 
+    String libJarsPath = dag.getValue(LogicalPlan.LIBRARY_JARS);
+    if (!StringUtils.isEmpty(libJarsPath)) {
+      String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, LIB_JARS_SEP);
+      localJarFiles.addAll(Arrays.asList(libJars));
+    }
+
     LOG.info("Local jar file dependencies: " + localJarFiles);
 
     return localJarFiles;
@@ -260,6 +268,7 @@ public class StramClient
 
   }
 
+
   /**
    * Launch application for the dag represented by this client.
    *
@@ -270,6 +279,9 @@ public class StramClient
   {
     // process dependencies
     LinkedHashSet<String> localJarFiles = findJars(dag);
+    if (resources != null) {
+      localJarFiles.addAll(resources);
+    }
 
     YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
@@ -390,7 +402,16 @@ public class StramClient
       String libJarsCsv = copyFromLocal(fs, appPath, localJarFiles.toArray(new String[]{}));
 
       LOG.info("libjars: {}", libJarsCsv);
+      dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
+
+      if (archives != null) {
+        String[] localFiles = archives.split(",");
+        String archivesCsv = copyFromLocal(fs, appPath, localFiles);
+        LOG.info("archives: {}", archivesCsv);
+        dag.getAttributes().put(LogicalPlan.ARCHIVES, archivesCsv);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
+      }
 
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
@@ -623,5 +644,15 @@ public class StramClient
   public void setQueueName(String queueName)
   {
     this.queueName = queueName;
+  }
+
+  public void setResources(LinkedHashSet<String> resources)
+  {
+    this.resources = resources;
+  }
+
+  public void setArchives(String archives)
+  {
+    this.archives = archives;
   }
 }

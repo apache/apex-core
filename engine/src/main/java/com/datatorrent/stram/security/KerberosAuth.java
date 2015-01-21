@@ -84,7 +84,7 @@ public class KerberosAuth
   /*
   public static void main(String[] args) {
     try {
-      Subject subject = KerberosAuth.loginUser("pramod/admin@MALHAR.COM", "password".toCharArray());
+        Subject subject = KerberosAuth.loginUser("pramod/admin@MALHAR.COM", "password".toCharArray());
       System.out.println("Credentials " + subject.getPrincipals());
       System.out.println("Tokens " + subject.getPrivateCredentials());
     } catch (Exception ex) {
