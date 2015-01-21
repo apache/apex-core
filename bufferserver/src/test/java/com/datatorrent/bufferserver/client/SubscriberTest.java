@@ -95,7 +95,7 @@ public class SubscriberTest
 
     final int baseWindow = 0x7afebabe;
     bsp1.activate(null, baseWindow, 0);
-    bss1.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss1.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
 
     final AtomicBoolean publisherRun = new AtomicBoolean(true);
     new Thread("publisher")
@@ -163,7 +163,7 @@ public class SubscriberTest
 
     };
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss2);
-    bss2.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0x7afebabe00000008L);
+    bss2.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0x7afebabe00000008L, 0);
 
 
     publisherRun.set(true);

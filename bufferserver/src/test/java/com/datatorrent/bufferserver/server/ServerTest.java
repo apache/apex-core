@@ -74,7 +74,7 @@ public class ServerTest
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bsp.activate(null, 0L);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
 
     synchronized (this) {
       wait(100);
@@ -97,7 +97,7 @@ public class ServerTest
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bsp.activate(null, 0L);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
 
     long resetInfo = 0x7afebabe000000faL;
 
@@ -125,7 +125,7 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -147,7 +147,7 @@ public class ServerTest
   {
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
 
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
@@ -212,7 +212,7 @@ public class ServerTest
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() == 205) {
@@ -244,7 +244,7 @@ public class ServerTest
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() == 103) {
@@ -276,7 +276,7 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (!bss.resetPayloads.isEmpty()) {
@@ -332,7 +332,7 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() == 8) {
@@ -367,7 +367,7 @@ public class ServerTest
     bss = new Subscriber("MySubscriber");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() > 0) {
@@ -398,7 +398,7 @@ public class ServerTest
   {
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 49L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 49L, 0);
 
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);

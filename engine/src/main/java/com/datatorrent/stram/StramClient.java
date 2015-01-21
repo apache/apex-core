@@ -80,12 +80,11 @@ public class StramClient
   private final String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  private LinkedHashSet<String> libjars;
-  private String files;
-  private String archives;
   private String originalAppId;
   private String queueName;
   private String applicationType = YARN_APPLICATION_TYPE;
+  private String archives;
+  private LinkedHashSet<String> resources;
 
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
@@ -184,6 +183,7 @@ public class StramClient
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, LIB_JARS_SEP);
       localJarFiles.addAll(Arrays.asList(libJars));
     }
+
     LOG.info("Local jar file dependencies: " + localJarFiles);
 
     return localJarFiles;
@@ -268,6 +268,7 @@ public class StramClient
 
   }
 
+
   /**
    * Launch application for the dag represented by this client.
    *
@@ -278,10 +279,10 @@ public class StramClient
   {
     // process dependencies
     LinkedHashSet<String> localJarFiles = findJars(dag);
-
-    if (libjars != null) {
-      localJarFiles.addAll(libjars);
+    if (resources != null) {
+      localJarFiles.addAll(resources);
     }
+
     YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
     LOG.info("Got Cluster metric info from ASM"
       + ", numNodeManagers=" + clusterMetrics.getNumNodeManagers());
@@ -403,14 +404,6 @@ public class StramClient
       LOG.info("libjars: {}", libJarsCsv);
       dag.getAttributes().put(LogicalPlan.LIBRARY_JARS, libJarsCsv);
       LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, libJarsCsv, localResources, fs);
-
-      if (files != null) {
-        String[] localFiles = files.split(",");
-        String filesCsv = copyFromLocal(fs, appPath, localFiles);
-        LOG.info("files: {}", filesCsv);
-        dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
-        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
-      }
 
       if (archives != null) {
         String[] localFiles = archives.split(",");
@@ -633,21 +626,6 @@ public class StramClient
     return rmClient.waitForCompletion(appId, callback, clientTimeout);
   }
 
-  public void setFiles(String files)
-  {
-    this.files = files;
-  }
-
-  public void setLibJars(LinkedHashSet<String> libjars)
-  {
-    this.libjars = libjars;
-  }
-
-  public void setArchives(String archives)
-  {
-    this.archives = archives;
-  }
-
   public void setApplicationType(String type)
   {
     this.applicationType = type;
@@ -666,5 +644,15 @@ public class StramClient
   public void setQueueName(String queueName)
   {
     this.queueName = queueName;
+  }
+
+  public void setResources(LinkedHashSet<String> resources)
+  {
+    this.resources = resources;
+  }
+
+  public void setArchives(String archives)
+  {
+    this.archives = archives;
   }
 }

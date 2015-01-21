@@ -4,6 +4,23 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.validation.*;
+import javax.validation.constraints.NotNull;
+
+import com.google.common.collect.Sets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute;
@@ -12,19 +29,8 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
-import com.datatorrent.lib.util.FSStorageAgent;
+
 import com.datatorrent.stram.engine.DefaultUnifier;
-import com.google.common.collect.Sets;
-import java.io.*;
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import javax.validation.*;
-import javax.validation.constraints.NotNull;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -71,6 +77,20 @@ public class LogicalPlan implements Serializable, DAG
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
   public static Attribute<String> LICENSE = new Attribute<String>((String)null, new StringCodec.String2String());
   public static Attribute<String> LICENSE_ROOT = new Attribute<String>((String)null, new StringCodec.String2String());
+  /**
+   * Comma separated list of jar file dependencies to be deployed with the application.
+   * The launcher will combine the list with built-in dependencies and those specified
+   * that are made available through the distributed file system to application master
+   * and child containers.
+   */
+  public static Attribute<String> LIBRARY_JARS = new Attribute<String>(new StringCodec.String2String());
+  /**
+   * Comma separated list of archives to be deployed with the application.
+   * The launcher will include the archives into the final set of resources
+   * that are made available through the distributed file system to application master
+   * and child containers.
+   */
+  public static Attribute<String> ARCHIVES = new Attribute<String>(new StringCodec.String2String());
 
   static {
     Attribute.AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);

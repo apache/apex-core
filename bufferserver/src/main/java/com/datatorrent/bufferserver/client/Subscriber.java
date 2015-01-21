@@ -34,7 +34,7 @@ public abstract class Subscriber extends AbstractLengthPrependerClient
     this.id = id;
   }
 
-  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
+  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId, int bufferSize)
   {
     write(SubscribeRequestTuple.getSerializedRequest(
             version,
@@ -43,7 +43,8 @@ public abstract class Subscriber extends AbstractLengthPrependerClient
             sourceId,
             mask,
             partitions,
-            windowId));
+            windowId,
+            bufferSize));
   }
 
   @Override

@@ -12,6 +12,16 @@ import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.collect.Lists;
+
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
@@ -20,13 +30,30 @@ import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.test.MockitoUtil;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.util.FSStorageAgent;
+
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StorageAgent;
+
+import com.datatorrent.stram.Journal.SetContainerState;
+import com.datatorrent.stram.Journal.SetOperatorState;
+import com.datatorrent.stram.api.Checkpoint;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.requests.CreateStreamRequest;
+import com.datatorrent.stram.plan.physical.PTContainer;
+import com.datatorrent.stram.plan.physical.PTOperator;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
+import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 
 import com.google.common.collect.Lists;
 
@@ -325,7 +352,6 @@ public class StramRecoveryTest
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId1);
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath1);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, null));
-    dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars1");
     dag.addOperator("o1", StatsListeningOperator.class);
 
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false));
@@ -351,7 +377,6 @@ public class StramRecoveryTest
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
-    dag.setAttribute(LogicalPlan.LIBRARY_JARS, "libjars2");
     StramClient sc = new StramClient(new Configuration(false), dag);
     try {
       sc.start();
@@ -365,7 +390,6 @@ public class StramRecoveryTest
     dag = plan.getLogicalPlan();
     Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
     Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
-    Assert.assertEquals("modified libjars", "libjars2", dag.getValue(LogicalPlan.LIBRARY_JARS));
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     Assert.assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());

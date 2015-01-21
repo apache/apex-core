@@ -9,6 +9,11 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.collect.Lists;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.hadoop.fs.FileStatus;
@@ -29,16 +34,12 @@ import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Lists;
 
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.StreamingApplication;
-
 import com.datatorrent.stram.client.StramClientUtils;
+
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -62,12 +63,13 @@ public class LaunchContainerRunnable implements Runnable
   private final Container container;
   private final NMClientAsync nmClient;
   private final StreamingContainerAgent sca;
+  private static final int MB_TO_B = 1024 * 1024;
 
   /**
    * @param lcontainer Allocated container
    * @param nmClient
    * @param sca
-   * @param +tokens
+   * @param tokens
    */
   public LaunchContainerRunnable(Container lcontainer, NMClientAsync nmClient, StreamingContainerAgent sca, ByteBuffer tokens)
   {
@@ -147,7 +149,6 @@ public class LaunchContainerRunnable implements Runnable
     ctx.setEnvironment(containerEnv);
     ctx.setTokens(tokens);
 
-
     // Set the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
@@ -157,10 +158,6 @@ public class LaunchContainerRunnable implements Runnable
       FileSystem fs = StramClientUtils.newFileSystemInstance(nmClient.getConfig());
       try {
         addFilesToLocalResources(LocalResourceType.FILE, dag.getAttributes().get(LogicalPlan.LIBRARY_JARS), localResources, fs);
-        String files = dag.getAttributes().get(LogicalPlan.FILES);
-        if (files != null) {
-          addFilesToLocalResources(LocalResourceType.FILE, files, localResources, fs);
-        }
         String archives = dag.getAttributes().get(LogicalPlan.ARCHIVES);
         if (archives != null) {
           addFilesToLocalResources(LocalResourceType.ARCHIVE, archives, localResources, fs);
@@ -230,11 +227,14 @@ public class LaunchContainerRunnable implements Runnable
     }
 
     List<DAG.OperatorMeta> operatorMetaList = Lists.newArrayList();
+    int bufferServerMemory = 0;
     for(PTOperator operator: sca.getContainer().getOperators()){
+      bufferServerMemory += operator.getBufferServerMemory();
       operatorMetaList.add(operator.getOperatorMeta());
     }
     Context.ContainerOptConfigurator containerOptConfigurator = dag.getAttributes().get(LogicalPlan.CONTAINER_OPTS_CONFIGURATOR);
     jvmOpts = containerOptConfigurator.getJVMOptions(operatorMetaList);
+    jvmOpts = parseJvmOpts(jvmOpts, ((long) bufferServerMemory) * MB_TO_B);
     LOG.info("Jvm opts {} for container {}",jvmOpts,container.getId());
     vargs.add(jvmOpts);
 
@@ -265,6 +265,31 @@ public class LaunchContainerRunnable implements Runnable
     vargsFinal.add(mergedCommand.toString());
     return vargsFinal;
 
+  }
+
+  private String parseJvmOpts(String jvmOpts, long memory)
+  {
+    String xmx = "-Xmx";
+    StringBuilder builder = new StringBuilder();
+    if (jvmOpts != null && jvmOpts.length() > 1) {
+      String[] splits = jvmOpts.split("(\\s+)");
+      boolean foundProperty = false;
+      for (String split : splits) {
+        if (split.startsWith(xmx)) {
+          foundProperty = true;
+          long heapSize = Long.valueOf(split.substring(xmx.length()));
+          heapSize += memory;
+          builder.append(xmx).append(heapSize).append(" ");
+        }
+        else {
+          builder.append(split).append(" ");
+        }
+      }
+      if (!foundProperty) {
+        builder.append(xmx).append(memory);
+      }
+    }
+    return builder.toString();
   }
 
   public static ByteBuffer getTokens(StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress) throws IOException

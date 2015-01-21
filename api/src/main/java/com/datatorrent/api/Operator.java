@@ -120,7 +120,7 @@ public interface Operator extends Component<OperatorContext>
      * the port itself but can also be implemented by the enclosing operator or
      * separate class.
      *
-     * @return Sink<T>
+     * @return Sink object to which objects of type T can be dropped for processing.
      */
     Sink<T> getSink();
 

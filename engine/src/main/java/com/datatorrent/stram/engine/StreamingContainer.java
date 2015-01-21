@@ -146,10 +146,11 @@ public class StreamingContainer extends YarnContainerMain
       if (ctx.deployBufferServer) {
         eventloop.start();
 
-        int bufferServerRAM = ctx.getValue(Context.DAGContext.BUFFER_SERVER_MEMORY_MB);
+        int bufferServerRAM = ctx.getValue(ContainerContext.BUFFER_SERVER_MB);
+        logger.debug("buffer server memory {}", bufferServerRAM);
         int blockCount;
         int blocksize;
-        if (bufferServerRAM < Context.DAGContext.BUFFER_SERVER_MEMORY_MB.defaultValue) {
+        if (bufferServerRAM < ContainerContext.BUFFER_SERVER_MB.defaultValue) {
           blockCount = 8;
           blocksize = bufferServerRAM / blockCount;
           if (blocksize < 1) {

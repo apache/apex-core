@@ -30,6 +30,7 @@ public class SubscribeRequestTuple extends RequestTuple
   private String upstreamIdentifier;
   private int mask;
   private int[] partitions;
+  private int bufferSize;
 
   @Override
   public void parse()
@@ -122,7 +123,7 @@ public class SubscribeRequestTuple extends RequestTuple
         while (buffer[dataOffset++] < 0) {
         }
         mask = readVarInt(dataOffset, limit);
-        if (getMask() > 0) {
+        if (mask > 0) {
           while (buffer[dataOffset++] < 0) {
           }
         }
@@ -133,7 +134,7 @@ public class SubscribeRequestTuple extends RequestTuple
         partitions = new int[count];
         for (int i = 0; i < count; i++) {
           partitions[i] = readVarInt(dataOffset, limit);
-          if (getPartitions()[i] == -1) {
+          if (partitions[i] == -1) {
             return;
           }
           else {
@@ -141,6 +142,13 @@ public class SubscribeRequestTuple extends RequestTuple
             }
           }
         }
+      }
+
+      bufferSize = readVarInt(dataOffset, limit);
+      if (bufferSize == -1) {
+        return;
+      }
+      while (buffer[dataOffset++] < 0) {
       }
 
       valid = true;
@@ -220,6 +228,11 @@ public class SubscribeRequestTuple extends RequestTuple
     return partitions;
   }
 
+  public int getBufferSize()
+  {
+    return bufferSize;
+  }
+
   public static byte[] getSerializedRequest(
           String version,
           String id,
@@ -227,7 +240,8 @@ public class SubscribeRequestTuple extends RequestTuple
           String upstream_id,
           int mask,
           Collection<Integer> partitions,
-          long startingWindowId)
+          long startingWindowId,
+          int bufferSize)
   {
     byte[] array = new byte[4096];
     int offset = 0;
@@ -270,13 +284,16 @@ public class SubscribeRequestTuple extends RequestTuple
       }
     }
 
+    /* write the buffer size */
+    offset = VarInt.write(bufferSize, array, offset);
+
     return Arrays.copyOfRange(array, 0, offset);
   }
 
   @Override
   public String toString()
   {
-    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", windowId=" + Codec.getStringWindowId((long)baseSeconds | windowId) + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + ", bufferSize=" + bufferSize + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(SubscribeRequestTuple.class);
