@@ -36,7 +36,8 @@ public class FSStorageAgent implements StorageAgent, Serializable
   @SuppressWarnings("unused")
   private FSStorageAgent()
   {
-    this(null, null);
+    path = null;
+    fs = null;
   }
 
   public FSStorageAgent(String path, Configuration conf)
