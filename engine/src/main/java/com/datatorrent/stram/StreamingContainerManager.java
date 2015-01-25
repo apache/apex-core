@@ -1416,9 +1416,11 @@ public class StreamingContainerManager implements PlanContext
       ctx.committedWindowId.setValue(operator.getRecoveryCheckpoint().windowId);
     }
 
-    if (operator.getState() == PTOperator.State.ACTIVE
-      && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
-      ctx.blocked.add(operator);
+    if (operator.getState() == PTOperator.State.ACTIVE && (ctx.currentTms - operator.stats.lastWindowIdChangeTms) > operator.stats.windowProcessingTimeoutMillis) {
+      // if the checkpoint is ahead, then it is not blocked but waiting for activation (state-less recovery, at-most-once)
+      if (ctx.committedWindowId.longValue() >= operator.getRecoveryCheckpoint().windowId) {
+        ctx.blocked.add(operator);
+      }
     }
 
     long maxCheckpoint = operator.getRecentCheckpoint().windowId;
