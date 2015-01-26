@@ -16,6 +16,7 @@
 package com.datatorrent.api;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,35 +33,23 @@ import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 public interface Partitioner<T>
 {
   /**
-   * Give an opportunity to the operator to decide how it would like to clone
-   * itself into multiple copies so that they all collectively can do the work
-   * by working on only a partition of the data.
+   * Give an opportunity to the operator to decide how it would like to clone itself into multiple copies so that they
+   * all collectively can do the work by working on only a partition of the data.
    * <p>
-   * Through definePartitions the operator is also notified of presence of or
-   * lack of the addtionalCapacity the cluster has for more instances of the
-   * operator. If this capacity is positive then the operator can redistribute
-   * its load among the current instances and the newly defined instances. If
-   * this capacity is negative, then the operator should consider scaling down
-   * by releasing a few instances. The number of instances released are ideally
-   * at least equal to absolute value of incrementalCapacity. If this capacity
-   * is zero, then the operator should look at repartitioning among the existing
-   * instances as the current distribution of load is unfair.
+   * Through definePartitions the operator is also provided with contextual information that can be used by the
+   * partitioning logic. For example, the behavior of the partitioner may vary if an operator is parallel partitioned.
    * <p>
-   * The list of existing partitions reflects the last checkpoint state for each
-   * of the operator instances. When creating new partitions, the implementation
-   * has the opportunity to transfer state from these existing operator
-   * instances to new instances. At minimum, properties set at initialization
-   * time on the original operator need to be set on new instances.
-   * <p>
-   * If an operator implements this interface but still wants the framework to
-   * use the default partitioning, this method should return null.
+   * The list of existing partitions reflects the last checkpoint state for each of the operator instances. When
+   * creating new partitions, the implementation has the opportunity to transfer state from these existing operator
+   * instances to new instances. At minimum, properties set at initialization time on the original operator need to be
+   * set on new instances.
    *
    * @param partitions - Current set of partitions
-   * @param incrementalCapacity - The count of more instances of this operator the cluster can support. If this number is positive,
+   * @param context - Partitioning context
    * @return New partitioning. Partitions from input list which should not be
    * changed can be returned as they are.
    */
-  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity);
+  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, PartitioningContext context);
 
   /**
    * The engine calls this method to notify partitioner of the changes to partitioning.
@@ -166,5 +155,24 @@ public interface Partitioner<T>
     public com.datatorrent.api.Attribute.AttributeMap getAttributes();
 
   }
+
+  /**
+   * Contextual information presented to the partitioner.
+   */
+  public interface PartitioningContext
+  {
+    /**
+     * Number of partitions required for an operator that was configured to be parallel partitioned.
+     * @return number of partitions, 0 if not parallel partitioned.
+     */
+    int getParallelPartitionCount();
+
+    /**
+     * Ordered collection of input ports. Used for generic partitioner logic.
+     * @return
+     */
+    List<InputPort<?>> getInputPorts();
+  }
+
 
 }
