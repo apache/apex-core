@@ -94,11 +94,10 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
   }
 
   @Override
-  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity)
+  public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, PartitioningContext context)
   {
-    // count parameter is for parallel partitioning
-    int tempPartitionCount = (incrementalCapacity != 0) ? incrementalCapacity : this.partitionCount;
-    logger.debug("define partitions, partitionCount {} incrementalCapacity {}", tempPartitionCount, incrementalCapacity);
+    final int newPartitionCount = DefaultPartition.getRequiredPartitionCount(context, this.partitionCount);
+    logger.debug("define partitions, partitionCount current {} requested {}", partitions.size(), newPartitionCount);
 
     //Get a partition
     DefaultPartition<T> partition = (DefaultPartition<T>) partitions.iterator().next();
@@ -108,14 +107,13 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       // first call to define partitions
       newPartitions = Lists.newArrayList();
 
-      for (int partitionCounter = 0; partitionCounter < tempPartitionCount; partitionCounter++) {
+      for (int partitionCounter = 0; partitionCounter < newPartitionCount; partitionCounter++) {
         newPartitions.add(new DefaultPartition<T>(partition.getPartitionedInstance()));
       }
 
       // partition the stream that was first connected in the DAG and send full data to remaining input ports
       // this gives control over which stream to partition under default partitioning to the DAG writer
-      List<InputPort<?>> inputPortList = partition.getInputPortList();
-      // assign partition keys
+      List<InputPort<?>> inputPortList = context.getInputPorts();
       if (inputPortList != null && !inputPortList.isEmpty()) {
         DefaultPartition.assignPartitionKeys(newPartitions, inputPortList.iterator().next());
       }

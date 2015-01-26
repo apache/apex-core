@@ -16,23 +16,24 @@
 package com.datatorrent.lib.partitioner;
 
 import java.util.Collection;
+import java.util.List;
 
 import com.google.common.collect.Lists;
 
 import org.junit.Assert;
 import org.junit.Test;
-
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.lib.stream.DevNull;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.DefaultPartition;
 import com.datatorrent.api.LocalMode;
 import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.StringCodec.Object2String;
@@ -112,7 +113,7 @@ public class StatelessPartitionerTest
     DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<DummyOperator>(dummyOperator);
     partitions.add(defaultPartition);
 
-    Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, 0);
+    Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, new PartitioningContextImpl(null, 0));
     Assert.assertEquals("Incorred number of partitions", 1, newPartitions.size());
 
     for(Partition<DummyOperator> partition: newPartitions) {
@@ -130,7 +131,7 @@ public class StatelessPartitionerTest
     DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<DummyOperator>(dummyOperator);
     partitions.add(defaultPartition);
 
-    Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, 0);
+    Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, new PartitioningContextImpl(null, 0));
     Assert.assertEquals("Incorred number of partitions", 5, newPartitions.size());
 
     for(Partition<DummyOperator> partition: newPartitions) {
@@ -163,4 +164,29 @@ public class StatelessPartitionerTest
       throw new RuntimeException(ex);
     }
   }
+
+  public static class PartitioningContextImpl implements Partitioner.PartitioningContext
+  {
+    final int parallelPartitionCount;
+    final List<InputPort<?>> ports;
+
+    public PartitioningContextImpl(List<InputPort<?>> ports, int parallelPartitionCount)
+    {
+      this.ports = ports;
+      this.parallelPartitionCount = parallelPartitionCount;
+    }
+
+    @Override
+    public int getParallelPartitionCount()
+    {
+      return parallelPartitionCount;
+    }
+
+    @Override
+    public List<InputPort<?>> getInputPorts()
+    {
+      return ports;
+    }
+  }
+
 }
