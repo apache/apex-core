@@ -366,14 +366,16 @@ public class PhysicalPlan implements Serializable
     assert (pOperator.container == null) : "Container already assigned for " + pOperator;
     pOperator.container = container;
     container.operators.add(pOperator);
+    int upStreamUnifierMemory = 0;
     if (!pOperator.upstreamMerge.isEmpty()) {
       for (Map.Entry<InputPortMeta, PTOperator> mEntry : pOperator.upstreamMerge.entrySet()) {
         assert (mEntry.getValue().container == null) : "Container already assigned for " + mEntry.getValue();
         mEntry.getValue().container = container;
         container.operators.add(mEntry.getValue());
+        upStreamUnifierMemory += mEntry.getValue().getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
       }
     }
-    int memoryMB = pOperator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB);
+    int memoryMB = pOperator.getOperatorMeta().getValue(OperatorContext.MEMORY_MB) + upStreamUnifierMemory;
     container.setRequiredMemoryMB(container.getRequiredMemoryMB() + memoryMB);
   }
 
@@ -741,7 +743,7 @@ public class PhysicalPlan implements Serializable
       }
       LOG.debug("update stream mapping for {} {}", opm.getKey().getOperatorMeta(), opm.getKey().getPortName());
       ug.setSources(m.partitions);
-      ug.redoMapping();
+      //ug.redoMapping();
     }
 
     for (Map.Entry<InputPortMeta, StreamMeta> ipm : m.logicalOperator.getInputStreams().entrySet()) {
@@ -778,7 +780,7 @@ public class PhysicalPlan implements Serializable
         }
         LOG.debug("update upstream stream mapping for {} {}", sourceMapping.logicalOperator, ipm.getValue().getSource().getPortName());
         ug.setSources(sourceMapping.partitions);
-        ug.redoMapping();
+        //ug.redoMapping();
       }
     }
 

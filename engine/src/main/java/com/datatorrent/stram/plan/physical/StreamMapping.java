@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
@@ -132,7 +132,7 @@ public class StreamMapping implements java.io.Serializable
    * rebuild the tree, which may cause more changes to execution layer than need be
    * TODO: investigate incremental logic
    */
-  public void redoMapping() {
+  private void redoMapping() {
 
     Set<Pair<PTOperator, InputPortMeta>> downstreamOpers = Sets.newHashSet();
 

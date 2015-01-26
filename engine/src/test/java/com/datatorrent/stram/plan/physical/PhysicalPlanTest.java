@@ -1819,6 +1819,33 @@ public class PhysicalPlanTest
     Assert.assertEquals("number of operators in container 1", 2, plan.getContainers().get(0).getOperators().size());
   }
 
+  @Test
+  public void testContainerSizeWithPartitioning()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(3));
+    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<GenericTestOperator>(2));
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 10);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
+    PTContainer container;
+    for (int i = 0; i < 5; i++) {
+      container = plan.getContainers().get(i);
+      if(container.getOperators().size() == 1){
+        Assert.assertEquals("container memory is 1536 for container :" + container, 1536, container.getRequiredMemoryMB());
+      }
+      if(container.getOperators().size() == 2){
+        Assert.assertEquals("container memory is 2048 for container :" + container, 2048, container.getRequiredMemoryMB());
+      }
+    }
+  }
+
   private class TestPartitioner<T extends Operator> extends StatelessPartitioner<T>
   {
     private static final long serialVersionUID = 1L;
