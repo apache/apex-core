@@ -115,7 +115,7 @@
         <executions>
           <execution>
             <id>update-default-license-term</id>
-            <phase>prepare-package</phase>
+            <phase>compile</phase>
             <goals>
               <goal>exec</goal>
             </goals>
