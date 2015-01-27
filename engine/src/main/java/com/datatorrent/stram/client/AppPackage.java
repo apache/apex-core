@@ -235,8 +235,7 @@ public class AppPackage extends JarFile implements Closeable
             try {
               appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
               appInfo.dag.validate();
-            }
-            catch (Exception ex) {
+            } catch (Throwable ex) {
               appInfo.error = ex.getMessage();
               appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
             }

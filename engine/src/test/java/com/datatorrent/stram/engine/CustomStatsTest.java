@@ -23,7 +23,6 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
-
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorStats;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
@@ -88,7 +87,7 @@ public class CustomStatsTest
     }
 
     @Override
-    public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperator>> definePartitions(Collection<Partition<TestOperator>> partitions, PartitioningContext context)
     {
       List<Partition<TestOperator>> newPartitions = Lists.newArrayList();
       newPartitions.addAll(partitions);

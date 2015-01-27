@@ -21,12 +21,10 @@ import com.google.common.collect.Maps;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import static org.junit.Assert.*;
 
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -34,7 +32,6 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.common.util.Slice;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
@@ -46,7 +43,6 @@ import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
 
 public class LogicalPlanTest {
-  private static final Logger logger = LoggerFactory.getLogger(LogicalPlanTest.class);
 
   @Test
   public void testCycleDetection() {
@@ -339,7 +335,7 @@ public class LogicalPlanTest {
   public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitioner<TestOperatorAnnotationOperator2> {
 
     @Override
-    public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, int incrementalCapacity)
+    public Collection<Partition<TestOperatorAnnotationOperator2>> definePartitions(Collection<Partition<TestOperatorAnnotationOperator2>> partitions, PartitioningContext context)
     {
       return null;
     }
@@ -507,7 +503,7 @@ public class LogicalPlanTest {
   }
 
   private class TestAnnotationsOperator extends BaseOperator {
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+    //final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
     @OutputPortFieldAnnotation( optional=false)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();

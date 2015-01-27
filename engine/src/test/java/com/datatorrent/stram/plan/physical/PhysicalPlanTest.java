@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -27,7 +26,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
-
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.PartitioningTest;
 import com.datatorrent.stram.PartitioningTest.TestInputOperator;
@@ -105,8 +103,6 @@ public class PhysicalPlanTest
 
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanTest.class);
-
   private static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> implements Serializable {
     private static final long serialVersionUID = 201410301656L;
     @Override
@@ -153,23 +149,12 @@ public class PhysicalPlanTest
     };
 
     @Override
-    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, int incrementalCapacity)
+    public Collection<Partition<PartitioningTestOperator>> definePartitions(Collection<Partition<PartitioningTestOperator>> partitions, PartitioningContext context)
     {
-      logger.debug("PartitionTest entering define partitions {} {}",partitions.size(), incrementalCapacity);
-
-      int tempPartitionCount;
-
-      if(incrementalCapacity != 0) {
-        tempPartitionCount = incrementalCapacity;
-      }
-      else {
-        tempPartitionCount = partitionCount;
-      }
-
-      logger.debug("tempPartitionCount {}", tempPartitionCount);
+      final int newPartitionCount = DefaultPartition.getRequiredPartitionCount(context, this.partitionCount);
 
       if (!fixedCapacity) {
-        partitionKeys = new Integer[tempPartitionCount];
+        partitionKeys = new Integer[newPartitionCount];
         for (int i=0; i<partitionKeys.length; i++) {
           partitionKeys[i] = i;
         }
@@ -178,7 +163,7 @@ public class PhysicalPlanTest
       List<Partition<PartitioningTestOperator>> newPartitions = new ArrayList<Partition<PartitioningTestOperator>>(this.partitionKeys.length);
       for (Integer partitionKey: partitionKeys) {
         PartitioningTestOperator temp = new PartitioningTestOperator();
-        temp.setPartitionCount(tempPartitionCount);
+        temp.setPartitionCount(newPartitionCount);
         Partition<PartitioningTestOperator> p = new DefaultPartition<PartitioningTestOperator>(temp);
         PartitionKeys lpks = new PartitionKeys(2, Sets.newHashSet(partitionKey));
         p.getPartitionKeys().put(this.inport1, lpks);
@@ -1865,12 +1850,12 @@ public class PhysicalPlanTest
   {
     private static final long serialVersionUID = 1L;
     @Override
-    public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, int incrementalCapacity)
+    public Collection<Partition<T>> definePartitions(Collection<Partition<T>> partitions, PartitioningContext context)
     {
-      Collection<Partition<T>> newPartitions = super.definePartitions(partitions, incrementalCapacity);
-      if (incrementalCapacity > 0 && newPartitions.size() < incrementalCapacity) {
+      Collection<Partition<T>> newPartitions = super.definePartitions(partitions, context);
+      if (context.getParallelPartitionCount() > 0 && newPartitions.size() < context.getParallelPartitionCount()) {
         // parallel partitioned, fill to requested count
-        for (int i=newPartitions.size(); i<incrementalCapacity; i++) {
+        for (int i=newPartitions.size(); i<context.getParallelPartitionCount(); i++) {
           newPartitions.add(new DefaultPartition<T>(partitions.iterator().next().getPartitionedInstance()));
         }
       }

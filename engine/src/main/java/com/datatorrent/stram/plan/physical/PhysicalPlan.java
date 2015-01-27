@@ -21,7 +21,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -31,7 +30,6 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
-
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
@@ -390,6 +388,34 @@ public class PhysicalPlan implements Serializable
     container.setRequiredMemoryMB(container.getRequiredMemoryMB() + bufferServerMemory);
   }
 
+  private class PartitioningContextImpl implements Partitioner.PartitioningContext
+  {
+    private List<InputPort<?>> inputPorts;
+    private final int parallelPartitionCount;
+    private final PMapping om;
+
+    private PartitioningContextImpl(PMapping om, int parallelPartitionCount)
+    {
+      this.om = om;
+      this.parallelPartitionCount = parallelPartitionCount;
+    }
+
+    @Override
+    public int getParallelPartitionCount()
+    {
+      return parallelPartitionCount;
+    }
+
+    @Override
+    public List<InputPort<?>> getInputPorts()
+    {
+      if (inputPorts == null) {
+         inputPorts = getInputPortList(om.logicalOperator);
+      }
+      return inputPorts;
+    }
+  }
+
   private void initPartitioning(PMapping m, int partitionCnt)
   {
     Operator operator = m.logicalOperator.getOperator();
@@ -400,14 +426,12 @@ public class PhysicalPlan implements Serializable
                                         ? (Partitioner<Operator>)m.logicalOperator.getValue(OperatorContext.PARTITIONER)
                                         : operator instanceof Partitioner? (Partitioner<Operator>)operator: null;
 
-    /* do the partitioning as user specified */
     Collection<Partition<Operator>> collection = new ArrayList<Partition<Operator>>(1);
     DefaultPartition<Operator> firstPartition = new DefaultPartition<Operator>(operator);
-    firstPartition.setInputPortList(getInputPortList(m.logicalOperator));
     collection.add(firstPartition);
 
     if (partitioner != null) {
-      partitions = partitioner.definePartitions(collection, partitionCnt);
+      partitions = partitioner.definePartitions(collection, new PartitioningContextImpl(m, partitionCnt));
 
       if(partitions == null || partitions.isEmpty()) {
         throw new IllegalStateException("Partitioner returns null or empty.");
@@ -453,7 +477,7 @@ public class PhysicalPlan implements Serializable
     }
   }
 
-  private class RepartitionContext
+  private class RepartitionContext extends PartitioningContextImpl
   {
     final List<PTOperator> operators;
     final List<DefaultPartition<Operator>> currentPartitions;
@@ -463,7 +487,9 @@ public class PhysicalPlan implements Serializable
     Checkpoint minCheckpoint = null;
     Collection<Partition<Operator>> newPartitions = null;
 
-    RepartitionContext(Partitioner<Operator> partitioner, PMapping currentMapping, int partitionCount) {
+    RepartitionContext(Partitioner<Operator> partitioner, PMapping currentMapping, int partitionCount)
+    {
+      super(currentMapping, partitionCount);
       this.operators = currentMapping.partitions;
       this.currentPartitions = new ArrayList<DefaultPartition<Operator>>(operators.size());
       this.currentPartitionMap = Maps.newHashMapWithExpectedSize(operators.size());
@@ -494,7 +520,7 @@ public class PhysicalPlan implements Serializable
         operatorIdToPartition.put(pOperator.getId(), partition);
       }
 
-      newPartitions = partitioner.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), partitionCount);
+      newPartitions = partitioner.definePartitions(new ArrayList<Partition<Operator>>(currentPartitions), this);
     }
 
   }
