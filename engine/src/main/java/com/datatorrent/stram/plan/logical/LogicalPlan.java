@@ -16,20 +16,16 @@ import com.google.common.collect.Sets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.datatorrent.lib.util.FSStorageAgent;
-
 import com.datatorrent.api.*;
-import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
-
 import com.datatorrent.stram.engine.DefaultUnifier;
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -91,6 +87,13 @@ public class LogicalPlan implements Serializable, DAG
    * and child containers.
    */
   public static Attribute<String> ARCHIVES = new Attribute<String>(new StringCodec.String2String());
+  /**
+   * The maximum number of containers (excluding the application master) that the application is allowed to request.
+   * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
+   * Example: DAG with several operators and all streams container local would require one container,
+   * only one container will be requested from the resource manager.
+   */
+  public static Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
 
   static {
     Attribute.AttributeMap.AttributeInitializer.initialize(LogicalPlan.class);

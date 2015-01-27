@@ -292,13 +292,6 @@ public interface Context
      */
     Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
     /**
-     * The maximum number of containers (excluding the application master) that the application is allowed to request.
-     * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
-     * Example: DAG with several operators and all streams container local would require one container,
-     * only one container will be requested from the resource manager.
-     */
-    Attribute<Integer> CONTAINERS_MAX_COUNT = new Attribute<Integer>(Integer.MAX_VALUE);
-    /**
      * Dump extra debug information in launcher, master and containers.
      */
     Attribute<Boolean> DEBUG = new Attribute<Boolean>(false);
