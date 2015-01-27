@@ -13,11 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
-
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
@@ -349,8 +347,7 @@ public class PartitioningTest
     }
 
     @Override
-    public Collection<Partition<PartitionableInputOperator>> definePartitions(Collection<Partition<PartitionableInputOperator>> partitions,
-                                                                              int incrementalCapacity)
+    public Collection<Partition<PartitionableInputOperator>> definePartitions(Collection<Partition<PartitionableInputOperator>> partitions, PartitioningContext context)
     {
       List<Partition<PartitionableInputOperator>> newPartitions = new ArrayList<Partition<PartitionableInputOperator>>(3);
       Iterator<? extends Partition<PartitionableInputOperator>> iterator = partitions.iterator();
