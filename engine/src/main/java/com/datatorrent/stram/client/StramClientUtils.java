@@ -718,6 +718,7 @@ public class StramClientUtils
       LOG.info("Executing command as {}", userName);
       UserGroupInformation ugi
               = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
+
       return ugi.doAs(action);
     }
     else {
