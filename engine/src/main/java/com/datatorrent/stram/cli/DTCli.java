@@ -2835,7 +2835,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("attributes");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("ports").path(args[2]).path("attributes");
       if (args.length > 3) {
         r = r.queryParam("attributeName", args[3]);
       }
