@@ -3785,7 +3785,7 @@ public class DTCli
       }
 
       try {
-        DTConfiguration launchProperties = getLaunchAppPackageProperties(ap, commandLineInfo);
+        DTConfiguration launchProperties = getLaunchAppPackageProperties(ap, commandLineInfo, selectedApp.name);
         String appFile = ap.tempDirectory() + "/app/" + selectedApp.file;
 
         List<String> launchArgs = new ArrayList<String>();
@@ -3861,11 +3861,19 @@ public class DTCli
 
   }
 
-  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, LaunchCommandLineInfo commandLineInfo) throws Exception
+  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, LaunchCommandLineInfo commandLineInfo, String appName) throws Exception
   {
     DTConfiguration launchProperties = new DTConfiguration();
-    Map<String, String> defaultProperties = ap.getDefaultProperties();
-    Set<String> requiredProperties = new TreeSet<String>(ap.getRequiredProperties());
+    List<AppInfo> applications = ap.getApplications();
+    AppInfo selectedApp = null;
+    for (AppInfo app : applications) {
+      if (app.name.equals(appName)) {
+        selectedApp = app;
+        break;
+      }
+    }
+    Map<String, String> defaultProperties = selectedApp == null ? ap.getDefaultProperties() : selectedApp.defaultProperties;
+    Set<String> requiredProperties = new TreeSet<String>(selectedApp == null ? ap.getRequiredProperties() : selectedApp.requiredProperties);
 
     for (Map.Entry<String, String> entry : defaultProperties.entrySet()) {
       launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
