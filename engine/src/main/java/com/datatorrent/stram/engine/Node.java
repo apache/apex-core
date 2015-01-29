@@ -98,6 +98,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public void setup(OperatorContext context)
   {
     shutdown = false;
+    logger.debug("Operator Context = {}", context);
     operator.setup(context);
 //    this is where the ports should be setup but since the
 //    portcontext is not available here, we are doing it in
