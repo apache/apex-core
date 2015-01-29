@@ -214,7 +214,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}")
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId:\\d+}")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getOperatorInfo(@PathParam("operatorId") int operatorId) throws Exception
   {
@@ -227,7 +227,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports")
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId:\\d+}/ports")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortsInfo(@PathParam("operatorId") int operatorId) throws Exception
   {
@@ -242,7 +242,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/ports/{portName}")
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId:\\d+}/ports/{portName}")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPortsInfo(@PathParam("operatorId") int operatorId, @PathParam("portName") String portName) throws Exception
   {
@@ -340,9 +340,9 @@ public class StramWebServices
   }
 
   @POST
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_START)
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId:\\d+}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject startRecording(@PathParam("opId") String opId, String content) throws JSONException
+  public JSONObject startRecording(@PathParam("opId") int opId, String content) throws JSONException
   {
     LOG.debug("Start recording on {} requested", opId);
     JSONObject response = new JSONObject();
@@ -352,15 +352,15 @@ public class StramWebServices
       numWindows = r.optLong("numWindows", 0);
     }
     String id = getTupleRecordingId();
-    dagManager.startRecording(id, Integer.valueOf(opId), null, numWindows);
+    dagManager.startRecording(id, opId, null, numWindows);
     response.put("id", id);
     return response;
   }
 
   @POST
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_START)
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId:\\d+}/ports/{portName}/" + PATH_RECORDINGS_START)
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject startRecording(@PathParam("opId") String opId, @PathParam("portName") String portName, String content) throws JSONException
+  public JSONObject startRecording(@PathParam("opId") int opId, @PathParam("portName") String portName, String content) throws JSONException
   {
     LOG.debug("Start recording on {}.{} requested", opId, portName);
     JSONObject response = new JSONObject();
@@ -370,13 +370,13 @@ public class StramWebServices
       numWindows = r.optLong("numWindows", 0);
     }
     String id = getTupleRecordingId();
-    dagManager.startRecording(id, Integer.valueOf(opId), portName, numWindows);
+    dagManager.startRecording(id, opId, portName, numWindows);
     response.put("id", id);
     return response;
   }
 
   @POST
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/" + PATH_RECORDINGS_STOP)
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId:\\d+}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject stopRecording(@PathParam("opId") int opId)
   {
@@ -387,7 +387,7 @@ public class StramWebServices
   }
 
   @POST
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId}/ports/{portName}/" + PATH_RECORDINGS_STOP)
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{opId:\\d+}/ports/{portName}/" + PATH_RECORDINGS_STOP)
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject stopRecording(@PathParam("opId") int opId, @PathParam("portName") String portName)
   {
@@ -559,7 +559,7 @@ public class StramWebServices
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId:\\d+}/properties")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject setPhysicalOperatorProperties(JSONObject request, @PathParam("operatorId") int operatorId)
@@ -725,7 +725,7 @@ public class StramWebServices
   }
 
   @GET
-  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId}/properties")
+  @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId:\\d+}/properties")
   @Produces(MediaType.APPLICATION_JSON)
   public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") int operatorId, @QueryParam("propertyName") String propertyName)
   {
