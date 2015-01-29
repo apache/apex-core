@@ -31,7 +31,7 @@ public class DTCliTest
       // process and look at launch config
 
       AppPackage ap = new AppPackage(appPackageFile, true);
-      DTConfiguration props = cli.getLaunchAppPackageProperties(ap, commandLineInfo);
+      DTConfiguration props = cli.getLaunchAppPackageProperties(ap, commandLineInfo, null);
       Assert.assertEquals("launch-define", props.get("dt.test.1"));
       Assert.assertEquals("local-fs-config", props.get("dt.test.2"));
       Assert.assertEquals("app-package-config", props.get("dt.test.3"));

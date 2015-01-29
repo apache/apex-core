@@ -3,7 +3,6 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.stram.StringCodecs;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.io.*;
@@ -60,6 +59,9 @@ public class AppPackage extends JarFile implements Closeable
     public LogicalPlan dag;
     public String error;
     public String errorStackTrace;
+
+    public Set<String> requiredProperties = new TreeSet<String>();
+    public Map<String, String> defaultProperties = new TreeMap<String, String>();
 
     public AppInfo(String name, String file, String type)
     {
@@ -121,7 +123,18 @@ public class AppPackage extends JarFile implements Closeable
     }
     File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
-      processPropertiesXml(propertiesXml);
+      processPropertiesXml(propertiesXml, null);
+    }
+
+    if (processAppDirectory) {
+      for (AppInfo app : applications) {
+        app.requiredProperties.addAll(requiredProperties);
+        app.defaultProperties.putAll(defaultProperties);
+        File appPropertiesXml = new File(newDirectory, "META-INF/properties-" + app.name + ".xml");
+        if (appPropertiesXml.exists()) {
+          processPropertiesXml(appPropertiesXml, app);
+        }
+      }
     }
   }
 
@@ -319,7 +332,7 @@ public class AppPackage extends JarFile implements Closeable
     }
   }
 
-  private void processPropertiesXml(File file)
+  private void processPropertiesXml(File file, AppInfo app)
   {
     DTConfiguration config = new DTConfiguration();
     try {
@@ -328,10 +341,18 @@ public class AppPackage extends JarFile implements Closeable
         String key = entry.getKey();
         String value = entry.getValue();
         if (value == null) {
-          requiredProperties.add(key);
-        }
-        else {
-          defaultProperties.put(key, value);
+          if (app == null) {
+            requiredProperties.add(key);
+          } else {
+            app.requiredProperties.add(key);
+          }
+        } else {
+          if (app == null) {
+            defaultProperties.put(key, value);
+          } else {
+            app.requiredProperties.remove(key);
+            app.defaultProperties.put(key, value);
+          }
         }
       }
     }
