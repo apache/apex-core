@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.StringCodec.*;
 import com.datatorrent.api.annotation.Stateless;
@@ -39,7 +39,7 @@ public interface Context
    *
    * @return attributes defined for the current context.
    */
-  public com.datatorrent.api.Attribute.AttributeMap getAttributes();
+  public AttributeMap getAttributes();
 
   /**
    * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
@@ -137,7 +137,7 @@ public interface Context
      */
     Attribute<StreamCodec<?>> STREAM_CODEC = new Attribute<StreamCodec<?>>(new Object2String<StreamCodec<?>>());
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    long serialVersionUID = AttributeInitializer.initialize(PortContext.class);
+    long serialVersionUID = AttributeMap.AttributeInitializer.initialize(PortContext.class);
   }
 
   public interface OperatorContext extends Context
@@ -250,7 +250,7 @@ public interface Context
     int getId();
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    long serialVersionUID = AttributeInitializer.initialize(OperatorContext.class);
+    long serialVersionUID = AttributeMap.AttributeInitializer.initialize(OperatorContext.class);
   }
 
   /**
@@ -397,8 +397,8 @@ public interface Context
      */
     Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>> STRING_CODECS = new Attribute<Map<Class<?>, Class<? extends StringCodec<?>>>>(new Map2String<Class<?>, Class<? extends StringCodec<?>>>(",", "=", new Class2String<Object>(), new Class2String<StringCodec<?>>()));
     @SuppressWarnings(value = "FieldNameHidesFieldInSuperclass")
-    long serialVersionUID = AttributeInitializer.initialize(DAGContext.class);
+    long serialVersionUID = AttributeMap.AttributeInitializer.initialize(DAGContext.class);
   }
 
-  long serialVersionUID = AttributeInitializer.initialize(Context.class);
+  long serialVersionUID = AttributeMap.AttributeInitializer.initialize(Context.class);
 }
