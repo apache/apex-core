@@ -2,32 +2,29 @@
 <configuration>
   <property>
     <name>dt.test.1</name>
-    <value>package-default</value>
+    <value>app-default</value>
   </property>
   <property>
     <name>dt.test.2</name>
-    <value>package-default</value>
+    <value>app-default</value>
   </property>
   <property>
     <name>dt.test.3</name>
-    <value>package-default</value>
+    <value>app-default</value>
   </property>
   <property>
     <name>dt.test.4</name>
-    <value>package-default</value>
+    <value>app-default</value>
   </property>
   <property>
     <name>dt.test.5</name>
-    <value>package-default</value>
-  </property>
-  <property>
-    <name>dt.test.6</name>
-    <value>package-default</value>
+    <value>app-default</value>
   </property>
   <property>
     <name>dt.test.required.1</name>
+    <value>app-default-for-required-1</value>
   </property>
   <property>
-    <name>dt.test.required.2</name>
+    <name>dt.test.required.3</name>
   </property>
 </configuration>

@@ -16,4 +16,8 @@
     <name>dt.test.required.2</name>
     <value>local-fs-required-2</value>
   </property>
+  <property>
+    <name>dt.test.required.3</name>
+    <value>local-fs-required-3</value>
+  </property>
 </configuration>
