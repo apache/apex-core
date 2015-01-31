@@ -39,6 +39,8 @@ import com.datatorrent.api.Partitioner;
 /**
  * This is a simple partitioner which creates partitionCount number of clones of an operator.
  * @param <T> The type of the operator
+ *
+ * @since 2.0.0
  */
 public class StatelessPartitioner<T extends Operator> implements Partitioner<T>, Serializable
 {
