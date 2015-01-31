@@ -88,7 +88,6 @@ public class CheckpointTest
     public void emitTuples()
     {
     }
-    private static final long serialVersionUID = 201404211648L;
   }
 
   /**
@@ -359,7 +358,20 @@ public class CheckpointTest
 
     ctx = new UpdateCheckpointsContext(clock);
     dnm.updateRecoveryCheckpoints(o1p1, ctx);
-    Assert.assertEquals("operators blocked", Sets.newHashSet(o2p1), ctx.blocked);
+    Assert.assertEquals("o2 blocked", Sets.newHashSet(o2p1), ctx.blocked);
+
+    // assign future activation window (state-less or at-most-once).
+    Checkpoint cp2 = o2p1.getRecoveryCheckpoint();
+    o2p1.setRecoveryCheckpoint(new Checkpoint(o1p1.getRecoveryCheckpoint().windowId + 1, cp2.applicationWindowCount, cp2.checkpointWindowCount));
+    ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("no operators blocked (o2 activation window ahead)", Sets.newHashSet(), ctx.blocked);
+
+    // reset to blocked
+    o2p1.setRecoveryCheckpoint(cp2);
+    ctx = new UpdateCheckpointsContext(clock);
+    dnm.updateRecoveryCheckpoints(o1p1, ctx);
+    Assert.assertEquals("o2 blocked", Sets.newHashSet(o2p1), ctx.blocked);
 
     clock.time++;
     ctx = new UpdateCheckpointsContext(clock);
@@ -378,6 +390,8 @@ public class CheckpointTest
     ctx = new UpdateCheckpointsContext(clock);
     dnm.updateRecoveryCheckpoints(o1p1, ctx);
     Assert.assertEquals("operators blocked", Sets.newHashSet(), ctx.blocked);
+
+
 
   }
 
