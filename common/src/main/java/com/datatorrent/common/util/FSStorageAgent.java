@@ -22,6 +22,11 @@ import org.apache.hadoop.fs.*;
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
 
+/**
+ * FSStorageAgent
+ *
+ * @since 2.0.0
+ */
 public class FSStorageAgent implements StorageAgent, Serializable
 {
   protected static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);

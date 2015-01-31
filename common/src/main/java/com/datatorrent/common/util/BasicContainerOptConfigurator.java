@@ -35,6 +35,8 @@ import com.datatorrent.api.DAG;
  * <br>
  * This aggregates the heap size configurations for Xmx, Xms, Xss. If Xmx is not set for an operator, it is set to 75% of the operator memory <br>
  * For other JVM options it assumes that they are all set same for all operators deployed in container. If JVM options are set on only one operator in the container,then those configurations will be applied to all the operators deployed in the container
+ *
+ * @since 2.0.0
  */
 public class BasicContainerOptConfigurator implements Context.ContainerOptConfigurator
 {
