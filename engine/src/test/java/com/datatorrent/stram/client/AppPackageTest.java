@@ -21,6 +21,7 @@ import org.junit.runner.Description;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -31,7 +32,7 @@ public class AppPackageTest
 {
 
   // file basename for the created jar
-  private static String jarPath = "testAppPackage.jar";
+  private static final String jarPath = "testAppPackage.jar";
 
   // The jar file to use for the AppPackage constructor
   private File file;
@@ -40,7 +41,8 @@ public class AppPackageTest
   private JacksonObjectMapperProvider jomp;
   private JSONObject json;
 
-  private class TestMeta extends TestWatcher {
+  public class TestMeta extends TestWatcher
+  {
 
     TemporaryFolder testFolder = new TemporaryFolder();
 
@@ -100,9 +102,28 @@ public class AppPackageTest
   }
 
   @Test
-  public void testXmlRequiredProperties()
+  public void testRequiredProperties()
   {
     Set<String> requiredProperties = ap.getRequiredProperties();
     Assert.assertEquals(2, requiredProperties.size());
+    String[] rp = requiredProperties.toArray(new String[]{});
+    Assert.assertEquals("dt.test.required.1", rp[0]);
+    Assert.assertEquals("dt.test.required.2", rp[1]);
+  }
+
+  @Test
+  public void testAppLevelRequiredProperties()
+  {
+    List<AppPackage.AppInfo> applications = ap.getApplications();
+    for (AppPackage.AppInfo app : applications) {
+      if (app.name.equals("PiCalculator")) {
+        String[] rp = app.requiredProperties.toArray(new String[]{});
+        Assert.assertEquals("dt.test.required.2", rp[0]);
+        Assert.assertEquals("dt.test.required.3", rp[1]);
+        Assert.assertEquals("app-default-for-required-1", app.defaultProperties.get("dt.test.required.1"));
+        return;
+      }
+    }
+    Assert.fail("Should consist of an app called PiCalculator");
   }
 }

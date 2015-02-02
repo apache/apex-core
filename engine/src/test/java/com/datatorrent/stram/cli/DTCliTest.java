@@ -37,8 +37,16 @@ public class DTCliTest
       Assert.assertEquals("app-package-config", props.get("dt.test.3"));
       Assert.assertEquals("user-home-config", props.get("dt.test.4"));
       Assert.assertEquals("package-default", props.get("dt.test.5"));
-    }
-    finally {
+
+      props = cli.getLaunchAppPackageProperties(ap, commandLineInfo, "PiCalculator");
+      Assert.assertEquals("launch-define", props.get("dt.test.1"));
+      Assert.assertEquals("local-fs-config", props.get("dt.test.2"));
+      Assert.assertEquals("app-package-config", props.get("dt.test.3"));
+      Assert.assertEquals("user-home-config", props.get("dt.test.4"));
+      Assert.assertEquals("app-default", props.get("dt.test.5"));
+      Assert.assertEquals("package-default", props.get("dt.test.6"));
+
+    } finally {
       System.setProperty("user.home", userHome);
       FileUtils.forceDelete(appPackageFile);
     }

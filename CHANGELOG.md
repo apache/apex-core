@@ -5,6 +5,11 @@ Version 2.0.0
 ------------------------------------------------------------------------------------------------------------------------
 
 ### Bug
+* [SPOI-3837] - Partitioner interface semantics broken in 2.0.0 physical plan implementation]
+* [SPOI-3901] - twitter demo app package launch throws NoClassDefFoundError
+* [SPOI-3900] - Gateway gets 400 error when phone home
+* [SPOI-3922] - dtcli does not show output port attributes.
+* [SPOI-3934] - DT CLI Needs to validate user inputs
 * [SPOI-3054] - # Of Tuples Produced != Number Of Tuples Output By Unifier When Repartitioning
 * [SPOI-3210] - HDHT DTFile reader bug
 * [SPOI-3340] - Settings in ~/.dt/dt-site.xml don't override app package defaults
@@ -94,6 +99,7 @@ Version 2.0.0
 * [SPOI-3753] - "Reset to Defaults" for user roles
 
 ### Task
+* [SPOI-3927] - Support per application configuration defaults and required properties
 * [SPOI-2809] - Implement password authentication as a hadoop authentication type
 * [SPOI-3115] - Update document with password authentication once UI supports user mgmt
 * [SPOI-3239] - HDHT store removal support

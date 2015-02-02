@@ -1438,7 +1438,9 @@ public class StreamingContainer extends YarnContainerMain
     }
     else {
       checkpoint = ndi.checkpoint;
-      logger.debug("using {} on {} at {}", ndi.contextAttributes == null? ProcessingMode.AT_LEAST_ONCE: ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE), ndi.name, checkpoint);
+      logger.debug("using {} on {} at {}", ndi.contextAttributes == null ? ProcessingMode.AT_LEAST_ONCE :
+        (ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == null ? ProcessingMode.AT_LEAST_ONCE :
+          ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE)), ndi.name, checkpoint);
     }
 
     return checkpoint;

@@ -7,6 +7,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.security.PrivilegedExceptionAction;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -26,6 +27,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
@@ -2639,7 +2641,7 @@ public class DTCli
         throw new CliException("Container " + args[1] + " not found");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(containerLongId).path("kill");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
       try {
         JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -2803,7 +2805,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("attributes");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("attributes");
       if (args.length > 2) {
         r = r.queryParam("attributeName", args[2]);
       }
@@ -2835,7 +2837,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("ports").path(args[2]).path("attributes");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("ports").path(URLEncoder.encode(args[2], "UTF-8")).path("attributes");
       if (args.length > 3) {
         r = r.queryParam("attributeName", args[3]);
       }
@@ -2867,7 +2869,7 @@ public class DTCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
       if (args.length > 2) {
         r = r.queryParam("propertyName", args[2]);
       }
@@ -2897,6 +2899,9 @@ public class DTCli
     {
       if (currentApp == null) {
         throw new CliException("No application selected");
+      }
+      if (!NumberUtils.isDigits(args[1])) {
+        throw new CliException("Operator ID must be a number");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
@@ -2942,7 +2947,7 @@ public class DTCli
       }
       else {
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
         JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -2968,7 +2973,9 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-
+      if (!NumberUtils.isDigits(args[1])) {
+        throw new CliException("Operator ID must be a number");
+      }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       final JSONObject request = new JSONObject();
