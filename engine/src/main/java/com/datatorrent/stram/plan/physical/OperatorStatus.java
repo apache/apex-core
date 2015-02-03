@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.datatorrent.api.Stats;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 

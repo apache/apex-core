@@ -9,7 +9,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import java.beans.*;
 import java.io.IOException;
 import java.io.InputStream;

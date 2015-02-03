@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -18,12 +17,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.DAG;
-import com.datatorrent.api.Operator;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 
-import com.datatorrent.common.util.DTThrowable;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.StatsTest.TestCollector.TestCollectorStatsListener;
 import com.datatorrent.stram.engine.StatsTest.TestOperator.TestInputStatsListener;

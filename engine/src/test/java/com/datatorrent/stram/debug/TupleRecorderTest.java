@@ -23,7 +23,6 @@ import org.apache.hadoop.fs.Path;
 
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.StramLocalCluster;
-import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.debug.TupleRecorder.PortInfo;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;

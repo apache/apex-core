@@ -5,7 +5,6 @@
 package com.datatorrent.stram.engine;
 
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;

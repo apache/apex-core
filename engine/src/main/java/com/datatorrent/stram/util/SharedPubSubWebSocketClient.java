@@ -4,7 +4,6 @@
  */
 package com.datatorrent.stram.util;
 
-import com.datatorrent.api.Context;
 import com.datatorrent.lib.util.PubSubMessage;
 import com.datatorrent.lib.util.PubSubWebSocketClient;
 import com.ning.http.client.websocket.WebSocket;
