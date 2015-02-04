@@ -4,17 +4,14 @@
  */
 package com.datatorrent.stram;
 
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentMap;
 
+import com.google.common.collect.Maps;
+
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
-import com.google.common.collect.Maps;
 
 /**
  * Write ahead log for DAG changes.
@@ -178,6 +175,8 @@ public class Journal
            c.setResourceRequestPriority(in.readInt());
            c.setRequiredMemoryMB(in.readInt());
            c.setAllocatedMemoryMB(in.readInt());
+           c.setRequiredVCores(in.readInt());
+           c.setAllocatedVCores(in.readInt());
            String bufferServerHost = readLPString(in);
            if (bufferServerHost != null) {
              c.bufferServerAddress = InetSocketAddress.createUnresolved(bufferServerHost, in.readInt());
@@ -203,6 +202,10 @@ public class Journal
       out.writeInt(container.getRequiredMemoryMB());
       // memory allocated
       out.writeInt(container.getAllocatedMemoryMB());
+      // vcores required
+      out.writeInt(container.getRequiredVCores());
+      // vcores allocated
+      out.writeInt(container.getAllocatedVCores());
       // buffer server address
       InetSocketAddress addr = container.bufferServerAddress;
       if (addr != null) {

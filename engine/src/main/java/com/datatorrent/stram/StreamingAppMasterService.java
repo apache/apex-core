@@ -4,30 +4,16 @@
  */
 package com.datatorrent.stram;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import static java.lang.Thread.sleep;
 
 import javax.xml.bind.annotation.XmlElement;
-
-import com.google.common.collect.Maps;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
@@ -42,16 +28,7 @@ import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerState;
-import org.apache.hadoop.yarn.api.records.ContainerStatus;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.NodeId;
-import org.apache.hadoop.yarn.api.records.Priority;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.YarnClient;
@@ -65,9 +42,15 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
+import com.google.common.collect.Maps;
+
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context.DAGContext;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.StringCodec;
 
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
@@ -85,6 +68,8 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+
+import static java.lang.Thread.sleep;
 
 /**
  * Streaming Application Master
@@ -609,7 +594,8 @@ public class StreamingAppMasterService extends CompositeService
 
     // Dump out information about cluster capability as seen by the resource manager
     int maxMem = response.getMaximumResourceCapability().getMemory();
-    LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
+    int maxVcores = response.getMaximumResourceCapability().getVirtualCores();
+    LOG.info("Max mem {}m and vcores {} capabililty of resources in this cluster ", maxMem, maxVcores);
 
     // for locality relaxation fall back
     Map<StreamingContainerAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
@@ -706,6 +692,10 @@ public class StreamingAppMasterService extends CompositeService
               LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
               csr.container.setRequiredMemoryMB(maxMem);
             }
+            if (csr.container.getRequiredVCores() > maxVcores) {
+              LOG.warn("Container vcores {} above max threshold of cluster. Using max value {}.", csr.container.getRequiredVCores(), maxVcores);
+              csr.container.setRequiredVCores(maxVcores);
+            }
             csr.container.setResourceRequestPriority(nextRequestPriority++);
             requestedResources.put(csr, loopCounter);
             containerRequests.add(resourceRequestor.createContainerRequest(csr, true));
@@ -780,7 +770,7 @@ public class StreamingAppMasterService extends CompositeService
         }
 
         // allocate resource to container
-        ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getNodeHttpAddress());
+        ContainerResource resource = new ContainerResource(allocatedContainer.getPriority().getPriority(), allocatedContainer.getId().toString(), allocatedContainer.getNodeId().toString(), allocatedContainer.getResource().getMemory(), allocatedContainer.getResource().getVirtualCores(), allocatedContainer.getNodeHttpAddress());
         StreamingContainerAgent sca = dnmgr.assignContainer(resource, null);
 
         if (sca == null) {
@@ -930,7 +920,7 @@ public class StreamingAppMasterService extends CompositeService
 
       // put container back into the allocated list
       org.apache.hadoop.yarn.api.records.Token containerToken = null;
-      Resource resource = Resource.newInstance(ca.container.getAllocatedMemoryMB(), 1);
+      Resource resource = Resource.newInstance(ca.container.getAllocatedMemoryMB(), ca.container.getAllocatedVCores());
       Priority priority = Priority.newInstance(ca.container.getResourceRequestPriority());
       Container yarnContainer = Container.newInstance(containerId, nodeId, ca.container.nodeHttpAddress, resource, priority, containerToken);
       this.allocatedContainers.put(containerId.toString(), new AllocatedContainer(yarnContainer));

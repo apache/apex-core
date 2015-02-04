@@ -39,6 +39,8 @@ public class PTContainer implements java.io.Serializable
   private int requiredMemoryMB;
   private int allocatedMemoryMB;
   private int resourceRequestPriority;
+  private int requiredVCores;
+  private int allocatedVCores;
 
   private final PhysicalPlan plan;
   private final int seq;
@@ -80,6 +82,26 @@ public class PTContainer implements java.io.Serializable
 
   public int getAllocatedMemoryMB() {
     return allocatedMemoryMB;
+  }
+
+  public int getRequiredVCores()
+  {
+    return requiredVCores;
+  }
+
+  public void setRequiredVCores(int requiredVCores)
+  {
+    this.requiredVCores = requiredVCores;
+  }
+
+  public int getAllocatedVCores()
+  {
+    return allocatedVCores;
+  }
+
+  public void setAllocatedVCores(int allocatedVCores)
+  {
+    this.allocatedVCores = allocatedVCores;
   }
 
   public void setAllocatedMemoryMB(int allocatedMemoryMB) {

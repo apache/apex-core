@@ -138,8 +138,8 @@ public class StreamingContainerManagerTest {
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number containers", 2, dnm.getPhysicalPlan().getContainers().size());
 
-    dnm.assignContainer(new ContainerResource(0, "container1Id", "host1", 1024, null), InetSocketAddress.createUnresolved("host1", 9001));
-    dnm.assignContainer(new ContainerResource(0, "container2Id", "host2", 1024, null), InetSocketAddress.createUnresolved("host2", 9002));
+    dnm.assignContainer(new ContainerResource(0, "container1Id", "host1", 1024, 0, null), InetSocketAddress.createUnresolved("host1", 9001));
+    dnm.assignContainer(new ContainerResource(0, "container2Id", "host2", 1024, 0, null), InetSocketAddress.createUnresolved("host2", 9002));
 
     StreamingContainerAgent sca1 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(0).getExternalId());
     StreamingContainerAgent sca2 = dnm.getContainerAgent(dnm.getPhysicalPlan().getContainers().get(1).getExternalId());
@@ -504,7 +504,7 @@ public class StreamingContainerManagerTest {
 
     // assign container
     String containerId = "container1";
-    StreamingContainerAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 512, null), InetSocketAddress.createUnresolved("localhost", 0));
+    StreamingContainerAgent sca = scm.assignContainer(new ContainerResource(0, containerId, "localhost", 512, 0, null), InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertNotNull(sca);
 
     Assert.assertEquals(PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
@@ -630,7 +630,7 @@ public class StreamingContainerManagerTest {
   }
 
   public static StreamingContainerAgent assignContainer(StreamingContainerManager scm, String containerId) {
-    return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
+    return scm.assignContainer(new ContainerResource(0, containerId, "localhost", 1024, 0,null), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
   @Test

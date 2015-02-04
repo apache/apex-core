@@ -8,17 +8,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -51,12 +50,13 @@ public class ResourceRequestHandler
     String[] nodes = null;
     String[] racks = null;
 
-    String host = getHost(csr, csr.container.getRequiredMemoryMB(), first);
+    String host = getHost(csr, first);
     Resource capability = Records.newRecord(Resource.class);
     capability.setMemory(csr.container.getRequiredMemoryMB());
+    capability.setVirtualCores(csr.container.getRequiredVCores());
 
     if (host != null) {
-      nodes = new String[] { host };
+      nodes = new String[]{host};
       // in order to request a host, we don't have to set the rack if the locality is false
       /*
        * if(this.nodeToRack.get(host) != null){ racks = new String[] { this.nodeToRack.get(host) }; }
@@ -94,7 +94,7 @@ public class ResourceRequestHandler
     }
   }
 
-  public String getHost(ContainerStartRequest csr, int requiredMemory, boolean first)
+  public String getHost(ContainerStartRequest csr, boolean first)
   {
     String host = null;
     PTContainer c = csr.container;
@@ -102,37 +102,41 @@ public class ResourceRequestHandler
       for (PTOperator oper : c.getOperators()) {
         HostOperatorSet grpObj = oper.getNodeLocalOperators();
         host = nodeLocalMapping.get(grpObj.getOperatorSet());
-        if (host != null)
+        if (host != null) {
           return host;
+        }
         if (grpObj.getHost() != null) {
           host = grpObj.getHost();
           // using the 1st host value as host for container
           break;
         }
       }
-      if (host != null) {
+      if (host != null && nodeReportMap.get(host) != null) {
         for (PTOperator oper : c.getOperators()) {
           HostOperatorSet grpObj = oper.getNodeLocalOperators();
           Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
-          NodeReport report = nodeReportMap.get(host); // report null means the host passed is wrong
-          if (report != null) {
-            int aggrMemory = 0;
-            Set<PTContainer> containers = Sets.newHashSet();
-            for (PTOperator nodeLocalOper : nodeLocalSet) {
-              if (!containers.contains(nodeLocalOper.getContainer())) {
-                aggrMemory += requiredMemory;
-                containers.add(nodeLocalOper.getContainer());
-              }
+          NodeReport report = nodeReportMap.get(host);
+          int aggrMemory = c.getRequiredMemoryMB();
+          int vCores = c.getRequiredVCores();
+          Set<PTContainer> containers = Sets.newHashSet();
+          containers.add(c);
+          for (PTOperator nodeLocalOper : nodeLocalSet) {
+            if (!containers.contains(nodeLocalOper.getContainer())) {
+              aggrMemory += nodeLocalOper.getContainer().getRequiredMemoryMB();
+              vCores += nodeLocalOper.getContainer().getRequiredVCores();
+              containers.add(nodeLocalOper.getContainer());
             }
-            int memAvailable = report.getCapability().getMemory() - report.getUsed().getMemory();
-            if (memAvailable >= aggrMemory) {
-              nodeLocalMapping.put(nodeLocalSet, host);
-              return host;
-            }
+          }
+          int memAvailable = report.getCapability().getMemory() - report.getUsed().getMemory();
+          int vCoresAvailable = report.getCapability().getVirtualCores() - report.getUsed().getVirtualCores();
+          if (memAvailable >= aggrMemory && vCoresAvailable >= vCores) {
+            nodeLocalMapping.put(nodeLocalSet, host);
+            return host;
           }
         }
       }
     }
+
     // the host requested didn't have the resources so looking for other hosts
     host = null;
     for (PTOperator oper : c.getOperators()) {
@@ -140,19 +144,24 @@ public class ResourceRequestHandler
       Set<PTOperator> nodeLocalSet = grpObj.getOperatorSet();
       if (nodeLocalSet.size() > 1) {
         LOG.debug("Finding new host for {}", nodeLocalSet);
-        int aggrMemory = 0;
+        int aggrMemory = c.getRequiredMemoryMB();
+        int vCores = c.getRequiredVCores();
         Set<PTContainer> containers = Sets.newHashSet();
+        containers.add(c);
         // aggregate memory required for all containers
         for (PTOperator nodeLocalOper : nodeLocalSet) {
           if (!containers.contains(nodeLocalOper.getContainer())) {
-            aggrMemory += requiredMemory;
+            aggrMemory += nodeLocalOper.getContainer().getRequiredMemoryMB();
+            vCores += nodeLocalOper.getContainer().getRequiredVCores();
             containers.add(nodeLocalOper.getContainer());
           }
         }
         for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
           int memAvailable = nodeEntry.getValue().getCapability().getMemory() - nodeEntry.getValue().getUsed().getMemory();
-          if (memAvailable >= aggrMemory) {
+          int vCoresAvailable = nodeEntry.getValue().getCapability().getVirtualCores() - nodeEntry.getValue().getUsed().getVirtualCores();
+          if (memAvailable >= aggrMemory && vCoresAvailable >= vCores) {
             host = nodeEntry.getKey();
+            grpObj.setHost(host);
             nodeLocalMapping.put(nodeLocalSet, host);
             return host;
           }
