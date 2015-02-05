@@ -731,6 +731,7 @@ public class StreamingAppMasterService extends CompositeService
       releasedContainers.clear();
 
       // CDH reporting incorrect resources, see SPOI-1846, YARN-1959. Workaround for now.
+      // Fixed in CDH 5.3. To make it work with earlier versions, we still need workaround
       int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
       LOG.debug(" available resources in cluster {}", availableMemory);
       availableMemory = (availableMemory == 0 ? availableLicensedMemory : availableMemory);
