@@ -459,7 +459,7 @@ public class OperatorDiscoverer
     return getClassProperties(clazz, 0);
   }
 
-  private JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
+  public JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
   {
     JSONArray arr = new JSONArray();
     try {
@@ -541,7 +541,7 @@ public class OperatorDiscoverer
 
         try {
           // load the port type class
-          Class portClazz = classLoader.loadClass(type.replaceAll("\\bclass ", "").replaceAll("\\binterface ", ""));
+          Class<?> portClazz = classLoader.loadClass(type.replaceAll("\\bclass ", "").replaceAll("\\binterface ", ""));
 
           // iterate up the class hierarchy to populate the portClassHier map
           while (portClazz != null) {
@@ -561,7 +561,7 @@ public class OperatorDiscoverer
             }
 
             // look at superclass first
-            Class superClazz = portClazz.getSuperclass();
+            Class<?> superClazz = portClazz.getSuperclass();
             try {
               String superClazzName = superClazz.toString();
               parents.add(superClazzName);
@@ -569,7 +569,7 @@ public class OperatorDiscoverer
               LOG.info("Superclass is null for `{}` ({})", portClazz, superClazz);
             }
             // then look at interfaces implemented in this port
-            for (Class intf : portClazz.getInterfaces()) {
+            for (Class<?> intf : portClazz.getInterfaces()) {
               String intfName = intf.toString();
               if (!portClassHier.has(intfName)) {
                 // add the interface to portClassHier
