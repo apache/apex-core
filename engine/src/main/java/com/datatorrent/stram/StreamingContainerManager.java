@@ -1881,6 +1881,9 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
+    if (plan.getCountersAggregatorFor(operator) != null) {
+      loi.counters = plan.aggregatePhysicalCounters(operator);
+    }
     return loi;
   }
 
