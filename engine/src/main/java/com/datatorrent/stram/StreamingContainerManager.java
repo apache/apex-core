@@ -79,6 +79,7 @@ import com.datatorrent.stram.util.ConfigUtils;
 import com.datatorrent.stram.util.FSJsonLineFile;
 import com.datatorrent.stram.util.MovingAverage.MovingAverageLong;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
+import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.*;
 
 /**
@@ -130,6 +131,7 @@ public class StreamingContainerManager implements PlanContext
   private long currentEndWindowStatsWindowId;
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
+  private long allocatedMemoryBytes = 0;
 
   private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>()
   {
@@ -224,9 +226,20 @@ public class StreamingContainerManager implements PlanContext
     ci.state = "ACTIVE";
     ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
     ci.numOperators = 0;
-    ci.memoryMBAllocated = (int) (Runtime.getRuntime().maxMemory() / (1024 * 1024));
-    ci.lastHeartbeat = -1;
     YarnConfiguration conf = new YarnConfiguration();
+    if (allocatedMemoryBytes == 0) {
+      String url = ConfigUtils.getSchemePrefix(conf) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/ws/v1/node/containers/" + ci.id;
+      WebServicesClient webServicesClient = new WebServicesClient();
+      try {
+        String content = webServicesClient.process(url, String.class, new WebServicesClient.GetWebServicesHandler<String>());
+        JSONObject json = new JSONObject(content);
+        allocatedMemoryBytes = json.getJSONObject("container").getInt("totalMemoryNeededMB") * 1024 * 1024;
+      } catch (Exception ex) {
+        LOG.warn("Caught exception when trying to get the memory allocated for the AM", ex);
+      }
+    }
+    ci.memoryMBAllocated = (int)(allocatedMemoryBytes / (1024 * 1024));
+    ci.lastHeartbeat = -1;
     String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
     ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
     ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
