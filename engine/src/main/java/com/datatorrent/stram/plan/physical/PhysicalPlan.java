@@ -349,6 +349,7 @@ public class PhysicalPlan implements Serializable
 
     for (PTContainer container : containers) {
       updateContainerMemoryWithBufferServer(container);
+      container.setRequiredVCores(getVCores(container.getOperators()));
     }
 
     for (Map.Entry<PTOperator, Operator> operEntry : this.newOpers.entrySet()) {
@@ -386,6 +387,48 @@ public class PhysicalPlan implements Serializable
       bufferServerMemory += operator.getBufferServerMemory();
     }
     container.setRequiredMemoryMB(container.getRequiredMemoryMB() + bufferServerMemory);
+  }
+
+  /**
+   * This returns the vCores for a set of operators in a container. This forms the group of thread_local operators and get the maximum value of the group
+   *
+   * @param operators The container local operators
+   * @return the number of vcores required for a container
+   */
+  private int getVCores(Collection<PTOperator> operators)
+  {
+    // this forms the groups of thread local operators in the given container
+    HashMap<PTOperator, Set<PTOperator>> groupMap = new HashMap<PTOperator, Set<PTOperator>>();
+    for (PTOperator operator : operators) {
+      Set<PTOperator> group = new HashSet<PTOperator>();
+      group.add(operator);
+      groupMap.put(operator, group);
+    }
+    int vCores = 0;
+    for (PTOperator operator : operators) {
+      Set<PTOperator> threadLocal = operator.getThreadLocalOperators();
+      if (threadLocal != null) {
+        Set<PTOperator> group = groupMap.get(operator);
+        for (PTOperator operator1 : threadLocal) {
+          group.addAll(groupMap.get(operator1));
+        }
+        for (PTOperator operator1 : threadLocal) {
+          groupMap.put(operator1, group);
+        }
+      }
+    }
+    Set<PTOperator> visitedOperators = new HashSet<PTOperator>();
+    for (Map.Entry<PTOperator, Set<PTOperator>> group : groupMap.entrySet()) {
+      if (!visitedOperators.contains(group.getKey())) {
+        visitedOperators.addAll(group.getValue());
+        int tempCores = 0;
+        for (PTOperator operator : group.getValue()) {
+          tempCores = Math.max(tempCores, operator.getOperatorMeta().getValue(OperatorContext.VCORES));
+        }
+        vCores += tempCores;
+      }
+    }
+    return vCores;
   }
 
   private class PartitioningContextImpl implements Partitioner.PartitioningContext
@@ -823,6 +866,7 @@ public class PhysicalPlan implements Serializable
 
       PTContainer newContainer = null;
       int memoryMB = 0;
+
       // handle container locality
       for (PTOperator inlineOper : oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet()) {
         if (inlineOper.container != null) {
@@ -834,11 +878,13 @@ public class PhysicalPlan implements Serializable
       }
 
       if (newContainer == null) {
+        int vCores = getVCores(oper.getGrouping(Locality.CONTAINER_LOCAL).getOperatorSet());
         // attempt to find empty container with required size
         for (PTContainer c : this.containers) {
-          if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB) {
+          if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE && c.getAllocatedMemoryMB() == memoryMB && c.getAllocatedVCores() == vCores) {
             LOG.debug("Reusing existing container {} for {}", c, oper);
             c.setRequiredMemoryMB(0);
+            c.setRequiredVCores(0);
             newContainer = c;
             break;
           }
@@ -864,6 +910,7 @@ public class PhysicalPlan implements Serializable
     }
     for (PTContainer c : updatedContainers) {
       updateContainerMemoryWithBufferServer(c);
+      c.setRequiredVCores(getVCores(c.getOperators()));
     }
   }
 

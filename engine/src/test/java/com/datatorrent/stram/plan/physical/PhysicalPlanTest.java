@@ -1804,6 +1804,8 @@ public class PhysicalPlanTest
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    dag.setAttribute(o1,OperatorContext.VCORES,1);
+    dag.setAttribute(o2,OperatorContext.VCORES,2);
 
     dag.addStream("o1.outport1", o1.outport1, o2.inport1);
     dag.addStream("o2.outport1", o2.outport1, o3.inport1);
@@ -1815,8 +1817,43 @@ public class PhysicalPlanTest
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
     Assert.assertEquals("memory container 1", 2560, plan.getContainers().get(0).getRequiredMemoryMB());
+    Assert.assertEquals("vcores container 1", 1, plan.getContainers().get(0).getRequiredVCores());
     Assert.assertEquals("memory container 2", 4512, plan.getContainers().get(1).getRequiredMemoryMB());
+    Assert.assertEquals("vcores container 2", 2, plan.getContainers().get(1).getRequiredVCores());
     Assert.assertEquals("number of operators in container 1", 2, plan.getContainers().get(0).getOperators().size());
+  }
+
+  @Test
+  public void testContainerCores()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
+    GenericTestOperator o5 = dag.addOperator("o5", GenericTestOperator.class);
+    GenericTestOperator o6 = dag.addOperator("o6", GenericTestOperator.class);
+    dag.setAttribute(o1,OperatorContext.VCORES,1);
+    dag.setAttribute(o2,OperatorContext.VCORES,2);
+    dag.setAttribute(o3,OperatorContext.VCORES,3);
+    dag.setAttribute(o4,OperatorContext.VCORES,4);
+    dag.setAttribute(o5,OperatorContext.VCORES,5);
+    dag.setAttribute(o6,OperatorContext.VCORES,6);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1, o4.inport1).setLocality(Locality.THREAD_LOCAL);
+    dag.addStream("o3.output1", o3.outport1, o5.inport1).setLocality(Locality.THREAD_LOCAL);
+    dag.addStream("o4.output1", o4.outport1, o5.inport2).setLocality(Locality.THREAD_LOCAL);
+    dag.addStream("o5.output1", o5.outport1, o6.inport1).setLocality(Locality.CONTAINER_LOCAL);
+
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 2);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+
+    Assert.assertEquals("number of containers", 1, plan.getContainers().size());
+    Assert.assertEquals("vcores container 1 is 12", 12, plan.getContainers().get(0).getRequiredVCores());
   }
 
   @Test

@@ -12,16 +12,6 @@ import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.google.common.collect.Lists;
-
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
@@ -30,30 +20,13 @@ import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RPC.Server;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.test.MockitoUtil;
-
-import com.datatorrent.lib.util.FSStorageAgent;
-
-import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.StatsListener;
-import com.datatorrent.api.StorageAgent;
-
-import com.datatorrent.stram.Journal.SetContainerState;
-import com.datatorrent.stram.Journal.SetOperatorState;
-import com.datatorrent.stram.api.Checkpoint;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
-import com.datatorrent.stram.engine.GenericTestOperator;
-import com.datatorrent.stram.engine.TestGeneratorInputOperator;
-import com.datatorrent.stram.plan.TestPlanContext;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
-import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
-import com.datatorrent.stram.plan.logical.requests.CreateStreamRequest;
-import com.datatorrent.stram.plan.physical.PTContainer;
-import com.datatorrent.stram.plan.physical.PTOperator;
-import com.datatorrent.stram.plan.physical.PhysicalPlan;
-import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
-import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 
@@ -316,6 +289,8 @@ public class StramRecoveryTest
     c1.bufferServerAddress = addr1;
     c1.setAllocatedMemoryMB(2);
     c1.setRequiredMemoryMB(1);
+    c1.setAllocatedVCores(3);
+    c1.setRequiredVCores(4);
 
     SetContainerState scs = new SetContainerState(scm);
     scs.container = c1;
@@ -336,7 +311,8 @@ public class StramRecoveryTest
     Assert.assertEquals(addr1, c1.bufferServerAddress);
     Assert.assertEquals(1, c1.getRequiredMemoryMB());
     Assert.assertEquals(2, c1.getAllocatedMemoryMB());
-
+    Assert.assertEquals(3, c1.getAllocatedVCores());
+    Assert.assertEquals(4, c1.getRequiredVCores());
   }
 
   @Test

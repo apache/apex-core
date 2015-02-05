@@ -139,6 +139,18 @@ public class PTOperator implements java.io.Serializable
       return true;
     }
 
+    public Set<PTOperator> threadLocalSinks()
+    {
+      Set<PTOperator> threadLocalOperators = null;
+      if (logicalStream!= null && logicalStream.getLocality() == Locality.THREAD_LOCAL) {
+        threadLocalOperators = new HashSet<PTOperator>();
+        for(PTInput sink: this.sinks){
+          threadLocalOperators.add(sink.target);
+        }
+      }
+      return threadLocalOperators;
+    }
+
    /**
     *
     * @return String
@@ -290,6 +302,19 @@ public class PTOperator implements java.io.Serializable
       }
     }
     return bufferServerMemory;
+  }
+
+  public Set<PTOperator> getThreadLocalOperators(){
+    Set<PTOperator> threadLocalOperators = null;
+    for (int i = 0; i < outputs.size(); i++) {
+      if (outputs.get(i).logicalStream != null && outputs.get(i).logicalStream.getLocality() == Locality.THREAD_LOCAL){
+        if(threadLocalOperators == null){
+          threadLocalOperators = new HashSet<PTOperator>();
+        }
+        threadLocalOperators.addAll(outputs.get(i).threadLocalSinks());
+      }
+    }
+    return threadLocalOperators;
   }
 
   public void setPartitionKeys(Map<InputPort<?>, PartitionKeys> portKeys) {

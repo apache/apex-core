@@ -83,7 +83,7 @@ public class HostLocalTest
       expectedHosts.add("host"+(i+1));
     }
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem, true);
+      String host = rr.getHost(csr, true);
       if(host != null){
         expectedHosts.remove(host);
       }
@@ -95,15 +95,16 @@ public class HostLocalTest
   @Test
   public void testNodeLocal()
   {
-
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
 
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
+    dag.setAttribute(partitioned,OperatorContext.MEMORY_MB,256);
     dag.getMeta(partitioned).getAttributes().put(OperatorContext.LOCALITY_HOST, "host1");
 
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.NODE_LOCAL);
@@ -125,7 +126,7 @@ public class HostLocalTest
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
 
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem, true);
+      String host = rr.getHost(csr, true);
       csr.container.host = host;
       Assert.assertEquals("Hosts set to host1", "host1", host);
     }
@@ -133,9 +134,8 @@ public class HostLocalTest
   }
 
   @Test
-  public void testContainerLocal()
+  public void testThreadLocal()
   {
-
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
@@ -144,9 +144,47 @@ public class HostLocalTest
     dag.getMeta(o1).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
 
     GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
-    //dag.getMeta(partitioned).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
+    dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.THREAD_LOCAL);
+    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
+    dag.setAttribute(partitioned,OperatorContext.MEMORY_MB,256);
 
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    ResourceRequestHandler rr = new ResourceRequestHandler();
+
+    int containerMem = 1000;
+    Map<String, NodeReport> nodeReports = Maps.newHashMap();
+    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
+      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nodeReports.put(nr.getNodeId().getHost(), nr);
+    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
+      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nodeReports.put(nr.getNodeId().getHost(), nr);
+
+    // set resources
+    rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
+    Assert.assertEquals("number of containers is 1", 1, scm.containerStartRequests.size());
+    for (ContainerStartRequest csr : scm.containerStartRequests) {
+      String host = rr.getHost(csr, true);
+      csr.container.host = host;
+      Assert.assertEquals("Hosts set to host2", "host2", host);
+    }
+  }
+
+  @Test
+  public void testContainerLocal()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.getMeta(o1).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
+
+    GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    dag.setAttribute(o1, OperatorContext.MEMORY_MB, 256);
+    dag.setAttribute(partitioned,OperatorContext.MEMORY_MB,256);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
 
@@ -163,13 +201,90 @@ public class HostLocalTest
 
     // set resources
     rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
-
+    Assert.assertEquals("number of containers is 1", 1, scm.containerStartRequests.size());
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem, true);
+      String host = rr.getHost(csr, true);
       csr.container.host = host;
       Assert.assertEquals("Hosts set to host2", "host2", host);
     }
-
   }
 
+  @Test
+  public void testContainerLocalWithVCores()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.getMeta(o1).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
+
+    GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
+    dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
+    dag.setAttribute(o1,OperatorContext.VCORES,1);
+    dag.setAttribute(partitioned,OperatorContext.VCORES,1);
+
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    ResourceRequestHandler rr = new ResourceRequestHandler();
+
+    int containerMem = 1000;
+    Map<String, NodeReport> nodeReports = Maps.newHashMap();
+    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
+      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nodeReports.put(nr.getNodeId().getHost(), nr);
+    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
+      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nodeReports.put(nr.getNodeId().getHost(), nr);
+
+    // set resources
+    rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
+    Assert.assertEquals("number of containers is 1", 1, scm.containerStartRequests.size());
+    for (ContainerStartRequest csr : scm.containerStartRequests) {
+      String host = rr.getHost(csr, true);
+      csr.container.host = host;
+      Assert.assertEquals("number of vcores", 2, csr.container.getRequiredVCores());
+      Assert.assertEquals("Hosts set to host2", "host2", host);
+    }
+  }
+
+  @Test
+  public void testUnavailableResources()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, new File("target", HostLocalTest.class.getName()).getAbsolutePath());
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    dag.getMeta(o1).getAttributes().put(OperatorContext.LOCALITY_HOST, "host2");
+
+    GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
+    dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setLocality(Locality.CONTAINER_LOCAL);
+    dag.setAttribute(o1,OperatorContext.MEMORY_MB,256);
+    dag.setAttribute(o1,OperatorContext.VCORES,2);
+    dag.setAttribute(partitioned,OperatorContext.VCORES,1);
+
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+
+    ResourceRequestHandler rr = new ResourceRequestHandler();
+
+    int containerMem = 1000;
+    Map<String, NodeReport> nodeReports = Maps.newHashMap();
+    NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
+      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nodeReports.put(nr.getNodeId().getHost(), nr);
+    nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host2", 0),
+      NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem * 2, 2), 0, null, 0);
+    nodeReports.put(nr.getNodeId().getHost(), nr);
+
+    // set resources
+    rr.updateNodeReports(Lists.newArrayList(nodeReports.values()));
+    Assert.assertEquals("number of containers is 1", 1, scm.containerStartRequests.size());
+    for (ContainerStartRequest csr : scm.containerStartRequests) {
+      String host = rr.getHost(csr, true);
+      Assert.assertEquals("number of vcores", 3, csr.container.getRequiredVCores());
+      Assert.assertNull("Host is null", host);
+    }
+  }
 }

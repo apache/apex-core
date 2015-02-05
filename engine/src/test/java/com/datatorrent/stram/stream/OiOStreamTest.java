@@ -25,8 +25,11 @@ import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.GenericNodeTest.GenericOperator;
 import com.datatorrent.stram.engine.ProcessingModeTests.CollectorOperator;
 import com.datatorrent.stram.engine.RecoverableInputOperator;
+import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.physical.PhysicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 
 /**
@@ -167,6 +170,31 @@ public class OiOStreamTest
       Assert.fail("OIOIO diamond validation");
     }
   }
+
+  @Test
+  public void validatePositiveOiOiOdiamondWithCores()
+  {
+    logger.info("Checking the logic for sanity checking of OiO");
+
+    LogicalPlan plan = new LogicalPlan();
+    ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
+    plan.setAttribute(inputOperator, OperatorContext.VCORES,2);
+    plan.setAttribute(intermediateOperator1, OperatorContext.VCORES,1);
+    plan.setAttribute(intermediateOperator2, OperatorContext.VCORES,5);
+
+    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout1", intermediateOperator1.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout2", intermediateOperator2.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
+    plan.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    PhysicalPlan physicalPlan = new PhysicalPlan(plan, new TestPlanContext());
+    Assert.assertTrue("number of containers", 1 == physicalPlan.getContainers().size());
+    Assert.assertTrue("number of vcores", 5 == physicalPlan.getContainers().get(0).getRequiredVCores());
+  }
+
 
   @Test
   public void validateNegativeOiOiOdiamond()

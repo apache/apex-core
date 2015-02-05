@@ -4,9 +4,23 @@
  */
 package com.datatorrent.stram;
 
+import java.io.File;
+import java.util.Map;
+
+import org.apache.hadoop.yarn.api.records.NodeReport;
+import org.apache.hadoop.yarn.api.records.NodeState;
+import org.apache.hadoop.yarn.server.utils.BuilderUtils;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
+
 import com.datatorrent.lib.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
@@ -14,16 +28,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import java.io.File;
-import java.util.Map;
-import org.apache.hadoop.yarn.api.records.NodeReport;
-import org.apache.hadoop.yarn.api.records.NodeState;
-import org.apache.hadoop.yarn.server.utils.BuilderUtils;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class LocalityTest {
 
@@ -57,7 +61,7 @@ public class LocalityTest {
 
     ResourceRequestHandler rr = new ResourceRequestHandler();
 
-    int containerMem = 1000;
+    int containerMem = 2000;
     Map<String, NodeReport> nodeReports = Maps.newHashMap();
     NodeReport nr = BuilderUtils.newNodeReport(BuilderUtils.newNodeId("host1", 0),
     		NodeState.RUNNING, "httpAddress", "rackName", BuilderUtils.newResource(0, 0), BuilderUtils.newResource(containerMem*2, 2), 0, null, 0);
@@ -71,7 +75,7 @@ public class LocalityTest {
 
     Map<PTContainer, String> requestedHosts = Maps.newHashMap();
     for (ContainerStartRequest csr : scm.containerStartRequests) {
-      String host = rr.getHost(csr, containerMem,true);
+      String host = rr.getHost(csr, true);
       csr.container.host = host;
       // update the node report
       if (host != null) {

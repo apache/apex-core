@@ -7,10 +7,10 @@ package com.datatorrent.stram;
 import java.net.InetSocketAddress;
 import java.util.Map;
 
+import org.junit.Assert;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-
-import org.junit.Assert;
 
 import com.datatorrent.api.Stats.OperatorStats;
 
@@ -48,7 +48,7 @@ public class MockContainer
     c.setResourceRequestPriority(c.getId());
     String containerId = "container" + c.getId();
     InetSocketAddress bufferServerAddress = InetSocketAddress.createUnresolved(containerId+"Host", 0);
-    return scm.assignContainer(new StreamingContainerManager.ContainerResource(c.getId(), containerId, "localhost", 1024, null), bufferServerAddress);
+    return scm.assignContainer(new StreamingContainerManager.ContainerResource(c.getId(), containerId, "localhost", 1024,0, null), bufferServerAddress);
   }
 
   public void deploy()

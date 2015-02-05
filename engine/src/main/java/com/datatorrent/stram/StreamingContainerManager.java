@@ -14,18 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.Nullable;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -41,8 +31,14 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -53,6 +49,7 @@ import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
@@ -685,6 +682,7 @@ public class StreamingContainerManager implements PlanContext
     cs.container.bufferServerAddress = null;
     cs.container.setResourceRequestPriority(-1);
     cs.container.setAllocatedMemoryMB(0);
+    cs.container.setAllocatedVCores(0);
 
     // resolve dependencies
     UpdateCheckpointsContext ctx = new UpdateCheckpointsContext(clock);
@@ -753,16 +751,19 @@ public class StreamingContainerManager implements PlanContext
     public final String containerId;
     public final String host;
     public final int memoryMB;
+    public final int vCores;
     public final int priority;
     public final String nodeHttpAddress;
 
-    public ContainerResource(int priority, String containerId, String host, int memoryMB, String nodeHttpAddress)
+    public ContainerResource(int priority, String containerId, String host, int memoryMB, int vCores, String nodeHttpAddress)
     {
       this.containerId = containerId;
       this.host = host;
       this.memoryMB = memoryMB;
+      this.vCores = vCores;
       this.priority = priority;
       this.nodeHttpAddress = nodeHttpAddress;
+
     }
 
     /**
@@ -817,6 +818,7 @@ public class StreamingContainerManager implements PlanContext
     container.bufferServerAddress = bufferServerAddr;
     container.nodeHttpAddress = resource.nodeHttpAddress;
     container.setAllocatedMemoryMB(resource.memoryMB);
+    container.setAllocatedVCores(resource.vCores);
     container.setStartedTime(-1);
     container.setFinishedTime(-1);
     writeJournal(SetContainerState.newInstance(container));
@@ -1891,6 +1893,9 @@ public class StreamingContainerManager implements PlanContext
           loi.hosts.add(container.host);
         }
       }
+    }
+    if (plan.getCountersAggregatorFor(operator) != null) {
+      loi.counters = plan.aggregatePhysicalCounters(operator);
     }
     return loi;
   }

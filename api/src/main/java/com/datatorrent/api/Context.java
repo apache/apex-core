@@ -178,6 +178,11 @@ public interface Context
      */
     Attribute<Integer> MEMORY_MB = new Attribute<Integer>(1024);
     /**
+     * CPU Cores that the operator requires for optimal functioning. Used to calculate total CPU Cores requirement for containers.
+     */
+    Attribute<Integer> VCORES = new Attribute<Integer>(0);
+
+    /**
      * The options to be pass to JVM when launching the operator. Options such as java maximum heap size can be specified here.
      */
     Attribute<String> JVM_OPTIONS = new Attribute<String>(new String2String());
