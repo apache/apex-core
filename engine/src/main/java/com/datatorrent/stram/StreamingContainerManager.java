@@ -224,8 +224,9 @@ public class StreamingContainerManager implements PlanContext
     ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
     ci.numOperators = 0;
     YarnConfiguration conf = new YarnConfiguration();
+    String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
     if (allocatedMemoryBytes == 0) {
-      String url = ConfigUtils.getSchemePrefix(conf) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/ws/v1/node/containers/" + ci.id;
+      String url = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/ws/v1/node/containers/" + ci.id;
       WebServicesClient webServicesClient = new WebServicesClient();
       try {
         String content = webServicesClient.process(url, String.class, new WebServicesClient.GetWebServicesHandler<String>());
@@ -237,8 +238,7 @@ public class StreamingContainerManager implements PlanContext
     }
     ci.memoryMBAllocated = (int)(allocatedMemoryBytes / (1024 * 1024));
     ci.lastHeartbeat = -1;
-    String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
-    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString()) + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
     ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
     ci.startedTime = startTime;
     ci.finishedTime = -1;
