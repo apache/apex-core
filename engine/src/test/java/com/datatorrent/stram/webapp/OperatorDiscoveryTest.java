@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,13 +32,28 @@ public class OperatorDiscoveryTest
 
   }
 
+  @Test
+  public void testValueSerialization() throws Exception
+  {
+    CustomBean bean = new CustomBean();
+    bean.map.put("key1", new CustomBean.Nested());
+
+
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
+    //mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+    String s = mapper.writeValueAsString(bean);
+    System.out.println(new JSONObject(s).toString(2));
+  }
+
   public static class CustomBean
   {
     private int count;
     private List<String> stringList;
     private Properties props;
-    private Nested n;
-    public Map<String, Nested> m = new HashMap<String, CustomBean.Nested>();
+    private Nested nested;
+    private Map<String, Nested> map = new HashMap<String, CustomBean.Nested>();
 
     public static class Nested
     {
@@ -99,24 +117,24 @@ public class OperatorDiscoveryTest
       this.props = props;
     }
 
-    public Nested getN()
+    public Nested getNested()
     {
-      return n;
+      return nested;
     }
 
-    public void setN(Nested n)
+    public void setNested(Nested n)
     {
-      this.n = n;
+      this.nested = n;
     }
 
-    public Map<String, Nested> getM()
+    public Map<String, Nested> getMap()
     {
-      return m;
+      return map;
     }
 
-    public void setM(Map<String, Nested> m)
+    public void setMap(Map<String, Nested> m)
     {
-      this.m = m;
+      this.map = m;
     }
 
   }
