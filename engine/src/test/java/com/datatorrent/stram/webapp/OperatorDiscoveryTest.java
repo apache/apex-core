@@ -18,6 +18,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.BaseOperator;
+import com.google.common.collect.Lists;
 
 public class OperatorDiscoveryTest
 {
@@ -37,7 +38,8 @@ public class OperatorDiscoveryTest
   {
     CustomBean bean = new CustomBean();
     bean.map.put("key1", new CustomBean.Nested());
-
+    bean.stringArray = new String[] { "one", "two", "three" };
+    bean.stringList = Lists.newArrayList("four", "five");
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -54,6 +56,7 @@ public class OperatorDiscoveryTest
     private Properties props;
     private Nested nested;
     private Map<String, Nested> map = new HashMap<String, CustomBean.Nested>();
+    private String[] stringArray;
 
     public static class Nested
     {
@@ -85,6 +88,13 @@ public class OperatorDiscoveryTest
       {
         return list;
       }
+
+      public void setList(ArrayList<String> list)
+      {
+        this.list = list;
+      }
+
+
     }
 
     public int getCount()
@@ -136,6 +146,12 @@ public class OperatorDiscoveryTest
     {
       this.map = m;
     }
+
+    public String[] getStringArray()
+    {
+      return stringArray;
+    }
+
 
   }
 
