@@ -412,7 +412,7 @@ public class PhysicalPlan implements Serializable
         for (PTOperator operator1 : threadLocal) {
           group.addAll(groupMap.get(operator1));
         }
-        for (PTOperator operator1 : threadLocal) {
+        for (PTOperator operator1 : group) {
           groupMap.put(operator1, group);
         }
       }
