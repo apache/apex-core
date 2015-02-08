@@ -462,6 +462,7 @@ public class OperatorDiscoverer
   public JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
   {
     JSONArray arr = new JSONArray();
+    TypeDiscoverer td = new TypeDiscoverer();
     try {
       for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
         if (!"class".equals(pd.getName()) && (!("up".equals(pd.getName()) && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
@@ -483,11 +484,16 @@ public class OperatorDiscoverer
                   }
                 }
               }
+              // type can be a type symbol or parameterized type
+              td.setTypeArguments(clazz, readMethod.getGenericReturnType(), propertyObj);
+            } else {
+              if (pd.getWriteMethod() != null) {
+                td.setTypeArguments(clazz, pd.getWriteMethod().getGenericParameterTypes()[0], propertyObj);
+              }
             }
-            propertyObj.put("type", propertyType.getName());
-            if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang") && level < MAX_PROPERTY_LEVELS) {
-              propertyObj.put("properties", getClassProperties(propertyType, level + 1));
-            }
+            //if (!propertyType.isPrimitive() && !propertyType.isEnum() && !propertyType.isArray() && !propertyType.getName().startsWith("java.lang") && level < MAX_PROPERTY_LEVELS) {
+            //  propertyObj.put("properties", getClassProperties(propertyType, level + 1));
+            //}
             arr.put(propertyObj);
           }
         }

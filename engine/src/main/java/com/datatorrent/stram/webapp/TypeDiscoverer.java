@@ -181,4 +181,15 @@ public class TypeDiscoverer
     }
     return ports;
   }
+
+  public void setTypeArguments(Class<?> clazz, Type type, JSONObject meta)
+  {
+    getParameterizedTypeArguments(type);
+    try {
+      resolveTypeParameters(type, meta);
+    } catch (JSONException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
 }

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
+import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
@@ -31,6 +31,18 @@ public class OperatorDiscoveryTest
     JSONArray arr = od.getClassProperties(CustomBean.class, 0);
     System.out.println(arr.toString(2));
 
+    JSONObject mapProperty = arr.getJSONObject(1);
+    Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
+    Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
+    Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
+    Assert.assertEquals("type " + mapProperty, java.util.Map.class.toString(), mapProperty.get("type"));
+
+    JSONArray typeArgs = mapProperty.getJSONArray("typeArgs");
+    Assert.assertNotNull("typeArgs", typeArgs);
+    Assert.assertEquals("typeArgs " + typeArgs, 2, typeArgs.length());
+    Assert.assertEquals("", String.class.toString(), typeArgs.getJSONObject(0).get("type"));
+    Assert.assertEquals("", CustomBean.Nested.class.toString(), typeArgs.getJSONObject(1).get("type"));
+
   }
 
   @Test
@@ -43,10 +55,10 @@ public class OperatorDiscoveryTest
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
-    //mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+    //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
+    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_ARRAY);
     String s = mapper.writeValueAsString(bean);
-    System.out.println(new JSONObject(s).toString(2));
+    System.out.println(new JSONArray(s).toString(2));
   }
 
   public static class CustomBean
