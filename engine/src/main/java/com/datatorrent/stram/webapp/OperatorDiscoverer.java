@@ -9,6 +9,9 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
+import com.datatorrent.stram.webapp.OperatorDiscoveryTest.CustomBean;
+import com.google.common.collect.Lists;
+
 import java.beans.*;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,7 +22,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.xml.parsers.*;
+
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
@@ -320,7 +325,7 @@ public class OperatorDiscoverer
       JSONObject response = new JSONObject();
       JSONArray inputPorts = new JSONArray();
       JSONArray outputPorts = new JSONArray();
-      JSONArray properties = getClassProperties(clazz);
+      JSONArray properties = getClassProperties(clazz, 0);
 
       TypeDiscoverer td = new TypeDiscoverer();
       JSONArray portTypeInfo = td.getPortTypes(clazz);
@@ -449,17 +454,30 @@ public class OperatorDiscoverer
     }
   }
 
+  public JSONObject describeClass(Class<?> clazz) throws Exception
+  {
+    JSONObject desc = new JSONObject();
+    desc.put("name", clazz.getName());
+    if (clazz.isEnum()) {
+      @SuppressWarnings("unchecked")
+      Class<Enum<?>> enumClass = (Class<Enum<?>>)clazz;
+      ArrayList<String> enumNames = Lists.newArrayList();
+      for (Enum<?> e : enumClass.getEnumConstants()) {
+        enumNames.add(e.name());
+      }
+      desc.put("enum", enumNames);
+    }
+    desc.put("properties", getClassProperties(clazz, 0));
+    return desc;
+  }
+
+
   private static String getDocName(Class<?> clazz)
   {
     return clazz.getName().replace('.', '/').replace('$', '.') + ".html";
   }
 
-  private JSONArray getClassProperties(Class<?> clazz) throws IntrospectionException
-  {
-    return getClassProperties(clazz, 0);
-  }
-
-  public JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
+  private JSONArray getClassProperties(Class<?> clazz, int level) throws IntrospectionException
   {
     JSONArray arr = new JSONArray();
     TypeDiscoverer td = new TypeDiscoverer();

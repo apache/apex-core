@@ -28,10 +28,12 @@ public class OperatorDiscoveryTest
     OperatorDiscoverer od = new OperatorDiscoverer();
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
-    JSONArray arr = od.getClassProperties(CustomBean.class, 0);
-    System.out.println(arr.toString(2));
+    JSONObject desc = od.describeClass(CustomBean.class);
+    System.out.println(desc.toString(2));
 
-    JSONObject mapProperty = arr.getJSONObject(1);
+    JSONArray props = desc.getJSONArray("properties");
+    Assert.assertNotNull("properties", props);
+    JSONObject mapProperty = props.getJSONObject(2);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
@@ -42,6 +44,12 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("typeArgs " + typeArgs, 2, typeArgs.length());
     Assert.assertEquals("", String.class.toString(), typeArgs.getJSONObject(0).get("type"));
     Assert.assertEquals("", CustomBean.Nested.class.toString(), typeArgs.getJSONObject(1).get("type"));
+
+
+    JSONObject enumDesc = od.describeClass(CustomBean.Color.class);
+    JSONArray enumNames = enumDesc.getJSONArray("enum");
+    Assert.assertNotNull("enumNames", enumNames);
+    Assert.assertEquals("", CustomBean.Color.BLUE.name(), enumNames.get(0));
 
   }
 
@@ -56,9 +64,9 @@ public class OperatorDiscoveryTest
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
-    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_ARRAY);
+    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
     String s = mapper.writeValueAsString(bean);
-    System.out.println(new JSONArray(s).toString(2));
+    System.out.println(new JSONObject(s).toString(2));
   }
 
   public static class CustomBean
@@ -69,6 +77,7 @@ public class OperatorDiscoveryTest
     private Nested nested;
     private Map<String, Nested> map = new HashMap<String, CustomBean.Nested>();
     private String[] stringArray;
+    private Color color = Color.BLUE;
 
     public static class Nested
     {
@@ -106,7 +115,13 @@ public class OperatorDiscoveryTest
         this.list = list;
       }
 
+    }
 
+    public enum Color
+    {
+      BLUE,
+      RED,
+      WHITE
     }
 
     public int getCount()
@@ -157,6 +172,16 @@ public class OperatorDiscoveryTest
     public void setMap(Map<String, Nested> m)
     {
       this.map = m;
+    }
+
+    public Color getColor()
+    {
+      return color;
+    }
+
+    public void setColor(Color color)
+    {
+      this.color = color;
     }
 
     public String[] getStringArray()
