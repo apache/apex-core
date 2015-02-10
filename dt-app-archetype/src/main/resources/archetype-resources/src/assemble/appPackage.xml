@@ -33,6 +33,14 @@
       <directory>${basedir}/src/main/resources/app</directory>
       <outputDirectory>/app</outputDirectory>
     </fileSet>
+    <fileSet>
+      <directory>${basedir}/src/main/resources/widget</directory>
+      <outputDirectory>/widget</outputDirectory>
+    </fileSet>
+    <fileSet>
+      <directory>${basedir}/src/main/resources/dashboard</directory>
+      <outputDirectory>/dashboard</outputDirectory>
+    </fileSet>
   </fileSets>
 
 </assembly>
