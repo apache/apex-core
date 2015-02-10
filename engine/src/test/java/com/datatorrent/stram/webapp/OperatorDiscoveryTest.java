@@ -28,12 +28,12 @@ public class OperatorDiscoveryTest
     OperatorDiscoverer od = new OperatorDiscoverer();
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
-    JSONObject desc = od.describeClass(CustomBean.class);
-    System.out.println(desc.toString(2));
+    JSONObject desc = od.describeClass(TestOperator.class);
+    System.out.println("\ntype info for " + TestOperator.class + ":\n" + desc.toString(2));
 
     JSONArray props = desc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    JSONObject mapProperty = props.getJSONObject(2);
+    JSONObject mapProperty = props.getJSONObject(4);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
@@ -43,23 +43,35 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull("typeArgs", typeArgs);
     Assert.assertEquals("typeArgs " + typeArgs, 2, typeArgs.length());
     Assert.assertEquals("", String.class.toString(), typeArgs.getJSONObject(0).get("type"));
-    Assert.assertEquals("", CustomBean.Nested.class.toString(), typeArgs.getJSONObject(1).get("type"));
+    Assert.assertEquals("", Structured.class.toString(), typeArgs.getJSONObject(1).get("type"));
 
 
-    JSONObject enumDesc = od.describeClass(CustomBean.Color.class);
+    JSONObject enumDesc = od.describeClass(Color.class);
     JSONArray enumNames = enumDesc.getJSONArray("enum");
     Assert.assertNotNull("enumNames", enumNames);
-    Assert.assertEquals("", CustomBean.Color.BLUE.name(), enumNames.get(0));
+    Assert.assertEquals("", Color.BLUE.name(), enumNames.get(0));
+
+    JSONObject structuredProperty = props.getJSONObject(6);
+    Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
+    Assert.assertEquals("type " + structuredProperty, Structured.class.toString(), structuredProperty.get("type"));
+
+    // type is not a primitive type
+    // fetch property meta data to find out how to render it
+    desc = od.describeClass(Structured.class);
+    System.out.println("\ntype info for " + Structured.class + ":\n" + desc.toString(2));
 
   }
 
   @Test
   public void testValueSerialization() throws Exception
   {
-    CustomBean bean = new CustomBean();
-    bean.map.put("key1", new CustomBean.Nested());
+    TestOperator bean = new TestOperator();
+    bean.map.put("key1", new Structured());
     bean.stringArray = new String[] { "one", "two", "three" };
     bean.stringList = Lists.newArrayList("four", "five");
+    bean.props = new Properties();
+    bean.props.setProperty("key1", "value1");
+    bean.structuredArray = new Structured[]{new Structured()};
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -69,69 +81,93 @@ public class OperatorDiscoveryTest
     System.out.println(new JSONObject(s).toString(2));
   }
 
-  public static class CustomBean
+  public static class Structured
   {
-    private int count;
+    private int size;
+    private String name;
+    private ArrayList<String> list;
+
+    public int getSize()
+    {
+      return size;
+    }
+
+    public void setSize(int size)
+    {
+      this.size = size;
+    }
+
+    public String getName()
+    {
+      return name;
+    }
+
+    public void setName(String name)
+    {
+      this.name = name;
+    }
+
+    public ArrayList<String> getList()
+    {
+      return list;
+    }
+
+    public void setList(ArrayList<String> list)
+    {
+      this.list = list;
+    }
+
+  }
+
+  public enum Color
+  {
+    BLUE,
+    RED,
+    WHITE
+  }
+
+  public static class TestOperator extends BaseOperator
+  {
+    private int intProp;
+    private long longProp;
+    private double doubleProp;
+
     private List<String> stringList;
     private Properties props;
-    private Nested nested;
-    private Map<String, Nested> map = new HashMap<String, CustomBean.Nested>();
+    private Structured nested;
+    private Map<String, Structured> map = new HashMap<String, Structured>();
     private String[] stringArray;
     private Color color = Color.BLUE;
+    private Structured[] structuredArray;
 
-    public static class Nested
+    public int getIntProp()
     {
-      private int size;
-      private String name;
-      private ArrayList<String> list;
-
-      public int getSize()
-      {
-        return size;
-      }
-
-      public void setSize(int size)
-      {
-        this.size = size;
-      }
-
-      public String getName()
-      {
-        return name;
-      }
-
-      public void setName(String name)
-      {
-        this.name = name;
-      }
-
-      public ArrayList<String> getList()
-      {
-        return list;
-      }
-
-      public void setList(ArrayList<String> list)
-      {
-        this.list = list;
-      }
-
+      return intProp;
     }
 
-    public enum Color
+    public void setIntProp(int intProp)
     {
-      BLUE,
-      RED,
-      WHITE
+      this.intProp = intProp;
     }
 
-    public int getCount()
+    public long getLongProp()
     {
-      return count;
+      return longProp;
     }
 
-    public void setCount(int count)
+    public void setLongProp(long longProp)
     {
-      this.count = count;
+      this.longProp = longProp;
+    }
+
+    public double getDoubleProp()
+    {
+      return doubleProp;
+    }
+
+    public void setDoubleProp(double doubleProp)
+    {
+      this.doubleProp = doubleProp;
     }
 
     public List<String> getStringList()
@@ -154,22 +190,22 @@ public class OperatorDiscoveryTest
       this.props = props;
     }
 
-    public Nested getNested()
+    public Structured getNested()
     {
       return nested;
     }
 
-    public void setNested(Nested n)
+    public void setNested(Structured n)
     {
       this.nested = n;
     }
 
-    public Map<String, Nested> getMap()
+    public Map<String, Structured> getMap()
     {
       return map;
     }
 
-    public void setMap(Map<String, Nested> m)
+    public void setMap(Map<String, Structured> m)
     {
       this.map = m;
     }
@@ -189,6 +225,15 @@ public class OperatorDiscoveryTest
       return stringArray;
     }
 
+    public Structured[] getStructuredArray()
+    {
+      return structuredArray;
+    }
+
+    public void setStructuredArray(Structured[] structuredArray)
+    {
+      this.structuredArray = structuredArray;
+    }
 
   }
 

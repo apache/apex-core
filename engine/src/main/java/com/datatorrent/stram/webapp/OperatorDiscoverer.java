@@ -9,7 +9,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
-import com.datatorrent.stram.webapp.OperatorDiscoveryTest.CustomBean;
 import com.google.common.collect.Lists;
 
 import java.beans.*;
