@@ -57,7 +57,6 @@ public class AppPackageTest
         // Set up test instance
         ap = new AppPackage(file, true);
         jomp = new JacksonObjectMapperProvider();
-        jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
         json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
 
       } catch (ZipException e) {

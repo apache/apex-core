@@ -3680,7 +3680,6 @@ public class DTCli
       AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
-        jomp.addSerializer(LogicalPlan.class, new LogicalPlanSerializer());
         printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ap)));
       }
       finally {

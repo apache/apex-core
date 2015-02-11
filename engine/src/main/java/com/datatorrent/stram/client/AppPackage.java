@@ -95,6 +95,7 @@ public class AppPackage extends JarFile implements Closeable
   {
     public String name;
     public String version;
+    public final String dir;
     public final List<String> files = new ArrayList<String>();
     public String schemaType;
     public String schemaVersion;
@@ -102,9 +103,10 @@ public class AppPackage extends JarFile implements Closeable
     public String moduleName;
     public String serviceName;
 
-    public Widget(String name)
+    public Widget(String name, String dir)
     {
       this.name = name;
+      this.dir = dir;
     }
   }
 
@@ -270,6 +272,16 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableMap(defaultProperties);
   }
 
+  public File widgetFile(String widgetName, String filePath) 
+  {
+    for (Widget w : widgets) {
+      if (w.name.equals(widgetName)) {
+        return new File(StringUtils.join(new String[]{directory, "widget", w.dir, filePath}, File.separator));
+      }
+    }
+    return null;
+  }
+
   private void processAppDirectory(File dir)
   {
     Configuration config = new Configuration();
@@ -413,7 +425,7 @@ public class AppPackage extends JarFile implements Closeable
         File packageJson = new File(entry, "package.json");
         if (packageJson.exists()) {
           try {
-            Widget widget = new Widget(entry.getName());
+            Widget widget = new Widget(entry.getName(), entry.getName());
             JSONObject json = new JSONObject(FileUtils.readFileToString(packageJson));
             if (json.has("name")) {
               widget.name = json.getString("name");
