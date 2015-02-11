@@ -14,6 +14,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +52,9 @@ public class AppPackage extends JarFile implements Closeable
   private final Map<String, String> defaultProperties = new TreeMap<String, String>();
   private final Set<String> configs = new TreeSet<String>();
 
+  private final List<Dashboard> dashboards = new ArrayList<Dashboard>();
+  private final List<Widget> widgets = new ArrayList<Widget>();
+
   public static class AppInfo
   {
     public final String name;
@@ -70,6 +75,37 @@ public class AppPackage extends JarFile implements Closeable
       this.type = type;
     }
 
+  }
+
+  public static class Dashboard
+  {
+    public String name;
+    public String description;
+    public final String file;
+    public JSONObject config;
+
+    public Dashboard(String name, String file)
+    {
+      this.name = name;
+      this.file = file;
+    }
+  }
+
+  public static class Widget
+  {
+    public String name;
+    public String version;
+    public final List<String> files = new ArrayList<String>();
+    public String schemaType;
+    public String schemaVersion;
+    public String description;
+    public String moduleName;
+    public String serviceName;
+
+    public Widget(String name)
+    {
+      this.name = name;
+    }
   }
 
   public AppPackage(File file) throws IOException, ZipException
@@ -121,6 +157,15 @@ public class AppPackage extends JarFile implements Closeable
     if (confDirectory.exists()) {
       processConfDirectory(confDirectory);
     }
+    File dashboardDirectory = new File(newDirectory, "dashboard");
+    if (dashboardDirectory.exists()) {
+      processDashboardDirectory(dashboardDirectory);
+    }
+    File widgetDirectory = new File(newDirectory, "widget");
+    if (widgetDirectory.exists()) {
+      processWidgetDirectory(widgetDirectory);
+    }
+
     File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
       processPropertiesXml(propertiesXml, null);
@@ -185,6 +230,16 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableCollection(configs);
   }
 
+  public Collection<Dashboard> getDashboards()
+  {
+    return Collections.unmodifiableCollection(dashboards);
+  }
+
+  public Collection<Widget> getWidgets()
+  {
+    return Collections.unmodifiableCollection(widgets);
+  }
+
   public List<AppInfo> getApplications()
   {
     return Collections.unmodifiableList(applications);
@@ -217,8 +272,6 @@ public class AppPackage extends JarFile implements Closeable
 
   private void processAppDirectory(File dir)
   {
-    Iterator<File> it = FileUtils.iterateFiles(dir, null, false);
-
     Configuration config = new Configuration();
 
     List<String> absClassPath = new ArrayList<String>(classPath);
@@ -229,9 +282,9 @@ public class AppPackage extends JarFile implements Closeable
       }
     }
     config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
+    File[] files = dir.listFiles();
+    for (File entry : files) {
 
-    while (it.hasNext()) {
-      File entry = it.next();
       if (entry.getName().endsWith(".jar")) {
         appJars.add(entry.getName());
         try {
@@ -260,7 +313,6 @@ public class AppPackage extends JarFile implements Closeable
         }
       }
     }
-    it = FileUtils.iterateFiles(dir, null, false);
 
     // this is for the properties and json files to be able to depend on the app jars,
     // since it's possible for users to implement the operators as part of the app package
@@ -268,8 +320,8 @@ public class AppPackage extends JarFile implements Closeable
       absClassPath.add(new File(dir, appJar).getAbsolutePath());
     }
     config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
-    while (it.hasNext()) {
-      File entry = it.next();
+    files = dir.listFiles();
+    for (File entry : files) {
       if (entry.getName().endsWith(".json")) {
         appJsonFiles.add(entry.getName());
         try {
@@ -322,12 +374,65 @@ public class AppPackage extends JarFile implements Closeable
 
   private void processConfDirectory(File dir)
   {
-    Iterator<File> it = FileUtils.iterateFiles(dir, null, false);
-
-    while (it.hasNext()) {
-      File entry = it.next();
+    File[] files = dir.listFiles();
+    for (File entry : files) {
       if (entry.getName().endsWith(".xml")) {
         configs.add(entry.getName());
+      }
+    }
+  }
+
+  private void processDashboardDirectory(File dir)
+  {
+    File[] files = dir.listFiles();
+
+    for (File entry : files) {
+      if (entry.getName().endsWith(".json")) {
+        try {
+          JSONObject json = new JSONObject(FileUtils.readFileToString(entry));
+          Dashboard db = new Dashboard(entry.getName(), entry.getName());
+          if (json.has("name")) {
+            db.name = json.getString("name");
+          }
+          db.config = json.getJSONObject("config");
+          db.description = json.optString("description", null);
+          dashboards.add(db);
+        } catch (Exception ex) {
+          LOG.error("Caught exception when processing dashboard directory {}", entry.getName(), ex);
+        }
+      }
+    }
+  }
+
+  private void processWidgetDirectory(File dir)
+  {
+    File[] files = dir.listFiles();
+
+    for (File entry : files) {
+      if (entry.isDirectory()) {
+        File packageJson = new File(entry, "package.json");
+        if (packageJson.exists()) {
+          try {
+            Widget widget = new Widget(entry.getName());
+            JSONObject json = new JSONObject(FileUtils.readFileToString(packageJson));
+            if (json.has("name")) {
+              widget.name = json.getString("name");
+            }
+            widget.schemaType = json.getString("schemaType");
+            widget.schemaVersion = json.getString("schemaVersion");
+            widget.version = json.optString("version", null);
+            widget.moduleName = json.getString("moduleName");
+            widget.serviceName = json.getString("serviceName");
+            JSONArray jsonArray = json.getJSONArray("main");
+            for (int i = 0; i < jsonArray.length(); i++) {
+              widget.files.add(jsonArray.getString(i));
+            }
+            widget.description = json.optString("description", null);
+            widgets.add(widget);
+          } catch (Exception ex) {
+            LOG.error("Caught exception when reading widget directory {}", dir.getName(), ex);
+          }
+        }
       }
     }
   }
