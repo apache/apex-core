@@ -72,6 +72,8 @@ public class OperatorDiscoveryTest
     bean.props = new Properties();
     bean.props.setProperty("key1", "value1");
     bean.structuredArray = new Structured[]{new Structured()};
+    bean.structuredArray[0].name = "s1";
+    bean.color = Color.BLUE;
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -79,6 +81,14 @@ public class OperatorDiscoveryTest
     mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
     String s = mapper.writeValueAsString(bean);
     System.out.println(new JSONObject(s).toString(2));
+
+
+    TestOperator clone = mapper.readValue(s, TestOperator.class);
+    Assert.assertNotNull(clone.structuredArray);
+    Assert.assertEquals(Color.BLUE, clone.color);
+    Assert.assertEquals(bean.structuredArray.length, clone.structuredArray.length);
+
+
   }
 
   public static class Structured
@@ -137,7 +147,7 @@ public class OperatorDiscoveryTest
     private Structured nested;
     private Map<String, Structured> map = new HashMap<String, Structured>();
     private String[] stringArray;
-    private Color color = Color.BLUE;
+    private Color color;
     private Structured[] structuredArray;
 
     public int getIntProp()
