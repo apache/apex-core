@@ -33,7 +33,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = desc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    JSONObject mapProperty = props.getJSONObject(4);
+    JSONObject mapProperty = props.getJSONObject(5);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
@@ -51,7 +51,7 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull("enumNames", enumNames);
     Assert.assertEquals("", Color.BLUE.name(), enumNames.get(0));
 
-    JSONObject structuredProperty = props.getJSONObject(6);
+    JSONObject structuredProperty = props.getJSONObject(7);
     Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
     Assert.assertEquals("type " + structuredProperty, Structured.class.toString(), structuredProperty.get("type"));
 
@@ -59,6 +59,9 @@ public class OperatorDiscoveryTest
     // fetch property meta data to find out how to render it
     desc = od.describeClass(Structured.class);
     System.out.println("\ntype info for " + Structured.class + ":\n" + desc.toString(2));
+
+    desc = od.describeClass(Color.class);
+    System.out.println("\ntype info for " + Color.class + ":\n" + desc.toString(2));
 
   }
 
@@ -74,6 +77,7 @@ public class OperatorDiscoveryTest
     bean.structuredArray = new Structured[]{new Structured()};
     bean.structuredArray[0].name = "s1";
     bean.color = Color.BLUE;
+    bean.booleanProp = true;
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -141,6 +145,7 @@ public class OperatorDiscoveryTest
     private int intProp;
     private long longProp;
     private double doubleProp;
+    private boolean booleanProp;
 
     private List<String> stringList;
     private Properties props;
@@ -245,6 +250,13 @@ public class OperatorDiscoveryTest
       this.structuredArray = structuredArray;
     }
 
+    public boolean isBooleanProp() {
+      return booleanProp;
+    }
+
+    public void setBooleanProp(boolean booleanProp) {
+      this.booleanProp = booleanProp;
+    }
   }
 
 }
