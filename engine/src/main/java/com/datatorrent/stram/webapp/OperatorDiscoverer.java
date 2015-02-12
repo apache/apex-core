@@ -483,11 +483,22 @@ public class OperatorDiscoverer
     try {
       for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
         Method readMethod = pd.getReadMethod();
-        if (readMethod != null && readMethod.getDeclaringClass() == java.lang.Enum.class) {
-          // skip getDeclaringClass
-          continue;
+        if (readMethod != null) {
+          if (readMethod.getDeclaringClass() == java.lang.Enum.class) {
+            // skip getDeclaringClass
+            continue;
+          } else if ("class".equals(pd.getName())) {
+            // skip getClass
+            continue;
+          }
+        } else {
+          // yields com.datatorrent.api.Context on JDK6 and com.datatorrent.api.Context.OperatorContext with JDK7
+          if ((!("up".equals(pd.getName()) && com.datatorrent.api.Context.class.isAssignableFrom(pd.getPropertyType())))) {
+            continue;
+          }
         }
-        if (!"class".equals(pd.getName()) && (!("up".equals(pd.getName()) && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
+        //LOG.debug("name: " + pd.getName() + " type: " + pd.getPropertyType());
+
           Class<?> propertyType = pd.getPropertyType();
           if (propertyType != null) {
             JSONObject propertyObj = new JSONObject();
@@ -517,7 +528,6 @@ public class OperatorDiscoverer
             //}
             arr.put(propertyObj);
           }
-        }
       }
     }
     catch (JSONException ex) {
