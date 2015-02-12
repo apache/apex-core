@@ -482,12 +482,16 @@ public class OperatorDiscoverer
     TypeDiscoverer td = new TypeDiscoverer();
     try {
       for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
+        Method readMethod = pd.getReadMethod();
+        if (readMethod != null && readMethod.getDeclaringClass() == java.lang.Enum.class) {
+          // skip getDeclaringClass
+          continue;
+        }
         if (!"class".equals(pd.getName()) && (!("up".equals(pd.getName()) && pd.getPropertyType().equals(com.datatorrent.api.Context.class)))) {
           Class<?> propertyType = pd.getPropertyType();
           if (propertyType != null) {
             JSONObject propertyObj = new JSONObject();
             propertyObj.put("name", pd.getName());
-            Method readMethod = pd.getReadMethod();
             propertyObj.put("canGet", readMethod != null);
             propertyObj.put("canSet", pd.getWriteMethod() != null);
             if (readMethod != null) {

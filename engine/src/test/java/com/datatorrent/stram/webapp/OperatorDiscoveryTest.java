@@ -50,6 +50,9 @@ public class OperatorDiscoveryTest
     JSONArray enumNames = enumDesc.getJSONArray("enum");
     Assert.assertNotNull("enumNames", enumNames);
     Assert.assertEquals("", Color.BLUE.name(), enumNames.get(0));
+    JSONArray enumProps = enumDesc.getJSONArray("properties");
+    Assert.assertNotNull("properties", enumProps);
+    Assert.assertEquals("props " + enumProps, 0, enumProps.length());
 
     JSONObject structuredProperty = props.getJSONObject(7);
     Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
