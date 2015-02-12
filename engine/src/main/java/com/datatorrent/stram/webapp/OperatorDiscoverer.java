@@ -26,6 +26,7 @@ import javax.xml.parsers.*;
 
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jettison.json.*;
+import org.objectweb.asm.ClassReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
@@ -58,6 +59,7 @@ public class OperatorDiscoverer
   private static final int MAX_PROPERTY_LEVELS = 5;
   private final String dtOperatorDoclinkPrefix = "https://www.datatorrent.com/docs/apidocs/index.html";
   public static final String PORT_TYPE_INFO_KEY = "portTypeInfo";
+  private final TypeGraph typeGraph = new TypeGraph();
 
   private final Map<String, OperatorClassInfo> classInfo = new HashMap<String, OperatorClassInfo>();
 
@@ -159,10 +161,17 @@ public class OperatorDiscoverer
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
     for (String path: paths) {
-      if (path.startsWith("./") && path.endsWith(".jar")) {
+      if (path.endsWith("jar")) {
         pathsToScan.add(path);
       }
     }
+  }
+  
+  public void includeJRE()
+  {
+    String javahome = System.getProperty("java.home");
+    String jdkJar = javahome + "/lib/rt.jar";
+    pathsToScan.add(jdkJar);
   }
 
   public OperatorDiscoverer(String[] jars)
@@ -180,54 +189,82 @@ public class OperatorDiscoverer
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
   }
 
-  @SuppressWarnings("unchecked")
+  
   private void init()
+  {
+    buildTypeGraph();
+    
+    loadOperatorClass();
+    
+    loadNeededClass();
+    
+  }
+
+  @SuppressWarnings("rawtypes")
+  private void loadNeededClass()
+  {
+    for (Class<? extends Operator> opClazz : operatorClasses) {
+      try {
+        for (PropertyDescriptor pd : Introspector.getBeanInfo(opClazz).getPropertyDescriptors()) {
+//          if(pd.getPropertyType().);
+          if(pd.getWriteMethod()==null){
+            continue;
+          }
+          Class pType = pd.getPropertyType();
+          if(pType.isPrimitive()){
+            continue;
+          } else {
+          }
+        }
+      } catch (IntrospectionException e) {
+        LOG.warn("Load bean error {} ", e);
+      } 
+    }
+  }
+
+  @SuppressWarnings({ "unchecked" })
+  private void loadOperatorClass()
+  {
+    String operatorRoot = Operator.class.getName();
+    Set<String> allOperatorClasses = typeGraph.getDescendants(operatorRoot);
+    for (String opClassName : allOperatorClasses) {
+      try {
+        Class<?> clazz = classLoader.loadClass(opClassName);
+//        typeGraph.get(opClassName).loadedClass = clazz;
+        if (isInstantiableOperatorClass(clazz)) {
+          LOG.debug("Adding class {} as an operator", clazz.getName());
+          operatorClasses.add((Class<? extends Operator>)clazz);
+        }
+      }
+      catch (Throwable ex) {
+        LOG.warn("Class cannot be loaded: {} (error was {})", opClassName, ex.getMessage());
+      }
+    }
+  }
+
+  private void buildTypeGraph()
   {
     for (String jarFile : pathsToScan) {
       try {
         JarFile jar = new JarFile(jarFile);
         try {
           java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
-          boolean hasJavadocXml = false;
           while (entriesEnum.hasMoreElements()) {
             java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
             if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
               try {
                 processJavadocXml(jar.getInputStream(jarEntry));
-                hasJavadocXml = true;
-                break;
+//                break;
               }
               catch (Exception ex) {
                 LOG.warn("Cannot process javadoc xml: ", ex);
               }
+            } else if(!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
+              ClassReader reader = new ClassReader(jar.getInputStream(jarEntry));
+              typeGraph.addNode(reader);
             }
           }
-          // skip jars that don't have the javadoc xml.  for now, we use this to identify jars that contain operator classes.
-          // change this code if there's a better way to identify this in the future.
-          // note that if we process all jars, we will likely end up with out of permgen space error because of transitive dependencies.
-          if (hasJavadocXml) {
-            entriesEnum = jar.entries();
-            while (entriesEnum.hasMoreElements()) {
-              java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-              if (!jarEntry.isDirectory()) {
-                String entryName = jarEntry.getName();
-                if (entryName.endsWith(".class")) {
-                  final String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
-                  LOG.debug("Looking at class {} jar {}", className, jarFile);
-                  try {
-                    Class<?> clazz = classLoader.loadClass(className);
-                    if (isInstantiableOperatorClass(clazz)) {
-                      LOG.debug("Adding class {} as an operator", clazz.getName());
-                      operatorClasses.add((Class<? extends Operator>)clazz);
-                    }
-                  }
-                  catch (Throwable ex) {
-                    LOG.warn("Class cannot be loaded: {} (error was {})", className, ex.getMessage());
-                  }
-                }
-              }
-            }
-          }
+
         }
         finally {
           jar.close();
@@ -236,7 +273,10 @@ public class OperatorDiscoverer
       catch (IOException ex) {
       }
     }
+    
   }
+  
+
 
   private void processJavadocXml(InputStream is) throws ParserConfigurationException, SAXException, IOException
   {
@@ -631,4 +671,22 @@ public class OperatorDiscoverer
       throw new RuntimeException(e);
     }
   }
+
+  public JSONArray getDescendants(String fullClassName)
+  {
+    if(typeGraph.size()==0){
+      init();
+    }
+    return new JSONArray(typeGraph.getDescendants(fullClassName));
+  }
+
+  public JSONArray getPublicConcreteDescendants(String fullClassName, int limit)
+  {
+    if(typeGraph.size()==0){
+      init();
+    }
+    return new JSONArray(typeGraph.getPublicConcreteDescendants(fullClassName, limit));
+  }
+
+
 }

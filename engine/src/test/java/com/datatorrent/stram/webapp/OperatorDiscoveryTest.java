@@ -68,6 +68,20 @@ public class OperatorDiscoveryTest
     System.out.println("\ntype info for " + Color.class + ":\n" + desc.toString(2));
 
   }
+  
+  @Test
+  public void testFindDescendants() throws Exception
+  {
+    OperatorDiscoverer od = new OperatorDiscoverer();
+    od.includeJRE(); 
+    System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
+    
+    System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
+    
+    System.out.println("The descendants list of concrete public type java.util.Map: \n" + od.getPublicConcreteDescendants("java.util.Map", Integer.MAX_VALUE));
+    
+    System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.List", Integer.MAX_VALUE));
+  }
 
   @Test
   public void testValueSerialization() throws Exception
