@@ -33,6 +33,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = desc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
+    Assert.assertEquals("properties " + props, 12, props.length());
     JSONObject mapProperty = props.getJSONObject(5);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));

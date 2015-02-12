@@ -493,11 +493,11 @@ public class OperatorDiscoverer
           }
         } else {
           // yields com.datatorrent.api.Context on JDK6 and com.datatorrent.api.Context.OperatorContext with JDK7
-          if ((!("up".equals(pd.getName()) && com.datatorrent.api.Context.class.isAssignableFrom(pd.getPropertyType())))) {
+          if ("up".equals(pd.getName()) && com.datatorrent.api.Context.class.isAssignableFrom(pd.getPropertyType())) {
             continue;
           }
         }
-        //LOG.debug("name: " + pd.getName() + " type: " + pd.getPropertyType());
+        //LOG.info("name: " + pd.getName() + " type: " + pd.getPropertyType());
 
           Class<?> propertyType = pd.getPropertyType();
           if (propertyType != null) {
