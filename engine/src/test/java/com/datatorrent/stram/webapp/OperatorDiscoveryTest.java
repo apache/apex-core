@@ -38,13 +38,13 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
-    Assert.assertEquals("type " + mapProperty, java.util.Map.class.toString(), mapProperty.get("type"));
+    Assert.assertEquals("type " + mapProperty, java.util.Map.class.getName(), mapProperty.get("type"));
 
     JSONArray typeArgs = mapProperty.getJSONArray("typeArgs");
     Assert.assertNotNull("typeArgs", typeArgs);
     Assert.assertEquals("typeArgs " + typeArgs, 2, typeArgs.length());
-    Assert.assertEquals("", String.class.toString(), typeArgs.getJSONObject(0).get("type"));
-    Assert.assertEquals("", Structured.class.toString(), typeArgs.getJSONObject(1).get("type"));
+    Assert.assertEquals("", String.class.getName(), typeArgs.getJSONObject(0).get("type"));
+    Assert.assertEquals("", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
 
     JSONObject enumDesc = od.describeClass(Color.class);
@@ -57,7 +57,7 @@ public class OperatorDiscoveryTest
 
     JSONObject structuredProperty = props.getJSONObject(7);
     Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
-    Assert.assertEquals("type " + structuredProperty, Structured.class.toString(), structuredProperty.get("type"));
+    Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
 
     // type is not a primitive type
     // fetch property meta data to find out how to render it

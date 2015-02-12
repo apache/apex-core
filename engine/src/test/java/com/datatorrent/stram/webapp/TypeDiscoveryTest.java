@@ -84,10 +84,10 @@ public class TypeDiscoveryTest
     Assert.assertEquals("port name", "outportList", val);
 
     val = root.get(4).path("type").asText();
-    Assert.assertEquals("outportList type", "interface java.util.List", val);
+    Assert.assertEquals("outportList type", "java.util.List", val);
 
     val = root.get(4).path("typeArgs").get(0).path("type").asText();
-    Assert.assertEquals("outportList type", "class java.lang.Number", val);
+    Assert.assertEquals("outportList type", "java.lang.Number", val);
   }
 
   static class ParameterizedTypeOperator<T> extends BaseOperator
@@ -113,7 +113,7 @@ public class TypeDiscoveryTest
     Assert.assertEquals("port name", "output", val);
 
     val = root.get(0).path("type").asText();
-    Assert.assertEquals("port type", "class java.lang.String", val);
+    Assert.assertEquals("port type", "java.lang.String", val);
   }
 
 }

@@ -79,7 +79,7 @@ public class TypeDiscoverer
         typeArgs.put(argMeta);
       }
       meta.put("typeArgs", typeArgs);
-      meta.put("type", ptype.getRawType().toString());
+      meta.put("type", ((Class<?>)ptype.getRawType()).getName());
     } else if (type instanceof WildcardType) {
       meta.put("type", type);
       WildcardType wtype = (WildcardType)type;
@@ -89,7 +89,10 @@ public class TypeDiscoverer
       meta.put("typeBounds", wtMeta);
     } else {
       Type ta = this.typeArguments.get(type.toString());
-      meta.put("type", ta != null ? ta.toString() : type.toString());
+      if (ta == null) {
+        ta = type;
+      }
+      meta.put("type", (ta instanceof Class) ? ((Class<?>)ta).getName() : ta.toString());
     }
   }
 
