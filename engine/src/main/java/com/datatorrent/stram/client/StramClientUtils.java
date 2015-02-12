@@ -313,9 +313,12 @@ public class StramClientUtils
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     } finally {
-      if (targetGlobalFile != null) {
-        targetGlobalFile.delete();
-      }
+      // Cannot delete the file here because addDTSiteResource which eventually calls Configuration.reloadConfiguration
+      // does not actually reload the configuration.  The file is actually read later and it needs to exist.
+      //
+      //if (targetGlobalFile != null) {
+      //targetGlobalFile.delete();
+      //}
       IOUtils.closeQuietly(fs);
     }
 
