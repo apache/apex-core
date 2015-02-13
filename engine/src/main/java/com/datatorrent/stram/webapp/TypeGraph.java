@@ -2,24 +2,44 @@ package com.datatorrent.stram.webapp;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.InnerClassNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TypeGraph
 {
+  
+  private static final Logger LOG = LoggerFactory.getLogger(TypeGraph.class);
 
   private final Map<String, TypeGraphVertex> typeGraph = new HashMap<String, TypeGraphVertex>();
-  
+
   public void addNode(ClassReader reader)
   {
-    String typeName = reader.getClassName().replace('/', '.').replace('$', '.');
+    ClassNode cn = new ClassNode();
+    reader.accept(cn, ClassReader.SKIP_DEBUG);
+    String typeName = cn.name.replace('/', '.');
+
     int opcode = reader.getAccess();
+    @SuppressWarnings("unchecked")
+    List<InnerClassNode> icl = cn.innerClasses;
+    if (typeName.contains("$")) {
+      for (InnerClassNode innerClassNode : icl) {
+        if (innerClassNode.name.replace('/', '.').equals(typeName)) {
+          opcode = innerClassNode.access;
+        }
+      }
+    }
+
     TypeGraphVertex tgv = null;
     TypeGraphVertex ptgv = null;
-    if(typeGraph.containsKey(typeName)){
+    if (typeGraph.containsKey(typeName)) {
       tgv = typeGraph.get(typeName);
       tgv.setOpCode(opcode);
     } else {
@@ -27,10 +47,10 @@ public class TypeGraph
       typeGraph.put(typeName, tgv);
     }
     String immediateP = reader.getSuperName();
-    if(immediateP!=null) {
-      immediateP = immediateP.replace('/', '.').replace('$', '.');
+    if (immediateP != null) {
+      immediateP = immediateP.replace('/', '.');
       ptgv = typeGraph.get(immediateP);
-      if(ptgv==null){
+      if (ptgv == null) {
         ptgv = new TypeGraphVertex(immediateP);
         typeGraph.put(immediateP, ptgv);
       }
@@ -39,7 +59,7 @@ public class TypeGraph
     }
     if (reader.getInterfaces() != null) {
       for (String iface : reader.getInterfaces()) {
-        iface = iface.replace('/', '.').replace('$', '.');
+        iface = iface.replace('/', '.');
         ptgv = typeGraph.get(iface);
         if (ptgv == null) {
           ptgv = new TypeGraphVertex(iface);
@@ -50,70 +70,82 @@ public class TypeGraph
       }
     }
 
-//    updateNumberOfPublicConcreteClass(tgv);
-    
-  }
-  
-//  private void updateNumberOfPublicConcreteClass(TypeGraphVertex tgv)
-//  {
-//    
-//    Set<String> visited = new HashSet<String>();
-//    if(tgv==null){
-//      return;
-//    }
-//    if(tgv.isPublicConcrete()){
-//      tgv.numberOfPublicConcreteDescendants += 1;
-//    }
-//    
-//    
-//  }
+    updatePublicConcreteDescendants(tgv);
 
-  public int size(){
+  }
+
+  private void updatePublicConcreteDescendants(TypeGraphVertex tgv)
+  {
+    for (TypeGraphVertex parent : tgv.ancestors) {
+      updatePublicConcreteDescendants(parent, tgv.allPublicConcreteDescendants, tgv.isPublicConcrete() ? tgv : null);
+    }
+  }
+
+  private void updatePublicConcreteDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> indirectChildren, TypeGraphVertex newNode)
+  {
+
+    tgv.allPublicConcreteDescendants.addAll(indirectChildren);
+    if (newNode != null) {
+      tgv.allPublicConcreteDescendants.add(newNode);
+    }
+
+    for (TypeGraphVertex parent : tgv.ancestors) {
+      updatePublicConcreteDescendants(parent, indirectChildren, newNode);
+    }
+  }
+
+  public int size()
+  {
     return typeGraph.size();
   }
-  
+
   public Set<String> getDescendants(String fullClassName)
   {
     Set<String> result = new HashSet<String>();
     TypeGraphVertex tgv = typeGraph.get(fullClassName);
-    if(tgv!=null){
+    if (tgv != null) {
       tranverse(tgv, false, result, Integer.MAX_VALUE);
     }
     return result;
   }
-  
-  public Set<String> getPublicConcreteDescendants(String fullClassName, int limit){
-    
+
+  public Set<String> getPublicConcreteDescendants(String fullClassName, int limit)
+  {
+
     Set<String> result = new HashSet<String>();
     TypeGraphVertex tgv = typeGraph.get(fullClassName);
 
-    if(tgv!=null){
-      tranverse(tgv, true, result, limit);
+    if (tgv.numberOfPublicConcreteDescendants() > limit) {
+      throw new RuntimeException("Too many public concrete sub types!");
+    }
+    if (tgv != null) {
+      for (TypeGraphVertex node : tgv.allPublicConcreteDescendants) {
+        result.add(node.typeName);
+      }
     }
     return result;
   }
 
   private void tranverse(TypeGraphVertex tgv, boolean onlyPublicConcrete, Set<String> result, int limit)
   {
-    if(!onlyPublicConcrete){
+    if (!onlyPublicConcrete) {
       result.add(tgv.typeName);
     }
-    
-    if(onlyPublicConcrete && tgv.numberOfPublicConcreteDescendants > limit){
-      throw new RuntimeException("Too much public concrete descendants");
+
+    if (onlyPublicConcrete && tgv.numberOfPublicConcreteDescendants() > limit) {
+      throw new RuntimeException("Too many public concrete sub types!");
     }
-    
-    if(onlyPublicConcrete && tgv.isPublicConcrete()){
+
+    if (onlyPublicConcrete && tgv.isPublicConcrete()) {
       result.add(tgv.typeName);
     }
-    
-    if(tgv.descendants.size()>0){
+
+    if (tgv.descendants.size() > 0) {
       for (TypeGraphVertex child : tgv.descendants) {
         tranverse(child, onlyPublicConcrete, result, limit);
       }
     }
   }
-  
 
   public static class TypeGraphVertex
   {
@@ -127,20 +159,22 @@ public class TypeGraph
 
     public Class<? extends Object> loadedClass = null;
 
-    /**
-     * num of public concrete descendants including this type itself
-     */
-    public int numberOfPublicConcreteDescendants = 0;
+    private final Set<TypeGraphVertex> allPublicConcreteDescendants = new HashSet<TypeGraphVertex>();
 
-    public final Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
+    private final Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
 
-    public final Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
+    private final Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
 
     public TypeGraphVertex(String typeName, int opCode)
     {
 
       this.typeName = typeName;
       this.opCode = opCode;
+    }
+
+    public int numberOfPublicConcreteDescendants()
+    {
+      return allPublicConcreteDescendants.size() + (isPublicConcrete() ? 1 : 0);
     }
 
     public TypeGraphVertex(String typeName)
@@ -195,6 +229,44 @@ public class TypeGraph
         return false;
       return true;
     }
+  }
+
+  public void loadAllSubClasses(Class<? extends Object> clazz)
+  {
+    TypeGraphVertex tgv = typeGraph.get(clazz.getName());
+    if(tgv == null) {
+      return;
+    }
+    tgv.loadedClass = clazz;
+    for (TypeGraphVertex subType : tgv.allPublicConcreteDescendants) {
+      try {
+        subType.loadedClass = Class.forName(subType.typeName);
+      } catch (ClassNotFoundException e) {
+        LOG.warn("Load class {} error", clazz, e);
+      }
+    }
+  }
+  
+  public void loadAllSubClasses(String clazzName)
+  {
+    TypeGraphVertex tgv = typeGraph.get(clazzName);
+    if(tgv == null) {
+      return;
+    } else
+      try {
+        loadAllSubClasses(Class.forName(clazzName));
+      } catch (ClassNotFoundException e) {
+        LOG.warn("Load class {} error", clazzName, e);
+      }
+  }
+
+  public void loadClass(Class<? extends Object> clazz)
+  {
+    TypeGraphVertex tgv = typeGraph.get(clazz.getName());
+    if(tgv == null) {
+      return;
+    }
+    tgv.loadedClass = clazz;
   }
 
 }

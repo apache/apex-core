@@ -33,6 +33,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+
 /**
  * <p>OperatorDiscoverer class.</p>
  * Discover Operators.
@@ -204,22 +205,36 @@ public class OperatorDiscoverer
   private void loadNeededClass()
   {
     for (Class<? extends Operator> opClazz : operatorClasses) {
-      try {
-        for (PropertyDescriptor pd : Introspector.getBeanInfo(opClazz).getPropertyDescriptors()) {
-//          if(pd.getPropertyType().);
-          if(pd.getWriteMethod()==null){
-            continue;
-          }
-          Class pType = pd.getPropertyType();
-          if(pType.isPrimitive()){
-            continue;
-          } else {
-          }
-        }
-      } catch (IntrospectionException e) {
-        LOG.warn("Load bean error {} ", e);
-      } 
+      loadClassInGraph(opClazz);
     }
+  }
+
+  private void loadClassInGraph(Class<? extends Object> clazz)
+  {
+    // load all classes that could be referenced by clazz
+    typeGraph.loadClass(clazz);
+    try {
+      for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
+        if(pd.getWriteMethod()==null){
+          continue;
+        }
+        Class<?> pType = pd.getPropertyType();
+        if(pType.isPrimitive()){
+          continue;
+        } else {
+          typeGraph.loadAllSubClasses(pType);
+          if(pType.getTypeParameters()!=null && pType.getTypeParameters().length>0){
+            for (TypeVariable<?> t : pType.getTypeParameters()) {
+              typeGraph.loadAllSubClasses(t.getName());
+            }
+          }
+          loadClassInGraph(pType);
+        }
+      }
+    } catch (IntrospectionException e) {
+      LOG.warn("Load bean error {} ", e);
+    } 
+    
   }
 
   @SuppressWarnings({ "unchecked" })

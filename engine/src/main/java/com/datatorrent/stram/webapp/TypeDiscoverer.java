@@ -9,6 +9,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.Collection;
 import java.util.Map;
 
 import org.codehaus.jettison.json.JSONArray;
@@ -27,6 +28,29 @@ import com.google.common.collect.Maps;
  */
 public class TypeDiscoverer
 {
+  
+  enum UI_TYPE{
+    List(Collection.class),
+    MAP(Map.class);
+    
+    final Class<?> assignableTo;
+    private UI_TYPE(Class<?> assignableTo)
+    {
+      this.assignableTo = assignableTo;
+    }
+    
+    public static UI_TYPE getEnumFor(Class<?> clazz)
+    {
+      for(UI_TYPE ui_type : UI_TYPE.values()){
+        if(ui_type.assignableTo.isAssignableFrom(clazz))
+        {
+          return ui_type;
+        }
+      }
+      return null;
+    }
+    
+  }
   private static final Logger LOG = LoggerFactory.getLogger(TypeDiscoverer.class);
   // map of generic type name to actual type
   public final Map<String, Type> typeArguments = Maps.newHashMap();
@@ -80,6 +104,10 @@ public class TypeDiscoverer
       }
       meta.put("typeArgs", typeArgs);
       meta.put("type", ((Class<?>)ptype.getRawType()).getName());
+      UI_TYPE uiType = UI_TYPE.getEnumFor((Class<?>)ptype.getRawType());
+      if(uiType!=null){
+        meta.put("uiType", uiType);
+      }
     } else if (type instanceof WildcardType) {
       meta.put("type", type);
       WildcardType wtype = (WildcardType)type;
@@ -92,7 +120,17 @@ public class TypeDiscoverer
       if (ta == null) {
         ta = type;
       }
-      meta.put("type", (ta instanceof Class) ? ((Class<?>)ta).getName() : ta.toString());
+      if(ta instanceof Class){
+        meta.put("type", ((Class<?>)ta).getName());
+        UI_TYPE uiType = UI_TYPE.getEnumFor(((Class<?>)ta));
+        if(uiType!=null){
+          meta.put("uiType", uiType);
+        }
+        
+      } else {
+        meta.put("type", ta.toString());
+      }
+      
     }
   }
 

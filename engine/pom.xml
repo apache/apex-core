@@ -439,6 +439,11 @@
       <artifactId>commons-codec</artifactId>
       <version>1.10</version>
     </dependency>
+    	<dependency>
+    	<groupId>asm</groupId>
+    	<artifactId>asm-tree</artifactId>
+    <version>3.2</version>
+	</dependency>
   </dependencies>
   <profiles>
     <profile>

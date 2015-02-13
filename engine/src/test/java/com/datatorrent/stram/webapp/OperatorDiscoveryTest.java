@@ -18,6 +18,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.datatorrent.api.BaseOperator;
+import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
 
 public class OperatorDiscoveryTest
@@ -58,6 +59,10 @@ public class OperatorDiscoveryTest
     JSONObject structuredProperty = props.getJSONObject(7);
     Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
     Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
+    
+    
+    JSONObject propProperty = props.getJSONObject(8);
+    Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP, propProperty.get("uiType"));
 
     // type is not a primitive type
     // fetch property meta data to find out how to render it
@@ -73,7 +78,8 @@ public class OperatorDiscoveryTest
   public void testFindDescendants() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
-    od.includeJRE(); 
+    od.includeJRE();
+    
     System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
     
     System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
@@ -81,6 +87,12 @@ public class OperatorDiscoveryTest
     System.out.println("The descendants list of concrete public type java.util.Map: \n" + od.getPublicConcreteDescendants("java.util.Map", Integer.MAX_VALUE));
     
     System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.List", Integer.MAX_VALUE));
+    
+    try {
+      od.getPublicConcreteDescendants("java.lang.Object", 100);
+    } catch (Exception e) {
+      Assert.assertEquals("The exception msg: ", "Too many public concrete sub types!", e.getMessage());
+    }
   }
 
   @Test
