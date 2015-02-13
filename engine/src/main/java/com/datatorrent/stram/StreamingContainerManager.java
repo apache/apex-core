@@ -219,27 +219,37 @@ public class StreamingContainerManager implements PlanContext
   {
     ContainerInfo ci = new ContainerInfo();
     ci.id = System.getenv(ApplicationConstants.Environment.CONTAINER_ID.toString());
-    ci.host = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_PORT.toString());
+    String nmHost = System.getenv(ApplicationConstants.Environment.NM_HOST.toString());
+    String nmPort = System.getenv(ApplicationConstants.Environment.NM_PORT.toString());
+    String nmHttpPort = System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
     ci.state = "ACTIVE";
     ci.jvmName = ManagementFactory.getRuntimeMXBean().getName();
     ci.numOperators = 0;
     YarnConfiguration conf = new YarnConfiguration();
-    String nodeHttpAddress = System.getenv(ApplicationConstants.Environment.NM_HOST.toString()) + ":" + System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString());
-    if (allocatedMemoryBytes == 0) {
-      String url = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/ws/v1/node/containers/" + ci.id;
-      WebServicesClient webServicesClient = new WebServicesClient();
-      try {
-        String content = webServicesClient.process(url, String.class, new WebServicesClient.GetWebServicesHandler<String>());
-        JSONObject json = new JSONObject(content);
-        allocatedMemoryBytes = json.getJSONObject("container").getInt("totalMemoryNeededMB") * 1024 * 1024;
-      } catch (Exception ex) {
-        LOG.warn("Caught exception when trying to get the memory allocated for the AM", ex);
+
+    if (nmHost != null) {
+      if (nmPort != null) {
+        ci.host = nmHost + ":" + nmPort;
+      }
+      if (nmHttpPort != null) {
+        String nodeHttpAddress = nmHost + ":" + nmHttpPort;
+        if (allocatedMemoryBytes == 0) {
+          String url = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/ws/v1/node/containers/" + ci.id;
+          WebServicesClient webServicesClient = new WebServicesClient();
+          try {
+            String content = webServicesClient.process(url, String.class, new WebServicesClient.GetWebServicesHandler<String>());
+            JSONObject json = new JSONObject(content);
+            allocatedMemoryBytes = json.getJSONObject("container").getInt("totalMemoryNeededMB") * 1024 * 1024;
+          } catch (Exception ex) {
+            LOG.warn("Caught exception when trying to get the memory allocated for the AM", ex);
+          }
+        }
+        ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
+        ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
       }
     }
     ci.memoryMBAllocated = (int)(allocatedMemoryBytes / (1024 * 1024));
     ci.lastHeartbeat = -1;
-    ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());
-    ci.rawContainerLogsUrl = ConfigUtils.getRawContainerLogsUrl(conf, nodeHttpAddress, plan.getLogicalPlan().getAttributes().get(LogicalPlan.APPLICATION_ID), ci.id);
     ci.startedTime = startTime;
     ci.finishedTime = -1;
     return ci;
