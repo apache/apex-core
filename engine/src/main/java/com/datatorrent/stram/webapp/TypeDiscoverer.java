@@ -30,13 +30,18 @@ public class TypeDiscoverer
 {
   
   enum UI_TYPE{
-    List(Collection.class),
-    MAP(Map.class);
     
-    final Class<?> assignableTo;
-    private UI_TYPE(Class<?> assignableTo)
+    LIST(Collection.class, "List"),
+    
+    MAP(Map.class, "Map");
+    
+    private final Class<?> assignableTo;
+    private final String name;
+    
+    private UI_TYPE(Class<?> assignableTo, String name)
     {
       this.assignableTo = assignableTo;
+      this.name = name;
     }
     
     public static UI_TYPE getEnumFor(Class<?> clazz)
@@ -50,7 +55,13 @@ public class TypeDiscoverer
       return null;
     }
     
+    public String getName()
+    {
+      return name;
+    }
+    
   }
+  
   private static final Logger LOG = LoggerFactory.getLogger(TypeDiscoverer.class);
   // map of generic type name to actual type
   public final Map<String, Type> typeArguments = Maps.newHashMap();
@@ -106,7 +117,7 @@ public class TypeDiscoverer
       meta.put("type", ((Class<?>)ptype.getRawType()).getName());
       UI_TYPE uiType = UI_TYPE.getEnumFor((Class<?>)ptype.getRawType());
       if(uiType!=null){
-        meta.put("uiType", uiType);
+        meta.put("uiType", uiType.getName());
       }
     } else if (type instanceof WildcardType) {
       meta.put("type", type);
@@ -124,7 +135,7 @@ public class TypeDiscoverer
         meta.put("type", ((Class<?>)ta).getName());
         UI_TYPE uiType = UI_TYPE.getEnumFor(((Class<?>)ta));
         if(uiType!=null){
-          meta.put("uiType", uiType);
+          meta.put("uiType", uiType.getName());
         }
         
       } else {

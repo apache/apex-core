@@ -62,7 +62,7 @@ public class OperatorDiscoveryTest
     
     
     JSONObject propProperty = props.getJSONObject(8);
-    Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP, propProperty.get("uiType"));
+    Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
 
     // type is not a primitive type
     // fetch property meta data to find out how to render it
