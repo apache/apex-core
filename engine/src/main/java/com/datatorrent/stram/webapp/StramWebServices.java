@@ -46,7 +46,6 @@ import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StringCodec;
 
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerAgent;
 import com.datatorrent.stram.StreamingContainerManager;
@@ -57,6 +56,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
+import com.datatorrent.stram.util.JSONSerializationProvider;
 import java.text.SimpleDateFormat;
 import org.apache.commons.codec.binary.Base64;
 
@@ -97,7 +97,7 @@ public class StramWebServices
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
-  private final ObjectMapper objectMapper = new JacksonObjectMapperProvider().getContext(null);
+  private final ObjectMapper objectMapper = new JSONSerializationProvider().getContext(null);
   private boolean initialized = false;
 
   private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();

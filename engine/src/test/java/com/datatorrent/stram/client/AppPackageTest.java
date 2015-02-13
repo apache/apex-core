@@ -4,10 +4,8 @@
 
 package com.datatorrent.stram.client;
 
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
-import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.util.JSONSerializationProvider;
 import net.lingala.zip4j.exception.ZipException;
 import org.apache.commons.io.FileUtils;
 import org.codehaus.jettison.json.JSONException;
@@ -38,7 +36,7 @@ public class AppPackageTest
   private File file;
 
   private AppPackage ap;
-  private JacksonObjectMapperProvider jomp;
+  private JSONSerializationProvider jomp;
   private JSONObject json;
 
   public class TestMeta extends TestWatcher
@@ -56,7 +54,7 @@ public class AppPackageTest
 
         // Set up test instance
         ap = new AppPackage(file, true);
-        jomp = new JacksonObjectMapperProvider();
+        jomp = new JSONSerializationProvider();
         json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
 
       } catch (ZipException e) {

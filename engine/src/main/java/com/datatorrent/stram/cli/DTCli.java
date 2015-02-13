@@ -60,7 +60,6 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
@@ -81,6 +80,7 @@ import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
+import com.datatorrent.stram.util.JSONSerializationProvider;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
@@ -115,7 +115,7 @@ public class DTCli
   private String jsonp;
   private boolean raw = false;
   private RecordingsAgent recordingsAgent;
-  private final ObjectMapper mapper = new JacksonObjectMapperProvider().getContext(null);
+  private final ObjectMapper mapper = new JSONSerializationProvider().getContext(null);
   private String pagerCommand;
   private Process pagerProcess;
   private int verboseLevel = 0;
@@ -3679,7 +3679,7 @@ public class DTCli
     {
       AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
-        JacksonObjectMapperProvider jomp = new JacksonObjectMapperProvider();
+        JSONSerializationProvider jomp = new JSONSerializationProvider();
         printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ap)));
       }
       finally {
