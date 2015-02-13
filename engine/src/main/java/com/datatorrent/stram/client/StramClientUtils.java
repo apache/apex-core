@@ -299,8 +299,9 @@ public class StramClientUtils
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
       targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
-      fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
-        new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
+      org.apache.hadoop.fs.Path hdfsGlobalPath = new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE);
+      LOG.debug("Copying global dt-site.xml from {} to {}", hdfsGlobalPath, targetGlobalFile.getAbsolutePath());
+      fs.copyToLocalFile(hdfsGlobalPath, new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
       if (!isDevelopmentMode()) {
         // load node local config file
@@ -312,9 +313,12 @@ public class StramClientUtils
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     } finally {
-      if (targetGlobalFile != null) {
-        targetGlobalFile.delete();
-      }
+      // Cannot delete the file here because addDTSiteResource which eventually calls Configuration.reloadConfiguration
+      // does not actually reload the configuration.  The file is actually read later and it needs to exist.
+      //
+      //if (targetGlobalFile != null) {
+      //targetGlobalFile.delete();
+      //}
       IOUtils.closeQuietly(fs);
     }
 
