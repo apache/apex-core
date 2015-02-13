@@ -86,29 +86,9 @@ public class StramClient
   private String archives;
   private LinkedHashSet<String> resources;
 
-  public StramClient(Configuration conf, LogicalPlan dag) throws Exception
-  {
-    this.conf = conf;
-    this.dag = dag;
-    dag.validate();
-    yarnClient.init(conf);
-  }
-
-  public void start()
-  {
-    yarnClient.start();
-  }
-
-  public void stop()
-  {
-    yarnClient.stop();
-  }
-
-  public static LinkedHashSet<String> findJars(LogicalPlan dag)
-  {
-    // platform dependencies that are not part of Hadoop and need to be deployed,
-    // entry below will cause containing jar file from client to be copied to cluster
-    Class<?>[] defaultClasses = new Class<?>[]{
+  // platform dependencies that are not part of Hadoop and need to be deployed,
+  // entry below will cause containing jar file from client to be copied to cluster
+  private static final Class<?>[] DATATORRENT_CLASSES = new Class<?>[]{
       com.datatorrent.common.util.Slice.class,
       com.datatorrent.netlet.EventLoop.class,
       com.datatorrent.bufferserver.server.Server.class,
@@ -129,6 +109,36 @@ public class StramClient
       com.esotericsoftware.minlog.Log.class,
       org.mozilla.javascript.Scriptable.class
     };
+
+  private static final Class<?>[] DATATORRENT_LICENSE_CLASSES = new Class<?>[]{
+      com.datatorrent.stram.LicensingAppMaster.class,
+      com.datatorrent.api.DAG.class,
+      javax.validation.ConstraintViolationException.class,
+      com.esotericsoftware.minlog.Log.class,
+      com.esotericsoftware.kryo.Kryo.class,
+      org.mozilla.javascript.Scriptable.class
+    };
+
+  public StramClient(Configuration conf, LogicalPlan dag) throws Exception
+  {
+    this.conf = conf;
+    this.dag = dag;
+    dag.validate();
+    yarnClient.init(conf);
+  }
+
+  public void start()
+  {
+    yarnClient.start();
+  }
+
+  public void stop()
+  {
+    yarnClient.stop();
+  }
+
+  public static LinkedHashSet<String> findJars(LogicalPlan dag, Class<?>[] defaultClasses)
+  {
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 
     for (String className : dag.getClassNames()) {
@@ -277,8 +287,20 @@ public class StramClient
    */
   public void startApplication() throws YarnException, IOException
   {
-    // process dependencies
-    LinkedHashSet<String> localJarFiles = findJars(dag);
+    Class<?>[] defaultClasses;
+
+    if(applicationType.equals(YARN_APPLICATION_TYPE)) {
+      defaultClasses = DATATORRENT_CLASSES;
+    }
+    else if(applicationType.equals(YARN_APPLICATION_TYPE_LICENSE)) {
+      defaultClasses = DATATORRENT_LICENSE_CLASSES;
+    }
+    else {
+      throw new IllegalStateException(applicationType + " is not a valid application type.");
+    }
+
+    LinkedHashSet<String> localJarFiles = findJars(dag, defaultClasses);
+
     if (resources != null) {
       localJarFiles.addAll(resources);
     }
