@@ -281,6 +281,7 @@ public class StramClientUtils
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
   public static final String DT_SITE_GLOBAL_XML_FILE = "dt-site-global.xml";
   public static final String DT_ENV_SH_FILE = "dt-env.sh";
+  public static final String CUSTOM_ENV_SH_FILE = "custom-env.sh";
   public static final String BACKUPS_DIRECTORY = "backups";
 
   public static Configuration addDTDefaultResources(Configuration conf)
@@ -521,9 +522,9 @@ public class StramClientUtils
     if (isDevelopmentMode()) {
       throw new IllegalStateException("Cannot change DT environment in development mode.");
     }
-    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
+    URL resource = StramClientUtils.class.getClassLoader().getResource(CUSTOM_ENV_SH_FILE);
     if (resource == null) {
-      File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_ENV_SH_FILE);
+      File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.CUSTOM_ENV_SH_FILE);
       FileOutputStream out = new FileOutputStream(envFile);
       try {
         out.write(("export " + key + "=\"" + value + "\"\n").getBytes());
