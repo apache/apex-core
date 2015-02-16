@@ -49,6 +49,7 @@ import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import org.apache.commons.lang.ArrayUtils;
 
 /**
  * Submits application to YARN<p>
@@ -109,6 +110,13 @@ public class StramClient
       com.esotericsoftware.minlog.Log.class,
       org.mozilla.javascript.Scriptable.class
     };
+
+  private static final Class<?>[] DATATORRENT_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
+      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
+    };
+
+  private static final Class<?>[] DATATORRENT_CLASSES_SECURE =
+  (Class<?>[]) ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
 
   private static final Class<?>[] DATATORRENT_LICENSE_CLASSES = new Class<?>[]{
       com.datatorrent.stram.LicensingAppMaster.class,
@@ -290,7 +298,13 @@ public class StramClient
     Class<?>[] defaultClasses;
 
     if(applicationType.equals(YARN_APPLICATION_TYPE)) {
-      defaultClasses = DATATORRENT_CLASSES;
+      //TODO restrict the security check to only check if security is enabled for webservices.
+      if(UserGroupInformation.isSecurityEnabled()) {
+        defaultClasses = DATATORRENT_CLASSES_SECURE;
+      }
+      else {
+        defaultClasses = DATATORRENT_CLASSES;
+      }
     }
     else if(applicationType.equals(YARN_APPLICATION_TYPE_LICENSE)) {
       defaultClasses = DATATORRENT_LICENSE_CLASSES;
