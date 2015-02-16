@@ -5,6 +5,10 @@ Version 2.0.0
 ------------------------------------------------------------------------------------------------------------------------
 
 ### Bug
+* [SPOI-4046] - Gateway /containers?states={state} call returns erroneous state information
+* [SPOI-4057] - License can not be upgraded to Evaluation / Production License
+* [SPOI-4037] - CONTAINERS_MAX_COUNT in sandbox prevents demos launch from dtcli
+* [SPOI-4008] - HDHT Error while flushing write cache
 * [SPOI-3837] - Partitioner interface semantics broken in 2.0.0 physical plan implementation]
 * [SPOI-3901] - twitter demo app package launch throws NoClassDefFoundError
 * [SPOI-3900] - Gateway gets 400 error when phone home
@@ -91,6 +95,7 @@ Version 2.0.0
 * [SPOI-3694] - Populate launch properties with required properties of app
 * [SPOI-3697] - Add content-disposition so that app package download has a reasonable file name when downloaded from browser
 * [SPOI-3698] - Support URI codec out the box so that UI can set URI operator properties
+* [SPOI-4066] - Portable environment settings across releases
 
 ### New Feature
 * [SPOI-3393] - Track recordings by a generated ID rather than startTime
