@@ -277,8 +277,7 @@ public class OperatorDiscoverer
                 LOG.warn("Cannot process javadoc xml: ", ex);
               }
             } else if(!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
-              ClassReader reader = new ClassReader(jar.getInputStream(jarEntry));
-              typeGraph.addNode(reader);
+              typeGraph.addNode(jarEntry, jar);
             }
           }
 

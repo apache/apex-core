@@ -9,6 +9,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -20,6 +28,7 @@ import org.junit.Test;
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 public class OperatorDiscoveryTest
 {
@@ -101,6 +110,21 @@ public class OperatorDiscoveryTest
     System.out.println("The descendants list of concrete public type java.util.Map: \n" + od.getPublicConcreteDescendants("java.util.Map", Integer.MAX_VALUE));
 
     System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.List", Integer.MAX_VALUE));
+    
+    Set<String> actualQueueClass = Sets.newHashSet();
+    String[] jdkQueue = new String[] {ArrayBlockingQueue.class.getName(), DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
+        LinkedBlockingQueue.class.getName(), LinkedTransferQueue.class.getName(), 
+        PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
+    JSONArray queueJsonArray = od.getPublicConcreteDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
+    // at lease include all the classes in jdk
+    Assert.assertTrue("All the queue class in jdk are expected in result ", queueJsonArray.length() >= jdkQueue.length);
+    for (int i = 0; i < queueJsonArray.length(); i++) {
+      actualQueueClass.add(queueJsonArray.getString(i));
+    }
+    for (String expectedClass : jdkQueue) {
+      Assert.assertTrue("Actual queue set should contain any one of the expected class ", actualQueueClass.contains(expectedClass));
+    }
+    System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE));
 
     try {
       od.getPublicConcreteDescendants("java.lang.Object", 100);

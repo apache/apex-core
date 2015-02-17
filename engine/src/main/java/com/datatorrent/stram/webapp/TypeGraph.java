@@ -1,10 +1,14 @@
 package com.datatorrent.stram.webapp;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -20,57 +24,66 @@ public class TypeGraph
 
   private final Map<String, TypeGraphVertex> typeGraph = new HashMap<String, TypeGraphVertex>();
 
-  public void addNode(ClassReader reader)
+  public void addNode(JarEntry jarEntry, JarFile jar) throws IOException
   {
-    ClassNode cn = new ClassNode();
-    reader.accept(cn, ClassReader.SKIP_DEBUG);
-    String typeName = cn.name.replace('/', '.');
+    InputStream jarInputStream = null;
+    try {
+      jarInputStream = jar.getInputStream(jarEntry);
+      ClassReader reader = new ClassReader(jarInputStream);
+      ClassNode cn = new ClassNode();
+      reader.accept(cn, ClassReader.SKIP_CODE);
+      String typeName = cn.name.replace('/', '.');
 
-    int opcode = reader.getAccess();
-    @SuppressWarnings("unchecked")
-    List<InnerClassNode> icl = cn.innerClasses;
-    if (typeName.contains("$")) {
-      for (InnerClassNode innerClassNode : icl) {
-        if (innerClassNode.name.replace('/', '.').equals(typeName)) {
-          opcode = innerClassNode.access;
+      int opcode = reader.getAccess();
+      @SuppressWarnings("unchecked")
+      List<InnerClassNode> icl = cn.innerClasses;
+      if (typeName.contains("$")) {
+        for (InnerClassNode innerClassNode : icl) {
+          if (innerClassNode.name.replace('/', '.').equals(typeName)) {
+            opcode = innerClassNode.access;
+          }
         }
       }
-    }
 
-    TypeGraphVertex tgv = null;
-    TypeGraphVertex ptgv = null;
-    if (typeGraph.containsKey(typeName)) {
-      tgv = typeGraph.get(typeName);
-      tgv.setOpCode(opcode);
-    } else {
-      tgv = new TypeGraphVertex(typeName, opcode);
-      typeGraph.put(typeName, tgv);
-    }
-    String immediateP = reader.getSuperName();
-    if (immediateP != null) {
-      immediateP = immediateP.replace('/', '.');
-      ptgv = typeGraph.get(immediateP);
-      if (ptgv == null) {
-        ptgv = new TypeGraphVertex(immediateP);
-        typeGraph.put(immediateP, ptgv);
+      TypeGraphVertex tgv = null;
+      TypeGraphVertex ptgv = null;
+      if (typeGraph.containsKey(typeName)) {
+        tgv = typeGraph.get(typeName);
+        tgv.setOpCode(opcode);
+      } else {
+        tgv = new TypeGraphVertex(typeName, jar.getName(), opcode);
+        typeGraph.put(typeName, tgv);
       }
-      tgv.ancestors.add(ptgv);
-      ptgv.descendants.add(tgv);
-    }
-    if (reader.getInterfaces() != null) {
-      for (String iface : reader.getInterfaces()) {
-        iface = iface.replace('/', '.');
-        ptgv = typeGraph.get(iface);
+      String immediateP = reader.getSuperName();
+      if (immediateP != null) {
+        immediateP = immediateP.replace('/', '.');
+        ptgv = typeGraph.get(immediateP);
         if (ptgv == null) {
-          ptgv = new TypeGraphVertex(iface);
-          typeGraph.put(iface, ptgv);
+          ptgv = new TypeGraphVertex(immediateP, jar.getName());
+          typeGraph.put(immediateP, ptgv);
         }
         tgv.ancestors.add(ptgv);
         ptgv.descendants.add(tgv);
       }
-    }
+      if (reader.getInterfaces() != null) {
+        for (String iface : reader.getInterfaces()) {
+          iface = iface.replace('/', '.');
+          ptgv = typeGraph.get(iface);
+          if (ptgv == null) {
+            ptgv = new TypeGraphVertex(iface, jar.getName());
+            typeGraph.put(iface, ptgv);
+          }
+          tgv.ancestors.add(ptgv);
+          ptgv.descendants.add(tgv);
+        }
+      }
 
-    updatePublicConcreteDescendants(tgv);
+      updatePublicConcreteDescendants(tgv);
+    } finally {
+      if (jarInputStream != null) {
+        jarInputStream.close();
+      }
+    }
 
   }
 
@@ -164,10 +177,14 @@ public class TypeGraph
     private final Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
 
     private final Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
+    
+    // keep the jar file name for late fetching the detail information
+    private final String jarName;
 
-    public TypeGraphVertex(String typeName, int opCode)
+    public TypeGraphVertex(String typeName, String jarName, int opCode)
     {
 
+      this.jarName = typeName;
       this.typeName = typeName;
       this.opCode = opCode;
     }
@@ -177,9 +194,10 @@ public class TypeGraph
       return allPublicConcreteDescendants.size() + (isPublicConcrete() ? 1 : 0);
     }
 
-    public TypeGraphVertex(String typeName)
+    public TypeGraphVertex(String typeName, String jarName)
     {
       this.typeName = typeName;
+      this.jarName = jarName;
     }
 
     public void setOpCode(int opCode)
@@ -228,6 +246,11 @@ public class TypeGraph
       } else if (!typeName.equals(other.typeName))
         return false;
       return true;
+    }
+
+    public String getJarName()
+    {
+      return jarName;
     }
   }
 
