@@ -68,7 +68,6 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   private final LogicalPlan.OperatorMeta operatorMeta;
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
-  public int loadIndicator = 0;
 
   public OperatorStatus(int operatorId, LogicalPlan.OperatorMeta om)
   {

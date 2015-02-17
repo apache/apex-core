@@ -4,13 +4,11 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.io.*;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 
@@ -56,6 +54,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected int APPLICATION_WINDOW_COUNT; /* this is write once variable */
 
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
+
+  protected boolean QUEUE_SIZE_AWARE; /* this is write once variable */
 
   protected int id;
   protected final HashMap<String, Sink<Object>> outputs;
@@ -423,6 +423,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     alive = true;
     APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
+    Collection<StatsListener> statsListeners = context.getValue(OperatorContext.STATS_LISTENERS);
 
     if (CHECKPOINT_WINDOW_COUNT % APPLICATION_WINDOW_COUNT != 0) {
       logger.warn("{} is not exact multiple of {} for operator {}. This may cause side effects such as processing to begin without beginWindow preceding it in the first window after activation.",
@@ -433,7 +434,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     PROCESSING_MODE = context.getValue(OperatorContext.PROCESSING_MODE);
     if (PROCESSING_MODE == ProcessingMode.EXACTLY_ONCE && CHECKPOINT_WINDOW_COUNT != 1) {
-      logger.warn("Ignoring CHECKPOINT_WINDOW_COUNT attribute in favor of EXACTLY_ONCE processing mode");
+      logger.warn("Ignoring {} attribute in favor of {} processing mode", OperatorContext.CHECKPOINT_WINDOW_COUNT.getSimpleName(), ProcessingMode.EXACTLY_ONCE.name());
       CHECKPOINT_WINDOW_COUNT = 1;
     }
 
@@ -443,6 +444,15 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       ((Operator.ActivationListener<OperatorContext>) operator).activate(context);
     }
 
+    if(statsListeners != null){
+      Iterator<StatsListener> iterator = statsListeners.iterator();
+      while (iterator.hasNext()){
+        QUEUE_SIZE_AWARE = iterator.next().getClass().isAnnotationPresent(StatsListener.QUEUE_SIZE_AWARE.class);
+        if(QUEUE_SIZE_AWARE){
+          break;
+        }
+      }
+    }
     /*
      * If there were any requests which needed to be executed before the operator started
      * its normal execution, execute those requests now - e.g. Restarting the operator
