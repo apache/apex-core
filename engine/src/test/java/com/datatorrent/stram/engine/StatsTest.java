@@ -107,7 +107,7 @@ public class StatsTest
       {
         for (OperatorStats operatorStats : collectorOperatorStats) {
           for (PortStats inputPortStats : operatorStats.inputPorts) {
-            Assert.assertTrue("Validate input port queue size " + inputPortStats.queueSize, inputPortStats.queueSize > 0);
+            Assert.assertTrue("Validate input port queue size " + inputPortStats.queueSize, inputPortStats.queueSize >= 0);
           }
         }
       }
