@@ -5,6 +5,7 @@
 package com.datatorrent.stram.webapp;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -28,22 +29,22 @@ import com.google.common.collect.Maps;
  */
 public class TypeDiscoverer
 {
-  
+
   enum UI_TYPE{
-    
+
     LIST(Collection.class, "List"),
-    
+
     MAP(Map.class, "Map");
-    
+
     private final Class<?> assignableTo;
     private final String name;
-    
+
     private UI_TYPE(Class<?> assignableTo, String name)
     {
       this.assignableTo = assignableTo;
       this.name = name;
     }
-    
+
     public static UI_TYPE getEnumFor(Class<?> clazz)
     {
       for(UI_TYPE ui_type : UI_TYPE.values()){
@@ -54,14 +55,14 @@ public class TypeDiscoverer
       }
       return null;
     }
-    
+
     public String getName()
     {
       return name;
     }
-    
+
   }
-  
+
   private static final Logger LOG = LoggerFactory.getLogger(TypeDiscoverer.class);
   // map of generic type name to actual type
   public final Map<String, Type> typeArguments = Maps.newHashMap();
@@ -119,6 +120,14 @@ public class TypeDiscoverer
       if(uiType!=null){
         meta.put("uiType", uiType.getName());
       }
+    } else if (type instanceof GenericArrayType) {
+      GenericArrayType gat = (GenericArrayType)type;
+      JSONArray typeArgs = new JSONArray();
+      JSONObject argMeta = new JSONObject();
+      resolveTypeParameters(gat.getGenericComponentType(), argMeta);
+      typeArgs.put(argMeta);
+      meta.put("typeArgs", typeArgs);
+      meta.put("type", Object[].class.getName());
     } else if (type instanceof WildcardType) {
       meta.put("type", type);
       WildcardType wtype = (WildcardType)type;
@@ -137,11 +146,11 @@ public class TypeDiscoverer
         if(uiType!=null){
           meta.put("uiType", uiType.getName());
         }
-        
+
       } else {
         meta.put("type", ta.toString());
       }
-      
+
     }
   }
 

@@ -167,7 +167,7 @@ public class OperatorDiscoverer
       }
     }
   }
-  
+
   public void includeJRE()
   {
     String javahome = System.getProperty("java.home");
@@ -190,15 +190,15 @@ public class OperatorDiscoverer
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
   }
 
-  
+
   private void init()
   {
     buildTypeGraph();
-    
+
     loadOperatorClass();
-    
-    loadNeededClass();
-    
+
+    //loadNeededClass();
+
   }
 
   @SuppressWarnings("rawtypes")
@@ -233,8 +233,8 @@ public class OperatorDiscoverer
       }
     } catch (IntrospectionException e) {
       LOG.warn("Load bean error {} ", e);
-    } 
-    
+    }
+
   }
 
   @SuppressWarnings({ "unchecked" })
@@ -288,9 +288,9 @@ public class OperatorDiscoverer
       catch (IOException ex) {
       }
     }
-    
+
   }
-  
+
 
 
   private void processJavadocXml(InputStream is) throws ParserConfigurationException, SAXException, IOException
