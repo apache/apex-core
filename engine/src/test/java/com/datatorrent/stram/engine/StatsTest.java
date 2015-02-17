@@ -93,7 +93,7 @@ public class StatsTest
     public static class TestCollectorStatsListener implements StatsListener, Serializable
     {
       private static final long serialVersionUID = 1L;
-      private List<OperatorStats> collectorOperatorStats = new ArrayList<OperatorStats>();
+      List<OperatorStats> collectorOperatorStats = new ArrayList<OperatorStats>();
 
       @Override
       public Response processStats(BatchedOperatorStats stats)
@@ -101,6 +101,32 @@ public class StatsTest
         collectorOperatorStats.addAll(stats.getLastWindowedStats());
         Response rsp = new Response();
         return rsp;
+      }
+
+      public void validateStats()
+      {
+        for (OperatorStats operatorStats : collectorOperatorStats) {
+          for (PortStats inputPortStats : operatorStats.inputPorts) {
+            if (inputPortStats.tupleCount > 0) {
+              Assert.assertTrue("Validate input port queue size", inputPortStats.queueSize == 1);
+            }
+          }
+        }
+      }
+
+    }
+
+    @StatsListener.QUEUE_SIZE_AWARE
+    public static class QueueAwareTestCollectorStatsListener extends TestCollectorStatsListener
+    {
+      private static final long serialVersionUID = 2L;
+      public void validateStats()
+      {
+        for (OperatorStats operatorStats : collectorOperatorStats) {
+          for (PortStats inputPortStats : operatorStats.inputPorts) {
+            Assert.assertTrue("Validate input port queue size " + inputPortStats.queueSize, inputPortStats.queueSize == 0);
+          }
+        }
       }
 
     }
@@ -121,13 +147,13 @@ public class StatsTest
 
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     TestInputStatsListener testInputStatsListener = new TestInputStatsListener();
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[] {testInputStatsListener}));
+    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testInputStatsListener}));
     testOper.setMaxTuples(tupleCount);
     testOper.setEmitInterval(0);
 
     TestCollector collector = dag.addOperator("Collector", new TestCollector());
     TestCollectorStatsListener testCollectorStatsListener = new TestCollectorStatsListener();
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[] {testCollectorStatsListener}));
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{testCollectorStatsListener}));
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(null);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
@@ -139,7 +165,7 @@ public class StatsTest
       int outputPortTupleCount = 0;
       long outputPortBufferServerBytes = 0L;
 
-      for (Iterator<OperatorStats> it = testInputStatsListener.inputOperatorStats.iterator(); it.hasNext();) {
+      for (Iterator<OperatorStats> it = testInputStatsListener.inputOperatorStats.iterator(); it.hasNext(); ) {
         OperatorStats operatorStats = it.next();
         for (PortStats outputPortStats : operatorStats.outputPorts) {
           outputPortTupleCount += outputPortStats.tupleCount;
@@ -150,7 +176,7 @@ public class StatsTest
       int inputPortTupleCount = 0;
       long inputPortBufferServerBytes = 0L;
 
-      for (Iterator<OperatorStats> it = testCollectorStatsListener.collectorOperatorStats.iterator(); it.hasNext();) {
+      for (Iterator<OperatorStats> it = testCollectorStatsListener.collectorOperatorStats.iterator(); it.hasNext(); ) {
         OperatorStats operatorStats = it.next();
         for (PortStats inputPortStats : operatorStats.inputPorts) {
           inputPortTupleCount += inputPortStats.tupleCount;
@@ -169,51 +195,57 @@ public class StatsTest
     }
   }
 
+  @SuppressWarnings("SleepWhileInLoop")
+  private void baseTestForQueueSize(int maxTuples, TestCollectorStatsListener statsListener, DAG.Locality locality) throws Exception
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
+    TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
+    testOper.setMaxTuples(maxTuples);
+
+    TestCollector collector = dag.addOperator("Collector", new TestCollector());
+    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{statsListener}));
+    dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(locality);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.runAsync();
+
+    long startTms = System.currentTimeMillis();
+    while ((statsListener.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+      Thread.sleep(300);
+      LOG.debug("Waiting for stats");
+    }
+    statsListener.validateStats();
+    lc.shutdown();
+  }
+
   /**
    * Verify queue size.
    *
    * @throws Exception
    */
   @Test
-  @SuppressWarnings("SleepWhileInLoop")
   public void testQueueSizeForInlineOperators() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
-
-    TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
-    TestInputStatsListener testInputStatsListener = new TestInputStatsListener();
-    dag.setAttribute(testOper, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[] {testInputStatsListener}));
-    //testOper.addTuple("test tuple 1");
-    //testOper.addTuple("test tuple 2");
-    testOper.setMaxTuples(2);
-
-    TestCollector collector = dag.addOperator("Collector", new TestCollector());
-    TestCollectorStatsListener testOutputStatsListener = new TestCollectorStatsListener();
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[] {testOutputStatsListener}));
-    dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(DAG.Locality.THREAD_LOCAL);
-
-    StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.runAsync();
-
-    long startTms = System.currentTimeMillis();
-    while ((testOutputStatsListener.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
-      Thread.sleep(300);
-      LOG.debug("Waiting for stats");
-    }
-
-    try {
-      for (OperatorStats operatorStats : testOutputStatsListener.collectorOperatorStats) {
-        for (PortStats inputPortStats : operatorStats.inputPorts) {
-          if (inputPortStats.tupleCount > 0) {
-            Assert.assertTrue("Validate input port queue size", inputPortStats.queueSize == 1);
-          }
-        }
-      }
-    }
-    finally {
-      lc.shutdown();
-    }
+    baseTestForQueueSize(2, new TestCollectorStatsListener(), DAG.Locality.THREAD_LOCAL);
   }
+
+  /**
+   * Verify queue size.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testQueueSizeWithQueueAwareStatsListenerForContainerLocalOperators() throws Exception
+  {
+    baseTestForQueueSize(0, new TestCollector.QueueAwareTestCollectorStatsListener(), DAG.Locality.CONTAINER_LOCAL);
+  }
+
+  @Test
+  public void testQueueSizeWithQueueAwareStatsListener() throws Exception
+  {
+    baseTestForQueueSize(0, new TestCollector.QueueAwareTestCollectorStatsListener(), null);
+  }
+
 
 }
