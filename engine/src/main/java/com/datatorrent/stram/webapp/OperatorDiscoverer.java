@@ -9,6 +9,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
+import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
 
 import java.beans.*;
@@ -27,6 +28,7 @@ import javax.xml.parsers.*;
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jettison.json.*;
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.tree.ClassNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
@@ -508,6 +510,23 @@ public class OperatorDiscoverer
     }
   }
 
+  public JSONObject describeClass(String clazzName) throws Exception
+  {
+    JSONObject desc = new JSONObject();
+    desc.put("name", clazzName);
+    ClassReader cr = new ClassReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(clazzName));
+    ClassNode cn = new ClassNode();
+    cr.accept(new ClassNode(), ClassReader.SKIP_DEBUG);
+    if (ASMUtil.isEnum(cn)) {
+      
+      ArrayList<String> enumNames = ASMUtil.getEnumValues(cn);
+//      desc.put("enum", enumNames);
+    }
+//    desc.put("properties", getClassProperties(clazz, 0));
+    return desc;
+  }
+
+  
   public JSONObject describeClass(Class<?> clazz) throws Exception
   {
     JSONObject desc = new JSONObject();
@@ -520,6 +539,10 @@ public class OperatorDiscoverer
         enumNames.add(e.name());
       }
       desc.put("enum", enumNames);
+    }
+    UI_TYPE ui_type = UI_TYPE.getEnumFor(clazz);
+    if(ui_type!=null){
+      desc.put("uiType", ui_type.getName());
     }
     desc.put("properties", getClassProperties(clazz, 0));
     return desc;

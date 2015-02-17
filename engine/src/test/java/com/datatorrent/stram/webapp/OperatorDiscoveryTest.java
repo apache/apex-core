@@ -71,6 +71,12 @@ public class OperatorDiscoveryTest
 
     desc = od.describeClass(Color.class);
     System.out.println("\ntype info for " + Color.class + ":\n" + desc.toString(2));
+    
+    desc = od.describeClass(Properties.class);
+    System.out.println("\ntype info for " + Properties.class + ":\n" + desc.toString(2));
+    
+    desc = od.describeClass(HashMap.class);
+    System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
 
   }
   

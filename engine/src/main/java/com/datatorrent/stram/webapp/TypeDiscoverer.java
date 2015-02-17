@@ -33,6 +33,8 @@ public class TypeDiscoverer
     
     LIST(Collection.class, "List"),
     
+    ENUM(Enum.class, "Enum"),
+    
     MAP(Map.class, "Map");
     
     private final Class<?> assignableTo;
@@ -46,6 +48,12 @@ public class TypeDiscoverer
     
     public static UI_TYPE getEnumFor(Class<?> clazz)
     {
+      if(clazz.isEnum()){
+        return ENUM;
+      }
+      if(clazz.isArray()){
+        return LIST;
+      }
       for(UI_TYPE ui_type : UI_TYPE.values()){
         if(ui_type.assignableTo.isAssignableFrom(clazz))
         {
