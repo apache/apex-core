@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
@@ -124,10 +125,19 @@ public class TypeDiscoverer
       GenericArrayType gat = (GenericArrayType)type;
       JSONArray typeArgs = new JSONArray();
       JSONObject argMeta = new JSONObject();
-      resolveTypeParameters(gat.getGenericComponentType(), argMeta);
+      Type componentType = gat.getGenericComponentType();
+      componentType = this.typeArguments.get(componentType.toString());
+      if (componentType == null) {
+        componentType = gat.getGenericComponentType();
+      }
+      resolveTypeParameters(componentType, argMeta);
       typeArgs.put(argMeta);
       meta.put("typeArgs", typeArgs);
-      meta.put("type", Object[].class.getName());
+      if (componentType instanceof Class) {
+        meta.put("type", Array.newInstance((Class<?>)componentType, 0).getClass().getName());
+      } else {
+        meta.put("type", Object[].class.getName());
+      }
     } else if (type instanceof WildcardType) {
       meta.put("type", type);
       WildcardType wtype = (WildcardType)type;
@@ -245,6 +255,11 @@ public class TypeDiscoverer
 
   public void setTypeArguments(Class<?> clazz, Type type, JSONObject meta)
   {
+    // TODO: traverse hierarchy and resolve all type parameters
+    Type superClassType = clazz.getGenericSuperclass();
+    if (superClassType != null) {
+      getParameterizedTypeArguments(superClassType);
+    }
     getParameterizedTypeArguments(type);
     try {
       resolveTypeParameters(type, meta);

@@ -47,7 +47,6 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("", String.class.getName(), typeArgs.getJSONObject(0).get("type"));
     Assert.assertEquals("", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
-
     JSONObject enumDesc = od.describeClass(Color.class);
     JSONArray enumNames = enumDesc.getJSONArray("enum");
     Assert.assertNotNull("enumNames", enumNames);
@@ -60,9 +59,18 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
     Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
 
+    JSONObject genericArray = props.getJSONObject(3);
+    Assert.assertEquals("name " + genericArray, "genericArray", genericArray.get("name"));
+    Assert.assertEquals("type " + genericArray, Object[].class.getName(), genericArray.get("type"));
 
     JSONObject propProperty = props.getJSONObject(9);
     Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
+
+    desc = od.describeClass(ExtendedOperator.class);
+    props = desc.getJSONArray("properties");
+    genericArray = props.getJSONObject(3);
+    Assert.assertEquals("name " + genericArray, "genericArray", genericArray.get("name"));
+    Assert.assertEquals("type " + genericArray, String[].class.getName(), genericArray.get("type"));
 
     // type is not a primitive type
     // fetch property meta data to find out how to render it
@@ -122,7 +130,6 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull(clone.structuredArray);
     Assert.assertEquals(Color.BLUE, clone.color);
     Assert.assertEquals(bean.structuredArray.length, clone.structuredArray.length);
-
 
   }
 
@@ -299,6 +306,10 @@ public class OperatorDiscoveryTest
     public void setBooleanProp(boolean booleanProp) {
       this.booleanProp = booleanProp;
     }
+  }
+
+  static class ExtendedOperator extends TestOperator<String>
+  {
   }
 
 }
