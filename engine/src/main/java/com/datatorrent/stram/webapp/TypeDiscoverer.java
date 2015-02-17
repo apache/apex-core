@@ -4,7 +4,9 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -28,24 +30,24 @@ import com.google.common.collect.Maps;
  */
 public class TypeDiscoverer
 {
-  
+
   enum UI_TYPE{
-    
+
     LIST(Collection.class, "List"),
     
     ENUM(Enum.class, "Enum"),
     
     MAP(Map.class, "Map");
-    
+
     private final Class<?> assignableTo;
     private final String name;
-    
+
     private UI_TYPE(Class<?> assignableTo, String name)
     {
       this.assignableTo = assignableTo;
       this.name = name;
     }
-    
+
     public static UI_TYPE getEnumFor(Class<?> clazz)
     {
       if(clazz.isEnum()){
@@ -62,14 +64,14 @@ public class TypeDiscoverer
       }
       return null;
     }
-    
+
     public String getName()
     {
       return name;
     }
-    
+
   }
-  
+
   private static final Logger LOG = LoggerFactory.getLogger(TypeDiscoverer.class);
   // map of generic type name to actual type
   public final Map<String, Type> typeArguments = Maps.newHashMap();
@@ -127,6 +129,23 @@ public class TypeDiscoverer
       if(uiType!=null){
         meta.put("uiType", uiType.getName());
       }
+    } else if (type instanceof GenericArrayType) {
+      GenericArrayType gat = (GenericArrayType)type;
+      JSONArray typeArgs = new JSONArray();
+      JSONObject argMeta = new JSONObject();
+      Type componentType = gat.getGenericComponentType();
+      componentType = this.typeArguments.get(componentType.toString());
+      if (componentType == null) {
+        componentType = gat.getGenericComponentType();
+      }
+      resolveTypeParameters(componentType, argMeta);
+      typeArgs.put(argMeta);
+      meta.put("typeArgs", typeArgs);
+      if (componentType instanceof Class) {
+        meta.put("type", Array.newInstance((Class<?>)componentType, 0).getClass().getName());
+      } else {
+        meta.put("type", Object[].class.getName());
+      }
     } else if (type instanceof WildcardType) {
       meta.put("type", type);
       WildcardType wtype = (WildcardType)type;
@@ -145,11 +164,11 @@ public class TypeDiscoverer
         if(uiType!=null){
           meta.put("uiType", uiType.getName());
         }
-        
+
       } else {
         meta.put("type", ta.toString());
       }
-      
+
     }
   }
 
@@ -244,6 +263,11 @@ public class TypeDiscoverer
 
   public void setTypeArguments(Class<?> clazz, Type type, JSONObject meta)
   {
+    // TODO: traverse hierarchy and resolve all type parameters
+    Type superClassType = clazz.getGenericSuperclass();
+    if (superClassType != null) {
+      getParameterizedTypeArguments(superClassType);
+    }
     getParameterizedTypeArguments(type);
     try {
       resolveTypeParameters(type, meta);

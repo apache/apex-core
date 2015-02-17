@@ -34,8 +34,8 @@ public class OperatorDiscoveryTest
 
     JSONArray props = desc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 12, props.length());
-    JSONObject mapProperty = props.getJSONObject(5);
+    Assert.assertEquals("properties " + props, 13, props.length());
+    JSONObject mapProperty = props.getJSONObject(6);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
@@ -47,7 +47,6 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("", String.class.getName(), typeArgs.getJSONObject(0).get("type"));
     Assert.assertEquals("", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
-
     JSONObject enumDesc = od.describeClass(Color.class);
     JSONArray enumNames = enumDesc.getJSONArray("enum");
     Assert.assertNotNull("enumNames", enumNames);
@@ -56,13 +55,22 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull("properties", enumProps);
     Assert.assertEquals("props " + enumProps, 0, enumProps.length());
 
-    JSONObject structuredProperty = props.getJSONObject(7);
+    JSONObject structuredProperty = props.getJSONObject(8);
     Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
     Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
-    
-    
-    JSONObject propProperty = props.getJSONObject(8);
+
+    JSONObject genericArray = props.getJSONObject(3);
+    Assert.assertEquals("name " + genericArray, "genericArray", genericArray.get("name"));
+    Assert.assertEquals("type " + genericArray, Object[].class.getName(), genericArray.get("type"));
+
+    JSONObject propProperty = props.getJSONObject(9);
     Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
+
+    desc = od.describeClass(ExtendedOperator.class);
+    props = desc.getJSONArray("properties");
+    genericArray = props.getJSONObject(3);
+    Assert.assertEquals("name " + genericArray, "genericArray", genericArray.get("name"));
+    Assert.assertEquals("type " + genericArray, String[].class.getName(), genericArray.get("type"));
 
     // type is not a primitive type
     // fetch property meta data to find out how to render it
@@ -79,21 +87,21 @@ public class OperatorDiscoveryTest
     System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
 
   }
-  
+
   @Test
   public void testFindDescendants() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
     od.includeJRE();
-    
+
     System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
-    
+
     System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
-    
+
     System.out.println("The descendants list of concrete public type java.util.Map: \n" + od.getPublicConcreteDescendants("java.util.Map", Integer.MAX_VALUE));
-    
+
     System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.List", Integer.MAX_VALUE));
-    
+
     try {
       od.getPublicConcreteDescendants("java.lang.Object", 100);
     } catch (Exception e) {
@@ -104,13 +112,14 @@ public class OperatorDiscoveryTest
   @Test
   public void testValueSerialization() throws Exception
   {
-    TestOperator bean = new TestOperator();
+    TestOperator<String> bean = new TestOperator<String>();
     bean.map.put("key1", new Structured());
     bean.stringArray = new String[] { "one", "two", "three" };
     bean.stringList = Lists.newArrayList("four", "five");
     bean.props = new Properties();
     bean.props.setProperty("key1", "value1");
     bean.structuredArray = new Structured[]{new Structured()};
+    bean.genericArray = new String[] {"s1"};
     bean.structuredArray[0].name = "s1";
     bean.color = Color.BLUE;
     bean.booleanProp = true;
@@ -123,11 +132,10 @@ public class OperatorDiscoveryTest
     System.out.println(new JSONObject(s).toString(2));
 
 
-    TestOperator clone = mapper.readValue(s, TestOperator.class);
+    TestOperator<?> clone = mapper.readValue(s, TestOperator.class);
     Assert.assertNotNull(clone.structuredArray);
     Assert.assertEquals(Color.BLUE, clone.color);
     Assert.assertEquals(bean.structuredArray.length, clone.structuredArray.length);
-
 
   }
 
@@ -176,7 +184,7 @@ public class OperatorDiscoveryTest
     WHITE
   }
 
-  public static class TestOperator extends BaseOperator
+  public static class TestOperator<T> extends BaseOperator
   {
     private int intProp;
     private long longProp;
@@ -190,6 +198,7 @@ public class OperatorDiscoveryTest
     private String[] stringArray;
     private Color color;
     private Structured[] structuredArray;
+    private T[] genericArray;
 
     public int getIntProp()
     {
@@ -286,6 +295,16 @@ public class OperatorDiscoveryTest
       this.structuredArray = structuredArray;
     }
 
+    public T[] getGenericArray()
+    {
+      return genericArray;
+    }
+
+    public void setGenericArray(T[] genericArray)
+    {
+      this.genericArray = genericArray;
+    }
+
     public boolean isBooleanProp() {
       return booleanProp;
     }
@@ -293,6 +312,10 @@ public class OperatorDiscoveryTest
     public void setBooleanProp(boolean booleanProp) {
       this.booleanProp = booleanProp;
     }
+  }
+
+  static class ExtendedOperator extends TestOperator<String>
+  {
   }
 
 }
