@@ -115,7 +115,7 @@ public class StramClient
       com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
     };
 
-  private static final Class<?>[] DATATORRENT_CLASSES_SECURE =
+  private static final Class<?>[] DATATORRENT_SECURE_CLASSES =
   (Class<?>[]) ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
 
   private static final Class<?>[] DATATORRENT_LICENSE_CLASSES = new Class<?>[]{
@@ -300,7 +300,7 @@ public class StramClient
     if(applicationType.equals(YARN_APPLICATION_TYPE)) {
       //TODO restrict the security check to only check if security is enabled for webservices.
       if(UserGroupInformation.isSecurityEnabled()) {
-        defaultClasses = DATATORRENT_CLASSES_SECURE;
+        defaultClasses = DATATORRENT_SECURE_CLASSES;
       }
       else {
         defaultClasses = DATATORRENT_CLASSES;
