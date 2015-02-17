@@ -107,19 +107,17 @@ public class StatsTest
       {
         for (OperatorStats operatorStats : collectorOperatorStats) {
           for (PortStats inputPortStats : operatorStats.inputPorts) {
-            if (inputPortStats.tupleCount > 0) {
-              Assert.assertTrue("Validate input port queue size", inputPortStats.queueSize == 1);
-            }
+            Assert.assertTrue("Validate input port queue size " + inputPortStats.queueSize, inputPortStats.queueSize > 0);
           }
         }
       }
-
     }
 
     @StatsListener.QUEUE_SIZE_AWARE
     public static class QueueAwareTestCollectorStatsListener extends TestCollectorStatsListener
     {
       private static final long serialVersionUID = 2L;
+
       public void validateStats()
       {
         for (OperatorStats operatorStats : collectorOperatorStats) {
@@ -225,10 +223,17 @@ public class StatsTest
    * @throws Exception
    */
   @Test
-  public void testQueueSizeForInlineOperators() throws Exception
+  public void testQueueSizeForContainerLocalOperators() throws Exception
   {
-    baseTestForQueueSize(2, new TestCollectorStatsListener(), DAG.Locality.THREAD_LOCAL);
+    baseTestForQueueSize(10, new TestCollectorStatsListener(), DAG.Locality.CONTAINER_LOCAL);
   }
+
+  @Test
+  public void testQueueSize() throws Exception
+  {
+    baseTestForQueueSize(10, new TestCollectorStatsListener(), null);
+  }
+
 
   /**
    * Verify queue size.
@@ -246,6 +251,5 @@ public class StatsTest
   {
     baseTestForQueueSize(0, new TestCollector.QueueAwareTestCollectorStatsListener(), null);
   }
-
 
 }
