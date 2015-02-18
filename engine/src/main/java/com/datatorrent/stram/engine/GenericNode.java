@@ -22,6 +22,7 @@ import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.DTThrowable;
+import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.debug.TappedReservoir;
 import com.datatorrent.stram.tuple.Tuple;
@@ -578,9 +579,19 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
+      portStats.queueSize = ar.size();
+      if(QUEUE_SIZE_AWARE) {
+        if (ar instanceof CircularBuffer) {
+          Iterator iterator = ((CircularBuffer) ar).getFrozenIterator();
+          while (iterator.hasNext()) {
+            if (iterator.next() instanceof Tuple) {
+              portStats.queueSize--;
+            }
+          }
+        }
+      }
       portStats.tupleCount = ar.getCount(true);
       portStats.endWindowTimestamp = endWindowDequeueTimes.get(e.getValue());
-      portStats.queueSize = ar.size();
       ipstats.add(portStats);
     }
     stats.inputPorts = ipstats;
