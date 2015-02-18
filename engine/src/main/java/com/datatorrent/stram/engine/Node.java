@@ -55,7 +55,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
-  protected boolean QUEUE_SIZE_AWARE; /* this is write once variable */
+  protected boolean DATA_TUPLE_AWARE; /* this is write once variable */
 
   protected int id;
   protected final HashMap<String, Sink<Object>> outputs;
@@ -447,8 +447,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     if(statsListeners != null){
       Iterator<StatsListener> iterator = statsListeners.iterator();
       while (iterator.hasNext()){
-        QUEUE_SIZE_AWARE = iterator.next().getClass().isAnnotationPresent(StatsListener.QUEUE_SIZE_AWARE.class);
-        if(QUEUE_SIZE_AWARE){
+        DATA_TUPLE_AWARE = iterator.next().getClass().isAnnotationPresent(StatsListener.DataQueueSize.class);
+        if(DATA_TUPLE_AWARE){
           break;
         }
       }

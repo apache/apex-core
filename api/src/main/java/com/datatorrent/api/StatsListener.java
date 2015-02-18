@@ -112,7 +112,7 @@ public interface StatsListener
    */
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
-  public @interface QUEUE_SIZE_AWARE
+  public @interface DataQueueSize
   {
   }
 }

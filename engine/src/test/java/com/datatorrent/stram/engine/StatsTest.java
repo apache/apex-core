@@ -113,7 +113,7 @@ public class StatsTest
       }
     }
 
-    @StatsListener.QUEUE_SIZE_AWARE
+    @StatsListener.DataQueueSize
     public static class QueueAwareTestCollectorStatsListener extends TestCollectorStatsListener
     {
       private static final long serialVersionUID = 2L;
