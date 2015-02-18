@@ -580,7 +580,7 @@ public class GenericNode extends Node<Operator>
       SweepableReservoir ar = e.getValue();
       ContainerStats.OperatorStats.PortStats portStats = new ContainerStats.OperatorStats.PortStats(e.getKey());
       portStats.queueSize = ar.size();
-      if(QUEUE_SIZE_AWARE) {
+      if(DATA_TUPLE_AWARE) {
         if (ar instanceof CircularBuffer) {
           Iterator iterator = ((CircularBuffer) ar).getFrozenIterator();
           while (iterator.hasNext()) {
