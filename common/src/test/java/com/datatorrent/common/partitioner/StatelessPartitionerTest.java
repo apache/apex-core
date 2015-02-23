@@ -18,26 +18,21 @@ package com.datatorrent.lib.partitioner;
 import java.util.Collection;
 import java.util.List;
 
-import com.google.common.collect.Lists;
-
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
-import org.apache.hadoop.conf.Configuration;
 
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
-import com.datatorrent.lib.stream.DevNull;
+import com.google.common.collect.Lists;
+
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.DAG;
-import com.datatorrent.api.DefaultOutputPort;
-import com.datatorrent.api.DefaultPartition;
-import com.datatorrent.api.LocalMode;
-import com.datatorrent.api.Operator;
+import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Partitioner.Partition;
-import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.StringCodec.Object2String;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
+
+import com.datatorrent.lib.stream.DevNull;
+import com.datatorrent.lib.util.TestUtils;
 
 public class StatelessPartitionerTest
 {
@@ -114,7 +109,7 @@ public class StatelessPartitionerTest
     partitions.add(defaultPartition);
 
     Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, new PartitioningContextImpl(null, 0));
-    Assert.assertEquals("Incorred number of partitions", 1, newPartitions.size());
+    Assert.assertEquals("Incorrect number of partitions", 1, newPartitions.size());
 
     for(Partition<DummyOperator> partition: newPartitions) {
       Assert.assertEquals("Incorrect cloned value", 5, partition.getPartitionedInstance().getValue());
@@ -132,7 +127,7 @@ public class StatelessPartitionerTest
     partitions.add(defaultPartition);
 
     Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions, new PartitioningContextImpl(null, 0));
-    Assert.assertEquals("Incorred number of partitions", 5, newPartitions.size());
+    Assert.assertEquals("Incorrect number of partitions", 5, newPartitions.size());
 
     for(Partition<DummyOperator> partition: newPartitions) {
       Assert.assertEquals("Incorrect cloned value", 5, partition.getPartitionedInstance().getValue());
@@ -163,6 +158,50 @@ public class StatelessPartitionerTest
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
+  }
+
+  @Test
+  public void testParallelPartitionScaleUP()
+  {
+    DummyOperator dummyOperator = new DummyOperator(5);
+    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<DummyOperator>();
+
+    TestUtils.MockBatchedOperatorStats mockStats = new TestUtils.MockBatchedOperatorStats(2);
+    mockStats.operatorStats = Lists.newArrayList();
+
+    Collection<Partition<DummyOperator>> partitions = Lists.newArrayList();
+
+    DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<DummyOperator>(dummyOperator);
+    TestUtils.MockPartition<DummyOperator> mockPartition = new TestUtils.MockPartition<DummyOperator>(defaultPartition, mockStats);
+
+    partitions.add(mockPartition);
+
+    Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions,
+      new PartitioningContextImpl(null, 5));
+    Assert.assertEquals("after partition", 5, newPartitions.size());
+  }
+
+  @Test
+  public void testParallelPartitionScaleDown()
+  {
+    DummyOperator dummyOperator = new DummyOperator(5);
+    StatelessPartitioner<DummyOperator> statelessPartitioner = new StatelessPartitioner<DummyOperator>();
+
+    TestUtils.MockBatchedOperatorStats mockStats = new TestUtils.MockBatchedOperatorStats(2);
+    mockStats.operatorStats = Lists.newArrayList();
+
+    Collection<Partition<DummyOperator>> partitions = Lists.newArrayList();
+
+    for (int i = 5; i-- > 0; ) {
+      DefaultPartition<DummyOperator> defaultPartition = new DefaultPartition<DummyOperator>(dummyOperator);
+      TestUtils.MockPartition<DummyOperator> mockPartition = new TestUtils.MockPartition<DummyOperator>(defaultPartition, mockStats);
+
+      partitions.add(mockPartition);
+    }
+
+    Collection<Partition<DummyOperator>> newPartitions = statelessPartitioner.definePartitions(partitions,
+      new PartitioningContextImpl(null, 1));
+    Assert.assertEquals("after partition", 1, newPartitions.size());
   }
 
   public static class PartitioningContextImpl implements Partitioner.PartitioningContext

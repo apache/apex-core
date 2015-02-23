@@ -16,12 +16,7 @@
 package com.datatorrent.lib.partitioner;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.validation.constraints.Min;
 
@@ -103,7 +98,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
 
     //Get a partition
     DefaultPartition<T> partition = (DefaultPartition<T>) partitions.iterator().next();
-    Collection<Partition<T>> newPartitions = null;
+    Collection<Partition<T>> newPartitions;
 
     if (partitions.iterator().next().getStats() == null) {
       // first call to define partitions
@@ -120,8 +115,12 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
         DefaultPartition.assignPartitionKeys(newPartitions, inputPortList.iterator().next());
       }
     } else {
+      //operator is parallel partitioned
+      if (context.getParallelPartitionCount() != 0) {
+        newPartitions = repartitionParallel(partitions, context.getParallelPartitionCount());
+      }
       // define partitions is being called again
-      if (partition.getPartitionKeys().isEmpty()) {
+     else if (partition.getPartitionKeys().isEmpty()) {
         newPartitions = repartitionInputOperator(partitions);
       } else {
         newPartitions = repartition(partitions);
@@ -243,6 +242,43 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       }
     }
     newPartitions.addAll(lowLoadPartitions);
+    return newPartitions;
+  }
+
+
+  /**
+   * Adjust the partitions of a parallel partitioned operator.
+   *
+   * @param partitions     existing partitions
+   * @param partitionCount parallel partition count
+   * @param <T>            the operator type
+   * @return new adjusted partitions
+   */
+  public static <T extends Operator> Collection<Partition<T>> repartitionParallel(Collection<Partition<T>> partitions,
+                                                                                  int partitionCount)
+  {
+    List<Partition<T>> newPartitions = Lists.newArrayList();
+    newPartitions.addAll(partitions);
+
+    int morePartitionsToCreate = partitionCount - newPartitions.size();
+    if (morePartitionsToCreate < 0) {
+      //Delete partitions
+      Iterator<Partition<T>> partitionIterator = newPartitions.iterator();
+
+      while (morePartitionsToCreate++ < 0) {
+        partitionIterator.next();
+        partitionIterator.remove();
+      }
+    }
+    else {
+      //Add more partitions
+      T anOperator = newPartitions.iterator().next().getPartitionedInstance();
+
+      while (morePartitionsToCreate-- > 0) {
+        DefaultPartition<T> partition = new DefaultPartition<T>(anOperator);
+        newPartitions.add(partition);
+      }
+    }
     return newPartitions;
   }
 }
