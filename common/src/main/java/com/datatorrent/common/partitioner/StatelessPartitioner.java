@@ -117,7 +117,7 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
     } else {
       //operator is parallel partitioned
       if (context.getParallelPartitionCount() != 0) {
-        newPartitions = repartitionParallel(partitions, context.getParallelPartitionCount());
+        newPartitions = repartitionParallel(partitions, context);
       }
       // define partitions is being called again
      else if (partition.getPartitionKeys().isEmpty()) {
@@ -250,17 +250,17 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
    * Adjust the partitions of a parallel partitioned operator.
    *
    * @param partitions     existing partitions
-   * @param partitionCount parallel partition count
+   * @param context        partition context
    * @param <T>            the operator type
    * @return new adjusted partitions
    */
   public static <T extends Operator> Collection<Partition<T>> repartitionParallel(Collection<Partition<T>> partitions,
-                                                                                  int partitionCount)
+                                                                                  PartitioningContext context)
   {
     List<Partition<T>> newPartitions = Lists.newArrayList();
     newPartitions.addAll(partitions);
 
-    int morePartitionsToCreate = partitionCount - newPartitions.size();
+    int morePartitionsToCreate = context.getParallelPartitionCount() - newPartitions.size();
     if (morePartitionsToCreate < 0) {
       //Delete partitions
       Iterator<Partition<T>> partitionIterator = newPartitions.iterator();
@@ -278,6 +278,10 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
         DefaultPartition<T> partition = new DefaultPartition<T>(anOperator);
         newPartitions.add(partition);
       }
+    }
+    List<InputPort<?>> inputPortList = context.getInputPorts();
+    if (inputPortList != null && !inputPortList.isEmpty()) {
+      DefaultPartition.assignPartitionKeys(newPartitions, inputPortList.iterator().next());
     }
     return newPartitions;
   }
