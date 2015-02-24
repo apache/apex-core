@@ -114,15 +114,16 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
       if (inputPortList != null && !inputPortList.isEmpty()) {
         DefaultPartition.assignPartitionKeys(newPartitions, inputPortList.iterator().next());
       }
-    } else {
-      //operator is parallel partitioned
+    }
+    else {
+      // define partitions is being called again
       if (context.getParallelPartitionCount() != 0) {
         newPartitions = repartitionParallel(partitions, context);
       }
-      // define partitions is being called again
-     else if (partition.getPartitionKeys().isEmpty()) {
+      else if (partition.getPartitionKeys().isEmpty()) {
         newPartitions = repartitionInputOperator(partitions);
-      } else {
+      }
+      else {
         newPartitions = repartition(partitions);
       }
     }
@@ -278,10 +279,6 @@ public class StatelessPartitioner<T extends Operator> implements Partitioner<T>,
         DefaultPartition<T> partition = new DefaultPartition<T>(anOperator);
         newPartitions.add(partition);
       }
-    }
-    List<InputPort<?>> inputPortList = context.getInputPorts();
-    if (inputPortList != null && !inputPortList.isEmpty()) {
-      DefaultPartition.assignPartitionKeys(newPartitions, inputPortList.iterator().next());
     }
     return newPartitions;
   }
