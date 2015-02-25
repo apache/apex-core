@@ -139,8 +139,8 @@
       <artifactId>malhar-library</artifactId>
       <version>${datatorrent.version}</version>
       <!-- 
-           If you know your application do not need the transitive dependencies that are pulled in by malhar-library,
-           Uncomment the following to reduce the size of your app package. 
+           If you know that your application does not need transitive dependencies pulled in by malhar-library,
+           uncomment the following to reduce the size of your app package.
       -->
       <!--    
       <exclusions>
