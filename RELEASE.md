@@ -22,8 +22,8 @@ Version 2.0.0
 * Does not require any additional software installation or configuration
 
 ### Malhar operator enhancements
-* New operators like elastic search & Solr
-* Various fixes for fault tolerance, partitioning & idempotency for existing operators
+* New operators for Elastic Search, Solr, and Kinesis
+* Various fixes for fault tolerance, partitioning, and idempotency for existing operators
 
 ### Sandbox improvements
 * Demo application import and launch inside Console with Application Packages
