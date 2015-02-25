@@ -161,13 +161,7 @@ public class OperatorDiscoverer
   public OperatorDiscoverer()
   {
     classLoader = ClassLoader.getSystemClassLoader();
-    String classpath = System.getProperty("java.class.path");
-    String[] paths = classpath.split(":");
-    for (String path: paths) {
-      if (path.endsWith("jar")) {
-        pathsToScan.add(path);
-      }
-    }
+    includeCurrentClasspathLibrary();
   }
 
   public void includeJRE()
@@ -175,6 +169,17 @@ public class OperatorDiscoverer
     String javahome = System.getProperty("java.home");
     String jdkJar = javahome + "/lib/rt.jar";
     pathsToScan.add(jdkJar);
+  }
+  
+  public void includeCurrentClasspathLibrary()
+  {
+    String classpath = System.getProperty("java.class.path");
+    String[] paths = classpath.split(":");
+    for (String path: paths) {
+      if (path.endsWith("jar")) {
+        pathsToScan.add(path);
+      }
+    }
   }
 
   public OperatorDiscoverer(String[] jars)
@@ -199,7 +204,7 @@ public class OperatorDiscoverer
 
     loadOperatorClass();
 
-    //loadNeededClass();
+//    loadNeededClass();
 
   }
 
@@ -224,17 +229,17 @@ public class OperatorDiscoverer
         if(pType.isPrimitive()){
           continue;
         } else {
-          typeGraph.loadAllSubClasses(pType);
+          typeGraph.loadAllSubClasses(pType, 100);
           if(pType.getTypeParameters()!=null && pType.getTypeParameters().length>0){
             for (TypeVariable<?> t : pType.getTypeParameters()) {
-              typeGraph.loadAllSubClasses(t.getName());
+              typeGraph.loadAllSubClasses(t.getName(), 100);
             }
           }
           loadClassInGraph(pType);
         }
       }
-    } catch (IntrospectionException e) {
-      LOG.warn("Load bean error {} ", e);
+    } catch (Exception e) {
+      LOG.warn("Load {} property error (error was {})", clazz, e.getMessage());
     }
 
   }
@@ -244,6 +249,7 @@ public class OperatorDiscoverer
   {
     String operatorRoot = Operator.class.getName();
     Set<String> allOperatorClasses = typeGraph.getDescendants(operatorRoot);
+//    ClassLoader cLoader = new URLClassLoader();
     for (String opClassName : allOperatorClasses) {
       try {
         Class<?> clazz = classLoader.loadClass(opClassName);
@@ -511,18 +517,24 @@ public class OperatorDiscoverer
 
   public JSONObject describeClass(String clazzName) throws Exception
   {
-    JSONObject desc = new JSONObject();
-    desc.put("name", clazzName);
-    ClassReader cr = new ClassReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(clazzName));
-    ClassNode cn = new ClassNode();
-    cr.accept(new ClassNode(), ClassReader.SKIP_DEBUG);
-    if (ASMUtil.isEnum(cn)) {
-      
-      ArrayList<String> enumNames = ASMUtil.getEnumValues(cn);
+    for (URL uu : ((URLClassLoader)classLoader).getURLs()) {
+      System.out.println(uu.toString());
+    };
+    
+    // TODO temporary solution for this there is a memory leak here
+    return describeClass(classLoader.loadClass(clazzName));
+//    JSONObject desc = new JSONObject();
+//    desc.put("name", clazzName);
+//    ClassReader cr = new ClassReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(clazzName));
+//    ClassNode cn = new ClassNode();
+//    cr.accept(new ClassNode(), ClassReader.SKIP_DEBUG);
+//    if (ASMUtil.isEnum(cn)) {
+//      
+//      ArrayList<String> enumNames = ASMUtil.getEnumValues(cn);
 //      desc.put("enum", enumNames);
-    }
+//    }
 //    desc.put("properties", getClassProperties(clazz, 0));
-    return desc;
+//    return desc;
   }
 
   
@@ -723,6 +735,14 @@ public class OperatorDiscoverer
       init();
     }
     return new JSONArray(typeGraph.getPublicConcreteDescendants(fullClassName, limit));
+  }
+
+  public JSONArray getPublicConcreteDescendants(String clazz, int limit, String filter, String packagePrefix)
+  {
+    if(typeGraph.size()==0){
+      init();
+    }
+    return new JSONArray(typeGraph.getPublicConcreteDescendants(clazz, limit, filter, packagePrefix));
   }
 
 

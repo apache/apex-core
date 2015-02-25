@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.Pattern;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -124,19 +125,7 @@ public class TypeGraph
 
   public Set<String> getPublicConcreteDescendants(String fullClassName, int limit)
   {
-
-    Set<String> result = new HashSet<String>();
-    TypeGraphVertex tgv = typeGraph.get(fullClassName);
-
-    if (tgv.numberOfPublicConcreteDescendants() > limit) {
-      throw new RuntimeException("Too many public concrete sub types!");
-    }
-    if (tgv != null) {
-      for (TypeGraphVertex node : tgv.allPublicConcreteDescendants) {
-        result.add(node.typeName);
-      }
-    }
-    return result;
+    return getPublicConcreteDescendants(fullClassName, limit, null, null);
   }
 
   private void tranverse(TypeGraphVertex tgv, boolean onlyPublicConcrete, Set<String> result, int limit)
@@ -254,32 +243,35 @@ public class TypeGraph
     }
   }
 
-  public void loadAllSubClasses(Class<? extends Object> clazz)
+  public void loadAllSubClasses(Class<? extends Object> clazz, int limit)
   {
     TypeGraphVertex tgv = typeGraph.get(clazz.getName());
     if(tgv == null) {
       return;
     }
     tgv.loadedClass = clazz;
+    if (tgv.allPublicConcreteDescendants.size() > limit) {
+      return;
+    }
     for (TypeGraphVertex subType : tgv.allPublicConcreteDescendants) {
       try {
         subType.loadedClass = Class.forName(subType.typeName);
       } catch (ClassNotFoundException e) {
-        LOG.warn("Load class {} error", clazz, e);
+        LOG.warn("Load {} error", clazz);
       }
     }
   }
   
-  public void loadAllSubClasses(String clazzName)
+  public void loadAllSubClasses(String clazzName, int limit)
   {
     TypeGraphVertex tgv = typeGraph.get(clazzName);
     if(tgv == null) {
       return;
     } else
       try {
-        loadAllSubClasses(Class.forName(clazzName));
+        loadAllSubClasses(Class.forName(clazzName), limit);
       } catch (ClassNotFoundException e) {
-        LOG.warn("Load class {} error", clazzName, e);
+        LOG.warn("Load class {} error", clazzName);
       }
   }
 
@@ -290,6 +282,27 @@ public class TypeGraph
       return;
     }
     tgv.loadedClass = clazz;
+  }
+
+  public Set<String> getPublicConcreteDescendants(String clazz, int limit, String filter, String packagePrefix)
+  {
+    Set<String> result = new HashSet<String>();
+    TypeGraphVertex tgv = typeGraph.get(clazz);
+
+    if (tgv.numberOfPublicConcreteDescendants() > limit) {
+      throw new RuntimeException("Too many public concrete sub types!");
+    }
+    if (tgv != null) {
+      for (TypeGraphVertex node : tgv.allPublicConcreteDescendants) {
+        if(filter!=null && !Pattern.matches(filter, node.typeName)){
+          continue;
+        } if(packagePrefix!=null && !node.typeName.startsWith(packagePrefix)) {
+          continue;
+        }
+        result.add(node.typeName);
+      }
+    }
+    return result;
   }
 
 }
