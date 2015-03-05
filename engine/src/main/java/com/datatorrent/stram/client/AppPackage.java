@@ -14,7 +14,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,8 +52,9 @@ public class AppPackage extends JarFile implements Closeable
   private final Map<String, String> defaultProperties = new TreeMap<String, String>();
   private final Set<String> configs = new TreeSet<String>();
 
-  private final List<Dashboard> dashboards = new ArrayList<Dashboard>();
-  private final List<Widget> widgets = new ArrayList<Widget>();
+  private final List<JSONObject> dashboards = new ArrayList<JSONObject>();
+  private final List<JSONObject> widgets = new ArrayList<JSONObject>();
+  private JSONObject configUI;
 
   public static class AppInfo
   {
@@ -77,39 +78,6 @@ public class AppPackage extends JarFile implements Closeable
 
   }
 
-  public static class Dashboard
-  {
-    public String name;
-    public String description;
-    public final String file;
-    public JSONObject config;
-
-    public Dashboard(String name, String file)
-    {
-      this.name = name;
-      this.file = file;
-    }
-  }
-
-  public static class Widget
-  {
-    public String name;
-    public String version;
-    public final String dir;
-    public final List<String> files = new ArrayList<String>();
-    public String schemaType;
-    public String schemaVersion;
-    public String description;
-    public String moduleName;
-    public String serviceName;
-
-    public Widget(String name, String dir)
-    {
-      this.name = name;
-      this.dir = dir;
-    }
-  }
-
   public AppPackage(File file) throws IOException, ZipException
   {
     this(file, false);
@@ -118,7 +86,8 @@ public class AppPackage extends JarFile implements Closeable
   /**
    * Creates an App Package object.
    *
-   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived applications
+   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived
+   * applications
    *
    * @param file
    * @param processAppDirectory
@@ -232,14 +201,19 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableCollection(configs);
   }
 
-  public Collection<Dashboard> getDashboards()
+  public Collection<JSONObject> getDashboards()
   {
     return Collections.unmodifiableCollection(dashboards);
   }
 
-  public Collection<Widget> getWidgets()
+  public Collection<JSONObject> getWidgets()
   {
     return Collections.unmodifiableCollection(widgets);
+  }
+
+  public JSONObject getConfigUI()
+  {
+    return configUI;
   }
 
   public List<AppInfo> getApplications()
@@ -272,14 +246,22 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableMap(defaultProperties);
   }
 
-  public File widgetFile(String widgetName, String filePath) 
+  public File widgetFile(String widgetName, String filePath)
   {
-    for (Widget w : widgets) {
-      if (w.name.equals(widgetName)) {
-        return new File(StringUtils.join(new String[]{directory, "widget", w.dir, filePath}, File.separator));
+    try {
+      for (JSONObject w : widgets) {
+        if (w.getString("name").equals(widgetName)) {
+          return new File(StringUtils.join(new String[]{directory, "widget", w.getString("name"), filePath}, File.separator));
+        }
       }
+    } catch (JSONException ex) {
     }
     return null;
+  }
+
+  public File configUIFile(String filePath)
+  {
+    return new File(StringUtils.join(new String[]{directory, "configUI", filePath}, File.separator));
   }
 
   private void processAppDirectory(File dir)
@@ -319,8 +301,7 @@ public class AppPackage extends JarFile implements Closeable
             }
             applications.add(appInfo);
           }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught exception trying to process {}", entry.getName(), ex);
         }
       }
@@ -345,18 +326,15 @@ public class AppPackage extends JarFile implements Closeable
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
-          }
-          catch (Exception ex) {
+          } catch (Exception ex) {
             appInfo.error = ex.getMessage();
             appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
           }
           applications.add(appInfo);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
-      }
-      else if (entry.getName().endsWith(".properties")) {
+      } else if (entry.getName().endsWith(".properties")) {
         appPropertiesFiles.add(entry.getName());
         try {
           AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(entry);
@@ -367,18 +345,15 @@ public class AppPackage extends JarFile implements Closeable
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
-          }
-          catch (Throwable t) {
+          } catch (Throwable t) {
             appInfo.error = t.getMessage();
             appInfo.errorStackTrace = ExceptionUtils.getStackTrace(t);
           }
           applications.add(appInfo);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
-      }
-      else if (!entry.getName().endsWith(".jar")) {
+      } else if (!entry.getName().endsWith(".jar")) {
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());
       }
     }
@@ -402,13 +377,8 @@ public class AppPackage extends JarFile implements Closeable
       if (entry.getName().endsWith(".json")) {
         try {
           JSONObject json = new JSONObject(FileUtils.readFileToString(entry));
-          Dashboard db = new Dashboard(entry.getName(), entry.getName());
-          if (json.has("name")) {
-            db.name = json.getString("name");
-          }
-          db.config = json.getJSONObject("config");
-          db.description = json.optString("description", null);
-          dashboards.add(db);
+          json.put("name", entry.getName());
+          dashboards.add(json);
         } catch (Exception ex) {
           LOG.error("Caught exception when processing dashboard directory {}", entry.getName(), ex);
         }
@@ -425,22 +395,9 @@ public class AppPackage extends JarFile implements Closeable
         File packageJson = new File(entry, "package.json");
         if (packageJson.exists()) {
           try {
-            Widget widget = new Widget(entry.getName(), entry.getName());
             JSONObject json = new JSONObject(FileUtils.readFileToString(packageJson));
-            if (json.has("name")) {
-              widget.name = json.getString("name");
-            }
-            widget.schemaType = json.getString("schemaType");
-            widget.schemaVersion = json.getString("schemaVersion");
-            widget.version = json.optString("version", null);
-            widget.moduleName = json.getString("moduleName");
-            widget.serviceName = json.getString("serviceName");
-            JSONArray jsonArray = json.getJSONArray("main");
-            for (int i = 0; i < jsonArray.length(); i++) {
-              widget.files.add(jsonArray.getString(i));
-            }
-            widget.description = json.optString("description", null);
-            widgets.add(widget);
+            json.put("name", entry.getName());
+            widgets.add(json);
           } catch (Exception ex) {
             LOG.error("Caught exception when reading widget directory {}", dir.getName(), ex);
           }
@@ -472,8 +429,7 @@ public class AppPackage extends JarFile implements Closeable
           }
         }
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Ignoring META_INF/properties.xml because of error", ex);
     }
   }

@@ -41,6 +41,10 @@
       <directory>${basedir}/src/main/resources/dashboard</directory>
       <outputDirectory>/dashboard</outputDirectory>
     </fileSet>
+    <fileSet>
+      <directory>${basedir}/src/main/resources/configUI</directory>
+      <outputDirectory>/configUI</outputDirectory>
+    </fileSet>
   </fileSets>
 
 </assembly>
