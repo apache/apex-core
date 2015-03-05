@@ -136,6 +136,10 @@ public class AppPackage extends JarFile implements Closeable
     if (widgetDirectory.exists()) {
       processWidgetDirectory(widgetDirectory);
     }
+    File configUIDirectory = new File(newDirectory, "configUI");
+    if (configUIDirectory.exists()) {
+      processConfigUIDirectory(configUIDirectory);
+    }
 
     File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
@@ -402,6 +406,19 @@ public class AppPackage extends JarFile implements Closeable
             LOG.error("Caught exception when reading widget directory {}", dir.getName(), ex);
           }
         }
+      }
+    }
+  }
+
+  private void processConfigUIDirectory(File dir)
+  {
+    File packageJson = new File(dir, "package.json");
+    if (packageJson.exists()) {
+      try {
+        JSONObject json = new JSONObject(FileUtils.readFileToString(packageJson));
+        configUI = json;
+      } catch (Exception ex) {
+        LOG.error("Caught exception when reading configUI directory {}", dir.getName(), ex);
       }
     }
   }
