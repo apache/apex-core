@@ -14,7 +14,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
@@ -113,8 +112,7 @@ public class OperatorDiscoveryTest
     
     Set<String> actualQueueClass = Sets.newHashSet();
     String[] jdkQueue = new String[] {ArrayBlockingQueue.class.getName(), DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
-        LinkedBlockingQueue.class.getName(), LinkedTransferQueue.class.getName(), 
-        PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
+        LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
     JSONArray queueJsonArray = od.getPublicConcreteDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
     // at lease include all the classes in jdk
     Assert.assertTrue("All the queue class in jdk are expected in result ", queueJsonArray.length() >= jdkQueue.length);
