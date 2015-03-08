@@ -14,7 +14,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
@@ -88,10 +87,10 @@ public class OperatorDiscoveryTest
 
     desc = od.describeClass(Color.class);
     System.out.println("\ntype info for " + Color.class + ":\n" + desc.toString(2));
-    
+
     desc = od.describeClass(Properties.class);
     System.out.println("\ntype info for " + Properties.class + ":\n" + desc.toString(2));
-    
+
     desc = od.describeClass(HashMap.class);
     System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
 
@@ -110,10 +109,10 @@ public class OperatorDiscoveryTest
     System.out.println("The descendants list of concrete public type java.util.Map: \n" + od.getPublicConcreteDescendants("java.util.Map", Integer.MAX_VALUE));
 
     System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.List", Integer.MAX_VALUE));
-    
+
     Set<String> actualQueueClass = Sets.newHashSet();
-    String[] jdkQueue = new String[] {ArrayBlockingQueue.class.getName(), DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
-        LinkedBlockingQueue.class.getName(), LinkedTransferQueue.class.getName(), 
+    String[] jdkQueue = new String[] {ArrayBlockingQueue.class.getName(), DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(),
+        LinkedBlockingQueue.class.getName(),
         PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
     JSONArray queueJsonArray = od.getPublicConcreteDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
     // at lease include all the classes in jdk
