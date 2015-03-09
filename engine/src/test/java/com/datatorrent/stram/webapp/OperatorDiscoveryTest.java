@@ -92,10 +92,10 @@ public class OperatorDiscoveryTest
 
     desc = od.describeClass(Color.class);
     System.out.println("\ntype info for " + Color.class + ":\n" + desc.toString(2));
-    
+
     desc = od.describeClass(Properties.class);
     System.out.println("\ntype info for " + Properties.class + ":\n" + desc.toString(2));
-    
+
     desc = od.describeClass(HashMap.class);
     System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
     
@@ -127,6 +127,7 @@ public class OperatorDiscoveryTest
     String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
         LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
     JSONArray queueJsonArray = od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
+
     // at lease include all the classes in jdk
     System.out.println(queueJsonArray);
     Assert.assertTrue("All the queue class in jdk are expected in result ", queueJsonArray.length() >= jdkQueue.length);
