@@ -35,7 +35,6 @@ public class OperatorDiscoveryTest
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
     od.includeJRE();
-    od.includeCurrentClasspathLibrary();
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
     JSONObject desc = od.describeClass(TestOperator.class);
@@ -111,7 +110,6 @@ public class OperatorDiscoveryTest
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
     od.includeJRE();
-    od.includeCurrentClasspathLibrary();
     System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
 
     System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));

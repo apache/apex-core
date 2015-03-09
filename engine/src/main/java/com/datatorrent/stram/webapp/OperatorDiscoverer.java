@@ -171,7 +171,7 @@ public class OperatorDiscoverer
     pathsToScan.add(jdkJar);
   }
   
-  public void includeCurrentClasspathLibrary()
+  private void includeCurrentClasspathLibrary()
   {
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
@@ -193,6 +193,8 @@ public class OperatorDiscoverer
       }
     }
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
+    // always try to include the library in current library
+    includeCurrentClasspathLibrary();
   }
 
 
