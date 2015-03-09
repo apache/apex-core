@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -35,14 +34,19 @@ public class OperatorDiscoveryTest
   public void testPropertyDiscovery() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
+    od.includeJRE();
+    od.includeCurrentClasspathLibrary();
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
     JSONObject desc = od.describeClass(TestOperator.class);
     System.out.println("\ntype info for " + TestOperator.class + ":\n" + desc.toString(2));
+    
+    JSONObject asmDesc = od.describeClassByASM(TestOperator.class.getName());
+    System.out.println("\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2));
 
     JSONArray props = desc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 13, props.length());
+    Assert.assertEquals("properties " + props, 15, props.length());
     JSONObject mapProperty = props.getJSONObject(6);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -56,6 +60,7 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
     JSONObject enumDesc = od.describeClass(Color.class);
+    
     JSONArray enumNames = enumDesc.getJSONArray("enum");
     Assert.assertNotNull("enumNames", enumNames);
     Assert.assertEquals("", Color.BLUE.name(), enumNames.get(0));
@@ -93,6 +98,11 @@ public class OperatorDiscoveryTest
     
     desc = od.describeClass(HashMap.class);
     System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
+    
+    
+    System.out.println("\n(ASM)type info for " + Color.class + ":\n" + od.describeClassByASM(Color.class.getName()).toString(2));
+    
+    System.out.println("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
 
   }
 
@@ -101,20 +111,24 @@ public class OperatorDiscoveryTest
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
     od.includeJRE();
-
+    od.includeCurrentClasspathLibrary();
     System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
 
     System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
 
-    System.out.println("The descendants list of concrete public type java.util.Map: \n" + od.getPublicConcreteDescendants("java.util.Map", Integer.MAX_VALUE));
+    System.out.println("The initializable descendants list of type java.util.Map: \n" + od.getInitializableDescendants("java.util.Map", Integer.MAX_VALUE));
 
-    System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.List", Integer.MAX_VALUE));
+    System.out.println("The initializable descendants list of type java.util.List: \n" + od.getInitializableDescendants("java.util.List", Integer.MAX_VALUE));
+    
+    System.out.println("The initializable descendants list of type com.google.common.collect.Multimap: \n" + od.getInitializableDescendants("com.google.common.collect.Multimap", Integer.MAX_VALUE));
+    
     
     Set<String> actualQueueClass = Sets.newHashSet();
-    String[] jdkQueue = new String[] {ArrayBlockingQueue.class.getName(), DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
+    String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
         LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
-    JSONArray queueJsonArray = od.getPublicConcreteDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
+    JSONArray queueJsonArray = od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
     // at lease include all the classes in jdk
+    System.out.println(queueJsonArray);
     Assert.assertTrue("All the queue class in jdk are expected in result ", queueJsonArray.length() >= jdkQueue.length);
     for (int i = 0; i < queueJsonArray.length(); i++) {
       actualQueueClass.add(queueJsonArray.getString(i));
@@ -122,10 +136,10 @@ public class OperatorDiscoveryTest
     for (String expectedClass : jdkQueue) {
       Assert.assertTrue("Actual queue set should contain any one of the expected class ", actualQueueClass.contains(expectedClass));
     }
-    System.out.println("The descendants list of concrete public type java.util.List: \n" + od.getPublicConcreteDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE));
+    System.out.println("The initializable descendants of type java.util.concurrent.BlockingQueue: \n" + od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE));
 
     try {
-      od.getPublicConcreteDescendants("java.lang.Object", 100);
+      od.getInitializableDescendants("java.lang.Object", 100);
     } catch (Exception e) {
       Assert.assertEquals("The exception msg: ", "Too many public concrete sub types!", e.getMessage());
     }
@@ -221,7 +235,10 @@ public class OperatorDiscoveryTest
     private Color color;
     private Structured[] structuredArray;
     private T[] genericArray;
+    private Map<String, List<Map<String, Number>>> zaMap = new HashMap<String, List<Map<String, Number>>>();
+    private Map<? extends Object, ? super Long> zbMap = new HashMap<Object, Number>();
 
+    
     public int getIntProp()
     {
       return intProp;
@@ -334,6 +351,28 @@ public class OperatorDiscoveryTest
     public void setBooleanProp(boolean booleanProp) {
       this.booleanProp = booleanProp;
     }
+
+    public Map<String, List<Map<String, Number>>> getZaMap()
+    {
+      return zaMap;
+    }
+
+    public void setZaMap(Map<String, List<Map<String, Number>>> zaMap)
+    {
+      this.zaMap = zaMap;
+    }
+
+
+    public Map<? extends Object, ? super Long> getZbMap()
+    {
+      return zbMap;
+    }
+
+    public void setZbMap(Map<? extends Object, ? super Long> zbMap)
+    {
+      this.zbMap = zbMap;
+    }
+
   }
 
   static class ExtendedOperator extends TestOperator<String>

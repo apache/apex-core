@@ -13,6 +13,7 @@ import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
 
 import java.beans.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.*;
@@ -26,9 +27,8 @@ import java.util.regex.Pattern;
 import javax.xml.parsers.*;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.*;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.tree.ClassNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
@@ -176,9 +176,7 @@ public class OperatorDiscoverer
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
     for (String path: paths) {
-      if (path.endsWith("jar")) {
-        pathsToScan.add(path);
-      }
+      pathsToScan.add(path);
     }
   }
 
@@ -203,44 +201,6 @@ public class OperatorDiscoverer
     buildTypeGraph();
 
     loadOperatorClass();
-
-//    loadNeededClass();
-
-  }
-
-  @SuppressWarnings("rawtypes")
-  private void loadNeededClass()
-  {
-    for (Class<? extends Operator> opClazz : operatorClasses) {
-      loadClassInGraph(opClazz);
-    }
-  }
-
-  private void loadClassInGraph(Class<? extends Object> clazz)
-  {
-    // load all classes that could be referenced by clazz
-    typeGraph.loadClass(clazz);
-    try {
-      for (PropertyDescriptor pd : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
-        if(pd.getWriteMethod()==null){
-          continue;
-        }
-        Class<?> pType = pd.getPropertyType();
-        if(pType.isPrimitive()){
-          continue;
-        } else {
-          typeGraph.loadAllSubClasses(pType, 100);
-          if(pType.getTypeParameters()!=null && pType.getTypeParameters().length>0){
-            for (TypeVariable<?> t : pType.getTypeParameters()) {
-              typeGraph.loadAllSubClasses(t.getName(), 100);
-            }
-          }
-          loadClassInGraph(pType);
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Load {} property error (error was {})", clazz, e.getMessage());
-    }
 
   }
 
@@ -267,9 +227,23 @@ public class OperatorDiscoverer
 
   private void buildTypeGraph()
   {
-    for (String jarFile : pathsToScan) {
+    for (String path : pathsToScan) {
       try {
-        JarFile jar = new JarFile(jarFile);
+        File f = new File(path);
+        if (f.exists() && f.isDirectory()) {
+          DirectoryScanner ds = new DirectoryScanner();
+          ds.setBasedir(f);
+          ds.setIncludes(new String[] { "**\\*.class" });
+          ds.scan();
+          for (String name : ds.getIncludedFiles()) {
+            typeGraph.addNode(new File(f, name));
+          }
+          continue;
+        }
+        if(!f.exists() || !f.getName().endsWith("jar")){
+          continue;
+        }
+        JarFile jar = new JarFile(path);
         try {
           java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
           while (entriesEnum.hasMoreElements()) {
@@ -277,28 +251,23 @@ public class OperatorDiscoverer
             if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
               try {
                 processJavadocXml(jar.getInputStream(jarEntry));
-//                break;
-              }
-              catch (Exception ex) {
+                // break;
+              } catch (Exception ex) {
                 LOG.warn("Cannot process javadoc xml: ", ex);
               }
-            } else if(!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
+            } else if (!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
               typeGraph.addNode(jarEntry, jar);
             }
           }
 
-        }
-        finally {
+        } finally {
           jar.close();
         }
-      }
-      catch (IOException ex) {
+      } catch (IOException ex) {
       }
     }
 
   }
-
-
 
   private void processJavadocXml(InputStream is) throws ParserConfigurationException, SAXException, IOException
   {
@@ -517,9 +486,6 @@ public class OperatorDiscoverer
 
   public JSONObject describeClass(String clazzName) throws Exception
   {
-    for (URL uu : ((URLClassLoader)classLoader).getURLs()) {
-      System.out.println(uu.toString());
-    };
     
     // TODO temporary solution for this there is a memory leak here
     return describeClass(classLoader.loadClass(clazzName));
@@ -535,6 +501,12 @@ public class OperatorDiscoverer
 //    }
 //    desc.put("properties", getClassProperties(clazz, 0));
 //    return desc;
+  }
+  
+  
+  public JSONObject describeClassByASM(String clazzName) throws Exception
+  {
+    return typeGraph.describeClass(clazzName);
   }
 
   
@@ -729,20 +701,20 @@ public class OperatorDiscoverer
     return new JSONArray(typeGraph.getDescendants(fullClassName));
   }
 
-  public JSONArray getPublicConcreteDescendants(String fullClassName, int limit)
+  public JSONArray getInitializableDescendants(String fullClassName, int limit)
   {
     if(typeGraph.size()==0){
       init();
     }
-    return new JSONArray(typeGraph.getPublicConcreteDescendants(fullClassName, limit));
+    return new JSONArray(typeGraph.getInitializableDescendants(fullClassName, limit));
   }
 
-  public JSONArray getPublicConcreteDescendants(String clazz, int limit, String filter, String packagePrefix)
+  public JSONArray getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
   {
     if(typeGraph.size()==0){
       init();
     }
-    return new JSONArray(typeGraph.getPublicConcreteDescendants(clazz, limit, filter, packagePrefix));
+    return new JSONArray(typeGraph.getInitializableDescendants(clazz, limit, filter, packagePrefix));
   }
 
 

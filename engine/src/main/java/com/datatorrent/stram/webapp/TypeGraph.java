@@ -1,7 +1,10 @@
 package com.datatorrent.stram.webapp;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -11,48 +14,106 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.text.WordUtils;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InnerClassNode;
+import org.objectweb.asm.tree.MethodNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.webapp.asm.ASMUtil;
+import com.datatorrent.stram.webapp.asm.MethodSignatureVisitor;
+import com.datatorrent.stram.webapp.asm.Type;
+import com.datatorrent.stram.webapp.asm.Type.ParameterizedTypeNode;
+import com.datatorrent.stram.webapp.asm.Type.TypeNode;
+import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
+
 public class TypeGraph
 {
-  
+
+  enum UI_TYPE {
+
+    LIST(Collection.class.getName(), "List"),
+
+    ENUM(Enum.class.getName(), "Enum"),
+
+    MAP(Map.class.getName(), "Map");
+
+    private final String assignableTo;
+    private final String name;
+
+    private UI_TYPE(String assignableTo, String name)
+    {
+      this.assignableTo = assignableTo;
+      this.name = name;
+    }
+
+    public static UI_TYPE getEnumFor(String clazzName, Map<String, TypeGraphVertex> typeGraph)
+    {
+      TypeGraphVertex tgv = typeGraph.get(clazzName);
+      if (tgv == null) {
+        return null;
+      }
+      for (UI_TYPE type : UI_TYPE.values()) {
+        TypeGraphVertex typeTgv = typeGraph.get(type.assignableTo);
+        if (typeTgv == null) {
+          continue;
+        }
+        if (isAncestor(typeTgv, tgv)) {
+          return type;
+        }
+      }
+      return null;
+    }
+
+    private static boolean isAncestor(TypeGraphVertex typeTgv, TypeGraphVertex tgv)
+    {
+      if (tgv == typeTgv) {
+        return true;
+      }
+      if ((tgv.ancestors == null || tgv.ancestors.size() == 0)) {
+        return false;
+      }
+      for (TypeGraphVertex vertex : tgv.ancestors) {
+        if (isAncestor(typeTgv, vertex))
+          return true;
+      }
+      return false;
+    }
+
+    public String getName()
+    {
+      return name;
+    }
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraph.class);
 
   private final Map<String, TypeGraphVertex> typeGraph = new HashMap<String, TypeGraphVertex>();
 
-  public void addNode(JarEntry jarEntry, JarFile jar) throws IOException
+  private void addNode(InputStream input, String resName) throws IOException
   {
-    InputStream jarInputStream = null;
     try {
-      jarInputStream = jar.getInputStream(jarEntry);
-      ClassReader reader = new ClassReader(jarInputStream);
+
+      ClassReader reader = new ClassReader(input);
       ClassNode cn = new ClassNode();
       reader.accept(cn, ClassReader.SKIP_CODE);
       String typeName = cn.name.replace('/', '.');
-
-      int opcode = reader.getAccess();
-      @SuppressWarnings("unchecked")
-      List<InnerClassNode> icl = cn.innerClasses;
-      if (typeName.contains("$")) {
-        for (InnerClassNode innerClassNode : icl) {
-          if (innerClassNode.name.replace('/', '.').equals(typeName)) {
-            opcode = innerClassNode.access;
-          }
-        }
-      }
 
       TypeGraphVertex tgv = null;
       TypeGraphVertex ptgv = null;
       if (typeGraph.containsKey(typeName)) {
         tgv = typeGraph.get(typeName);
-        tgv.setOpCode(opcode);
+        tgv.setAsmNode(cn);
       } else {
-        tgv = new TypeGraphVertex(typeName, jar.getName(), opcode);
+        tgv = new TypeGraphVertex(typeName, resName, cn);
         typeGraph.put(typeName, tgv);
       }
       String immediateP = reader.getSuperName();
@@ -60,7 +121,7 @@ public class TypeGraph
         immediateP = immediateP.replace('/', '.');
         ptgv = typeGraph.get(immediateP);
         if (ptgv == null) {
-          ptgv = new TypeGraphVertex(immediateP, jar.getName());
+          ptgv = new TypeGraphVertex(immediateP, resName);
           typeGraph.put(immediateP, ptgv);
         }
         tgv.ancestors.add(ptgv);
@@ -71,7 +132,7 @@ public class TypeGraph
           iface = iface.replace('/', '.');
           ptgv = typeGraph.get(iface);
           if (ptgv == null) {
-            ptgv = new TypeGraphVertex(iface, jar.getName());
+            ptgv = new TypeGraphVertex(iface, resName);
             typeGraph.put(iface, ptgv);
           }
           tgv.ancestors.add(ptgv);
@@ -79,32 +140,41 @@ public class TypeGraph
         }
       }
 
-      updatePublicConcreteDescendants(tgv);
+      updateInitializableDescendants(tgv);
     } finally {
-      if (jarInputStream != null) {
-        jarInputStream.close();
+      if (input != null) {
+        input.close();
       }
     }
-
   }
 
-  private void updatePublicConcreteDescendants(TypeGraphVertex tgv)
+  public void addNode(File file) throws IOException
+  {
+    addNode(new FileInputStream(file), file.getAbsolutePath());
+  }
+
+  public void addNode(JarEntry jarEntry, JarFile jar) throws IOException
+  {
+    addNode(jar.getInputStream(jarEntry), jar.getName());
+  }
+
+  private void updateInitializableDescendants(TypeGraphVertex tgv)
   {
     for (TypeGraphVertex parent : tgv.ancestors) {
-      updatePublicConcreteDescendants(parent, tgv.allPublicConcreteDescendants, tgv.isPublicConcrete() ? tgv : null);
+      updateInitializableDescendants(parent, tgv.allInitialiazableDescendants, tgv.isInitializable() ? tgv : null);
     }
   }
 
-  private void updatePublicConcreteDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> indirectChildren, TypeGraphVertex newNode)
+  private void updateInitializableDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> indirectChildren, TypeGraphVertex newNode)
   {
 
-    tgv.allPublicConcreteDescendants.addAll(indirectChildren);
+    tgv.allInitialiazableDescendants.addAll(indirectChildren);
     if (newNode != null) {
-      tgv.allPublicConcreteDescendants.add(newNode);
+      tgv.allInitialiazableDescendants.add(newNode);
     }
 
     for (TypeGraphVertex parent : tgv.ancestors) {
-      updatePublicConcreteDescendants(parent, indirectChildren, newNode);
+      updateInitializableDescendants(parent, indirectChildren, newNode);
     }
   }
 
@@ -123,28 +193,28 @@ public class TypeGraph
     return result;
   }
 
-  public Set<String> getPublicConcreteDescendants(String fullClassName, int limit)
+  public Set<String> getInitializableDescendants(String fullClassName, int limit)
   {
-    return getPublicConcreteDescendants(fullClassName, limit, null, null);
+    return getInitializableDescendants(fullClassName, limit, null, null);
   }
 
-  private void tranverse(TypeGraphVertex tgv, boolean onlyPublicConcrete, Set<String> result, int limit)
+  private void tranverse(TypeGraphVertex tgv, boolean onlyInitializable, Set<String> result, int limit)
   {
-    if (!onlyPublicConcrete) {
+    if (!onlyInitializable) {
       result.add(tgv.typeName);
     }
 
-    if (onlyPublicConcrete && tgv.numberOfPublicConcreteDescendants() > limit) {
+    if (onlyInitializable && tgv.numberOfInitializableDescendants() > limit) {
       throw new RuntimeException("Too many public concrete sub types!");
     }
 
-    if (onlyPublicConcrete && tgv.isPublicConcrete()) {
+    if (onlyInitializable && tgv.isInitializable()) {
       result.add(tgv.typeName);
     }
 
     if (tgv.descendants.size() > 0) {
       for (TypeGraphVertex child : tgv.descendants) {
-        tranverse(child, onlyPublicConcrete, result, limit);
+        tranverse(child, onlyInitializable, result, limit);
       }
     }
   }
@@ -157,30 +227,28 @@ public class TypeGraph
      */
     public final String typeName;
 
-    private int opCode = -1;
+    private ClassNode asmNode = null;
 
-    public Class<? extends Object> loadedClass = null;
-
-    private final Set<TypeGraphVertex> allPublicConcreteDescendants = new HashSet<TypeGraphVertex>();
+    private final Set<TypeGraphVertex> allInitialiazableDescendants = new HashSet<TypeGraphVertex>();
 
     private final Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
 
     private final Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
-    
+
     // keep the jar file name for late fetching the detail information
     private final String jarName;
 
-    public TypeGraphVertex(String typeName, String jarName, int opCode)
+    public TypeGraphVertex(String typeName, String jarName, ClassNode asmNode)
     {
 
       this.jarName = typeName;
       this.typeName = typeName;
-      this.opCode = opCode;
+      this.asmNode = asmNode;
     }
 
-    public int numberOfPublicConcreteDescendants()
+    public int numberOfInitializableDescendants()
     {
-      return allPublicConcreteDescendants.size() + (isPublicConcrete() ? 1 : 0);
+      return allInitialiazableDescendants.size() + (isInitializable() ? 1 : 0);
     }
 
     public TypeGraphVertex(String typeName, String jarName)
@@ -189,20 +257,36 @@ public class TypeGraph
       this.jarName = jarName;
     }
 
-    public void setOpCode(int opCode)
+    private boolean isInitializable()
     {
-      this.opCode = opCode;
+      return isPublicConcrete() && ASMUtil.getPublicDefaultConstructor(asmNode) != null;
     }
 
     private boolean isPublicConcrete()
     {
-      if (opCode < 0) {
+      if (asmNode == null) {
         // If the class is not in the classpath
         return false;
       }
+      int opCode = getOpCode();
+
       // if the class is neither abstract nor interface
       // and the class is public
       return ((opCode & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE)) == 0) && ((opCode & Opcodes.ACC_PUBLIC) == Opcodes.ACC_PUBLIC);
+    }
+
+    private int getOpCode()
+    {
+      @SuppressWarnings("unchecked")
+      List<InnerClassNode> icl = asmNode.innerClasses;
+      if (typeName.contains("$")) {
+        for (InnerClassNode innerClassNode : icl) {
+          if (innerClassNode.name.replace('/', '.').equals(typeName)) {
+            return innerClassNode.access;
+          }
+        }
+      }
+      return asmNode.access;
     }
 
     /*
@@ -241,68 +325,191 @@ public class TypeGraph
     {
       return jarName;
     }
+
+    public ClassNode getAsmNode()
+    {
+      return asmNode;
+    }
+
+    public void setAsmNode(ClassNode asmNode)
+    {
+      this.asmNode = asmNode;
+    }
   }
 
-  public void loadAllSubClasses(Class<? extends Object> clazz, int limit)
-  {
-    TypeGraphVertex tgv = typeGraph.get(clazz.getName());
-    if(tgv == null) {
-      return;
-    }
-    tgv.loadedClass = clazz;
-    if (tgv.allPublicConcreteDescendants.size() > limit) {
-      return;
-    }
-    for (TypeGraphVertex subType : tgv.allPublicConcreteDescendants) {
-      try {
-        subType.loadedClass = Class.forName(subType.typeName);
-      } catch (ClassNotFoundException e) {
-        LOG.warn("Load {} error", clazz);
-      }
-    }
-  }
-  
-  public void loadAllSubClasses(String clazzName, int limit)
-  {
-    TypeGraphVertex tgv = typeGraph.get(clazzName);
-    if(tgv == null) {
-      return;
-    } else
-      try {
-        loadAllSubClasses(Class.forName(clazzName), limit);
-      } catch (ClassNotFoundException e) {
-        LOG.warn("Load class {} error", clazzName);
-      }
-  }
-
-  public void loadClass(Class<? extends Object> clazz)
-  {
-    TypeGraphVertex tgv = typeGraph.get(clazz.getName());
-    if(tgv == null) {
-      return;
-    }
-    tgv.loadedClass = clazz;
-  }
-
-  public Set<String> getPublicConcreteDescendants(String clazz, int limit, String filter, String packagePrefix)
+  public Set<String> getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
   {
     Set<String> result = new HashSet<String>();
     TypeGraphVertex tgv = typeGraph.get(clazz);
 
-    if (tgv.numberOfPublicConcreteDescendants() > limit) {
+    if (tgv.numberOfInitializableDescendants() > limit) {
       throw new RuntimeException("Too many public concrete sub types!");
     }
     if (tgv != null) {
-      for (TypeGraphVertex node : tgv.allPublicConcreteDescendants) {
-        if(filter!=null && !Pattern.matches(filter, node.typeName)){
+      for (TypeGraphVertex node : tgv.allInitialiazableDescendants) {
+        if (filter != null && !Pattern.matches(filter, node.typeName)) {
           continue;
-        } if(packagePrefix!=null && !node.typeName.startsWith(packagePrefix)) {
+        }
+        if (packagePrefix != null && !node.typeName.startsWith(packagePrefix)) {
           continue;
         }
         result.add(node.typeName);
       }
     }
     return result;
+  }
+
+  public JSONObject describeClass(String clazzName) throws JSONException
+  {
+    JSONObject desc = new JSONObject();
+    desc.put("name", clazzName);
+    TypeGraphVertex tgv = typeGraph.get(clazzName);
+    if (tgv == null) {
+      return desc;
+    }
+    ClassNode cn = tgv.asmNode;
+    if (ASMUtil.isEnum(cn)) {
+
+      List<String> enumNames = ASMUtil.getEnumValues(cn);
+      desc.put("enum", enumNames);
+    }
+    desc.put("properties", getClassProperties(clazzName));
+    return desc;
+  }
+
+  private Collection<JSONObject> getClassProperties(String clazzName) throws JSONException
+  {
+    TypeGraphVertex tgv = typeGraph.get(clazzName);
+    if (tgv == null) {
+      return null;
+    }
+    Map<String, JSONObject> results = new HashMap<String, JSONObject>();
+    List<MethodNode> getters = ASMUtil.getPublicGetter(tgv.getAsmNode());
+    List<MethodNode> setters = ASMUtil.getPublicSetter(tgv.getAsmNode());
+
+    for (MethodNode setter : setters) {
+      String prop = WordUtils.uncapitalize(setter.name.substring(3));
+      JSONObject propJ = results.get(prop);
+      if (propJ == null) {
+        propJ = new JSONObject();
+        propJ.put("name", prop);
+        results.put(prop, propJ);
+      }
+      propJ.put("canSet", "true");
+      propJ.put("canGet", "false");
+
+      // String typeString = null;
+      // if(setter.signature == null){
+      // Type t = Type.getArgumentTypes(setter.desc)[0];
+      // if(t.getSort()==Type.ARRAY){
+      // typeString = t.toString();
+      // } else {
+      // typeString = Type.getArgumentTypes(setter.desc)[0].getClassName();
+      // }
+      // }
+      String sigString = setter.signature != null ? setter.signature : setter.desc;
+      SignatureReader reader = new SignatureReader(sigString);
+      MethodSignatureVisitor gss = new MethodSignatureVisitor();
+      reader.accept(gss);
+      List<Type> param = gss.getParameters();
+      if (CollectionUtils.isEmpty(param)) {
+        propJ.put("type", "UNKNOWN");
+      } else {
+        // only one param in setter method
+        setTypes(propJ, param.get(0));
+        // propJ.put("type", param.getTypeObj().getClassName());
+
+      }
+      // propJ.put("type", typeString);
+    }
+
+    for (MethodNode getter : getters) {
+      int si = getter.name.startsWith("is") ? 2 : 3;
+      String prop = WordUtils.uncapitalize(getter.name.substring(si));
+      JSONObject propJ = results.get(prop);
+      if (propJ == null) {
+        propJ = new JSONObject();
+        propJ.put("name", prop);
+        results.put(prop, propJ);
+        propJ.put("canSet", "false");
+        // propJ.put("type", Type.getReturnType(getter.desc).getClassName());
+
+        String sigString = getter.signature != null ? getter.signature : getter.desc;
+        // System.out.println(sigString);
+        SignatureReader reader = new SignatureReader(sigString);
+        MethodSignatureVisitor gss = new MethodSignatureVisitor();
+        reader.accept(gss);
+
+        Type rt = gss.getReturnType();
+        if (rt == null) {
+          propJ.put("type", "UNKNOWN");
+        } else {
+          setTypes(propJ, rt);
+          // propJ.put("type", param.getTypeObj().getClassName());
+
+        }
+
+      }
+
+      propJ.put("canGet", "true");
+    }
+
+    return results.values();
+  }
+
+  private void setTypes(JSONObject propJ, Type t) throws JSONException
+  {
+    if (propJ == null) {
+      return;
+    } else {
+      if (t instanceof WildcardTypeNode) {
+        propJ.put("type", "?");
+      } else if (t instanceof TypeNode) {
+        TypeNode tn = (TypeNode) t;
+        propJ.put("type", tn.getTypeObj().getClassName());
+        UI_TYPE uiType = UI_TYPE.getEnumFor(tn.getTypeObj().getClassName(), typeGraph);
+        if (uiType != null) {
+          propJ.put("uiType", uiType.getName());
+        }
+        if (t instanceof ParameterizedTypeNode) {
+          JSONArray jArray = new JSONArray();
+          for (Type ttn : ((ParameterizedTypeNode) t).getActualTypeArguments()) {
+            JSONObject objJ = new JSONObject();
+            setTypes(objJ, ttn);
+            jArray.put(objJ);
+          }
+          propJ.put("typeArgs", jArray);
+        }
+      }
+      if (t instanceof WildcardTypeNode) {
+        JSONObject typeBounds = new JSONObject();
+        
+        
+        JSONArray jArray = new JSONArray();
+        Type[] bounds = ((WildcardTypeNode) t).getUpperBounds();
+        if(bounds!=null){
+          for (Type type : bounds) {
+            jArray.put(type.toString());
+          }
+        }
+        typeBounds.put("upper", jArray);
+        
+        bounds = ((WildcardTypeNode) t).getLowerBounds();
+
+        jArray = new JSONArray();
+        if(bounds!=null){
+          for (Type type : bounds) {
+            jArray.put(type.toString());
+          }
+        }
+        typeBounds.put("lower", jArray);
+
+        propJ.put("typeBounds", typeBounds);
+
+      }
+
+
+    }
   }
 
 }
