@@ -1051,6 +1051,8 @@ public class StreamingContainerManager implements PlanContext
     }
 
     sca.memoryMBFree = heartbeat.memoryMBFree;
+    sca.gcCollectionCount = heartbeat.gcCollectionCount;
+    sca.gcCollectionTime = heartbeat.gcCollectionTime;
 
     sca.undeployOpers.clear();
     sca.deployOpers.clear();
