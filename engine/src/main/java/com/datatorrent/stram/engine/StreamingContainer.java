@@ -73,6 +73,7 @@ public class StreamingContainer extends YarnContainerMain
   protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
+  private transient List<GarbageCollectorMXBean> garbageCollectorMXBeans;
   /**
    * OIO groups map
    * key: operator id of oio owning thread node
@@ -586,7 +587,7 @@ public class StreamingContainer extends YarnContainerMain
         }
       }
       msg.memoryMBFree = ((int) (Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-      List<GarbageCollectorMXBean> garbageCollectorMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
+      garbageCollectorMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
       for (GarbageCollectorMXBean bean : garbageCollectorMXBeans) {
         msg.gcCollectionTime += bean.getCollectionTime();
         msg.gcCollectionCount += bean.getCollectionCount();
