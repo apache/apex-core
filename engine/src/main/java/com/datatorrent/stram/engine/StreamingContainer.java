@@ -586,13 +586,12 @@ public class StreamingContainer extends YarnContainerMain
         }
       }
       msg.memoryMBFree = ((int) (Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-      long currentTimeMillis = System.currentTimeMillis();
       List<GarbageCollectorMXBean> garbageCollectorMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
       for (GarbageCollectorMXBean bean : garbageCollectorMXBeans) {
         msg.gcCollectionTime += bean.getCollectionTime();
         msg.gcCollectionCount += bean.getCollectionCount();
       }
-      logger.info("GC time {}", System.currentTimeMillis() - currentTimeMillis);
+
       ContainerHeartbeatResponse rsp;
       do {
         ContainerStats stats = new ContainerStats(containerId);
