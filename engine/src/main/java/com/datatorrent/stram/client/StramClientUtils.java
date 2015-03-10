@@ -421,7 +421,7 @@ public class StramClientUtils
     }
     else {
       if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
-        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getUserName());
+        dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
         conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
       }
       try {
@@ -443,7 +443,7 @@ public class StramClientUtils
     else {
       try {
         if (dfsRootDir.contains(DT_DFS_USER_NAME)) {
-          dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getUserName());
+          dfsRootDir = dfsRootDir.replace(DT_DFS_USER_NAME, UserGroupInformation.getLoginUser().getShortUserName());
           conf.set(DT_DFS_ROOT_DIR, dfsRootDir);
         }
         URI uri = new URI(dfsRootDir);
@@ -719,7 +719,7 @@ public class StramClientUtils
 
   public static <T> T doAs(String userName, PrivilegedExceptionAction<T> action) throws Exception
   {
-    if (StringUtils.isNotBlank(userName) && !userName.equals(UserGroupInformation.getLoginUser().getUserName())) {
+    if (StringUtils.isNotBlank(userName) && !userName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
       LOG.info("Executing command as {}", userName);
       UserGroupInformation ugi
               = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
