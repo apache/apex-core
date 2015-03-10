@@ -6,30 +6,30 @@ package com.datatorrent.stram.engine;
 
 import java.io.IOException;
 import java.lang.Thread.State;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
-import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
-import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -168,7 +168,7 @@ public class StreamingContainer extends YarnContainerMain
         }
         SocketAddress bindAddr = bufferServer.run(eventloop);
         logger.debug("Buffer server started: {}", bindAddr);
-        this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
+        this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress) bindAddr));
       }
     }
     catch (IOException ex) {
@@ -182,7 +182,7 @@ public class StreamingContainer extends YarnContainerMain
         singletons.put(clazz.getName(), newInstance);
 
         if (newInstance instanceof Component) {
-          components.add((Component<ContainerContext>)newInstance);
+          components.add((Component<ContainerContext>) newInstance);
         }
 
         eventBus.subscribe(newInstance);
@@ -345,7 +345,7 @@ public class StreamingContainer extends YarnContainerMain
           }
           else {
             String[] split = sinks.split(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR);
-            for (int i = split.length; i-- > 0;) {
+            for (int i = split.length; i-- > 0; ) {
               ComponentContextPair<Stream, StreamContext> spair = streams.remove(split[i]);
               if (spair == null) {
                 logger.error("mux is missing the stream for sink {}", split[i]);
@@ -403,7 +403,7 @@ public class StreamingContainer extends YarnContainerMain
   {
     String[] sinks = muxpair.context.getSinkId().split(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR);
     boolean found = false;
-    for (int i = sinks.length; i-- > 0;) {
+    for (int i = sinks.length; i-- > 0; ) {
       if (sinks[i].equals(sinkIdentifier)) {
         sinks[i] = null;
         found = true;
@@ -412,7 +412,7 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     if (found) {
-      ((Stream.MultiSinkCapableStream)muxpair.component).setSink(sinkIdentifier, null);
+      ((Stream.MultiSinkCapableStream) muxpair.component).setSink(sinkIdentifier, null);
 
       if (sinks.length == 1) {
         muxpair.context.setSinkId(null);
@@ -427,7 +427,7 @@ public class StreamingContainer extends YarnContainerMain
         StringBuilder builder = new StringBuilder(muxpair.context.getSinkId().length() - MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR.length() - sinkIdentifier.length());
 
         found = false;
-        for (int i = sinks.length; i-- > 0;) {
+        for (int i = sinks.length; i-- > 0; ) {
           if (sinks[i] != null) {
             if (found) {
               builder.append(MuxStream.MULTI_SINK_ID_CONCAT_SEPARATOR).append(sinks[i]);
@@ -585,8 +585,14 @@ public class StreamingContainer extends YarnContainerMain
           msg.restartRequested = true;
         }
       }
-      msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-
+      msg.memoryMBFree = ((int) (Runtime.getRuntime().freeMemory() / (1024 * 1024)));
+      long currentTimeMillis = System.currentTimeMillis();
+      List<GarbageCollectorMXBean> garbageCollectorMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
+      for (GarbageCollectorMXBean bean : garbageCollectorMXBeans) {
+        msg.gcCollectionTime += bean.getCollectionTime();
+        msg.gcCollectionCount += bean.getCollectionCount();
+      }
+      logger.info("GC time {}", System.currentTimeMillis() - currentTimeMillis);
       ContainerHeartbeatResponse rsp;
       do {
         ContainerStats stats = new ContainerStats(containerId);
@@ -599,7 +605,7 @@ public class StreamingContainer extends YarnContainerMain
           OperatorContext context = e.getValue().context;
           context.drainStats(hb.getOperatorStatsContainer());
           hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED
-                      : context.getThread() == null ? OperatorHeartbeat.DeployState.SHUTDOWN : OperatorHeartbeat.DeployState.ACTIVE);
+            : context.getThread() == null ? OperatorHeartbeat.DeployState.SHUTDOWN : OperatorHeartbeat.DeployState.ACTIVE);
           stats.addNodeStats(hb);
         }
 
@@ -644,8 +650,8 @@ public class StreamingContainer extends YarnContainerMain
       if (req.isDeleted()) {
         continue;
       }
-      if(req instanceof StramToNodeChangeLoggersRequest){
-        handleChangeLoggersRequest((StramToNodeChangeLoggersRequest)req);
+      if (req instanceof StramToNodeChangeLoggersRequest) {
+        handleChangeLoggersRequest((StramToNodeChangeLoggersRequest) req);
         continue;
       }
       Node<?> node = nodes.get(req.getOperatorId());
@@ -695,7 +701,7 @@ public class StreamingContainer extends YarnContainerMain
               @Override
               public void execute(Operator operator, int id, long windowId) throws IOException
               {
-                ((Operator.CheckpointListener)operator).committed(lastCommittedWindowId);
+                ((Operator.CheckpointListener) operator).committed(lastCommittedWindowId);
               }
 
             };
@@ -806,7 +812,7 @@ public class StreamingContainer extends YarnContainerMain
 
       Context parentContext;
       if (ndi instanceof UnifierDeployInfo) {
-        OperatorContext unifiedOperatorContext = new OperatorContext(0, ((UnifierDeployInfo)ndi).operatorAttributes, containerContext);
+        OperatorContext unifiedOperatorContext = new OperatorContext(0, ((UnifierDeployInfo) ndi).operatorAttributes, containerContext);
         parentContext = new PortContext(ndi.inputs.get(0).contextAttributes, unifiedOperatorContext);
         massageUnifierDeployInfo(ndi);
       }
@@ -829,8 +835,8 @@ public class StreamingContainer extends YarnContainerMain
 
   @SuppressWarnings("unchecked")
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
-          String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
-          throws UnknownHostException
+    String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
+    throws UnknownHostException
   {
     String sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(connIdentifier);
 
@@ -851,8 +857,8 @@ public class StreamingContainer extends YarnContainerMain
   }
 
   private HashMap<String, ComponentContextPair<Stream, StreamContext>> deployOutputStreams(
-          List<OperatorDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
-          throws Exception
+    List<OperatorDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
+    throws Exception
   {
     HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams = new HashMap<String, ComponentContextPair<Stream, StreamContext>>();
     /*
@@ -886,10 +892,11 @@ public class StreamingContainer extends YarnContainerMain
           String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                  deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+            deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
           newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
-        } else {
+        }
+        else {
           /*
            * In this case we have 2 possibilities, either we have 1 inline or multiple streams.
            * Since we cannot tell at this point, we assume that we will have multiple streams and
@@ -925,13 +932,14 @@ public class StreamingContainer extends YarnContainerMain
               String connIdentifier = sourceIdentifier + Component.CONCAT_SEPARATOR + streamCodecIdentifier;
 
               SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                      deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
+                deployBufferServerPublisher(connIdentifier, streamCodec, checkpointWindowId, queueCapacity, nodi);
               newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
 
               String sinkIdentifier = pair.context.getSinkId();
               if (sinkIdentifier == null) {
                 pair.context.setSinkId(deployBufferServerPublisher.getKey());
-              } else {
+              }
+              else {
                 pair.context.setSinkId(sinkIdentifier.concat(", ").concat(deployBufferServerPublisher.getKey()));
               }
 
@@ -949,7 +957,7 @@ public class StreamingContainer extends YarnContainerMain
    * If the port is connected, return the declared stream Id.
    *
    * @param operatorId id of the operator to which the port belongs.
-   * @param portname name of port to which the stream is connected.
+   * @param portname   name of port to which the stream is connected.
    * @return Stream Id if connected, null otherwise.
    */
   public final String getDeclaredStreamId(int operatorId, String portname)
@@ -1045,8 +1053,8 @@ public class StreamingContainer extends YarnContainerMain
             context.setFinishedWindowId(checkpoint.windowId);
 
             BufferServerSubscriber subscriber = fastPublisherSubscriber
-                    ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
-                    : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
+              ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity)
+              : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(connIdentifier), queueCapacity);
             SweepableReservoir reservoir = subscriber.acquireReservoir(sinkIdentifier, queueCapacity);
             if (checkpoint.windowId >= 0) {
               node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, reservoir, checkpoint.windowId));
@@ -1073,7 +1081,7 @@ public class StreamingContainer extends YarnContainerMain
 
                 stream = new InlineStream(queueCapacity);
                 if (checkpoint.windowId >= 0) {
-                  node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, (SweepableReservoir)stream, checkpoint.windowId));
+                  node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, (SweepableReservoir) stream, checkpoint.windowId));
                 }
                 break;
 
@@ -1086,7 +1094,7 @@ public class StreamingContainer extends YarnContainerMain
                 throw new IllegalStateException("Locality can be either ContainerLocal or ThreadLocal");
             }
 
-            node.connectInputPort(nidi.portName, (SweepableReservoir)stream);
+            node.connectInputPort(nidi.portName, (SweepableReservoir) stream);
             newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
 
             if (!(pair.component instanceof Stream.MultiSinkCapableStream)) {
@@ -1109,7 +1117,7 @@ public class StreamingContainer extends YarnContainerMain
 
             /* here everything should be multisink capable */
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, stream);
+              ((Stream.MultiSinkCapableStream) pair.component).setSink(sinkIdentifier, stream);
             }
             else {
               /*
@@ -1117,7 +1125,7 @@ public class StreamingContainer extends YarnContainerMain
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(streamCodec == null ? nonSerializingStreamCodec : (StreamCodec<Object>) streamCodec, nidi.partitionKeys, nidi.partitionMask, stream);
-              ((Stream.MultiSinkCapableStream)pair.component).setSink(sinkIdentifier, pas);
+              ((Stream.MultiSinkCapableStream) pair.component).setSink(sinkIdentifier, pas);
             }
 
             String streamSinkId = pair.context.getSinkId();
@@ -1192,7 +1200,7 @@ public class StreamingContainer extends YarnContainerMain
     windowGenerator.setWindowWidth(windowWidthMillis);
 
     long windowCount = WindowGenerator.getWindowCount(millisAtFirstWindow, firstWindowMillis, windowWidthMillis);
-    windowGenerator.setCheckpointCount(checkpointWindowCount, (int)(windowCount % checkpointWindowCount));
+    windowGenerator.setCheckpointCount(checkpointWindowCount, (int) (windowCount % checkpointWindowCount));
     return windowGenerator;
   }
 
@@ -1290,7 +1298,7 @@ public class StreamingContainer extends YarnContainerMain
 
             currentdi = null;
 
-            for (int i = setOperators.size(); i-- > 0;) {
+            for (int i = setOperators.size(); i-- > 0; ) {
               signal.countDown();
             }
 
@@ -1418,7 +1426,7 @@ public class StreamingContainer extends YarnContainerMain
   {
     Checkpoint checkpoint;
     if (ndi.contextAttributes != null
-        && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
+      && ndi.contextAttributes.get(OperatorContext.PROCESSING_MODE) == ProcessingMode.AT_MOST_ONCE) {
       long now = System.currentTimeMillis();
       long windowCount = WindowGenerator.getWindowCount(now, firstWindowMillis, firstWindowMillis);
 
@@ -1426,13 +1434,13 @@ public class StreamingContainer extends YarnContainerMain
       if (temp == null) {
         temp = containerContext.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
       }
-      int appWindowCount = (int)(windowCount % temp);
+      int appWindowCount = (int) (windowCount % temp);
 
       temp = ndi.contextAttributes.get(OperatorContext.CHECKPOINT_WINDOW_COUNT);
       if (temp == null) {
         temp = containerContext.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
       }
-      int lCheckpointWindowCount = (int)(windowCount % temp);
+      int lCheckpointWindowCount = (int) (windowCount % temp);
       checkpoint = new Checkpoint(WindowGenerator.getWindowId(now, firstWindowMillis, windowWidthMillis), appWindowCount, lCheckpointWindowCount);
       logger.debug("using {} on {} at {}", ProcessingMode.AT_MOST_ONCE, ndi.name, checkpoint);
     }
@@ -1466,10 +1474,10 @@ public class StreamingContainer extends YarnContainerMain
    * OperatorDeployInfo starts implementing proper semantics of Context, this
    * would not be needed.
    *
-   * @param <T> Type of the attribute.
-   * @param key Name of the attribute.
+   * @param <T>         Type of the attribute.
+   * @param key         Name of the attribute.
    * @param portContext Port context if applicable otherwise null.
-   * @param deployInfo Operator context if applicable otherwise null.
+   * @param deployInfo  Operator context if applicable otherwise null.
    * @return Value of the operator
    */
   private <T> T getValue(Attribute<T> key, com.datatorrent.api.Context.PortContext portContext, OperatorDeployInfo deployInfo)

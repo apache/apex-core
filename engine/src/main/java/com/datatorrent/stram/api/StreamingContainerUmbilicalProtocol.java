@@ -4,10 +4,10 @@
  */
 package com.datatorrent.stram.api;
 
-import com.datatorrent.api.Attribute.AttributeMap;
-
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -15,9 +15,11 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
+import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats;
 import com.datatorrent.api.StatsListener.OperatorCommand;
+
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
 /**
@@ -199,6 +201,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public String jvmName;
     public int memoryMBFree;
     public boolean restartRequested;
+    public long gcCollectionTime;
+    public long gcCollectionCount;
 
     public ContainerStats stats;
 
