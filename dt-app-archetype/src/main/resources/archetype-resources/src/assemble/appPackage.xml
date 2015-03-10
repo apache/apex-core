@@ -34,16 +34,8 @@
       <outputDirectory>/app</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${basedir}/src/main/resources/widget</directory>
-      <outputDirectory>/widget</outputDirectory>
-    </fileSet>
-    <fileSet>
-      <directory>${basedir}/src/main/resources/dashboard</directory>
-      <outputDirectory>/dashboard</outputDirectory>
-    </fileSet>
-    <fileSet>
-      <directory>${basedir}/src/main/resources/configUI</directory>
-      <outputDirectory>/configUI</outputDirectory>
+      <directory>${basedir}/src/main/resources/resources</directory>
+      <outputDirectory>/resources</outputDirectory>
     </fileSet>
   </fileSets>
 

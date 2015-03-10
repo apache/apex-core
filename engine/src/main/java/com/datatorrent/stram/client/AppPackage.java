@@ -14,8 +14,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,9 +50,7 @@ public class AppPackage extends JarFile implements Closeable
   private final Map<String, String> defaultProperties = new TreeMap<String, String>();
   private final Set<String> configs = new TreeSet<String>();
 
-  private final List<JSONObject> dashboards = new ArrayList<JSONObject>();
-  private final List<JSONObject> widgets = new ArrayList<JSONObject>();
-  private JSONObject configUI;
+  private final File resourcesDirectory;
 
   public static class AppInfo
   {
@@ -128,18 +124,7 @@ public class AppPackage extends JarFile implements Closeable
     if (confDirectory.exists()) {
       processConfDirectory(confDirectory);
     }
-    File dashboardDirectory = new File(newDirectory, "dashboard");
-    if (dashboardDirectory.exists()) {
-      processDashboardDirectory(dashboardDirectory);
-    }
-    File widgetDirectory = new File(newDirectory, "widget");
-    if (widgetDirectory.exists()) {
-      processWidgetDirectory(widgetDirectory);
-    }
-    File configUIDirectory = new File(newDirectory, "configUI");
-    if (configUIDirectory.exists()) {
-      processConfigUIDirectory(configUIDirectory);
-    }
+    resourcesDirectory = new File(newDirectory, "resources");
 
     File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
@@ -205,19 +190,9 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableCollection(configs);
   }
 
-  public Collection<JSONObject> getDashboards()
+  public File getResourcesDirectory()
   {
-    return Collections.unmodifiableCollection(dashboards);
-  }
-
-  public Collection<JSONObject> getWidgets()
-  {
-    return Collections.unmodifiableCollection(widgets);
-  }
-
-  public JSONObject getConfigUI()
-  {
-    return configUI;
+    return resourcesDirectory;
   }
 
   public List<AppInfo> getApplications()
@@ -248,24 +223,6 @@ public class AppPackage extends JarFile implements Closeable
   public Map<String, String> getDefaultProperties()
   {
     return Collections.unmodifiableMap(defaultProperties);
-  }
-
-  public File widgetFile(String widgetName, String filePath)
-  {
-    try {
-      for (JSONObject w : widgets) {
-        if (w.getString("name").equals(widgetName)) {
-          return new File(StringUtils.join(new String[]{directory, "widget", w.getString("name"), filePath}, File.separator));
-        }
-      }
-    } catch (JSONException ex) {
-    }
-    return null;
-  }
-
-  public File configUIFile(String filePath)
-  {
-    return new File(StringUtils.join(new String[]{directory, "configUI", filePath}, File.separator));
   }
 
   private void processAppDirectory(File dir)
@@ -369,56 +326,6 @@ public class AppPackage extends JarFile implements Closeable
     for (File entry : files) {
       if (entry.getName().endsWith(".xml")) {
         configs.add(entry.getName());
-      }
-    }
-  }
-
-  private void processDashboardDirectory(File dir)
-  {
-    File[] files = dir.listFiles();
-
-    for (File entry : files) {
-      if (entry.getName().endsWith(".json")) {
-        try {
-          JSONObject json = new JSONObject(FileUtils.readFileToString(entry));
-          json.put("name", entry.getName());
-          dashboards.add(json);
-        } catch (Exception ex) {
-          LOG.error("Caught exception when processing dashboard directory {}", entry.getName(), ex);
-        }
-      }
-    }
-  }
-
-  private void processWidgetDirectory(File dir)
-  {
-    File[] files = dir.listFiles();
-
-    for (File entry : files) {
-      if (entry.isDirectory()) {
-        File packageJson = new File(entry, "package.json");
-        if (packageJson.exists()) {
-          try {
-            JSONObject json = new JSONObject(FileUtils.readFileToString(packageJson));
-            json.put("name", entry.getName());
-            widgets.add(json);
-          } catch (Exception ex) {
-            LOG.error("Caught exception when reading widget directory {}", dir.getName(), ex);
-          }
-        }
-      }
-    }
-  }
-
-  private void processConfigUIDirectory(File dir)
-  {
-    File packageJson = new File(dir, "package.json");
-    if (packageJson.exists()) {
-      try {
-        JSONObject json = new JSONObject(FileUtils.readFileToString(packageJson));
-        configUI = json;
-      } catch (Exception ex) {
-        LOG.error("Caught exception when reading configUI directory {}", dir.getName(), ex);
       }
     }
   }
