@@ -204,7 +204,7 @@ public class MethodSignatureVisitor implements SignatureVisitor
   {
     TypeNode tn = new TypeNode();
     tn.typeObj = org.objectweb.asm.Type.getType("T" + typeVariable + ";");
-    System.out.println(tn.typeObj);
+//    System.out.println(tn.typeObj);
     visitingStack.push(tn);
     resolveStack();
     //System.out.println("visitTypeVariable:'" + typeVariable);

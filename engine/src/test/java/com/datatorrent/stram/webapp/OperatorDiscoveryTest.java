@@ -118,7 +118,7 @@ public class OperatorDiscoveryTest
 
     System.out.println("The initializable descendants list of type java.util.List: \n" + od.getInitializableDescendants("java.util.List", Integer.MAX_VALUE));
     
-    System.out.println("The initializable descendants list of type com.google.common.collect.Multimap: \n" + od.getInitializableDescendants("com.google.common.collect.Multimap", Integer.MAX_VALUE));
+    System.out.println("The initializable descendants list of type java.util.HashMap: \n" + od.getInitializableDescendants("java.util.HashMap", Integer.MAX_VALUE));
     
     
     Set<String> actualQueueClass = Sets.newHashSet();

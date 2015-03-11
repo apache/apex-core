@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.webapp.asm.ASMUtil;
+import com.datatorrent.stram.webapp.asm.ClassNodeType;
 import com.datatorrent.stram.webapp.asm.MethodSignatureVisitor;
 import com.datatorrent.stram.webapp.asm.Type;
 import com.datatorrent.stram.webapp.asm.Type.ParameterizedTypeNode;
@@ -103,7 +104,7 @@ public class TypeGraph
     try {
 
       ClassReader reader = new ClassReader(input);
-      ClassNode cn = new ClassNode();
+      ClassNode cn = new ClassNodeType();
       reader.accept(cn, ClassReader.SKIP_CODE);
       String typeName = cn.name.replace('/', '.');
 
@@ -160,21 +161,22 @@ public class TypeGraph
 
   private void updateInitializableDescendants(TypeGraphVertex tgv)
   {
+    if(tgv.isInitializable()){
+      tgv.allInitialiazableDescendants.add(tgv);
+    }
     for (TypeGraphVertex parent : tgv.ancestors) {
-      updateInitializableDescendants(parent, tgv.allInitialiazableDescendants, tgv.isInitializable() ? tgv : null);
+      updateInitializableDescendants(parent, tgv.allInitialiazableDescendants);
     }
   }
 
-  private void updateInitializableDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> indirectChildren, TypeGraphVertex newNode)
+  private void updateInitializableDescendants(TypeGraphVertex tgv, Set<TypeGraphVertex> allChildren)
   {
 
-    tgv.allInitialiazableDescendants.addAll(indirectChildren);
-    if (newNode != null) {
-      tgv.allInitialiazableDescendants.add(newNode);
-    }
+    tgv.allInitialiazableDescendants.addAll(allChildren);
+
 
     for (TypeGraphVertex parent : tgv.ancestors) {
-      updateInitializableDescendants(parent, indirectChildren, newNode);
+      updateInitializableDescendants(parent, allChildren);
     }
   }
 
@@ -407,10 +409,15 @@ public class TypeGraph
       // typeString = Type.getArgumentTypes(setter.desc)[0].getClassName();
       // }
       // }
-      String sigString = setter.signature != null ? setter.signature : setter.desc;
-      SignatureReader reader = new SignatureReader(sigString);
-      MethodSignatureVisitor gss = new MethodSignatureVisitor();
-      reader.accept(gss);
+      MethodSignatureVisitor gss = null;
+      if (setter instanceof com.datatorrent.stram.webapp.asm.MethodNode) {
+        gss = ((com.datatorrent.stram.webapp.asm.MethodNode) setter).signatureNode;
+      } else {
+        String sigString = setter.signature != null ? setter.signature : setter.desc;
+        SignatureReader reader = new SignatureReader(sigString);
+        gss = new MethodSignatureVisitor();
+        reader.accept(gss);
+      }
       List<Type> param = gss.getParameters();
       if (CollectionUtils.isEmpty(param)) {
         propJ.put("type", "UNKNOWN");

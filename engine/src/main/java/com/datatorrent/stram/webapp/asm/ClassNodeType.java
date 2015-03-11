@@ -7,13 +7,21 @@ import org.objectweb.asm.tree.ClassNode;
 public class ClassNodeType extends ClassNode
 {
   
-  
-  
+  @SuppressWarnings("unchecked")
   @Override
   public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions)
   {
-    // TODO Auto-generated method stub
-    return new MethodNode(access, name, desc, signature, exceptions);
+    MethodNode mn = new MethodNode(access, name, desc, signature, exceptions);
+    methods.add(mn);
+    return mn;
+  }
+  
+  
+  @Override
+  public void visitEnd()
+  {
+    super.visitEnd();
+    
   }
   
 

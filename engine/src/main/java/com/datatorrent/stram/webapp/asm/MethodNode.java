@@ -1,13 +1,12 @@
 package com.datatorrent.stram.webapp.asm;
 
 import org.objectweb.asm.signature.SignatureReader;
-import org.objectweb.asm.signature.SignatureVisitor;
 
 
 public class MethodNode extends org.objectweb.asm.tree.MethodNode
 {
  
-  public SignatureVisitor signatureNode;
+  public MethodSignatureVisitor signatureNode;
 
   public MethodNode()
   {
@@ -19,6 +18,7 @@ public class MethodNode extends org.objectweb.asm.tree.MethodNode
   {
     super(access, name, desc, signature, exceptions);
     String methodString = signature!=null ? signature : desc;
+//    System.out.println(methodString);
 //    System.out.println("RRRRRRRRRRRR" + methodString + "%%%%%" + name);
     SignatureReader reader = new SignatureReader(methodString);
     signatureNode = new MethodSignatureVisitor();
