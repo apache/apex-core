@@ -151,8 +151,6 @@ public class StramWebServices
         objectMapper.registerModule(sm);
       }
       initialized = true;
-
-
     }
   }
 
