@@ -32,6 +32,7 @@ import com.datatorrent.stram.webapp.asm.ASMUtil;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
 import com.datatorrent.stram.webapp.asm.MethodSignatureVisitor;
 import com.datatorrent.stram.webapp.asm.Type;
+import com.datatorrent.stram.webapp.asm.Type.ArrayTypeNode;
 import com.datatorrent.stram.webapp.asm.Type.ParameterizedTypeNode;
 import com.datatorrent.stram.webapp.asm.Type.TypeNode;
 import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
@@ -513,6 +514,10 @@ public class TypeGraph
 
         propJ.put("typeBounds", typeBounds);
 
+      }
+      if(t instanceof ArrayTypeNode){
+        propJ.put("type", t.getByteString());
+        propJ.put("uiType", UI_TYPE.LIST.getName());
       }
 
 

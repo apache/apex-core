@@ -198,7 +198,7 @@ public class OperatorDiscoverer
   }
 
 
-  private void init()
+  public void init()
   {
     buildTypeGraph();
 

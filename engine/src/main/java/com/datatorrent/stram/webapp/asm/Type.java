@@ -28,6 +28,12 @@ public interface Type
         return typeObj.getClassName();
       }
     }
+
+    @Override
+    public String getByteString()
+    {
+      return "L" + typeObj.getClassName() + ";";
+    }
     
 
   }
@@ -59,6 +65,14 @@ public interface Type
         return null;
       }
     }
+
+    @Override
+    public String getByteString()
+    {
+      return boundChar + "";
+    }
+    
+    
     
   }
   
@@ -79,10 +93,15 @@ public interface Type
     public Type getActualArrayType(){
       return actualArrayType;
     }
+
+    @Override
+    public String getByteString()
+    {
+      return "[" + actualArrayType.getByteString();
+    }
+    
   }
   
-  
-
-
+  String getByteString();
 
 }
