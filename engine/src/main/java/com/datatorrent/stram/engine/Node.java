@@ -453,6 +453,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         }
       }
     }
+
+    if (!DATA_TUPLE_AWARE && (operator instanceof StatsListener)) {
+      DATA_TUPLE_AWARE = operator.getClass().isAnnotationPresent(StatsListener.DataQueueSize.class);
+    }
     /*
      * If there were any requests which needed to be executed before the operator started
      * its normal execution, execute those requests now - e.g. Restarting the operator
