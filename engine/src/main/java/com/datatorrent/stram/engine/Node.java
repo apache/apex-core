@@ -444,11 +444,11 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       ((Operator.ActivationListener<OperatorContext>) operator).activate(context);
     }
 
-    if(statsListeners != null){
+    if (statsListeners != null) {
       Iterator<StatsListener> iterator = statsListeners.iterator();
-      while (iterator.hasNext()){
+      while (iterator.hasNext()) {
         DATA_TUPLE_AWARE = iterator.next().getClass().isAnnotationPresent(StatsListener.DataQueueSize.class);
-        if(DATA_TUPLE_AWARE){
+        if (DATA_TUPLE_AWARE) {
           break;
         }
       }
