@@ -490,7 +490,7 @@ public class OperatorDiscoverer
   {
     
     // TODO temporary solution for this there is a memory leak here
-    return describeClass(classLoader.loadClass(clazzName));
+    return describeClassByASM(clazzName);
 //    JSONObject desc = new JSONObject();
 //    desc.put("name", clazzName);
 //    ClassReader cr = new ClassReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(clazzName));

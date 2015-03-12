@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -387,8 +388,10 @@ public class TypeGraph
       return null;
     }
     Map<String, JSONObject> results = new HashMap<String, JSONObject>();
-    List<MethodNode> getters = ASMUtil.getPublicGetter(tgv.getAsmNode());
-    List<MethodNode> setters = ASMUtil.getPublicSetter(tgv.getAsmNode());
+    List<MethodNode> getters =  new LinkedList<MethodNode>();
+    List<MethodNode> setters = new LinkedList<MethodNode>();
+    getPublicGetter(tgv, getters);
+    getPublicSetter(tgv, setters);
 
     for (MethodNode setter : setters) {
       String prop = WordUtils.uncapitalize(setter.name.substring(3));
@@ -463,6 +466,22 @@ public class TypeGraph
     }
 
     return results.values();
+  }
+
+  private void getPublicSetter(TypeGraphVertex tgv, List<MethodNode> setters)
+  {
+    setters.addAll(ASMUtil.getPublicSetter(tgv.getAsmNode()));
+    for (TypeGraphVertex ancestor : tgv.ancestors) {
+      setters.addAll(ASMUtil.getPublicSetter(ancestor.getAsmNode()));
+    }
+  }
+
+  private void getPublicGetter(TypeGraphVertex tgv, List<MethodNode> getters)
+  {
+    getters.addAll(ASMUtil.getPublicGetter(tgv.getAsmNode()));
+    for (TypeGraphVertex ancestor : tgv.ancestors) {
+      getters.addAll(ASMUtil.getPublicGetter(ancestor.getAsmNode()));
+    }
   }
 
   private void setTypes(JSONObject propJ, Type t) throws JSONException
