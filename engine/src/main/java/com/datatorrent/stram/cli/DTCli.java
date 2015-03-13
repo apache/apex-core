@@ -3257,6 +3257,11 @@ public class DTCli
           try {
             JSONObject oper = operatorDiscoverer.describeOperator(clazz);
 
+            // add default value
+            Operator operIns = clazz.newInstance();
+            String s = mapper.writeValueAsString(operIns);
+            oper.put("defaultValue", new JSONObject(s));
+            
             // add class hier info to portClassHier
             operatorDiscoverer.buildPortClassHier(oper, portClassHier);
 
