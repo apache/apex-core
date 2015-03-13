@@ -190,7 +190,7 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableCollection(configs);
   }
 
-  public File getResourcesDirectory()
+  public File resourcesDirectory()
   {
     return resourcesDirectory;
   }
