@@ -376,6 +376,11 @@ public class TypeGraph
 
       List<String> enumNames = ASMUtil.getEnumValues(cn);
       desc.put("enum", enumNames);
+      desc.put("uiType", UI_TYPE.ENUM.getName());
+    }
+    UI_TYPE uType = UI_TYPE.getEnumFor(tgv.typeName, typeGraph);
+    if (uType != null) {
+      desc.put("uiType", uType.getName());
     }
     desc.put("properties", getClassProperties(clazzName));
     return desc;
