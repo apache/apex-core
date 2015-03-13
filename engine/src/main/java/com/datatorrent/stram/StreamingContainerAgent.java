@@ -8,13 +8,12 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.google.common.collect.Sets;
-
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -84,6 +83,8 @@ public class StreamingContainerAgent {
   final StreamingContainerContext initCtx;
   String jvmName;
   int memoryMBFree;
+  long gcCollectionCount;
+  long gcCollectionTime;
   final StreamingContainerManager dnmgr;
 
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
@@ -424,6 +425,8 @@ public class StreamingContainerAgent {
     ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
     ci.memoryMBFree = this.memoryMBFree;
+    ci.gcCollectionCount = this.gcCollectionCount;
+    ci.gcCollectionTime = this.gcCollectionTime;
     ci.startedTime = container.getStartedTime();
     ci.finishedTime = container.getFinishedTime();
     if (this.container.nodeHttpAddress != null) {

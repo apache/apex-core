@@ -281,6 +281,7 @@ public class StramClientUtils
   public static final String DT_SITE_XML_FILE = "dt-site.xml";
   public static final String DT_SITE_GLOBAL_XML_FILE = "dt-site-global.xml";
   public static final String DT_ENV_SH_FILE = "dt-env.sh";
+  public static final String CUSTOM_ENV_SH_FILE = "custom-env.sh";
   public static final String BACKUPS_DIRECTORY = "backups";
 
   public static Configuration addDTDefaultResources(Configuration conf)
@@ -299,8 +300,9 @@ public class StramClientUtils
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config
       // load global settings from DFS
       targetGlobalFile = new File(String.format("/tmp/dt-site-global-%s.xml", UserGroupInformation.getLoginUser().getShortUserName()));
-      fs.copyToLocalFile(new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE),
-        new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
+      org.apache.hadoop.fs.Path hdfsGlobalPath = new org.apache.hadoop.fs.Path(StramClientUtils.getDTDFSConfigDir(fs, conf), StramClientUtils.DT_SITE_GLOBAL_XML_FILE);
+      LOG.debug("Copying global dt-site.xml from {} to {}", hdfsGlobalPath, targetGlobalFile.getAbsolutePath());
+      fs.copyToLocalFile(hdfsGlobalPath, new org.apache.hadoop.fs.Path(targetGlobalFile.toURI()));
       addDTSiteResources(conf, targetGlobalFile);
       if (!isDevelopmentMode()) {
         // load node local config file
@@ -312,9 +314,12 @@ public class StramClientUtils
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
     } finally {
-      if (targetGlobalFile != null) {
-        targetGlobalFile.delete();
-      }
+      // Cannot delete the file here because addDTSiteResource which eventually calls Configuration.reloadConfiguration
+      // does not actually reload the configuration.  The file is actually read later and it needs to exist.
+      //
+      //if (targetGlobalFile != null) {
+      //targetGlobalFile.delete();
+      //}
       IOUtils.closeQuietly(fs);
     }
 
@@ -517,9 +522,9 @@ public class StramClientUtils
     if (isDevelopmentMode()) {
       throw new IllegalStateException("Cannot change DT environment in development mode.");
     }
-    URL resource = StramClientUtils.class.getClassLoader().getResource(DT_ENV_SH_FILE);
+    URL resource = StramClientUtils.class.getClassLoader().getResource(CUSTOM_ENV_SH_FILE);
     if (resource == null) {
-      File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_ENV_SH_FILE);
+      File envFile = new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.CUSTOM_ENV_SH_FILE);
       FileOutputStream out = new FileOutputStream(envFile);
       try {
         out.write(("export " + key + "=\"" + value + "\"\n").getBytes());

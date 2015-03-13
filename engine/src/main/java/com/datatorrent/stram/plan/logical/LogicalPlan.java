@@ -47,6 +47,7 @@ public class LogicalPlan implements Serializable, DAG
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlan.class);
   // The name under which the application master expects its configuration.
   public static final String SER_FILE_NAME = "dt-conf.ser";
+  public static final String LAUNCH_CONFIG_FILE_NAME = "dt-launch-config.xml";
   private static final transient AtomicInteger logicalOperatorSequencer = new AtomicInteger();
 
   /**

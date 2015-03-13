@@ -3,7 +3,6 @@
  */
 package com.datatorrent.stram.util;
 
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
@@ -45,7 +44,7 @@ public class FSJsonLineFile implements Closeable
       myos = FileSystem.create(fs, path, permission);
     }
     os = myos;
-    this.objectMapper = (new JacksonObjectMapperProvider()).getContext(null);
+    this.objectMapper = (new JSONSerializationProvider()).getContext(null);
   }
 
   public synchronized void append(JSONObject json) throws IOException

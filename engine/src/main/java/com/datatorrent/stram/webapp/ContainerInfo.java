@@ -7,10 +7,11 @@
  */
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.api.annotation.RecordField;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import com.datatorrent.api.annotation.RecordField;
 
 @XmlRootElement(name = "container")
 @XmlAccessorType(XmlAccessType.FIELD)
@@ -29,6 +30,10 @@ public class ContainerInfo {
   public int memoryMBAllocated;
   @RecordField(type = "stats")
   public int memoryMBFree;
+  @RecordField(type = "stats")
+  public long gcCollectionTime;
+  @RecordField(type = "stats")
+  public long gcCollectionCount;
   @RecordField(type = "meta", publish = false)
   public String containerLogsUrl;
   public long startedTime = -1;
