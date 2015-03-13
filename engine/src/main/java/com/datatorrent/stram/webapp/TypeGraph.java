@@ -401,8 +401,8 @@ public class TypeGraph
         propJ.put("name", prop);
         results.put(prop, propJ);
       }
-      propJ.put("canSet", "true");
-      propJ.put("canGet", "false");
+      propJ.put("canSet", true);
+      propJ.put("canGet", false);
 
       // String typeString = null;
       // if(setter.signature == null){
@@ -442,7 +442,7 @@ public class TypeGraph
         propJ = new JSONObject();
         propJ.put("name", prop);
         results.put(prop, propJ);
-        propJ.put("canSet", "false");
+        propJ.put("canSet", false);
         // propJ.put("type", Type.getReturnType(getter.desc).getClassName());
 
         String sigString = getter.signature != null ? getter.signature : getter.desc;
@@ -462,7 +462,7 @@ public class TypeGraph
 
       }
 
-      propJ.put("canGet", "true");
+      propJ.put("canGet", true);
     }
 
     return results.values();
