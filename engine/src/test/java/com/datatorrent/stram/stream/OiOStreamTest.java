@@ -180,19 +180,33 @@ public class OiOStreamTest
     ThreadIdValidatingInputOperator inputOperator = plan.addOperator("inputOperator", new ThreadIdValidatingInputOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator1 = plan.addOperator("intermediateOperator1", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingGenericIntermediateOperator intermediateOperator2 = plan.addOperator("intermediateOperator2", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator3 = plan.addOperator("intermediateOperator3", new ThreadIdValidatingGenericIntermediateOperator());
+    ThreadIdValidatingGenericIntermediateOperator intermediateOperator4 = plan.addOperator("intermediateOperator4", new ThreadIdValidatingGenericIntermediateOperator());
     ThreadIdValidatingGenericOperatorWithTwoInputPorts outputOperator = plan.addOperator("outputOperator", new ThreadIdValidatingGenericOperatorWithTwoInputPorts());
-    plan.setAttribute(inputOperator, OperatorContext.VCORES,2);
-    plan.setAttribute(intermediateOperator1, OperatorContext.VCORES,1);
-    plan.setAttribute(intermediateOperator2, OperatorContext.VCORES,5);
 
-    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
-    plan.addStream("OiOout1", intermediateOperator1.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
-    plan.addStream("OiOout2", intermediateOperator2.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOin", inputOperator.output, intermediateOperator1.input, intermediateOperator3.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOIntermediate1", intermediateOperator1.output, intermediateOperator2.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOIntermediate2", intermediateOperator3.output, intermediateOperator4.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout1", intermediateOperator2.output, outputOperator.input).setLocality(Locality.THREAD_LOCAL);
+    plan.addStream("OiOout2", intermediateOperator4.output, outputOperator.input2).setLocality(Locality.THREAD_LOCAL);
+
+    plan.setAttribute(inputOperator, OperatorContext.VCORES, 1);
+    plan.setAttribute(intermediateOperator1, OperatorContext.VCORES, 1);
+    plan.setAttribute(intermediateOperator2, OperatorContext.VCORES, 2);
+    plan.setAttribute(intermediateOperator3, OperatorContext.VCORES, 3);
+    plan.setAttribute(intermediateOperator4, OperatorContext.VCORES, 5);
     plan.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
+    try {
+      plan.validate();
+      Assert.assertTrue("OiOiO extended diamond validation", true);
+    }
+    catch (ConstraintViolationException ex) {
+      Assert.fail("OIOIO extended diamond validation");
+    }
     PhysicalPlan physicalPlan = new PhysicalPlan(plan, new TestPlanContext());
     Assert.assertTrue("number of containers", 1 == physicalPlan.getContainers().size());
-    Assert.assertTrue("number of vcores", 5 == physicalPlan.getContainers().get(0).getRequiredVCores());
+    Assert.assertTrue("number of vcores " + physicalPlan.getContainers().get(0).getRequiredVCores(), 5 == physicalPlan.getContainers().get(0).getRequiredVCores());
   }
 
 

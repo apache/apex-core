@@ -731,8 +731,11 @@ public class StreamingAppMasterService extends CompositeService
       releasedContainers.clear();
 
       // CDH reporting incorrect resources, see SPOI-1846, YARN-1959. Workaround for now.
-      //int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
-      int availableMemory = availableLicensedMemory;
+      // Fixed in CDH 5.3. To make it work with earlier versions, we still need workaround
+      int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
+      LOG.debug(" available resources in cluster {}", availableMemory);
+      availableMemory = (availableMemory == 0 ? availableLicensedMemory : availableMemory);
+
       //SPOI-2942: locking physical plan only when license type is evaluation
       if (this.licenseType == License.LicenseType.EVALUATION) {
         dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);

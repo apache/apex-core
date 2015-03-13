@@ -17,6 +17,7 @@ package com.datatorrent.api;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.annotation.*;
 import java.util.List;
 
 import com.datatorrent.api.Stats.OperatorStats;
@@ -103,4 +104,13 @@ public interface StatsListener
    */
   Response processStats(BatchedOperatorStats stats);
 
+  /**
+   *  This is used to tell the operator stats listener is interested in knowing the queue_size
+   */
+  @Target(ElementType.TYPE)
+  @Retention(RetentionPolicy.RUNTIME)
+  @Inherited
+  public @interface DataQueueSize
+  {
+  }
 }

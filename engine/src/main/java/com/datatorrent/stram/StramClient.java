@@ -13,7 +13,14 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.base.Objects;
+import com.google.common.collect.Lists;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -35,16 +42,12 @@ import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
+import com.datatorrent.lib.util.BasicContainerOptConfigurator;
+import com.datatorrent.lib.util.FSStorageAgent;
 
 import com.datatorrent.api.Context.OperatorContext;
 
-import com.datatorrent.lib.util.FSStorageAgent;
-import com.datatorrent.lib.util.BasicContainerOptConfigurator;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;
@@ -86,29 +89,9 @@ public class StramClient
   private String archives;
   private LinkedHashSet<String> resources;
 
-  public StramClient(Configuration conf, LogicalPlan dag) throws Exception
-  {
-    this.conf = conf;
-    this.dag = dag;
-    dag.validate();
-    yarnClient.init(conf);
-  }
-
-  public void start()
-  {
-    yarnClient.start();
-  }
-
-  public void stop()
-  {
-    yarnClient.stop();
-  }
-
-  public static LinkedHashSet<String> findJars(LogicalPlan dag)
-  {
-    // platform dependencies that are not part of Hadoop and need to be deployed,
-    // entry below will cause containing jar file from client to be copied to cluster
-    Class<?>[] defaultClasses = new Class<?>[]{
+  // platform dependencies that are not part of Hadoop and need to be deployed,
+  // entry below will cause containing jar file from client to be copied to cluster
+  private static final Class<?>[] DATATORRENT_CLASSES = new Class<?>[]{
       com.datatorrent.common.util.Slice.class,
       com.datatorrent.netlet.EventLoop.class,
       com.datatorrent.bufferserver.server.Server.class,
@@ -129,6 +112,43 @@ public class StramClient
       com.esotericsoftware.minlog.Log.class,
       org.mozilla.javascript.Scriptable.class
     };
+
+  private static final Class<?>[] DATATORRENT_SECURITY_SPECIFIC_CLASSES = new Class<?>[]{
+      com.sun.jersey.client.apache4.ApacheHttpClient4Handler.class
+    };
+
+  private static final Class<?>[] DATATORRENT_SECURITY_CLASSES =
+  (Class<?>[]) ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
+
+  private static final Class<?>[] DATATORRENT_LICENSE_CLASSES = new Class<?>[]{
+      com.datatorrent.stram.LicensingAppMaster.class,
+      com.datatorrent.api.DAG.class,
+      javax.validation.ConstraintViolationException.class,
+      com.esotericsoftware.minlog.Log.class,
+      com.esotericsoftware.kryo.Kryo.class,
+      org.mozilla.javascript.Scriptable.class
+    };
+
+  public StramClient(Configuration conf, LogicalPlan dag) throws Exception
+  {
+    this.conf = conf;
+    this.dag = dag;
+    dag.validate();
+    yarnClient.init(conf);
+  }
+
+  public void start()
+  {
+    yarnClient.start();
+  }
+
+  public void stop()
+  {
+    yarnClient.stop();
+  }
+
+  public static LinkedHashSet<String> findJars(LogicalPlan dag, Class<?>[] defaultClasses)
+  {
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
 
     for (String className : dag.getClassNames()) {
@@ -277,8 +297,26 @@ public class StramClient
    */
   public void startApplication() throws YarnException, IOException
   {
-    // process dependencies
-    LinkedHashSet<String> localJarFiles = findJars(dag);
+    Class<?>[] defaultClasses;
+
+    if(applicationType.equals(YARN_APPLICATION_TYPE)) {
+      //TODO restrict the security check to only check if security is enabled for webservices.
+      if(UserGroupInformation.isSecurityEnabled()) {
+        defaultClasses = DATATORRENT_SECURITY_CLASSES;
+      }
+      else {
+        defaultClasses = DATATORRENT_CLASSES;
+      }
+    }
+    else if(applicationType.equals(YARN_APPLICATION_TYPE_LICENSE)) {
+      defaultClasses = DATATORRENT_LICENSE_CLASSES;
+    }
+    else {
+      throw new IllegalStateException(applicationType + " is not a valid application type.");
+    }
+
+    LinkedHashSet<String> localJarFiles = findJars(dag, defaultClasses);
+
     if (resources != null) {
       localJarFiles.addAll(resources);
     }
@@ -448,6 +486,11 @@ public class StramClient
       Path cfgDst = new Path(appPath, LogicalPlan.SER_FILE_NAME);
       FSDataOutputStream outStream = fs.create(cfgDst, true);
       LogicalPlan.write(this.dag, outStream);
+      outStream.close();
+
+      Path launchConfigDst = new Path(appPath, LogicalPlan.LAUNCH_CONFIG_FILE_NAME);
+      outStream = fs.create(launchConfigDst, true);
+      conf.writeXml(outStream);
       outStream.close();
 
       FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);

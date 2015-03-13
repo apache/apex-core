@@ -19,7 +19,6 @@ public class TestGeneratorInputOperator implements InputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputOperator.class);
   public static final String OUTPUT_PORT = "outport";
-  public static final String KEY_MAX_TUPLES = "maxTuples";
   private String myConfigProperty;
   private int maxTuples = -1;
   private int generatedTuples = 0;
