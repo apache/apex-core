@@ -599,6 +599,7 @@ public class StreamingAppMasterService extends CompositeService
 
     // for locality relaxation fall back
     Map<StreamingContainerAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
+    Map<StreamingContainerAgent.ContainerStartRequest, ContainerRequest> pendingContainerRequests = Maps.newHashMap();
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -665,6 +666,8 @@ public class StreamingAppMasterService extends CompositeService
 
       // Setup request to be sent to RM to allocate containers
       List<ContainerRequest> containerRequests = new ArrayList<ContainerRequest>();
+      List<ContainerRequest> removedContainerRequests = new ArrayList<ContainerRequest>();
+
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
         boolean requestResources = true;
@@ -697,8 +700,10 @@ public class StreamingAppMasterService extends CompositeService
               csr.container.setRequiredVCores(maxVcores);
             }
             csr.container.setResourceRequestPriority(nextRequestPriority++);
+            ContainerRequest cr = resourceRequestor.createContainerRequest(csr, true);
             requestedResources.put(csr, loopCounter);
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, true));
+            pendingContainerRequests.put(csr, cr);
+            containerRequests.add(cr);
           }
         }
       }
@@ -707,16 +712,19 @@ public class StreamingAppMasterService extends CompositeService
         //resourceRequestor.clearNodeMapping();
         for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
           if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
-            entry.setValue(loopCounter);
             StreamingContainerAgent.ContainerStartRequest csr = entry.getKey();
-            containerRequests.add(resourceRequestor.createContainerRequest(csr, false));
+            removedContainerRequests.add(pendingContainerRequests.get(csr));
+            ContainerRequest cr = resourceRequestor.createContainerRequest(csr, false);
+            entry.setValue(loopCounter);
+            pendingContainerRequests.put(csr, cr);
+            containerRequests.add(cr);
           }
         }
       }
 
       numTotalContainers += containerRequests.size();
       numRequestedContainers += containerRequests.size();
-      AllocateResponse amResp = sendContainerAskToRM(containerRequests, releasedContainers);
+      AllocateResponse amResp = sendContainerAskToRM(containerRequests, removedContainerRequests, releasedContainers);
       if (amResp.getAMCommand() != null) {
         LOG.info(" statement executed:{}", amResp.getAMCommand());
         switch (amResp.getAMCommand()) {
@@ -770,6 +778,7 @@ public class StreamingAppMasterService extends CompositeService
         }
         if (csr != null) {
           requestedResources.remove(csr);
+          pendingContainerRequests.remove(csr);
         }
 
         // allocate resource to container
@@ -792,7 +801,7 @@ public class StreamingAppMasterService extends CompositeService
             //ByteBuffer tokens = LaunchContainerRunnable.getTokens(delegationTokenManager, heartbeatListener.getAddress());
             tokens = LaunchContainerRunnable.getTokens(ugi, delegationToken);
           }
-          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient,sca, tokens);
+          LaunchContainerRunnable launchContainer = new LaunchContainerRunnable(allocatedContainer, nmClient, sca, tokens);
           // Thread launchThread = new Thread(runnableLaunchContainer);
           // launchThreads.add(launchThread);
           // launchThread.start();
@@ -937,12 +946,20 @@ public class StreamingAppMasterService extends CompositeService
    * Ask RM to allocate given no. of containers to this Application Master
    *
    * @param containerRequests  Containers to ask for from RM
+   * @param removedContainerRequests Container requests to be removed
    * @param releasedContainers
    * @return Response from RM to AM with allocated containers
    * @throws YarnException
    */
-  private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerId> releasedContainers) throws YarnException, IOException
+  private AllocateResponse sendContainerAskToRM(List<ContainerRequest> containerRequests, List<ContainerRequest> removedContainerRequests, List<ContainerId> releasedContainers) throws YarnException, IOException
   {
+    if (removedContainerRequests.size() > 0) {
+      LOG.info(" Removing container request: " + removedContainerRequests);
+      for (ContainerRequest cr : removedContainerRequests) {
+        LOG.info("Removed container: {}", cr.toString());
+        amRmClient.removeContainerRequest(cr);
+      }
+    }
     if (containerRequests.size() > 0) {
       LOG.info("Asking RM for containers: " + containerRequests);
       for (ContainerRequest cr : containerRequests) {
