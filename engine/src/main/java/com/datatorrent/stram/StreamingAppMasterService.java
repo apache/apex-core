@@ -17,6 +17,7 @@ import javax.xml.bind.annotation.XmlElement;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.net.NetUtils;
@@ -598,8 +599,7 @@ public class StreamingAppMasterService extends CompositeService
     LOG.info("Max mem {}m and vcores {} capabililty of resources in this cluster ", maxMem, maxVcores);
 
     // for locality relaxation fall back
-    Map<StreamingContainerAgent.ContainerStartRequest, Integer> requestedResources = Maps.newHashMap();
-    Map<StreamingContainerAgent.ContainerStartRequest, ContainerRequest> pendingContainerRequests = Maps.newHashMap();
+    Map<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> requestedResources = Maps.newHashMap();
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
@@ -701,8 +701,8 @@ public class StreamingAppMasterService extends CompositeService
             }
             csr.container.setResourceRequestPriority(nextRequestPriority++);
             ContainerRequest cr = resourceRequestor.createContainerRequest(csr, true);
-            requestedResources.put(csr, loopCounter);
-            pendingContainerRequests.put(csr, cr);
+            MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter,cr);
+            requestedResources.put(csr, pair);
             containerRequests.add(cr);
           }
         }
@@ -710,13 +710,13 @@ public class StreamingAppMasterService extends CompositeService
 
       if (!requestedResources.isEmpty()) {
         //resourceRequestor.clearNodeMapping();
-        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
-          if ((loopCounter - entry.getValue()) > NUMBER_MISSED_HEARTBEATS) {
+        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> entry : requestedResources.entrySet()) {
+          if ((loopCounter - entry.getValue().getKey()) > NUMBER_MISSED_HEARTBEATS) {
             StreamingContainerAgent.ContainerStartRequest csr = entry.getKey();
-            removedContainerRequests.add(pendingContainerRequests.get(csr));
+            removedContainerRequests.add(entry.getValue().getRight());
             ContainerRequest cr = resourceRequestor.createContainerRequest(csr, false);
-            entry.setValue(loopCounter);
-            pendingContainerRequests.put(csr, cr);
+            entry.getValue().setLeft(loopCounter);
+            entry.getValue().setRight(cr);
             containerRequests.add(cr);
           }
         }
@@ -761,7 +761,7 @@ public class StreamingAppMasterService extends CompositeService
 
         boolean alreadyAllocated = true;
         StreamingContainerAgent.ContainerStartRequest csr = null;
-        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, Integer> entry : requestedResources.entrySet()) {
+        for (Map.Entry<StreamingContainerAgent.ContainerStartRequest, MutablePair<Integer, ContainerRequest>> entry : requestedResources.entrySet()) {
           if (entry.getKey().container.getResourceRequestPriority() == allocatedContainer.getPriority().getPriority()) {
             alreadyAllocated = false;
             csr = entry.getKey();
@@ -778,7 +778,6 @@ public class StreamingAppMasterService extends CompositeService
         }
         if (csr != null) {
           requestedResources.remove(csr);
-          pendingContainerRequests.remove(csr);
         }
 
         // allocate resource to container
