@@ -718,6 +718,11 @@ public class OperatorDiscoverer
     }
     return new JSONArray(typeGraph.getInitializableDescendants(clazz, limit, filter, packagePrefix));
   }
+  
+  public TypeGraph getTypeGraph()
+  {
+    return typeGraph;
+  }
 
 
 }

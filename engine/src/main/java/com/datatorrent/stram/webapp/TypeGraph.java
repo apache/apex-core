@@ -241,6 +241,12 @@ public class TypeGraph
 
     // keep the jar file name for late fetching the detail information
     private final String jarName;
+    
+    @SuppressWarnings("unused")
+    private TypeGraphVertex(){
+      jarName = "";
+      typeName = "";
+    }
 
     public TypeGraphVertex(String typeName, String jarName, ClassNode asmNode)
     {
