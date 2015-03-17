@@ -109,7 +109,6 @@ public interface StatsListener
    */
   @Target(ElementType.TYPE)
   @Retention(RetentionPolicy.RUNTIME)
-  @Inherited
   public @interface DataQueueSize
   {
   }
