@@ -3,7 +3,18 @@
  */
 package com.datatorrent.stram.api;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StatsListener;
+
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 
 /**
  * <p>StramToNodeChangeLoggersRequest class.</p>
@@ -18,6 +29,22 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
   public StramToNodeSetPropertyRequest()
   {
     requestType = RequestType.SET_PROPERTY;
+    cmd = new StatsListener.OperatorCommand()
+    {
+      @Override
+      public void execute(Operator operator, int id, long windowId) throws IOException
+      {
+        final Map<String, String> properties = Collections.singletonMap(propertyKey, propertyValue);
+        logger.info("Setting property {} on operator {}", properties, operator);
+        LogicalPlanConfiguration.setOperatorProperties(operator, properties);
+      }
+
+      @Override
+      public String toString()
+      {
+        return "Set Property";
+      }
+    };
   }
 
   public String getPropertyKey()
@@ -41,5 +68,7 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
   }
 
   private static final long serialVersionUID = 201405271034L;
+
+  private static final Logger logger = LoggerFactory.getLogger(StramToNodeSetPropertyRequest.class);
 
 }
