@@ -50,6 +50,8 @@ public class AppPackage extends JarFile implements Closeable
   private final Map<String, String> defaultProperties = new TreeMap<String, String>();
   private final Set<String> configs = new TreeSet<String>();
 
+  private final File resourcesDirectory;
+
   public static class AppInfo
   {
     public final String name;
@@ -80,7 +82,8 @@ public class AppPackage extends JarFile implements Closeable
   /**
    * Creates an App Package object.
    *
-   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived applications
+   * If app directory is to be processed, there may be resource leak in the class loader. Only pass true for short-lived
+   * applications
    *
    * @param file
    * @param processAppDirectory
@@ -110,7 +113,7 @@ public class AppPackage extends JarFile implements Closeable
     if (zipFile.isEncrypted()) {
       throw new ZipException("Encrypted app package not supported yet");
     }
-    File newDirectory = new File("/tmp/dt-appPackage-" + System.currentTimeMillis());
+    File newDirectory = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
     newDirectory.mkdirs();
     directory = newDirectory.getAbsolutePath();
     zipFile.extractAll(directory);
@@ -121,6 +124,8 @@ public class AppPackage extends JarFile implements Closeable
     if (confDirectory.exists()) {
       processConfDirectory(confDirectory);
     }
+    resourcesDirectory = new File(newDirectory, "resources");
+
     File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
       processPropertiesXml(propertiesXml, null);
@@ -185,6 +190,11 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableCollection(configs);
   }
 
+  public File resourcesDirectory()
+  {
+    return resourcesDirectory;
+  }
+
   public List<AppInfo> getApplications()
   {
     return Collections.unmodifiableList(applications);
@@ -217,8 +227,6 @@ public class AppPackage extends JarFile implements Closeable
 
   private void processAppDirectory(File dir)
   {
-    Iterator<File> it = FileUtils.iterateFiles(dir, null, false);
-
     Configuration config = new Configuration();
 
     List<String> absClassPath = new ArrayList<String>(classPath);
@@ -229,9 +237,9 @@ public class AppPackage extends JarFile implements Closeable
       }
     }
     config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
+    File[] files = dir.listFiles();
+    for (File entry : files) {
 
-    while (it.hasNext()) {
-      File entry = it.next();
       if (entry.getName().endsWith(".jar")) {
         appJars.add(entry.getName());
         try {
@@ -254,13 +262,11 @@ public class AppPackage extends JarFile implements Closeable
             }
             applications.add(appInfo);
           }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught exception trying to process {}", entry.getName(), ex);
         }
       }
     }
-    it = FileUtils.iterateFiles(dir, null, false);
 
     // this is for the properties and json files to be able to depend on the app jars,
     // since it's possible for users to implement the operators as part of the app package
@@ -268,8 +274,8 @@ public class AppPackage extends JarFile implements Closeable
       absClassPath.add(new File(dir, appJar).getAbsolutePath());
     }
     config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, StringUtils.join(absClassPath, ','));
-    while (it.hasNext()) {
-      File entry = it.next();
+    files = dir.listFiles();
+    for (File entry : files) {
       if (entry.getName().endsWith(".json")) {
         appJsonFiles.add(entry.getName());
         try {
@@ -281,18 +287,15 @@ public class AppPackage extends JarFile implements Closeable
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
-          }
-          catch (Exception ex) {
+          } catch (Exception ex) {
             appInfo.error = ex.getMessage();
             appInfo.errorStackTrace = ExceptionUtils.getStackTrace(ex);
           }
           applications.add(appInfo);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
-      }
-      else if (entry.getName().endsWith(".properties")) {
+      } else if (entry.getName().endsWith(".properties")) {
         appPropertiesFiles.add(entry.getName());
         try {
           AppFactory appFactory = new StramAppLauncher.PropertyFileAppFactory(entry);
@@ -303,18 +306,15 @@ public class AppPackage extends JarFile implements Closeable
           try {
             appInfo.dag = appFactory.createApp(stramAppLauncher.getLogicalPlanConfiguration());
             appInfo.dag.validate();
-          }
-          catch (Throwable t) {
+          } catch (Throwable t) {
             appInfo.error = t.getMessage();
             appInfo.errorStackTrace = ExceptionUtils.getStackTrace(t);
           }
           applications.add(appInfo);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
           LOG.error("Caught exceptions trying to process {}", entry.getName(), ex);
         }
-      }
-      else if (!entry.getName().endsWith(".jar")) {
+      } else if (!entry.getName().endsWith(".jar")) {
         LOG.warn("Ignoring file {} with unknown extension in app directory", entry.getName());
       }
     }
@@ -322,10 +322,8 @@ public class AppPackage extends JarFile implements Closeable
 
   private void processConfDirectory(File dir)
   {
-    Iterator<File> it = FileUtils.iterateFiles(dir, null, false);
-
-    while (it.hasNext()) {
-      File entry = it.next();
+    File[] files = dir.listFiles();
+    for (File entry : files) {
       if (entry.getName().endsWith(".xml")) {
         configs.add(entry.getName());
       }
@@ -355,8 +353,7 @@ public class AppPackage extends JarFile implements Closeable
           }
         }
       }
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       LOG.warn("Ignoring META_INF/properties.xml because of error", ex);
     }
   }

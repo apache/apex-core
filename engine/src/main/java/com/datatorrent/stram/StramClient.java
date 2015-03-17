@@ -488,6 +488,11 @@ public class StramClient
       LogicalPlan.write(this.dag, outStream);
       outStream.close();
 
+      Path launchConfigDst = new Path(appPath, LogicalPlan.LAUNCH_CONFIG_FILE_NAME);
+      outStream = fs.create(launchConfigDst, true);
+      conf.writeXml(outStream);
+      outStream.close();
+
       FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
       LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
       topologyRsrc.setType(LocalResourceType.FILE);

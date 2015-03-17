@@ -80,9 +80,28 @@ public class StatsTest
 
   }
 
-  public static class TestCollector extends GenericTestOperator
+  @StatsListener.DataQueueSize
+  public static class TestCollector extends GenericTestOperator implements StatsListener
   {
     transient long windowId;
+    List<OperatorStats> collectorOperatorStats = new ArrayList<OperatorStats>();
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      collectorOperatorStats.addAll(stats.getLastWindowedStats());
+      Response rsp = new Response();
+      return rsp;
+    }
+
+    public void validateStats()
+    {
+      for (OperatorStats operatorStats : collectorOperatorStats) {
+        for (PortStats inputPortStats : operatorStats.inputPorts) {
+          Assert.assertTrue("Validate input port queue size " + inputPortStats.queueSize, inputPortStats.queueSize == 0);
+        }
+      }
+    }
 
     @Override
     public void beginWindow(long windowId)
@@ -202,18 +221,32 @@ public class StatsTest
     testOper.setMaxTuples(maxTuples);
 
     TestCollector collector = dag.addOperator("Collector", new TestCollector());
-    dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{statsListener}));
+    if (statsListener != null) {
+      dag.setAttribute(collector, OperatorContext.STATS_LISTENERS, Arrays.asList(new StatsListener[]{statsListener}));
+    }
+
     dag.addStream("TestTuples", testOper.outport, collector.inport1).setLocality(locality);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
 
     long startTms = System.currentTimeMillis();
-    while ((statsListener.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
-      Thread.sleep(300);
-      LOG.debug("Waiting for stats");
+    if(statsListener!= null) {
+      while ((statsListener.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+        Thread.sleep(300);
+        LOG.debug("Waiting for stats");
+      }
+    }else{
+      while ((collector.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+        Thread.sleep(300);
+        LOG.debug("Waiting for stats");
+      }
     }
-    statsListener.validateStats();
+    if(statsListener != null) {
+      statsListener.validateStats();
+    }else {
+      collector.validateStats();
+    }
     lc.shutdown();
   }
 
@@ -234,7 +267,6 @@ public class StatsTest
     baseTestForQueueSize(10, new TestCollectorStatsListener(), null);
   }
 
-
   /**
    * Verify queue size.
    *
@@ -252,4 +284,9 @@ public class StatsTest
     baseTestForQueueSize(0, new TestCollector.QueueAwareTestCollectorStatsListener(), null);
   }
 
+  @Test
+  public void testQueueSizeWithOperatorAsStatsListener() throws Exception
+  {
+    baseTestForQueueSize(0, null, null);
+  }
 }
