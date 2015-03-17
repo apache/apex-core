@@ -480,8 +480,7 @@ public class PhysicalPlan implements Serializable
         throw new IllegalStateException("Partitioner returns null or empty.");
       }
     }
-    else
-    {
+    else {
       //This handles the case when parallel partitioning is occurring. Partition count will be
       //Non zero in the case of parallel partitioning.
       for (int partitionCounter = 0; partitionCounter < partitionCnt - 1; partitionCounter++) {
@@ -772,9 +771,7 @@ public class PhysicalPlan implements Serializable
       this.ctx.recordEventAsync(ev);
     }
 
-    if (partitioner != null) {
-      partitioner.partitioned(mainPC.operatorIdToPartition);
-    }
+    partitioner.partitioned(mainPC.operatorIdToPartition);
   }
 
   private void updateStreamMappings(PMapping m) {
@@ -1002,36 +999,34 @@ public class PhysicalPlan implements Serializable
     }
     // remove the operator
     removePTOperator(oper);
-
   }
 
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<? extends Operator> partition, Checkpoint checkpoint) {
-    String host = null;
-    if(partition != null){
-     host = partition.getAttributes().get(OperatorContext.LOCALITY_HOST);
-    }
-    if(host == null){
-     host = nodeDecl.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
-    }
-
     PTOperator oper = newOperator(nodeDecl.logicalOperator, nodeDecl.logicalOperator.getName());
+    oper.recoveryCheckpoint = checkpoint;
+
     // output port objects
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.logicalOperator.getOutputStreams().entrySet()) {
       setupOutput(nodeDecl, oper, outputEntry);
     }
 
-    oper.recoveryCheckpoint = checkpoint;
+    String host = null;
     if (partition != null) {
       oper.setPartitionKeys(partition.getPartitionKeys());
+      host = partition.getAttributes().get(OperatorContext.LOCALITY_HOST);
     }
+    if (host == null) {
+      host = nodeDecl.logicalOperator.getValue(OperatorContext.LOCALITY_HOST);
+    }
+
     nodeDecl.addPartition(oper);
     this.newOpers.put(oper, partition != null ? partition.getPartitionedInstance() : nodeDecl.logicalOperator.getOperator());
 
     //
     // update locality
     //
-    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL,host);
-    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL,host);
+    setLocalityGrouping(nodeDecl, oper, inlinePrefs, Locality.CONTAINER_LOCAL, host);
+    setLocalityGrouping(nodeDecl, oper, localityPrefs, Locality.NODE_LOCAL, host);
 
     return oper;
   }

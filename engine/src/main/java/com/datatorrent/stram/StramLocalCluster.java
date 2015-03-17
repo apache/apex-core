@@ -263,7 +263,7 @@ public class StramLocalCluster implements Runnable, Controller
 
   }
 
-  public StramLocalCluster(LogicalPlan dag) throws Exception
+  public StramLocalCluster(LogicalPlan dag) throws IOException, ClassNotFoundException
   {
     dag.validate();
     // ensure plan can be serialized
@@ -301,7 +301,7 @@ public class StramLocalCluster implements Runnable, Controller
     }
   }
 
-  public static LogicalPlan cloneLogicalPlan(LogicalPlan lp) throws Exception
+  public static LogicalPlan cloneLogicalPlan(LogicalPlan lp) throws IOException, ClassNotFoundException
   {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     LogicalPlan.write(lp, bos);

@@ -767,7 +767,7 @@ public class StreamingContainer extends YarnContainerMain
      */
     for (OperatorDeployInfo ndi : nodeList) {
       if (nodes.containsKey(ndi.id)) {
-        throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
+        throw new IllegalStateException("Node with id: " + ndi.id + " already present in container " + containerId + "!");
       }
     }
 
@@ -822,14 +822,14 @@ public class StreamingContainer extends YarnContainerMain
 
       OperatorContext ctx = new OperatorContext(ndi.id, ndi.contextAttributes, parentContext);
       ctx.attributes.put(OperatorContext.ACTIVATION_WINDOW_ID, ndi.checkpoint.windowId);
-      logger.debug("Restoring node {} to checkpoint {} stateless={}", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
+      logger.debug("Restoring operator {} to checkpoint {} stateless={}.", ndi.id, Codec.getStringWindowId(ndi.checkpoint.windowId), ctx.stateless);
       Node<?> node = Node.retrieveNode(backupAgent.load(ndi.id, ctx.stateless ? Stateless.WINDOW_ID : ndi.checkpoint.windowId), ctx, ndi.type);
       node.currentWindowId = ndi.checkpoint.windowId;
       node.applicationWindowCount = ndi.checkpoint.applicationWindowCount;
 
       node.setId(ndi.id);
       nodes.put(ndi.id, node);
-      logger.debug("Marking deployed {}", node);
+      logger.debug("Marking operator {} as deployed.", node);
     }
   }
 
