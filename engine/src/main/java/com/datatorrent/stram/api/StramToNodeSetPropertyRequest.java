@@ -28,23 +28,8 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
 
   public StramToNodeSetPropertyRequest()
   {
-    requestType = RequestType.SET_PROPERTY;
-    cmd = new StatsListener.OperatorCommand()
-    {
-      @Override
-      public void execute(Operator operator, int id, long windowId) throws IOException
-      {
-        final Map<String, String> properties = Collections.singletonMap(propertyKey, propertyValue);
-        logger.info("Setting property {} on operator {}", properties, operator);
-        LogicalPlanConfiguration.setOperatorProperties(operator, properties);
-      }
-
-      @Override
-      public String toString()
-      {
-        return "Set Property";
-      }
-    };
+    requestType = RequestType.CUSTOM;
+    cmd = new SetPropertyCommand();
   }
 
   public String getPropertyKey()
@@ -71,4 +56,20 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
 
   private static final Logger logger = LoggerFactory.getLogger(StramToNodeSetPropertyRequest.class);
 
+  private class SetPropertyCommand implements StatsListener.OperatorCommand, Serializable
+  {
+    @Override
+    public void execute(Operator operator, int id, long windowId) throws IOException
+    {
+      final Map<String, String> properties = Collections.singletonMap(propertyKey, propertyValue);
+      logger.info("Setting property {} on operator {}", properties, operator);
+      LogicalPlanConfiguration.setOperatorProperties(operator, properties);
+    }
+
+    @Override
+    public String toString()
+    {
+      return "Set Property";
+    }
+  }
 }
