@@ -45,7 +45,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = desc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 15, props.length());
+    Assert.assertEquals("properties " + props, 16, props.length());
     JSONObject mapProperty = props.getJSONObject(6);
     Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -147,7 +147,7 @@ public class OperatorDiscoveryTest
   @Test
   public void testValueSerialization() throws Exception
   {
-    TestOperator<String> bean = new TestOperator<String>();
+    TestOperator<String, Map<String, Number>> bean = new TestOperator<String, Map<String, Number>>();
     bean.map.put("key1", new Structured());
     bean.stringArray = new String[] { "one", "two", "three" };
     bean.stringList = Lists.newArrayList("four", "five");
@@ -167,7 +167,7 @@ public class OperatorDiscoveryTest
     System.out.println(new JSONObject(s).toString(2));
 
 
-    TestOperator<?> clone = mapper.readValue(s, TestOperator.class);
+    TestOperator<?, ?> clone = mapper.readValue(s, TestOperator.class);
     Assert.assertNotNull(clone.structuredArray);
     Assert.assertEquals(Color.BLUE, clone.color);
     Assert.assertEquals(bean.structuredArray.length, clone.structuredArray.length);
@@ -219,7 +219,7 @@ public class OperatorDiscoveryTest
     WHITE
   }
 
-  public static class TestOperator<T> extends BaseOperator
+  public static class TestOperator<T, Z extends Map<String, Number>> extends BaseOperator
   {
     private int intProp;
     private long longProp;
@@ -236,6 +236,7 @@ public class OperatorDiscoveryTest
     private T[] genericArray;
     private Map<String, List<Map<String, Number>>> zaMap = new HashMap<String, List<Map<String, Number>>>();
     private Map<? extends Object, ? super Long> zbMap = new HashMap<Object, Number>();
+    private Z zProp;
 
     
     public int getIntProp()
@@ -372,9 +373,19 @@ public class OperatorDiscoveryTest
       this.zbMap = zbMap;
     }
 
+    public Z getzProp()
+    {
+      return zProp;
+    }
+
+    public void setzProp(Z zProp)
+    {
+      this.zProp = zProp;
+    }
+
   }
 
-  static class ExtendedOperator extends TestOperator<String>
+  static class ExtendedOperator extends TestOperator<String, Map<String, Number>>
   {
   }
 

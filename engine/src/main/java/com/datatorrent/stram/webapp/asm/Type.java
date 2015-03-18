@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * All rights reserved.
+ */
 package com.datatorrent.stram.webapp.asm;
 
 import java.util.ArrayList;
@@ -73,6 +77,29 @@ public interface Type
     }
     
     
+    
+  }
+  
+  public static class TypeVariableNode implements Type {
+
+    String typeLiteral;
+    
+    ArrayList<Type> bounds = new ArrayList<Type>();
+    
+    @Override
+    public String getByteString()
+    {
+      return "T" + typeLiteral + ";";
+    }
+    
+    public Type[] getBounds() {
+      return bounds.toArray(new Type[]{});
+    }
+    
+    public String getTypeLiteral()
+    {
+      return typeLiteral;
+    }
     
   }
   

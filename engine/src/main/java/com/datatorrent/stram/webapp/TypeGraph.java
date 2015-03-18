@@ -36,6 +36,7 @@ import com.datatorrent.stram.webapp.asm.Type;
 import com.datatorrent.stram.webapp.asm.Type.ArrayTypeNode;
 import com.datatorrent.stram.webapp.asm.Type.ParameterizedTypeNode;
 import com.datatorrent.stram.webapp.asm.Type.TypeNode;
+import com.datatorrent.stram.webapp.asm.Type.TypeVariableNode;
 import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
 
 public class TypeGraph
@@ -548,6 +549,21 @@ public class TypeGraph
       if(t instanceof ArrayTypeNode){
         propJ.put("type", t.getByteString());
         propJ.put("uiType", UI_TYPE.LIST.getName());
+        
+        JSONObject jObj = new JSONObject();
+        setTypes(jObj, ((ArrayTypeNode)t).getActualArrayType());
+        propJ.put("itemType", jObj);
+      }
+      
+      if(t instanceof TypeVariableNode){
+        propJ.put("type", ((TypeVariableNode)t).getTypeLiteral());
+        JSONArray jArray = new JSONArray();
+        for (Type tt : ((TypeVariableNode)t).getBounds()) {
+          JSONObject objJ = new JSONObject();
+          setTypes(objJ, tt);
+          jArray.put(objJ);
+        }
+        propJ.put("bounds", jArray);
       }
 
 

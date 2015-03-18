@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * All rights reserved.
+ */
 package com.datatorrent.stram.webapp.asm;
 
 import java.util.LinkedList;
