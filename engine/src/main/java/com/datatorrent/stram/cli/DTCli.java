@@ -44,6 +44,7 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
+import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -3246,6 +3247,11 @@ public class DTCli
       String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
+        ObjectMapper defaultValueMapper = new ObjectMapper();
+        defaultValueMapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
+        defaultValueMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+        
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
         Set<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parentName, searchTerm);
@@ -3259,7 +3265,7 @@ public class DTCli
 
             // add default value
             Operator operIns = clazz.newInstance();
-            String s = mapper.writeValueAsString(operIns);
+            String s = defaultValueMapper.writeValueAsString(operIns);
             oper.put("defaultValue", new JSONObject(s));
             
             // add class hier info to portClassHier
