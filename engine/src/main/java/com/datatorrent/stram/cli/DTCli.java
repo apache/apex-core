@@ -3680,7 +3680,9 @@ public class DTCli
       AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
       try {
         JSONSerializationProvider jomp = new JSONSerializationProvider();
-        printJson(new JSONObject(jomp.getContext(null).writeValueAsString(ap)));
+        JSONObject apInfo = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
+        apInfo.remove("name");
+        printJson(apInfo);
       }
       finally {
         IOUtils.closeQuietly(ap);
