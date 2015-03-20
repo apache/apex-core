@@ -54,7 +54,7 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
   {
     
     Type.TypeNode tn = new Type.TypeNode();
-    tn.typeObj = org.objectweb.asm.Type.getType(baseType + "");
+    tn.setObjByteCode(baseType + "");
 //    System.out.println(tn.typeObj);
     visitingStack.push(tn);
     resolveStack();
@@ -74,7 +74,7 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
   { 
 
     Type.TypeNode tn = new Type.TypeNode();
-    tn.typeObj = org.objectweb.asm.Type.getType("L" + classType + ";");
+    tn.setObjByteCode("L" + classType + ";");
 //    System.out.println(tn.typeObj);
     visitingStack.push(tn);
     // base type could only appear in method parameter list or return type  
@@ -146,7 +146,7 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
       visitingStack.push(t);
     } else {
       ParameterizedTypeNode pt = new ParameterizedTypeNode();
-      pt.typeObj = t.typeObj;
+      pt.setObjByteCode(t.getObjByteCode());
       visitingStack.push(pt);
     }
     
@@ -176,7 +176,7 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
     }
     if(!found) {
       TypeNode tn = new TypeNode();
-      tn.typeObj = org.objectweb.asm.Type.getType("T" + typeVariable + ";");
+      tn.setObjByteCode("T" + typeVariable + ";");
       visitingStack.push(tn);
       
     }
