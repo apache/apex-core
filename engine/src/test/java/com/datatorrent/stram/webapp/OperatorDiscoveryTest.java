@@ -34,7 +34,7 @@ public class OperatorDiscoveryTest
   public void testPropertyDiscovery() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
-    od.includeJRE();
+    
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
     JSONObject desc = od.describeClass(TestOperator.class);
@@ -109,7 +109,7 @@ public class OperatorDiscoveryTest
   public void testFindDescendants() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
-    od.includeJRE();
+    
     System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
 
     System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));

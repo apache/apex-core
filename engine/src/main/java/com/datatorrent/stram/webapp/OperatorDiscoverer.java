@@ -62,7 +62,7 @@ public class OperatorDiscoverer
   private static final int MAX_PROPERTY_LEVELS = 5;
   private final String dtOperatorDoclinkPrefix = "https://www.datatorrent.com/docs/apidocs/index.html";
   public static final String PORT_TYPE_INFO_KEY = "portTypeInfo";
-  private final TypeGraph typeGraph = new TypeGraph();
+  private final TypeGraph typeGraph = TypeGraphFactory.createTypeGraphProtoType();
 
   private final Map<String, OperatorClassInfo> classInfo = new HashMap<String, OperatorClassInfo>();
 
@@ -161,23 +161,6 @@ public class OperatorDiscoverer
   public OperatorDiscoverer()
   {
     classLoader = ClassLoader.getSystemClassLoader();
-    includeCurrentClasspathLibrary();
-  }
-
-  public void includeJRE()
-  {
-    String javahome = System.getProperty("java.home");
-    String jdkJar = javahome + "/lib/rt.jar";
-    pathsToScan.add(jdkJar);
-  }
-  
-  private void includeCurrentClasspathLibrary()
-  {
-    String classpath = System.getProperty("java.class.path");
-    String[] paths = classpath.split(":");
-    for (String path: paths) {
-      pathsToScan.add(path);
-    }
   }
 
   public OperatorDiscoverer(String[] jars)
@@ -193,8 +176,6 @@ public class OperatorDiscoverer
       }
     }
     classLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
-    // always try to include the library in current library
-    includeCurrentClasspathLibrary();
   }
 
 
