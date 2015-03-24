@@ -216,7 +216,7 @@ public class StatsTest
   private void baseTestForQueueSize(int maxTuples, TestCollectorStatsListener statsListener, DAG.Locality locality) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 300);
+    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 200);
     TestOperator testOper = dag.addOperator("TestOperator", TestOperator.class);
     testOper.setMaxTuples(maxTuples);
 
@@ -232,12 +232,12 @@ public class StatsTest
 
     long startTms = System.currentTimeMillis();
     if(statsListener!= null) {
-      while ((statsListener.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+      while (statsListener.collectorOperatorStats.isEmpty() && (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms)) {
         Thread.sleep(300);
         LOG.debug("Waiting for stats");
       }
     }else{
-      while ((collector.collectorOperatorStats.isEmpty() || testOper.windowId > collector.windowId) && StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
+      while (collector.collectorOperatorStats.isEmpty() && (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms)) {
         Thread.sleep(300);
         LOG.debug("Waiting for stats");
       }
