@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -47,7 +48,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 21, props.length());
+    Assert.assertEquals("properties " + props, 22, props.length());
     
     
     JSONObject mapProperty = getJSONProperty(props, "map");
@@ -451,6 +452,10 @@ public class OperatorDiscoveryTest
     public void setParameterizedTypeVariable(List<T> parameterizedTypeVariable)
     {
       this.parameterizedTypeVariable = parameterizedTypeVariable;
+    }
+    
+    public <AMAZING extends Callable<Map<String, String>>> AMAZING getAmazing(){
+      return null;
     }
 
   }
