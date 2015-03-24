@@ -7,6 +7,7 @@ package com.datatorrent.stram.webapp.asm;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;

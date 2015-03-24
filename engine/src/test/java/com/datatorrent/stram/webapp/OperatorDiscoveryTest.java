@@ -6,6 +6,7 @@ package com.datatorrent.stram.webapp;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -19,6 +20,7 @@ import java.util.concurrent.SynchronousQueue;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,11 +45,12 @@ public class OperatorDiscoveryTest
     JSONObject asmDesc = od.describeClassByASM(TestOperator.class.getName());
     System.out.println("\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2));
 
-    JSONArray props = desc.getJSONArray("properties");
+    JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 16, props.length());
-    JSONObject mapProperty = props.getJSONObject(6);
-    Assert.assertEquals("name " + mapProperty, "map", mapProperty.get("name"));
+    Assert.assertEquals("properties " + props, 21, props.length());
+    
+    
+    JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
     Assert.assertEquals("type " + mapProperty, java.util.Map.class.getName(), mapProperty.get("type"));
@@ -67,21 +70,34 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull("properties", enumProps);
     Assert.assertEquals("props " + enumProps, 0, enumProps.length());
 
-    JSONObject structuredProperty = props.getJSONObject(8);
-    Assert.assertEquals("name " + structuredProperty, "nested", structuredProperty.get("name"));
+    JSONObject structuredProperty = getJSONProperty(props, "nested");
     Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
 
-    JSONObject genericArray = props.getJSONObject(3);
-    Assert.assertEquals("name " + genericArray, "genericArray", genericArray.get("name"));
+    JSONObject genericArray = getJSONProperty(props, "genericArray");
     Assert.assertEquals("type " + genericArray, Object[].class.getName(), genericArray.get("type"));
 
-    JSONObject propProperty = props.getJSONObject(9);
+    JSONObject propProperty = getJSONProperty(props, "props");
     Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
-
+    
+    JSONObject stringArrayProperty = getJSONProperty(props, "stringArray");
+    Assert.assertEquals("type " + stringArrayProperty, String[].class.getName(), stringArrayProperty.get("type"));
+    
+    JSONObject nestedParameterizedTypeProperpty = getJSONProperty(props, "nestedParameterizedType");
+    Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Map.class.getName(), nestedParameterizedTypeProperpty.get("type"));
+    Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Number.class.getName(), 
+        nestedParameterizedTypeProperpty.getJSONArray("typeArgs").getJSONObject(1).getJSONArray("typeArgs").getJSONObject(0).getJSONArray("typeArgs").getJSONObject(1).get("type"));
+    
+    JSONObject wildcardType = getJSONProperty(props, "wildcardType");
+    Assert.assertEquals("type " + wildcardType, Map.class.getName(), wildcardType.get("type"));
+    Assert.assertEquals("type " + wildcardType, "class " + Long.class.getName(), 
+        wildcardType.getJSONArray("typeArgs").getJSONObject(1).getJSONObject("typeBounds").getJSONArray("lower").get(0));
+    
+    JSONObject multiDimensionPrimitiveArray = getJSONProperty(props, "multiDimensionPrimitiveArray");
+    Assert.assertEquals("type " + multiDimensionPrimitiveArray, int[][].class.getName(), multiDimensionPrimitiveArray.get("type"));
+    
     desc = od.describeClass(ExtendedOperator.class);
     props = desc.getJSONArray("properties");
-    genericArray = props.getJSONObject(3);
-    Assert.assertEquals("name " + genericArray, "genericArray", genericArray.get("name"));
+    genericArray = getJSONProperty(props, "genericArray");
     Assert.assertEquals("type " + genericArray, String[].class.getName(), genericArray.get("type"));
 
     // type is not a primitive type
@@ -103,6 +119,16 @@ public class OperatorDiscoveryTest
     
     System.out.println("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
 
+  }
+
+  private JSONObject getJSONProperty(JSONArray props, String name) throws JSONException
+  {
+    for (int i = 0; i < props.length(); i++) {
+      if(props.getJSONObject(i).get("name").equals(name)){
+        return props.getJSONObject(i);
+      }
+    }
+    return null;
   }
 
   @Test
@@ -234,9 +260,13 @@ public class OperatorDiscoveryTest
     private Color color;
     private Structured[] structuredArray;
     private T[] genericArray;
-    private Map<String, List<Map<String, Number>>> zaMap = new HashMap<String, List<Map<String, Number>>>();
-    private Map<? extends Object, ? super Long> zbMap = new HashMap<Object, Number>();
-    private Z zProp;
+    private Map<String, List<Map<String, Number>>> nestedParameterizedType = new HashMap<String, List<Map<String, Number>>>();
+    private Map<? extends Object, ? super Long> wildcardType = new HashMap<Object, Number>();
+    private List<int[]> listofIntArray = new LinkedList<int[]>();
+    private List<T> parameterizedTypeVariable = new LinkedList<T>();
+    private Z genericType;
+    private int[][] multiDimensionPrimitiveArray;
+    private Structured[][] multiDimensionComplexArray;
 
     
     public int getIntProp()
@@ -352,35 +382,75 @@ public class OperatorDiscoveryTest
       this.booleanProp = booleanProp;
     }
 
-    public Map<String, List<Map<String, Number>>> getZaMap()
+    public Map<String, List<Map<String, Number>>> getNestedParameterizedType()
     {
-      return zaMap;
+      return nestedParameterizedType;
     }
 
-    public void setZaMap(Map<String, List<Map<String, Number>>> zaMap)
+    public void setNestedParameterizedType(Map<String, List<Map<String, Number>>> nestedParameterizedType)
     {
-      this.zaMap = zaMap;
+      this.nestedParameterizedType = nestedParameterizedType;
     }
 
 
-    public Map<? extends Object, ? super Long> getZbMap()
+    public Map<? extends Object, ? super Long> getWildcardType()
     {
-      return zbMap;
+      return wildcardType;
     }
 
-    public void setZbMap(Map<? extends Object, ? super Long> zbMap)
+    public void setWildcardType(Map<? extends Object, ? super Long> wildcardType)
     {
-      this.zbMap = zbMap;
+      this.wildcardType = wildcardType;
     }
 
-    public Z getzProp()
+    public Z getGenericType()
     {
-      return zProp;
+      return genericType;
     }
 
-    public void setzProp(Z zProp)
+    public void setGenericType(Z genericType)
     {
-      this.zProp = zProp;
+      this.genericType = genericType;
+    }
+
+    public int[][] getMultiDimensionPrimitiveArray()
+    {
+      return multiDimensionPrimitiveArray;
+    }
+
+    public void setMultiDimensionPrimitiveArray(int[][] multiDimensionPrimitiveArray)
+    {
+      this.multiDimensionPrimitiveArray = multiDimensionPrimitiveArray;
+    }
+
+    public Structured[][] getMultiDimensionComplexArray()
+    {
+      return multiDimensionComplexArray;
+    }
+
+    public void setMultiDimensionComplexArray(Structured[][] multiDimensionComplexArray)
+    {
+      this.multiDimensionComplexArray = multiDimensionComplexArray;
+    }
+
+    public List<int[]> getListofIntArray()
+    {
+      return listofIntArray;
+    }
+
+    public void setListofIntArray(List<int[]> listofIntArray)
+    {
+      this.listofIntArray = listofIntArray;
+    }
+
+    public List<T> getParameterizedTypeVariable()
+    {
+      return parameterizedTypeVariable;
+    }
+
+    public void setParameterizedTypeVariable(List<T> parameterizedTypeVariable)
+    {
+      this.parameterizedTypeVariable = parameterizedTypeVariable;
     }
 
   }

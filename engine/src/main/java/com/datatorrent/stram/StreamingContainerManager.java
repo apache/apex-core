@@ -241,7 +241,7 @@ public class StreamingContainerManager implements PlanContext
             JSONObject json = new JSONObject(content);
             allocatedMemoryBytes = json.getJSONObject("container").getInt("totalMemoryNeededMB") * 1024 * 1024;
           } catch (Exception ex) {
-            LOG.warn("Caught exception when trying to get the memory allocated for the AM", ex);
+            LOG.warn("Could not determine the memory allocated for the streaming application master", ex);
           }
         }
         ci.containerLogsUrl = ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/node/containerlogs/" + ci.id + "/" + System.getenv(ApplicationConstants.Environment.USER.toString());

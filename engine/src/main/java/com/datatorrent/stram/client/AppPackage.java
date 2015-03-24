@@ -113,7 +113,7 @@ public class AppPackage extends JarFile implements Closeable
     if (zipFile.isEncrypted()) {
       throw new ZipException("Encrypted app package not supported yet");
     }
-    File newDirectory = new File("/tmp/dt-appPackage-" + System.currentTimeMillis());
+    File newDirectory = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
     newDirectory.mkdirs();
     directory = newDirectory.getAbsolutePath();
     zipFile.extractAll(directory);
@@ -190,7 +190,7 @@ public class AppPackage extends JarFile implements Closeable
     return Collections.unmodifiableCollection(configs);
   }
 
-  public File getResourcesDirectory()
+  public File resourcesDirectory()
   {
     return resourcesDirectory;
   }

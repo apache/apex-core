@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2015 DataTorrent, Inc.
+ * All rights reserved.
+ */
 package com.datatorrent.stram.webapp;
 
 import java.io.File;
@@ -26,6 +30,7 @@ import org.objectweb.asm.tree.ClassNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Component;
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
 import com.datatorrent.stram.webapp.asm.CompactClassNode;
@@ -41,10 +46,11 @@ import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
 
 public class TypeGraph
 {
-  // classes to exclude when fetching getter/setter method and other parser
+  // classes to exclude when fetching getter/setter method or in other parsers
   public static String[] EXCLUDE_CLASSES = {Object.class.getName().replace('.', '/'), 
     Enum.class.getName().replace('.', '/'), 
-    Operator.class.getName().replace('.', '/')};
+    Operator.class.getName().replace('.', '/'),
+    Component.class.getName().replace('.', '/')};
 
   enum UI_TYPE {
 

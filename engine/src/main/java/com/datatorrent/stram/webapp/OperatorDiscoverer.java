@@ -10,10 +10,13 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 
 import java.beans.*;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.*;
@@ -469,7 +472,13 @@ public class OperatorDiscoverer
 
   public JSONObject describeClass(String clazzName) throws Exception
   {
+    DataOutputStream dos = new DataOutputStream(new FileOutputStream(new File("/tmp/debug.err")));
+    for (String key : classInfo.keySet()) {
+      dos.writeChars("$$$" + key);
+    }
+    dos.flush();
     
+    dos.close();
     // TODO temporary solution for this there is a memory leak here
     return describeClassByASM(clazzName);
 //    JSONObject desc = new JSONObject();

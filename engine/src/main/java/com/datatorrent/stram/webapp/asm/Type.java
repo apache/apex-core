@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * Copyright (c) 2015 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp.asm;
@@ -48,7 +48,11 @@ public interface Type
       if(typeObj == null){
         typeObj = org.objectweb.asm.Type.getType(objByteCode);
       }
-      return "L" + typeObj.getClassName() + ";";
+      if (typeObj.getSort() == org.objectweb.asm.Type.OBJECT) {
+        return "L" + typeObj.getClassName() + ";";
+      } else {
+        return typeObj.toString();
+      }
     }
 
     public String getObjByteCode()
@@ -111,7 +115,7 @@ public interface Type
     @Override
     public String getByteString()
     {
-      return "T" + typeLiteral + ";";
+      return bounds.get(0).getByteString();
     }
     
     public Type[] getBounds() {

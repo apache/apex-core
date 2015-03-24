@@ -1,5 +1,10 @@
+/**
+ * Copyright (c) 2015 DataTorrent, Inc.
+ * All rights reserved.
+ */
 package com.datatorrent.stram.webapp;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +13,7 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.tools.ant.DirectoryScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +22,9 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
+/**
+ * This class keeps a precomputed index(prototype) of type graph of all classes in jdk and gateway classpath 
+ */
 public class TypeGraphFactory
 {
   private final static byte[] preComputeGraph;
@@ -86,9 +95,14 @@ public class TypeGraphFactory
   
   
   public static TypeGraph createTypeGraphProtoType(){
-    Input input = new Input(preComputeGraph);
-    Kryo kryo = new Kryo();
-    return kryo.readObject(input, TypeGraph.class);
+    Input input = null;
+    try {
+      input = new Input(new ByteArrayInputStream(preComputeGraph));
+      Kryo kryo = new Kryo();
+      return kryo.readObject(input, TypeGraph.class);
+    } finally {
+      IOUtils.closeQuietly(input);
+    }
   }
 
 }
