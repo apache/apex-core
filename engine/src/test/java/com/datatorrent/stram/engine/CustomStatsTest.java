@@ -10,12 +10,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.Lists;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Lists;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
@@ -23,6 +23,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorStats;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
@@ -57,20 +58,21 @@ public class CustomStatsTest
           lastPropVal = ((TestOperatorStats)os.counters).currentPropVal;
         }
         Response rsp = new Response();
-        rsp.operatorCommands = Lists.newArrayList(new SetPropertyCommand());
+        rsp.operatorRequests = Lists.newArrayList(new SetPropertyRequest());
         return rsp;
       }
 
-      public static class SetPropertyCommand implements OperatorCommand, Serializable
+      public static class SetPropertyRequest implements OperatorRequest, Serializable
       {
         private static final long serialVersionUID = 1L;
         @Override
-        public void execute(Operator oper, int arg1, long arg2) throws IOException
+        public OperatorCommandResponse execute(Operator oper, int arg1, long arg2) throws IOException
         {
           if (oper instanceof TestOperator) {
             LOG.debug("Setting property");
             ((TestOperator)oper).propVal = true;
           }
+          return null;
         }
       }
     }

@@ -5,6 +5,7 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
@@ -20,10 +21,12 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.apache.log4j.DTLoggerFactory;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.Version;
@@ -36,7 +39,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.log4j.DTLoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
@@ -57,8 +59,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.util.ConfigValidator;
 import com.datatorrent.stram.util.JSONSerializationProvider;
-import java.text.SimpleDateFormat;
-import org.apache.commons.codec.binary.Base64;
 
 /**
  *
@@ -89,6 +89,7 @@ public class StramWebServices
   public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   public static final String PATH_ALERTS = "alerts";
   public static final String PATH_LOGGERS = "loggers";
+  public static final long WAIT_TIME = 5000;
 
   //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
   private final StramAppContext appCtx;
@@ -725,24 +726,25 @@ public class StramWebServices
   @GET
   @Path(PATH_PHYSICAL_PLAN_OPERATORS + "/{operatorId:\\d+}/properties")
   @Produces(MediaType.APPLICATION_JSON)
-  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") int operatorId, @QueryParam("propertyName") String propertyName)
+  public JSONObject getPhysicalOperatorProperties(@PathParam("operatorId") int operatorId, @QueryParam("propertyName") String propertyName, @QueryParam("waitTime") long waitTime)
   {
-    Map<String, Object> m = dagManager.getPhysicalOperatorProperty(operatorId);
+    if (waitTime == 0) {
+      waitTime = WAIT_TIME;
+    }
+
+    Future<?> future = dagManager.getPhysicalOperatorProperty(operatorId, propertyName, waitTime);
 
     try {
-      if (propertyName == null) {
-        return new JSONObject(new ObjectMapper().writeValueAsString(m));
-      }
-      else {
-        Map<String, Object> m1 = new HashMap<String, Object>();
-        m1.put(propertyName, m.get(propertyName));
-        return new JSONObject(new ObjectMapper().writeValueAsString(m1));
+      Object object = future.get(waitTime, TimeUnit.MILLISECONDS);
+      if(object != null) {
+        return new JSONObject(new ObjectMapper().writeValueAsString(object));
       }
     }
     catch (Exception ex) {
       LOG.warn("Caught exception", ex);
       throw new RuntimeException(ex);
     }
+    return new JSONObject();
   }
 
   @GET

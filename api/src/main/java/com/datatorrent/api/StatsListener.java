@@ -38,6 +38,23 @@ public interface StatsListener
    * Command to be executed at subsequent end of window on the operator instance that is deployed in the container.
    * Provides the opportunity to define operator specific actions such as method invocation or property set.
    */
+  public interface OperatorRequest
+  {
+    /**
+     * Execute the command.
+     *
+     * @param operator
+     * @param operatorId
+     * @param windowId
+     * @throws IOException
+     */
+    public OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException;
+  }
+
+  /**
+   * Use {@link OperatorRequest}
+   */
+  @Deprecated
   public interface OperatorCommand
   {
     /**
@@ -49,6 +66,25 @@ public interface StatsListener
      * @throws IOException
      */
     public void execute(Operator operator, int operatorId, long windowId) throws IOException;
+  }
+
+  public class OperatorCommandResponse implements Serializable
+  {
+    /*
+     * The unique requestId of the request
+     */
+    public long requestId;
+
+    /*
+     * The data payload that needs to be sent back
+     */
+    public Object object;
+
+    @Override
+    public String toString()
+    {
+      return "{ requestId: " + requestId + ", data object :" + object +"}";
+    }
   }
 
   /**
@@ -91,6 +127,11 @@ public interface StatsListener
 
     /**
      * List of commands to be executed on all deployed operator instances.
+     */
+    public List<? extends OperatorRequest> operatorRequests;
+
+    /**
+     * for backward compatibility
      */
     public List<? extends OperatorCommand> operatorCommands;
 

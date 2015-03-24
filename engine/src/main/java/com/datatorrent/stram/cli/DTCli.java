@@ -642,11 +642,11 @@ public class DTCli
     connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesCommand(),
       new Arg[]{new Arg("operator-name")},
       new Arg[]{new Arg("property-name")},
-      "Get properties of an operator"));
-    connectedCommands.put("get-physical-operator-properties", new CommandSpec(new GetPhysicalOperatorPropertiesCommand(),
+      "Get properties of a logical operator"));
+    connectedCommands.put("get-physical-operator-properties", new OptionsCommandSpec(new GetPhysicalOperatorPropertiesCommand(),
       new Arg[]{new Arg("operator-id")},
-      new Arg[]{new Arg("property-name")},
-      "Get properties of an operator"));
+      null,
+      "Get properties of a physical operator", GET_PHYSICAL_PROPERTY_OPTIONS.options));
 
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(),
       new Arg[]{new Arg("operator-name"), new Arg("property-name"), new Arg("property-value")},
@@ -2903,11 +2903,21 @@ public class DTCli
       if (!NumberUtils.isDigits(args[1])) {
         throw new CliException("Operator ID must be a number");
       }
+      String[] newArgs = new String[args.length - 1];
+      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+      PosixParser parser = new PosixParser();
+      CommandLine line = parser.parse(GET_PHYSICAL_PROPERTY_OPTIONS.options, newArgs);
+      String waitTime = line.getOptionValue(GET_PHYSICAL_PROPERTY_OPTIONS.waitTime.getOpt());
+      String propertyName = line.getOptionValue(GET_PHYSICAL_PROPERTY_OPTIONS.propertyName.getOpt());
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
-      if (args.length > 2) {
-        r = r.queryParam("propertyName", args[2]);
+      if (propertyName != null) {
+        r = r.queryParam("propertyName", propertyName);
       }
+      if (waitTime != null) {
+        r = r.queryParam("waitTime", waitTime);
+      }
+
       try {
         JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -4006,6 +4016,21 @@ public class DTCli
     }
 
   }
+
+  @SuppressWarnings("static-access")
+  public static class GetPhysicalPropertiesCommandLineOptions
+  {
+    final Options options = new Options();
+    final Option propertyName = add(OptionBuilder.withArgName("property name").hasArg().withDescription("The name of the property whose value needs to be retrieved").create("propertyName"));
+    final Option waitTime = add (OptionBuilder.withArgName("wait time").hasArg().withDescription("How long to wait to get the result").create("waitTime"));
+    private Option add(Option opt)
+    {
+      this.options.addOption(opt);
+      return opt;
+    }
+  }
+
+  private static GetPhysicalPropertiesCommandLineOptions GET_PHYSICAL_PROPERTY_OPTIONS = new GetPhysicalPropertiesCommandLineOptions();
 
   @SuppressWarnings("static-access")
   public static class LaunchCommandLineOptions

@@ -18,7 +18,8 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.Stats;
-import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.api.StatsListener.OperatorRequest;
 
 import com.datatorrent.stram.util.AbstractWritableAdapter;
 
@@ -154,6 +155,11 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public void setState(DeployState state) {
       this.state = state;
     }
+
+    /**
+     * Return the response of the request
+     */
+    public ArrayList<StatsListener.OperatorCommandResponse> requestResponse;
   }
 
   public static class ContainerStats implements Stats
@@ -245,7 +251,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public long recoveryCheckpoint;
     public String portName;
     public boolean deleted;
-    public OperatorCommand cmd;
+    public OperatorRequest cmd;
 
     public boolean isDeleted()
     {
