@@ -70,6 +70,7 @@ public interface StatsListener
 
   public class OperatorCommandResponse implements Serializable
   {
+    private static final long serialVersionUID = -95162161527528335L;
     /*
      * The unique requestId of the request
      */
