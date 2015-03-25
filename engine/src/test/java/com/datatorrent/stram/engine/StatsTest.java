@@ -5,10 +5,7 @@
 package com.datatorrent.stram.engine;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -22,9 +19,11 @@ import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 
 import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.StatsTest.TestCollector.TestCollectorStatsListener;
 import com.datatorrent.stram.engine.StatsTest.TestOperator.TestInputStatsListener;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport;
 
 /**
@@ -229,22 +228,29 @@ public class StatsTest
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.runAsync();
+    StreamingContainerManager dnmgr = lc.getStreamingContainerManager();
+    Map<Integer, PTOperator> operatorMap = dnmgr.getPhysicalPlan().getAllOperators();
+    for (PTOperator p : operatorMap.values()) {
+      StramTestSupport.waitForActivation(lc, p);
+    }
 
     long startTms = System.currentTimeMillis();
-    if(statsListener!= null) {
+    if (statsListener != null) {
       while (statsListener.collectorOperatorStats.isEmpty() && (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms)) {
         Thread.sleep(300);
         LOG.debug("Waiting for stats");
       }
-    }else{
+    }
+    else {
       while (collector.collectorOperatorStats.isEmpty() && (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms)) {
         Thread.sleep(300);
         LOG.debug("Waiting for stats");
       }
     }
-    if(statsListener != null) {
+    if (statsListener != null) {
       statsListener.validateStats();
-    }else {
+    }
+    else {
       collector.validateStats();
     }
     lc.shutdown();
