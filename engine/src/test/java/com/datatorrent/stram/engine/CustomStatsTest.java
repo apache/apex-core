@@ -66,7 +66,7 @@ public class CustomStatsTest
       {
         private static final long serialVersionUID = 1L;
         @Override
-        public OperatorCommandResponse execute(Operator oper, int arg1, long arg2) throws IOException
+        public OperatorResponse execute(Operator oper, int arg1, long arg2) throws IOException
         {
           if (oper instanceof TestOperator) {
             LOG.debug("Setting property");

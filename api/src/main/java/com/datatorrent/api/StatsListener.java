@@ -48,7 +48,7 @@ public interface StatsListener
      * @param windowId
      * @throws IOException
      */
-    public OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException;
+    public OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException;
   }
 
   /**
@@ -68,7 +68,7 @@ public interface StatsListener
     public void execute(Operator operator, int operatorId, long windowId) throws IOException;
   }
 
-  public class OperatorCommandResponse implements Serializable
+  public class OperatorResponse implements Serializable
   {
     private static final long serialVersionUID = -95162161527528335L;
     /*

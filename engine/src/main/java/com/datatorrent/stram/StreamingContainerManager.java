@@ -1072,7 +1072,7 @@ public class StreamingContainerManager implements PlanContext
 
       long maxEndWindowTimestamp = 0;
       if (shb.requestResponse != null) {
-        for (StatsListener.OperatorCommandResponse obj : shb.requestResponse) {
+        for (StatsListener.OperatorResponse obj : shb.requestResponse) {
           commandResponse.put(obj.requestId, obj.object);
           LOG.debug(" Got back the response {} for the request {}", obj, obj.requestId);
         }

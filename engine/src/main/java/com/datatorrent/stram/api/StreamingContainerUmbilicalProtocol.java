@@ -159,7 +159,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * Return the response of the request
      */
-    public ArrayList<StatsListener.OperatorCommandResponse> requestResponse;
+    public ArrayList<StatsListener.OperatorResponse> requestResponse;
   }
 
   public static class ContainerStats implements Stats

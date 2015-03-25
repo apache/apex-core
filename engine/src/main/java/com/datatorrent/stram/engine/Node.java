@@ -75,7 +75,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int checkpointWindowCount;
   protected int controlTupleCount;
   public final OperatorContext context;
-  public final BlockingQueue<StatsListener.OperatorCommandResponse> commandResponse;
+  public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
 
   public Node(OPERATOR operator, OperatorContext context)
   {
@@ -89,7 +89,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>();
     tmb = ManagementFactory.getThreadMXBean();
-    commandResponse = new LinkedBlockingQueue<StatsListener.OperatorCommandResponse>();
+    commandResponse = new LinkedBlockingQueue<StatsListener.OperatorResponse>();
   }
 
   public Operator getOperator()
@@ -241,7 +241,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       context.request(new OperatorRequest()
       {
         @Override
-        public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+        public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
         {
           alive = false;
           return null;
@@ -287,7 +287,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     try {
       BlockingQueue<OperatorRequest> requests = context.getRequests();
       int size;
-      StatsListener.OperatorCommandResponse response;
+      StatsListener.OperatorResponse response;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {
           //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());

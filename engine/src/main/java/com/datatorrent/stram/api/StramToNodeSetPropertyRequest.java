@@ -59,7 +59,7 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
   private class SetPropertyRequest implements StatsListener.OperatorRequest, Serializable
   {
     @Override
-    public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+    public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
       final Map<String, String> properties = Collections.singletonMap(propertyKey, propertyValue);
       logger.info("Setting property {} on operator {}", properties, operator);

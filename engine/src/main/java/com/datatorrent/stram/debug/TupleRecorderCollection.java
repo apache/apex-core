@@ -208,7 +208,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
               node.context.request(new OperatorRequest()
               {
                 @Override
-                public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+                public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
                 {
                   stopRecording(node, operatorId, portName);
                   return null;
@@ -387,7 +387,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           return new OperatorRequest()
           {
             @Override
-            public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+            public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               StramToNodeStartRecordingRequest r = (StramToNodeStartRecordingRequest) snr;
               startRecording(r.getId(), node, operatorId, r.getPortName(), r.getNumWindows());
@@ -406,7 +406,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           return new OperatorRequest()
           {
             @Override
-            public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+            public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               stopRecording(node, operatorId, snr.getPortName());
               return null;
@@ -424,7 +424,7 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           return new OperatorRequest()
           {
             @Override
-            public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+            public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               syncRecording(node, operatorId, snr.getPortName());
               return null;

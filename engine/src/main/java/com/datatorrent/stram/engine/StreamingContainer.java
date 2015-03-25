@@ -604,8 +604,8 @@ public class StreamingContainer extends YarnContainerMain
           hb.setGeneratedTms(currentTime);
           hb.setIntervalMs(heartbeatIntervalMillis);
           if(e.getValue().commandResponse.size() > 0){
-            BlockingQueue<StatsListener.OperatorCommandResponse> commandResponse = e.getValue().commandResponse;
-            ArrayList<StatsListener.OperatorCommandResponse> response = new ArrayList<StatsListener.OperatorCommandResponse>();
+            BlockingQueue<StatsListener.OperatorResponse> commandResponse = e.getValue().commandResponse;
+            ArrayList<StatsListener.OperatorResponse> response = new ArrayList<StatsListener.OperatorResponse>();
             for (int i = 0; i< commandResponse.size(); i++){
                  response.add(commandResponse.poll());
             }
@@ -709,7 +709,7 @@ public class StreamingContainer extends YarnContainerMain
             nr = new OperatorRequest()
             {
               @Override
-              public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+              public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
               {
                 ((Operator.CheckpointListener) operator).committed(lastCommittedWindowId);
                 return null;

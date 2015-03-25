@@ -53,9 +53,9 @@ public class StramToNodeGetPropertyRequest extends StreamingContainerUmbilicalPr
   private class GetPropertyRequest implements StatsListener.OperatorRequest, Serializable
   {
     @Override
-    public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+    public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
-      StatsListener.OperatorCommandResponse response = new StatsListener.OperatorCommandResponse();
+      StatsListener.OperatorResponse response = new StatsListener.OperatorResponse();
       BeanMap beanMap = new BeanMap(operator);
       Map<String, Object> propertyValue = new HashMap<String, Object>();
       if (propertyName != null) {

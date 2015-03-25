@@ -1542,7 +1542,7 @@ public class PhysicalPlan implements Serializable
   {
     public OperatorCommand cmd;
     @Override
-    public StatsListener.OperatorCommandResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+    public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
       cmd.execute(operator,operatorId,windowId);
       return null;
