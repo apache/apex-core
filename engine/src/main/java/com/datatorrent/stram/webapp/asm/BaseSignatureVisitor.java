@@ -36,7 +36,7 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
   
   protected Stack<Type> visitingStack = new Stack<Type>();
   
-  protected String signature = "";
+//  protected transient String signature = "";
 
 
   

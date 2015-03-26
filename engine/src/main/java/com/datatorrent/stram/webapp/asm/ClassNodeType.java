@@ -31,6 +31,7 @@ public class ClassNodeType extends ClassNode
     // parse the signature first so Type variable can be captured from the signature
     if(signature!=null){
       SignatureReader sr = new SignatureReader(signature);
+//      gtsv.signature = signature;
       sr.accept(gtsv);
     }
     super.visit(version, access, name, signature, superName, interfaces);

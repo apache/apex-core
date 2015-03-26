@@ -335,13 +335,14 @@ public class OperatorDiscoverer
     return (Class<? extends Operator>)clazz;
   }
 
-  public JSONObject describeOperator(Class<? extends Operator> clazz) throws IntrospectionException
+  public JSONObject describeOperator(Class<? extends Operator> clazz) throws Exception
   {
     if (OperatorDiscoverer.isInstantiableOperatorClass(clazz)) {
       JSONObject response = new JSONObject();
       JSONArray inputPorts = new JSONArray();
       JSONArray outputPorts = new JSONArray();
-      JSONArray properties = getClassProperties(clazz, 0);
+      // Get properties from ASM
+      JSONArray properties = describeClassByASM(clazz.getName()).getJSONArray("properties");
 
       TypeDiscoverer td = new TypeDiscoverer();
       JSONArray portTypeInfo = td.getPortTypes(clazz);

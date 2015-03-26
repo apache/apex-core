@@ -32,6 +32,7 @@ public class MethodNode extends org.objectweb.asm.tree.MethodNode
     // System.out.println("RRRRRRRRRRRR" + methodString + "%%%%%" + name);
     SignatureReader reader = new SignatureReader(methodString);
     signatureNode = new MethodSignatureVisitor();
+//    signatureNode.signature = methodString;
     signatureNode.typeV.addAll(typeVariableSignatureNode.typeV);
     reader.accept(signatureNode);
   }

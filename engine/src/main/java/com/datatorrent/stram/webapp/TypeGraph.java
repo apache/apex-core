@@ -557,14 +557,17 @@ public class TypeGraph
       }
       
       if(t instanceof TypeVariableNode){
-        propJ.put("type", ((TypeVariableNode)t).getTypeLiteral());
-        JSONArray jArray = new JSONArray();
-        for (Type tt : ((TypeVariableNode)t).getBounds()) {
-          JSONObject objJ = new JSONObject();
-          setTypes(objJ, tt);
-          jArray.put(objJ);
-        }
-        propJ.put("bounds", jArray);
+        propJ.put("typeLiteral", ((TypeVariableNode)t).getTypeLiteral());
+        setTypes(propJ, ((TypeVariableNode)t).getRawTypeBound());
+        // keep the code here in case we want to expose everything in json
+//        propJ.put("type", ((TypeVariableNode)t).getRawTypeBound());
+//        JSONArray jArray = new JSONArray();
+//        for (Type tt : ((TypeVariableNode)t).getBounds()) {
+//          JSONObject objJ = new JSONObject();
+//          setTypes(objJ, tt);
+//          jArray.put(objJ);
+//        }
+//        propJ.put("bounds", jArray);
       }
 
 

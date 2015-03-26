@@ -127,6 +127,16 @@ public interface Type
       return typeLiteral;
     }
     
+    public TypeNode getRawTypeBound(){
+      Type t = bounds.get(0);
+      
+      // The bounds can only be TypeNode or TypeVariableNode
+      if(t instanceof TypeNode){
+        return (TypeNode) t;
+      }
+      return ((TypeVariableNode)t).getRawTypeBound();
+    }
+    
   }
   
   public static class ParameterizedTypeNode extends TypeNode {
