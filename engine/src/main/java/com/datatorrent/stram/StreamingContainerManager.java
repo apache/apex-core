@@ -95,7 +95,7 @@ import com.datatorrent.stram.webapp.*;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v1/login";
+  public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
@@ -124,8 +124,8 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
   // (operator id, port name) to timestamp
-  private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = new HashMap<Pair<Integer, String>, Long>();
-  private final Map<Integer, Long> operatorLastEndWindowTimestamps = new HashMap<Integer, Long>();
+  private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = Maps.newConcurrentMap();
+  private final Map<Integer, Long> operatorLastEndWindowTimestamps = Maps.newConcurrentMap();
   private long lastStatsTimestamp = System.currentTimeMillis();
   private long currentEndWindowStatsWindowId;
   private long completeEndWindowStatsWindowId;
