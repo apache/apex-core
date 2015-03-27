@@ -263,7 +263,7 @@ public class TypeGraph
     public TypeGraphVertex(String typeName, String jarName, CompactClassNode classNode)
     {
 
-      this.jarName = typeName;
+      this.jarName = jarName;
       this.typeName = typeName;
       this.classNode = classNode;
     }
@@ -376,6 +376,9 @@ public class TypeGraph
           continue;
         }
         result.add(node.typeName);
+      }
+      if(tgv.isInitializable()){
+        result.add(tgv.typeName);
       }
     }
     return result;

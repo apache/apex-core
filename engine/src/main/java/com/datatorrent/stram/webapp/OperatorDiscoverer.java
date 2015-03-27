@@ -10,13 +10,10 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
-import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 
 import java.beans.*;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.*;
@@ -30,6 +27,7 @@ import java.util.regex.Pattern;
 import javax.xml.parsers.*;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
@@ -73,6 +71,7 @@ public class OperatorDiscoverer
     String comment;
     final Map<String, String> tags = new HashMap<String, String>();
     final Map<String, String> getMethods = new HashMap<String, String>();
+    final Map<String, String> setMethods = new HashMap<String, String>();
     final Map<String, String> fields = new HashMap<String, String>();
   }
 
@@ -84,10 +83,16 @@ public class OperatorDiscoverer
     private String fieldName = null;
     private String methodName = null;
     private final Pattern getterPattern = Pattern.compile("(?:is|get)[A-Z].*");
+    private final Pattern setterPattern = Pattern.compile("(?:set)[A-Z].*");
 
     private boolean isGetter(String methodName)
     {
       return getterPattern.matcher(methodName).matches();
+    }
+    
+    private boolean isSetter(String methodName)
+    {
+      return setterPattern.matcher(methodName).matches();
     }
 
     @Override
@@ -106,9 +111,10 @@ public class OperatorDiscoverer
           String tagName = attributes.getValue("name");
           String tagText = attributes.getValue("text");
           if (methodName != null) {
-            if ("@return".equals(tagName) && isGetter(methodName)) {
-              oci.getMethods.put(methodName, tagText);
-            }
+//            if ("@return".equals(tagName) && isGetter(methodName)) {
+//              oci.getMethods.put(methodName, tagText);
+//            }
+            //do nothing
           }
           else if (fieldName != null) {
             // do nothing
@@ -136,6 +142,11 @@ public class OperatorDiscoverer
       else if (qName.equalsIgnoreCase("comment") && oci != null) {
         if (methodName != null) {
           // do nothing
+          if (isGetter(methodName)) {
+            oci.getMethods.put(methodName, comment.toString());
+          } else if (isSetter(methodName)) {
+            oci.setMethods.put(methodName, comment.toString());
+          }
         }
         else if (fieldName != null) {
           oci.fields.put(fieldName, comment.toString());
@@ -343,6 +354,8 @@ public class OperatorDiscoverer
       JSONArray outputPorts = new JSONArray();
       // Get properties from ASM
       JSONArray properties = describeClassByASM(clazz.getName()).getJSONArray("properties");
+      
+      enrichDescription(clazz.getName(), properties);
 
       TypeDiscoverer td = new TypeDiscoverer();
       JSONArray portTypeInfo = td.getPortTypes(clazz);
@@ -471,15 +484,29 @@ public class OperatorDiscoverer
     }
   }
 
+  private void enrichDescription(String className, JSONArray properties) throws JSONException
+  {
+    OperatorClassInfo oci = classInfo.get(className);
+    if (oci == null) { return; }
+    for (int i = 0; i < properties.length(); i++) {
+      JSONObject propJ = properties.getJSONObject(i);
+      String propName = WordUtils.capitalize(propJ.getString("name"));
+      String prefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
+      String commentMethodName = prefix + propName;
+      String desc = oci.getMethods.get(commentMethodName);
+      if(desc == null){
+        commentMethodName = "set" + propName;
+        desc = oci.setMethods.get(commentMethodName);
+      }
+      if(desc != null)
+      {
+        propJ.put("description", desc);
+      }
+    }
+  }
+
   public JSONObject describeClass(String clazzName) throws Exception
   {
-    DataOutputStream dos = new DataOutputStream(new FileOutputStream(new File("/tmp/debug.err")));
-    for (String key : classInfo.keySet()) {
-      dos.writeChars("$$$" + key);
-    }
-    dos.flush();
-    
-    dos.close();
     // TODO temporary solution for this there is a memory leak here
     return describeClassByASM(clazzName);
 //    JSONObject desc = new JSONObject();
