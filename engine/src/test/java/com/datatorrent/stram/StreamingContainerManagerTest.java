@@ -7,10 +7,9 @@ package com.datatorrent.stram;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.DataInputByteBuffer;
@@ -687,6 +686,28 @@ public class StreamingContainerManagerTest {
   public void testContainerLocalDownstreamPartition() throws Exception
   {
     testDownStreamPartition(Locality.CONTAINER_LOCAL);
+  }
+
+  @Test
+  public void testPhysicalPropertyUpdate() throws Exception{
+    LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.addStream("o1.outport", o1.outport, o2.inport1);
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.runAsync();
+    StreamingContainerManager dnmgr = lc.dnmgr;
+    Map<Integer,PTOperator> operatorMap = dnmgr.getPhysicalPlan().getAllOperators();
+    for (PTOperator p: operatorMap.values()) {
+      StramTestSupport.waitForActivation(lc, p);
+    }
+    dnmgr.setPhysicalOperatorProperty(lc.getPlanOperators(dag.getMeta(o1)).get(0).getId(),"maxTuples","2");
+    Future<?> future = dnmgr.getPhysicalOperatorProperty(lc.getPlanOperators(dag.getMeta(o1)).get(0).getId(), "maxTuples", 10000);
+    Object object = future.get(10000, TimeUnit.MILLISECONDS);
+    Assert.assertNotNull(object);
+    Map<String, Object> propertyValue = (Map<String, Object>)object;
+    Assert.assertEquals(2,propertyValue.get("maxTuples"));
+    lc.shutdown();
   }
 
 }

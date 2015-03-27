@@ -17,25 +17,16 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StatsListener;
 
+import com.datatorrent.stram.engine.OperatorResponse;
+
 public class StramToNodeGetPropertyRequest extends StreamingContainerUmbilicalProtocol.StramToNodeRequest implements Serializable
 {
   private String propertyName;
-  private long requestId;
 
   public StramToNodeGetPropertyRequest()
   {
     requestType = RequestType.CUSTOM;
     cmd = new GetPropertyRequest();
-  }
-
-  public long getRequestId()
-  {
-    return requestId;
-  }
-
-  public void setRequestId(long requestId)
-  {
-    this.requestId = requestId;
   }
 
   public String getPropertyName()
@@ -55,7 +46,6 @@ public class StramToNodeGetPropertyRequest extends StreamingContainerUmbilicalPr
     @Override
     public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
-      StatsListener.OperatorResponse response = new StatsListener.OperatorResponse();
       BeanMap beanMap = new BeanMap(operator);
       Map<String, Object> propertyValue = new HashMap<String, Object>();
       if (propertyName != null) {
@@ -71,8 +61,7 @@ public class StramToNodeGetPropertyRequest extends StreamingContainerUmbilicalPr
         }
       }
       logger.debug("Getting property {} on operator {}", propertyValue, operator);
-      response.requestId = requestId;
-      response.object = propertyValue;
+      OperatorResponse response = new OperatorResponse(requestId, propertyValue);
       return response;
     }
 

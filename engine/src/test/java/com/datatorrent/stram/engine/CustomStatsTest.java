@@ -57,6 +57,11 @@ public class CustomStatsTest
           ((TestOperatorStats)os.counters).attributeListenerCalled = true;
           lastPropVal = ((TestOperatorStats)os.counters).currentPropVal;
         }
+        if(lastPropVal){
+          Assert.assertNotNull(stats.getOperatorResponse());
+          Assert.assertTrue(1 == stats.getOperatorResponse().size());
+          Assert.assertEquals("test", stats.getOperatorResponse().get(0).getResponse());
+        }
         Response rsp = new Response();
         rsp.operatorRequests = Lists.newArrayList(new SetPropertyRequest());
         return rsp;
@@ -72,7 +77,25 @@ public class CustomStatsTest
             LOG.debug("Setting property");
             ((TestOperator)oper).propVal = true;
           }
-          return null;
+          OperatorResponse response = new TestOperatorResponse();
+          return response;
+        }
+      }
+
+      public static class TestOperatorResponse implements OperatorResponse, Serializable
+      {
+        private static final long serialVersionUID = 2L;
+
+        @Override
+        public Object getResponseId()
+        {
+          return 1;
+        }
+
+        @Override
+        public Object getResponse()
+        {
+          return "test";
         }
       }
     }

@@ -68,24 +68,18 @@ public interface StatsListener
     public void execute(Operator operator, int operatorId, long windowId) throws IOException;
   }
 
-  public class OperatorResponse implements Serializable
+  public interface OperatorResponse
   {
-    private static final long serialVersionUID = -95162161527528335L;
-    /*
-     * The unique requestId of the request
-     */
-    public long requestId;
 
+    /*
+     * The Object to identify the response
+     */
+    public Object getResponseId();
     /*
      * The data payload that needs to be sent back
      */
-    public Object object;
+    public Object getResponse();
 
-    @Override
-    public String toString()
-    {
-      return "{ requestId: " + requestId + ", data object :" + object +"}";
-    }
   }
 
   /**
@@ -104,6 +98,7 @@ public interface StatsListener
     long getTuplesEmittedPSMA();
     double getCpuPercentageMA();
     long getLatencyMA();
+    List<OperatorResponse> getOperatorResponse();
   }
 
   public class Response implements Serializable
