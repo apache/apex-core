@@ -57,6 +57,7 @@ import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.engine.OperatorResponse;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
@@ -1071,12 +1072,7 @@ public class StreamingContainerManager implements PlanContext
     for (OperatorHeartbeat shb : heartbeat.getContainerStats().operators) {
 
       long maxEndWindowTimestamp = 0;
-      if (shb.requestResponse != null) {
-        for (StatsListener.OperatorResponse obj : shb.requestResponse) {
-          commandResponse.put(obj.requestId, obj.object);
-          LOG.debug(" Got back the response {} for the request {}", obj, obj.requestId);
-        }
-      }
+
       reportedOperators.add(shb.nodeId);
       PTOperator oper = this.plan.getAllOperators().get(shb.getNodeId());
 
@@ -1084,6 +1080,21 @@ public class StreamingContainerManager implements PlanContext
         LOG.info("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
         sca.undeployOpers.add(shb.nodeId);
         continue;
+      }
+
+      if (shb.requestResponse != null) {
+        for (StatsListener.OperatorResponse obj : shb.requestResponse) {
+          if (obj instanceof OperatorResponse) {      // This is to identify platform requests
+            commandResponse.put((Long) obj.getResponseId(), obj.getResponse());
+            LOG.debug(" Got back the response {} for the request {}", obj, obj.getResponseId());
+          }
+          else {       // This is to identify user requests
+            if (oper.stats.operatorResponses == null) {
+              oper.stats.operatorResponses = new ArrayList<StatsListener.OperatorResponse>();
+            }
+            oper.stats.operatorResponses.add(obj);
+          }
+        }
       }
 
       //LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), shb.getState(), oper.getContainer().getExternalId());
@@ -2193,7 +2204,7 @@ public class StreamingContainerManager implements PlanContext
     RequestHandler task = new RequestHandler();
     task.requestId = nodeToStramRequestIds.incrementAndGet();
     task.waitTime = waitTime;
-    request.setRequestId(task.requestId);
+    request.requestId = task.requestId;
     FutureTask<Object> future = new FutureTask<Object>(task);
     dispatch(future);
     return future;

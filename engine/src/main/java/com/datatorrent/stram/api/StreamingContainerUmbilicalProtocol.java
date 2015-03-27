@@ -252,6 +252,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public String portName;
     public boolean deleted;
     public OperatorRequest cmd;
+    public long requestId;
 
     public boolean isDeleted()
     {
