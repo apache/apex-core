@@ -9,7 +9,7 @@ import java.util.EnumMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.StatsListener.OperatorRequest;
 
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.datatorrent.stram.engine.Node;
@@ -31,7 +31,7 @@ public class RequestFactory
 
   public interface RequestDelegate
   {
-    public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr);
+    public OperatorRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr);
 
   }
 
@@ -50,7 +50,7 @@ public class RequestFactory
    * @param snr - The serialized request which contains context for the request.
    * @return - The actual object which will handle the request.
    */
-  public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
+  public OperatorRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
   {
     RequestDelegate delegate = map.get(snr.requestType);
     if (delegate == null) {

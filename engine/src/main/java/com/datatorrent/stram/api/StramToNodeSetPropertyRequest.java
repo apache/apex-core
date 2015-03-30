@@ -29,7 +29,7 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
   public StramToNodeSetPropertyRequest()
   {
     requestType = RequestType.CUSTOM;
-    cmd = new SetPropertyCommand();
+    cmd = new SetPropertyRequest();
   }
 
   public String getPropertyKey()
@@ -56,14 +56,15 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
 
   private static final Logger logger = LoggerFactory.getLogger(StramToNodeSetPropertyRequest.class);
 
-  private class SetPropertyCommand implements StatsListener.OperatorCommand, Serializable
+  private class SetPropertyRequest implements StatsListener.OperatorRequest, Serializable
   {
     @Override
-    public void execute(Operator operator, int id, long windowId) throws IOException
+    public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
       final Map<String, String> properties = Collections.singletonMap(propertyKey, propertyValue);
       logger.info("Setting property {} on operator {}", properties, operator);
       LogicalPlanConfiguration.setOperatorProperties(operator, properties);
+      return null;
     }
 
     @Override

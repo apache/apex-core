@@ -11,12 +11,12 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.Nullable;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -36,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Predicate;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -55,6 +57,7 @@ import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.engine.OperatorResponse;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.logical.LogicalOperatorStatus;
@@ -93,7 +96,7 @@ import com.datatorrent.stram.webapp.*;
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
-  public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v1/login";
+  public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
@@ -122,13 +125,15 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
   // (operator id, port name) to timestamp
-  private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = new HashMap<Pair<Integer, String>, Long>();
-  private final Map<Integer, Long> operatorLastEndWindowTimestamps = new HashMap<Integer, Long>();
+  private final Map<Pair<Integer, String>, Long> operatorPortLastEndWindowTimestamps = Maps.newConcurrentMap();
+  private final Map<Integer, Long> operatorLastEndWindowTimestamps = Maps.newConcurrentMap();
   private long lastStatsTimestamp = System.currentTimeMillis();
   private long currentEndWindowStatsWindowId;
   private long completeEndWindowStatsWindowId;
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
+  private final AtomicLong nodeToStramRequestIds = new AtomicLong(1);
   private long allocatedMemoryBytes = 0;
+  private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1,TimeUnit.MINUTES).build();
 
   private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>()
   {
@@ -240,7 +245,8 @@ public class StreamingContainerManager implements PlanContext
             String content = webServicesClient.process(url, String.class, new WebServicesClient.GetWebServicesHandler<String>());
             JSONObject json = new JSONObject(content);
             allocatedMemoryBytes = json.getJSONObject("container").getInt("totalMemoryNeededMB") * 1024 * 1024;
-          } catch (Exception ex) {
+          }
+          catch (Exception ex) {
             LOG.warn("Could not determine the memory allocated for the streaming application master", ex);
           }
         }
@@ -992,7 +998,7 @@ public class StreamingContainerManager implements PlanContext
    * called by the RPC thread for each container. (i.e. called by multiple threads)
    *
    * @param heartbeat
-   * @return  heartbeat response
+   * @return heartbeat response
    */
   @SuppressWarnings("StatementWithEmptyBody")
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
@@ -1074,6 +1080,21 @@ public class StreamingContainerManager implements PlanContext
         LOG.info("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
         sca.undeployOpers.add(shb.nodeId);
         continue;
+      }
+
+      if (shb.requestResponse != null) {
+        for (StatsListener.OperatorResponse obj : shb.requestResponse) {
+          if (obj instanceof OperatorResponse) {      // This is to identify platform requests
+            commandResponse.put((Long) obj.getResponseId(), obj.getResponse());
+            LOG.debug(" Got back the response {} for the request {}", obj, obj.getResponseId());
+          }
+          else {       // This is to identify user requests
+            if (oper.stats.operatorResponses == null) {
+              oper.stats.operatorResponses = new ArrayList<StatsListener.OperatorResponse>();
+            }
+            oper.stats.operatorResponses.add(obj);
+          }
+        }
       }
 
       //LOG.debug("heartbeat {} {}/{} {}", oper, oper.getState(), shb.getState(), oper.getContainer().getExternalId());
@@ -2173,30 +2194,20 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  public Map<String, Object> getPhysicalOperatorProperty(int operatorId)
+  public FutureTask<Object> getPhysicalOperatorProperty(int operatorId, String propertyName, long waitTime)
   {
     PTOperator o = this.plan.getAllOperators().get(operatorId);
-    BeanMap operatorProperties = LogicalPlanConfiguration.getOperatorProperties(o.getOperatorMeta().getOperator());
-    Map<String, Object> m = new HashMap<String, Object>();
-    @SuppressWarnings("rawtypes")
-    Iterator entryIterator = operatorProperties.entryIterator();
-    while (entryIterator.hasNext()) {
-      try {
-        @SuppressWarnings("unchecked")
-        Map.Entry<String, Object> entry = (Map.Entry<String, Object>) entryIterator.next();
-        m.put(entry.getKey(), entry.getValue());
-      }
-      catch (Exception ex) {
-        LOG.warn("Error trying to get a property of operator {}", o.getOperatorMeta().getName(), ex);
-      }
-    }
-    for (StramToNodeRequest existingRequest : o.deployRequests) {
-      if (existingRequest instanceof StramToNodeSetPropertyRequest && operatorId == existingRequest.operatorId) {
-        StramToNodeSetPropertyRequest r = (StramToNodeSetPropertyRequest)existingRequest;
-        m.put(r.getPropertyKey(), r.getPropertyValue());
-      }
-    }
-    return m;
+    StramToNodeGetPropertyRequest request = new StramToNodeGetPropertyRequest();
+    request.setOperatorId(operatorId);
+    request.setPropertyName(propertyName);
+    addOperatorRequest(o, request);
+    RequestHandler task = new RequestHandler();
+    task.requestId = nodeToStramRequestIds.incrementAndGet();
+    task.waitTime = waitTime;
+    request.requestId = task.requestId;
+    FutureTask<Object> future = new FutureTask<Object>(task);
+    dispatch(future);
+    return future;
   }
 
   public Attribute.AttributeMap getApplicationAttributes()
@@ -2529,7 +2540,7 @@ public class StreamingContainerManager implements PlanContext
     /**
      * Restore snapshot. Must get/apply log after restore.
      *
-     * @return  snapshot
+     * @return snapshot
      * @throws IOException
      */
     Object restore() throws IOException;
@@ -2550,6 +2561,34 @@ public class StreamingContainerManager implements PlanContext
      */
     DataInputStream getLog() throws IOException;
 
+  }
+
+  private class RequestHandler implements Callable<Object>
+  {
+    /*
+     * The unique requestId of the request
+     */
+    public long requestId;
+    /*
+     * The maximum time this thread will wait for the response
+     */
+    public long waitTime = 5000;
+
+    @Override
+    public Object call() throws Exception
+    {
+      Object obj;
+      long expiryTime = System.currentTimeMillis() + waitTime;
+      while ((obj = commandResponse.getIfPresent(requestId)) == null && expiryTime > System.currentTimeMillis()) {
+        Thread.sleep(100);
+        LOG.debug("waiting for the response in future");
+      }
+      if(obj != null) {
+        commandResponse.invalidate(requestId);
+        return obj;
+      }
+      return null;
+    }
   }
 
 }

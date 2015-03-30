@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.datatorrent.api.Stats.OperatorStats;
+import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
@@ -64,6 +65,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public final ConcurrentLinkedQueue<List<OperatorStats>> listenerStats = new ConcurrentLinkedQueue<List<OperatorStats>>();
   public volatile long lastWindowIdChangeTms = 0;
   public final int windowProcessingTimeoutMillis;
+  public List<StatsListener.OperatorResponse> operatorResponses;
 
   private final LogicalPlan.OperatorMeta operatorMeta;
   private final int throughputCalculationInterval;
@@ -131,6 +133,12 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   public long getLatencyMA()
   {
     return this.latencyMA.getAvg();
+  }
+
+  @Override
+  public List<StatsListener.OperatorResponse> getOperatorResponse()
+  {
+    return operatorResponses;
   }
 
   private static class SerializationProxy implements java.io.Serializable

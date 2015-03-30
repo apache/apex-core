@@ -15,6 +15,7 @@ import java.net.UnknownHostException;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
@@ -34,7 +35,7 @@ import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
-import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.server.Server;
@@ -602,6 +603,14 @@ public class StreamingContainer extends YarnContainerMain
           hb.setNodeId(e.getKey());
           hb.setGeneratedTms(currentTime);
           hb.setIntervalMs(heartbeatIntervalMillis);
+          if(e.getValue().commandResponse.size() > 0){
+            BlockingQueue<StatsListener.OperatorResponse> commandResponse = e.getValue().commandResponse;
+            ArrayList<StatsListener.OperatorResponse> response = new ArrayList<StatsListener.OperatorResponse>();
+            for (int i = 0; i< commandResponse.size(); i++){
+                 response.add(commandResponse.poll());
+            }
+            hb.requestResponse = response;
+          }
           OperatorContext context = e.getValue().context;
           context.drainStats(hb.getOperatorStatsContainer());
           hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED
@@ -654,6 +663,7 @@ public class StreamingContainer extends YarnContainerMain
         handleChangeLoggersRequest((StramToNodeChangeLoggersRequest) req);
         continue;
       }
+
       Node<?> node = nodes.get(req.getOperatorId());
       if (node == null) {
         logger.warn("Node for operator {} is not found, probably not deployed yet", req.getOperatorId());
@@ -668,7 +678,7 @@ public class StreamingContainer extends YarnContainerMain
       }
       else {
         logger.debug("request received: {}", req);
-        OperatorCommand requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
+        OperatorRequest requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
         if (requestExecutor != null) {
           oc.request(requestExecutor);
         }
@@ -688,7 +698,7 @@ public class StreamingContainer extends YarnContainerMain
 
     if (rsp.committedWindowId != lastCommittedWindowId) {
       lastCommittedWindowId = rsp.committedWindowId;
-      OperatorCommand nr = null;
+      OperatorRequest nr = null;
       for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
         if (e.getValue().context.getThread() == null) {
           continue;
@@ -696,12 +706,13 @@ public class StreamingContainer extends YarnContainerMain
 
         if (e.getValue().getOperator() instanceof Operator.CheckpointListener) {
           if (nr == null) {
-            nr = new OperatorCommand()
+            nr = new OperatorRequest()
             {
               @Override
-              public void execute(Operator operator, int id, long windowId) throws IOException
+              public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
               {
                 ((Operator.CheckpointListener) operator).committed(lastCommittedWindowId);
+                return null;
               }
 
             };

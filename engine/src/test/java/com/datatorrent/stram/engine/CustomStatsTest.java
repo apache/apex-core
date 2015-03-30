@@ -10,12 +10,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.Lists;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Lists;
 
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
@@ -23,6 +23,7 @@ import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
+
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestOperatorStats;
 import com.datatorrent.stram.engine.CustomStatsTest.TestOperator.TestStatsListener;
@@ -56,21 +57,45 @@ public class CustomStatsTest
           ((TestOperatorStats)os.counters).attributeListenerCalled = true;
           lastPropVal = ((TestOperatorStats)os.counters).currentPropVal;
         }
+        if(lastPropVal){
+          Assert.assertNotNull(stats.getOperatorResponse());
+          Assert.assertTrue(1 == stats.getOperatorResponse().size());
+          Assert.assertEquals("test", stats.getOperatorResponse().get(0).getResponse());
+        }
         Response rsp = new Response();
-        rsp.operatorCommands = Lists.newArrayList(new SetPropertyCommand());
+        rsp.operatorRequests = Lists.newArrayList(new SetPropertyRequest());
         return rsp;
       }
 
-      public static class SetPropertyCommand implements OperatorCommand, Serializable
+      public static class SetPropertyRequest implements OperatorRequest, Serializable
       {
         private static final long serialVersionUID = 1L;
         @Override
-        public void execute(Operator oper, int arg1, long arg2) throws IOException
+        public OperatorResponse execute(Operator oper, int arg1, long arg2) throws IOException
         {
           if (oper instanceof TestOperator) {
             LOG.debug("Setting property");
             ((TestOperator)oper).propVal = true;
           }
+          OperatorResponse response = new TestOperatorResponse();
+          return response;
+        }
+      }
+
+      public static class TestOperatorResponse implements OperatorResponse, Serializable
+      {
+        private static final long serialVersionUID = 2L;
+
+        @Override
+        public Object getResponseId()
+        {
+          return 1;
+        }
+
+        @Override
+        public Object getResponse()
+        {
+          return "test";
         }
       }
     }

@@ -11,6 +11,7 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.ProcessingMode;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.StatsListener.OperatorRequest;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.stram.api.Checkpoint;
@@ -74,6 +75,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   public int checkpointWindowCount;
   protected int controlTupleCount;
   public final OperatorContext context;
+  public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
 
   public Node(OPERATOR operator, OperatorContext context)
   {
@@ -87,6 +89,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
 
     endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>();
     tmb = ManagementFactory.getThreadMXBean();
+    commandResponse = new LinkedBlockingQueue<StatsListener.OperatorResponse>();
   }
 
   public Operator getOperator()
@@ -235,12 +238,13 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
       logger.warn("Shutdown requested when context is not available!");
     }
     else {
-      context.request(new OperatorCommand()
+      context.request(new OperatorRequest()
       {
         @Override
-        public void execute(Operator operator, int operatorId, long windowId) throws IOException
+        public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
         {
           alive = false;
+          return null;
         }
 
       });
@@ -281,12 +285,16 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      BlockingQueue<OperatorCommand> requests = context.getRequests();
+      BlockingQueue<OperatorRequest> requests = context.getRequests();
       int size;
+      StatsListener.OperatorResponse response;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {
           //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
-          requests.remove().execute(operator, context.getId(), windowId);
+          response = requests.remove().execute(operator, context.getId(), windowId);
+          if(response != null){
+            commandResponse.add(response);
+          }
         }
       }
     }

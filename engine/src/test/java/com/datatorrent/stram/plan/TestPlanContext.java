@@ -164,6 +164,11 @@ public class TestPlanContext implements PlanContext, StorageAgent
       return 0;
     }
 
+    @Override
+    public List<StatsListener.OperatorResponse> getOperatorResponse()
+    {
+      return null;
+    }
   }
 
 }

@@ -4,6 +4,15 @@
  */
 package com.datatorrent.stram.debug;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import net.engio.mbassy.listener.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
@@ -11,13 +20,16 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.Stats.OperatorStats.PortStats;
-import com.datatorrent.api.StatsListener.OperatorCommand;
+import com.datatorrent.api.StatsListener.OperatorRequest;
+
 import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.api.*;
+import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.ContainerEvent.ContainerStatsEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeActivationEvent;
 import com.datatorrent.stram.api.ContainerEvent.NodeDeactivationEvent;
+import com.datatorrent.stram.api.RequestFactory;
 import com.datatorrent.stram.api.RequestFactory.RequestDelegate;
+import com.datatorrent.stram.api.StramToNodeStartRecordingRequest;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -26,11 +38,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.datatorrent.stram.util.SharedPubSubWebSocketClient;
-import java.io.IOException;
-import java.util.*;
-import net.engio.mbassy.listener.Handler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>TupleRecorderCollection class.</p>
@@ -198,12 +205,13 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
             @Override
             public void run()
             {
-              node.context.request(new OperatorCommand()
+              node.context.request(new OperatorRequest()
               {
                 @Override
-                public void execute(Operator operator, int operatorId, long windowId) throws IOException
+                public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
                 {
                   stopRecording(node, operatorId, portName);
+                  return null;
                 }
               });
             }
@@ -372,17 +380,18 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
   private class RequestDelegateImpl implements RequestDelegate
   {
     @Override
-    public OperatorCommand getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
+    public OperatorRequest getRequestExecutor(final Node<?> node, final StramToNodeRequest snr)
     {
       switch (snr.getRequestType()) {
         case START_RECORDING:
-          return new OperatorCommand()
+          return new OperatorRequest()
           {
             @Override
-            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               StramToNodeStartRecordingRequest r = (StramToNodeStartRecordingRequest) snr;
               startRecording(r.getId(), node, operatorId, r.getPortName(), r.getNumWindows());
+              return null;
             }
 
             @Override
@@ -394,12 +403,13 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           };
 
         case STOP_RECORDING:
-          return new OperatorCommand()
+          return new OperatorRequest()
           {
             @Override
-            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               stopRecording(node, operatorId, snr.getPortName());
+              return null;
             }
 
             @Override
@@ -411,12 +421,13 @@ public class TupleRecorderCollection extends HashMap<OperatorIdPortNamePair, Tup
           };
 
         case SYNC_RECORDING:
-          return new OperatorCommand()
+          return new OperatorRequest()
           {
             @Override
-            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
             {
               syncRecording(node, operatorId, snr.getPortName());
+              return null;
             }
 
             @Override

@@ -28,6 +28,7 @@ import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
+import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.stram.Journal.RecoverableOperation;
@@ -1429,12 +1430,24 @@ public class PhysicalPlan implements Serializable
             ctx.dispatch(r);
           }
         }
-        if (rsp.operatorCommands != null) {
-          for (OperatorCommand cmd : rsp.operatorCommands) {
+        if (rsp.operatorRequests != null) {
+          for (OperatorRequest cmd : rsp.operatorRequests) {
             StramToNodeRequest request = new StramToNodeRequest();
             request.operatorId = oper.getId();
             request.requestType = StramToNodeRequest.RequestType.CUSTOM;
             request.cmd = cmd;
+            ctx.addOperatorRequest(oper, request);
+          }
+        }
+        // for backward compatibility
+        if(rsp.operatorCommands != null){
+          for(OperatorCommand cmd: rsp.operatorCommands){
+            StramToNodeRequest request = new StramToNodeRequest();
+            request.operatorId = oper.getId();
+            request.requestType = StramToNodeRequest.RequestType.CUSTOM;
+            OperatorCommandConverter converter = new OperatorCommandConverter();
+            converter.cmd = cmd;
+            request.cmd = converter;
             ctx.addOperatorRequest(oper, request);
           }
         }
@@ -1520,6 +1533,20 @@ public class PhysicalPlan implements Serializable
   @VisibleForTesting
   public Map<StreamCodec<?>, Integer> getStreamCodecIdentifiers() {
     return Collections.unmodifiableMap(streamCodecIdentifiers);
+  }
+
+  /**
+   * This is for backward compatibility
+   */
+  public static class OperatorCommandConverter implements OperatorRequest,Serializable
+  {
+    public OperatorCommand cmd;
+    @Override
+    public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
+    {
+      cmd.execute(operator,operatorId,windowId);
+      return null;
+    }
   }
 
 }

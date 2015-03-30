@@ -245,6 +245,7 @@ public class PartitioningTest
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
+    singleCollector.prefix = "" + System.identityHashCode(singleCollector);
     dag.addStream("toSingleCollector", collector.output, singleCollector.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
