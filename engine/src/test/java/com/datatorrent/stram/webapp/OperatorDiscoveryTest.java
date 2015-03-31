@@ -37,20 +37,20 @@ public class OperatorDiscoveryTest
   public void testPropertyDiscovery() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
-    
+
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
     JSONObject desc = od.describeClass(TestOperator.class);
     System.out.println("\ntype info for " + TestOperator.class + ":\n" + desc.toString(2));
-    
+
     JSONObject asmDesc = od.describeClassByASM(TestOperator.class.getName());
     System.out.println("\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2));
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
     Assert.assertEquals("properties " + props, 22, props.length());
-    
-    
+
+
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
     Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
@@ -63,7 +63,7 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
     JSONObject enumDesc = od.describeClass(Color.class);
-    
+
     JSONArray enumNames = enumDesc.getJSONArray("enum");
     Assert.assertNotNull("enumNames", enumNames);
     Assert.assertEquals("", Color.BLUE.name(), enumNames.get(0));
@@ -79,23 +79,23 @@ public class OperatorDiscoveryTest
 
     JSONObject propProperty = getJSONProperty(props, "props");
     Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
-    
+
     JSONObject stringArrayProperty = getJSONProperty(props, "stringArray");
     Assert.assertEquals("type " + stringArrayProperty, String[].class.getName(), stringArrayProperty.get("type"));
-    
+
     JSONObject nestedParameterizedTypeProperpty = getJSONProperty(props, "nestedParameterizedType");
     Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Map.class.getName(), nestedParameterizedTypeProperpty.get("type"));
-    Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Number.class.getName(), 
+    Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Number.class.getName(),
         nestedParameterizedTypeProperpty.getJSONArray("typeArgs").getJSONObject(1).getJSONArray("typeArgs").getJSONObject(0).getJSONArray("typeArgs").getJSONObject(1).get("type"));
-    
+
     JSONObject wildcardType = getJSONProperty(props, "wildcardType");
     Assert.assertEquals("type " + wildcardType, Map.class.getName(), wildcardType.get("type"));
-    Assert.assertEquals("type " + wildcardType, "class " + Long.class.getName(), 
+    Assert.assertEquals("type " + wildcardType, "class " + Long.class.getName(),
         wildcardType.getJSONArray("typeArgs").getJSONObject(1).getJSONObject("typeBounds").getJSONArray("lower").get(0));
-    
+
     JSONObject multiDimensionPrimitiveArray = getJSONProperty(props, "multiDimensionPrimitiveArray");
     Assert.assertEquals("type " + multiDimensionPrimitiveArray, int[][].class.getName(), multiDimensionPrimitiveArray.get("type"));
-    
+
     desc = od.describeClass(ExtendedOperator.class);
     props = desc.getJSONArray("properties");
     genericArray = getJSONProperty(props, "genericArray");
@@ -114,10 +114,10 @@ public class OperatorDiscoveryTest
 
     desc = od.describeClass(HashMap.class);
     System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
-    
-    
+
+
     System.out.println("\n(ASM)type info for " + Color.class + ":\n" + od.describeClassByASM(Color.class.getName()).toString(2));
-    
+
     System.out.println("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
 
   }
@@ -136,7 +136,7 @@ public class OperatorDiscoveryTest
   public void testFindDescendants() throws Exception
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
-    
+
     System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
 
     System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
@@ -144,12 +144,12 @@ public class OperatorDiscoveryTest
     System.out.println("The initializable descendants list of type java.util.Map: \n" + od.getInitializableDescendants("java.util.Map", Integer.MAX_VALUE));
 
     System.out.println("The initializable descendants list of type java.util.List: \n" + od.getInitializableDescendants("java.util.List", Integer.MAX_VALUE));
-    
+
     System.out.println("The initializable descendants list of type java.util.HashMap: \n" + od.getInitializableDescendants("java.util.HashMap", Integer.MAX_VALUE));
-    
-    
+
+
     Set<String> actualQueueClass = Sets.newHashSet();
-    String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(), 
+    String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(),
         LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
     JSONArray queueJsonArray = od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
 
@@ -198,6 +198,8 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull(clone.structuredArray);
     Assert.assertEquals(Color.BLUE, clone.color);
     Assert.assertEquals(bean.structuredArray.length, clone.structuredArray.length);
+
+
 
   }
 
@@ -269,7 +271,7 @@ public class OperatorDiscoveryTest
     private int[][] multiDimensionPrimitiveArray;
     private Structured[][] multiDimensionComplexArray;
 
-    
+
     public int getIntProp()
     {
       return intProp;
@@ -453,7 +455,7 @@ public class OperatorDiscoveryTest
     {
       this.parameterizedTypeVariable = parameterizedTypeVariable;
     }
-    
+
     public <AMAZING extends Callable<Map<String, String>>> AMAZING getAmazing(){
       return null;
     }
@@ -462,6 +464,57 @@ public class OperatorDiscoveryTest
 
   static class ExtendedOperator extends TestOperator<String, Map<String, Number>>
   {
+  }
+
+  public static class ArraysHolder
+  {
+    public int[] intArray =  new int[] { 1, 2, 3 };
+    public Structured[] beanArray = new Structured[] {};
+    public int[] getIntArray()
+    {
+      return intArray;
+    }
+    public void setIntArray(int[] intArray)
+    {
+      this.intArray = intArray;
+    }
+    public Structured[] getBeanArray()
+    {
+      return beanArray;
+    }
+    public void setBeanArray(Structured[] beanArray)
+    {
+      this.beanArray = beanArray;
+    }
+  }
+
+  @Test
+  public void testArraySerialization() throws Exception
+  {
+    OperatorDiscoverer od = new OperatorDiscoverer();
+    Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
+    JSONObject desc = od.describeClass(ArraysHolder.class);
+    System.out.println("\ntype info for " + ArraysHolder.class + ":\n" + desc.toString(2));
+
+    JSONArray props = desc.getJSONArray("properties");
+    ArraysHolder ah = new ArraysHolder();
+
+    JSONObject beanArray = getJSONProperty(props, "beanArray");
+    Assert.assertEquals("type " + ah.beanArray.getClass(), ah.beanArray.getClass().getName(), beanArray.get("type"));
+
+    JSONObject intArray = getJSONProperty(props, "intArray");
+    Assert.assertEquals("type " + ah.intArray.getClass(), ah.intArray.getClass().getName(), intArray.get("type"));
+
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+    String s = mapper.writeValueAsString(ah);
+    System.out.println(new JSONObject(s).toString(2));
+
+    ArraysHolder clone = mapper.readValue(s, ArraysHolder.class);
+    Assert.assertNotNull(clone.intArray);
+    Assert.assertArrayEquals(ah.intArray, clone.intArray);
+
   }
 
 }
