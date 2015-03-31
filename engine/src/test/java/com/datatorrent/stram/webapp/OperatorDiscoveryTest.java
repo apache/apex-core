@@ -75,13 +75,13 @@ public class OperatorDiscoveryTest
     Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
 
     JSONObject genericArray = getJSONProperty(props, "genericArray");
-    Assert.assertEquals("type " + genericArray, Object[].class.getName(), genericArray.get("type"));
+    Assert.assertEquals("type " + genericArray, "[java.lang.Object", genericArray.get("type"));
 
     JSONObject propProperty = getJSONProperty(props, "props");
     Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
 
     JSONObject stringArrayProperty = getJSONProperty(props, "stringArray");
-    Assert.assertEquals("type " + stringArrayProperty, String[].class.getName(), stringArrayProperty.get("type"));
+    Assert.assertEquals("type " + stringArrayProperty, "[java.lang.String", stringArrayProperty.get("type"));
 
     JSONObject nestedParameterizedTypeProperpty = getJSONProperty(props, "nestedParameterizedType");
     Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Map.class.getName(), nestedParameterizedTypeProperpty.get("type"));
@@ -94,7 +94,7 @@ public class OperatorDiscoveryTest
         wildcardType.getJSONArray("typeArgs").getJSONObject(1).getJSONObject("typeBounds").getJSONArray("lower").get(0));
 
     JSONObject multiDimensionPrimitiveArray = getJSONProperty(props, "multiDimensionPrimitiveArray");
-    Assert.assertEquals("type " + multiDimensionPrimitiveArray, int[][].class.getName(), multiDimensionPrimitiveArray.get("type"));
+    Assert.assertEquals("type " + multiDimensionPrimitiveArray, "[[int", multiDimensionPrimitiveArray.get("type"));
 
     desc = od.describeClass(ExtendedOperator.class);
     props = desc.getJSONArray("properties");
