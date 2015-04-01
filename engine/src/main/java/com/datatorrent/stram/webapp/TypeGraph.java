@@ -128,7 +128,7 @@ public class TypeGraph
       CompactClassNode ccn = CompactUtil.compactClassNode(classN);
       String typeName = classN.name.replace('/', '.');
 
-      LOG.debug("Add type {} to the graph", typeName);
+//      LOG.debug("Add type {} to the graph", typeName);
       
       TypeGraphVertex tgv = null;
       TypeGraphVertex ptgv = null;

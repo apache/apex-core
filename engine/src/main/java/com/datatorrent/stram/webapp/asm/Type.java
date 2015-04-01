@@ -49,7 +49,11 @@ public interface Type
       if(typeObj == null){
         typeObj = org.objectweb.asm.Type.getType(objByteCode);
       }
-      return typeObj.getClassName();
+      if (typeObj.getSort() == org.objectweb.asm.Type.OBJECT) {
+        return "L" + typeObj.getClassName() + ";";
+      } else {
+        return typeObj.toString();
+      }
     }
 
     public String getObjByteCode()
