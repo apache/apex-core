@@ -44,6 +44,12 @@ import com.datatorrent.stram.webapp.asm.Type.TypeNode;
 import com.datatorrent.stram.webapp.asm.Type.TypeVariableNode;
 import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
 
+/**
+ * A graph data structure holds all type information and their relationship needed in app builder
+ * ASM is used to retrieve fields, methods information and kept in java beans and then stored in this graph data structure
+ * ASM is used to avoid memory leak and save permgen memory space
+ * @since 2.1
+ */
 public class TypeGraph
 {
   // classes to exclude when fetching getter/setter method or in other parsers
@@ -115,13 +121,15 @@ public class TypeGraph
   private void addNode(InputStream input, String resName) throws IOException
   {
     try {
-
+      
       ClassReader reader = new ClassReader(input);
       ClassNode classN = new ClassNodeType();
       reader.accept(classN, ClassReader.SKIP_CODE);
       CompactClassNode ccn = CompactUtil.compactClassNode(classN);
       String typeName = classN.name.replace('/', '.');
 
+      LOG.debug("Add type {} to the graph", typeName);
+      
       TypeGraphVertex tgv = null;
       TypeGraphVertex ptgv = null;
       if (typeGraph.containsKey(typeName)) {
@@ -245,6 +253,9 @@ public class TypeGraph
 
     private CompactClassNode classNode = null;
 
+    /**
+     * All initializable(public type with a public non-arg constructor) implementations including direct and indirect descendants
+     */
     private final Set<TypeGraphVertex> allInitialiazableDescendants = new HashSet<TypeGraphVertex>();
 
     private final Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
@@ -562,15 +573,6 @@ public class TypeGraph
       if(t instanceof TypeVariableNode){
         propJ.put("typeLiteral", ((TypeVariableNode)t).getTypeLiteral());
         setTypes(propJ, ((TypeVariableNode)t).getRawTypeBound());
-        // keep the code here in case we want to expose everything in json
-//        propJ.put("type", ((TypeVariableNode)t).getRawTypeBound());
-//        JSONArray jArray = new JSONArray();
-//        for (Type tt : ((TypeVariableNode)t).getBounds()) {
-//          JSONObject objJ = new JSONObject();
-//          setTypes(objJ, tt);
-//          jArray.put(objJ);
-//        }
-//        propJ.put("bounds", jArray);
       }
 
 

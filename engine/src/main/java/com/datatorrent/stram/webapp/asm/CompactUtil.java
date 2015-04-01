@@ -1,18 +1,20 @@
 /**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * Copyright (c) 2015 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp.asm;
 
 import java.util.LinkedList;
 import java.util.List;
-
-import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 
+/**
+ * A util class extract only data needed in app builder
+ * @since 2.1
+ */
 public class CompactUtil
 {
 

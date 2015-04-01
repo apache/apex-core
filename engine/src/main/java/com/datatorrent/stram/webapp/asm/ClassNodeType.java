@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * Copyright (c) 2015 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp.asm;
@@ -9,6 +9,11 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.tree.ClassNode;
 
+/**
+ * A special org.objectweb.asm.tree.ClassNode implementation which parse the type signature as well 
+ * @see ClassNode
+ * @since 2.1
+ */
 public class ClassNodeType extends ClassNode
 {
   

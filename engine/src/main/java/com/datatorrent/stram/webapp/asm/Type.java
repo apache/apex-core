@@ -8,9 +8,10 @@ import java.util.ArrayList;
 
 import org.objectweb.asm.signature.SignatureVisitor;
 
-
-
-
+/**
+ * Data structure for java type
+ * @since 2.1
+ */
 public interface Type
 {
 

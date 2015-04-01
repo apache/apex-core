@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * Copyright (c) 2015 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp.asm;
@@ -7,6 +7,10 @@ package com.datatorrent.stram.webapp.asm;
 import org.objectweb.asm.signature.SignatureReader;
 
 
+/**
+ * A {@link org.objectweb.asm.tree.MethodNode} implementation to parse method signature as well
+ * @since 2.1
+ */
 public class MethodNode extends org.objectweb.asm.tree.MethodNode
 {
   public GenericTypeSignatureVisitor typeVariableSignatureNode;

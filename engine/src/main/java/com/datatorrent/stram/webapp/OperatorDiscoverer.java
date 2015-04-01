@@ -11,7 +11,6 @@ import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
-
 import java.beans.*;
 import java.io.File;
 import java.io.IOException;
@@ -23,9 +22,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.xml.parsers.*;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.tools.ant.DirectoryScanner;
@@ -35,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
-
 
 /**
  * <p>OperatorDiscoverer class.</p>
@@ -225,8 +221,9 @@ public class OperatorDiscoverer
   private void buildTypeGraph()
   {
     for (String path : pathsToScan) {
+      File f = null;
       try {
-        File f = new File(path);
+        f = new File(path);
         if (f.exists() && f.isDirectory()) {
           DirectoryScanner ds = new DirectoryScanner();
           ds.setBasedir(f);
@@ -261,6 +258,7 @@ public class OperatorDiscoverer
           jar.close();
         }
       } catch (IOException ex) {
+        LOG.warn("Cannot process file {}", f, ex);
       }
     }
 
@@ -507,20 +505,7 @@ public class OperatorDiscoverer
 
   public JSONObject describeClass(String clazzName) throws Exception
   {
-    // TODO temporary solution for this there is a memory leak here
     return describeClassByASM(clazzName);
-//    JSONObject desc = new JSONObject();
-//    desc.put("name", clazzName);
-//    ClassReader cr = new ClassReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(clazzName));
-//    ClassNode cn = new ClassNode();
-//    cr.accept(new ClassNode(), ClassReader.SKIP_DEBUG);
-//    if (ASMUtil.isEnum(cn)) {
-//      
-//      ArrayList<String> enumNames = ASMUtil.getEnumValues(cn);
-//      desc.put("enum", enumNames);
-//    }
-//    desc.put("properties", getClassProperties(clazz, 0));
-//    return desc;
   }
   
   

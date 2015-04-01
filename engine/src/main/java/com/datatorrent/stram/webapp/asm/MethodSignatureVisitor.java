@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
+ * Copyright (c) 2015 DataTorrent, Inc.
  * All rights reserved.
  */
 package com.datatorrent.stram.webapp.asm;
@@ -9,6 +9,9 @@ import java.util.List;
 
 import org.objectweb.asm.signature.SignatureVisitor;
 
+/**
+ * A method signature parser
+ */
 public class MethodSignatureVisitor extends BaseSignatureVisitor
 {
   
