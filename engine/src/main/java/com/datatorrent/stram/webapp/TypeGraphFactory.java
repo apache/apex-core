@@ -23,33 +23,33 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
 /**
- * This class keeps a precomputed index(prototype) of type graph of all classes in jdk and gateway classpath 
+ * This class keeps a precomputed index(prototype) of type graph of all classes in jdk and gateway classpath
  */
 public class TypeGraphFactory
 {
   private final static byte[] preComputeGraph;
- 
+
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraphFactory.class);
-  
+
   // statically initialize the precomputed type graph out of classes in jdk and jars in current classpath
-  
+
   static {
-    LOG.info("Pre compute the type graph out of classes in jdk and jars in current classpath");
+    LOG.debug("Pre compute the type graph out of classes in jdk and jars in current classpath");
     final List<String> pathsToScan = new ArrayList<String>();
-    
+
     String classpath = System.getProperty("java.class.path");
     String[] paths = classpath.split(":");
     for (String path: paths) {
       pathsToScan.add(path);
     }
-    
+
     String javahome = System.getProperty("java.home");
     String jdkJar = javahome + "/lib/rt.jar";
     pathsToScan.add(jdkJar);
-    
+
     TypeGraph tg = new TypeGraph();
-    
-    
+
+
     for (String path : pathsToScan) {
       try {
         File f = new File(path);
@@ -83,7 +83,7 @@ public class TypeGraphFactory
         LOG.warn("Some error happens when parsing the file {}", path, ex);
       }
     }
-    
+
     Kryo kryo = new Kryo();
     ByteArrayOutputStream baos = new ByteArrayOutputStream(1024 * 1024 * 20);
     Output output = new Output(baos);
@@ -92,8 +92,8 @@ public class TypeGraphFactory
     preComputeGraph = baos.toByteArray();
     LOG.warn("The size of precomputed type graph is {} KB", preComputeGraph.length/1024);
   }
-  
-  
+
+
   public static TypeGraph createTypeGraphProtoType(){
     Input input = null;
     try {

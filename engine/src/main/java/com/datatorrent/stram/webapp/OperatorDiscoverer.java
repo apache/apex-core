@@ -56,7 +56,6 @@ public class OperatorDiscoverer
   private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoverer.class);
   private final List<String> pathsToScan = new ArrayList<String>();
   private final ClassLoader classLoader;
-  private static final int MAX_PROPERTY_LEVELS = 5;
   private final String dtOperatorDoclinkPrefix = "https://www.datatorrent.com/docs/apidocs/index.html";
   public static final String PORT_TYPE_INFO_KEY = "portTypeInfo";
   private final TypeGraph typeGraph = TypeGraphFactory.createTypeGraphProtoType();
@@ -85,7 +84,7 @@ public class OperatorDiscoverer
     {
       return getterPattern.matcher(methodName).matches();
     }
-    
+
     private boolean isSetter(String methodName)
     {
       return setterPattern.matcher(methodName).matches();
@@ -352,7 +351,7 @@ public class OperatorDiscoverer
       JSONArray outputPorts = new JSONArray();
       // Get properties from ASM
       JSONArray properties = describeClassByASM(clazz.getName()).getJSONArray("properties");
-      
+
       enrichDescription(clazz.getName(), properties);
 
       TypeDiscoverer td = new TypeDiscoverer();
@@ -507,14 +506,14 @@ public class OperatorDiscoverer
   {
     return describeClassByASM(clazzName);
   }
-  
-  
+
+
   public JSONObject describeClassByASM(String clazzName) throws Exception
   {
     return typeGraph.describeClass(clazzName);
   }
 
-  
+
   public JSONObject describeClass(Class<?> clazz) throws Exception
   {
     JSONObject desc = new JSONObject();
@@ -721,7 +720,7 @@ public class OperatorDiscoverer
     }
     return new JSONArray(typeGraph.getInitializableDescendants(clazz, limit, filter, packagePrefix));
   }
-  
+
   public TypeGraph getTypeGraph()
   {
     return typeGraph;
