@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -43,6 +44,10 @@ import com.datatorrent.stram.webapp.asm.Type.ParameterizedTypeNode;
 import com.datatorrent.stram.webapp.asm.Type.TypeNode;
 import com.datatorrent.stram.webapp.asm.Type.TypeVariableNode;
 import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.Serializer;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 
 /**
  * A graph data structure holds all type information and their relationship needed in app builder
@@ -256,11 +261,11 @@ public class TypeGraph
     /**
      * All initializable(public type with a public non-arg constructor) implementations including direct and indirect descendants
      */
-    private final Set<TypeGraphVertex> allInitialiazableDescendants = new HashSet<TypeGraphVertex>();
+    private final transient Set<TypeGraphVertex> allInitialiazableDescendants = new HashSet<TypeGraphVertex>();
 
-    private final Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
+    private final transient Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
 
-    private final Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
+    private final transient Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
 
     // keep the jar file name for late fetching the detail information
     private final String jarName;
@@ -577,6 +582,84 @@ public class TypeGraph
 
 
     }
+  }
+
+  
+  
+  /**
+   * Type graph is big bidirectional object graph which can not be serialized by kryo.
+   * This class is alternative {@link TypeGraph} kryo serializer
+   * The serializer rule is
+   * #ofNodes + node array + relationship array(int array which the value is index of the node array)
+   */
+  public static class TypeGraphSerializer extends Serializer<TypeGraph>
+  {
+
+    @Override
+    public void write(Kryo kryo, Output output, TypeGraph tg)
+    {
+      Map<String, Integer> indexes = new HashMap<String, Integer>();
+      // write the size first
+      kryo.writeObject(output, tg.typeGraph.size());
+      int i = 0;
+      // Sequentially write the vertexes
+      for (Entry<String, TypeGraphVertex> e : tg.typeGraph.entrySet()) {
+        indexes.put(e.getKey(), i++);
+        kryo.writeObject(output, e.getValue());
+      }
+      
+      // Sequentially store the descendants and initializable descendants relationships in index in vertex array
+      for (Entry<String, TypeGraphVertex> e : tg.typeGraph.entrySet()) {
+        int[] refs = fromSet(e.getValue().descendants, indexes);
+        kryo.writeObject(output, refs);
+        refs = fromSet(e.getValue().allInitialiazableDescendants, indexes);
+        kryo.writeObject(output, refs);
+      }
+      
+    }
+
+    private int[] fromSet(Set<TypeGraphVertex> tgvSet, Map<String, Integer> indexes)
+    {
+      int[] result = new int[tgvSet.size()];
+      int j = 0;
+      for (TypeGraphVertex t : tgvSet) {
+        result[j++] = indexes.get(t.typeName);
+      }
+      return result;
+    }
+
+    @Override
+    public TypeGraph read(Kryo kryo, Input input, Class<TypeGraph> type)
+    {
+      // read the #vertex
+      int vertexNo = kryo.readObject(input, Integer.class);
+      // read the vertexes into array
+      TypeGraphVertex[] tgv = new TypeGraphVertex[vertexNo];
+      for (int i = 0; i < vertexNo; i++) {
+        tgv[i] = kryo.readObject(input, TypeGraphVertex.class);
+      }
+      
+      // build relations between vertexes
+      for (int i = 0; i < tgv.length; i++) {
+        int[] ref = kryo.readObject(input, int[].class);
+        for (int j = 0; j < ref.length; j++) {
+          tgv[i].descendants.add(tgv[ref[j]]);
+          tgv[ref[j]].ancestors.add(tgv[i]);
+        }
+        
+        ref = kryo.readObject(input, int[].class);
+        for (int j = 0; j < ref.length; j++) {
+          tgv[i].allInitialiazableDescendants.add(tgv[ref[j]]);
+        }
+        
+      }
+      TypeGraph result = new TypeGraph();
+      for (TypeGraphVertex typeGraphVertex : tgv) {
+        result.typeGraph.put(typeGraphVertex.typeName, typeGraphVertex);
+      }
+      return result;
+    }
+
   }
 
 }

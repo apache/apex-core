@@ -18,6 +18,7 @@ import org.apache.tools.ant.DirectoryScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.webapp.TypeGraph.TypeGraphSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -30,6 +31,8 @@ public class TypeGraphFactory
   private final static byte[] preComputeGraph;
 
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraphFactory.class);
+  
+  private static TypeGraph tg = null;
 
   // statically initialize the precomputed type graph out of classes in jdk and jars in current classpath
 
@@ -47,7 +50,7 @@ public class TypeGraphFactory
     String jdkJar = javahome + "/lib/rt.jar";
     pathsToScan.add(jdkJar);
 
-    TypeGraph tg = new TypeGraph();
+    tg = new TypeGraph();
 
 
     for (String path : pathsToScan) {
@@ -85,6 +88,8 @@ public class TypeGraphFactory
     }
 
     Kryo kryo = new Kryo();
+    TypeGraphSerializer tgs = new TypeGraphSerializer();
+    kryo.register(TypeGraph.class, tgs);
     ByteArrayOutputStream baos = new ByteArrayOutputStream(1024 * 1024 * 20);
     Output output = new Output(baos);
     kryo.writeObject(output, tg);
@@ -99,6 +104,8 @@ public class TypeGraphFactory
     try {
       input = new Input(new ByteArrayInputStream(preComputeGraph));
       Kryo kryo = new Kryo();
+      TypeGraphSerializer tgs = new TypeGraphSerializer();
+      kryo.register(TypeGraph.class, tgs);
       return kryo.readObject(input, TypeGraph.class);
     } finally {
       IOUtils.closeQuietly(input);
