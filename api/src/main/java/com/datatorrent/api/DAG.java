@@ -209,7 +209,7 @@ public interface DAG extends DAGContext, Serializable
    * @param key The attribute which needs to be tuned.
    * @param value The new value of the attribute.
    */
-  public abstract <T> void setUnifierAtrribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
+  public abstract <T> void setUnifierAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value);
 
   /**
    * <p>setInputPortAttribute.</p>
