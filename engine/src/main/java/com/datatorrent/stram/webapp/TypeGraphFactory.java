@@ -14,7 +14,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.tools.ant.DirectoryScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +32,7 @@ public class TypeGraphFactory
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraphFactory.class);
   
   private static TypeGraph tg = null;
+  
 
   // statically initialize the precomputed type graph out of classes in jdk and jars in current classpath
 
@@ -56,16 +56,6 @@ public class TypeGraphFactory
     for (String path : pathsToScan) {
       try {
         File f = new File(path);
-        if (f.exists() && f.isDirectory()) {
-          DirectoryScanner ds = new DirectoryScanner();
-          ds.setBasedir(f);
-          ds.setIncludes(new String[] { "**\\*.class" });
-          ds.scan();
-          for (String name : ds.getIncludedFiles()) {
-            tg.addNode(new File(f, name));
-          }
-          continue;
-        }
         if(!f.exists() || !f.getName().endsWith("jar")){
           continue;
         }

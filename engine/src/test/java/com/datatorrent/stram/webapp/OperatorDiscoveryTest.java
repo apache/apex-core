@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.webapp;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -18,6 +19,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
+import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
@@ -36,7 +38,14 @@ public class OperatorDiscoveryTest
   @Test
   public void testPropertyDiscovery() throws Exception
   {
-    OperatorDiscoverer od = new OperatorDiscoverer();
+    
+    String[] classFilePath = getClassFileInClasspath();
+    OperatorDiscoverer od = new OperatorDiscoverer(classFilePath);
+    
+    
+
+    
+    od.init();
 
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
@@ -120,6 +129,28 @@ public class OperatorDiscoveryTest
 
     System.out.println("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
 
+  }
+
+  private String[] getClassFileInClasspath()
+  {
+    String classpath = System.getProperty("java.class.path");
+    String[] paths = classpath.split(":");
+    List<String> fnames = new LinkedList<String>();
+    for (String cp : paths) {
+      File f = new File(cp);
+      if(!f.isDirectory()){
+        continue;
+      }
+      DirectoryScanner ds = new DirectoryScanner();
+      ds.setBasedir(f);
+      ds.setIncludes(new String[] { "**\\*.class" });
+      ds.scan();
+      for (String name : ds.getIncludedFiles()) {
+        fnames.add(new File(f, name).getAbsolutePath());
+      }
+
+    }
+    return fnames.toArray(new String[]{});
   }
 
   private JSONObject getJSONProperty(JSONArray props, String name) throws JSONException

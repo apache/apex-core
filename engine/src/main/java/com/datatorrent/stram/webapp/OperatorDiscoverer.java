@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 import javax.xml.parsers.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
-import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jettison.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -223,38 +222,33 @@ public class OperatorDiscoverer
       File f = null;
       try {
         f = new File(path);
-        if (f.exists() && f.isDirectory()) {
-          DirectoryScanner ds = new DirectoryScanner();
-          ds.setBasedir(f);
-          ds.setIncludes(new String[] { "**\\*.class" });
-          ds.scan();
-          for (String name : ds.getIncludedFiles()) {
-            typeGraph.addNode(new File(f, name));
-          }
+        if (!f.exists() || f.isDirectory() || (!f.getName().endsWith("jar") && !f.getName().endsWith("class"))) {
           continue;
         }
-        if(!f.exists() || !f.getName().endsWith("jar")){
-          continue;
-        }
-        JarFile jar = new JarFile(path);
-        try {
-          java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
-          while (entriesEnum.hasMoreElements()) {
-            java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
-            if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
-              try {
-                processJavadocXml(jar.getInputStream(jarEntry));
-                // break;
-              } catch (Exception ex) {
-                LOG.warn("Cannot process javadoc xml: ", ex);
-              }
-            } else if (!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
-              typeGraph.addNode(jarEntry, jar);
-            }
-          }
+        if (f.getName().endsWith("class")) {
+          typeGraph.addNode(f);
+        } else {
 
-        } finally {
-          jar.close();
+          JarFile jar = new JarFile(path);
+          try {
+            java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
+            while (entriesEnum.hasMoreElements()) {
+              java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+              if (!jarEntry.isDirectory() && jarEntry.getName().endsWith("-javadoc.xml")) {
+                try {
+                  processJavadocXml(jar.getInputStream(jarEntry));
+                  // break;
+                } catch (Exception ex) {
+                  LOG.warn("Cannot process javadoc xml: ", ex);
+                }
+              } else if (!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
+                typeGraph.addNode(jarEntry, jar);
+              }
+            }
+
+          } finally {
+            jar.close();
+          }
         }
       } catch (IOException ex) {
         LOG.warn("Cannot process file {}", f, ex);
