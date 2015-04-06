@@ -83,6 +83,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
     super.finalize();
   }
 
+  @SuppressWarnings("ThrowFromFinallyBlock")
   @Override
   public void save(Object object, int operatorId, long windowId) throws IOException
   {
@@ -95,7 +96,6 @@ public class FSStorageAgent implements StorageAgent, Serializable
     try {
       stream = fs.create(lPath);
       store(stream, object);
-      stream.close();
       stateSaved = true;
     }
     catch (Throwable t) {
@@ -104,18 +104,24 @@ public class FSStorageAgent implements StorageAgent, Serializable
       DTThrowable.rethrow(t);
     }
     finally {
-      if (stateSaved) {
-        fs.rename(lPath, new Path(operatorIdStr, window));
-      }
-      else {
-        try {
-          if (stream != null) {
-            stream.close();
-          }
+      try {
+        if (stream != null) {
+          stream.close();
         }
-        finally {
+      }
+      catch (IOException ie){
+         stateSaved = false;
+         throw new RuntimeException(ie);
+      }
+      finally {
+        if (stateSaved) {
+          fs.rename(lPath, new Path(operatorIdStr, window));
+        }
+        else {
           logger.debug("delete tmp of {} {}", operatorId, window);
-          fs.delete(lPath, false);
+          if (fs.exists(lPath)) {
+            fs.delete(lPath, false);
+          }
         }
       }
     }
