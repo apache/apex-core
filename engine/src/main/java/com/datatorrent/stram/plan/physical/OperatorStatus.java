@@ -38,13 +38,13 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
     public String recordingId;
     public final TimedMovingAverageLong tuplesPMSMA;
     public final TimedMovingAverageLong bufferServerBytesPMSMA;
-    public final TimedMovingAverageLong queueSizePSMA;
+    public final MovingAverageLong queueSizeMA;
 
     public PortStatus()
     {
       tuplesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
       bufferServerBytesPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
-      queueSizePSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
+      queueSizeMA = new MovingAverageLong(10);
     }
   }
 
