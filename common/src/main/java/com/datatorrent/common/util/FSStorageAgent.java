@@ -164,6 +164,9 @@ public class FSStorageAgent implements StorageAgent, Serializable
     long windowIds[] = new long[files.length];
     for (int i = files.length; i-- > 0; ) {
       String name = files[i].getPath().getName();
+      if (name.equals(TMP_FILE)) {
+        continue;
+      }
       windowIds[i] = STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Stateless.WINDOW_ID : Long.parseLong(name, 16);
     }
     return windowIds;
