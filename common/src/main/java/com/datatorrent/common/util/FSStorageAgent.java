@@ -9,18 +9,20 @@ package com.datatorrent.stram;
 
 import java.io.*;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
-
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
+
+import com.datatorrent.common.util.DTThrowable;
 
 /**
  * FSStorageAgent
@@ -29,6 +31,7 @@ import com.datatorrent.api.annotation.Stateless;
  */
 public class FSStorageAgent implements StorageAgent, Serializable
 {
+  private static final String TMP_FILE = ".tmp";
   protected static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
   protected final transient FileSystem fs;
@@ -52,7 +55,6 @@ public class FSStorageAgent implements StorageAgent, Serializable
       logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
       fs = FileSystem.newInstance(lPath.toUri(), conf == null ? new Configuration() : conf);
-
       try {
         if (fs.mkdirs(lPath)) {
           fs.setWorkingDirectory(lPath);
@@ -84,15 +86,38 @@ public class FSStorageAgent implements StorageAgent, Serializable
   @Override
   public void save(Object object, int operatorId, long windowId) throws IOException
   {
-    Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
-    logger.debug("Saving: {}", lPath);
-
-    FSDataOutputStream stream = fs.create(lPath);
+    String operatorIdStr = String.valueOf(operatorId);
+    Path lPath = new Path(operatorIdStr, TMP_FILE);
+    String window = Long.toHexString(windowId);
+    logger.debug("Saving {}: {}", operatorId, window);
+    boolean stateSaved = false;
+    FSDataOutputStream stream = null;
     try {
+      stream = fs.create(lPath);
       store(stream, object);
+      stream.close();
+      stateSaved = true;
+    }
+    catch (Throwable t) {
+      logger.debug("while saving {} {}", operatorId, window, t);
+      stateSaved = false;
+      DTThrowable.rethrow(t);
     }
     finally {
-      stream.close();
+      if (stateSaved) {
+        fs.rename(lPath, new Path(operatorIdStr, window));
+      }
+      else {
+        try {
+          if (stream != null) {
+            stream.close();
+          }
+        }
+        finally {
+          logger.debug("delete tmp of {} {}", operatorId, window);
+          fs.delete(lPath, false);
+        }
+      }
     }
   }
 
