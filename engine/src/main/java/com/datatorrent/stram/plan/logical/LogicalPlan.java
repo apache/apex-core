@@ -815,7 +815,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  public <T> void setUnifierAtrribute(Operator.OutputPort<?> port, Attribute<T> key, T value)
+  public <T> void setUnifierAttribute(Operator.OutputPort<?> port, Attribute<T> key, T value)
   {
     assertGetPortMeta(port).getUnifierMeta().attributes.put(key, value);
   }

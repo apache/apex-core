@@ -24,6 +24,6 @@ public class PortInfo
   public long totalTuples;
   public long tuplesPSMA;
   public long bufferServerBytesPSMA;
-  public long queueSizePSMA;
+  public long queueSizeMA;
   public String recordingId;
 }
