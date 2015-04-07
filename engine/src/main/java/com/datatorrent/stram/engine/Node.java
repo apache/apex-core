@@ -484,7 +484,6 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
 
     deactivateSinks();
-    context.setThread(null);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

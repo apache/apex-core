@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.StatsListener.OperatorRequest;
+import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.api.BaseContext;
@@ -28,7 +29,7 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerSt
 public class OperatorContext extends BaseContext implements Context.OperatorContext
 {
   private Thread thread;
-  private long lastProcessedWindowId = -1;
+  private long lastProcessedWindowId;
   private final int id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<ContainerStats.OperatorStats> statsBuffer = new CircularBuffer<ContainerStats.OperatorStats>(1024);
@@ -72,6 +73,7 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
   public OperatorContext(int id, AttributeMap attributes, Context parentContext)
   {
     super(attributes, parentContext);
+    this.lastProcessedWindowId = Stateless.WINDOW_ID;
     this.id = id;
     this.stateless = super.getValue(OperatorContext.STATELESS);
   }

@@ -12,8 +12,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,14 +21,16 @@ import java.util.concurrent.CountDownLatch;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.DAG.Locality;
@@ -53,6 +55,7 @@ import com.datatorrent.stram.api.ContainerEvent.*;
 import com.datatorrent.stram.api.OperatorDeployInfo.OperatorType;
 import com.datatorrent.stram.api.OperatorDeployInfo.UnifierDeployInfo;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat.DeployState;
 import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
@@ -289,7 +292,7 @@ public class StreamingContainer extends YarnContainerMain
 
     for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
       Thread t = e.getValue().context.getThread();
-      if (t == null) {
+      if (t == null || !t.isAlive()) {
         disconnectNode(e.getKey());
       }
       else {
@@ -496,7 +499,7 @@ public class StreamingContainer extends YarnContainerMain
     ArrayList<Integer> discoList = new ArrayList<Integer>();
     for (Integer operatorId : nodeList) {
       Thread t = nodes.get(operatorId).context.getThread();
-      if (t == null) {
+      if (t == null || !t.isAlive()) {
         disconnectNode(operatorId);
       }
       else {
@@ -613,8 +616,16 @@ public class StreamingContainer extends YarnContainerMain
           }
           OperatorContext context = e.getValue().context;
           context.drainStats(hb.getOperatorStatsContainer());
-          hb.setState(failedNodes.contains(e.getKey()) ? OperatorHeartbeat.DeployState.FAILED
-            : context.getThread() == null ? OperatorHeartbeat.DeployState.SHUTDOWN : OperatorHeartbeat.DeployState.ACTIVE);
+          if (failedNodes.contains(hb.nodeId)) {
+            hb.setState(DeployState.FAILED);
+          }
+          else if (context.getThread() == null || context.getThread().isAlive()) {
+            hb.setState(DeployState.ACTIVE);
+          }
+          else {
+            hb.setState(DeployState.SHUTDOWN);
+          }
+
           stats.addNodeStats(hb);
         }
 
@@ -669,8 +680,9 @@ public class StreamingContainer extends YarnContainerMain
         logger.warn("Node for operator {} is not found, probably not deployed yet", req.getOperatorId());
         continue;
       }
-      OperatorContext oc = node.context;
-      if (oc.getThread() == null) {
+
+      Thread thread = node.context.getThread();
+      if (thread == null || !thread.isAlive()) {
         if (flagInvalid) {
           logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
           req.setDeleted(true);
@@ -680,7 +692,7 @@ public class StreamingContainer extends YarnContainerMain
         logger.debug("request received: {}", req);
         OperatorRequest requestExecutor = requestFactory.getRequestExecutor(nodes.get(req.operatorId), req);
         if (requestExecutor != null) {
-          oc.request(requestExecutor);
+          node.context.request(requestExecutor);
         }
         else {
           logger.warn("No executor identified for the request {}", req);
@@ -700,7 +712,8 @@ public class StreamingContainer extends YarnContainerMain
       lastCommittedWindowId = rsp.committedWindowId;
       OperatorRequest nr = null;
       for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
-        if (e.getValue().context.getThread() == null) {
+        final Thread thread = e.getValue().context.getThread();
+        if (thread == null || !thread.isAlive()) {
           continue;
         }
 
@@ -815,7 +828,7 @@ public class StreamingContainer extends YarnContainerMain
     }
   }
 
-  private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
+  private void deployNodes(List<OperatorDeployInfo> nodeList) throws IOException
   {
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent = getValue(OperatorContext.STORAGE_AGENT, ndi);
