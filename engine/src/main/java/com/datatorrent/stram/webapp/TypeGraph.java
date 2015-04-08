@@ -9,13 +9,17 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
@@ -377,7 +381,23 @@ public class TypeGraph
 
   public Set<String> getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
   {
-    Set<String> result = new HashSet<String>();
+    Set<String> result = new TreeSet<String>(new Comparator<String>() {
+
+      @Override
+      public int compare(String o1, String o2)
+      {
+        String n1 = o1;
+        String n2 = o2;
+        if(n1.startsWith("java")){
+          n1 = "0" + n1;
+        }
+        if(n2.startsWith("java")){
+          n2 = "0" + n2;
+        }
+        
+        return n1.compareTo(n2);
+      }
+    });
     TypeGraphVertex tgv = typeGraph.get(clazz);
 
     if (tgv.numberOfInitializableDescendants() > limit) {
@@ -429,7 +449,7 @@ public class TypeGraph
     if (tgv == null) {
       return null;
     }
-    Map<String, JSONObject> results = new HashMap<String, JSONObject>();
+    Map<String, JSONObject> results = new TreeMap<String, JSONObject>();
     List<CompactMethodNode> getters =  new LinkedList<CompactMethodNode>();
     List<CompactMethodNode> setters = new LinkedList<CompactMethodNode>();
     getPublicSetterGetter(tgv, setters, getters);
@@ -501,15 +521,40 @@ public class TypeGraph
 
   private void getPublicSetterGetter(TypeGraphVertex tgv, List<CompactMethodNode> setters, List<CompactMethodNode> getters)
   {
+    CompactClassNode exClass = null;
+    // check if the class needs to be excluded
     for (String e : EXCLUDE_CLASSES) {
-      if(e.equals(tgv.getClassNode().getName()))
-        return;
+      if(e.equals(tgv.getClassNode().getName())) {
+        exClass = tgv.getClassNode();
+        break;
+      }
     }
-    if (tgv.getClassNode().getSetterMethods() != null) {
-      setters.addAll(tgv.getClassNode().getSetterMethods());
-    }
-    if (tgv.getClassNode().getGetterMethods() != null) {
-      getters.addAll(tgv.getClassNode().getGetterMethods());
+    if (exClass != null) {
+      // if it's visiting classes need to be exclude from parsing, remove methods that override in sub class
+      // So the setter/getter methods in Operater, Object, Class won't be counted
+      for (CompactMethodNode compactMethodNode : exClass.getGetterMethods()) {
+        for (Iterator<CompactMethodNode> iterator = getters.iterator(); iterator.hasNext();) {
+          CompactMethodNode cmn = iterator.next();
+          if (cmn.getName().equals(compactMethodNode.getName())) {
+            iterator.remove();
+          }
+        }
+      }
+      for (CompactMethodNode compactMethodNode : exClass.getSetterMethods()) {
+        for (Iterator<CompactMethodNode> iterator = setters.iterator(); iterator.hasNext();) {
+          CompactMethodNode cmn = iterator.next();
+          if (cmn.getName().equals(compactMethodNode.getName())) {
+            iterator.remove();
+          }
+        }
+      }
+    } else {
+      if (tgv.getClassNode().getSetterMethods() != null) {
+        setters.addAll(tgv.getClassNode().getSetterMethods());
+      }
+      if (tgv.getClassNode().getGetterMethods() != null) {
+        getters.addAll(tgv.getClassNode().getGetterMethods());
+      }
     }
     for (TypeGraphVertex ancestor : tgv.ancestors) {
       getPublicSetterGetter(ancestor, setters, getters);

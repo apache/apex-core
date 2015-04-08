@@ -41,10 +41,6 @@ public class OperatorDiscoveryTest
     
     String[] classFilePath = getClassFileInClasspath();
     OperatorDiscoverer od = new OperatorDiscoverer(classFilePath);
-    
-    
-
-    
     od.init();
 
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
@@ -57,8 +53,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 22, props.length());
-
+    Assert.assertEquals("properties " + props, 21, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -123,7 +118,6 @@ public class OperatorDiscoveryTest
 
     desc = od.describeClass(HashMap.class);
     System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
-
 
     System.out.println("\n(ASM)type info for " + Color.class + ":\n" + od.describeClassByASM(Color.class.getName()).toString(2));
 

@@ -239,7 +239,7 @@ public class OperatorDiscoverer
                   processJavadocXml(jar.getInputStream(jarEntry));
                   // break;
                 } catch (Exception ex) {
-                  LOG.warn("Cannot process javadoc xml: ", ex);
+                  LOG.warn("Cannot process javadoc {} : ", jarEntry.getName(), ex);
                 }
               } else if (!jarEntry.isDirectory() && jarEntry.getName().endsWith(".class")) {
                 typeGraph.addNode(jarEntry, jar);
