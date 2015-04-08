@@ -146,7 +146,12 @@ public class BasicContainerOptConfigurator implements Context.ContainerOptConfig
       }
     }
     if (map.get(XMX) == null) {
-      map.put(XMX, (memory * 3) / 4 + "m");
+      int memoryOverhead = memory / 4;
+      int heapSize = memory - memoryOverhead;
+      if (memoryOverhead > 1024) {
+         heapSize = memory - 1024;
+      }
+      map.put(XMX, heapSize + "m");
     }
 
     map.put(GENERIC, currentProperties);
