@@ -7,6 +7,10 @@ import com.datatorrent.stram.client.AppPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import java.io.File;
 import com.datatorrent.stram.support.StramTestSupport;
+import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -17,11 +21,42 @@ import org.junit.Test;
  */
 public class DTCliTest
 {
+
+  protected static void setEnv(Map<String, String> newenv) throws Exception
+  {
+    try {
+      Class<?> processEnvironmentClass = Class.forName("java.lang.ProcessEnvironment");
+      Field theEnvironmentField = processEnvironmentClass.getDeclaredField("theEnvironment");
+      theEnvironmentField.setAccessible(true);
+      Map<String, String> env = (Map<String, String>)theEnvironmentField.get(null);
+      env.putAll(newenv);
+      Field theCaseInsensitiveEnvironmentField = processEnvironmentClass.getDeclaredField("theCaseInsensitiveEnvironment");
+      theCaseInsensitiveEnvironmentField.setAccessible(true);
+      Map<String, String> cienv = (Map<String, String>)theCaseInsensitiveEnvironmentField.get(null);
+      cienv.putAll(newenv);
+    } catch (NoSuchFieldException e) {
+      Class[] classes = Collections.class.getDeclaredClasses();
+      Map<String, String> env = System.getenv();
+      for (Class cl : classes) {
+        if ("java.util.Collections$UnmodifiableMap".equals(cl.getName())) {
+          Field field = cl.getDeclaredField("m");
+          field.setAccessible(true);
+          Object obj = field.get(env);
+          Map<String, String> map = (Map<String, String>)obj;
+          map.clear();
+          map.putAll(newenv);
+        }
+      }
+    }
+  }
+
   @Test
   public void testLaunchAppPackagePropertyPrecedence() throws Exception
   {
+    Map<String, String> env = new HashMap<String, String>();
     String userHome = System.getProperty("user.home");
-    System.setProperty("user.home", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
+    env.put("HOME", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
+    setEnv(env);
     File appPackageFile = StramTestSupport.createAppPackageFile(new File("src/test/resources/testAppPackage/testAppPackage.jar"));
     try {
       DTCli cli = new DTCli();
@@ -47,7 +82,8 @@ public class DTCliTest
       Assert.assertEquals("package-default", props.get("dt.test.6"));
 
     } finally {
-      System.setProperty("user.home", userHome);
+      env.put("HOME", userHome);
+      setEnv(env);
       FileUtils.forceDelete(appPackageFile);
     }
   }
