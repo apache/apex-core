@@ -94,7 +94,7 @@ public class StramAppLauncher
         return conf.createFromProperties(LogicalPlanConfiguration.readProperties(propertyFile.getAbsolutePath()), getName());
       }
       catch (IOException e) {
-        throw new IllegalArgumentException("Failed to load: " + this, e);
+        throw new IllegalArgumentException("Failed to load: " + this + "\n"  + e.getMessage(), e);
       }
     }
 
@@ -134,7 +134,7 @@ public class StramAppLauncher
         json = new JSONObject(writer.toString());
       }
       catch (Exception e) {
-        throw new IllegalArgumentException("Failed to load: " + this, e);
+        throw new IllegalArgumentException("Failed to load: " + this + "\n" + e.getMessage(), e);
       }
       finally {
         IOUtils.closeQuietly(is);
@@ -148,7 +148,7 @@ public class StramAppLauncher
         return conf.createFromJson(json, getName());
       }
       catch (Exception e) {
-        throw new IllegalArgumentException("Failed to load: " + this, e);
+        throw new IllegalArgumentException("Failed to load: " + this + "\n" + e.getMessage(), e);
       }
     }
 

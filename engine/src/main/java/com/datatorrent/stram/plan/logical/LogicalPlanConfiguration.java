@@ -17,6 +17,8 @@ import javax.validation.ValidationException;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import org.codehaus.jackson.annotate.JsonTypeInfo.As;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -1045,8 +1047,23 @@ public class LogicalPlanConfiguration {
       OperatorConf nodeConf = nodeConfEntry.getValue();
       if (!WILDCARD.equals(nodeConf.id)) {
         Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
-        Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
-        setOperatorProperties(nd, nodeConf.getProperties());
+        String optJson = nodeConf.getProperties().get(nodeClass.getName());
+        Operator nd = null;
+        try {
+          if (optJson != null) {
+            // if there is a special key which is the class name, it means the operator is serialized in json format
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+            nd = mapper.readValue("{\"" + nodeClass.getName() + "\":" + optJson + "}", nodeClass);
+            dag.addOperator(nodeConfEntry.getKey(), nd);
+          } else {
+            nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
+          }
+          setOperatorProperties(nd, nodeConf.getProperties());
+        } catch (Exception e) {
+          throw new IllegalArgumentException("Error setting operator properties " + e.getMessage(), e);
+        }
         nodeMap.put(nodeConf, nd);
       }
     }

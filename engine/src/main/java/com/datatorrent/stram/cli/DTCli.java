@@ -3276,7 +3276,7 @@ public class DTCli
             // add default value
             Operator operIns = clazz.newInstance();
             String s = defaultValueMapper.writeValueAsString(operIns);
-            oper.put("defaultValue", new JSONObject(s));
+            oper.put("defaultValue", new JSONObject(s).get(clazz.getName()));
             
             // add class hier info to portClassHier
             operatorDiscoverer.buildPortClassHier(oper, portClassHier);

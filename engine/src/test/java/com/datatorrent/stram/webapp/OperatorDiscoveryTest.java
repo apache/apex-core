@@ -19,6 +19,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.tools.ant.DirectoryScanner;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -27,14 +28,21 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.BaseOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 public class OperatorDiscoveryTest
 {
+  private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoveryTest.class);
+  
   @Test
   public void testPropertyDiscovery() throws Exception
   {
@@ -46,10 +54,10 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 
     JSONObject desc = od.describeClass(TestOperator.class);
-    System.out.println("\ntype info for " + TestOperator.class + ":\n" + desc.toString(2));
+    LOG.debug("\ntype info for " + TestOperator.class + ":\n" + desc.toString(2));
 
     JSONObject asmDesc = od.describeClassByASM(TestOperator.class.getName());
-    System.out.println("\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2));
+    LOG.debug("\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2));
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
@@ -108,20 +116,20 @@ public class OperatorDiscoveryTest
     // type is not a primitive type
     // fetch property meta data to find out how to render it
     desc = od.describeClass(Structured.class);
-    System.out.println("\ntype info for " + Structured.class + ":\n" + desc.toString(2));
+    LOG.debug("\ntype info for " + Structured.class + ":\n" + desc.toString(2));
 
     desc = od.describeClass(Color.class);
-    System.out.println("\ntype info for " + Color.class + ":\n" + desc.toString(2));
+    LOG.debug("\ntype info for " + Color.class + ":\n" + desc.toString(2));
 
     desc = od.describeClass(Properties.class);
-    System.out.println("\ntype info for " + Properties.class + ":\n" + desc.toString(2));
+    LOG.debug("\ntype info for " + Properties.class + ":\n" + desc.toString(2));
 
     desc = od.describeClass(HashMap.class);
-    System.out.println("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
+    LOG.debug("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
 
-    System.out.println("\n(ASM)type info for " + Color.class + ":\n" + od.describeClassByASM(Color.class.getName()).toString(2));
+    LOG.debug("\n(ASM)type info for " + Color.class + ":\n" + od.describeClassByASM(Color.class.getName()).toString(2));
 
-    System.out.println("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
+    LOG.debug("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
 
   }
 
@@ -162,15 +170,15 @@ public class OperatorDiscoveryTest
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
 
-    System.out.println("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
+    LOG.debug("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
 
-    System.out.println("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
+    LOG.debug("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
 
-    System.out.println("The initializable descendants list of type java.util.Map: \n" + od.getInitializableDescendants("java.util.Map", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants list of type java.util.Map: \n" + od.getInitializableDescendants("java.util.Map", Integer.MAX_VALUE));
 
-    System.out.println("The initializable descendants list of type java.util.List: \n" + od.getInitializableDescendants("java.util.List", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants list of type java.util.List: \n" + od.getInitializableDescendants("java.util.List", Integer.MAX_VALUE));
 
-    System.out.println("The initializable descendants list of type java.util.HashMap: \n" + od.getInitializableDescendants("java.util.HashMap", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants list of type java.util.HashMap: \n" + od.getInitializableDescendants("java.util.HashMap", Integer.MAX_VALUE));
 
 
     Set<String> actualQueueClass = Sets.newHashSet();
@@ -179,7 +187,7 @@ public class OperatorDiscoveryTest
     JSONArray queueJsonArray = od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
 
     // at lease include all the classes in jdk
-    System.out.println(queueJsonArray);
+    LOG.debug(queueJsonArray.toString());
     Assert.assertTrue("All the queue class in jdk are expected in result ", queueJsonArray.length() >= jdkQueue.length);
     for (int i = 0; i < queueJsonArray.length(); i++) {
       actualQueueClass.add(queueJsonArray.getString(i));
@@ -187,7 +195,7 @@ public class OperatorDiscoveryTest
     for (String expectedClass : jdkQueue) {
       Assert.assertTrue("Actual queue set should contain any one of the expected class ", actualQueueClass.contains(expectedClass));
     }
-    System.out.println("The initializable descendants of type java.util.concurrent.BlockingQueue: \n" + od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants of type java.util.concurrent.BlockingQueue: \n" + od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE));
 
     try {
       od.getInitializableDescendants("java.lang.Object", 100);
@@ -216,7 +224,7 @@ public class OperatorDiscoveryTest
     //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
     mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
     String s = mapper.writeValueAsString(bean);
-    System.out.println(new JSONObject(s).toString(2));
+    LOG.debug(new JSONObject(s).toString(2));
 
 
     TestOperator<?, ?> clone = mapper.readValue(s, TestOperator.class);
@@ -263,6 +271,45 @@ public class OperatorDiscoveryTest
     {
       this.list = list;
     }
+
+    @Override
+    public int hashCode()
+    {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((list == null) ? 0 : list.hashCode());
+      result = prime * result + ((name == null) ? 0 : name.hashCode());
+      result = prime * result + size;
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      Structured other = (Structured) obj;
+      if (list == null) {
+        if (other.list != null)
+          return false;
+      } else if (!list.equals(other.list))
+        return false;
+      if (name == null) {
+        if (other.name != null)
+          return false;
+      } else if (!name.equals(other.name))
+        return false;
+      if (size != other.size)
+        return false;
+      return true;
+    }
+    
+    
+    
 
   }
 
@@ -519,7 +566,7 @@ public class OperatorDiscoveryTest
     OperatorDiscoverer od = new OperatorDiscoverer();
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
     JSONObject desc = od.describeClass(ArraysHolder.class);
-    System.out.println("\ntype info for " + ArraysHolder.class + ":\n" + desc.toString(2));
+    LOG.debug("\ntype info for " + ArraysHolder.class + ":\n" + desc.toString(2));
 
     JSONArray props = desc.getJSONArray("properties");
     ArraysHolder ah = new ArraysHolder();
@@ -540,6 +587,60 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull(clone.intArray);
     Assert.assertArrayEquals(ah.intArray, clone.intArray);
 
+  }
+  
+  @Test
+  public void testLogicalPlanConfiguration() throws Exception
+  {
+    TestOperator<String, Map<String, Number>> bean = new TestOperator<String, Map<String, Number>>();
+    bean.map.put("key1", new Structured());
+    bean.stringArray = new String[] { "one", "two", "three" };
+    bean.stringList = Lists.newArrayList("four", "five");
+    bean.props = new Properties();
+    bean.props.setProperty("key1", "value1");
+    bean.structuredArray = new Structured[]{new Structured()};
+    bean.genericArray = new String[] {"s1"};
+    bean.structuredArray[0].name = "s1";
+    bean.color = Color.BLUE;
+    bean.booleanProp = true;
+
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
+    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+    String s = mapper.writeValueAsString(bean);
+    JSONObject jsonObj = new JSONObject(s);
+    
+    // create the json dag representation 
+    JSONObject jsonPlan = new JSONObject();
+    jsonPlan.put("streams", new JSONArray());
+    JSONObject jsonOper = new JSONObject();
+    jsonOper.put("name", "Test Operator");
+    jsonOper.put("class", TestOperator.class.getName());
+    jsonOper.put("properties", jsonObj);
+    jsonPlan.put("operators", new JSONArray(Lists.newArrayList(jsonOper)));
+    
+    
+    Configuration conf = new Configuration(false);
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(conf);
+    // create logical plan from the json 
+    LogicalPlan lp = lpc.createFromJson(jsonPlan, "jsontest");
+    OperatorMeta om = lp.getOperatorMeta("Test Operator");
+    Assert.assertTrue(om.getOperator() instanceof TestOperator);
+    @SuppressWarnings("rawtypes")
+    TestOperator beanBack = (TestOperator) om.getOperator();
+    
+    // The operator deserialized back from json should be same as original operator
+    Assert.assertEquals(bean.map, beanBack.map);
+    Assert.assertArrayEquals(bean.stringArray, beanBack.stringArray);
+    Assert.assertEquals(bean.stringList, beanBack.stringList);
+    Assert.assertEquals(bean.props, beanBack.props);
+    Assert.assertArrayEquals(bean.structuredArray, beanBack.structuredArray);
+    Assert.assertArrayEquals(bean.genericArray, beanBack.genericArray);
+    Assert.assertEquals(bean.color, beanBack.color);
+    Assert.assertEquals(bean.booleanProp, beanBack.booleanProp);
+    
+    
   }
 
 }
