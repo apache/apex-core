@@ -61,7 +61,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 21, props.length());
+    Assert.assertEquals("properties " + props, 22, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -218,6 +218,11 @@ public class OperatorDiscoveryTest
     bean.structuredArray[0].name = "s1";
     bean.color = Color.BLUE;
     bean.booleanProp = true;
+    bean.nestedList = new LinkedList<OperatorDiscoveryTest.Structured>();
+    Structured st = new Structured();
+    st.name = "nestedone";
+    st.size = 10;
+    bean.nestedList.add(st);
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -328,6 +333,7 @@ public class OperatorDiscoveryTest
     private boolean booleanProp;
 
     private List<String> stringList;
+    private List<Structured> nestedList;
     private Properties props;
     private Structured nested;
     private Map<String, Structured> map = new HashMap<String, Structured>();
@@ -530,6 +536,16 @@ public class OperatorDiscoveryTest
 
     public <AMAZING extends Callable<Map<String, String>>> AMAZING getAmazing(){
       return null;
+    }
+
+    public List<Structured> getNestedList()
+    {
+      return nestedList;
+    }
+
+    public void setNestedList(List<Structured> nestedList)
+    {
+      this.nestedList = nestedList;
     }
 
   }
