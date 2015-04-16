@@ -66,6 +66,7 @@ public class OperatorDiscoverer
     final Map<String, String> tags = new HashMap<String, String>();
     final Map<String, String> getMethods = new HashMap<String, String>();
     final Map<String, String> setMethods = new HashMap<String, String>();
+    final Set<String> invisibleGetSetMethods = new HashSet<String>();
     final Map<String, String> fields = new HashMap<String, String>();
   }
 
@@ -105,6 +106,10 @@ public class OperatorDiscoverer
           String tagName = attributes.getValue("name");
           String tagText = attributes.getValue("text");
           if (methodName != null) {
+            if("@invisible".equals(tagName) && (isGetter(methodName) || isSetter(methodName)))
+            {
+              oci.invisibleGetSetMethods.add(methodName);
+            }
 //            if ("@return".equals(tagName) && isGetter(methodName)) {
 //              oci.getMethods.put(methodName, tagText);
 //            }
@@ -346,7 +351,7 @@ public class OperatorDiscoverer
       // Get properties from ASM
       JSONArray properties = describeClassByASM(clazz.getName()).getJSONArray("properties");
 
-      enrichDescription(clazz.getName(), properties);
+      properties = enrichProperties(clazz.getName(), properties);
 
       TypeDiscoverer td = new TypeDiscoverer();
       JSONArray portTypeInfo = td.getPortTypes(clazz);
@@ -475,25 +480,28 @@ public class OperatorDiscoverer
     }
   }
 
-  private void enrichDescription(String className, JSONArray properties) throws JSONException
+  private JSONArray enrichProperties(String className, JSONArray properties) throws JSONException
   {
     OperatorClassInfo oci = classInfo.get(className);
-    if (oci == null) { return; }
+    if (oci == null) { return properties; }
+    JSONArray result = new JSONArray();
     for (int i = 0; i < properties.length(); i++) {
       JSONObject propJ = properties.getJSONObject(i);
       String propName = WordUtils.capitalize(propJ.getString("name"));
-      String prefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
-      String commentMethodName = prefix + propName;
-      String desc = oci.getMethods.get(commentMethodName);
-      if(desc == null){
-        commentMethodName = "set" + propName;
-        desc = oci.setMethods.get(commentMethodName);
+      String getPrefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
+      String setPrefix = "set";
+      if (oci.invisibleGetSetMethods.contains(getPrefix + propName) || oci.invisibleGetSetMethods.contains(setPrefix + propName)) {
+        continue;
       }
-      if(desc != null)
-      {
+      String desc = oci.getMethods.get(getPrefix + propName);
+      desc = desc == null ? oci.setMethods.get(setPrefix + propName) : desc;
+      if (desc != null) {
         propJ.put("description", desc);
       }
+      result.put(propJ);
+      
     }
+    return result;
   }
 
   public JSONObject describeClass(String clazzName) throws Exception
