@@ -236,7 +236,12 @@ public class StramClientUtils
 
   public static File getUserDTDirectory()
   {
-    return new File(FileUtils.getUserDirectory(), ".dt");
+    String envHome = System.getenv("HOME");
+    if (StringUtils.isEmpty(envHome)) {
+      return new File(FileUtils.getUserDirectory(), ".dt");
+    } else {
+      return new File(envHome, ".dt");
+    }
   }
 
   public static File getConfigDir()
@@ -294,7 +299,7 @@ public class StramClientUtils
   {
     addDTLocalResources(conf);
     FileSystem fs = null;
-    File targetGlobalFile = null;
+    File targetGlobalFile;
     try {
       fs = newFileSystemInstance(conf);
       // after getting the dfsRootDirectory config parameter, redo the entire process with the global config

@@ -1245,10 +1245,18 @@ public class DTCli
       out.flush();
     }
     if (topLevelHistory != null) {
-      topLevelHistory.flush();
+      try {
+        topLevelHistory.flush();
+      } catch (IOException ex) {
+        LOG.warn("Cannot flush command history", ex);
+      }
     }
     if (changingLogicalPlanHistory != null) {
-      changingLogicalPlanHistory.flush();
+      try {
+        changingLogicalPlanHistory.flush();
+      } catch (IOException ex) {
+        LOG.warn("Cannot flush command history", ex);
+      }
     }
     if (consolePresent) {
       System.out.println("exit");
@@ -2504,10 +2512,18 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       if (topLevelHistory != null) {
-        topLevelHistory.flush();
+        try {
+          topLevelHistory.flush();
+        } catch (IOException ex) {
+          LOG.warn("Cannot flush command history");
+        }
       }
       if (changingLogicalPlanHistory != null) {
-        changingLogicalPlanHistory.flush();
+        try {
+          changingLogicalPlanHistory.flush();
+        } catch (IOException ex) {
+          LOG.warn("Cannot flush command history");
+        }
       }
       System.exit(0);
     }

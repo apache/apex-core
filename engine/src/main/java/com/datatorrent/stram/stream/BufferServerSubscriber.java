@@ -100,7 +100,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
           suspendRead();
           suspended = true;
         }
-        int newsize = offeredFragments.capacity() == 32 * 1024 ? offeredFragments.capacity() : offeredFragments.capacity() << 1;
+        int newsize = offeredFragments.capacity() == MAX_SENDBUFFER_SIZE ? offeredFragments.capacity() : offeredFragments.capacity() << 1;
         backlog.add(offeredFragments = new CircularBuffer<Slice>(newsize));
         offeredFragments.add(f);
       }
