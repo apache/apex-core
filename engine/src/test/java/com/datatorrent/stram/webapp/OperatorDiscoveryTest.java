@@ -49,7 +49,7 @@ public class OperatorDiscoveryTest
     
     String[] classFilePath = getClassFileInClasspath();
     OperatorDiscoverer od = new OperatorDiscoverer(classFilePath);
-    od.init();
+    od.buildTypeGraph();
 
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
 

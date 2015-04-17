@@ -11,6 +11,7 @@ import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
+import com.google.inject.Singleton;
 import java.beans.*;
 import java.io.File;
 import java.io.IOException;
@@ -40,6 +41,7 @@ import org.xml.sax.helpers.DefaultHandler;
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
+@Singleton
 public class OperatorDiscoverer
 {
   private static class ClassComparator implements Comparator<Class<?>> {
@@ -192,14 +194,6 @@ public class OperatorDiscoverer
   }
 
 
-  public void init()
-  {
-    buildTypeGraph();
-
-    loadOperatorClass();
-
-  }
-
   @SuppressWarnings({ "unchecked" })
   private void loadOperatorClass()
   {
@@ -221,7 +215,7 @@ public class OperatorDiscoverer
     }
   }
 
-  private void buildTypeGraph()
+  public void buildTypeGraph()
   {
     for (String path : pathsToScan) {
       File f = null;
@@ -277,7 +271,7 @@ public class OperatorDiscoverer
   public Set<Class<? extends Operator>> getOperatorClasses(String parent, String searchTerm) throws ClassNotFoundException
   {
     if (operatorClasses.isEmpty()) {
-      init();
+      loadOperatorClass();
     }
     Class<?> parentClass;
     if (parent == null) {
@@ -331,7 +325,7 @@ public class OperatorDiscoverer
   public Class<? extends Operator> getOperatorClass(String className) throws ClassNotFoundException
   {
     if (operatorClasses.isEmpty()) {
-      init();
+      loadOperatorClass();
     }
 
     Class<?> clazz = classLoader.loadClass(className);
@@ -702,7 +696,7 @@ public class OperatorDiscoverer
   public JSONArray getDescendants(String fullClassName)
   {
     if(typeGraph.size()==0){
-      init();
+      buildTypeGraph();
     }
     return new JSONArray(typeGraph.getDescendants(fullClassName));
   }
@@ -710,7 +704,7 @@ public class OperatorDiscoverer
   public JSONArray getInitializableDescendants(String fullClassName, int limit)
   {
     if(typeGraph.size()==0){
-      init();
+      buildTypeGraph();
     }
     return new JSONArray(typeGraph.getInitializableDescendants(fullClassName, limit));
   }
@@ -718,7 +712,7 @@ public class OperatorDiscoverer
   public JSONArray getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
   {
     if(typeGraph.size()==0){
-      init();
+      buildTypeGraph();
     }
     return new JSONArray(typeGraph.getInitializableDescendants(clazz, limit, filter, packagePrefix));
   }
