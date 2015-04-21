@@ -34,9 +34,9 @@ public class TypeDiscoverer
   enum UI_TYPE{
 
     LIST(Collection.class, "List"),
-    
+
     ENUM(Enum.class, "Enum"),
-    
+
     MAP(Map.class, "Map");
 
     private final Class<?> assignableTo;
@@ -102,7 +102,9 @@ public class TypeDiscoverer
         }
         for (int i=0; i<typeParameters.length; i++) {
           LOG.debug("{} tv {} bounds {} type arg {}", rawTypeClass.getSimpleName(), typeParameters[i].getName(), typeParameters[i].getBounds(), actualTypeArguments[i]);
-          this.typeArguments.put(typeParameters[i].getName(), actualTypeArguments[i]);
+          if (!typeArguments.containsKey(typeParameters[i].getName())) {
+            this.typeArguments.put(typeParameters[i].getName(), actualTypeArguments[i]);
+          }
         }
       }
     }

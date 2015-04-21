@@ -116,4 +116,29 @@ public class TypeDiscoveryTest
     Assert.assertEquals("port type", "java.lang.String", val);
   }
 
+
+  static class SubClass<T> extends ParameterizedTypeOperator<T> {
+
+  }
+
+  static class SubSubClass extends SubClass<String> {
+
+  }
+
+  @Test
+  public void testTypeDiscoveryMultiLevel() throws Exception
+  {
+    TypeDiscoverer td = new TypeDiscoverer();
+    JSONArray json = td.getPortTypes(SubSubClass.class);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode root = mapper.readTree(json.toString(2));
+    String val = root.get(0).path("name").asText();
+    Assert.assertEquals("port name", "output", val);
+
+    val = root.get(0).path("type").asText();
+    Assert.assertEquals("port type", "java.lang.String", val);
+  }
+
+
 }
