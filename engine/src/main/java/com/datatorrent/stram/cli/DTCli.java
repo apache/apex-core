@@ -3275,6 +3275,8 @@ public class DTCli
       try {
         ObjectMapper defaultValueMapper = new ObjectMapper();
         defaultValueMapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        defaultValueMapper.configure(org.codehaus.jackson.map.SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+        defaultValueMapper.configure(org.codehaus.jackson.map.SerializationConfig.Feature.REQUIRE_SETTERS_FOR_GETTERS, true);
         //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
         defaultValueMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
         
@@ -3299,6 +3301,7 @@ public class DTCli
 
             arr.put(oper);
           } catch (Throwable t) {
+            //TODO we need to log those classes
             // ignore this class
           }
         }
