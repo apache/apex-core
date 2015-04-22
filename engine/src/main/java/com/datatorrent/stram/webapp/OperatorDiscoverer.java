@@ -11,7 +11,6 @@ import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
-import com.google.inject.Singleton;
 import java.beans.*;
 import java.io.File;
 import java.io.IOException;
@@ -41,7 +40,6 @@ import org.xml.sax.helpers.DefaultHandler;
  * @author David Yan <david@datatorrent.com>
  * @since 0.3.2
  */
-@Singleton
 public class OperatorDiscoverer
 {
   private static class ClassComparator implements Comparator<Class<?>> {
@@ -197,6 +195,7 @@ public class OperatorDiscoverer
   @SuppressWarnings({ "unchecked" })
   private void loadOperatorClass()
   {
+    buildTypeGraph();
     String operatorRoot = Operator.class.getName();
     Set<String> allOperatorClasses = typeGraph.getDescendants(operatorRoot);
 //    ClassLoader cLoader = new URLClassLoader();

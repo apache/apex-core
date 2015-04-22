@@ -101,8 +101,7 @@ public class StramWebServices
   private final ObjectMapper objectMapper = new JSONSerializationProvider().getContext(null);
   private boolean initialized = false;
 
-  @Inject
-  private OperatorDiscoverer operatorDiscoverer;
+  private final static OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
   public StramWebServices(final StramAppContext context)
