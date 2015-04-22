@@ -397,6 +397,11 @@ public class TypeGraph
 
   public Set<String> getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
   {
+    TypeGraphVertex tgv = typeGraph.get(clazz);
+    if(tgv == null) {
+      return null;
+    }
+    
     Set<String> result = new TreeSet<String>(new Comparator<String>() {
 
       @Override
@@ -414,7 +419,7 @@ public class TypeGraph
         return n1.compareTo(n2);
       }
     });
-    TypeGraphVertex tgv = typeGraph.get(clazz);
+
 
     if (tgv.numberOfInitializableDescendants() > limit) {
       throw new RuntimeException("Too many public concrete sub types!");
