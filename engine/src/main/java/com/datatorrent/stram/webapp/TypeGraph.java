@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.text.WordUtils;
+import org.codehaus.jackson.map.deser.std.FromStringDeserializer;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -52,6 +53,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.primitives.Primitives;
 
 /**
  * A graph data structure holds all type information and their relationship needed in app builder
@@ -59,13 +61,27 @@ import com.esotericsoftware.kryo.io.Output;
  * ASM is used to avoid memory leak and save permgen memory space
  * @since 2.1
  */
+@SuppressWarnings("unchecked")
 public class TypeGraph
 {
   // classes to exclude when fetching getter/setter method or in other parsers
-  public static String[] EXCLUDE_CLASSES = {Object.class.getName().replace('.', '/'), 
+  public static final String[] EXCLUDE_CLASSES = {Object.class.getName().replace('.', '/'), 
     Enum.class.getName().replace('.', '/'), 
     Operator.class.getName().replace('.', '/'),
     Component.class.getName().replace('.', '/')};
+  
+  
+  public static final HashMap<String, String> classReplacement;
+  
+  static {
+    classReplacement = new HashMap<String, String>();
+    for (@SuppressWarnings("rawtypes") FromStringDeserializer fsd : FromStringDeserializer.all()) {
+      classReplacement.put(fsd.getValueClass().getName(), "java.lang.String");
+    }
+    for (@SuppressWarnings("rawtypes") Class wrapperClass : Primitives.allWrapperTypes()) {
+      classReplacement.put(wrapperClass.getName(), Primitives.unwrap(wrapperClass).getName());
+    }
+  }
 
   enum UI_TYPE {
 
@@ -570,8 +586,12 @@ public class TypeGraph
         propJ.put("type", "?");
       } else if (t instanceof TypeNode) {
         TypeNode tn = (TypeNode) t;
-        propJ.put("type", tn.getTypeObj().getClassName());
-        UI_TYPE uiType = UI_TYPE.getEnumFor(tn.getTypeObj().getClassName(), typeGraph);
+        String typeS = tn.getTypeObj().getClassName();
+        if (classReplacement.get(typeS) != null) {
+          typeS = classReplacement.get(typeS);
+        }
+        propJ.put("type", typeS);
+        UI_TYPE uiType = UI_TYPE.getEnumFor(typeS, typeGraph);
         if (uiType != null) {
           propJ.put("uiType", uiType.getName());
         }

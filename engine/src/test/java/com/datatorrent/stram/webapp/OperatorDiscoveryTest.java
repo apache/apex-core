@@ -5,6 +5,7 @@
 package com.datatorrent.stram.webapp;
 
 import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -61,7 +62,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 22, props.length());
+    Assert.assertEquals("properties " + props, 24, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -223,6 +224,8 @@ public class OperatorDiscoveryTest
     st.name = "nestedone";
     st.size = 10;
     bean.nestedList.add(st);
+    bean.uri = new URI("file:///tmp/file");
+    bean.integerProp = 44;
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -236,7 +239,8 @@ public class OperatorDiscoveryTest
     Assert.assertNotNull(clone.structuredArray);
     Assert.assertEquals(Color.BLUE, clone.color);
     Assert.assertEquals(bean.structuredArray.length, clone.structuredArray.length);
-
+    Assert.assertEquals(bean.integerProp, clone.integerProp);
+    Assert.assertEquals(bean.uri, clone.uri);
 
 
   }
@@ -331,7 +335,8 @@ public class OperatorDiscoveryTest
     private long longProp;
     private double doubleProp;
     private boolean booleanProp;
-
+    
+    private Integer integerProp;
     private List<String> stringList;
     private List<Structured> nestedList;
     private Properties props;
@@ -348,7 +353,29 @@ public class OperatorDiscoveryTest
     private Z genericType;
     private int[][] multiDimensionPrimitiveArray;
     private Structured[][] multiDimensionComplexArray;
-
+    private URI uri;
+    
+    
+    public URI getUri()
+    {
+      return uri;
+    }
+    
+    public void setUri(URI uri)
+    {
+      this.uri = uri;
+    }
+    
+    
+    public void setIntegerProp(Integer integerProp)
+    {
+      this.integerProp = integerProp;
+    }
+    
+    public Integer getIntegerProp()
+    {
+      return integerProp;
+    }
 
     public int getIntProp()
     {
