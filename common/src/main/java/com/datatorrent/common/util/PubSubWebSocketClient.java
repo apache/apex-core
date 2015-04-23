@@ -15,23 +15,27 @@
  */
 package com.datatorrent.lib.util;
 
-import com.datatorrent.api.Component;
-import com.datatorrent.api.Context;
-import com.datatorrent.common.util.NameableThreadFactory;
-import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
-import com.ning.http.client.*;
-import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
-import com.ning.http.client.websocket.*;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.*;
 
+import com.ning.http.client.*;
+import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
+import com.ning.http.client.websocket.*;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
+
+import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
+
+import com.datatorrent.common.util.DTThrowable;
+import com.datatorrent.common.util.NameableThreadFactory;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * <p>Abstract PubSubWebSocketClient class.</p>
@@ -40,28 +44,30 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class PubSubWebSocketClient implements Component<Context>
 {
-  private AsyncHttpClient client;
+  private final AsyncHttpClient client;
   private WebSocket connection;
-  private final ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
-  private final PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
+  private final ObjectMapper mapper;
+  private final PubSubMessageCodec<Object> codec;
   private URI uri;
-  private int ioThreadMultiplier = 1;
+  private int ioThreadMultiplier;
   private String loginUrl;
   private String userName;
   private String password;
+
+  private final AtomicReference<Throwable> throwable;
 
   private class PubSubWebSocket implements WebSocketTextListener
   {
     @Override
     public void onMessage(String message)
     {
-      LOG.debug("onMessage {}", message);
+      PubSubMessage<Object> pubSubMessage;
       try {
-        PubSubMessage<Object> pubSubMessage = codec.parseMessage(message);
+        pubSubMessage = codec.parseMessage(message);
         PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
       }
-      catch (Exception ex) {
-        LOG.warn("onMessage has problem parsing this message \"{}\". Ignoring...", message);
+      catch (IOException ex) {
+        DTThrowable.rethrow(ex);
       }
     }
 
@@ -73,21 +79,19 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     @Override
     public void onOpen(WebSocket ws)
     {
-      LOG.debug("WebSocket connection opened");
       PubSubWebSocketClient.this.onOpen(ws);
     }
 
     @Override
     public void onClose(WebSocket ws)
     {
-      LOG.info("WebSocket connection has closed");
       PubSubWebSocketClient.this.onClose(ws);
     }
 
     @Override
     public void onError(Throwable t)
     {
-      LOG.error("WebSocket connection has an error", t);
+      PubSubWebSocketClient.this.onError(t);
     }
 
   }
@@ -97,15 +101,15 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public PubSubWebSocketClient()
   {
-    try {
-      AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
-      config.setIoThreadMultiplier(ioThreadMultiplier);
-      config.setApplicationThreadPool(Executors.newCachedThreadPool(new NameableThreadFactory("AsyncHttpClient")));
-      client = new AsyncHttpClient(config);
-    }
-    catch (Exception ex) {
-      throw new RuntimeException(ex);
-    }
+    throwable = new AtomicReference<Throwable>();
+    ioThreadMultiplier = 1;
+    mapper = (new JacksonObjectMapperProvider()).getContext(null);
+    codec = new PubSubMessageCodec<Object>(mapper);
+
+    AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
+    config.setIoThreadMultiplier(ioThreadMultiplier);
+    config.setApplicationThreadPool(Executors.newCachedThreadPool(new NameableThreadFactory("AsyncHttpClient")));
+    client = new AsyncHttpClient(config);
   }
 
   /**
@@ -150,6 +154,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
   {
+    throwable.set(null);
+
     List<Cookie> cookies = null;
     if (loginUrl != null && userName != null && password != null) {
       // get the session key first before attempting web socket
@@ -163,7 +169,6 @@ public abstract class PubSubWebSocketClient implements Component<Context>
       }
       Response response = client.preparePost(loginUrl).setHeader("Content-Type", "application/json").setBody(json.toString()).execute().get();
       cookies = response.getCookies();
-
     }
     BoundRequestBuilder brb = client.prepareGet(uri.toString());
     if (cookies != null) {
@@ -176,6 +181,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
 
   public void openConnectionAsync() throws IOException
   {
+    throwable.set(null);
+
     if (loginUrl != null && userName != null && password != null) {
       // get the session key first before attempting web socket
       JSONObject json = new JSONObject();
@@ -225,24 +232,18 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public boolean isConnectionOpen()
   {
-    return connection != null && connection.isOpen();
-  }
+    if (connection == null) {
+      return false;
+    }
 
-  /**
-   * <p>constructPublishMessage.</p>
-   *
-   * @param topic
-   * @param mapper
-   * @param data
-   * @return publish message.
-   * @throws IOException
-   * @deprecated
-   */
-  @Deprecated
-  public static String constructPublishMessage(String topic, Object data, ObjectMapper mapper) throws IOException
-  {
-    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
-    return constructPublishMessage(topic, data, codec);
+    try {
+      assertUsable();
+    }
+    catch (IOException ex) {
+      throw new RuntimeException("Connection is not usable!", ex);
+    }
+
+    return connection.isOpen();
   }
 
   /**
@@ -266,6 +267,28 @@ public abstract class PubSubWebSocketClient implements Component<Context>
   }
 
   /**
+   * Before the websocket is used, it's recommended to call this method to ensure that
+   * any exceptions caught while processing the messages received are acknowledged.
+   * @throws IOException The reason because of which connection cannot be used.
+   */
+  private void assertUsable() throws IOException
+  {
+    if (throwable.get() == null) {
+      if (connection == null) {
+        throw new IOException("Connection is not open");
+      }
+    }
+
+
+    Throwable t = throwable.get();
+    if (t instanceof IOException) {
+      throw (IOException)t;
+    }
+    else {
+      DTThrowable.rethrow(t);
+    }
+  }
+  /**
    * <p>publish.</p>
    *
    * @param topic
@@ -274,26 +297,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void publish(String topic, Object data) throws IOException
   {
-    if (connection == null) {
-      throw new IOException("Connection is not open");
-    }
+    assertUsable();
     connection.sendTextMessage(constructPublishMessage(topic, data, codec));
-  }
-
-  /**
-   * <p>constructSubscribeMessage.</p>
-   *
-   * @param topic
-   * @param mapper
-   * @return subscribe  message.
-   * @throws IOException
-   * @deprecated
-   */
-  @Deprecated
-  public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
-    return constructSubscribeMessage(topic, codec);
   }
 
   /**
@@ -322,23 +327,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void subscribe(String topic) throws IOException
   {
+    assertUsable();
     connection.sendTextMessage(constructSubscribeMessage(topic, codec));
-  }
-
-  /**
-   * <p>constructUnsubscribeMessage.</p>
-   *
-   * @param topic
-   * @param mapper
-   * @return un-subscribe message.
-   * @throws IOException
-   * @deprecated
-   */
-  @Deprecated
-  public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
-    return constructUnsubscribeMessage(topic, codec);
   }
 
   /**
@@ -367,23 +357,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void unsubscribe(String topic) throws IOException
   {
+    assertUsable();
     connection.sendTextMessage(constructUnsubscribeMessage(topic, codec));
-  }
-
-  /**
-   * <p>constructSubscribeNumSubscribersMessage.</p>
-   *
-   * @param topic
-   * @param mapper
-   * @return subscribe num subscriber message.
-   * @throws IOException
-   * @deprecated
-   */
-  @Deprecated
-  public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
-    return constructSubscribeNumSubscribersMessage(topic, codec);
   }
 
   /**
@@ -412,23 +387,8 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void subscribeNumSubscribers(String topic) throws IOException
   {
+    assertUsable();
     connection.sendTextMessage(constructSubscribeNumSubscribersMessage(topic, codec));
-  }
-
-  /**
-   * <p>constructUnsubscribeNumSubscribersMessage.</p>
-   *
-   * @param topic
-   * @param mapper
-   * @return un-subscribe num subscriber message.
-   * @throws IOException
-   * @deprecated
-   */
-  @Deprecated
-  public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
-  {
-    PubSubMessageCodec<Object> codec = new PubSubMessageCodec<Object>(mapper);
-    return constructUnsubscribeNumSubscribersMessage(topic, codec);
   }
 
   /**
@@ -457,6 +417,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    */
   public void unsubscribeNumSubscribers(String topic) throws IOException
   {
+    assertUsable();
     connection.sendTextMessage(constructUnsubscribeNumSubscribersMessage(topic, codec));
   }
 
@@ -497,7 +458,12 @@ public abstract class PubSubWebSocketClient implements Component<Context>
     if (client != null) {
       client.close();
     }
+
+    throwable.set(null);
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);
+  private void onError(Throwable t)
+  {
+    throwable.set(t);
+  }
 }
