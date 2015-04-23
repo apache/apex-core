@@ -393,6 +393,12 @@ public interface Context
      */
     Attribute<Integer> THROUGHPUT_CALCULATION_MAX_SAMPLES = new Attribute<Integer>(1000);
     /**
+     * The number of samples to use when using RPC latency to compensate for clock skews and network latency when
+     * calculating stats. Specify 0 if RPC latency should not be used at all to calculate stats. Default value is 100
+     * samples.
+     */
+    Attribute<Integer> RPC_LATENCY_COMPENSATION_SAMPLES = new Attribute<Integer>(100);
+    /**
      * The agent which can be used to find the jvm options for the container.
      */
     Attribute<ContainerOptConfigurator> CONTAINER_OPTS_CONFIGURATOR = new Attribute<ContainerOptConfigurator>(new Object2String<ContainerOptConfigurator>());

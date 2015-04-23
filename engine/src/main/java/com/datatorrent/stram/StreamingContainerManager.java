@@ -263,15 +263,17 @@ public class StreamingContainerManager implements PlanContext
 
   public void updateRPCLatency(String containerId, long latency)
   {
-    MovingAverageLong latencyMA = rpcLatencies.get(containerId);
-    if (latencyMA == null) {
-      final MovingAverageLong val = new MovingAverageLong(10);
-      latencyMA = rpcLatencies.putIfAbsent(containerId, val);
+    if (vars.rpcLatencyCompensationSamples > 0) {
+      MovingAverageLong latencyMA = rpcLatencies.get(containerId);
       if (latencyMA == null) {
-        latencyMA = val;
+        final MovingAverageLong val = new MovingAverageLong(vars.rpcLatencyCompensationSamples);
+        latencyMA = rpcLatencies.putIfAbsent(containerId, val);
+        if (latencyMA == null) {
+          latencyMA = val;
+        }
       }
+      latencyMA.add(latency);
     }
-    latencyMA.add(latency);
   }
 
   private Journal setupJournal()
@@ -545,14 +547,15 @@ public class StreamingContainerManager implements PlanContext
       if (rpcLatency != null) {
         adjustedEndWindowEmitTimestamp += rpcLatency.getAvg();
       }
-      if (upstreamMaxEmitTimestamp < adjustedEndWindowEmitTimestamp) {
+      if (upstreamMaxEmitTimestamp <= adjustedEndWindowEmitTimestamp) {
         LOG.debug("Adding {} to latency MA for {}", adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp, oper);
         operatorStatus.latencyMA.add(adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp);
-      }
-      else if (upstreamMaxEmitTimestamp != adjustedEndWindowEmitTimestamp) {
-        LOG.warn("Cannot calculate latency for this operator because upstream timestamp is greater than this operator's end window time: {} ({}) > {} ({})",
-          upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, endWindowStats.emitTimestamp, oper);
+      } else {
+        operatorStatus.latencyMA.add(0);
+        LOG.warn("Latency calculation for this operator may not be correct because upstream end window timestamp is greater than this operator's end window timestamp: {} ({}) > {} ({})",
+                upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, adjustedEndWindowEmitTimestamp, oper);
         LOG.warn("Please verify that the system clocks are in sync in your cluster.", oper);
+        LOG.warn("You can also try tweaking the RPC_LATENCY_COMPENSATION_SAMPLES application attribute (currently set to {}).", this.vars.rpcLatencyCompensationSamples);
       }
     }
 
@@ -2451,6 +2454,7 @@ public class StreamingContainerManager implements PlanContext
     private final String appPath;
     private final int maxWindowsBehindForStats;
     private final boolean enableStatsRecording;
+    private final int rpcLatencyCompensationSamples;
 
     private FinalVars(LogicalPlan dag, long tms)
     {
@@ -2474,6 +2478,7 @@ public class StreamingContainerManager implements PlanContext
       this.heartbeatTimeoutMillis = dag.getValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS);
       this.maxWindowsBehindForStats = dag.getValue(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG);
       this.enableStatsRecording = dag.getValue(LogicalPlan.ENABLE_STATS_RECORDING);
+      this.rpcLatencyCompensationSamples = dag.getValue(LogicalPlan.RPC_LATENCY_COMPENSATION_SAMPLES);
     }
 
     private FinalVars(FinalVars other, LogicalPlan dag)
@@ -2483,6 +2488,7 @@ public class StreamingContainerManager implements PlanContext
       this.maxWindowsBehindForStats = other.maxWindowsBehindForStats;
       this.enableStatsRecording = other.enableStatsRecording;
       this.appPath = dag.getValue(LogicalPlan.APPLICATION_PATH);
+      this.rpcLatencyCompensationSamples = other.rpcLatencyCompensationSamples;
     }
 
   }
