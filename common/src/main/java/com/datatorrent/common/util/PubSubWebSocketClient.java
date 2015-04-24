@@ -71,7 +71,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
         PubSubWebSocketClient.this.onMessage(pubSubMessage.getType().getIdentifier(), pubSubMessage.getTopic(), pubSubMessage.getData());
       }
       catch (JsonParseException jpe) {
-        logger.warn("Ignoring unparceable JSON message: {}", message, jpe);
+        logger.warn("Ignoring unparseable JSON message: {}", message, jpe);
       }
       catch (JsonMappingException jme) {
         logger.warn("Ignoring JSON mapping in message: {}", message, jme);
@@ -246,13 +246,6 @@ public abstract class PubSubWebSocketClient implements Component<Context>
       return false;
     }
 
-    try {
-      assertUsable();
-    }
-    catch (IOException ex) {
-      throw new RuntimeException("Connection is not usable!", ex);
-    }
-
     return connection.isOpen();
   }
 
@@ -281,7 +274,7 @@ public abstract class PubSubWebSocketClient implements Component<Context>
    * any exceptions caught while processing the messages received are acknowledged.
    * @throws IOException The reason because of which connection cannot be used.
    */
-  private void assertUsable() throws IOException
+  public void assertUsable() throws IOException
   {
     if (throwable.get() == null) {
       if (connection == null) {
