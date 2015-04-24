@@ -82,7 +82,7 @@ public class StramMiniClusterTest
 
     StringBuilder adminEnv = new StringBuilder(1024);
     if (System.getenv("JAVA_HOME") == null) {
-      adminEnv.append("JAVA_HOME=").append(System.getProperty(System.getProperty("java.home")));
+      adminEnv.append("JAVA_HOME=").append(System.getProperty("java.home"));
       adminEnv.append(",");
     }
     adminEnv.append("MALLOC_ARENA_MAX=4"); // see MAPREDUCE-3068, MAPREDUCE-3065
