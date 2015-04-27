@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
-
+import com.google.inject.Singleton;
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
@@ -70,6 +70,7 @@ import com.datatorrent.stram.util.JSONSerializationProvider;
  *
  * @since 0.3.2
  */
+@Singleton
 @Path(StramWebServices.PATH)
 public class StramWebServices
 {
@@ -92,19 +93,19 @@ public class StramWebServices
   public static final long WAIT_TIME = 5000;
 
   //public static final String PATH_ACTION_OPERATOR_CLASSES = "actionOperatorClasses";
-  private final StramAppContext appCtx;
+  private StramAppContext appCtx;
   @Context
   private HttpServletResponse httpResponse;
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
-  private final ObjectMapper objectMapper = new JSONSerializationProvider().getContext(null);
+  private ObjectMapper objectMapper = new JSONSerializationProvider().getContext(null);
   private boolean initialized = false;
 
-  private final static OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+  private OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
-  public StramWebServices(final StramAppContext context)
+  public StramWebServices(StramAppContext context)
   {
     this.appCtx = context;
   }
