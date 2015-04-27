@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -242,7 +243,7 @@ public class TypeGraph
     return result;
   }
 
-  public Set<String> getInitializableDescendants(String fullClassName, int limit)
+  public List<String> getInitializableDescendants(String fullClassName, int limit)
   {
     return getInitializableDescendants(fullClassName, limit, null, null);
   }
@@ -281,7 +282,23 @@ public class TypeGraph
     /**
      * All initializable(public type with a public non-arg constructor) implementations including direct and indirect descendants
      */
-    private final transient Set<TypeGraphVertex> allInitialiazableDescendants = new HashSet<TypeGraphVertex>();
+    private final transient SortedSet<TypeGraphVertex> allInitialiazableDescendants = new TreeSet<TypeGraphVertex>(new Comparator<TypeGraphVertex>() {
+
+      @Override
+      public int compare(TypeGraphVertex o1, TypeGraphVertex o2)
+      {
+        String n1 = o1.typeName;
+        String n2 = o2.typeName;
+        if(n1.startsWith("java")){
+          n1 = "0" + n1;
+        }
+        if(n2.startsWith("java")){
+          n2 = "0" + n2;
+        }
+        
+        return n1.compareTo(n2);
+      }
+    });
 
     private final transient Set<TypeGraphVertex> ancestors = new HashSet<TypeGraphVertex>();
 
@@ -395,36 +412,17 @@ public class TypeGraph
     }
   }
 
-  public Set<String> getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
+  public List<String> getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
   {
     TypeGraphVertex tgv = typeGraph.get(clazz);
-    if(tgv == null) {
+    if(tgv == null || limit <=0) {
       return null;
     }
     
-    Set<String> result = new TreeSet<String>(new Comparator<String>() {
-
-      @Override
-      public int compare(String o1, String o2)
-      {
-        String n1 = o1;
-        String n2 = o2;
-        if(n1.startsWith("java")){
-          n1 = "0" + n1;
-        }
-        if(n2.startsWith("java")){
-          n2 = "0" + n2;
-        }
-        
-        return n1.compareTo(n2);
-      }
-    });
-
-
-    if (tgv.numberOfInitializableDescendants() > limit) {
-      throw new RuntimeException("Too many public concrete sub types!");
-    }
+    List<String> result = new LinkedList<String>();
+    int size = 0;
     if (tgv != null) {
+      
       for (TypeGraphVertex node : tgv.allInitialiazableDescendants) {
         if (filter != null && !Pattern.matches(filter, node.typeName)) {
           continue;
@@ -432,11 +430,12 @@ public class TypeGraph
         if (packagePrefix != null && !node.typeName.startsWith(packagePrefix)) {
           continue;
         }
+        if(size++ >= limit){
+          break;
+        }
         result.add(node.typeName);
       }
-      if(tgv.isInitializable()){
-        result.add(tgv.typeName);
-      }
+      
     }
     return result;
   }
