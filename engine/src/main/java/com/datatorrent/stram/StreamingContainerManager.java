@@ -12,11 +12,24 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import static java.lang.Thread.sleep;
 
 import javax.annotation.Nullable;
 
+import com.google.common.base.Predicate;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
+
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -31,16 +44,8 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Predicate;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.datatorrent.lib.util.FSStorageAgent;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -51,7 +56,6 @@ import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.Journal.SetContainerState;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
@@ -657,7 +661,7 @@ public class StreamingContainerManager implements PlanContext
       }
       catch (Exception e) {
         // TODO: handle error
-        LOG.error("Failed to execute " + command, e);
+        LOG.error("Failed to execute {}", command, e);
       }
       eventQueueProcessing.set(false);
     }
@@ -1014,7 +1018,7 @@ public class StreamingContainerManager implements PlanContext
     StreamingContainerAgent sca = this.containers.get(heartbeat.getContainerId());
     if (sca == null || sca.container.getState() == PTContainer.State.KILLED) {
       // could be orphaned container that was replaced and needs to terminate
-      LOG.error("Unknown container " + heartbeat.getContainerId());
+      LOG.error("Unknown container {}", heartbeat.getContainerId());
       ContainerHeartbeatResponse response = new ContainerHeartbeatResponse();
       response.shutdown = true;
       return response;
@@ -1580,7 +1584,7 @@ public class StreamingContainerManager implements PlanContext
           //LOG.debug("Purged checkpoint {} {}", operator.getId(), p.getSecond());
         }
         catch (Exception e) {
-          LOG.error("Failed to purge checkpoint " + p, e);
+          LOG.error("Failed to purge checkpoint {}", p, e);
         }
       }
       // delete stream state when using buffer server
@@ -1605,7 +1609,7 @@ public class StreamingContainerManager implements PlanContext
               bsc.purge(null, sourceIdentifier, operator.checkpoints.getFirst().windowId - 1);
             }
             catch (RuntimeException re) {
-              LOG.warn("Failed to purge " + bsc.addr + " " + sourceIdentifier, re);
+              LOG.warn("Failed to purge {} {}", bsc.addr, sourceIdentifier, re);
             }
           }
         }
@@ -1625,7 +1629,7 @@ public class StreamingContainerManager implements PlanContext
   public void shutdownAllContainers(String message)
   {
     this.shutdownDiagnosticsMessage = message;
-    LOG.info("Initiating application shutdown: " + message);
+    LOG.info("Initiating application shutdown: {}", message);
     for (StreamingContainerAgent cs : this.containers.values()) {
       cs.shutdownRequested = true;
     }
@@ -2584,13 +2588,14 @@ public class StreamingContainerManager implements PlanContext
     public long waitTime = 5000;
 
     @Override
+    @SuppressWarnings("SleepWhileInLoop")
     public Object call() throws Exception
     {
       Object obj;
       long expiryTime = System.currentTimeMillis() + waitTime;
       while ((obj = commandResponse.getIfPresent(requestId)) == null && expiryTime > System.currentTimeMillis()) {
-        Thread.sleep(100);
-        LOG.debug("waiting for the response in future");
+        sleep(100);
+        LOG.debug("Polling for a response to request with Id {}", requestId);
       }
       if(obj != null) {
         commandResponse.invalidate(requestId);
