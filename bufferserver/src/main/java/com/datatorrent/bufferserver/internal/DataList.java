@@ -841,7 +841,7 @@ public class DataList
 
     /**
      *
-     * @return {@link com.datatorrent.bufferserver.util.SerializedData}
+     * @return {@link com.datatorrent.common.util.SerializedData}
      */
     @Override
     public SerializedData next()
