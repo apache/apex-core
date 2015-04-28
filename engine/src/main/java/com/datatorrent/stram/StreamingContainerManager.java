@@ -636,9 +636,10 @@ public class StreamingContainerManager implements PlanContext
             break;
           }
         }
-      }
-      if (o.statsListeners != null) {
-        plan.onStatusUpdate(o);
+        // call listeners only with non empty window list
+        if (o.statsListeners != null) {
+          plan.onStatusUpdate(o);
+        }
       }
       reportStats.remove(o);
     }
