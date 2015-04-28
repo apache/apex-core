@@ -175,34 +175,25 @@ public class OperatorDiscoveryTest
 
     LOG.debug("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
 
-    LOG.debug("The initializable descendants list of type java.util.Map: \n" + od.getInitializableDescendants("java.util.Map", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants list of type java.util.Map: \n" + od.getTypeGraph().getInitializableDescendants("java.util.Map"));
 
-    LOG.debug("The initializable descendants list of type java.util.List: \n" + od.getInitializableDescendants("java.util.List", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants list of type java.util.List: \n" + od.getTypeGraph().getInitializableDescendants("java.util.List"));
 
-    LOG.debug("The initializable descendants list of type java.util.HashMap: \n" + od.getInitializableDescendants("java.util.HashMap", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants list of type java.util.HashMap: \n" + od.getTypeGraph().getInitializableDescendants("java.util.HashMap"));
 
 
-    Set<String> actualQueueClass = Sets.newHashSet();
     String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(),
         LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
-    JSONArray queueJsonArray = od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE);
+    List<String> actualQueueClass = od.getTypeGraph().getInitializableDescendants("java.util.concurrent.BlockingQueue");
 
-    // at lease include all the classes in jdk
-    LOG.debug(queueJsonArray.toString());
-    Assert.assertTrue("All the queue class in jdk are expected in result ", queueJsonArray.length() >= jdkQueue.length);
-    for (int i = 0; i < queueJsonArray.length(); i++) {
-      actualQueueClass.add(queueJsonArray.getString(i));
-    }
+//     at lease include all the classes in jdk
+    LOG.debug(actualQueueClass.toString());
+
     for (String expectedClass : jdkQueue) {
       Assert.assertTrue("Actual queue set should contain any one of the expected class ", actualQueueClass.contains(expectedClass));
     }
-    LOG.debug("The initializable descendants of type java.util.concurrent.BlockingQueue: \n" + od.getInitializableDescendants("java.util.concurrent.BlockingQueue", Integer.MAX_VALUE));
+    LOG.debug("The initializable descendants of type java.util.concurrent.BlockingQueue: \n" + od.getTypeGraph().getInitializableDescendants("java.util.concurrent.BlockingQueue"));
 
-    try {
-      od.getInitializableDescendants("java.lang.Object", 100);
-    } catch (Exception e) {
-      Assert.assertEquals("The exception msg: ", "Too many public concrete sub types!", e.getMessage());
-    }
   }
 
   @Test

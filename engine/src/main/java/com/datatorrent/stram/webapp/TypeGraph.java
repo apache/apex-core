@@ -243,9 +243,9 @@ public class TypeGraph
     return result;
   }
 
-  public List<String> getInitializableDescendants(String fullClassName, int limit)
+  public List<String> getInitializableDescendants(String fullClassName)
   {
-    return getInitializableDescendants(fullClassName, limit, null, null);
+    return getInitializableDescendants(fullClassName, null, null, null);
   }
 
   private void tranverse(TypeGraphVertex tgv, boolean onlyInitializable, Set<String> result, int limit)
@@ -412,26 +412,33 @@ public class TypeGraph
     }
   }
 
-  public List<String> getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
+  /**
+   * @param clazz parent class
+   * @param filter
+   * @param packagePrefix 
+   * @param startsWith  case insensitive
+   * @return all initializable descendants of class clazz which comfort to filter expression, packagePrefix and start with $startsWith
+   */
+  public List<String> getInitializableDescendants(String clazz, String filter, String packagePrefix, String startsWith)
   {
     TypeGraphVertex tgv = typeGraph.get(clazz);
-    if(tgv == null || limit <=0) {
+    if(tgv == null) {
       return null;
     }
     
     List<String> result = new LinkedList<String>();
-    int size = 0;
     if (tgv != null) {
       
       for (TypeGraphVertex node : tgv.allInitialiazableDescendants) {
+        String typeName = node.typeName;
         if (filter != null && !Pattern.matches(filter, node.typeName)) {
           continue;
         }
         if (packagePrefix != null && !node.typeName.startsWith(packagePrefix)) {
           continue;
         }
-        if(size++ >= limit){
-          break;
+        if (startsWith != null && !typeName.substring(typeName.lastIndexOf('.') + 1).toLowerCase().startsWith(startsWith.toLowerCase())){
+          continue;
         }
         result.add(node.typeName);
       }

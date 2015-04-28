@@ -700,21 +700,6 @@ public class OperatorDiscoverer
     return new JSONArray(typeGraph.getDescendants(fullClassName));
   }
 
-  public JSONArray getInitializableDescendants(String fullClassName, int limit)
-  {
-    if(typeGraph.size()==0){
-      buildTypeGraph();
-    }
-    return new JSONArray(typeGraph.getInitializableDescendants(fullClassName, limit));
-  }
-
-  public JSONArray getInitializableDescendants(String clazz, int limit, String filter, String packagePrefix)
-  {
-    if(typeGraph.size()==0){
-      buildTypeGraph();
-    }
-    return new JSONArray(typeGraph.getInitializableDescendants(clazz, limit, filter, packagePrefix));
-  }
 
   public TypeGraph getTypeGraph()
   {
