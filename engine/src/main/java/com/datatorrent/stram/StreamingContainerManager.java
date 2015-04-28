@@ -97,6 +97,7 @@ public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
+  public final static long LATENCY_WARNING_THRESHOLD_MILLIS = 10 * 60 * 1000; // 10 minutes
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
@@ -133,7 +134,8 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
   private final AtomicLong nodeToStramRequestIds = new AtomicLong(1);
   private long allocatedMemoryBytes = 0;
-  private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1,TimeUnit.MINUTES).build();
+  private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
+  private long lastLatencyWarningTime;
 
   private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>()
   {
@@ -552,10 +554,13 @@ public class StreamingContainerManager implements PlanContext
         operatorStatus.latencyMA.add(adjustedEndWindowEmitTimestamp - upstreamMaxEmitTimestamp);
       } else {
         operatorStatus.latencyMA.add(0);
-        LOG.warn("Latency calculation for this operator may not be correct because upstream end window timestamp is greater than this operator's end window timestamp: {} ({}) > {} ({})",
-                upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, adjustedEndWindowEmitTimestamp, oper);
-        LOG.warn("Please verify that the system clocks are in sync in your cluster.", oper);
-        LOG.warn("You can also try tweaking the RPC_LATENCY_COMPENSATION_SAMPLES application attribute (currently set to {}).", this.vars.rpcLatencyCompensationSamples);
+        if (lastLatencyWarningTime < System.currentTimeMillis() - LATENCY_WARNING_THRESHOLD_MILLIS) {
+          LOG.warn("Latency calculation for this operator may not be correct because upstream end window timestamp is greater than this operator's end window timestamp: {} ({}) > {} ({})",
+                  upstreamMaxEmitTimestamp, upstreamMaxEmitTimestampOperator, adjustedEndWindowEmitTimestamp, oper);
+          LOG.warn("Please verify that the system clocks are in sync in your cluster.", oper);
+          LOG.warn("You can also try tweaking the RPC_LATENCY_COMPENSATION_SAMPLES application attribute (currently set to {}).", this.vars.rpcLatencyCompensationSamples);
+          lastLatencyWarningTime = System.currentTimeMillis();
+        }
       }
     }
 
