@@ -616,13 +616,15 @@ public class StreamingContainer extends YarnContainerMain
           }
           OperatorContext context = e.getValue().context;
           context.drainStats(hb.getOperatorStatsContainer());
-          if (failedNodes.contains(hb.nodeId)) {
-            hb.setState(DeployState.FAILED);
-          }
-          else if (context.getThread() == null || context.getThread().isAlive()) {
+
+          if (context.getThread() == null || context.getThread().getState() != Thread.State.TERMINATED) {
             hb.setState(DeployState.ACTIVE);
           }
+          else if (failedNodes.contains(hb.nodeId)) {
+            hb.setState(DeployState.FAILED);
+          }
           else {
+            logger.debug("Reporting SHUTDOWN state because thread is {} and failedNodes is {}", context.getThread(), failedNodes);
             hb.setState(DeployState.SHUTDOWN);
           }
 
