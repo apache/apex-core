@@ -29,7 +29,6 @@ import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.OperatorRequest;
-import com.datatorrent.api.StatsListener.OperatorCommand;
 import com.datatorrent.api.annotation.Stateless;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.Checkpoint;
@@ -1441,7 +1440,7 @@ public class PhysicalPlan implements Serializable
         }
         // for backward compatibility
         if(rsp.operatorCommands != null){
-          for(OperatorCommand cmd: rsp.operatorCommands){
+          for(@SuppressWarnings("deprecation") com.datatorrent.api.StatsListener.OperatorCommand cmd: rsp.operatorCommands){
             StramToNodeRequest request = new StramToNodeRequest();
             request.operatorId = oper.getId();
             request.requestType = StramToNodeRequest.RequestType.CUSTOM;
@@ -1540,7 +1539,10 @@ public class PhysicalPlan implements Serializable
    */
   public static class OperatorCommandConverter implements OperatorRequest,Serializable
   {
-    public OperatorCommand cmd;
+    private static final long serialVersionUID = 1L;
+    @SuppressWarnings("deprecation")
+    public com.datatorrent.api.StatsListener.OperatorCommand cmd;
+    @SuppressWarnings("deprecation")
     @Override
     public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId) throws IOException
     {
