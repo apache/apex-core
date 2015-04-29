@@ -10,6 +10,8 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import java.beans.*;
 import java.io.File;
@@ -264,7 +266,18 @@ public class OperatorDiscoverer
   public static boolean isInstantiableOperatorClass(Class<?> clazz)
   {
     int modifiers = clazz.getModifiers();
-    return !Modifier.isAbstract(modifiers) && !Modifier.isInterface(modifiers) && Operator.class.isAssignableFrom(clazz) && ! Unifier.class.isAssignableFrom(clazz);
+    if (Modifier.isAbstract(modifiers) || Modifier.isInterface(modifiers) || !Operator.class.isAssignableFrom(clazz)){
+      return false;
+    }
+    // return true if it is an operator or if it is an Unifier with more than one public field that is Port
+    return !Unifier.class.isAssignableFrom(clazz) || 
+        Iterables.<Field>any(Arrays.asList(clazz.getFields()), new Predicate<Field>() {
+      @Override
+      public boolean apply(Field f)
+      {
+        return Operator.Port.class.isAssignableFrom(f.getType());
+      }
+    });
   }
 
   public Set<Class<? extends Operator>> getOperatorClasses(String parent, String searchTerm) throws ClassNotFoundException
