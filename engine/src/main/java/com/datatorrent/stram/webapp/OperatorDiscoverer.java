@@ -13,6 +13,7 @@ import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import java.beans.*;
 import java.io.File;
 import java.io.IOException;
@@ -295,14 +296,23 @@ public class OperatorDiscoverer
         throw new IllegalArgumentException("Argument must be a subclass of Operator class");
       }
     }
+    Set<Class<? extends Operator>> filteredClass = Sets.filter(operatorClasses, new Predicate<Class<? extends Operator>>() {
+
+      @Override
+      public boolean apply(Class<? extends Operator> c)
+      {
+        OperatorClassInfo oci = classInfo.get(c.getName());
+        return oci == null || !oci.tags.containsKey("@invisible");
+      }
+    });
     if (searchTerm == null && parentClass == Operator.class) {
-      return Collections.unmodifiableSet(operatorClasses);
+      return Collections.unmodifiableSet(filteredClass);
     }
     if (searchTerm != null) {
       searchTerm = searchTerm.toLowerCase();
     }
     Set<Class<? extends Operator>> result = new HashSet<Class<? extends Operator>>();
-    for (Class<? extends Operator> clazz : operatorClasses) {
+    for (Class<? extends Operator> clazz : filteredClass) {
       if (parentClass.isAssignableFrom(clazz)) {
         if (searchTerm == null) {
           result.add(clazz);
