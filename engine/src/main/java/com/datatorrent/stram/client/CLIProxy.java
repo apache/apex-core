@@ -244,8 +244,11 @@ public class CLIProxy implements Closeable
     Future<String> future = executor.submit(readTask);
     String result = future.get(commandTimeoutMillis, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
-    if (!err.isEmpty()) {
-      LOG.error("Command is returning this in stderr: {}", err);
+    os.write("echo $?\n".getBytes());
+    os.flush();
+    String status = readTask.call().trim();
+    if (!status.equals("0")) {
+      LOG.error("Command failed and returned this in stderr: {}", err);
       throw new CommandException(err);
     }
     return (result == null) ? null : new JSONObject(result);
@@ -284,8 +287,15 @@ public class CLIProxy implements Closeable
     Future<String> future = executor.submit(readTask);
     String out = future.get(commandTimeoutMillis, TimeUnit.MILLISECONDS);
     String err = errorGobbler.getContent();
-
+    os.write("echo $?\n".getBytes());
+    os.flush();
+    String status = readTask.call().trim();
     JSONObject result = new JSONObject();
+    if (!status.equals("0")) {
+      result.put("status", 0);
+    } else {
+      result.put("status", 1);
+    }
     result.put("out", out);
     result.put("err", err);
     return result;

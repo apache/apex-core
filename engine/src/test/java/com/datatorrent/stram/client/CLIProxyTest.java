@@ -4,6 +4,7 @@
 
 package com.datatorrent.stram.client;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
 
 /**
@@ -12,7 +13,6 @@ import org.junit.*;
  */
 public class CLIProxyTest
 {
-  @Ignore
   @Test
   public void testCliProxy() throws Exception
   {
@@ -20,8 +20,8 @@ public class CLIProxyTest
     System.out.println("dtcli command is " + dtcliCommand);
     CLIProxy cp = new CLIProxy(dtcliCommand, false);
     cp.start();
-    System.out.println(cp.issueCommand("list-apps"));
-
+    JSONObject result = cp.issueCommand("echo \"{\\\"a\\\": 123}\"");
+    Assert.assertEquals(123, result.getInt("a"));
     try {
       System.out.println(cp.issueCommand("bad-command"));
       Assert.assertFalse("Bad command should throw an exception", true);
@@ -31,7 +31,6 @@ public class CLIProxyTest
       System.out.println("Exception thrown as expected");
     }
 
-    System.out.println(cp.issueCommand("show-license-status"));
     cp.close();
   }
 

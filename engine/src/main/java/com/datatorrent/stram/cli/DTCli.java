@@ -265,8 +265,11 @@ public class DTCli
                         throw new CliException("Parse error: unmatched brace");
                       }
                     }
-                  }
-                  else {
+                  } else if (commandLine.charAt(i + 1) == '?') {
+                    ++i;
+                    buf.append(lastCommandError ? "1" : "0");
+                    continue;
+                  } else {
                     while (len > i + 1) {
                       char ch = commandLine.charAt(i + 1);
                       if ((variableName.length() > 0 && ch >= '0' && ch <= '9') || ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))) {
@@ -488,7 +491,11 @@ public class DTCli
     globalCommands.put("help", new CommandSpec(new HelpCommand(),
       null,
       new Arg[]{new CommandArg("command")},
-      "Show help"));
+            "Show help"));
+    globalCommands.put("echo", new CommandSpec(new EchoCommand(),
+            new Arg[]{new Arg("arg")},
+            null,
+            "Echo the argument"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(),
       new Arg[]{new Arg("app-id")},
       null,
@@ -1367,12 +1374,15 @@ public class DTCli
         if (cs == null) {
           if (connectedCommands.get(args[0]) != null) {
             System.err.println("\"" + args[0] + "\" is valid only when connected to an application. Type \"connect <appid>\" to connect to an application.");
+            lastCommandError = true;
           }
           else if (logicalPlanChangeCommands.get(args[0]) != null) {
             System.err.println("\"" + args[0] + "\" is valid only when changing a logical plan.  Type \"begin-logical-plan-change\" to change a logical plan");
+            lastCommandError = true;
           }
           else {
             System.err.println("Invalid command '" + args[0] + "'. Type \"help\" for list of commands");
+            lastCommandError = true;
           }
         }
         else {
@@ -1786,35 +1796,34 @@ public class DTCli
 
   }
 
+  private class EchoCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      System.out.println(args[1]);
+    }
+  }
+
   private class ConnectCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-
       currentApp = getApplication(args[1]);
       if (currentApp == null) {
         throw new CliException("Streaming application with id " + args[1] + " is not found.");
       }
-
-      boolean connected = false;
       try {
         LOG.debug("Selected {} with tracking url {}", currentApp.getApplicationId(), currentApp.getTrackingUrl());
         ClientResponse rsp = getResource(StramWebServices.PATH_INFO, currentApp);
         rsp.getEntity(JSONObject.class);
-        connected = true; // set as current only upon successful connection
         if (consolePresent) {
           System.out.println("Connected to application " + currentApp.getApplicationId());
         }
       }
       catch (CliException e) {
         throw e; // pass on
-      }
-      finally {
-        if (!connected) {
-          //currentApp = null;
-          //currentDir = "/";
-        }
       }
     }
 
