@@ -128,6 +128,14 @@ public class FSEventRecorder implements EventRecorder
   public void teardown()
   {
     eventRecorderThread.interrupt();
+    try {
+      eventRecorderThread.join();
+    } catch (InterruptedException ex) {
+      LOG.warn("Event recorder thread join interrupted");
+    }
+    if (storage != null) {
+      storage.teardown();
+    }
   }
 
   @Handler

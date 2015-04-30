@@ -111,6 +111,17 @@ public class FSStatsRecorder implements StatsRecorder
   public void teardown()
   {
     statsRecorderThread.interrupt();
+    try {
+      statsRecorderThread.join();
+    } catch (InterruptedException ex) {
+      LOG.warn("Stats recorder thread join interrupted");
+    }
+    if (containersStorage != null) {
+      containersStorage.teardown();
+    }
+    for (FSPartFileCollection operatorStorage : logicalOperatorStorageMap.values()) {
+      operatorStorage.teardown();
+    }
   }
 
   @Override
