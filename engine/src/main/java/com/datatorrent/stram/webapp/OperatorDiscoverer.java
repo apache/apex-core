@@ -109,7 +109,7 @@ public class OperatorDiscoverer
           String tagName = attributes.getValue("name");
           String tagText = attributes.getValue("text");
           if (methodName != null) {
-            if("@invisible".equals(tagName) && (isGetter(methodName) || isSetter(methodName)))
+            if("@omitFromUI".equals(tagName) && (isGetter(methodName) || isSetter(methodName)))
             {
               oci.invisibleGetSetMethods.add(methodName);
             }
@@ -302,7 +302,7 @@ public class OperatorDiscoverer
       public boolean apply(Class<? extends Operator> c)
       {
         OperatorClassInfo oci = classInfo.get(c.getName());
-        return oci == null || !oci.tags.containsKey("@invisible");
+        return oci == null || !oci.tags.containsKey("@omitFromUI");
       }
     });
     if (searchTerm == null && parentClass == Operator.class) {
