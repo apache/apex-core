@@ -60,7 +60,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 26, props.length());
+    Assert.assertEquals("properties " + props, 27, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -342,6 +342,15 @@ public class OperatorDiscoveryTest
     private URI uri;
     private String realName = "abc";
     private String getterOnly = "getterOnly";
+    
+    // this property can not be deserialized by jackson but it will be ignored if it has no setter method
+    private Map<Class, String> mProp;
+    
+    
+    public Map<Class, String> getmProp()
+    {
+      return mProp;
+    }
     
     public String getAlias()
     {
@@ -660,7 +669,7 @@ public class OperatorDiscoveryTest
     // 
     Assert.assertTrue("Shouldn't contain field 'realName' !", !s.contains("realName"));
     Assert.assertTrue("Should contain property 'alias' !", s.contains("alias"));
-    Assert.assertTrue("Shouldn't contain property 'getterOnly' !", s.contains("getterOnly"));
+    Assert.assertTrue("Shouldn't contain property 'getterOnly' !", !s.contains("getterOnly"));
     JSONObject jsonObj = new JSONObject(s);
     
     // create the json dag representation 
