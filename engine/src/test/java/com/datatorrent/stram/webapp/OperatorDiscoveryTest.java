@@ -12,7 +12,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -22,7 +21,6 @@ import java.util.concurrent.SynchronousQueue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -36,9 +34,9 @@ import com.datatorrent.api.BaseOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.util.ObjectMapperFactory;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 public class OperatorDiscoveryTest
 {
@@ -62,7 +60,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 24, props.length());
+    Assert.assertEquals("properties " + props, 26, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -218,10 +216,7 @@ public class OperatorDiscoveryTest
     bean.uri = new URI("file:///tmp/file");
     bean.integerProp = 44;
 
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
-    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+    ObjectMapper mapper = ObjectMapperFactory.getOperatorValueSerializer();
     String s = mapper.writeValueAsString(bean);
     LOG.debug(new JSONObject(s).toString(2));
 
@@ -345,6 +340,23 @@ public class OperatorDiscoveryTest
     private int[][] multiDimensionPrimitiveArray;
     private Structured[][] multiDimensionComplexArray;
     private URI uri;
+    private String realName = "abc";
+    private String getterOnly = "getterOnly";
+    
+    public String getAlias()
+    {
+      return realName;
+    }
+    
+    public void setAlias(String alias)
+    {
+      realName = alias;
+    }
+    
+    public String getGetterOnly()
+    {
+      return getterOnly;
+    }
     
     
     public URI getUri()
@@ -451,6 +463,11 @@ public class OperatorDiscoveryTest
     public String[] getStringArray()
     {
       return stringArray;
+    }
+    
+    public void setStringArray(String[] stringArray)
+    {
+      this.stringArray = stringArray;
     }
 
     public Structured[] getStructuredArray()
@@ -611,9 +628,7 @@ public class OperatorDiscoveryTest
     JSONObject intArray = getJSONProperty(props, "intArray");
     Assert.assertEquals("type " + ah.intArray.getClass(), ah.intArray.getClass().getName(), intArray.get("type"));
 
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+    ObjectMapper mapper = ObjectMapperFactory.getOperatorValueSerializer();
     String s = mapper.writeValueAsString(ah);
     System.out.println(new JSONObject(s).toString(2));
 
@@ -637,12 +652,15 @@ public class OperatorDiscoveryTest
     bean.structuredArray[0].name = "s1";
     bean.color = Color.BLUE;
     bean.booleanProp = true;
+    bean.realName = "abc";
 
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
-    mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+    ObjectMapper mapper = ObjectMapperFactory.getOperatorValueSerializer();
     String s = mapper.writeValueAsString(bean);
+    LOG.debug(new JSONObject(s).toString(2));
+    // 
+    Assert.assertTrue("Shouldn't contain field 'realName' !", !s.contains("realName"));
+    Assert.assertTrue("Should contain property 'alias' !", s.contains("alias"));
+    Assert.assertTrue("Shouldn't contain property 'getterOnly' !", s.contains("getterOnly"));
     JSONObject jsonObj = new JSONObject(s);
     
     // create the json dag representation 
@@ -673,6 +691,8 @@ public class OperatorDiscoveryTest
     Assert.assertArrayEquals(bean.genericArray, beanBack.genericArray);
     Assert.assertEquals(bean.color, beanBack.color);
     Assert.assertEquals(bean.booleanProp, beanBack.booleanProp);
+    Assert.assertEquals(bean.realName, beanBack.realName);
+    Assert.assertEquals(bean.getterOnly, beanBack.getterOnly);
     
     
   }
