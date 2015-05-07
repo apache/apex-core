@@ -4,10 +4,12 @@
  */
 package com.datatorrent.bufferserver.storage;
 
-import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+
+import com.google.common.io.Files;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,7 @@ public class DiskStorage implements Storage
   public DiskStorage(String baseDirectory)
   {
     basePath = baseDirectory;
-    logger.info("using {} as the basepath for spooling temporary files.", basePath);
+    logger.info("Using {} as the basepath for spooling.", basePath);
   }
 
   public DiskStorage() throws IOException
@@ -34,7 +36,7 @@ public class DiskStorage implements Storage
     File tempFile = File.createTempFile("msp", "msp");
     basePath = tempFile.getParent();
     tempFile.delete();
-    logger.info("using {} as the basepath for spooling temporary files.", basePath);
+    logger.info("using {} as the basepath for spooling.", basePath);
   }
 
   @Override
@@ -165,7 +167,7 @@ public class DiskStorage implements Storage
             }
           }
           else {
-            throw new RuntimeException("Collission in identifier name, please ensure that the slug for the identifiers is differents");
+            throw new RuntimeException("Collision in identifier name, please ensure that the slugs for the identifiers [" + identifier + "], and [" +  new String(stored) + "] are different.");
           }
         }
         catch (IOException ex) {

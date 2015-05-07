@@ -22,7 +22,7 @@ public class PhysicalNode
   public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
   private final AbstractLengthPrependerClient client;
-  private long processedMessageCount;
+  private final long processedMessageCount;
 
   /**
    *
