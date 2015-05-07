@@ -266,6 +266,7 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     ci.memoryMBAllocated = (int)(allocatedMemoryBytes / (1024 * 1024));
+    ci.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
     ci.lastHeartbeat = -1;
     ci.startedTime = startTime;
     ci.finishedTime = -1;
