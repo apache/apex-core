@@ -357,6 +357,15 @@ public class DTCli
 
   }
 
+  // VarArg must be in optional argument and must be at the end
+  private static class VarArg extends Arg
+  {
+    VarArg(String name)
+    {
+      super(name);
+    }
+  }
+
   private static class CommandArg extends Arg
   {
     CommandArg(String name)
@@ -421,7 +430,14 @@ public class DTCli
         maxArgs = requiredArgs.length;
       }
       if (optionalArgs != null) {
-        maxArgs += optionalArgs.length;
+        for (Arg arg : optionalArgs) {
+          if (arg instanceof VarArg) {
+            maxArgs = Integer.MAX_VALUE;
+            break;
+          } else {
+            maxArgs++;
+          }
+        }
       }
       if (args.length - 1 < minArgs || args.length - 1 > maxArgs) {
         throw new CliException("Command parameter error");
@@ -438,7 +454,11 @@ public class DTCli
       }
       if (optionalArgs != null) {
         for (Arg arg : optionalArgs) {
-          System.err.print(" [<" + arg + ">]");
+          if (arg instanceof VarArg) {
+            System.err.print(" [<" + arg + "> ... ]");
+          } else {
+            System.err.print(" [<" + arg + ">]");
+          }
         }
       }
       System.err.println();
@@ -493,9 +513,8 @@ public class DTCli
       new Arg[]{new CommandArg("command")},
             "Show help"));
     globalCommands.put("echo", new CommandSpec(new EchoCommand(),
-            new Arg[]{new Arg("arg")},
-            null,
-            "Echo the argument"));
+            null, new Arg[]{new VarArg("arg")},
+            "Echo the arguments"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(),
       new Arg[]{new Arg("app-id")},
       null,
@@ -505,17 +524,17 @@ public class DTCli
       new Arg[]{new Arg("matching-app-name")},
       "Launch an app", LAUNCH_OPTIONS.options));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-      new Arg[]{new Arg("app-id")},
-      null,
-      "Shutdown an app"));
+            new Arg[]{new Arg("app-id")},
+            new Arg[]{new VarArg("app-id")},
+            "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(),
       null,
       new Arg[]{new Arg("pattern")},
       "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-      new Arg[]{new Arg("app-id")},
-      null,
-      "Kill an app"));
+            new Arg[]{new Arg("app-id")},
+            new Arg[]{new VarArg("app-id")},
+            "Kill an app"));
     globalCommands.put("show-logical-plan", new OptionsCommandSpec(new ShowLogicalPlanCommand(),
       new Arg[]{new FileArg("jar-file/app-package-file")},
       new Arg[]{new Arg("class-name")},
@@ -620,17 +639,17 @@ public class DTCli
       null,
       "Show physical plan"));
     connectedCommands.put("kill-container", new CommandSpec(new KillContainerCommand(),
-      new Arg[]{new Arg("container-id")},
-      null,
-      "Kill a container"));
+            new Arg[]{new Arg("container-id")},
+            new Arg[]{new VarArg("container-id")},
+            "Kill a container"));
     connectedCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(),
-      null,
-      new Arg[]{new Arg("app-id")},
-      "Shutdown an app"));
+            null,
+            new Arg[]{new VarArg("app-id")},
+            "Shutdown an app"));
     connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(),
-      null,
-      new Arg[]{new Arg("app-id")},
-      "Kill an app"));
+            null,
+            new Arg[]{new VarArg("app-id")},
+            "Kill an app"));
     connectedCommands.put("wait", new CommandSpec(new WaitCommand(),
       new Arg[]{new Arg("timeout")},
       null,
@@ -1134,7 +1153,7 @@ public class DTCli
       if (args != null) {
         if (cs instanceof OptionsCommandSpec) {
           // ugly hack because jline cannot dynamically change completer while user types
-          if (args[0] instanceof FileArg) {
+          if (args[0] instanceof FileArg || args[0] instanceof VarArg) {
             for (int i = 0; i < 10; i++) {
               argCompleters.add(new MyFileNameCompleter());
             }
@@ -1142,7 +1161,7 @@ public class DTCli
         }
         else {
           for (Arg arg : args) {
-            if (arg instanceof FileArg) {
+            if (arg instanceof FileArg || arg instanceof VarArg) {
               argCompleters.add(new MyFileNameCompleter());
             }
             else if (arg instanceof CommandArg) {
@@ -1501,11 +1520,15 @@ public class DTCli
     if (commandSpec.optionalArgs != null) {
       for (Arg arg : commandSpec.optionalArgs) {
         if (consolePresent) {
-          os.print(" [\033[3m" + arg + "\033[0m]");
+          os.print(" [\033[3m" + arg + "\033[0m");
         }
         else {
-          os.print(" [<" + arg + ">]");
+          os.print(" [<" + arg + ">");
         }
+        if (arg instanceof VarArg) {
+          os.print(" ...");
+        }
+        os.print("]");
       }
     }
     os.println("\n\t" + commandSpec.description);
@@ -1801,7 +1824,15 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      System.out.println(args[1]);
+      if (args.length > 1) {
+        for (int i = 1; i < args.length; i++) {
+          if (i > 1) {
+            System.out.print(" ");
+          }
+          System.out.print(args[i]);
+        }
+      }
+      System.out.println();
     }
   }
 
@@ -2662,28 +2693,29 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String containerLongId = getContainerLongId(args[1]);
-      if (containerLongId == null) {
-        throw new CliException("Container " + args[1] + " not found");
-      }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
-      try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
-          }
-
-        });
-        if (consolePresent) {
-          System.out.println("Kill container requested: " + response);
+      for (int i = 1; i < args.length; i++) {
+        String containerLongId = getContainerLongId(args[i]);
+        if (containerLongId == null) {
+          throw new CliException("Container " + args[i] + " not found");
         }
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+        WebServicesClient webServicesClient = new WebServicesClient();
+        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
+        try {
+          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+          {
+            @Override
+            public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
+            {
+              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
+            }
+
+          });
+          if (consolePresent) {
+            System.out.println("Kill container requested: " + response);
+          }
+        } catch (Exception e) {
+          throw new CliException("Failed to request " + r.getURI(), e);
+        }
       }
     }
 
