@@ -247,7 +247,7 @@ public class CLIProxy implements Closeable
     os.write("echo $?\n".getBytes());
     os.flush();
     String status = readTask.call().trim();
-    if (!status.equals("0")) {
+    if (!"0".equals(status)) {
       LOG.error("Command failed and returned this in stderr: {}", err);
       throw new CommandException(err);
     }
@@ -291,11 +291,7 @@ public class CLIProxy implements Closeable
     os.flush();
     String status = readTask.call().trim();
     JSONObject result = new JSONObject();
-    if (!status.equals("0")) {
-      result.put("status", 0);
-    } else {
-      result.put("status", 1);
-    }
+    result.put("status", status);
     result.put("out", out);
     result.put("err", err);
     return result;
