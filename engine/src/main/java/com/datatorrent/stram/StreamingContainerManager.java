@@ -250,7 +250,12 @@ public class StreamingContainerManager implements PlanContext
           try {
             String content = webServicesClient.process(url, String.class, new WebServicesClient.GetWebServicesHandler<String>());
             JSONObject json = new JSONObject(content);
-            allocatedMemoryBytes = json.getJSONObject("container").getInt("totalMemoryNeededMB") * 1024 * 1024;
+            int totalMemoryNeededMB = json.getJSONObject("container").getInt("totalMemoryNeededMB");
+            if (totalMemoryNeededMB > 0) {
+              allocatedMemoryBytes = totalMemoryNeededMB * 1024 * 1024;
+            } else {
+              LOG.warn("Could not determine the memory allocated for the streaming application master.  Node manager is reporting {} MB from {}", totalMemoryNeededMB, url);
+            }
           }
           catch (Exception ex) {
             LOG.warn("Could not determine the memory allocated for the streaming application master", ex);
