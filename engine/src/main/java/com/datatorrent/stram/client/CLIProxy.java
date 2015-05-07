@@ -119,7 +119,7 @@ public class CLIProxy implements Closeable
     return issueCommand(sb.toString());
   }
 
-  public JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars, boolean ignorePom) throws Exception
+  public JSONObject launchApp(String jarUri, String appName, Map<String, String> properties, List<String> libjars, boolean ignorePom, String originalAppId) throws Exception
   {
     StringBuilder sb = new StringBuilder("launch -exactMatch ");
     for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -136,6 +136,11 @@ public class CLIProxy implements Closeable
     }
     if (ignorePom) {
       sb.append("-ignorepom ");
+    }
+    if (!StringUtils.isBlank(originalAppId)) {
+      sb.append("-originalAppId \"");
+      sb.append(originalAppId);
+      sb.append("\"");
     }
     sb.append(jarUri);
     sb.append(" \"");
@@ -172,13 +177,18 @@ public class CLIProxy implements Closeable
     return issueCommand("get-app-package-info \"" + file + "\"");
   }
 
-  public JSONObject launchAppPackage(File appPackageLocalFile, String appName, String configName, Map<String, String> overrideProperties) throws Exception
+  public JSONObject launchAppPackage(File appPackageLocalFile, String appName, String configName, Map<String, String> overrideProperties, String originalAppId) throws Exception
   {
     StringBuilder sb = new StringBuilder("launch -exactMatch \"");
     sb.append(appPackageLocalFile.getAbsolutePath());
     sb.append("\" ");
     if (!StringUtils.isBlank(configName)) {
       sb.append("-apconf \"").append(configName).append("\" ");
+    }
+    if (!StringUtils.isBlank(originalAppId)) {
+      sb.append("-originalAppId \"");
+      sb.append(originalAppId);
+      sb.append("\"");
     }
     for (Map.Entry<String, String> property : overrideProperties.entrySet()) {
       sb.append("-D \"").append(property.getKey()).append("=").append(property.getValue()).append("\" ");
