@@ -44,6 +44,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.util.ObjectMapperFactory;
 
 /**
  *
@@ -1052,9 +1053,7 @@ public class LogicalPlanConfiguration {
         try {
           if (optJson != null) {
             // if there is a special key which is the class name, it means the operator is serialized in json format
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+            ObjectMapper mapper = ObjectMapperFactory.getOperatorValueDeserializer();
             nd = mapper.readValue("{\"" + nodeClass.getName() + "\":" + optJson + "}", nodeClass);
             dag.addOperator(nodeConfEntry.getKey(), nd);
           } else {

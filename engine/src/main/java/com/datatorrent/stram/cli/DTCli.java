@@ -44,7 +44,6 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -82,6 +81,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.JSONSerializationProvider;
+import com.datatorrent.stram.util.ObjectMapperFactory;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
@@ -3282,12 +3282,7 @@ public class DTCli
       String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
-        ObjectMapper defaultValueMapper = new ObjectMapper();
-        defaultValueMapper.configure(org.codehaus.jackson.map.DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        defaultValueMapper.configure(org.codehaus.jackson.map.SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-        defaultValueMapper.configure(org.codehaus.jackson.map.SerializationConfig.Feature.REQUIRE_SETTERS_FOR_GETTERS, true);
-        //mapper.enableDefaultTypingAsProperty(ObjectMapper.DefaultTyping.NON_FINAL, Id.CLASS.getDefaultPropertyName());
-        defaultValueMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, As.WRAPPER_OBJECT);
+        ObjectMapper defaultValueMapper = ObjectMapperFactory.getOperatorValueSerializer();
         
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         String searchTerm = commandLineInfo.args.length > 1 ? commandLineInfo.args[1] : null;
