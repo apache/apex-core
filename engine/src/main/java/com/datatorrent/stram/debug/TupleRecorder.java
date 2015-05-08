@@ -20,6 +20,7 @@ import com.datatorrent.api.*;
 import com.datatorrent.lib.codec.JsonStreamCodec;
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.common.util.Slice;
+import com.datatorrent.lib.util.ObjectMapperString;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.util.FSPartFileCollection;
@@ -174,7 +175,7 @@ public class TupleRecorder
   {
     public long startTime;
     public String appId;
-    public Map<String, Object> properties = new HashMap<String, Object>();
+    public Map<String, ObjectMapperString> properties = new HashMap<String, ObjectMapperString>();
   }
 
   public static class Range
@@ -260,6 +261,8 @@ public class TupleRecorder
       recordInfo.startTime = startTime;
       recordInfo.appId = appId;
 
+      streamCodec = new JsonStreamCodec<Object>(codecs);
+
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
         PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
@@ -269,11 +272,16 @@ public class TupleRecorder
 
           if (readMethod != null) {
             readMethod.setAccessible(true);
-            recordInfo.properties.put(name, readMethod.invoke(operator));
+            try {
+              Slice f = streamCodec.toByteArray(readMethod.invoke(operator));
+              recordInfo.properties.put(name, new ObjectMapperString(f.stringValue()));
+            } catch (Throwable t) {
+              logger.warn("Cannot serialize property {} for operator {}", name, operator.getClass());
+              recordInfo.properties.put(name, null);
+            }
           }
         }
       }
-      streamCodec = new JsonStreamCodec<Object>(codecs);
       Slice f = streamCodec.toByteArray(recordInfo);
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
