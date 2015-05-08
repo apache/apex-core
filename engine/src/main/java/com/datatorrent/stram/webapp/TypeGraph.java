@@ -738,4 +738,22 @@ public class TypeGraph
 
   }
 
+  /**
+   * @param className
+   * @return immediate parent names of given className
+   * null if the className is not in this typeGraph or if there is no ancestors
+   */
+  public List<String> getParents(String className)
+  {
+    TypeGraphVertex tgv = typeGraph.get(className);
+    if(tgv == null || tgv.ancestors == null){
+      return null;
+    }
+    List<String> result = new LinkedList<String>();
+    for (TypeGraphVertex p : tgv.ancestors) {
+      result.add(p.typeName);
+    }
+    return result;
+  }
+
 }
