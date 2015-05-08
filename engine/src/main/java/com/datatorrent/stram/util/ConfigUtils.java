@@ -97,6 +97,8 @@ public class ConfigUtils
     }
   }
 
+  private static boolean rawContainerLogWarningPrinted = false;
+
   public static String getRawContainerLogsUrl(YarnConfiguration conf, String nodeHttpAddress, String appId, String containerId)
   {
     String logDirs = conf.get(YarnConfiguration.NM_LOG_DIRS);
@@ -111,12 +113,17 @@ public class ConfigUtils
           return ConfigUtils.getSchemePrefix(conf) + nodeHttpAddress + "/logs" + logDirsPath.substring(yarnLogDirPath.length()) + "/" + appId + "/" + containerId;
         }
         else {
-          LOG.warn("Cannot determine the location of container logs because of incompatible node manager log location ({}) and yarn log location ({})",
-                   logDirsPath, yarnLogDirPath);
+          if (!rawContainerLogWarningPrinted) {
+            LOG.warn("Cannot determine the location of container logs because of incompatible node manager log location ({}) and yarn log location ({})",
+                    logDirsPath, yarnLogDirPath);
+            rawContainerLogWarningPrinted = true;
+          }
         }
-      }
-      catch (Exception ex) {
-        LOG.warn("Cannot determine the location of container logs because of error: ", ex);
+      } catch (Exception ex) {
+        if (!rawContainerLogWarningPrinted) {
+          LOG.warn("Cannot determine the location of container logs because of error: ", ex);
+          rawContainerLogWarningPrinted = true;
+        }
       }
     }
     return null;
