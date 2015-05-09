@@ -166,7 +166,8 @@ public class TypeDiscoverer
         if(uiType!=null){
           meta.put("uiType", uiType.getName());
         }
-
+      } else if (ta instanceof ParameterizedType) {
+        resolveTypeParameters(ta, meta);
       } else {
         meta.put("type", ta.toString());
       }
