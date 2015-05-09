@@ -194,7 +194,7 @@ public class TupleRecorderTest
   }
 
   private static final File testWorkDir = new File("target", TupleRecorderTest.class.getName());
-  private static final int testTupleCount = 100;
+  private static final int testTupleCount = 10;
 
   @Test
   public void testRecordingFlow() throws Exception
@@ -242,7 +242,7 @@ public class TupleRecorderTest
       }
 
     };
-    Assert.assertTrue("Should get a tuple recorder within 5 seconds", StramTestSupport.awaitCompletion(c, 5000));
+    Assert.assertTrue("Should get a tuple recorder within 10 seconds", StramTestSupport.awaitCompletion(c, 10000));
     TupleRecorder tupleRecorder = getTupleRecorder(localCluster, op);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
