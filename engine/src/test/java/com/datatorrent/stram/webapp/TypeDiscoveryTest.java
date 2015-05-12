@@ -117,12 +117,12 @@ public class TypeDiscoveryTest
   }
 
 
-  static class SubClass<T> extends ParameterizedTypeOperator<T> {
-
+  static class SubClass<T> extends ParameterizedTypeOperator<T>
+  {
   }
 
-  static class SubSubClass extends SubClass<String> {
-
+  static class SubSubClass extends SubClass<Map<String, Object>>
+  {
   }
 
   @Test
@@ -137,8 +137,13 @@ public class TypeDiscoveryTest
     Assert.assertEquals("port name", "output", val);
 
     val = root.get(0).path("type").asText();
-    Assert.assertEquals("port type", "java.lang.String", val);
-  }
+    Assert.assertEquals("port type", "java.util.Map", val);
 
+    val = root.get(0).path("typeArgs").get(0).path("type").asText();
+    Assert.assertEquals("map key type", "java.lang.String", val);
+    val = root.get(0).path("typeArgs").get(1).path("type").asText();
+    Assert.assertEquals("map value type", "java.lang.Object", val);
+
+  }
 
 }
