@@ -130,9 +130,9 @@ public class CLIProxy implements Closeable
       sb.append("\" ");
     }
     if (!libjars.isEmpty()) {
-      sb.append("-libjars ");
+      sb.append("-libjars \"");
       sb.append(StringUtils.join(libjars, ','));
-      sb.append(" ");
+      sb.append("\" ");
     }
     if (ignorePom) {
       sb.append("-ignorepom ");
@@ -140,7 +140,7 @@ public class CLIProxy implements Closeable
     if (!StringUtils.isBlank(originalAppId)) {
       sb.append("-originalAppId \"");
       sb.append(originalAppId);
-      sb.append("\"");
+      sb.append("\" ");
     }
     sb.append(jarUri);
     sb.append(" \"");
@@ -186,9 +186,7 @@ public class CLIProxy implements Closeable
       sb.append("-apconf \"").append(configName).append("\" ");
     }
     if (!StringUtils.isBlank(originalAppId)) {
-      sb.append("-originalAppId \"");
-      sb.append(originalAppId);
-      sb.append("\"");
+      sb.append("-originalAppId \"").append(originalAppId).append("\" ");
     }
     for (Map.Entry<String, String> property : overrideProperties.entrySet()) {
       sb.append("-D \"").append(property.getKey()).append("=").append(property.getValue()).append("\" ");
