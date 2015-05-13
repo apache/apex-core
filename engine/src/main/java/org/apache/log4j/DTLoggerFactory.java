@@ -11,11 +11,11 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
-import com.google.common.base.Function;
 import org.apache.log4j.spi.LoggerFactory;
 import org.apache.log4j.spi.LoggerRepository;
 import org.apache.log4j.spi.RepositorySelector;
 
+import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -65,7 +65,7 @@ public class DTLoggerFactory implements LoggerFactory
   public synchronized void initialize()
   {
     if (!initialized) {
-      LOG.info("initializing DT Logger Factory");
+      LOG.debug("initializing DT Logger Factory");
       new RepositorySelectorImpl().initialize();
       String loggersLevel = System.getProperty(DT_LOGGERS_LEVEL);
       if (!Strings.isNullOrEmpty(loggersLevel)) {
@@ -198,7 +198,7 @@ public class DTLoggerFactory implements LoggerFactory
     private void initialize()
     {
       if (!initialized) {
-        LOG.info("initializing logger repository selector impl");
+        LOG.debug("initializing logger repository selector impl");
         guard = LogManager.getRootLogger();
         LogManager.setRepositorySelector(this, guard);
         hierarchy = new LoggerRepositoryImpl(guard);

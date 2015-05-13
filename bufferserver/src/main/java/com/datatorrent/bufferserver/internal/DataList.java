@@ -120,14 +120,20 @@ public class DataList
   {
     return identifier;
   }
+  public DataList(String identifier, int blocksize, int numberOfCacheBlocks, int refCount)
+  {
+    this(identifier,blocksize,numberOfCacheBlocks);
+    first.refCount = refCount;
+  }
 
   public DataList(String identifier, int blocksize, int numberOfCacheBlocks)
   {
+    this.MAX_COUNT_OF_INMEM_BLOCKS = numberOfCacheBlocks;
     this.identifier = identifier;
     this.blocksize = blocksize;
     first = new Block(identifier, blocksize);
     last = first;
-    this.MAX_COUNT_OF_INMEM_BLOCKS = numberOfCacheBlocks;
+
 
   }
 
@@ -273,6 +279,9 @@ public class DataList
       DataListIterator dli = (DataListIterator)iterator;
       for (Entry<String, DataListIterator> e : iterators.entrySet()) {
         if (e.getValue() == dli) {
+          if (dli.da != null) {
+            dli.da.release(false);
+          }
           iterators.remove(e.getKey());
           released = true;
           break;
@@ -362,7 +371,7 @@ public class DataList
         }
 
         if (!found && temp.data != null) {
-          temp.release(false);
+          temp.release(true);
           if (--inmemBlockCount < MAX_COUNT_OF_INMEM_BLOCKS) {
             break;
           }
@@ -700,7 +709,7 @@ public class DataList
           else {
             synchronized (Block.this) {
               Block.this.uniqueIdentifier = i;
-              if (--refCount == 0) {
+              if (refCount == 0) {
                 Block.this.data = null;
               }
             }
@@ -712,7 +721,11 @@ public class DataList
 
     synchronized void release(boolean wait)
     {
-      if (refCount == 1 && storage != null && uniqueIdentifier == 0) {
+      if (--refCount == 0 && storage != null) {
+        if (uniqueIdentifier != 0) {
+          data = null;
+          return;
+        }
         if (wait) {
           getStorer(data, readingOffset, writingOffset, storage).run();
         }

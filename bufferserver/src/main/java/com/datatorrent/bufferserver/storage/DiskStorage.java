@@ -5,13 +5,14 @@
 package com.datatorrent.bufferserver.storage;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.google.common.io.Files;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.io.Files;
 
 /**
  * <p>DiskStorage class.</p>
@@ -106,7 +107,12 @@ public class DiskStorage implements Storage
       lUniqueIdentifier = ++this.uniqueIdentifier;
     }
 
-    return writeFile(bytes, startingOffset, endingOffset, directory, lUniqueIdentifier);
+    try {
+      return writeFile(bytes, startingOffset, endingOffset, directory, lUniqueIdentifier);
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @Override
@@ -183,23 +189,15 @@ public class DiskStorage implements Storage
     }
   }
 
-  protected int writeFile(byte[] bytes, int startingOffset, int endingOffset, File directory, final int number)
+  protected int writeFile(byte[] bytes, int startingOffset, int endingOffset, File directory, final int number) throws IOException
   {
+    FileOutputStream stream = new FileOutputStream(new File(directory, String.valueOf(number)));
     try {
-      final byte[] newbytes;
-      if (startingOffset > 0 || endingOffset < bytes.length) {
-        newbytes = new byte[endingOffset - startingOffset];
-        System.arraycopy(bytes, startingOffset, newbytes, 0, endingOffset - startingOffset);
-      }
-      else {
-        newbytes = bytes;
-      }
-      Files.write(newbytes, new File(directory, String.valueOf(number)));
+      stream.write(bytes, startingOffset, endingOffset - startingOffset);
     }
-    catch (IOException ex) {
-      throw new RuntimeException(ex);
+    finally {
+      stream.close();
     }
-
     return number;
   }
 

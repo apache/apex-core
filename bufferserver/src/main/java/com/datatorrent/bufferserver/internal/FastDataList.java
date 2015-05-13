@@ -29,6 +29,12 @@ public class FastDataList extends DataList
     super(identifier, blocksize, numberOfCacheBlocks);
   }
 
+  public FastDataList(String identifier, int blocksize, int numberOfCacheBlocks, int refCount)
+  {
+    super(identifier, blocksize, numberOfCacheBlocks, refCount);
+  }
+
+
   long item;
 
   @Override

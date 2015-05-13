@@ -44,7 +44,7 @@ public class PayloadTuple extends Tuple
   @Override
   public Slice getData()
   {
-    return new Slice(buffer, offset + 5, length + offset - 5);
+    return new Slice(buffer, offset + 5, length - 5);
   }
 
   @Override

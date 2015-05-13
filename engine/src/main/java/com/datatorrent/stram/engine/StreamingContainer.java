@@ -168,7 +168,7 @@ public class StreamingContainer extends YarnContainerMain
         }
         // start buffer server, if it was not set externally
         bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount);
-        if (ctx.getValue(Context.DAGContext.EXPERIMENTAL_BUFFER_SPOOLING)) {
+        if (ctx.getValue(Context.DAGContext.BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());
         }
         SocketAddress bindAddr = bufferServer.run(eventloop);

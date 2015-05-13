@@ -312,7 +312,7 @@ public interface Context
     /**
      * Where to spool the data once the buffer server capacity is reached.
      */
-    Attribute<Boolean> EXPERIMENTAL_BUFFER_SPOOLING = new Attribute<Boolean>(true);
+    Attribute<Boolean> BUFFER_SPOOLING = new Attribute<Boolean>(true);
     /**
      * The streaming window size to use for the application. It is specified in milliseconds. Default value is 500ms.
      */
