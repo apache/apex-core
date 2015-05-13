@@ -1824,13 +1824,11 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (args.length > 1) {
-        for (int i = 1; i < args.length; i++) {
-          if (i > 1) {
-            System.out.print(" ");
-          }
-          System.out.print(args[i]);
+      for (int i = 1; i < args.length; i++) {
+        if (i > 1) {
+          System.out.print(" ");
         }
+        System.out.print(args[i]);
       }
       System.out.println();
     }
@@ -2040,278 +2038,257 @@ public class DTCli
       if (commandLineInfo.configFile != null) {
         commandLineInfo.configFile = expandFileName(commandLineInfo.configFile, true);
       }
-      Configuration config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), commandLineInfo.configFile, commandLineInfo.overrideProperties);
-      if (commandLineInfo.resources != null) {
-        commandLineInfo.resources = expandCommaSeparatedFiles(commandLineInfo.resources);
-        config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.resources);
-      }
-      if (commandLineInfo.archives != null) {
-        commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
-        config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
-      }
-      if (commandLineInfo.origAppId != null) {
-        config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
-      }
-      if (commandLineInfo.licenseFile != null) {
-        commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
-      }
-      config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
 
-      String fileName = expandFileName(commandLineInfo.args[0], true);
-      StramAppLauncher submitApp;
-      AppFactory appFactory = null;
-      String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
-      if (fileName.endsWith(".json")) {
-        File file = new File(fileName);
-        submitApp = new StramAppLauncher(file.getName(), config);
-        appFactory = new StramAppLauncher.JsonFileAppFactory(file);
-        if (matchString != null) {
-          LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON", matchString);
-        }
+      // see if the given config file is a config package
+      ConfigPackage cp = null;
+      String requiredAppPackageName = null;
+      try {
+        cp = new ConfigPackage(new File(commandLineInfo.configFile));
+        requiredAppPackageName = cp.getAppPackageName();
+      } catch (Exception ex) {
+        // fall through, it's not a config package
       }
-      else if (fileName.endsWith(".properties")) {
-        File file = new File(fileName);
-        submitApp = new StramAppLauncher(file.getName(), config);
-        appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
-        if (matchString != null) {
-          LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
-        }
-      }
-      else {
-        // see if it's an app package
-        AppPackage ap = null;
-        try {
-          ap = new AppPackage(new File(fileName));
-        }
-        catch (Exception ex) {
-          // fall through, it's not an app package
-        }
-        finally {
-          IOUtils.closeQuietly(ap);
-        }
-        if (ap != null) {
-          new LaunchAppPackageCommand().execute(args, reader);
-          return;
-        }
-        submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
-      }
-      submitApp.loadDependencies();
+      try {
 
-      if (commandLineInfo.origAppId != null) {
-        // ensure app is not running
-        ApplicationReport ar = null;
-        try {
-          ar = getApplication(commandLineInfo.origAppId);
+        Configuration config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), cp == null ? commandLineInfo.configFile : null, commandLineInfo.overrideProperties);
+        if (commandLineInfo.resources != null) {
+          commandLineInfo.resources = expandCommaSeparatedFiles(commandLineInfo.resources);
+          config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.resources);
         }
-        catch (Exception e) {
-          // application (no longer) in the RM history, does not prevent restart from state in DFS
-          LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
+        if (commandLineInfo.files != null) {
+          commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
+          config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
         }
-        if (ar != null) {
-          if (ar.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
-            throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " " + ar.getYarnApplicationState());
+        if (commandLineInfo.archives != null) {
+          commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
+          config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
+        }
+        if (commandLineInfo.origAppId != null) {
+          config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
+        }
+        if (commandLineInfo.licenseFile != null) {
+          commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
+        }
+        config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
+        
+        String fileName = expandFileName(commandLineInfo.args[0], true);
+        StramAppLauncher submitApp;
+        AppFactory appFactory = null;
+        String matchString = commandLineInfo.args.length >= 2 ? commandLineInfo.args[1] : null;
+        if (fileName.endsWith(".json")) {
+          File file = new File(fileName);
+          submitApp = new StramAppLauncher(file.getName(), config);
+          appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+          if (matchString != null) {
+            LOG.warn("Match string \"{}\" is ignored for launching applications specified in JSON", matchString);
           }
-          if (appFactory == null && matchString == null) {
-            // skip selection if we can match application name from previous run
-            List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(), commandLineInfo.exactMatch);
-            for (AppFactory af : matchingAppFactories) {
-              String appName = submitApp.getLogicalPlanConfiguration().getAppAlias(af.getName());
-              if (appName == null) {
-                appName = af.getName();
-              }
-              // limit to exact match
-              if (appName.equals(ar.getName())) {
-                appFactory = af;
-                break;
-              }
-            }
+        } else if (fileName.endsWith(".properties")) {
+          File file = new File(fileName);
+          submitApp = new StramAppLauncher(file.getName(), config);
+          appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+          if (matchString != null) {
+            LOG.warn("Match string \"{}\" is ignored for launching applications specified in properties file", matchString);
           }
-        }
-      }
-
-      if (appFactory == null && matchString != null) {
-        // attempt to interpret argument as property file - do we still need it?
-        try {
-          File file = new File(expandFileName(commandLineInfo.args[1], true));
-          if (file.exists()) {
-            if (commandLineInfo.args[1].endsWith(".properties")) {
-              appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
-            }
-            else if (commandLineInfo.args[1].endsWith(".json")) {
-              appFactory = new StramAppLauncher.JsonFileAppFactory(file);
-            }
-          }
-        }
-        catch (Throwable t) {
-          // ignore
-        }
-      }
-
-      if (appFactory == null) {
-        List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString, commandLineInfo.exactMatch);
-        if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
-          throw new CliException("No applications matching \"" + matchString + "\" bundled in jar.");
-        }
-        else if (matchingAppFactories.size() == 1) {
-          appFactory = matchingAppFactories.get(0);
-        }
-        else if (matchingAppFactories.size() > 1) {
-
-          //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
-          TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
-          // Display matching applications
-          for (int i = 0; i < matchingAppFactories.size(); i++) {
-            String appName = matchingAppFactories.get(i).getName();
-            String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
-            if (appAlias != null) {
-              appName = appAlias;
-            }
-            appNamesInAlphabeticalOrder.put(appName, i);
-          }
-
-          //Create a mapping between the app display number and original index at matchingAppFactories
-          int index = 1;
-          HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
-          for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
-            //Map display number of the app to original unsorted index
-            displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
-
-            //Display the app names
-            System.out.printf("%3d. %s\n", index++, entry.getKey());
-          }
-
-          // Exit if not in interactive mode
-          if (!consolePresent) {
-            throw new CliException("More than one application in jar file match '" + matchString + "'");
-          }
-          else {
-
-            boolean useHistory = reader.isHistoryEnabled();
-            reader.setHistoryEnabled(false);
-            History previousHistory = reader.getHistory();
-            History dummyHistory = new MemoryHistory();
-            reader.setHistory(dummyHistory);
-            List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
-            for (Completer c : completers) {
-              reader.removeCompleter(c);
-            }
-            reader.setHandleUserInterrupt(true);
-            String optionLine;
-            try {
-              optionLine = reader.readLine("Choose application: ");
-            }
-            finally {
-              reader.setHandleUserInterrupt(false);
-              reader.setHistoryEnabled(useHistory);
-              reader.setHistory(previousHistory);
-              for (Completer c : completers) {
-                reader.addCompleter(c);
-              }
-            }
-            try {
-              int option = Integer.parseInt(optionLine);
-              if (0 < option && option <= matchingAppFactories.size()) {
-                int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
-                appFactory = matchingAppFactories.get(appIndex);
-              }
-            }
-            catch (Exception ex) {
-              // ignore
-            }
-          }
-        }
-
-      }
-
-      if (appFactory != null) {
-        if (!commandLineInfo.localMode) {
-
-          byte[] licenseBytes;
-          if (commandLineInfo.licenseFile != null) {
-            LOG.info("Using license at {} instead of the one in configuration to launch this application", commandLineInfo.licenseFile);
-            licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile, conf);
-          }
-          else {
-            licenseBytes = StramClientUtils.getLicense(conf);
-          }
-          // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
-          PrintStream originalStream = System.out;
-          ApplicationId appId = null;
+        } else {
+          // see if it's an app package
+          AppPackage ap = null;
           try {
-            if (raw) {
-              PrintStream dummyStream = new PrintStream(new OutputStream()
-              {
-                @Override
-                public void write(int b)
-                {
-                  // no-op
-                }
-
-              });
-              System.setOut(dummyStream);
+            ap = new AppPackage(new File(fileName), true);
+          } catch (Exception ex) {
+            // It's not an app package
+            if (requiredAppPackageName != null) {
+              throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\"");
             }
-            License license = LicenseAuthority.getLicense(licenseBytes);
-            String licenseId = license.getLicenseId();
-            LOG.info("Using license {}", licenseId);
-            ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
-            if (ar == null) {
-              /* SPOI-3161
+          }
+
+          if (ap != null) {
+            try {
+              checkCompatible(ap, cp);
+              launchAppPackage(ap, cp, commandLineInfo, reader);
+              return;
+            } finally {
+              IOUtils.closeQuietly(ap);
+            }
+          }
+          submitApp = getStramAppLauncher(fileName, config, commandLineInfo.ignorePom);
+        }
+        submitApp.loadDependencies();
+        
+        if (commandLineInfo.origAppId != null) {
+          // ensure app is not running
+          ApplicationReport ar = null;
+          try {
+            ar = getApplication(commandLineInfo.origAppId);
+          } catch (Exception e) {
+            // application (no longer) in the RM history, does not prevent restart from state in DFS
+            LOG.debug("Cannot determine status of application {} {}", commandLineInfo.origAppId, ExceptionUtils.getMessage(e));
+          }
+          if (ar != null) {
+            if (ar.getFinalApplicationStatus() == FinalApplicationStatus.UNDEFINED) {
+              throw new CliException("Cannot relaunch non-terminated application: " + commandLineInfo.origAppId + " " + ar.getYarnApplicationState());
+            }
+            if (appFactory == null && matchString == null) {
+              // skip selection if we can match application name from previous run
+              List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, ar.getName(), commandLineInfo.exactMatch);
+              for (AppFactory af : matchingAppFactories) {
+                String appName = submitApp.getLogicalPlanConfiguration().getAppAlias(af.getName());
+                if (appName == null) {
+                  appName = af.getName();
+                }
+                // limit to exact match
+                if (appName.equals(ar.getName())) {
+                  appFactory = af;
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        if (appFactory == null && matchString != null) {
+          // attempt to interpret argument as property file - do we still need it?
+          try {
+            File file = new File(expandFileName(commandLineInfo.args[1], true));
+            if (file.exists()) {
+              if (commandLineInfo.args[1].endsWith(".properties")) {
+                appFactory = new StramAppLauncher.PropertyFileAppFactory(file);
+              } else if (commandLineInfo.args[1].endsWith(".json")) {
+                appFactory = new StramAppLauncher.JsonFileAppFactory(file);
+              }
+            }
+          } catch (Throwable t) {
+            // ignore
+          }
+        }
+        
+        if (appFactory == null) {
+          List<AppFactory> matchingAppFactories = getMatchingAppFactories(submitApp, matchString, commandLineInfo.exactMatch);
+          if (matchingAppFactories == null || matchingAppFactories.isEmpty()) {
+            throw new CliException("No applications matching \"" + matchString + "\" bundled in jar.");
+          } else if (matchingAppFactories.size() == 1) {
+            appFactory = matchingAppFactories.get(0);
+          } else if (matchingAppFactories.size() > 1) {
+
+            //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
+            TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
+            // Display matching applications
+            for (int i = 0; i < matchingAppFactories.size(); i++) {
+              String appName = matchingAppFactories.get(i).getName();
+              String appAlias = submitApp.getLogicalPlanConfiguration().getAppAlias(appName);
+              if (appAlias != null) {
+                appName = appAlias;
+              }
+              appNamesInAlphabeticalOrder.put(appName, i);
+            }
+
+            //Create a mapping between the app display number and original index at matchingAppFactories
+            int index = 1;
+            HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
+            for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
+              //Map display number of the app to original unsorted index
+              displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
+
+              //Display the app names
+              System.out.printf("%3d. %s\n", index++, entry.getKey());
+            }
+
+            // Exit if not in interactive mode
+            if (!consolePresent) {
+              throw new CliException("More than one application in jar file match '" + matchString + "'");
+            } else {
+              
+              boolean useHistory = reader.isHistoryEnabled();
+              reader.setHistoryEnabled(false);
+              History previousHistory = reader.getHistory();
+              History dummyHistory = new MemoryHistory();
+              reader.setHistory(dummyHistory);
+              List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+              for (Completer c : completers) {
+                reader.removeCompleter(c);
+              }
+              reader.setHandleUserInterrupt(true);
+              String optionLine;
               try {
-                LOG.debug("License agent is not running for {}. Trying to automatically start a license agent.", licenseId);
-                activateLicense(commandLineInfo.licenseFile);
-                long timeout = System.currentTimeMillis() + TIMEOUT_AFTER_ACTIVATE_LICENSE;
-                boolean waitMessagePrinted = false;
-                do {
-                  Thread.sleep(1000);
-                  ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
-                  if (ar == null) {
-                    if (!raw && !waitMessagePrinted) {
-                      System.out.println("Waiting for license agent to start...");
-                      waitMessagePrinted = true;
-                    }
-                  }
-                  else if (waitMessagePrinted) {
-                    System.out.println("License agent started.");
-                  }
+                optionLine = reader.readLine("Choose application: ");
+              } finally {
+                reader.setHandleUserInterrupt(false);
+                reader.setHistoryEnabled(useHistory);
+                reader.setHistory(previousHistory);
+                for (Completer c : completers) {
+                  reader.addCompleter(c);
                 }
-                while (ar == null && System.currentTimeMillis() <= timeout);
               }
-              catch (Exception ex) {
+              try {
+                int option = Integer.parseInt(optionLine);
+                if (0 < option && option <= matchingAppFactories.size()) {
+                  int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
+                  appFactory = matchingAppFactories.get(appIndex);
+                }
+              } catch (Exception ex) {
+                // ignore
+              }
+            }
+          }
+          
+        }
+        
+        if (appFactory != null) {
+          if (!commandLineInfo.localMode) {
+            
+            byte[] licenseBytes;
+            if (commandLineInfo.licenseFile != null) {
+              LOG.info("Using license at {} instead of the one in configuration to launch this application", commandLineInfo.licenseFile);
+              licenseBytes = StramClientUtils.getLicense(commandLineInfo.licenseFile, conf);
+            } else {
+              licenseBytes = StramClientUtils.getLicense(conf);
+            }
+            // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
+            PrintStream originalStream = System.out;
+            ApplicationId appId = null;
+            try {
+              if (raw) {
+                PrintStream dummyStream = new PrintStream(new OutputStream()
+                {
+                  @Override
+                  public void write(int b)
+                  {
+                    // no-op
+                  }
+                  
+                });
+                System.setOut(dummyStream);
+              }
+              License license = LicenseAuthority.getLicense(licenseBytes);
+              String licenseId = license.getLicenseId();
+              LOG.info("Using license {}", licenseId);
+              ApplicationReport ar = LicensingAgentProtocolHelper.getLicensingAgentAppReport(licenseId, yarnClient);
+              if (ar == null) {
                 if (license.getLicenseType() == License.LicenseType.EVALUATION) {
-                  throw new CliException("Trouble activating license. Please contact <support@datatorrent.com> for help", ex);
-                }
-                else {
-                  LOG.warn("Exception activating license ", ex);
+                  throw new CliException("License manager not running. Please activate license");
+                } else {
+                  LOG.warn("License manager not running. Please activate license");
                 }
               }
-              */
-              if (license.getLicenseType() == License.LicenseType.EVALUATION) {
-                throw new CliException("License manager not running. Please activate license");
-              }
-              else {
-                LOG.warn("License manager not running. Please activate license");
+              appId = submitApp.launchApp(appFactory, licenseBytes);
+              currentApp = yarnClient.getApplicationReport(appId);
+            } finally {
+              if (raw) {
+                System.setOut(originalStream);
               }
             }
-            appId = submitApp.launchApp(appFactory, licenseBytes);
-            currentApp = yarnClient.getApplicationReport(appId);
-          }
-          finally {
-            if (raw) {
-              System.setOut(originalStream);
+            if (appId != null) {
+              printJson("{\"appId\": \"" + appId + "\"}");
             }
+          } else {
+            submitApp.runLocal(appFactory);
           }
-          if (appId != null) {
-            printJson("{\"appId\": \"" + appId + "\"}");
-          }
+        } else {
+          System.err.println("No application specified.");
         }
-        else {
-          submitApp.runLocal(appFactory);
-        }
+        
+      } finally {
+        IOUtils.closeQuietly(cp);
       }
-      else {
-        System.err.println("No application specified.");
-      }
-
     }
 
   }
@@ -3767,185 +3744,221 @@ public class DTCli
 
   }
 
-  private class LaunchAppPackageCommand implements Command
+  private void checkCompatible(AppPackage ap, ConfigPackage cp)
   {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      String[] newArgs = new String[args.length - 1];
-      System.arraycopy(args, 1, newArgs, 0, args.length - 1);
-      LaunchCommandLineInfo commandLineInfo = getLaunchCommandLineInfo(newArgs);
+    if (cp == null) {
+      return;
+    }
+    String requiredAppPackageName = cp.getAppPackageName();
+    if (requiredAppPackageName != null && !requiredAppPackageName.equals(ap.getAppPackageName())) {
+      throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\"");
+    }
+    String requiredAppPackageMinVersion = cp.getAppPackageMinVersion();
+    if (requiredAppPackageMinVersion != null && VersionInfo.compare(requiredAppPackageMinVersion, ap.getAppPackageVersion()) > 0) {
+      throw new CliException("Config package requires an app package minimum version of \"" + requiredAppPackageMinVersion + "\". The app package is of version \"" + ap.getAppPackageVersion() + "\"");
+    }
+    String requiredAppPackageMaxVersion = cp.getAppPackageMaxVersion();
+    if (requiredAppPackageMaxVersion != null && VersionInfo.compare(requiredAppPackageMaxVersion, ap.getAppPackageVersion()) < 0) {
+      throw new CliException("Config package requires an app package maximum version of \"" + requiredAppPackageMaxVersion + "\". The app package is of version \"" + ap.getAppPackageVersion() + "\"");
+    }
+  }
 
-      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
-      String matchAppName = null;
-      if (commandLineInfo.args.length > 1) {
-        matchAppName = commandLineInfo.args[1];
-      }
+  private void launchAppPackage(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo, ConsoleReader reader) throws Exception
+  {
+    new LaunchCommand().execute(getLaunchAppPackageArgs(ap, cp, commandLineInfo, reader), reader);
+  }
 
-      List<AppInfo> applications = new ArrayList<AppInfo>(ap.getApplications());
+  String[] getLaunchAppPackageArgs(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo, ConsoleReader reader) throws Exception
+  {
+    String matchAppName = null;
+    if (commandLineInfo.args.length > 1) {
+      matchAppName = commandLineInfo.args[1];
+    }
 
-      if (matchAppName != null) {
-        Iterator<AppInfo> it = applications.iterator();
-        while (it.hasNext()) {
-          AppInfo ai = it.next();
-          if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
-                  || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
-            it.remove();
-          }
+    List<AppInfo> applications = new ArrayList<AppInfo>(ap.getApplications());
+
+    if (matchAppName != null) {
+      Iterator<AppInfo> it = applications.iterator();
+      while (it.hasNext()) {
+        AppInfo ai = it.next();
+        if ((commandLineInfo.exactMatch && !ai.name.equals(matchAppName))
+                || !ai.name.toLowerCase().matches(".*" + matchAppName.toLowerCase() + ".*")) {
+          it.remove();
         }
-      }
-
-      AppInfo selectedApp = null;
-
-      if (applications.isEmpty()) {
-        throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
-      }
-      else if (applications.size() == 1) {
-        selectedApp = applications.get(0);
-      }
-      else {
-        //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
-        TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
-        // Display matching applications
-        for (int i = 0; i < applications.size(); i++) {
-          String appName = applications.get(i).name;
-          appNamesInAlphabeticalOrder.put(appName, i);
-        }
-
-        //Create a mapping between the app display number and original index at matchingAppFactories
-        int index = 1;
-        HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
-        for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
-          //Map display number of the app to original unsorted index
-          displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
-
-          //Display the app names
-          System.out.printf("%3d. %s\n", index++, entry.getKey());
-        }
-
-        // Exit if not in interactive mode
-        if (!consolePresent) {
-          throw new CliException("More than one application in Application Package match '" + matchAppName + "'");
-        }
-        else {
-
-          boolean useHistory = reader.isHistoryEnabled();
-          reader.setHistoryEnabled(false);
-          History previousHistory = reader.getHistory();
-          History dummyHistory = new MemoryHistory();
-          reader.setHistory(dummyHistory);
-          List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
-          for (Completer c : completers) {
-            reader.removeCompleter(c);
-          }
-          reader.setHandleUserInterrupt(true);
-          String optionLine;
-          try {
-            optionLine = reader.readLine("Choose application: ");
-          }
-          finally {
-            reader.setHandleUserInterrupt(false);
-            reader.setHistoryEnabled(useHistory);
-            reader.setHistory(previousHistory);
-            for (Completer c : completers) {
-              reader.addCompleter(c);
-            }
-          }
-          try {
-            int option = Integer.parseInt(optionLine);
-            if (0 < option && option <= applications.size()) {
-              int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
-              selectedApp = applications.get(appIndex);
-            }
-          }
-          catch (Exception ex) {
-            // ignore
-          }
-        }
-      }
-
-      if (selectedApp == null) {
-        throw new CliException("No application selected");
-      }
-
-      try {
-        DTConfiguration launchProperties = getLaunchAppPackageProperties(ap, commandLineInfo, selectedApp.name);
-        String appFile = ap.tempDirectory() + "/app/" + selectedApp.file;
-
-        List<String> launchArgs = new ArrayList<String>();
-
-        launchArgs.add("launch");
-        launchArgs.add("-exactMatch");
-        List<String> absClassPath = new ArrayList<String>(ap.getClassPath());
-        for (int i = 0; i < absClassPath.size(); i++) {
-          String path = absClassPath.get(i);
-          if (!path.startsWith("/")) {
-            absClassPath.set(i, ap.tempDirectory() + "/" + path);
-          }
-        }
-        StringBuilder resourcesVal = new StringBuilder();
-        if (!absClassPath.isEmpty() || commandLineInfo.resources != null) {
-          if (!absClassPath.isEmpty()) {
-            resourcesVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
-          }
-          if (commandLineInfo.resources != null) {
-            if (resourcesVal.length() > 0) {
-              resourcesVal.append(",");
-            }
-            resourcesVal.append(commandLineInfo.resources);
-          }
-        }
-        if (appFile.endsWith(".json") || appFile.endsWith(".properties")) {
-          if (resourcesVal.length() > 0) {
-            resourcesVal.append(",");
-          }
-          resourcesVal.append(ap.tempDirectory()).append("/app/*.jar");
-        }
-        if (resourcesVal.length() > 0) {
-          launchArgs.add("-resources");
-          launchArgs.add(resourcesVal.toString());
-        }
-
-        File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
-        launchProperties.writeToFile(launchPropertiesFile, "");
-        launchArgs.add("-conf");
-        launchArgs.add(launchPropertiesFile.getCanonicalPath());
-        if (commandLineInfo.localMode) {
-          launchArgs.add("-local");
-        }
-        if (commandLineInfo.archives != null) {
-          launchArgs.add("-archives");
-          launchArgs.add(commandLineInfo.archives);
-        }
-        if (commandLineInfo.origAppId != null) {
-          launchArgs.add("-originalAppId");
-          launchArgs.add(commandLineInfo.origAppId);
-        }
-        if (commandLineInfo.licenseFile != null) {
-          launchArgs.add("-license");
-          launchArgs.add(commandLineInfo.licenseFile);
-        }
-        if (commandLineInfo.queue != null) {
-          launchArgs.add("-queue");
-          launchArgs.add(commandLineInfo.queue);
-        }
-        launchArgs.add(appFile);
-        if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
-          launchArgs.add(selectedApp.name);
-        }
-
-
-        LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
-        new LaunchCommand().execute(launchArgs.toArray(new String[]{}), reader);
-      }
-      finally {
-        IOUtils.closeQuietly(ap);
       }
     }
 
+    AppInfo selectedApp = null;
+
+    if (applications.isEmpty()) {
+      throw new CliException("No applications in Application Package" + (matchAppName != null ? " matching \"" + matchAppName + "\"" : ""));
+    } else if (applications.size() == 1) {
+      selectedApp = applications.get(0);
+    } else {
+      //Store the appNames sorted in alphabetical order and their position in matchingAppFactories list
+      TreeMap<String, Integer> appNamesInAlphabeticalOrder = new TreeMap<String, Integer>();
+      // Display matching applications
+      for (int i = 0; i < applications.size(); i++) {
+        String appName = applications.get(i).name;
+        appNamesInAlphabeticalOrder.put(appName, i);
+      }
+
+      //Create a mapping between the app display number and original index at matchingAppFactories
+      int index = 1;
+      HashMap<Integer, Integer> displayIndexToOriginalUnsortedIndexMap = new HashMap<Integer, Integer>();
+      for (Map.Entry<String, Integer> entry : appNamesInAlphabeticalOrder.entrySet()) {
+        //Map display number of the app to original unsorted index
+        displayIndexToOriginalUnsortedIndexMap.put(index, entry.getValue());
+
+        //Display the app names
+        System.out.printf("%3d. %s\n", index++, entry.getKey());
+      }
+
+      // Exit if not in interactive mode
+      if (!consolePresent) {
+        throw new CliException("More than one application in Application Package match '" + matchAppName + "'");
+      } else {
+        boolean useHistory = reader.isHistoryEnabled();
+        reader.setHistoryEnabled(false);
+        History previousHistory = reader.getHistory();
+        History dummyHistory = new MemoryHistory();
+        reader.setHistory(dummyHistory);
+        List<Completer> completers = new ArrayList<Completer>(reader.getCompleters());
+        for (Completer c : completers) {
+          reader.removeCompleter(c);
+        }
+        reader.setHandleUserInterrupt(true);
+        String optionLine;
+        try {
+          optionLine = reader.readLine("Choose application: ");
+        } finally {
+          reader.setHandleUserInterrupt(false);
+          reader.setHistoryEnabled(useHistory);
+          reader.setHistory(previousHistory);
+          for (Completer c : completers) {
+            reader.addCompleter(c);
+          }
+        }
+        try {
+          int option = Integer.parseInt(optionLine);
+          if (0 < option && option <= applications.size()) {
+            int appIndex = displayIndexToOriginalUnsortedIndexMap.get(option);
+            selectedApp = applications.get(appIndex);
+          }
+        } catch (Exception ex) {
+          // ignore
+        }
+      }
+    }
+
+    if (selectedApp == null) {
+      throw new CliException("No application selected");
+    }
+
+    DTConfiguration launchProperties = getLaunchAppPackageProperties(ap, cp, commandLineInfo, selectedApp.name);
+    String appFile = ap.tempDirectory() + "/app/" + selectedApp.file;
+
+    List<String> launchArgs = new ArrayList<String>();
+
+    launchArgs.add("launch");
+    launchArgs.add("-exactMatch");
+    List<String> absClassPath = new ArrayList<String>(ap.getClassPath());
+    for (int i = 0; i < absClassPath.size(); i++) {
+      String path = absClassPath.get(i);
+      if (!path.startsWith("/")) {
+        absClassPath.set(i, ap.tempDirectory() + "/" + path);
+      }
+    }
+
+    if (cp != null) {
+      StringBuilder files = new StringBuilder();
+      for (String file : cp.getClassPath()) {
+        if (files.length() != 0) {
+          files.append(',');
+        }
+        files.append(cp.tempDirectory()).append(File.separatorChar).append(file);
+      }
+      if (commandLineInfo.resources != null) {
+        commandLineInfo.resources = files.toString() + "," + commandLineInfo.resources;
+      } else {
+        commandLineInfo.resources = files.toString();
+      }
+
+      files.setLength(0);
+      for (String file : cp.getFiles()) {
+        if (files.length() != 0) {
+          files.append(',');
+        }
+        files.append(cp.tempDirectory()).append(File.separatorChar).append(file);
+      }
+      if (commandLineInfo.files != null) {
+        commandLineInfo.files = files.toString() + "," + commandLineInfo.files;
+      } else {
+        commandLineInfo.files = files.toString();
+      }
+    }
+
+    StringBuilder resourcesVal = new StringBuilder();
+    if (!absClassPath.isEmpty() || commandLineInfo.resources != null) {
+      if (!absClassPath.isEmpty()) {
+        resourcesVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
+      }
+      if (commandLineInfo.resources != null) {
+        if (resourcesVal.length() > 0) {
+          resourcesVal.append(",");
+        }
+        resourcesVal.append(commandLineInfo.resources);
+      }
+    }
+    if (appFile.endsWith(".json") || appFile.endsWith(".properties")) {
+      if (resourcesVal.length() > 0) {
+        resourcesVal.append(",");
+      }
+      resourcesVal.append(ap.tempDirectory()).append("/app/*.jar");
+    }
+    if (resourcesVal.length() > 0) {
+      launchArgs.add("-resources");
+      launchArgs.add(resourcesVal.toString());
+    }
+
+    File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
+    launchProperties.writeToFile(launchPropertiesFile, "");
+    launchArgs.add("-conf");
+    launchArgs.add(launchPropertiesFile.getCanonicalPath());
+    if (commandLineInfo.localMode) {
+      launchArgs.add("-local");
+    }
+    if (commandLineInfo.archives != null) {
+      launchArgs.add("-archives");
+      launchArgs.add(commandLineInfo.archives);
+    }
+    if (commandLineInfo.files != null) {
+      launchArgs.add("-files");
+      launchArgs.add(commandLineInfo.files);
+    }
+    if (commandLineInfo.origAppId != null) {
+      launchArgs.add("-originalAppId");
+      launchArgs.add(commandLineInfo.origAppId);
+    }
+    if (commandLineInfo.licenseFile != null) {
+      launchArgs.add("-license");
+      launchArgs.add(commandLineInfo.licenseFile);
+    }
+    if (commandLineInfo.queue != null) {
+      launchArgs.add("-queue");
+      launchArgs.add(commandLineInfo.queue);
+    }
+    launchArgs.add(appFile);
+    if (!appFile.endsWith(".json") && !appFile.endsWith(".properties")) {
+      launchArgs.add(selectedApp.name);
+    }
+
+    LOG.debug("Launch command: {}", StringUtils.join(launchArgs, " "));
+    return launchArgs.toArray(new String[]{});
   }
 
-  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, LaunchCommandLineInfo commandLineInfo, String appName) throws Exception
+
+  DTConfiguration getLaunchAppPackageProperties(AppPackage ap, ConfigPackage cp, LaunchCommandLineInfo commandLineInfo, String appName) throws Exception
   {
     DTConfiguration launchProperties = new DTConfiguration();
     List<AppInfo> applications = ap.getApplications();
@@ -3989,7 +4002,13 @@ public class DTCli
         requiredProperties.remove(entry.getKey());
       }
     }
-    if (commandLineInfo.configFile != null) {
+    if (cp != null) {
+      Map<String, String> properties = cp.getProperties(appName);
+      for (Map.Entry<String, String> entry : properties.entrySet()) {
+        launchProperties.set(entry.getKey(), entry.getValue(), Scope.TRANSIENT, null);
+        requiredProperties.remove(entry.getKey());
+      }
+    } else if (commandLineInfo.configFile != null) {
       DTConfiguration givenConfig = new DTConfiguration();
       givenConfig.loadFile(new File(commandLineInfo.configFile));
       for (Map.Entry<String, String> entry : givenConfig) {
@@ -4107,6 +4126,7 @@ public class DTCli
     final Option apConfigFile = add(OptionBuilder.withArgName("app package configuration file").hasArg().withDescription("Specify an application configuration file within the app package if launching an app package.").create("apconf"));
     final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
     final Option resources = add(OptionBuilder.withArgName("comma separated list of resources").hasArg().withDescription("Specify comma separated jar files or other resource files to include in the classpath.").create("resources"));
+    final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied on the compute machines.").create("files"));
     final Option archives = add(OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives"));
     final Option license = add(OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license"));
     final Option ignorePom = add(new Option("ignorepom", "Do not run maven to find the dependency"));
@@ -4148,6 +4168,7 @@ public class DTCli
     }
     result.resources = line.getOptionValue(LAUNCH_OPTIONS.resources.getOpt());
     result.archives = line.getOptionValue(LAUNCH_OPTIONS.archives.getOpt());
+    result.files = line.getOptionValue(LAUNCH_OPTIONS.files.getOpt());
     result.licenseFile = line.getOptionValue(LAUNCH_OPTIONS.license.getOpt());
     result.queue = line.getOptionValue(LAUNCH_OPTIONS.queue.getOpt());
     result.args = line.getArgs();
@@ -4164,6 +4185,7 @@ public class DTCli
     String apConfigFile;
     Map<String, String> overrideProperties;
     String resources;
+    String files;
     String queue;
     String archives;
     String licenseFile;

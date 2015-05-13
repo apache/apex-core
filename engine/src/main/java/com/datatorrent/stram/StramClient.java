@@ -87,6 +87,7 @@ public class StramClient
   private String queueName;
   private String applicationType = YARN_APPLICATION_TYPE;
   private String archives;
+  private String files;
   private LinkedHashSet<String> resources;
 
   // platform dependencies that are not part of Hadoop and need to be deployed,
@@ -452,6 +453,14 @@ public class StramClient
         LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.ARCHIVE, archivesCsv, localResources, fs);
       }
 
+      if (files != null) {
+        String[] localFiles = files.split(",");
+        String filesCsv = copyFromLocal(fs, appPath, localFiles);
+        LOG.info("files: {}", filesCsv);
+        dag.getAttributes().put(LogicalPlan.FILES, filesCsv);
+        LaunchContainerRunnable.addFilesToLocalResources(LocalResourceType.FILE, filesCsv, localResources, fs);
+      }
+
       dag.getAttributes().put(LogicalPlan.APPLICATION_PATH, appPath.toString());
       if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) { /* which would be the most likely case */
         Path checkpointPath = new Path(appPath, LogicalPlan.SUBDIR_CHECKPOINTS);
@@ -698,5 +707,10 @@ public class StramClient
   public void setArchives(String archives)
   {
     this.archives = archives;
+  }
+
+  public void setFiles(String files)
+  {
+    this.files = files;
   }
 }

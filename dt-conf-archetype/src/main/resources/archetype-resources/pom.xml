@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  
+  <groupId>${groupId}</groupId>
+  <version>${version}</version>
+  <artifactId>${artifactId}</artifactId>
+  <packaging>jar</packaging>
+
+  <!-- change these to the appropriate values -->
+  <name>My DataTorrent Application Configuration</name>
+  <description>My DataTorrent Application Configuration Description</description>
+
+  <properties>
+    <datatorrent.apppackage.name>myapp</datatorrent.apppackage.name>
+    <datatorrent.apppackage.minversion>1.0.0</datatorrent.apppackage.minversion>
+    <datatorrent.apppackage.maxversion>1.9999.9999</datatorrent.apppackage.maxversion>
+    <datatorrent.appconf.classpath>classpath/*</datatorrent.appconf.classpath>
+    <datatorrent.appconf.files>files/*</datatorrent.appconf.files>
+  </properties>
+
+  <!-- repository to provide the DataTorrent artifacts -->
+  <repositories>
+    <repository>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>Datatorrent-Releases</id>
+      <name>DataTorrent Release Repository</name>
+      <url>https://www.datatorrent.com/maven/content/repositories/releases/</url>
+    </repository>
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <id>DataTorrent-Snapshots</id>
+      <name>DataTorrent Early Access Program Snapshot Repository</name>
+      <url>https://www.datatorrent.com/maven/content/repositories/snapshots/</url>
+    </repository>
+  </repositories>
+
+  <build>
+    <plugins>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-eclipse-plugin</artifactId>
+         <version>2.9</version>
+         <configuration>
+           <downloadSources>true</downloadSources>
+         </configuration>
+       </plugin>
+       <plugin>
+         <artifactId>maven-compiler-plugin</artifactId>
+         <version>2.3.2</version>
+         <configuration>
+           <encoding>UTF-8</encoding>
+           <source>1.6</source>
+           <target>1.6</target>
+           <debug>true</debug>
+           <optimize>false</optimize>
+           <showDeprecation>true</showDeprecation>
+           <showWarnings>true</showWarnings>
+         </configuration>
+       </plugin>
+       <plugin>
+         <artifactId>maven-dependency-plugin</artifactId>
+         <version>2.8</version>
+         <executions>
+           <execution>
+             <id>copy-dependencies</id>
+             <phase>prepare-package</phase>
+             <goals>
+               <goal>copy-dependencies</goal>
+             </goals>
+             <configuration>
+               <outputDirectory>target/deps</outputDirectory>
+               <includeScope>runtime</includeScope>
+             </configuration>
+           </execution>
+           <execution>
+             <id>unpack</id>
+             <phase>package</phase>
+             <goals>
+               <goal>unpack</goal>
+             </goals>
+             <configuration>
+               <artifactItems>
+                 <artifactItem>
+                   <groupId>${project.groupId}</groupId>
+                   <artifactId>${project.artifactId}</artifactId>
+                   <version>${project.version}</version>
+                   <type>jar</type>
+                   <includes>META-INF/MANIFEST.MF</includes>
+                   <outputDirectory>target</outputDirectory>
+                 </artifactItem>
+               </artifactItems>
+             </configuration>
+           </execution>
+         </executions>
+       </plugin>
+
+       <plugin>
+         <artifactId>maven-assembly-plugin</artifactId>
+         <executions>
+           <execution>
+             <id>conf-package-assembly</id>
+             <phase>package</phase>
+             <goals>
+               <goal>single</goal>
+             </goals>
+             <configuration>
+               <finalName>DTConfig-${project.artifactId}</finalName>
+               <appendAssemblyId>false</appendAssemblyId>
+               <descriptors>
+                 <descriptor>src/assemble/confPackage.xml</descriptor>
+               </descriptors>
+               <archiverConfig>
+                 <defaultDirectoryMode>0755</defaultDirectoryMode>
+               </archiverConfig>                  
+               <archive>
+                 <manifestEntries>
+                   <DT-App-Package-Name>${datatorrent.apppackage.name}</DT-App-Package-Name>
+                   <DT-App-Package-Min-Version>${datatorrent.apppackage.minversion}</DT-App-Package-Min-Version>
+                   <DT-App-Package-Max-Version>${datatorrent.apppackage.maxversion}</DT-App-Package-Max-Version>
+                   <DT-Conf-Package-Name>${project.artifactId}</DT-Conf-Package-Name>
+                   <DT-Conf-Package-Display-Name>${project.name}</DT-Conf-Package-Display-Name>
+                   <DT-Conf-Package-Description>${project.description}</DT-Conf-Package-Description>
+                   <Class-Path>${datatorrent.appconf.classpath}</Class-Path>
+                   <Files>${datatorrent.appconf.files}</Files>
+                 </manifestEntries>
+               </archive>
+             </configuration>
+           </execution>
+         </executions>
+       </plugin>
+    </plugins>
+  </build>
+
+</project>

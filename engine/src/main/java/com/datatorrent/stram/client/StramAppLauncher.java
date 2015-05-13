@@ -482,6 +482,7 @@ public class StramAppLauncher
       }
 
       client.setResources(libjars);
+      client.setFiles(conf.get(FILES_CONF_KEY_NAME));
       client.setArchives(conf.get(ARCHIVES_CONF_KEY_NAME));
       client.setOriginalAppId(conf.get(ORIGINAL_APP_ID));
       client.setQueueName(conf.get(QUEUE_NAME));

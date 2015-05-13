@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Archiver-Version: Plexus Archiver
+Created-By: Apache Maven
+Built-By: david
+Build-Jdk: 1.6.0_45
+DT-App-Package-Max-Version: 1.9999
+DT-App-Package-Min-Version: 1.0
+DT-App-Package-Name: pi-demo
+DT-Conf-Package-Description: My DataTorrent Application Configuration 
+ Description
+DT-Conf-Package-Display-Name: My DataTorrent Application Configuration
+DT-Conf-Package-Name: mydtconf
+Files: files/*
+Class-Path: classpath/*
+

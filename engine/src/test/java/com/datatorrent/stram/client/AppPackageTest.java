@@ -85,7 +85,7 @@ public class AppPackageTest
   public void testAppPackage() throws Exception
   {
     Assert.assertEquals("pi-demo", json.getString("appPackageName"));
-    Assert.assertEquals("1.0-SNAPSHOT", json.getString("appPackageVersion"));
+    Assert.assertEquals("1.0", json.getString("appPackageVersion"));
     Assert.assertEquals("1.0.0", json.getString("dtEngineVersion"));
     Assert.assertEquals("lib/*.jar", json.getJSONArray("classPath").getString(0));
 

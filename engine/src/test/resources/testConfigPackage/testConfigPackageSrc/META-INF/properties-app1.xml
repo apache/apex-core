@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>aaa</name>
+    <value>111</value>
+  </property>
+  <property>
+    <name>foo</name>
+    <value>789</value>
+  </property>
+  <property>
+    <name>baz</name>
+    <value>888</value>
+  </property>
+</configuration>
+

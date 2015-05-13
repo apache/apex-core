@@ -105,6 +105,23 @@ abstract public class StramTestSupport
     return file;
   }
 
+  /**
+   * Create an confPackage zip using the sample confPackage located in
+   * src/test/resources/testConfPackage/testConfPackageSrc.
+   *
+   * @param file The file whose path will be used to create the confPackage zip
+   * @return The File object that can be used in the ConfigPackage constructor.
+   * @throws net.lingala.zip4j.exception.ZipException
+   */
+  public static File createConfigPackageFile(File file) throws net.lingala.zip4j.exception.ZipException
+  {
+    ZipFile zipFile = new ZipFile(file);
+    ZipParameters zipParameters = new ZipParameters();
+    zipParameters.setIncludeRootFolder(false);
+    zipFile.createZipFileFromFolder("src/test/resources/testConfigPackage/testConfigPackageSrc", zipParameters, false, Long.MAX_VALUE);
+    return file;
+  }
+
   public interface WaitCondition
   {
     boolean isComplete();

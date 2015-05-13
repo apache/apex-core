@@ -187,10 +187,10 @@ public class DTConfiguration implements Iterable<Map.Entry<String, String>>
     }
     valueEntry.scope = defaultScope;
 
-    if (!name.startsWith(StreamingApplication.DT_PREFIX)) {
-      LOG.warn("Name {} does not start with \"dt.\", ignoring property entry", name);
-      return;
-    }
+    //if (!name.startsWith(StreamingApplication.DT_PREFIX)) {
+    //  LOG.warn("Name {} does not start with \"dt.\", ignoring property entry", name);
+    //  return;
+    //}
     if (map.containsKey(name) && map.get(name).isFinal) {
       LOG.warn("Trying to override final property {}, ignoring property entry", name);
       return;

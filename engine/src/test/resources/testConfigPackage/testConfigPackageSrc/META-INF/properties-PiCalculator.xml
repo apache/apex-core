@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>dt.test.2</name>
+    <value>config-package-appname</value>
+  </property>
+</configuration>

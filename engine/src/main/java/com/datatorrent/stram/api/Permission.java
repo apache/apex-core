@@ -64,6 +64,18 @@ public enum Permission
    */
   MANAGE_OTHER_USERS_APP_PACKAGES(true),
   /**
+   * Upload Config Packages
+   */
+  UPLOAD_CONFIG_PACKAGES,
+  /**
+   * View other users' Config Packages
+   */
+  VIEW_OTHER_USERS_CONFIG_PACKAGES(true),
+  /**
+   * Manage other users' Config Packages
+   */
+  MANAGE_OTHER_USERS_CONFIG_PACKAGES(true),
+  /**
    * Manage users (create/delete users, change password)
    */
   MANAGE_USERS(true),
