@@ -182,7 +182,7 @@ public class StramMiniClusterTest
 
     LOG.info("Initializing Client");
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(conf);
-    tb.addFromProperties(dagProps);
+    tb.addFromProperties(dagProps, null);
     LogicalPlan dag = createDAG(tb);
     Configuration yarnConf = new Configuration(yarnCluster.getConfig());
     StramClient client = new StramClient(yarnConf, dag);
@@ -230,7 +230,7 @@ public class StramMiniClusterTest
 
     LOG.info("Initializing Client");
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
-    tb.addFromProperties(props);
+    tb.addFromProperties(props, null);
 
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()), createDAG(tb));
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {

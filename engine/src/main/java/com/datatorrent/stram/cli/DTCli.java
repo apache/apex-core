@@ -4033,7 +4033,7 @@ public class DTCli
       throw new CliException("Required properties not set: " + StringUtils.join(requiredProperties, ", "));
     }
 
-    StramClientUtils.evalProperties(launchProperties);
+    //StramClientUtils.evalProperties(launchProperties);
     return launchProperties;
   }
 

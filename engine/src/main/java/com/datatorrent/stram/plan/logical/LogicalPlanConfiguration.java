@@ -17,7 +17,6 @@ import javax.validation.ValidationException;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -40,6 +39,7 @@ import com.datatorrent.api.annotation.ApplicationAnnotation;
 import com.datatorrent.common.util.DTThrowable;
 
 import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
@@ -695,12 +695,12 @@ public class LogicalPlanConfiguration {
 
   private Conf addConf(StramElement element, String name, Conf ancestorConf) {
     StramElement parentElement = getAllowedParentElement(element, ancestorConf);
-    Conf conf = null;
+    Conf conf1 = null;
     Conf parentConf = getConf(parentElement, ancestorConf);
     if (parentConf != null) {
-      conf = parentConf.getOrAddChild(name, element, elementMaps.get(element));
+      conf1 = parentConf.getOrAddChild(name, element, elementMaps.get(element));
     }
-    return conf;
+    return conf1;
   }
 
   private StramElement getAllowedParentElement(StramElement element, Conf ancestorConf) {
@@ -725,8 +725,8 @@ public class LogicalPlanConfiguration {
 
   private <T extends Conf> List<T> getMatchingChildConf(List<? extends Conf> confs, String name, StramElement childType) {
     List<T> childConfs = new ArrayList<T>();
-    for (Conf conf : confs) {
-      List<T> matchingConfs = conf.getMatchingChildConf(name, childType);
+    for (Conf conf1 : confs) {
+      List<T> matchingConfs = conf1.getMatchingChildConf(name, childType);
       childConfs.addAll(matchingConfs);
     }
     return childConfs;
@@ -747,8 +747,9 @@ public class LogicalPlanConfiguration {
    * Add operators from flattened name value pairs in configuration object.
    * @param conf
    */
-  public void addFromConfiguration(Configuration conf) {
-    addFromProperties(toProperties(conf, StreamingApplication.DT_PREFIX));
+  public final void addFromConfiguration(Configuration conf)
+  {
+    addFromProperties(toProperties(conf, StreamingApplication.DT_PREFIX), null);
   }
 
   public static Properties toProperties(Configuration conf, String prefix) {
@@ -793,7 +794,7 @@ public class LogicalPlanConfiguration {
     return appAlias;
   }
 
-  public LogicalPlanConfiguration addFromJson(JSONObject json) throws JSONException
+  public LogicalPlanConfiguration addFromJson(JSONObject json, Configuration conf) throws JSONException
   {
     Properties prop = new Properties();
     JSONArray operatorArray = json.getJSONArray("operators");
@@ -854,7 +855,7 @@ public class LogicalPlanConfiguration {
           sinkPropertyValue.append(",");
         }
         JSONObject sink = sinks.getJSONObject(j);
-        sinkPropertyValue.append(sink.getString("operatorName") + "." + sink.getString("portName"));
+        sinkPropertyValue.append(sink.getString("operatorName")).append(".").append(sink.getString("portName"));
       }
       prop.setProperty(streamPrefix + STREAM_SINKS, sinkPropertyValue.toString());
       String locality = stream.optString("locality", null);
@@ -862,7 +863,7 @@ public class LogicalPlanConfiguration {
         prop.setProperty(streamPrefix + STREAM_LOCALITY, locality);
       }
     }
-    return addFromProperties(prop);
+    return addFromProperties(prop, conf);
   }
 
 
@@ -872,10 +873,14 @@ public class LogicalPlanConfiguration {
    * entirety.
    *
    * @param props
+   * @param conf configuration for variable substitution and evaluation
    * @return Logical plan configuration.
    */
-  public LogicalPlanConfiguration addFromProperties(Properties props) {
-
+  public LogicalPlanConfiguration addFromProperties(Properties props, Configuration conf)
+  {
+    if (conf != null) {
+      StramClientUtils.evalProperties(props, conf);
+    }
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
       this.properties.setProperty(propertyName, propertyValue);
@@ -998,7 +1003,7 @@ public class LogicalPlanConfiguration {
   {
     // build DAG from properties
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
-    tb.addFromProperties(props);
+    tb.addFromProperties(props, conf);
     LogicalPlan dag = new LogicalPlan();
     tb.populateDAG(dag);
     // configure with embedded settings
@@ -1012,7 +1017,7 @@ public class LogicalPlanConfiguration {
   {
     // build DAG from properties
     LogicalPlanConfiguration tb = new LogicalPlanConfiguration(new Configuration(false));
-    tb.addFromJson(json);
+    tb.addFromJson(json, conf);
     LogicalPlan dag = new LogicalPlan();
     tb.populateDAG(dag);
     // configure with embedded settings
@@ -1161,8 +1166,8 @@ public class LogicalPlanConfiguration {
     Map<String, String> appProps = new HashMap<String, String>();
     // Apply the configurations in reverse order since the higher priority ones are at the beginning
     for(int i = appConfs.size()-1; i >= 0; i--){
-      AppConf conf = appConfs.get(i);
-      appProps.putAll(Maps.fromProperties(conf.properties));
+      AppConf conf1 = appConfs.get(i);
+      appProps.putAll(Maps.fromProperties(conf1.properties));
     }
     return appProps;
   }
@@ -1195,8 +1200,8 @@ public class LogicalPlanConfiguration {
     // direct settings
     // Apply the configurations in reverse order since the higher priority ones are at the beginning
     for (int i = opConfs.size()-1; i >= 0; i--) {
-      Conf conf = opConfs.get(i);
-      opProps.putAll(Maps.fromProperties(conf.properties));
+      Conf conf1 = opConfs.get(i);
+      opProps.putAll(Maps.fromProperties(conf1.properties));
     }
     //properties.remove(OPERATOR_CLASSNAME);
     return opProps;
@@ -1317,8 +1322,10 @@ public class LogicalPlanConfiguration {
    * Set the application configuration.
    * @param dag
    * @param appName
+   * @param app
    */
-  public void setApplicationConfiguration(final LogicalPlan dag, String appName,StreamingApplication app) {
+  public void setApplicationConfiguration(final LogicalPlan dag, String appName, StreamingApplication app)
+  {
     List<AppConf> appConfs = stramConf.getMatchingChildConf(appName, StramElement.APPLICATION);
     setApplicationConfiguration(dag, appConfs,app);
   }
@@ -1418,8 +1425,8 @@ public class LogicalPlanConfiguration {
   private void setAttributes(Class<?> clazz, List<? extends Conf> confs, Attribute.AttributeMap attributeMap) {
     Set<Attribute<Object>> processedAttributes = Sets.newHashSet();
     if (confs.size() > 0) {
-      for (Conf conf : confs) {
-        for (Map.Entry<Attribute<Object>, String> e : conf.attributes.entrySet()) {
+      for (Conf conf1 : confs) {
+        for (Map.Entry<Attribute<Object>, String> e : conf1.attributes.entrySet()) {
           Attribute<Object> attribute = e.getKey();
           if (attribute.codec == null) {
             String msg = String.format("Attribute does not support property configuration: %s %s", attribute.name, e.getValue());

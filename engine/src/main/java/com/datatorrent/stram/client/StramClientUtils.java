@@ -11,9 +11,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 
@@ -663,38 +660,41 @@ public class StramClientUtils
     return "complete".equals(configStatus);
   }
 
-  public static void evalProperties(DTConfiguration launchProperties)
+  public static void evalProperties(Properties target, Configuration vars)
   {
-    // Using the hadoop configuration to get the values after variable substitution.
+    Pattern substitionPattern = Pattern.compile("\\$\\{(.+?)\\}");
+    Pattern evalPattern = Pattern.compile("\\{% (.+?) %\\}");
 
-    Configuration hadoopConfig = new Configuration(false);
-
-    for (Map.Entry<String, String> entry : launchProperties) {
-      hadoopConfig.set(entry.getKey(), entry.getValue());
-    }
-    for (Map.Entry<String, String> entry : hadoopConfig) {
-      // cannot use entry.getValue() because it won't perform variable substitution
-      launchProperties.setInternal(entry.getKey(), hadoopConfig.get(entry.getKey()));
-    }
-
-    Pattern pattern = Pattern.compile("\\{% (.+?) %\\}");
-
-    ScriptEngineManager manager = new ScriptEngineManager();
-    ScriptEngine engine = manager.getEngineByName("Javascript");
     org.mozilla.javascript.Context context = org.mozilla.javascript.Context.enter();
     context.setOptimizationLevel(-1);
     Scriptable scope = context.initStandardObjects();
     try {
       context.evaluateString(scope, "var _prop = {}", "EvalLaunchProperties", 0, null);
-      for (Map.Entry<String, String> entry : launchProperties) {
+      for (Map.Entry<String, String> entry : vars) {
         LOG.info("Evaluating: {}", "_prop[\"" + entry.getKey() + "\"] = " + entry.getValue());
         context.evaluateString(scope, "_prop[\"" + entry.getKey() + "\"] = \"" + StringEscapeUtils.escapeJava(entry.getValue()) + "\"", "EvalLaunchProperties", 0, null);
       }
 
-      for (Map.Entry<String, String> entry : launchProperties) {
-        String value = entry.getValue();
+      for (Map.Entry<Object, Object> entry : target.entrySet()) {
+        String value = entry.getValue().toString();
 
-        Matcher matcher = pattern.matcher(value);
+        Matcher matcher = substitionPattern.matcher(value);
+        if (matcher.find()) {
+          StringBuilder newValue = new StringBuilder();
+          int cursor = 0;
+          do {
+            newValue.append(value.substring(cursor, matcher.start()));
+            String subst = vars.get(matcher.group(1));
+            if (subst != null) {
+              newValue.append(subst);
+            }
+            cursor = matcher.end();
+          } while (matcher.find());
+          newValue.append(value.substring(cursor));
+          target.put(entry.getKey(), newValue.toString());
+        }
+
+        matcher = evalPattern.matcher(value);
         if (matcher.find()) {
           StringBuilder newValue = new StringBuilder();
           int cursor = 0;
@@ -705,19 +705,12 @@ public class StramClientUtils
               newValue.append(eval);
             }
             cursor = matcher.end();
-          }
-          while (matcher.find());
+          } while (matcher.find());
           newValue.append(value.substring(cursor));
-          try {
-            launchProperties.set(entry.getKey(), newValue.toString(), DTConfiguration.Scope.TRANSIENT, null);
-          }
-          catch (DTConfiguration.ConfigException ex) {
-            LOG.error("Caught exception:", ex);
-          }
+          target.put(entry.getKey(), newValue.toString());
         }
       }
-    }
-    finally {
+    } finally {
       org.mozilla.javascript.Context.exit();
     }
   }

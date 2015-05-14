@@ -143,7 +143,7 @@ public class LogicalPlanConfigurationTest {
       }
       props.load(is);
       LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false))
-        .addFromProperties(props);
+            .addFromProperties(props, null);
 
       LogicalPlan dag = new LogicalPlan();
       pb.populateDAG(dag);
@@ -246,7 +246,7 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.STREAMING_WINDOW_SIZE_MILLIS.getName(), "1000");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
-    dagBuilder.addFromProperties(props);
+    dagBuilder.addFromProperties(props, null);
 
     LogicalPlan dag = new LogicalPlan();
 
@@ -268,7 +268,7 @@ public class LogicalPlanConfigurationTest {
 	  props.put(StreamingApplication.DT_PREFIX + "application.*.prop.testprop3","1000");
 	  props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".inncls.a", "10000");
 	  LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
-	  dagBuilder.addFromProperties(props);
+    dagBuilder.addFromProperties(props, null);
 
 	  LogicalPlan dag = new LogicalPlan();
 	  TestApplication app1Test=new TestApplication();
@@ -329,7 +329,7 @@ public class LogicalPlanConfigurationTest {
     Operator operator3 = dag.addOperator("operator3", new GenericTestOperator());
 
     LogicalPlanConfiguration pb = new LogicalPlanConfiguration(new Configuration(false));
-    pb.addFromProperties(props);
+    pb.addFromProperties(props, null);
 
     Map<String, String> configProps = pb.getProperties(dag.getMeta(operator1), "appName");
     Assert.assertEquals("" + configProps, 2, configProps.size());
@@ -395,7 +395,7 @@ public class LogicalPlanConfigurationTest {
     Properties properties = new Properties();
     properties.put(StreamingApplication.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
 
-    builder.addFromProperties(properties);
+    builder.addFromProperties(properties, null);
 
     LogicalPlan dag = new LogicalPlan();
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
@@ -416,7 +416,7 @@ public class LogicalPlanConfigurationTest {
     Properties properties = new Properties();
     properties.put(StreamingApplication.DT_PREFIX + "application.TestAliasApp.class", app.getClass().getName());
 
-    builder.addFromProperties(properties);
+    builder.addFromProperties(properties, null);
 
     LogicalPlan dag = new LogicalPlan();
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
@@ -460,7 +460,7 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1." + OperatorContext.APPLICATION_WINDOW_COUNT.getName(), "20");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
-    dagBuilder.addFromProperties(props);
+    dagBuilder.addFromProperties(props, null);
 
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
 
@@ -493,7 +493,7 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.myStringProperty", "apv1");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
-    dagBuilder.addFromProperties(props);
+    dagBuilder.addFromProperties(props, null);
 
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
 
@@ -532,7 +532,7 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator3.inputport.inport2." + PortContext.QUEUE_CAPACITY.getName(), "" + 32 * 1024);
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
-    dagBuilder.addFromProperties(props);
+    dagBuilder.addFromProperties(props, null);
 
     String appPath = app.getClass().getName().replace(".", "/") + ".class";
 
@@ -572,7 +572,7 @@ public class LogicalPlanConfigurationTest {
     props.put(StreamingApplication.DT_PREFIX + "attr.NOT_CONFIGURABLE", "value");
 
     LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
-    dagBuilder.addFromProperties(props);
+    dagBuilder.addFromProperties(props, null);
 
     try {
       dagBuilder.prepareDAG(new LogicalPlan(), null, "");
@@ -589,7 +589,7 @@ public class LogicalPlanConfigurationTest {
     props.put(invalidAttribute, "value");
 
     try {
-      new LogicalPlanConfiguration(new Configuration(false)).addFromProperties(props);
+      new LogicalPlanConfiguration(new Configuration(false)).addFromProperties(props, null);
       Assert.fail("Exception expected");
     } catch (Exception e) {
       Assert.assertThat("Invalid attribute name", e.getMessage(), RegexMatcher.matches("Invalid attribute reference: " + invalidAttribute));

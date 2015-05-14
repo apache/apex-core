@@ -3,6 +3,8 @@
  */
 package com.datatorrent.stram.client;
 
+import java.util.Properties;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -17,18 +19,19 @@ public class EvalPropertiesTest
   @Test
   public void testEvalExpression() throws Exception
   {
-    DTConfiguration conf = new DTConfiguration();
-    conf.set("a.b.c", "123", DTConfiguration.Scope.TRANSIENT, null);
-    conf.set("d.e.f", "456", DTConfiguration.Scope.TRANSIENT, null);
-    conf.set("x.y.z", "foobar", DTConfiguration.Scope.TRANSIENT, null);
+    Configuration conf = new Configuration();
+    conf.set("a.b.c", "123");
+    conf.set("d.e.f", "456");
+    conf.set("x.y.z", "foobar");
 
-    conf.set("product.result", "Product result is {% (_prop[\"a.b.c\"] * _prop[\"d.e.f\"]).toFixed(0) %}...", DTConfiguration.Scope.TRANSIENT, null);
-    conf.set("concat.result", "Concat result is {% _prop[\"x.y.z\"] %} ... {% _prop[\"a.b.c\"] %} blah", DTConfiguration.Scope.TRANSIENT, null);
+    Properties prop = new Properties();
+    prop.put("product.result", "Product result is {% (_prop[\"a.b.c\"] * _prop[\"d.e.f\"]).toFixed(0) %}...");
+    prop.put("concat.result", "Concat result is {% _prop[\"x.y.z\"] %} ... {% _prop[\"a.b.c\"] %} blah");
 
-    StramClientUtils.evalProperties(conf);
+    StramClientUtils.evalProperties(prop, conf);
 
-    Assert.assertEquals("Product result is " + (123 * 456) + "...", conf.get("product.result"));
-    Assert.assertEquals("Concat result is foobar ... 123 blah", conf.get("concat.result"));
+    Assert.assertEquals("Product result is " + (123 * 456) + "...", prop.get("product.result"));
+    Assert.assertEquals("Concat result is foobar ... 123 blah", prop.get("concat.result"));
     Assert.assertEquals("123", conf.get("a.b.c"));
     Assert.assertEquals("456", conf.get("d.e.f"));
     Assert.assertEquals("foobar", conf.get("x.y.z"));
@@ -37,15 +40,15 @@ public class EvalPropertiesTest
   @Test
   public void testVariableSubstitution() throws Exception
   {
-    DTConfiguration conf = new DTConfiguration();
-    conf.set("a.b.c", "123", DTConfiguration.Scope.TRANSIENT, null);
-    conf.set("x.y.z", "foobar", DTConfiguration.Scope.TRANSIENT, null);
+    Configuration conf = new Configuration();
+    conf.set("a.b.c", "123");
+    conf.set("x.y.z", "foobar");
 
-    conf.set("var.result", "1111 ${a.b.c} xxx ${x.y.z} yyy", DTConfiguration.Scope.TRANSIENT, null);
+    Properties prop = new Properties();
+    prop.put("var.result", "1111 ${a.b.c} xxx ${x.y.z} yyy");
 
-    StramClientUtils.evalProperties(conf);
+    StramClientUtils.evalProperties(prop, conf);
 
-    Assert.assertEquals("1111 123 xxx foobar yyy", conf.get("var.result"));
-
+    Assert.assertEquals("1111 123 xxx foobar yyy", prop.get("var.result"));
   }
 }
