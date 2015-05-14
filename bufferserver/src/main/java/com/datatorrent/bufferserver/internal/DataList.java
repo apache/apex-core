@@ -120,9 +120,10 @@ public class DataList
   {
     return identifier;
   }
+
   public DataList(String identifier, int blocksize, int numberOfCacheBlocks, int refCount)
   {
-    this(identifier,blocksize,numberOfCacheBlocks);
+    this(identifier, blocksize, numberOfCacheBlocks);
     first.refCount = refCount;
   }
 
@@ -133,8 +134,6 @@ public class DataList
     this.blocksize = blocksize;
     first = new Block(identifier, blocksize);
     last = first;
-
-
   }
 
   public DataList(String identifier)
