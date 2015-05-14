@@ -506,6 +506,45 @@ public class LogicalPlanConfigurationTest {
   }
 
   @Test
+  public void testApplicationLevelParameter()
+  {
+    String appName = "app1";
+    final GenericTestOperator operator1 = new GenericTestOperator();
+    final GenericTestOperator operator2 = new GenericTestOperator();
+    StreamingApplication app = new StreamingApplication()
+    {
+      @Override
+      public void populateDAG(DAG dag, Configuration conf)
+      {
+        dag.addOperator("operator1", operator1);
+        dag.addOperator("operator2", operator2);
+      }
+    };
+
+    Properties props = new Properties();
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".class", app.getClass().getName());
+    props.put(StreamingApplication.DT_PREFIX + "operator.*.myStringProperty", "foo ${xyz} bar ${zzz} baz");
+    props.put(StreamingApplication.DT_PREFIX + "operator.*.booleanProperty", Boolean.TRUE.toString());
+    props.put(StreamingApplication.DT_PREFIX + "application." + appName + ".operator.operator1.myStringProperty", "apv1");
+
+    LogicalPlanConfiguration dagBuilder = new LogicalPlanConfiguration(new Configuration(false));
+
+    Configuration vars = new Configuration(false);
+    vars.set("xyz", "123");
+    vars.set("zzz", "456");
+    dagBuilder.addFromProperties(props, vars);
+
+    String appPath = app.getClass().getName().replace(".", "/") + ".class";
+
+    LogicalPlan dag = new LogicalPlan();
+    dagBuilder.prepareDAG(dag, app, appPath);
+
+    Assert.assertEquals("apv1", operator1.getMyStringProperty());
+    Assert.assertEquals("foo 123 bar 456 baz", operator2.getMyStringProperty());
+    Assert.assertEquals(true, operator2.isBooleanProperty());
+  }
+
+  @Test
   public void testPortLevelAttributes() {
     String appName = "app1";
     final GenericTestOperator gt1 = new GenericTestOperator();
