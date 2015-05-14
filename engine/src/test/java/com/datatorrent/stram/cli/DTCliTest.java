@@ -169,7 +169,7 @@ public class DTCliTest
       sb.append(cp.tempDirectory()).append(File.separatorChar).append(f);
     }
 
-    Assert.assertEquals(sb.toString(), commandLineInfo.resources);
+    Assert.assertEquals(sb.toString(), commandLineInfo.libjars);
 
     sb.setLength(0);
     for (String f : cp.getFiles()) {

@@ -2051,9 +2051,9 @@ public class DTCli
       try {
 
         Configuration config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), cp == null ? commandLineInfo.configFile : null, commandLineInfo.overrideProperties);
-        if (commandLineInfo.resources != null) {
-          commandLineInfo.resources = expandCommaSeparatedFiles(commandLineInfo.resources);
-          config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.resources);
+        if (commandLineInfo.libjars != null) {
+          commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
+          config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
         }
         if (commandLineInfo.files != null) {
           commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
@@ -3060,9 +3060,9 @@ public class DTCli
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       ShowLogicalPlanCommandLineInfo commandLineInfo = getShowLogicalPlanCommandLineInfo(newArgs);
       Configuration config = StramClientUtils.addDTSiteResources(new Configuration());
-      if (commandLineInfo.resources != null) {
-        commandLineInfo.resources = expandCommaSeparatedFiles(commandLineInfo.resources);
-        config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.resources);
+      if (commandLineInfo.libjars != null) {
+        commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
+        config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
       }
 
       if (commandLineInfo.args.length >= 2) {
@@ -3878,10 +3878,10 @@ public class DTCli
         }
         files.append(cp.tempDirectory()).append(File.separatorChar).append(file);
       }
-      if (commandLineInfo.resources != null) {
-        commandLineInfo.resources = files.toString() + "," + commandLineInfo.resources;
+      if (commandLineInfo.libjars != null) {
+        commandLineInfo.libjars = files.toString() + "," + commandLineInfo.libjars;
       } else {
-        commandLineInfo.resources = files.toString();
+        commandLineInfo.libjars = files.toString();
       }
 
       files.setLength(0);
@@ -3898,27 +3898,27 @@ public class DTCli
       }
     }
 
-    StringBuilder resourcesVal = new StringBuilder();
-    if (!absClassPath.isEmpty() || commandLineInfo.resources != null) {
+    StringBuilder libjarsVal = new StringBuilder();
+    if (!absClassPath.isEmpty() || commandLineInfo.libjars != null) {
       if (!absClassPath.isEmpty()) {
-        resourcesVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
+        libjarsVal.append(org.apache.commons.lang3.StringUtils.join(absClassPath, ','));
       }
-      if (commandLineInfo.resources != null) {
-        if (resourcesVal.length() > 0) {
-          resourcesVal.append(",");
+      if (commandLineInfo.libjars != null) {
+        if (libjarsVal.length() > 0) {
+          libjarsVal.append(",");
         }
-        resourcesVal.append(commandLineInfo.resources);
+        libjarsVal.append(commandLineInfo.libjars);
       }
     }
     if (appFile.endsWith(".json") || appFile.endsWith(".properties")) {
-      if (resourcesVal.length() > 0) {
-        resourcesVal.append(",");
+      if (libjarsVal.length() > 0) {
+        libjarsVal.append(",");
       }
-      resourcesVal.append(ap.tempDirectory()).append("/app/*.jar");
+      libjarsVal.append(ap.tempDirectory()).append("/app/*.jar");
     }
-    if (resourcesVal.length() > 0) {
-      launchArgs.add("-resources");
-      launchArgs.add(resourcesVal.toString());
+    if (libjarsVal.length() > 0) {
+      launchArgs.add("-libjars");
+      launchArgs.add(libjarsVal.toString());
     }
 
     File launchPropertiesFile = new File(ap.tempDirectory(), "launch.xml");
@@ -4125,7 +4125,7 @@ public class DTCli
     final Option configFile = add(OptionBuilder.withArgName("configuration file").hasArg().withDescription("Specify an application configuration file.").create("conf"));
     final Option apConfigFile = add(OptionBuilder.withArgName("app package configuration file").hasArg().withDescription("Specify an application configuration file within the app package if launching an app package.").create("apconf"));
     final Option defProperty = add(OptionBuilder.withArgName("property=value").hasArg().withDescription("Use value for given property.").create("D"));
-    final Option resources = add(OptionBuilder.withArgName("comma separated list of resources").hasArg().withDescription("Specify comma separated jar files or other resource files to include in the classpath.").create("resources"));
+    final Option libjars = add(OptionBuilder.withArgName("comma separated list of libjars").hasArg().withDescription("Specify comma separated jar files or other resource files to include in the classpath.").create("libjars"));
     final Option files = add(OptionBuilder.withArgName("comma separated list of files").hasArg().withDescription("Specify comma separated files to be copied on the compute machines.").create("files"));
     final Option archives = add(OptionBuilder.withArgName("comma separated list of archives").hasArg().withDescription("Specify comma separated archives to be unarchived on the compute machines.").create("archives"));
     final Option license = add(OptionBuilder.withArgName("license file").hasArg().withDescription("Specify the license file to launch the application").create("license"));
@@ -4166,7 +4166,7 @@ public class DTCli
         }
       }
     }
-    result.resources = line.getOptionValue(LAUNCH_OPTIONS.resources.getOpt());
+    result.libjars = line.getOptionValue(LAUNCH_OPTIONS.libjars.getOpt());
     result.archives = line.getOptionValue(LAUNCH_OPTIONS.archives.getOpt());
     result.files = line.getOptionValue(LAUNCH_OPTIONS.files.getOpt());
     result.licenseFile = line.getOptionValue(LAUNCH_OPTIONS.license.getOpt());
@@ -4184,7 +4184,7 @@ public class DTCli
     String configFile;
     String apConfigFile;
     Map<String, String> overrideProperties;
-    String resources;
+    String libjars;
     String files;
     String queue;
     String archives;
@@ -4198,10 +4198,10 @@ public class DTCli
   public static Options getShowLogicalPlanCommandLineOptions()
   {
     Options options = new Options();
-    Option resources = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar/resource files to include in the classpath.").create("resources");
+    Option libjars = OptionBuilder.withArgName("comma separated list of jars").hasArg().withDescription("Specify comma separated jar/resource files to include in the classpath.").create("libjars");
     Option ignorePom = new Option("ignorepom", "Do not run maven to find the dependency");
     Option exactMatch = new Option("exactMatch", "Only consider exact match for app name");
-    options.addOption(resources);
+    options.addOption(libjars);
     options.addOption(ignorePom);
     options.addOption(exactMatch);
     return options;
@@ -4212,7 +4212,7 @@ public class DTCli
     CommandLineParser parser = new PosixParser();
     ShowLogicalPlanCommandLineInfo result = new ShowLogicalPlanCommandLineInfo();
     CommandLine line = parser.parse(getShowLogicalPlanCommandLineOptions(), args);
-    result.resources = line.getOptionValue("resources");
+    result.libjars = line.getOptionValue("libjars");
     result.ignorePom = line.hasOption("ignorepom");
     result.args = line.getArgs();
     result.exactMatch = line.hasOption("exactMatch");
@@ -4221,7 +4221,7 @@ public class DTCli
 
   private static class ShowLogicalPlanCommandLineInfo
   {
-    String resources;
+    String libjars;
     boolean ignorePom;
     String[] args;
     boolean exactMatch;
