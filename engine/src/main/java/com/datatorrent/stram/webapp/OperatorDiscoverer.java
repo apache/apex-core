@@ -26,6 +26,7 @@ import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.xml.parsers.*;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.codehaus.jettison.json.*;
@@ -498,26 +499,43 @@ public class OperatorDiscoverer
 
   private JSONArray enrichProperties(String className, JSONArray properties) throws JSONException
   {
-    OperatorClassInfo oci = classInfo.get(className);
-    if (oci == null) { return properties; }
     JSONArray result = new JSONArray();
     for (int i = 0; i < properties.length(); i++) {
       JSONObject propJ = properties.getJSONObject(i);
-      String propName = WordUtils.capitalize(propJ.getString("name"));
-      String getPrefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
-      String setPrefix = "set";
-      if (oci.invisibleGetSetMethods.contains(getPrefix + propName) || oci.invisibleGetSetMethods.contains(setPrefix + propName)) {
-        continue;
+      enrichProperty(className, propJ);
+      if(!propJ.has("visible") || propJ.getBoolean("visible")){
+        result.put(propJ);
       }
-      String desc = oci.getMethods.get(getPrefix + propName);
-      desc = desc == null ? oci.setMethods.get(setPrefix + propName) : desc;
-      if (desc != null) {
-        propJ.put("description", desc);
-      }
-      result.put(propJ);
-      
     }
     return result;
+  }
+
+  private void enrichProperty(String className, JSONObject propJ) throws JSONException
+  {
+    OperatorClassInfo oci = classInfo.get(className);
+    if (oci == null) {
+      return;
+    }
+    String propName = WordUtils.capitalize(propJ.getString("name"));
+    String getPrefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
+    String setPrefix = "set";
+
+    if (oci.invisibleGetSetMethods.contains(getPrefix + propName) || oci.invisibleGetSetMethods.contains(setPrefix + propName)) {
+      propJ.put("visible", false);
+    }
+    String desc = oci.getMethods.get(getPrefix + propName);
+    desc = desc == null ? oci.setMethods.get(setPrefix + propName) : desc;
+    if (desc != null) {
+      propJ.put("description", desc);
+      return;
+    }
+
+    List<String> parents = typeGraph.getParents(className);
+    if (!CollectionUtils.isEmpty(parents)) {
+      for (String parent : parents) {
+        enrichProperty(parent, propJ);
+      }
+    }
   }
 
   public JSONObject describeClass(String clazzName) throws Exception
