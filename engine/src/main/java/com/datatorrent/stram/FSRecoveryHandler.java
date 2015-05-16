@@ -4,28 +4,16 @@
  */
 package com.datatorrent.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.ObjectStreamClass;
+import java.io.*;
 import java.util.EnumSet;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CreateFlag;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.Options.Rename;
-import org.apache.hadoop.fs.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.util.FSUtil;
 
@@ -49,17 +37,19 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public static final String FILE_LOG_BACKUP = "log0";
   public static final String FILE_SNAPSHOT = "snapshot";
   public static final String FILE_SNAPSHOT_BACKUP = "snapshot0";
+  private static final String DIRECTORY_RECOVERY = "recovery";
+  private static final String FILE_HEARTBEATURI = "heartbeatUri";
 
   public FSRecoveryHandler(String appDir, Configuration conf) throws IOException
   {
-    this.basedir = new Path(appDir, "recovery");
+    this.basedir = new Path(appDir, DIRECTORY_RECOVERY);
     fs = FileSystem.newInstance(this.basedir.toUri(), conf);
 
     logPath = new Path(basedir, FILE_LOG);
     logBackupPath = new Path(basedir, FILE_LOG_BACKUP);
     snapshotPath = new Path(basedir, FILE_SNAPSHOT);
     snapshotBackupPath = new Path(basedir, FILE_SNAPSHOT_BACKUP);
-    heartbeatPath = new Path(basedir, "heartbeatUri");
+    heartbeatPath = new Path(basedir, FILE_HEARTBEATURI);
   }
 
   public String getDir()
@@ -151,11 +141,18 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
 
     LOG.debug("Writing checkpoint to {}", snapshotPath);
     final FSDataOutputStream fsOutputStream = fs.create(snapshotPath);
-    ObjectOutputStream oos = new ObjectOutputStream(fsOutputStream);
-    oos.writeObject(state);
-    oos.close();
-    fsOutputStream.close();
-
+    try {
+      ObjectOutputStream oos = new ObjectOutputStream(fsOutputStream);
+      try {
+        oos.writeObject(state);
+      }
+      finally {
+        oos.close();
+      }
+    }
+    finally {
+      fsOutputStream.close();
+    }
     // remove snapshot backup
     if (fs.exists(snapshotBackupPath) && !fs.delete(snapshotBackupPath, false)) {
       throw new IOException("Failed to remove " + snapshotBackupPath);
@@ -182,15 +179,27 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
       // combine logs (w/o append, create new file)
       Path tmpLogPath = new Path(basedir, "log.combined");
       FSDataOutputStream fsOut = fc.create(tmpLogPath, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE));
-      FSDataInputStream fsIn = fc.open(logBackupPath);
-      IOUtils.copy(fsIn, fsOut);
-      fsIn.close();
+      try {
+        FSDataInputStream fsIn = fc.open(logBackupPath);
+        try {
+          IOUtils.copy(fsIn, fsOut);
+        }
+        finally {
+          fsIn.close();
+        }
 
-      fsIn = fc.open(logPath);
-      IOUtils.copy(fsIn, fsOut);
-      fsIn.close();
+        fsIn = fc.open(logPath);
+        try {
+          IOUtils.copy(fsIn, fsOut);
+        }
+        finally {
+          fsIn.close();
+        }
+      }
+      finally {
+        fsOut.close();
+      }
 
-      fsOut.close();
       fc.rename(tmpLogPath, logPath, Rename.OVERWRITE);
       fc.delete(logBackupPath, false);
     } else {
@@ -222,9 +231,11 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
     //ObjectInputStream ois = new ObjectInputStream(is);
     try {
       return ois.readObject();
-    } catch (ClassNotFoundException cnfe) {
+    }
+    catch (ClassNotFoundException cnfe) {
       throw new IOException("Failed to read checkpointed state", cnfe);
-    } finally {
+    }
+    finally {
       ois.close();
     }
   }
@@ -232,25 +243,42 @@ public class FSRecoveryHandler implements StreamingContainerManager.RecoveryHand
   public void writeConnectUri(String uri) throws IOException
   {
     DataOutputStream out = fs.create(heartbeatPath, true);
-    out.write(uri.getBytes());
-    out.close();
+    try {
+      out.write(uri.getBytes());
+    }
+    finally {
+      out.close();
+    }
     LOG.debug("Connect address: {} written to {} ", uri, heartbeatPath);
   }
 
   public String readConnectUri() throws IOException
   {
+    byte[] bytes;
+
     DataInputStream in = fs.open(heartbeatPath);
-    byte[] bytes = IOUtils.toByteArray(in);
-    in.close();
+    try {
+      bytes = IOUtils.toByteArray(in);
+    }
+    finally {
+      in.close();
+    }
+
     String uri = new String(bytes);
     LOG.debug("Connect address: {} from {} ", uri, heartbeatPath);
     return uri;
   }
 
   @Override
+  @SuppressWarnings("FinalizeDeclaration")
   protected void finalize() throws Throwable
   {
-    fs.close();
+    try {
+      fs.close();
+    }
+    finally {
+      super.finalize();
+    }
   }
 
 }
