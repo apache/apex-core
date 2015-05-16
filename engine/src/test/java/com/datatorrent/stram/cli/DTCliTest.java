@@ -57,6 +57,10 @@ public class DTCliTest
     protected void starting(Description description)
     {
       try {
+        userHome = System.getProperty("user.home");
+        env.put("HOME", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
+        setEnv(env);
+
         cli.init();
         // Set up jar file to use with constructor
         testFolder.create();
@@ -68,10 +72,6 @@ public class DTCliTest
         cp = new ConfigPackage(configFile);
         jomp = new JSONSerializationProvider();
         json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
-
-        userHome = System.getProperty("user.home");
-        env.put("HOME", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
-        setEnv(env);
 
       } catch (Exception e) {
         throw new RuntimeException(e);
