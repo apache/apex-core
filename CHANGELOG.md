@@ -1,6 +1,132 @@
 DataTorrent RTS Changelog
 ========================================================================================================================
 
+
+
+Version 2.1.0
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
+* [SPOI-3732] - Get User Info APIs creates users
+* [SPOI-3816] - Ingestion UI: Node server should store pipelines on hdfs rather than local filesystem
+* [SPOI-3820] - Ingestion UI: Rest calls to gateway from Node server fails
+* [SPOI-3845] - BlockSynchronizer  sometimes misbehaves when BlockReader is killed. 
+* [SPOI-3862] - Ingestion UI - left/right margins have no width
+* [SPOI-3876] - Review the changes done to DimensionsComputation for HadoopWorld Demo
+* [SPOI-3940] - Demo app package version stuck at v1.0-SNAPSHOT
+* [SPOI-4029] - PiJavaScript demo pi calc operator fails to re deploy
+* [SPOI-4067] - Launch of ingestionApp using DTCP is failing
+* [SPOI-4070] - Stray directory /opt/datatorrent/current/datatorrent  is created after installation.  
+* [SPOI-4077] - Ingestion UI: Create option to scan the directory recursively
+* [SPOI-4079] - Gateway does not retain listen address specified during installation
+* [SPOI-4080] - Gateway guard hides errors with restarts
+* [SPOI-4081] - Ingestion UI: pipeline table doesn't auto refreshes
+* [SPOI-4085] - UI: wrong application selection after sorting in pipeline instances table
+* [SPOI-4087] - Relaunch functionality keeps relaunching multiple apps
+* [SPOI-4094] - Ingestion app tests failing and empty directory getting created under target that are not removed
+* [SPOI-4128] - Need to explain difference between properties & state holding data structure
+* [SPOI-4175] - Remove directory prop from base block reader and ftp block reader from ingestion 
+* [SPOI-4229] - committed function not getting invoked in local mode
+* [SPOI-4352] - App Builder uiType not present for several classes
+* [SPOI-4362] - Remove dependencies on DirectoryScanner from OperatorDiscoverer when used in stram
+* [SPOI-4691] - DT console shows negative memory size for killed application
+* [SPOI-4702] - IndexOutOfBoundsException in Stram due to counters in AbstractBlockReader
+
+
+### Improvement
+* [SPOI-3592] - Clean up appInstance widget definitions
+* [SPOI-3783] - Remove gateway port automatic re-selection on startup feature
+* [SPOI-3932] - demos ui references web services v1
+* [SPOI-3944] - Ingestion UI : Display pipelines progress
+* [SPOI-3945] - UI: Add multiple input support
+* [SPOI-3946] - Create an auto scaling scheme for the Block Reader and Writer 
+* [SPOI-4003] - Ingestion app: add a feature to re-try failed blocks
+* [SPOI-4026] - Aggregated counters are not published via web-socket in the logical operators topic
+* [SPOI-4048] - Block application launch during critical system issues
+* [SPOI-4078] - Gateway address argument validation during installation and launch
+* [SPOI-4551] - Enhance Gateway API to return AppIDs for a given application name
+* [SPOI-4578] - Allow supporting archive jars in configuration definition for app packages
+* [SPOI-4728] - Support -originalAppId when launching apps through the DT Gateway API
+* [SPOI-4751] - Upgrade sniffer maven plugin to the latest version
+
+
+### New Feature
+* [SPOI-3028] - [HDHT] Hive Interoperability
+* [SPOI-3029] - [HDHT] Export to ORC Format
+* [SPOI-4050] - AppData UI Dashboard page
+* [SPOI-4093] - Ingestion UI: Control for triggering scan of files
+* [SPOI-4636] - Added $? feature in dtcli and use it in CLIProxy
+* [SPOI-4718] - CLI commands to support variable arguments
+
+
+### Task
+* [SPOI-3242] - Rethrow the exceptions being caught in catch block of operators.
+* [SPOI-3502] - Create the landing page for the UI of ingestion application
+* [SPOI-3504] - [Ingestion UI] Create views for creating a pipeline and its description
+* [SPOI-3762] - Provide installation version option for installer
+* [SPOI-3763] - Update document export tokens
+* [SPOI-3870] - Implement transformation functions for rainier poc1
+* [SPOI-3871] - Filter records based field values for rainier poc1
+* [SPOI-3872] - Generate audit and bad record logs for rainier poc1
+* [SPOI-3970] - Ingestion UI : Use the console package 
+* [SPOI-3981] - Remove unused imports
+* [SPOI-4040] - Add an operator that keeps track of failed files
+* [SPOI-4122] - [UI] : Display list of skipped files on UI when overwrite flag is false
+* [SPOI-4172] - After effects of removing threshold property from BlockReader in ReaderWriter partitioner/stats-listener  
+* [SPOI-4369] - [AppData][AppDataTracker] Deserializer operator 
+* [SPOI-4385] - Create metrics aggregators - sum, min, max, count
+* [SPOI-4544] - Custom metrics can be cumulative or per window which can be statically declared by the operator developer
+* [SPOI-4653] - Create Aggregators registry in AppDataTracker
+* [SPOI-3767] - Auto scaling of BlockReader using partitioning
+* [SPOI-4748] - Add data query to custom metrics store
+
+
+### Bug
+* [MLHR-1614] - AbstractFSWriter in append mode is not fault-tolerant
+* [MLHR-1620] - Remove close file from AbstractFSWriter
+* [MLHR-1637] - Cleanup skipping of records from setup of FSDirectoryInputOperator 
+* [MLHR-1643] - FileSplitter recovery fails
+* [MLHR-1644] - Add Mock Server Libraries in unit tests of database/key value store operators
+* [MLHR-1653] - Remove JavaScriptOperatorBenchMark form library
+* [MLHR-1656] - AbstractFileOutputOperator LeaseExpired exception when cache reaches its threshold
+* [MLHR-1668] - Stateless Partitioner in case of parallel partition ignores parallel partition count (except the first time define partitions is called)
+* [MLHR-1687] - AbstractBlockReader threshold breaks the idempotency
+* [MLHR-1708] - Duplicate data read from kafka if kafka partitions are less than DT partitions
+* [MLHR-1712] - The directory under which the idempotent state is stored should be relative to the app directory so that the state is copied on relaunch
+* [MLHR-1723] - FTPStringInputOperatorTest fails on Windows OS
+
+
+### Improvement
+* [MLHR-1547] - Integration of Idempotent storage manager to Directory scanner
+* [MLHR-1621] - Parititon Couchbase Output Operator
+* [MLHR-1632] - Add couchbase mock to couchbase tests.
+* [MLHR-1634] - Improve the BlockReader partitioning scheme to accommodate ingestion rate
+* [MLHR-1641] - Improve the BlockReader
+* [MLHR-1661] - Ability to override the stream-codec of input port in AbstractFileOutputOperator
+* [MLHR-1684] - Improve file splitter not to emit all files  in one shot and hold scanned file names in memory
+* [MLHR-1694] - BasicCounters improvements
+
+### New Feature
+* [MLHR-1355] - Supports secure hadoop cluster in the installer
+* [MLHR-1497] - Operators for ElasticSearch
+* [MLHR-1578] - UI Auth: UI to show different tabs and/or buttons for different user permissions
+
+
+Version 2.0.1
+------------------------------------------------------------------------------------------------------------------------
+
+### Bug
+* [SPOI-4379] - Operator removed from physical plan due to invalid SHUTDOWN status
+* [SPOI-4381] - Queue size missing on physical operator page 
+* [SPOI-4382] - queueSize port metric reports bogus values
+* [SPOI-4384] - Recovery fails due to corrupted checkpoints.
+* [SPOI-4437] - DTCli not recognizing $HOME variable set
+
+### Improvement
+* [SPOI-4728] - Support -originalAppId when launching apps through the DT Gateway API
+* [SPOI-4390] - Replace 'start time' on console to 'Up time'
+
+
 Version 2.0.0
 ------------------------------------------------------------------------------------------------------------------------
 

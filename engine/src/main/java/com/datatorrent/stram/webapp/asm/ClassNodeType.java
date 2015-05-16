@@ -10,7 +10,8 @@ import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.tree.ClassNode;
 
 /**
- * A special org.objectweb.asm.tree.ClassNode implementation which parse the type signature as well 
+ * A special org.objectweb.asm.tree.ClassNode implementation which parse the type signature as well
+ *
  * @see ClassNode
  * @since 2.1
  */

@@ -8,6 +8,11 @@ import java.io.Serializable;
 
 import com.datatorrent.api.StatsListener;
 
+/**
+ * <p>OperatorResponse class.</p>
+ *
+ * @since 2.1.0
+ */
 public class OperatorResponse implements StatsListener.OperatorResponse, Serializable
 {
   private static final long serialVersionUID = -95162161527528335L;

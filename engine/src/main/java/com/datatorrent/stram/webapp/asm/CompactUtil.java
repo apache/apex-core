@@ -13,6 +13,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 /**
  * A util class extract only data needed in app builder
+ *
  * @since 2.1
  */
 public class CompactUtil

@@ -19,6 +19,11 @@ import com.datatorrent.api.StatsListener;
 
 import com.datatorrent.stram.engine.OperatorResponse;
 
+/**
+ * <p>StramToNodeGetPropertyRequest class.</p>
+ *
+ * @since 2.1.0
+ */
 public class StramToNodeGetPropertyRequest extends StreamingContainerUmbilicalProtocol.StramToNodeRequest implements Serializable
 {
   private String propertyName;

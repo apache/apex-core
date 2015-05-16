@@ -9,6 +9,7 @@ import org.objectweb.asm.signature.SignatureReader;
 
 /**
  * A {@link org.objectweb.asm.tree.MethodNode} implementation to parse method signature as well
+ *
  * @since 2.1
  */
 public class MethodNode extends org.objectweb.asm.tree.MethodNode

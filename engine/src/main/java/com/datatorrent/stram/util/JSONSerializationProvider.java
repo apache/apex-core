@@ -9,8 +9,10 @@ import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
+ * <p>JSONSerializationProvider class.</p>
  *
  * @author David Yan <david@datatorrent.com>
+ * @since 2.1.0
  */
 public class JSONSerializationProvider extends JacksonObjectMapperProvider
 {
