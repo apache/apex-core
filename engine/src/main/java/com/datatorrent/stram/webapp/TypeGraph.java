@@ -60,6 +60,7 @@ import com.google.common.primitives.Primitives;
  * A graph data structure holds all type information and their relationship needed in app builder
  * ASM is used to retrieve fields, methods information and kept in java beans and then stored in this graph data structure
  * ASM is used to avoid memory leak and save permgen memory space
+ *
  * @since 2.1
  */
 @SuppressWarnings("unchecked")

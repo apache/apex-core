@@ -24,6 +24,8 @@ import com.esotericsoftware.kryo.io.Output;
 
 /**
  * This class keeps a precomputed index(prototype) of type graph of all classes in jdk and gateway classpath
+ *
+ * @since 2.1.0
  */
 public class TypeGraphFactory
 {

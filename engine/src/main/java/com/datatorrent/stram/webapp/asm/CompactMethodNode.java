@@ -6,6 +6,7 @@ package com.datatorrent.stram.webapp.asm;
 
 /**
  * Store method information only needed by app builder
+ *
  * @since 2.1
  */
 public class CompactMethodNode

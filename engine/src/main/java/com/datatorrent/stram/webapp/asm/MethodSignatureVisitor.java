@@ -11,6 +11,8 @@ import org.objectweb.asm.signature.SignatureVisitor;
 
 /**
  * A method signature parser
+ *
+ * @since 2.1.0
  */
 public class MethodSignatureVisitor extends BaseSignatureVisitor
 {

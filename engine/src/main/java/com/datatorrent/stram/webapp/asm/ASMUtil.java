@@ -15,6 +15,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 /**
  * Provide util function to deal with java bytecode
+ *
  * @since 2.1
  */
 public class ASMUtil

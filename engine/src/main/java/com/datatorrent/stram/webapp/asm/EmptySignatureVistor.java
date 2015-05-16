@@ -9,6 +9,7 @@ import org.objectweb.asm.signature.SignatureVisitor;
 /**
  * An empty {@link SignatureVisitor} implementation which stop the parent visitor from parsing the whole signature
  * It is important because we only need to partially parse the signature
+ *
  * @since 2.1
  */
 public class EmptySignatureVistor implements SignatureVisitor

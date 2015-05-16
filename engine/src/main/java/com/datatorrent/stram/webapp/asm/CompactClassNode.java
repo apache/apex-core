@@ -10,6 +10,7 @@ import org.objectweb.asm.Opcodes;
 
 /**
  * Store class information only needed by app builder
+ *
  * @since 2.1
  */
 public class CompactClassNode

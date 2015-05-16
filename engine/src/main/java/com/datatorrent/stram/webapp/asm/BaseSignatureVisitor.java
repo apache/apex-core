@@ -19,11 +19,11 @@ import com.datatorrent.stram.webapp.asm.Type.WildcardTypeNode;
 /**
  * Follow the visiting path of ASM
  * to visit getter and setter method signature
- * 
+ *
  * ClassSignature = ( visitFormalTypeParameter visitClassBound? visitInterfaceBound* )* ( visitSuperClass visitInterface* )
  * MethodSignature = ( visitFormalTypeParameter visitClassBound? visitInterfaceBound* )* ( visitParameterType* visitReturnType visitExceptionType* )
  * TypeSignature = visitBaseType | visitTypeVariable | visitArrayType | ( visitClassType visitTypeArgument* ( visitInnerClassType visitTypeArgument* )* visitEnd ) )
- * 
+ *
  * @since 2.1
  */
 public abstract class BaseSignatureVisitor implements SignatureVisitor
