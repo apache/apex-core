@@ -5,6 +5,7 @@ package com.datatorrent.stram.cli;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -13,6 +14,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
 
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.MediaType;
 
 import jline.console.ConsoleReader;
@@ -20,11 +22,11 @@ import jline.console.completer.*;
 import jline.console.history.FileHistory;
 import jline.console.history.History;
 import jline.console.history.MemoryHistory;
-
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.ClassUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -50,17 +52,24 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
+
 import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
@@ -69,6 +78,7 @@ import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.engine.PortContext;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseAuthority;
 import com.datatorrent.stram.license.LicenseSection;
@@ -623,6 +633,14 @@ public class DTCli
       new Arg[]{new Arg("licenseId"), new Arg("month(yyyymm)"), new FileArg("output-file"), new Arg("separator")},
       new Arg[]{new Arg("topNMemoryUsages")},
       "Generate the license report for the given month"));
+
+    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand("application"),
+      null, null, "Lists the application attributes"));
+    globalCommands.put("list-operator-attributes", new CommandSpec(new ListAttributesCommand("operator"), null, null,
+      "Lists the operator attributes"));
+    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand("port"), null, null,
+      "Lists the port attributes"));
+
     //
     // Connected command specification starts here
     //
@@ -4100,6 +4118,68 @@ public class DTCli
       }
     }
 
+  }
+
+  protected class ListAttributesCommand implements Command
+  {
+    private final String type;
+    private final Predicate<Field> attrPredicate;
+
+    protected ListAttributesCommand(@NotNull String type)
+    {
+      this.type = Preconditions.checkNotNull(type);
+      this.attrPredicate = new Predicate<Field>()
+      {
+        @Override
+        public boolean apply(Field input)
+        {
+          return input.getType().equals(Attribute.class);
+        }
+      };
+    }
+
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      Collection<Field> attributes;
+
+      JSONObject result;
+      if (type.equals("application")) {
+        Field[] fields = Context.DAGContext.class.getFields();
+        attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
+        result = getAttrDescription(new LogicalPlan(), attributes);
+      }
+      else if (type.equals("operator")) {
+        Field[] fields = Context.OperatorContext.class.getFields();
+        attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
+        result = getAttrDescription(new BaseContext(null, null), attributes);
+      }
+      else {
+        //get port attributes
+        Field[] fields = Context.PortContext.class.getFields();
+        attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
+        result = getAttrDescription(new PortContext(null, null), attributes);
+      }
+      printJson(result);
+    }
+
+    private JSONObject getAttrDescription(Context context, Collection<Field> attributes) throws JSONException, IllegalAccessException
+    {
+      JSONObject response = new JSONObject();
+      JSONArray attrArray = new JSONArray();
+      response.put("attributes", attrArray);
+      for (Field attrField : attributes) {
+        JSONObject attrJson = new JSONObject();
+        attrJson.put("name", attrField.getName());
+
+        Attribute<?> attr = (Attribute<?>) attrField.get(context);
+        Class<?> type = ClassUtils.wrapperToPrimitive(attr.defaultValue.getClass());
+        attrJson.put("type", type == null ? attr.defaultValue.getClass().getCanonicalName() : type);
+        attrJson.put("default", attr.defaultValue);
+        attrArray.put(attrJson);
+      }
+      return response;
+    }
   }
 
   @SuppressWarnings("static-access")
