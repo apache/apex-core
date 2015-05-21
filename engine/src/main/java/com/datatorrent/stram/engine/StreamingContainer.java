@@ -859,7 +859,6 @@ public class StreamingContainer extends YarnContainerMain
     }
   }
 
-  @SuppressWarnings("unchecked")
   private HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher(
     String connIdentifier, StreamCodec<?> streamCodec, long finishedWindowId, int queueCapacity, OperatorDeployInfo.OutputDeployInfo nodi)
     throws UnknownHostException

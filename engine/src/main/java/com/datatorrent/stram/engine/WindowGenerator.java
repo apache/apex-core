@@ -252,9 +252,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    */
   public static long getNextWindowMillis(long windowId, long firstWindowMillis, long windowWidthMillis)
   {
-    long millis = (windowId >> 32) * 1000 + windowWidthMillis * (windowId & WindowGenerator.MAX_WINDOW_ID) + windowWidthMillis;
-    millis = millis > firstWindowMillis ? millis : firstWindowMillis;
-    return millis;
+    return getWindowMillis(windowId, firstWindowMillis, windowWidthMillis) + windowWidthMillis;
   }
 
   /**
@@ -262,7 +260,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    */
   public static long getWindowMillis(long windowId, long firstWindowMillis, long windowWidthMillis)
   {
-    long millis = (windowId >> 32) * 1000 + windowWidthMillis * (windowId & 0xFFFFFFFFL);
+    long millis = (windowId >> 32) * 1000 + windowWidthMillis * (windowId & WindowGenerator.WINDOW_MASK);
     millis = millis > firstWindowMillis ? millis : firstWindowMillis;
     return millis;
   }

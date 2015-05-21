@@ -1505,15 +1505,6 @@ public class PhysicalPlan implements Serializable
           oper.addCheckpoint(wid, startTime);
         }
       }
-/*
-      if (oper.isOperatorStateLess()) {
-        // since storage agent has no info for stateless operators, add a single "most recent" checkpoint
-        // required to initialize checkpoint dependency, becomes recovery checkpoint if there are no stateful downstream operator(s)
-        long currentWindowId = WindowGenerator.getWindowId(currentTime, startTime, dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS));
-        Checkpoint checkpoint = oper.addCheckpoint(currentWindowId, startTime);
-        oper.checkpoints.add(checkpoint);
-      }
-*/
     }
   }
 
