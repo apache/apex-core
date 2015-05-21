@@ -311,6 +311,9 @@ public class CLIProxy implements Closeable
   private void consumePrompt() throws IOException
   {
     String prompt = br.readLine(); // consume the next prompt
+    if (prompt == null) {
+      return;
+    }
 
     // hack to ignore JVM warning when loading hadoop native library in stdout and there is no way to disable this warning in JVM
     while (prompt.contains("VM warning: You have loaded library")
