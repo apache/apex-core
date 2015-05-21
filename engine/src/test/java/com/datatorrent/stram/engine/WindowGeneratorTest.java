@@ -303,5 +303,22 @@ public class WindowGeneratorTest
     lc.run(10000);
   }
 
+  @Test
+  public void testWindowToTime()
+  {
+    long first = 1431714014000L;
+
+    long time1 = WindowGenerator.getWindowMillis(6149164867354886271L, first, 500);
+    long time2 = WindowGenerator.getWindowMillis(6149164867354886272L, first, 500);
+
+    long window1 = WindowGenerator.getWindowId(time1, first, 500);
+    long window2 = WindowGenerator.getWindowId(time2, first, 500);
+
+    Assert.assertEquals("window 1", 6149164867354886271L, window1);
+    Assert.assertEquals("window 2", 6149164867354886272L, window2);
+
+    Assert.assertTrue(time2 > time1);
+  }
+
   public static final Logger logger = LoggerFactory.getLogger(WindowGeneratorTest.class);
 }

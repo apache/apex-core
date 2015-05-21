@@ -1221,7 +1221,7 @@ public class StreamingContainer extends YarnContainerMain
      */
     windowGenerator.setResetWindow(firstWindowMillis);
 
-    long millisAtFirstWindow = WindowGenerator.getWindowMillis(finishedWindowId, firstWindowMillis, windowWidthMillis);
+    long millisAtFirstWindow = WindowGenerator.getNextWindowMillis(finishedWindowId, firstWindowMillis, windowWidthMillis);
     windowGenerator.setFirstWindow(millisAtFirstWindow);
     windowGenerator.setWindowWidth(windowWidthMillis);
 

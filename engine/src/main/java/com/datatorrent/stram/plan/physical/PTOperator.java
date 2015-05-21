@@ -364,7 +364,7 @@ public class PTOperator implements java.io.Serializable
   public Checkpoint addCheckpoint(long windowId, long startTime)
   {
     int widthMillis = operatorMeta.getDAG().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
-    long millis = WindowGenerator.getWindowMillis(windowId, startTime, widthMillis);
+    long millis = WindowGenerator.getNextWindowMillis(windowId, startTime, widthMillis);
     long count = WindowGenerator.getWindowCount(millis, startTime, widthMillis);
     Checkpoint c = new Checkpoint(windowId, (int)(count % operatorMeta.getValue(OperatorContext.APPLICATION_WINDOW_COUNT)), (int)(count % operatorMeta.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT)));
     this.checkpoints.add(c);
