@@ -637,11 +637,11 @@ public class DTCli
       new Arg[]{new Arg("topNMemoryUsages")},
       "Generate the license report for the given month"));
 
-    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand("application"),
+    globalCommands.put("list-application-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.APPLICATION),
       null, null, "Lists the application attributes"));
-    globalCommands.put("list-operator-attributes", new CommandSpec(new ListAttributesCommand("operator"), null, null,
-      "Lists the operator attributes"));
-    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand("port"), null, null,
+    globalCommands.put("list-operator-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.OPERATOR),
+      null, null, "Lists the operator attributes"));
+    globalCommands.put("list-port-attributes", new CommandSpec(new ListAttributesCommand(AttributesType.PORT), null, null,
       "Lists the port attributes"));
 
     //
@@ -4123,12 +4123,17 @@ public class DTCli
 
   }
 
-  protected class ListAttributesCommand implements Command
+  private enum AttributesType
   {
-    private final String type;
+    APPLICATION, OPERATOR, PORT
+  }
+
+  private class ListAttributesCommand implements Command
+  {
+    private final AttributesType type;
     private final Predicate<Field> attrPredicate;
 
-    protected ListAttributesCommand(@NotNull String type)
+    protected ListAttributesCommand(@NotNull AttributesType type)
     {
       this.type = Preconditions.checkNotNull(type);
       this.attrPredicate = new Predicate<Field>()
@@ -4147,12 +4152,12 @@ public class DTCli
       Collection<Field> attributes;
 
       JSONObject result;
-      if (type.equals("application")) {
+      if (type == AttributesType.APPLICATION) {
         Field[] fields = Context.DAGContext.class.getFields();
         attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
         result = getAttrDescription(new LogicalPlan(), attributes);
       }
-      else if (type.equals("operator")) {
+      else if (type == AttributesType.OPERATOR) {
         Field[] fields = Context.OperatorContext.class.getFields();
         attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
         result = getAttrDescription(new BaseContext(null, null), attributes);
