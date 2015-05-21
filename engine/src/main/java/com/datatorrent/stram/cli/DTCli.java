@@ -6,6 +6,8 @@ package com.datatorrent.stram.cli;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -96,6 +98,7 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
+import com.datatorrent.stram.webapp.TypeDiscoverer;
 
 /**
  * Provides command line interface for a streaming application on hadoop (yarn)
@@ -4171,11 +4174,29 @@ public class DTCli
       for (Field attrField : attributes) {
         JSONObject attrJson = new JSONObject();
         attrJson.put("name", attrField.getName());
+        ParameterizedType attrType = (ParameterizedType) attrField.getGenericType();
 
         Attribute<?> attr = (Attribute<?>) attrField.get(context);
-        Class<?> type = ClassUtils.wrapperToPrimitive(attr.defaultValue.getClass());
-        attrJson.put("type", type == null ? attr.defaultValue.getClass().getCanonicalName() : type);
-        attrJson.put("default", attr.defaultValue);
+        Type pType = attrType.getActualTypeArguments()[0];
+
+        Class<?> attrClazz;
+        if (pType instanceof ParameterizedType) {
+          ParameterizedType nPType = (ParameterizedType) pType;
+          attrClazz = (Class<?>) nPType.getRawType();
+
+          TypeDiscoverer typeDiscoverer = new TypeDiscoverer();
+          typeDiscoverer.setTypeArguments(attrClazz, pType, attrJson);
+        }
+        else {
+          attrClazz = (Class<?>) pType;
+        }
+
+        Class<?> lAttrType = ClassUtils.wrapperToPrimitive(attrClazz);
+        attrJson.put("type", lAttrType == null ? attrClazz.getCanonicalName() : lAttrType);
+
+        if (attr.defaultValue != null) {
+          attrJson.put("default", attr.defaultValue);
+        }
         attrArray.put(attrJson);
       }
       return response;
