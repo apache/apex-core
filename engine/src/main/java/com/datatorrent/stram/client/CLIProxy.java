@@ -9,7 +9,7 @@ import com.datatorrent.stram.util.StreamGobbler;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 public class CLIProxy implements Closeable
 {
   private static final Logger LOG = LoggerFactory.getLogger(CLIProxy.class);
-  private String dtCliCommand = null;
+  private String[] dtCliCommand = null;
   private Process process;
   private BufferedReader br;
   private final ExecutorService executor = Executors.newFixedThreadPool(1);
@@ -51,6 +51,11 @@ public class CLIProxy implements Closeable
 
   public CLIProxy(String dtCliCommand, boolean debug)
   {
+    this(new String[]{dtCliCommand}, debug);
+  }
+
+  public CLIProxy(String[] dtCliCommand, boolean debug)
+  {
     this.dtCliCommand = dtCliCommand;
     this.debug = debug;
   }
@@ -68,7 +73,11 @@ public class CLIProxy implements Closeable
   public void start() throws IOException
   {
     List<String> parameters = new ArrayList<String>();
-    parameters.add(dtCliCommand != null ? dtCliCommand : "dtcli");
+    if (dtCliCommand != null) {
+      parameters.addAll(Arrays.asList(dtCliCommand));
+    } else {
+      parameters.add("dtcli");
+    }
     parameters.add("-r");
     if (debug) {
       parameters.add("-vvvv");
@@ -312,7 +321,7 @@ public class CLIProxy implements Closeable
   {
     String prompt = br.readLine(); // consume the next prompt
     if (prompt == null) {
-      return;
+      throw new EOFException("Unexpected EOF reached");
     }
 
     // hack to ignore JVM warning when loading hadoop native library in stdout and there is no way to disable this warning in JVM
@@ -323,7 +332,7 @@ public class CLIProxy implements Closeable
 
     LOG.debug("From CLI, received (prompt): {}", prompt);
     if (!COMMAND_DELIMITER.equals(prompt)) {
-      throw new RuntimeException(String.format("CLIProxy: expected \"%s\" but got \"%s\"", COMMAND_DELIMITER, prompt));
+      throw new IOException(String.format("CLIProxy: expected \"%s\" but got \"%s\"", COMMAND_DELIMITER, prompt));
     }
   }
 
