@@ -3335,8 +3335,8 @@ public class DTCli
 
             arr.put(oper);
           } catch (Throwable t) {
-            //TODO we need to log those classes
             // ignore this class
+            LOG.warn("Ignoring class {} because of exception ", clazz.getCanonicalName(), t);
           }
         }
         json.put("operatorClasses", arr);
