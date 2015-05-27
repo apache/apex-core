@@ -192,7 +192,8 @@ public interface Context
     Attribute<Integer> APPLICATION_WINDOW_COUNT = new Attribute<Integer>(1);
     /**
      * When set it changes the computation to sliding window computation where duration is determined using {@link OperatorContext.APPLICATION_WINDOW_COUNT} that is
-     * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link OperatorContext.APPLICATION_WINDOW_COUNT}
+     * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link OperatorContext.APPLICATION_WINDOW_COUNT}.
+     * The value should range between  (0 - {@link OperatorContext.APPLICATION_WINDOW_COUNT})
      */
     Attribute<Integer> SLIDING_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
 
