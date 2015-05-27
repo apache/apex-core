@@ -2002,4 +2002,85 @@ public class PhysicalPlanTest
 
   }
 
+  @Test
+  public void testContainersForSlidingWindow()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
+    dag.setAttribute(o1, OperatorContext.SLIDING_WINDOW_COUNT, 2);
+    dag.getOperatorMeta("o1").getMeta(o1.outport1).getUnifierMeta().getAttributes().put(OperatorContext.MEMORY_MB, 2000);
+    dag.getOperatorMeta("o1").getMeta(o1.outport2).getUnifierMeta().getAttributes().put(OperatorContext.MEMORY_MB, 4000);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.addStream("o1.outport2", o1.outport2, o2.inport2);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
+    boolean sawOutput1Slider = false;
+    boolean sawOutput2Slider = false;
+    for (PTContainer container : plan.getContainers()) {
+      Assert.assertEquals("number of operators in each container is 1", container.operators.size(), 1);
+      if (container.operators.get(0).isUnifier()) {
+        String name = container.operators.get(0).getName();
+        if (name.equals("o1.outport1#slider")) {
+          sawOutput1Slider = true;
+          Assert.assertEquals("container memory is 2512", container.getRequiredMemoryMB(), 2512);
+        }
+        else if (name.equals("o1.outport2#slider")) {
+          sawOutput2Slider = true;
+          Assert.assertEquals("container memory is 2512", container.getRequiredMemoryMB(), 4512);
+        }
+      }
+    }
+    Assert.assertEquals("Found output1 slider", true, sawOutput1Slider);
+    Assert.assertEquals("Found output2 slider", true, sawOutput2Slider);
+  }
+
+  @Test
+  public void testMxNPartitionForSlidingWindow()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
+    dag.setAttribute(o1, OperatorContext.SLIDING_WINDOW_COUNT, 2);
+    dag.setAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+    dag.getOperatorMeta("o1").getMeta(o1.outport1).getUnifierMeta().getAttributes().put(OperatorContext.MEMORY_MB, 1024);
+    dag.setAttribute(o2, OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+    dag.setAttribute(o2, OperatorContext.SLIDING_WINDOW_COUNT, 2);
+    dag.setAttribute(o2, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertEquals("number of containers", 10, plan.getContainers().size());
+  }
+
+  @Test
+  public void testParallelPartitionForSlidingWindow()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
+    dag.setAttribute(o1, OperatorContext.SLIDING_WINDOW_COUNT, 2);
+    dag.setAttribute(o1, OperatorContext.PARTITIONER, new StatelessPartitioner<Operator>(2));
+    dag.setInputPortAttribute(o2.inport1, PortContext.PARTITION_PARALLEL, true);
+    dag.setAttribute(o1, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
+
+    dag.addStream("o1.outport1", o1.outport1, o2.inport1);
+    dag.addStream("o2.outport1", o2.outport1, o3.inport1);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
+    Assert.assertEquals("number of containers", 8, plan.getContainers().size());
+  }
 }

@@ -12,21 +12,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.*;
 import javax.validation.constraints.NotNull;
 
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.*;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.engine.DefaultUnifier;
+import com.datatorrent.stram.engine.Slider;
+
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -209,6 +214,7 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 201412091633L;
     private OperatorMeta operatorMeta;
     private OperatorMeta unifierMeta;
+    private OperatorMeta sliderMeta;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes;
@@ -231,6 +237,21 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       return unifierMeta;
+    }
+
+    public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingWindowCount)
+    {
+      if (sliderMeta == null) {
+        Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets);
+        try {
+          sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
+        }
+        catch (CloneNotSupportedException ex) {
+          throw new RuntimeException(ex);
+        }
+        sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingWindowCount);
+      }
+      return sliderMeta;
     }
 
     public String getPortName()
@@ -446,7 +467,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
-    private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
+    private final Attribute.AttributeMap attributes;
     @SuppressWarnings("unused")
     private final int id;
     @NotNull
@@ -465,12 +486,18 @@ public class LogicalPlan implements Serializable, DAG
 
     private OperatorMeta(String name, Operator operator)
     {
+      this(name, operator, new DefaultAttributeMap());
+    }
+
+    private OperatorMeta(String name, Operator operator, Attribute.AttributeMap attributeMap)
+    {
       LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
       this.name = name;
       this.operator = operator;
       this.id = logicalOperatorSequencer.decrementAndGet();
       this.status = new LogicalOperatorStatus(name);
+      this.attributes = attributeMap;
     }
 
     @Override

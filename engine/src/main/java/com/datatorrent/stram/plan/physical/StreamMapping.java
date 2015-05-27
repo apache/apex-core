@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.common.math.IntMath;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Partitioner.PartitionKeys;
@@ -48,6 +50,7 @@ public class StreamMapping implements java.io.Serializable
   private final PhysicalPlan plan;
   PTOperator finalUnifier;
   final Set<PTOperator> cascadingUnifiers = Sets.newHashSet();
+  final Set<PTOperator> slidingUnifiers = Sets.newHashSet();
   private final List<PTOutput> upstream = Lists.newArrayList();
 
 
@@ -61,6 +64,7 @@ public class StreamMapping implements java.io.Serializable
       opers.add(finalUnifier);
     }
     opers.addAll(cascadingUnifiers);
+    opers.addAll(slidingUnifiers);
   }
 
   public void setSources(Collection<PTOperator> partitions) {
@@ -76,7 +80,25 @@ public class StreamMapping implements java.io.Serializable
     redoMapping();
   }
 
-  private PTOperator createUnifier()
+  public static PTOperator createSlidingUnifier(StreamMeta streamMeta, PhysicalPlan plan, int operatorApplicationWindowCount, int slidingWindowCount)
+  {
+    int gcd = IntMath.gcd(operatorApplicationWindowCount, slidingWindowCount);
+    OperatorMeta um = streamMeta.getSource().getSlidingUnifier(operatorApplicationWindowCount / gcd, slidingWindowCount / gcd);
+    PTOperator pu = plan.newOperator(um, um.getName());
+
+    Operator unifier = um.getOperator();
+    PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
+    Operators.describe(unifier, mergeDesc);
+    if (mergeDesc.outputPorts.size() != 1) {
+      throw new AssertionError("Unifier must have a single output port, instead found : " + mergeDesc.outputPorts);
+    }
+    pu.unifiedOperatorMeta = streamMeta.getSource().getOperatorMeta();
+    pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
+    plan.newOpers.put(pu, unifier);
+    return pu;
+  }
+
+  public static PTOperator createUnifier(StreamMeta streamMeta, PhysicalPlan plan)
   {
     OperatorMeta um = streamMeta.getSource().getUnifierMeta();
     PTOperator pu = plan.newOperator(um, um.getName());
@@ -92,6 +114,33 @@ public class StreamMapping implements java.io.Serializable
     pu.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), streamMeta, pu));
     plan.newOpers.put(pu, unifier);
     return pu;
+  }
+
+  private void addSlidingUnifiers()
+  {
+    OperatorMeta sourceOM = streamMeta.getSource().getOperatorMeta();
+    if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDING_WINDOW_COUNT)) {
+      if (sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
+        sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
+        plan.undeployOpers.addAll(slidingUnifiers);
+        slidingUnifiers.clear();
+        List<PTOutput> newUpstream = Lists.newArrayList();
+        PTOperator slidingUnifier;
+        for (PTOutput source : upstream) {
+          slidingUnifier = StreamMapping.createSlidingUnifier(streamMeta, plan,
+            sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
+            sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT));
+          addInput(slidingUnifier, source, null);
+          this.slidingUnifiers.add(slidingUnifier);
+          newUpstream.add(slidingUnifier.outputs.get(0));
+        }
+        upstream.clear();
+        upstream.addAll(newUpstream);
+      }
+      else {
+        LOG.warn("Sliding Window Count {} should be less than APPLICATION WINDOW COUNT {}", sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT), sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT));
+      }
+    }
   }
 
   @SuppressWarnings("AssignmentToForLoopParameter")
@@ -110,7 +159,7 @@ public class StreamMapping implements java.io.Serializable
         if (!pooledUnifiers.isEmpty()) {
           pu = pooledUnifiers.remove(0);
         } else {
-          pu = createUnifier();
+          pu = createUnifier(streamMeta, plan);
         }
         assert (pu.outputs.size() == 1) : "unifier has single output";
         nextLevel.addAll(pu.outputs);
@@ -160,6 +209,7 @@ public class StreamMapping implements java.io.Serializable
       List<PTOperator> currentUnifiers = Lists.newArrayList(this.cascadingUnifiers);
       this.cascadingUnifiers.clear();
       plan.undeployOpers.addAll(currentUnifiers);
+      addSlidingUnifiers();
 
       int limit = streamMeta.getSource().getValue(PortContext.UNIFIER_LIMIT);
 
@@ -214,7 +264,7 @@ public class StreamMapping implements java.io.Serializable
         if (upstream.size() > 1) {
           if (!separateUnifiers && ((pks == null || pks.mask == 0) || lastSingle)) {
             if (finalUnifier == null) {
-              finalUnifier = createUnifier();
+              finalUnifier = createUnifier(streamMeta, plan);
             }
             setInput(doperEntry.first, doperEntry.second, finalUnifier, (pks == null) || (pks.mask == 0) ? null : pks);
             if (finalUnifier.inputs.isEmpty()) {
@@ -228,7 +278,7 @@ public class StreamMapping implements java.io.Serializable
             LOG.debug("MxN unifier for {} {} {}", new Object[] {doperEntry.first, doperEntry.second.getPortName(), pks});
             PTOperator unifier = doperEntry.first.upstreamMerge.get(doperEntry.second);
             if (unifier == null) {
-              unifier = createUnifier();
+              unifier = createUnifier(streamMeta, plan);
               doperEntry.first.upstreamMerge.put(doperEntry.second, unifier);
               setInput(doperEntry.first, doperEntry.second, unifier, null);
             }
@@ -289,7 +339,8 @@ public class StreamMapping implements java.io.Serializable
     }
   }
 
-  private void addInput(PTOperator target, PTOutput upstreamOut, PartitionKeys pks) {
+  public static void addInput(PTOperator target, PTOutput upstreamOut, PartitionKeys pks)
+  {
     StreamMeta lStreamMeta = upstreamOut.logicalStream;
     PTInput input = new PTInput("<merge#" + lStreamMeta.getSource().getPortName() + ">", lStreamMeta, target, pks, upstreamOut);
     target.inputs.add(input);
