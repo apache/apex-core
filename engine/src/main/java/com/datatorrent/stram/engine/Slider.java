@@ -18,7 +18,7 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
 {
   private List<List<Object>> cache;
   private transient List<Object> currentList;
-  private final Unifier unifier;
+  private final Unifier<Object> unifier;
   private final int numberOfBuckets;
   private transient int spinMillis;
   final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
@@ -34,7 +34,7 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
     numberOfBuckets = -1;
   }
 
-  public Slider(Unifier uniOperator, int buckets)
+  public Slider(Unifier<Object> uniOperator, int buckets)
   {
     unifier = uniOperator;
     cache = new LinkedList<List<Object>>();
@@ -61,7 +61,6 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
     throw new RuntimeException("Unifier should have exactly one output port");
   }
 
-  @SuppressWarnings(value = "unchecked")
   @Override
   public void process(Object tuple)
   {
@@ -69,7 +68,6 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
     currentList.add(tuple);
   }
 
-  @SuppressWarnings(value = "unchecked")
   @Override
   public void beginWindow(long windowId)
   {
@@ -121,7 +119,6 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
     unifier.teardown();
   }
 
-  @SuppressWarnings(value = "unchecked")
   @Override
   public void activate(Context context)
   {
@@ -131,7 +128,6 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
 
   }
 
-  @SuppressWarnings(value = "unchecked")
   @Override
   public void deactivate()
   {
@@ -147,11 +143,13 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
     if (unifier instanceof IdleTimeHandler) {
       ((IdleTimeHandler) unifier).handleIdleTime();
     }
-    try {
-      Thread.sleep(spinMillis);
-    }
-    catch (InterruptedException ex) {
-      throw new RuntimeException(ex);
+    else {
+      try {
+        Thread.sleep(spinMillis);
+      }
+      catch (InterruptedException ex) {
+        throw new RuntimeException(ex);
+      }
     }
   }
 

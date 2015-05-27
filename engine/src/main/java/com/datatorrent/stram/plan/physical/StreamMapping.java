@@ -119,23 +119,27 @@ public class StreamMapping implements java.io.Serializable
   private void addSlidingUnifiers()
   {
     OperatorMeta sourceOM = streamMeta.getSource().getOperatorMeta();
-    if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDING_WINDOW_COUNT)
-      && sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
-      sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
-      plan.undeployOpers.addAll(slidingUnifiers);
-      slidingUnifiers.clear();
-      List<PTOutput> newUpstream = Lists.newArrayList();
-      PTOperator slidingUnifier;
-      for (PTOutput source : upstream) {
-        slidingUnifier = StreamMapping.createSlidingUnifier(streamMeta, plan,
-          sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
-          sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT));
-        addInput(slidingUnifier, source, null);
-        this.slidingUnifiers.add(slidingUnifier);
-        newUpstream.add(slidingUnifier.outputs.get(0));
+    if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDING_WINDOW_COUNT)) {
+      if (sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
+        sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
+        plan.undeployOpers.addAll(slidingUnifiers);
+        slidingUnifiers.clear();
+        List<PTOutput> newUpstream = Lists.newArrayList();
+        PTOperator slidingUnifier;
+        for (PTOutput source : upstream) {
+          slidingUnifier = StreamMapping.createSlidingUnifier(streamMeta, plan,
+            sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
+            sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT));
+          addInput(slidingUnifier, source, null);
+          this.slidingUnifiers.add(slidingUnifier);
+          newUpstream.add(slidingUnifier.outputs.get(0));
+        }
+        upstream.clear();
+        upstream.addAll(newUpstream);
       }
-      upstream.clear();
-      upstream.addAll(newUpstream);
+      else {
+        LOG.warn("Sliding Window Count {} should be less than APPLICATION WINDOW COUNT {}", sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT), sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT));
+      }
     }
   }
 

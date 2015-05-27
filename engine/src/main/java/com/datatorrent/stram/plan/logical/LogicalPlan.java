@@ -242,10 +242,11 @@ public class LogicalPlan implements Serializable, DAG
     public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingWindowCount)
     {
       if (sliderMeta == null) {
-        Slider slider = new Slider(getUnifier(), numberOfBuckets);
+        Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets);
         try {
           sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
-        }catch (CloneNotSupportedException ex){
+        }
+        catch (CloneNotSupportedException ex) {
           throw new RuntimeException(ex);
         }
         sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingWindowCount);
@@ -498,7 +499,6 @@ public class LogicalPlan implements Serializable, DAG
       this.status = new LogicalOperatorStatus(name);
       this.attributes = attributeMap;
     }
-
 
     @Override
     public String getName()
