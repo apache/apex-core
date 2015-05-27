@@ -89,6 +89,7 @@ import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
 import com.datatorrent.stram.license.audit.LicenseReport;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
+import com.datatorrent.stram.license.provider.LicenseException;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
@@ -1924,6 +1925,7 @@ public class DTCli
     int remainingLicensedMB;
     int totalLicensedMB;
     // add expiration date range here
+    String error;
   }
 
   private Map<String, LicenseInfo> getLicenseInfoMap()
@@ -1934,15 +1936,16 @@ public class DTCli
     List<ApplicationReport> licenseAgentList = getLicenseAgentList();
     for (ApplicationReport licenseAgent : licenseAgentList) {
       String licenseId = licenseAgent.getName();
+      LicenseInfo licenseInfo = new LicenseInfo();
       try {
         LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout, null);
         ClusterMemoryReportState reportState = lap.protocol.getMemoryMetricReport(new GetMemoryMetricReportRequest()).getReportState();
-        LicenseInfo licenseInfo = new LicenseInfo();
         licenseInfo.remainingLicensedMB = reportState.getFreeMemoryMB();
         licenseInfo.totalLicensedMB = reportState.getFreeMemoryMB() + reportState.getUsedMemoryMB();
         licenseInfoMap.put(licenseId, licenseInfo);
-      }
-      catch (Exception ex) {
+      } catch (LicenseException ex) {
+        licenseInfo.error = ex.getMessage();
+      } catch (Exception ex) {
         LOG.warn("Cannot get license info for license id {}", licenseId, ex);
       }
     }
