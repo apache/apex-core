@@ -10,16 +10,17 @@ import java.util.Map;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.google.common.collect.Maps;
 
 import com.datatorrent.api.BaseOperator;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;
-import com.datatorrent.stram.webapp.TypeDiscoverer;
-import com.google.common.collect.Maps;
 
 public class TypeDiscoveryTest
 {
@@ -144,6 +145,63 @@ public class TypeDiscoveryTest
     val = root.get(0).path("typeArgs").get(1).path("type").asText();
     Assert.assertEquals("map value type", "java.lang.Object", val);
 
+  }
+
+  @Test
+  public void testAppAttributes() throws JSONException, IllegalAccessException
+  {
+    JSONArray appAttributes = TypeDiscoverer.getAppAttributes().getJSONArray("attributes");
+    Map<String, JSONObject> attributesMap = Maps.newHashMap();
+    for (int i = 0; i < appAttributes.length(); i++) {
+      attributesMap.put(appAttributes.getJSONObject(i).getString("name"), appAttributes.getJSONObject(i));
+    }
+    JSONObject appNameAttr = attributesMap.get("APPLICATION_NAME");
+    Assert.assertNotNull("application name", appNameAttr);
+    Assert.assertEquals("application name type", "java.lang.String", appNameAttr.getString("type"));
+    Assert.assertNotNull("default app name", appNameAttr.getString("default"));
+
+    JSONObject stringCodecsAttr = attributesMap.get("STRING_CODECS");
+    Assert.assertNotNull("string codecs", stringCodecsAttr);
+    Assert.assertEquals("string codecs type", "java.util.Map", stringCodecsAttr.getString("type"));
+    Assert.assertNotNull("type args", stringCodecsAttr.getJSONArray("typeArgs"));
+  }
+
+  @Test
+  public void testOperatorAttributes() throws JSONException, IllegalAccessException
+  {
+    JSONArray operatorAttributes = TypeDiscoverer.getOperatorAttributes().getJSONArray("attributes");
+    Map<String, JSONObject> attributesMap = Maps.newHashMap();
+    for (int i = 0; i < operatorAttributes.length(); i++) {
+      attributesMap.put(operatorAttributes.getJSONObject(i).getString("name"), operatorAttributes.getJSONObject(i));
+    }
+    JSONObject activationWindowAttr = attributesMap.get("ACTIVATION_WINDOW_ID");
+    Assert.assertNotNull("activation window", activationWindowAttr);
+    Assert.assertEquals("activation window type", "java.lang.Long", activationWindowAttr.getString("type"));
+    Assert.assertEquals("default activation window", "-1", activationWindowAttr.getString("default"));
+
+    JSONObject partitionerAttr = attributesMap.get("PARTITIONER");
+    Assert.assertNotNull("partitioner", partitionerAttr);
+    Assert.assertEquals("partitioner type", "com.datatorrent.api.Partitioner", partitionerAttr.getString("type"));
+    Assert.assertNotNull("type args", partitionerAttr.getJSONArray("typeArgs"));
+  }
+
+  @Test
+  public void testPortAttributes() throws JSONException, IllegalAccessException
+  {
+    JSONArray portAttributes = TypeDiscoverer.getPortAttributes().getJSONArray("attributes");
+    Map<String, JSONObject> attributesMap = Maps.newHashMap();
+    for (int i = 0; i < portAttributes.length(); i++) {
+      attributesMap.put(portAttributes.getJSONObject(i).getString("name"), portAttributes.getJSONObject(i));
+    }
+    JSONObject queueCapacityAttr = attributesMap.get("QUEUE_CAPACITY");
+    Assert.assertNotNull("queue capacity", queueCapacityAttr);
+    Assert.assertEquals("queue capacity type", "java.lang.Integer", queueCapacityAttr.getString("type"));
+    Assert.assertEquals("default queue capacity", "1024", queueCapacityAttr.getString("default"));
+
+    JSONObject streamCodecAttr = attributesMap.get("STREAM_CODEC");
+    Assert.assertNotNull("stream codec", streamCodecAttr);
+    Assert.assertEquals("stream codec type", "com.datatorrent.api.StreamCodec", streamCodecAttr.getString("type"));
+    Assert.assertNotNull("type args", streamCodecAttr.getJSONArray("typeArgs"));
   }
 
 }

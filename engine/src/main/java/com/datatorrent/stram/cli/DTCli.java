@@ -5,9 +5,6 @@ package com.datatorrent.stram.cli;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -28,7 +25,6 @@ import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.ClassUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -58,20 +54,15 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Collections2;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
-import com.datatorrent.api.Attribute;
-import com.datatorrent.api.Context;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.client.*;
 import com.datatorrent.stram.client.AppPackage.AppInfo;
 import com.datatorrent.stram.client.DTConfiguration.Scope;
@@ -80,7 +71,6 @@ import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
-import com.datatorrent.stram.engine.PortContext;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseAuthority;
 import com.datatorrent.stram.license.LicenseSection;
@@ -4131,80 +4121,27 @@ public class DTCli
   private class ListAttributesCommand implements Command
   {
     private final AttributesType type;
-    private final Predicate<Field> attrPredicate;
 
     protected ListAttributesCommand(@NotNull AttributesType type)
     {
       this.type = Preconditions.checkNotNull(type);
-      this.attrPredicate = new Predicate<Field>()
-      {
-        @Override
-        public boolean apply(Field input)
-        {
-          return input.getType().equals(Attribute.class);
-        }
-      };
     }
 
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      Collection<Field> attributes;
-
       JSONObject result;
       if (type == AttributesType.APPLICATION) {
-        Field[] fields = Context.DAGContext.class.getFields();
-        attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
-        result = getAttrDescription(new LogicalPlan(), attributes);
+        result = TypeDiscoverer.getAppAttributes();
       }
       else if (type == AttributesType.OPERATOR) {
-        Field[] fields = Context.OperatorContext.class.getFields();
-        attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
-        result = getAttrDescription(new BaseContext(null, null), attributes);
+        result = TypeDiscoverer.getOperatorAttributes();
       }
       else {
         //get port attributes
-        Field[] fields = Context.PortContext.class.getFields();
-        attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
-        result = getAttrDescription(new PortContext(null, null), attributes);
+        result = TypeDiscoverer.getPortAttributes();
       }
       printJson(result);
-    }
-
-    private JSONObject getAttrDescription(Context context, Collection<Field> attributes) throws JSONException, IllegalAccessException
-    {
-      JSONObject response = new JSONObject();
-      JSONArray attrArray = new JSONArray();
-      response.put("attributes", attrArray);
-      for (Field attrField : attributes) {
-        JSONObject attrJson = new JSONObject();
-        attrJson.put("name", attrField.getName());
-        ParameterizedType attrType = (ParameterizedType) attrField.getGenericType();
-
-        Attribute<?> attr = (Attribute<?>) attrField.get(context);
-        Type pType = attrType.getActualTypeArguments()[0];
-
-        Class<?> attrClazz;
-        if (pType instanceof ParameterizedType) {
-          ParameterizedType nPType = (ParameterizedType) pType;
-          attrClazz = (Class<?>) nPType.getRawType();
-
-          TypeDiscoverer typeDiscoverer = new TypeDiscoverer();
-          typeDiscoverer.setTypeArguments(attrClazz, pType, attrJson);
-        }
-        else {
-          attrClazz = (Class<?>) pType;
-        }
-
-        Class<?> lAttrType = ClassUtils.wrapperToPrimitive(attrClazz);
-        attrJson.put("type", lAttrType == null ? attrClazz.getCanonicalName() : lAttrType);
-
-        if (attr.defaultValue != null) {
-          attrJson.put("default", attr.defaultValue);
-        }
-        attrArray.put(attrJson);
-      }
-      return response;
     }
   }
 

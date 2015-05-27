@@ -4,13 +4,8 @@
  */
 package com.datatorrent.stram.webapp;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.lang.reflect.WildcardType;
+import java.lang.reflect.*;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
@@ -20,8 +15,17 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.Operator;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Maps;
+
+import com.datatorrent.api.Attribute;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Operator;
+
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.engine.PortContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 
 /**
  * Introspect operator for generic type parameters and arguments to determine port types.
@@ -73,6 +77,17 @@ public class TypeDiscoverer
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(TypeDiscoverer.class);
+
+  // a predicate that filters out fields that are not attributes
+  private static Predicate<Field> attrPredicate = new Predicate<Field>()
+  {
+    @Override
+    public boolean apply(Field input)
+    {
+      return input.getType().equals(Attribute.class);
+    }
+  };
+
   // map of generic type name to actual type
   public final Map<String, Type> typeArguments = Maps.newHashMap();
 
@@ -277,6 +292,80 @@ public class TypeDiscoverer
     } catch (JSONException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Fetches application attributes.
+   * @return all application attributes exposed to user.
+   * @throws JSONException
+   * @throws IllegalAccessException
+   */
+  public static JSONObject getAppAttributes() throws JSONException, IllegalAccessException
+  {
+    Field[] fields = Context.DAGContext.class.getFields();
+    Collection<Field> attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
+    return getAttrDescription(new LogicalPlan(), attributes);
+  }
+
+  /**
+   * Fetches operator attributes.
+   * @return all operator attributes exposed to user.
+   * @throws JSONException
+   * @throws IllegalAccessException
+   */
+  public static JSONObject getOperatorAttributes() throws JSONException, IllegalAccessException
+  {
+    Field[] fields = Context.OperatorContext.class.getFields();
+    Collection<Field> attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
+    return getAttrDescription(new BaseContext(null, null), attributes);
+  }
+
+  /**
+   * Fetches port attributes.
+   * @return all port attributes exposed to user.
+   * @throws JSONException
+   * @throws IllegalAccessException
+   */
+  public static JSONObject getPortAttributes() throws JSONException, IllegalAccessException
+  {
+    Field[] fields = Context.PortContext.class.getFields();
+    Collection<Field> attributes = Collections2.filter(Arrays.asList(fields), attrPredicate);
+    return getAttrDescription(new PortContext(null, null), attributes);
+  }
+
+  private static JSONObject getAttrDescription(Context context, Collection<Field> attributes) throws JSONException,
+    IllegalAccessException
+  {
+    JSONObject response = new JSONObject();
+    JSONArray attrArray = new JSONArray();
+    response.put("attributes", attrArray);
+    for (Field attrField : attributes) {
+      JSONObject attrJson = new JSONObject();
+      attrJson.put("name", attrField.getName());
+      ParameterizedType attrType = (ParameterizedType) attrField.getGenericType();
+
+      Attribute<?> attr = (Attribute<?>) attrField.get(context);
+      Type pType = attrType.getActualTypeArguments()[0];
+
+      Class<?> attrClazz;
+      if (pType instanceof ParameterizedType) {
+        ParameterizedType nPType = (ParameterizedType) pType;
+        attrClazz = (Class<?>) nPType.getRawType();
+
+        TypeDiscoverer typeDiscoverer = new TypeDiscoverer();
+        typeDiscoverer.setTypeArguments(attrClazz, pType, attrJson);
+      }
+      else {
+        attrClazz = (Class<?>) pType;
+      }
+      attrJson.put("type", attrClazz.getCanonicalName());
+
+      if (attr.defaultValue != null) {
+        attrJson.put("default", attr.defaultValue);
+      }
+      attrArray.put(attrJson);
+    }
+    return response;
   }
 
 }
