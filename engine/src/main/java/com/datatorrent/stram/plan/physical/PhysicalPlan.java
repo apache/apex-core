@@ -192,9 +192,9 @@ public class PhysicalPlan implements Serializable
     }
 
     private Collection<PTOperator> getAllOperators() {
-      if (partitions.size() == 1) {
-        return Collections.singletonList(partitions.get(0));
-      }
+//      if (partitions.size() == 1) {
+//        return Collections.singletonList(partitions.get(0));
+//      }
       Collection<PTOperator> c = new ArrayList<PTOperator>(partitions.size() + 1);
       c.addAll(partitions);
       for (StreamMapping ug : outputStreams.values()) {
