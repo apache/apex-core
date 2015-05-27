@@ -243,11 +243,10 @@ public class LogicalPlan implements Serializable, DAG
     {
       if (sliderMeta == null) {
         Slider slider = new Slider(getUnifier(), numberOfBuckets);
-        sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider);
-        Attribute.AttributeMap unifierMap = getUnifierMeta().getAttributes();
-        Attribute.AttributeMap sliderMap = sliderMeta.getAttributes();
-        for (Map.Entry<Attribute<?>, Object> entry : unifierMap.entrySet()) {
-          sliderMap.put((Attribute<Object>) entry.getKey(), entry.getValue());
+        try {
+          sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
+        }catch (CloneNotSupportedException ex){
+          throw new RuntimeException(ex);
         }
         sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingWindowCount);
       }
@@ -467,7 +466,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
-    private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
+    private final Attribute.AttributeMap attributes;
     @SuppressWarnings("unused")
     private final int id;
     @NotNull
@@ -486,13 +485,20 @@ public class LogicalPlan implements Serializable, DAG
 
     private OperatorMeta(String name, Operator operator)
     {
+      this(name, operator, new DefaultAttributeMap());
+    }
+
+    private OperatorMeta(String name, Operator operator, Attribute.AttributeMap attributeMap)
+    {
       LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
       this.name = name;
       this.operator = operator;
       this.id = logicalOperatorSequencer.decrementAndGet();
       this.status = new LogicalOperatorStatus(name);
+      this.attributes = attributeMap;
     }
+
 
     @Override
     public String getName()

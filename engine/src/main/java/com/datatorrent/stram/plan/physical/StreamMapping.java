@@ -118,17 +118,18 @@ public class StreamMapping implements java.io.Serializable
 
   private void addSlidingUnifiers()
   {
-    if (streamMeta.getSource().getOperatorMeta().getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) != null
-      && streamMeta.getSource().getOperatorMeta().getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
-      streamMeta.getSource().getOperatorMeta().getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
+    OperatorMeta sourceOM = streamMeta.getSource().getOperatorMeta();
+    if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDING_WINDOW_COUNT)
+      && sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
+      sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
       plan.undeployOpers.addAll(slidingUnifiers);
       slidingUnifiers.clear();
       List<PTOutput> newUpstream = Lists.newArrayList();
       PTOperator slidingUnifier;
       for (PTOutput source : upstream) {
         slidingUnifier = StreamMapping.createSlidingUnifier(streamMeta, plan,
-          streamMeta.getSource().getOperatorMeta().getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
-          streamMeta.getSource().getOperatorMeta().getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT));
+          sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT),
+          sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT));
         addInput(slidingUnifier, source, null);
         this.slidingUnifiers.add(slidingUnifier);
         newUpstream.add(slidingUnifier.outputs.get(0));
