@@ -16,6 +16,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.math.IntMath;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -430,6 +432,10 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   {
     alive = true;
     APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
+    if (context.getValue(OperatorContext.SLIDING_WINDOW_COUNT) != null) {
+      int slidingWindowCount = context.getValue(OperatorContext.SLIDING_WINDOW_COUNT);
+      APPLICATION_WINDOW_COUNT = IntMath.gcd(APPLICATION_WINDOW_COUNT, slidingWindowCount);
+    }
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
     Collection<StatsListener> statsListeners = context.getValue(OperatorContext.STATS_LISTENERS);
 

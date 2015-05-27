@@ -793,6 +793,12 @@ public class PhysicalPlan implements Serializable
         if (sourceMapping.partitions.size() < m.partitions.size()) {
           throw new AssertionError("Number of partitions don't match in parallel mapping " + sourceMapping.logicalOperator.getName() + " -> " + m.logicalOperator.getName() + ", " + sourceMapping.partitions.size() + " -> " + m.partitions.size());
         }
+        int slidingWindowCount = 0;
+        if (sourceMapping.logicalOperator.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) != null &&
+            sourceMapping.logicalOperator.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
+            sourceMapping.logicalOperator.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
+          slidingWindowCount = sourceMapping.logicalOperator.getValue(OperatorContext.SLIDING_WINDOW_COUNT);
+        }
         for (int i=0; i<m.partitions.size(); i++) {
           PTOperator oper = m.partitions.get(i);
           PTOperator sourceOper = sourceMapping.partitions.get(i);
@@ -807,7 +813,17 @@ public class PhysicalPlan implements Serializable
                   break nextSource;
                 }
               }
-              PTInput input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
+              PTInput input;
+              if (slidingWindowCount > 0) {
+                PTOperator slidingUnifier = StreamMapping.createSlidingUnifier(sourceOut.logicalStream, this,
+                  sourceMapping.logicalOperator.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT), slidingWindowCount);
+                StreamMapping.addInput(slidingUnifier, sourceOut, null);
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, slidingUnifier.outputs.get(0));
+                sourceMapping.outputStreams.get(ipm.getValue().getSource()).slidingUnifiers.add(slidingUnifier);
+              }
+              else {
+                input = new PTInput(ipm.getKey().getPortName(), ipm.getValue(), oper, null, sourceOut);
+              }
               oper.inputs.add(input);
             }
           }

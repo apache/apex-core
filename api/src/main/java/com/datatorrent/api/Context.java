@@ -142,6 +142,7 @@ public interface Context
 
   public interface OperatorContext extends Context
   {
+    Attribute<Integer> SLIDING_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
     /**
      * The windowId at which the operator's current run got activated.
      * When the operator is deployed the first time during it's activation, this value is the default value

@@ -12,21 +12,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.*;
 import javax.validation.constraints.NotNull;
 
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.*;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.engine.DefaultUnifier;
+import com.datatorrent.stram.engine.Slider;
+
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -209,6 +214,7 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 201412091633L;
     private OperatorMeta operatorMeta;
     private OperatorMeta unifierMeta;
+    private OperatorMeta sliderMeta;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes;
@@ -231,6 +237,21 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       return unifierMeta;
+    }
+
+    public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingWindowCount)
+    {
+      if (sliderMeta == null) {
+        Slider slider = new Slider(getUnifier(), numberOfBuckets);
+        sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider);
+        Attribute.AttributeMap unifierMap = getUnifierMeta().getAttributes();
+        Attribute.AttributeMap sliderMap = sliderMeta.getAttributes();
+        for (Map.Entry<Attribute<?>, Object> entry : unifierMap.entrySet()) {
+          sliderMap.put((Attribute<Object>) entry.getKey(), entry.getValue());
+        }
+        sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingWindowCount);
+      }
+      return sliderMeta;
     }
 
     public String getPortName()
