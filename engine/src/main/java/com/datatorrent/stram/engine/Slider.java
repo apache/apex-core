@@ -14,16 +14,16 @@ import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Operator.Unifier;
 
-public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operator.ActivationListener, StatsListener, Serializable, Operator.CheckpointListener
+public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operator.ActivationListener<OperatorContext>, StatsListener, Serializable, Operator.CheckpointListener
 {
   private List<List<Object>> cache;
   private transient List<Object> currentList;
   private final Unifier<Object> unifier;
   private final int numberOfBuckets;
   private transient int spinMillis;
-  final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
+  public final transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
 
-  public Unifier getUnifier()
+  public Unifier<Object> getUnifier()
   {
     return unifier;
   }
@@ -41,7 +41,7 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
     this.numberOfBuckets = buckets;
   }
 
-  private OutputPort getOutputPort()
+  private OutputPort<?> getOutputPort()
   {
     for (Class<?> c = unifier.getClass(); c != Object.class; c = c.getSuperclass()) {
       Field[] fields = c.getDeclaredFields();
@@ -50,7 +50,7 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
         try {
           Object portObject = field.get(unifier);
           if (portObject instanceof OutputPort) {
-            return (OutputPort) portObject;
+            return (OutputPort<?>) portObject;
           }
         }
         catch (IllegalAccessException e) {
@@ -93,7 +93,7 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
   @Override
   public void setup(OperatorContext context)
   {
-    OutputPort unifierOutputPort = getOutputPort();
+    OutputPort<?> unifierOutputPort = getOutputPort();
     unifierOutputPort.setSink(new Sink<Object>()
                               {
                                 @Override
@@ -120,10 +120,11 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
   }
 
   @Override
-  public void activate(Context context)
+  @SuppressWarnings("unchecked")
+  public void activate(OperatorContext context)
   {
     if (unifier instanceof ActivationListener) {
-      ((ActivationListener) unifier).activate(context);
+      ((ActivationListener<OperatorContext>) unifier).activate(context);
     }
 
   }

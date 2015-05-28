@@ -242,6 +242,7 @@ public class LogicalPlan implements Serializable, DAG
     public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingWindowCount)
     {
       if (sliderMeta == null) {
+        @SuppressWarnings("unchecked")
         Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets);
         try {
           sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
@@ -452,10 +453,7 @@ public class LogicalPlan implements Serializable, DAG
       if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
         return false;
       }
-      if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
-        return false;
-      }
-      return true;
+      return !((this.id == null) ? (other.id != null) : !this.id.equals(other.id));
     }
 
   }
@@ -683,11 +681,7 @@ public class LogicalPlan implements Serializable, DAG
       if (operatorAnnotation != null ? !operatorAnnotation.equals(that.operatorAnnotation) : that.operatorAnnotation != null) {
         return false;
       }
-      if (operator != null ? !operator.equals(that.operator) : that.operator != null) {
-        return false;
-      }
-
-      return true;
+      return !(operator != null ? !operator.equals(that.operator) : that.operator != null);
     }
 
     @Override
@@ -800,7 +794,7 @@ public class LogicalPlan implements Serializable, DAG
    * Set attribute for the operator. For valid attributes, see {
    *
    * @param operator
-   * @return AttributeMap<OperatorContext>
+   * @return AttributeMap
    */
   public Attribute.AttributeMap getContextAttributes(Operator operator)
   {
@@ -1317,11 +1311,7 @@ public class LogicalPlan implements Serializable, DAG
     if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
       return false;
     }
-    if (streams != null ? !streams.equals(that.streams) : that.streams != null) {
-      return false;
-    }
-
-    return true;
+    return !(streams != null ? !streams.equals(that.streams) : that.streams != null);
   }
 
   @Override
