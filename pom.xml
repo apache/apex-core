@@ -58,6 +58,7 @@
     <module>gateway</module>
     <module>certification</module>
     <module>dt-app-archetype</module>
+    <module>dt-conf-archetype</module>
   </modules>
 
   <build>
