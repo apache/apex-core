@@ -56,6 +56,7 @@ import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseAuthority;
@@ -69,6 +70,7 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
+import com.google.common.collect.Sets;
 
 import static java.lang.Thread.sleep;
 
@@ -625,6 +627,19 @@ public class StreamingAppMasterService extends CompositeService
       // subsequent updates come through the heartbeat response
       clientRMService.init(getConfig());
       clientRMService.start();
+
+      ApplicationReport ar = StramClientUtils.getStartedAppInstanceByName(clientRMService,
+              dag.getAttributes().get(DAG.APPLICATION_NAME),
+              UserGroupInformation.getLoginUser().getUserName(),
+              dag.getAttributes().get(DAG.APPLICATION_ID));
+      if (ar != null) {
+        appDone = true;
+        dnmgr.shutdownDiagnosticsMessage = String.format("Application master failed due to application %s with duplicate application name \"%s\" by the same user \"%s\" is already started.",
+                ar.getApplicationId().toString(), ar.getName(), ar.getUser());
+        LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
+        finishApplication(FinalApplicationStatus.FAILED, numTotalContainers);
+        return;
+      }
       resourceRequestor.updateNodeReports(clientRMService.getNodeReports());
     }
     catch (Exception e) {
@@ -890,6 +905,11 @@ public class StreamingAppMasterService extends CompositeService
       dnmgr.monitorHeartbeat();
     }
 
+    finishApplication(finalStatus, numTotalContainers);
+  }
+
+  private void finishApplication(FinalApplicationStatus finalStatus, int numTotalContainers) throws YarnException, IOException
+  {
     LOG.info("Application completed. Signalling finish to RM");
     FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
     finishReq.setFinalApplicationStatus(finalStatus);
