@@ -67,6 +67,7 @@ import com.sun.jersey.api.client.WebResource;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 
@@ -2258,7 +2259,15 @@ public class DTCli
         
         if (appFactory != null) {
           if (!commandLineInfo.localMode) {
-            
+
+            // see whether there is an app with the same name and user name running
+            String appNameAttributeName = StreamingApplication.DT_PREFIX + DAGContext.APPLICATION_NAME.getName();
+            String appName = config.get(appNameAttributeName, appFactory.getName());
+            ApplicationReport duplicateApp = StramClientUtils.getStartedAppInstanceByName(yarnClient, appName, UserGroupInformation.getLoginUser().getUserName(), null);
+            if (duplicateApp != null) {
+              throw new CliException("Application with the name \"" + duplicateApp.getName() + "\" already running under the current user \"" + duplicateApp.getUser() + "\". Please choose another name. You can change the name by setting " + appNameAttributeName);
+            }
+
             byte[] licenseBytes;
             if (commandLineInfo.licenseFile != null) {
               LOG.info("Using license at {} instead of the one in configuration to launch this application", commandLineInfo.licenseFile);
