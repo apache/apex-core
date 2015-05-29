@@ -795,13 +795,13 @@ public class PhysicalPlan implements Serializable
         }
         int slidingWindowCount = 0;
         OperatorMeta sourceOM = sourceMapping.logicalOperator;
-        if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDING_WINDOW_COUNT)) {
-          if (sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT) <
+        if (sourceOM.getAttributes().contains(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT)) {
+          if (sourceOM.getValue(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT) <
             sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT)) {
-            slidingWindowCount = sourceOM.getValue(OperatorContext.SLIDING_WINDOW_COUNT);
+            slidingWindowCount = sourceOM.getValue(OperatorContext.SLIDE_BY_WINDOW_COUNT);
           }
           else {
-            LOG.warn("Sliding Window Count {} should be less than APPLICATION WINDOW COUNT {}", sourceOM.getValue(Context.OperatorContext.SLIDING_WINDOW_COUNT), sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT));
+            LOG.warn("Sliding Window Count {} should be less than APPLICATION WINDOW COUNT {}", sourceOM.getValue(Context.OperatorContext.SLIDE_BY_WINDOW_COUNT), sourceOM.getValue(Context.OperatorContext.APPLICATION_WINDOW_COUNT));
           }
         }
         for (int i=0; i<m.partitions.size(); i++) {

@@ -195,7 +195,7 @@ public interface Context
      * slided by duration determined using value of this attribute. Default value is null which is equivalent to that of {@link OperatorContext.APPLICATION_WINDOW_COUNT}.
      * The value should range between  (0 - {@link OperatorContext.APPLICATION_WINDOW_COUNT})
      */
-    Attribute<Integer> SLIDING_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
+    Attribute<Integer> SLIDE_BY_WINDOW_COUNT = new Attribute<Integer>(new Integer2String());
 
     /**
      * Attribute of the operator that hints at the optimal checkpoint boundary.

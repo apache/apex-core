@@ -432,8 +432,8 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   {
     alive = true;
     APPLICATION_WINDOW_COUNT = context.getValue(OperatorContext.APPLICATION_WINDOW_COUNT);
-    if (context.getValue(OperatorContext.SLIDING_WINDOW_COUNT) != null) {
-      int slidingWindowCount = context.getValue(OperatorContext.SLIDING_WINDOW_COUNT);
+    if (context.getValue(OperatorContext.SLIDE_BY_WINDOW_COUNT) != null) {
+      int slidingWindowCount = context.getValue(OperatorContext.SLIDE_BY_WINDOW_COUNT);
       APPLICATION_WINDOW_COUNT = IntMath.gcd(APPLICATION_WINDOW_COUNT, slidingWindowCount);
     }
     CHECKPOINT_WINDOW_COUNT = context.getValue(OperatorContext.CHECKPOINT_WINDOW_COUNT);
