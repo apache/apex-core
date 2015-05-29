@@ -27,14 +27,14 @@ import org.slf4j.LoggerFactory;
 public class SerializableObject implements Serializable
 {
   /**
-   * Create an instance of this operator class by invoking the copy
-   * constructor. If the copy constructor does not exist, this method tries
-   * to get a new instance using default constructor and then initializing all
+   * Create an instance of this class by invoking the copy constructor.
+   * If the copy constructor does not exist, this method tries to get
+   * a new instance using default constructor and then initializing all
    * the non final or non transient fields of the new instance with the
    * corresponding values from the deserialized operator. Users can override
-   * this method to invoke non default constructor. They can override transferState
-   * to just copy over the non final or non transient values from various fields
-   * of the src object.
+   * this method to invoke non default constructor. They can override
+   * transferState to just copy over the non final or non transient values
+   * from various fields of the src object.
    *
    * @return an instance of the operator.
    * @throws ObjectStreamException
