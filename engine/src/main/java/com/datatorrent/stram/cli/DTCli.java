@@ -3323,6 +3323,7 @@ public class DTCli
         JSONArray arr = new JSONArray();
         JSONObject portClassHier = new JSONObject();
 
+        JSONObject failed = new JSONObject();
         for (Class<? extends Operator> clazz : operatorClasses) {
           try {
             JSONObject oper = operatorDiscoverer.describeOperator(clazz);
@@ -3338,11 +3339,15 @@ public class DTCli
             arr.put(oper);
           } catch (Throwable t) {
             // ignore this class
-            LOG.warn("Ignoring class {} because of exception ", clazz.getCanonicalName(), t);
+            final String cls = clazz.getName(), ex = t.toString();
+            failed.put(cls, ex);
           }
         }
         json.put("operatorClasses", arr);
         json.put("portClassHier", portClassHier);
+        if (failed.length() > 0) {
+          json.put("failedOperators", failed);
+        }
         printJson(json);
       }
       finally {
