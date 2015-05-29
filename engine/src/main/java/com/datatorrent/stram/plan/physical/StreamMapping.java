@@ -83,7 +83,7 @@ public class StreamMapping implements java.io.Serializable
   public static PTOperator createSlidingUnifier(StreamMeta streamMeta, PhysicalPlan plan, int operatorApplicationWindowCount, int slidingWindowCount)
   {
     int gcd = IntMath.gcd(operatorApplicationWindowCount, slidingWindowCount);
-    OperatorMeta um = streamMeta.getSource().getSlidingUnifier(operatorApplicationWindowCount / gcd, slidingWindowCount);
+    OperatorMeta um = streamMeta.getSource().getSlidingUnifier(operatorApplicationWindowCount / gcd, gcd, slidingWindowCount / gcd);
     PTOperator pu = plan.newOperator(um, um.getName());
 
     Operator unifier = um.getOperator();

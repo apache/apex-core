@@ -239,18 +239,18 @@ public class LogicalPlan implements Serializable, DAG
       return unifierMeta;
     }
 
-    public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingWindowCount)
+    public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingApplicationWindowCount, int numberOfSlidingWindows)
     {
       if (sliderMeta == null) {
         @SuppressWarnings("unchecked")
-        Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets);
+        Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets, numberOfSlidingWindows);
         try {
           sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
         }
         catch (CloneNotSupportedException ex) {
           throw new RuntimeException(ex);
         }
-        sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingWindowCount);
+        sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingApplicationWindowCount);
       }
       return sliderMeta;
     }

@@ -20,8 +20,10 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
   private transient List<Object> currentList;
   private final Unifier<Object> unifier;
   private final int numberOfBuckets;
+  private final int numberOfSlideBuckets;
   private transient int spinMillis;
   public final transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
+  private transient int cacheSize;
 
   public Unifier<Object> getUnifier()
   {
@@ -32,13 +34,15 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
   {
     unifier = null;
     numberOfBuckets = -1;
+    numberOfSlideBuckets = -1;
   }
 
-  public Slider(Unifier<Object> uniOperator, int buckets)
+  public Slider(Unifier<Object> uniOperator, int buckets, int numberOfSlideBuckets)
   {
     unifier = uniOperator;
     cache = new LinkedList<List<Object>>();
     this.numberOfBuckets = buckets;
+    this.numberOfSlideBuckets = numberOfSlideBuckets;
   }
 
   private OutputPort<?> getOutputPort()
@@ -64,17 +68,22 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
   @Override
   public void process(Object tuple)
   {
-    unifier.process(tuple);
+    if (cacheSize == numberOfBuckets - 1) {
+      unifier.process(tuple);
+    }
     currentList.add(tuple);
   }
 
   @Override
   public void beginWindow(long windowId)
   {
+    cacheSize = cache.size();
     unifier.beginWindow(windowId);
-    for (List<Object> windowCache : cache) {
-      for (Object obj : windowCache) {
-        unifier.process(obj);
+    if (cacheSize == numberOfBuckets - 1) {
+      for (List<Object> windowCache : cache) {
+        for (Object obj : windowCache) {
+          unifier.process(obj);
+        }
       }
     }
     currentList = new LinkedList<Object>();
@@ -83,11 +92,13 @@ public class Slider implements Unifier<Object>, Operator.IdleTimeHandler, Operat
   @Override
   public void endWindow()
   {
-    unifier.endWindow();
     cache.add(currentList);
-    if (cache.size() == numberOfBuckets) {
-      cache.remove(0);
+    if (cacheSize == numberOfBuckets - 1) {
+      for (int i = 0; i < numberOfSlideBuckets; i++) {
+        cache.remove(0);
+      }
     }
+    unifier.endWindow();
   }
 
   @Override
