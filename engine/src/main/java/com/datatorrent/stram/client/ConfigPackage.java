@@ -68,8 +68,12 @@ public class ConfigPackage extends JarFile implements Closeable
     if (configPackageName == null) {
       throw new IOException("Not a valid config package.  DT-Conf-Package-Name is missing from MANIFEST.MF");
     }
-    classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
-    files.addAll(Arrays.asList(StringUtils.split(filesString, " ")));
+    if (!StringUtils.isBlank(classPathString)) {
+      classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
+    }
+    if (!StringUtils.isBlank(filesString)) {
+      files.addAll(Arrays.asList(StringUtils.split(filesString, " ")));
+    }
 
     ZipFile zipFile = new ZipFile(file);
     if (zipFile.isEncrypted()) {

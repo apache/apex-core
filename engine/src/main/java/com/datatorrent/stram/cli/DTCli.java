@@ -2064,28 +2064,32 @@ public class DTCli
         // fall through, it's not a config package
       }
       try {
-
-        Configuration config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), cp == null ? commandLineInfo.configFile : null, commandLineInfo.overrideProperties);
-        if (commandLineInfo.libjars != null) {
-          commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
-          config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+        Configuration config;
+        String configFile = cp == null ? commandLineInfo.configFile : null;
+        try {
+          config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), configFile, commandLineInfo.overrideProperties);
+          if (commandLineInfo.libjars != null) {
+            commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
+            config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+          }
+          if (commandLineInfo.files != null) {
+            commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
+            config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
+          }
+          if (commandLineInfo.archives != null) {
+            commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
+            config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
+          }
+          if (commandLineInfo.origAppId != null) {
+            config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
+          }
+          if (commandLineInfo.licenseFile != null) {
+            commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
+          }
+          config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
+        } catch (Throwable t) {
+          throw new CliException("Error opening the config XML file: " + configFile, t);
         }
-        if (commandLineInfo.files != null) {
-          commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
-          config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
-        }
-        if (commandLineInfo.archives != null) {
-          commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
-          config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
-        }
-        if (commandLineInfo.origAppId != null) {
-          config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
-        }
-        if (commandLineInfo.licenseFile != null) {
-          commandLineInfo.licenseFile = expandFileName(commandLineInfo.licenseFile, true);
-        }
-        config.set(StramAppLauncher.QUEUE_NAME, commandLineInfo.queue != null ? commandLineInfo.queue : "default");
-        
         String fileName = expandFileName(commandLineInfo.args[0], true);
         StramAppLauncher submitApp;
         AppFactory appFactory = null;
@@ -3779,15 +3783,15 @@ public class DTCli
     }
     String requiredAppPackageName = cp.getAppPackageName();
     if (requiredAppPackageName != null && !requiredAppPackageName.equals(ap.getAppPackageName())) {
-      throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\"");
+      throw new CliException("Config package requires an app package name of \"" + requiredAppPackageName + "\". The app package given has the name of \"" + ap.getAppPackageName() + "\"");
     }
     String requiredAppPackageMinVersion = cp.getAppPackageMinVersion();
     if (requiredAppPackageMinVersion != null && VersionInfo.compare(requiredAppPackageMinVersion, ap.getAppPackageVersion()) > 0) {
-      throw new CliException("Config package requires an app package minimum version of \"" + requiredAppPackageMinVersion + "\". The app package is of version \"" + ap.getAppPackageVersion() + "\"");
+      throw new CliException("Config package requires an app package minimum version of \"" + requiredAppPackageMinVersion + "\". The app package given is of version \"" + ap.getAppPackageVersion() + "\"");
     }
     String requiredAppPackageMaxVersion = cp.getAppPackageMaxVersion();
     if (requiredAppPackageMaxVersion != null && VersionInfo.compare(requiredAppPackageMaxVersion, ap.getAppPackageVersion()) < 0) {
-      throw new CliException("Config package requires an app package maximum version of \"" + requiredAppPackageMaxVersion + "\". The app package is of version \"" + ap.getAppPackageVersion() + "\"");
+      throw new CliException("Config package requires an app package maximum version of \"" + requiredAppPackageMaxVersion + "\". The app package given is of version \"" + ap.getAppPackageVersion() + "\"");
     }
   }
 
