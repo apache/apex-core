@@ -6,6 +6,7 @@ package com.datatorrent.stram.client;
 
 
 import com.datatorrent.stram.cli.DTCli;
+import com.datatorrent.stram.support.StramTestSupport.TestHomeDirectory;
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
@@ -18,6 +19,9 @@ import org.slf4j.LoggerFactory;
  */
 public class CLIProxyTest
 {
+  @Rule
+  public TestHomeDirectory testMeta = new TestHomeDirectory();
+
   @Test
   public void testCliProxy() throws Exception
   {
