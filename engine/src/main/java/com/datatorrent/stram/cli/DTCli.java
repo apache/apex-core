@@ -59,6 +59,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.StreamingApplication;
 
@@ -79,6 +80,7 @@ import com.datatorrent.stram.license.agent.protocol.LicensingAgentProtocolHelper
 import com.datatorrent.stram.license.agent.protocol.request.GetMemoryMetricReportRequest;
 import com.datatorrent.stram.license.audit.LicenseReport;
 import com.datatorrent.stram.license.impl.state.report.ClusterMemoryReportState;
+import com.datatorrent.stram.license.provider.LicenseException;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.*;
 import com.datatorrent.stram.security.StramUserLogin;
@@ -1914,6 +1916,7 @@ public class DTCli
     int remainingLicensedMB;
     int totalLicensedMB;
     // add expiration date range here
+    String error;
   }
 
   private Map<String, LicenseInfo> getLicenseInfoMap()
@@ -1924,15 +1927,16 @@ public class DTCli
     List<ApplicationReport> licenseAgentList = getLicenseAgentList();
     for (ApplicationReport licenseAgent : licenseAgentList) {
       String licenseId = licenseAgent.getName();
+      LicenseInfo licenseInfo = new LicenseInfo();
       try {
         LicensingAgentProtocolInfo lap = LicensingAgentProtocolHelper.getLicensingAgentProtocol(licenseId, conf, rpcTimeout, null);
         ClusterMemoryReportState reportState = lap.protocol.getMemoryMetricReport(new GetMemoryMetricReportRequest()).getReportState();
-        LicenseInfo licenseInfo = new LicenseInfo();
         licenseInfo.remainingLicensedMB = reportState.getFreeMemoryMB();
         licenseInfo.totalLicensedMB = reportState.getFreeMemoryMB() + reportState.getUsedMemoryMB();
         licenseInfoMap.put(licenseId, licenseInfo);
-      }
-      catch (Exception ex) {
+      } catch (LicenseException ex) {
+        licenseInfo.error = ex.getMessage();
+      } catch (Exception ex) {
         LOG.warn("Cannot get license info for license id {}", licenseId, ex);
       }
     }
@@ -2245,7 +2249,15 @@ public class DTCli
         
         if (appFactory != null) {
           if (!commandLineInfo.localMode) {
-            
+
+            // see whether there is an app with the same name and user name running
+            String appNameAttributeName = StreamingApplication.DT_PREFIX + Context.DAGContext.APPLICATION_NAME.getName();
+            String appName = config.get(appNameAttributeName, appFactory.getName());
+            ApplicationReport duplicateApp = StramClientUtils.getStartedAppInstanceByName(yarnClient, appName, UserGroupInformation.getLoginUser().getUserName(), null);
+            if (duplicateApp != null) {
+              throw new CliException("Application with the name \"" + duplicateApp.getName() + "\" already running under the current user \"" + duplicateApp.getUser() + "\". Please choose another name. You can change the name by setting " + appNameAttributeName);
+            }
+
             byte[] licenseBytes;
             if (commandLineInfo.licenseFile != null) {
               LOG.info("Using license at {} instead of the one in configuration to launch this application", commandLineInfo.licenseFile);

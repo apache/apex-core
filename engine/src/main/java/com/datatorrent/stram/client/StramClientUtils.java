@@ -729,4 +729,23 @@ public class StramClientUtils
     }
   }
 
+  public static ApplicationReport getStartedAppInstanceByName(YarnClient clientRMService, String appName, String user, String excludeAppId) throws YarnException, IOException
+  {
+    List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
+            EnumSet.of(YarnApplicationState.RUNNING,
+                    YarnApplicationState.ACCEPTED,
+                    YarnApplicationState.NEW,
+                    YarnApplicationState.NEW_SAVING,
+                    YarnApplicationState.SUBMITTED));
+    // see whether there is an app with the app name and user name running
+    for (ApplicationReport app : applications) {
+      if (!app.getApplicationId().toString().equals(excludeAppId)
+              && app.getName().equals(appName)
+              && app.getUser().equals(user)) {
+        return app;
+      }
+    }
+    return null;
+  }
+
 }

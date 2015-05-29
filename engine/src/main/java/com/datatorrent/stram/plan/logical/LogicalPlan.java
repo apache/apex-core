@@ -12,21 +12,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.*;
 import javax.validation.constraints.NotNull;
 
-import com.google.common.collect.Sets;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.google.common.collect.Sets;
+
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Unifier;
-import com.datatorrent.api.annotation.*;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OperatorAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+
+import com.datatorrent.lib.util.FSStorageAgent;
 import com.datatorrent.stram.engine.DefaultUnifier;
+import com.datatorrent.stram.engine.Slider;
+
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>
@@ -209,6 +214,7 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 201412091633L;
     private OperatorMeta operatorMeta;
     private OperatorMeta unifierMeta;
+    private OperatorMeta sliderMeta;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
     private final DefaultAttributeMap attributes;
@@ -231,6 +237,22 @@ public class LogicalPlan implements Serializable, DAG
       }
 
       return unifierMeta;
+    }
+
+    public OperatorMeta getSlidingUnifier(int numberOfBuckets, int slidingWindowCount)
+    {
+      if (sliderMeta == null) {
+        @SuppressWarnings("unchecked")
+        Slider slider = new Slider((Unifier<Object>) getUnifier(), numberOfBuckets);
+        try {
+          sliderMeta = new OperatorMeta(operatorMeta.getName() + '.' + fieldName + "#slider", slider, getUnifierMeta().attributes.clone());
+        }
+        catch (CloneNotSupportedException ex) {
+          throw new RuntimeException(ex);
+        }
+        sliderMeta.getAttributes().put(OperatorContext.APPLICATION_WINDOW_COUNT, slidingWindowCount);
+      }
+      return sliderMeta;
     }
 
     public String getPortName()
@@ -431,10 +453,7 @@ public class LogicalPlan implements Serializable, DAG
       if (this.source != other.source && (this.source == null || !this.source.equals(other.source))) {
         return false;
       }
-      if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
-        return false;
-      }
-      return true;
+      return !((this.id == null) ? (other.id != null) : !this.id.equals(other.id));
     }
 
   }
@@ -446,7 +465,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
-    private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
+    private final Attribute.AttributeMap attributes;
     @SuppressWarnings("unused")
     private final int id;
     @NotNull
@@ -465,12 +484,18 @@ public class LogicalPlan implements Serializable, DAG
 
     private OperatorMeta(String name, Operator operator)
     {
+      this(name, operator, new DefaultAttributeMap());
+    }
+
+    private OperatorMeta(String name, Operator operator, Attribute.AttributeMap attributeMap)
+    {
       LOG.debug("Initializing {} as {}", name, operator.getClass().getName());
       this.operatorAnnotation = operator.getClass().getAnnotation(OperatorAnnotation.class);
       this.name = name;
       this.operator = operator;
       this.id = logicalOperatorSequencer.decrementAndGet();
       this.status = new LogicalOperatorStatus(name);
+      this.attributes = attributeMap;
     }
 
     @Override
@@ -656,11 +681,7 @@ public class LogicalPlan implements Serializable, DAG
       if (operatorAnnotation != null ? !operatorAnnotation.equals(that.operatorAnnotation) : that.operatorAnnotation != null) {
         return false;
       }
-      if (operator != null ? !operator.equals(that.operator) : that.operator != null) {
-        return false;
-      }
-
-      return true;
+      return !(operator != null ? !operator.equals(that.operator) : that.operator != null);
     }
 
     @Override
@@ -773,7 +794,7 @@ public class LogicalPlan implements Serializable, DAG
    * Set attribute for the operator. For valid attributes, see {
    *
    * @param operator
-   * @return AttributeMap<OperatorContext>
+   * @return AttributeMap
    */
   public Attribute.AttributeMap getContextAttributes(Operator operator)
   {
@@ -1290,11 +1311,7 @@ public class LogicalPlan implements Serializable, DAG
     if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) {
       return false;
     }
-    if (streams != null ? !streams.equals(that.streams) : that.streams != null) {
-      return false;
-    }
-
-    return true;
+    return !(streams != null ? !streams.equals(that.streams) : that.streams != null);
   }
 
   @Override

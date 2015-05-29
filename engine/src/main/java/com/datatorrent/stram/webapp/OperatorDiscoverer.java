@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.webapp;
 
+import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
@@ -14,6 +15,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
 import java.beans.*;
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +27,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.xml.parsers.*;
+
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
@@ -271,13 +275,13 @@ public class OperatorDiscoverer
     if (Modifier.isAbstract(modifiers) || Modifier.isInterface(modifiers) || !Operator.class.isAssignableFrom(clazz)){
       return false;
     }
-    // return true if it is an operator or if it is an Unifier with more than one public field that is Port
-    return !Unifier.class.isAssignableFrom(clazz) || 
+    // return true if it is an InputOperator or if it is not an Unifier or if it is an Unifier with more than one InputPort
+    return InputOperator.class.isAssignableFrom(clazz) || !Unifier.class.isAssignableFrom(clazz) || 
         Iterables.<Field>any(Arrays.asList(clazz.getFields()), new Predicate<Field>() {
       @Override
       public boolean apply(Field f)
       {
-        return Operator.Port.class.isAssignableFrom(f.getType());
+        return Operator.InputPort.class.isAssignableFrom(f.getType());
       }
     });
   }
