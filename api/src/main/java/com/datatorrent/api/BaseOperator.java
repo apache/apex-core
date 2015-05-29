@@ -79,6 +79,14 @@ public class BaseOperator extends SerializableObject implements Operator
   {
   }
 
+  /**
+   * Request orderly teardown of this operator.
+   * This method communicates to the engine that this operator has finished
+   * its task and wishes to shutdown. Upon receiving the shutdown request,
+   * the engine would start orderly shutdown by calling endWindow for the
+   * currently running window if any and subsequently call teardown on this
+   * operator before claiming back resources allocated to it from JVM.
+   */
   public static void shutdown()
   {
     throw new ShutdownException();
