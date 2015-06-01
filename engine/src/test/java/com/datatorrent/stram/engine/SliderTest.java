@@ -77,7 +77,7 @@ public class SliderTest
     @Override
     public void endWindow()
     {
-      if(sum > 0) {
+      if (sum > 0) {
         outputPort.emit(sum);
       }
     }
@@ -89,12 +89,11 @@ public class SliderTest
     public int numberOfIntegers;
     private int startingInteger = 1;
     public int slideByNumbers;
-    private int windowsSeen;
 
     @Override
     public void beginWindow(long windowId)
     {
-      windowsSeen++;
+
     }
 
     public final transient DefaultInputPort<Integer> validate = new DefaultInputPort<Integer>()
@@ -102,18 +101,15 @@ public class SliderTest
       @Override
       public void process(Integer tuple)
       {
-        if (windowsSeen >= numberOfIntegers) {
-          int sum = 0;
-          for (int i = 0; i < numberOfIntegers; i++) {
-            sum = sum + startingInteger + i;
-          }
-          if (sum != tuple.intValue()) {
-            throw new RuntimeException("numbers not matching " + sum + " " + tuple + " " + startingInteger + " " + numberOfIntegers);
-          }
-          numbersValidated++;
-          startingInteger += slideByNumbers;
-          windowsSeen -= slideByNumbers;
+        int sum = numberOfIntegers * startingInteger;
+        for (int i = 0; i < numberOfIntegers; i++) {
+          sum += i;
         }
+        if (sum != tuple.intValue()) {
+          throw new RuntimeException("numbers not matching " + sum + " " + tuple + " " + startingInteger + " " + numberOfIntegers);
+        }
+        numbersValidated++;
+        startingInteger += slideByNumbers;
       }
     };
   }
