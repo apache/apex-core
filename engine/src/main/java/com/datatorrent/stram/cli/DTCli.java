@@ -55,8 +55,6 @@ import sun.misc.SignalHandler;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
 import com.datatorrent.api.Context;
@@ -70,7 +68,6 @@ import com.datatorrent.stram.client.DTConfiguration.Scope;
 import com.datatorrent.stram.client.RecordingsAgent.RecordingInfo;
 import com.datatorrent.stram.client.StramAppLauncher.AppFactory;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
-import com.datatorrent.stram.client.WebServicesVersionConversion.IncompatibleVersionException;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.license.License;
 import com.datatorrent.stram.license.LicenseAuthority;
@@ -1616,8 +1613,7 @@ public class DTCli
 
   private String getContainerLongId(String containerId)
   {
-    ClientResponse rsp = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS, currentApp);
-    JSONObject json = rsp.getEntity(JSONObject.class);
+    JSONObject json = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS, currentApp);
     int shortId = 0;
     if (StringUtils.isNumeric(containerId)) {
       shortId = Integer.parseInt(containerId);
@@ -1667,7 +1663,17 @@ public class DTCli
     return r;
   }
 
-  private ClientResponse getResource(String resourcePath, ApplicationReport appReport)
+  private JSONObject getResource(String resourcePath, ApplicationReport appReport)
+  {
+    return getResource(new StramAgent.StramUriSpec().path(resourcePath), appReport, new WebServicesClient.GetWebServicesHandler<JSONObject>());
+  }
+
+  private JSONObject getResource(StramAgent.StramUriSpec uriSpec, ApplicationReport appReport)
+  {
+    return getResource(uriSpec, appReport, new WebServicesClient.GetWebServicesHandler<JSONObject>());
+  }
+
+  private JSONObject getResource(StramAgent.StramUriSpec uriSpec, ApplicationReport appReport, WebServicesClient.WebServicesHandler handler)
   {
 
     if (appReport == null) {
@@ -1680,61 +1686,14 @@ public class DTCli
     }
 
     WebServicesClient wsClient = new WebServicesClient();
-    Client client = wsClient.getClient();
-    client.setFollowRedirects(true);
-    WebResource r;
-
     try {
-      r = stramAgent.getStramWebResource(wsClient, appReport.getApplicationId().toString());
-    }
-    catch (IncompatibleVersionException ex) {
-      throw new CliException("Incompatible stram version", ex);
-    }
-    if (r == null) {
-      throw new CliException("Application " + appReport.getApplicationId().toString() + " has not started");
-    }
-    r = r.path(resourcePath);
-
-    try {
-      return wsClient.process(r.getRequestBuilder(), ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
-      {
-        @Override
-        public ClientResponse process(WebResource.Builder webResource, Class<ClientResponse> clazz)
-        {
-          ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-          if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
-            throw new CliException("Unexpected response type " + response.getType());
-          }
-          return response;
-        }
-
-      });
-    }
-    catch (Exception e) {
+      return stramAgent.issueStramWebRequest(wsClient, appReport.getApplicationId().toString(), uriSpec, handler);
+    } catch (Exception e) {
       // check the application status as above may have failed due application termination etc.
       if (appReport == currentApp) {
         currentApp = assertRunningApp(appReport);
       }
-      throw new CliException("Failed to request " + r.getURI(), e);
-    }
-  }
-
-  private WebResource getStramWebResource(WebServicesClient webServicesClient, ApplicationReport appReport)
-  {
-    if (appReport == null) {
-      throw new CliException("No application selected");
-    }
-    // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
-    appReport = assertRunningApp(appReport); // or else "N/A" might be there..
-    try {
-      WebResource wr = stramAgent.getStramWebResource(webServicesClient, appReport.getApplicationId().toString());
-      if (wr == null) {
-        throw new CliException("Cannot access the application master for this application.");
-      }
-      return wr;
-    }
-    catch (IncompatibleVersionException ex) {
-      throw new CliException("Incompatible Stram version", ex);
+      throw new CliException("Failed to request web service for appid " + appReport.getApplicationId().toString(), e);
     }
   }
 
@@ -1858,8 +1817,7 @@ public class DTCli
       }
       try {
         LOG.debug("Selected {} with tracking url {}", currentApp.getApplicationId(), currentApp.getTrackingUrl());
-        ClientResponse rsp = getResource(StramWebServices.PATH_INFO, currentApp);
-        rsp.getEntity(JSONObject.class);
+        getResource(StramWebServices.PATH_INFO, currentApp);
         if (consolePresent) {
           System.out.println("Connected to application " + currentApp.getApplicationId());
         }
@@ -2372,14 +2330,13 @@ public class DTCli
       }
 
       for (ApplicationReport app : apps) {
-        WebResource r = getStramWebResource(webServicesClient, app).path(StramWebServices.PATH_SHUTDOWN);
         try {
-          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+          JSONObject response = getResource(new StramAgent.StramUriSpec().path(StramWebServices.PATH_SHUTDOWN), app, new WebServicesClient.WebServicesHandler<JSONObject>()
           {
             @Override
             public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
             {
-              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
+              return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
             }
 
           });
@@ -2387,9 +2344,8 @@ public class DTCli
             System.out.println("Shutdown requested: " + response);
           }
           currentApp = null;
-        }
-        catch (Exception e) {
-          throw new CliException("Failed to request " + r.getURI(), e);
+        } catch (Exception e) {
+          throw new CliException("Failed to request shutdown for appid " + app.getApplicationId().toString(), e);
         }
       }
     }
@@ -2579,8 +2535,7 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ClientResponse rsp = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS, currentApp);
-      JSONObject json = rsp.getEntity(JSONObject.class);
+      JSONObject json = getResource(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS, currentApp);
       if (args.length == 1) {
         printJson(json);
       }
@@ -2624,8 +2579,7 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ClientResponse rsp = getResource(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS, currentApp);
-      JSONObject json = rsp.getEntity(JSONObject.class);
+      JSONObject json = getResource(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS, currentApp);
 
       if (args.length > 1) {
         String singleKey = "" + json.keys().next();
@@ -2672,21 +2626,10 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN);
       try {
-        printJson(webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(clazz);
-          }
-
-        }));
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+        printJson(getResource(StramWebServices.PATH_SHUTDOWN, currentApp));
+      } catch (Exception e) {
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
     }
 
@@ -2702,10 +2645,10 @@ public class DTCli
         if (containerLongId == null) {
           throw new CliException("Container " + args[i] + " not found");
         }
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
         try {
-          JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+          StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+          uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS).path(URLEncoder.encode(containerLongId, "UTF-8")).path("kill");
+          JSONObject response = getResource(uriSpec, currentApp, new WebServicesClient.WebServicesHandler<JSONObject>()
           {
             @Override
             public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
@@ -2718,7 +2661,7 @@ public class DTCli
             System.out.println("Kill container requested: " + response);
           }
         } catch (Exception e) {
-          throw new CliException("Failed to request " + r.getURI(), e);
+          throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
         }
       }
     }
@@ -2834,25 +2777,16 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN).path("attributes");
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN).path("attributes");
       if (args.length > 1) {
-        r = r.queryParam("attributeName", args[1]);
+        uriSpec = uriSpec.queryParam("attributeName", args[1]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(uriSpec, currentApp);
         printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+      } catch (Exception e) {
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
     }
 
@@ -2866,25 +2800,16 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("attributes");
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("attributes");
       if (args.length > 2) {
-        r = r.queryParam("attributeName", args[2]);
+        uriSpec = uriSpec.queryParam("attributeName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(uriSpec, currentApp);
         printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+      } catch (Exception e) {
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
     }
 
@@ -2898,25 +2823,16 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("ports").path(URLEncoder.encode(args[2], "UTF-8")).path("attributes");
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("ports").path(URLEncoder.encode(args[2], "UTF-8")).path("attributes");
       if (args.length > 3) {
-        r = r.queryParam("attributeName", args[3]);
+        uriSpec = uriSpec.queryParam("attributeName", args[3]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(uriSpec, currentApp);
         printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+      } catch (Exception e) {
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
     }
 
@@ -2930,25 +2846,16 @@ public class DTCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
       if (args.length > 2) {
-        r = r.queryParam("propertyName", args[2]);
+        uriSpec = uriSpec.queryParam("propertyName", args[2]);
       }
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(uriSpec, currentApp);
         printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+      } catch (Exception e) {
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
     }
 
@@ -2971,29 +2878,20 @@ public class DTCli
       CommandLine line = parser.parse(GET_PHYSICAL_PROPERTY_OPTIONS.options, newArgs);
       String waitTime = line.getOptionValue(GET_PHYSICAL_PROPERTY_OPTIONS.waitTime.getOpt());
       String propertyName = line.getOptionValue(GET_PHYSICAL_PROPERTY_OPTIONS.propertyName.getOpt());
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       if (propertyName != null) {
-        r = r.queryParam("propertyName", propertyName);
+        uriSpec = uriSpec.queryParam("propertyName", propertyName);
       }
       if (waitTime != null) {
-        r = r.queryParam("waitTime", waitTime);
+        uriSpec = uriSpec.queryParam("waitTime", waitTime);
       }
 
       try {
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(uriSpec, currentApp);
         printJson(response);
-      }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+      } catch (Exception e) {
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
     }
 
@@ -3018,11 +2916,11 @@ public class DTCli
         logicalPlanRequestQueue.add(request);
       }
       else {
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
+        StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+        uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(URLEncoder.encode(args[1], "UTF-8")).path("properties");
         final JSONObject request = new JSONObject();
         request.put(args[2], args[3]);
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        JSONObject response = getResource(uriSpec, currentApp, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
@@ -3048,11 +2946,11 @@ public class DTCli
       if (!NumberUtils.isDigits(args[1])) {
         throw new CliException("Operator ID must be a number");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(args[1]).path("properties");
       final JSONObject request = new JSONObject();
       request.put(args[2], args[3]);
-      JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      JSONObject response = getResource(uriSpec, currentApp, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
         @Override
         public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
@@ -3184,18 +3082,7 @@ public class DTCli
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
-
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(StramWebServices.PATH_LOGICAL_PLAN, currentApp);
         printJson(response);
       }
     }
@@ -3414,18 +3301,7 @@ public class DTCli
         if (currentApp == null) {
           throw new CliException("No application selected");
         }
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
-
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        JSONObject response = getResource(StramWebServices.PATH_LOGICAL_PLAN, currentApp);
         File file = new File(outfilename);
         if (!file.exists()) {
           file.createNewFile();
@@ -3587,15 +3463,15 @@ public class DTCli
       if (logicalPlanRequestQueue.isEmpty()) {
         throw new CliException("Nothing to submit. Type \"abort\" to abort change");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getStramWebResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_LOGICAL_PLAN);
       try {
         final Map<String, Object> m = new HashMap<String, Object>();
         ObjectMapper mapper = new ObjectMapper();
         m.put("requests", logicalPlanRequestQueue);
         final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
 
-        JSONObject response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        JSONObject response = getResource(uriSpec, currentApp, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
           @Override
           public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
@@ -3607,7 +3483,7 @@ public class DTCli
         printJson(response);
       }
       catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
+        throw new CliException("Failed web service request for appid " + currentApp.getApplicationId().toString(), e);
       }
       logicalPlanRequestQueue.clear();
       changingLogicalPlan = false;
@@ -3729,18 +3605,7 @@ public class DTCli
       }
       JSONObject response;
       try {
-        WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getStramWebResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
-
-        response = webServicesClient.process(r.getRequestBuilder(), JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
-        {
-          @Override
-          public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
-          {
-            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
-          }
-
-        });
+        response = getResource(StramWebServices.PATH_INFO, currentApp);
       }
       catch (Exception ex) {
         response = new JSONObject();

@@ -13,8 +13,6 @@ import com.datatorrent.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.WebResource;
 import java.io.*;
 import java.util.*;
-
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlType;
 import org.apache.commons.io.IOUtils;
@@ -195,12 +193,7 @@ public final class RecordingsAgent extends FSPartFileAgent
     Set<String> result = new HashSet<String>();
     try {
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource wr = stramAgent.getStramWebResource(webServicesClient, appId);
-      if (wr == null) {
-        return result;
-      }
-      WebResource path = wr.path(StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
-      JSONObject response = new JSONObject(webServicesClient.process(path.getRequestBuilder(), String.class, new WebServicesClient.GetWebServicesHandler<String>()));
+      JSONObject response = stramAgent.issueStramWebGetRequest(webServicesClient, appId, StramWebServices.PATH_PHYSICAL_PLAN_CONTAINERS);
       Object containersObj = response.get("containers");
       JSONArray containers;
       if (containersObj instanceof JSONArray) {
@@ -622,27 +615,24 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
   }
 
-  public String startRecording(String appId, String opId, String portName, long numWindows) throws IncompatibleVersionException
+  public JSONObject startRecording(String appId, String opId, String portName, long numWindows) throws IncompatibleVersionException
   {
-    WebServicesClient webServicesClient = new WebServicesClient();
-    WebResource wr = stramAgent.getStramWebResource(webServicesClient, appId);
-    if (wr == null) {
-      throw new WebApplicationException(404);
-    }
+
     LOG.debug("Start recording requested for {}.{} ({} windows)", opId, portName, numWindows);
     try {
       final JSONObject request = new JSONObject();
-      String path = StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS + "/" + opId;
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(opId);
       if (!StringUtils.isBlank(portName)) {
-        path += "/ports/" + portName;
+        uriSpec = uriSpec.path("ports").path(portName);
       }
-      path += "/" + StramWebServices.PATH_RECORDINGS_START;
+      uriSpec = uriSpec.path(StramWebServices.PATH_RECORDINGS_START);
       request.put("numWindows", numWindows);
-      return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
-                                       new WebServicesClient.WebServicesHandler<String>()
+      WebServicesClient webServicesClient = new WebServicesClient();
+      return stramAgent.issueStramWebRequest(webServicesClient, appId, uriSpec, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
         @Override
-        public String process(WebResource.Builder webResource, Class<String> clazz)
+        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
         {
           return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
         }
@@ -655,25 +645,21 @@ public final class RecordingsAgent extends FSPartFileAgent
     }
   }
 
-  public String stopRecording(String appId, String opId, String portName) throws IncompatibleVersionException
+  public JSONObject stopRecording(String appId, String opId, String portName) throws IncompatibleVersionException
   {
-    WebServicesClient webServicesClient = new WebServicesClient();
-    WebResource wr = stramAgent.getStramWebResource(webServicesClient, appId);
-    if (wr == null) {
-      throw new WebApplicationException(404);
-    }
     try {
       final JSONObject request = new JSONObject();
-      String path = StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS + "/" + opId;
+      StramAgent.StramUriSpec uriSpec = new StramAgent.StramUriSpec();
+      uriSpec = uriSpec.path(StramWebServices.PATH_PHYSICAL_PLAN_OPERATORS).path(opId);
       if (!StringUtils.isBlank(portName)) {
-        path += "/ports/" + portName;
+        uriSpec = uriSpec.path("ports").path(portName);
       }
-      path += "/" + StramWebServices.PATH_RECORDINGS_STOP;
-      return webServicesClient.process(wr.path(path).getRequestBuilder(), String.class,
-                                       new WebServicesClient.WebServicesHandler<String>()
+      uriSpec = uriSpec.path(StramWebServices.PATH_RECORDINGS_STOP);
+      WebServicesClient webServicesClient = new WebServicesClient();
+      return stramAgent.issueStramWebRequest(webServicesClient, appId, uriSpec, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
         @Override
-        public String process(WebResource.Builder webResource, Class<String> clazz)
+        public JSONObject process(WebResource.Builder webResource, Class<JSONObject> clazz)
         {
           return webResource.type(MediaType.APPLICATION_JSON).post(clazz, request);
         }

@@ -8,11 +8,12 @@ import java.io.IOException;
 import java.util.Map;
 
 import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.NewCookie;
+import javax.ws.rs.core.UriBuilder;
 
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
 
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -37,6 +38,12 @@ import com.datatorrent.stram.util.HeaderClientFilter;
 import com.datatorrent.stram.util.LRUCache;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.WebServices;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+import com.sun.jersey.api.client.ClientHandlerException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * <p>Abstract StramAgent class.</p>
@@ -47,6 +54,7 @@ import com.datatorrent.stram.webapp.WebServices;
 public class StramAgent extends FSAgent
 {
   private static final int MAX_REDIRECTS = 5;
+  private static final int STRAM_WEBSERVICE_RETRIES = 1;
 
   private static class StramWebServicesInfo
   {
@@ -107,7 +115,7 @@ public class StramAgent extends FSAgent
   protected String defaultStramRoot = null;
   protected Configuration conf;
 
-  public class AppNotFoundException extends Exception
+  public static class AppNotFoundException extends Exception
   {
     private static final long serialVersionUID = 1L;
     private final String appId;
@@ -175,16 +183,16 @@ public class StramAgent extends FSAgent
     return info == null ? null : info.permissionsInfo;
   }
 
-  public WebResource getStramWebResource(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
+  private UriBuilder getStramWebURIBuilder(WebServicesClient webServicesClient, String appid) throws IncompatibleVersionException
   {
     Client wsClient = webServicesClient.getClient();
     wsClient.setFollowRedirects(true);
     StramWebServicesInfo info = getWebServicesInfo(appid);
-    WebResource ws = null;
+    UriBuilder ub = null;
     if (info != null) {
       //ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(info.version).path("stram");
       // the filter should convert to the right version
-      ws = wsClient.resource("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(WebServices.VERSION).path("stram");
+      ub = UriBuilder.fromUri("http://" + info.appMasterTrackingUrl).path(WebServices.PATH).path(WebServices.VERSION).path("stram");
       WebServicesVersionConversion.Converter versionConverter = WebServicesVersionConversion.getConverter(info.version);
       if (versionConverter != null) {
         VersionConversionFilter versionConversionFilter = new VersionConversionFilter(versionConverter);
@@ -198,12 +206,94 @@ public class StramAgent extends FSAgent
         }
       }
     }
-    return ws;
+    return ub;
   }
 
   public void invalidateStramWebResource(String appid)
   {
     deleteCachedWebServicesInfo(appid);
+  }
+
+  public static class StramUriSpec
+  {
+    private final List<String> paths = new ArrayList<String>();
+    private final Multimap<String, Object> queryParams = HashMultimap.create();
+
+    public StramUriSpec path(String elem)
+    {
+      paths.add(elem);
+      return this;
+    }
+
+    public StramUriSpec queryParam(String name, Object... values)
+    {
+      queryParams.putAll(name, Arrays.asList(values));
+      return this;
+    }
+
+    public StramUriSpec queryParam(Map<String, ? extends Object> map)
+    {
+      for (Map.Entry<String, ? extends Object> entry : map.entrySet()) {
+        queryParams.put(entry.getKey(), entry.getValue());
+      }
+      return this;
+    }
+
+    List<String> getPaths()
+    {
+      return paths;
+    }
+
+    Multimap<String, Object> getQueryParams()
+    {
+      return queryParams;
+    }
+
+  }
+
+  public <T> T issueStramWebRequest(WebServicesClient webServiceClient, String appId, StramUriSpec stramUriSpec, Class<T> clazz, WebServicesClient.WebServicesHandler<T> handler)
+          throws AppNotFoundException, IOException, IncompatibleVersionException
+  {
+    int retries = STRAM_WEBSERVICE_RETRIES;
+    while (true) {
+      try {
+        UriBuilder ub = getStramWebURIBuilder(webServiceClient, appId);
+        if (ub == null) {
+          throw new AppNotFoundException(appId);
+        }
+        for (String path : stramUriSpec.getPaths()) {
+          ub = ub.path(path);
+        }
+        for (Map.Entry<String, Object> entry : stramUriSpec.getQueryParams().entries()) {
+          ub = ub.queryParam(entry.getKey(), entry.getValue());
+        }
+        return webServiceClient.process(webServiceClient.getClient().resource(ub.build()).accept(MediaType.APPLICATION_JSON), clazz, handler);
+      } catch (ClientHandlerException ex) {
+        if (retries-- > 0) {
+          invalidateStramWebResource(appId);
+        } else {
+          throw ex;
+        }
+      } catch (IOException ex) {
+        if (retries-- > 0) {
+          invalidateStramWebResource(appId);
+        } else {
+          throw ex;
+        }
+      }
+    }
+  }
+
+  public JSONObject issueStramWebRequest(WebServicesClient webServiceClient, String appId, StramUriSpec stramUriSpec, WebServicesClient.WebServicesHandler<JSONObject> handler)
+          throws AppNotFoundException, IOException, IncompatibleVersionException
+  {
+    return issueStramWebRequest(webServiceClient, appId, stramUriSpec, JSONObject.class, handler);
+  }
+
+  public JSONObject issueStramWebGetRequest(WebServicesClient webServiceClient, String appId, String resourcePath)
+          throws AppNotFoundException, IOException, IncompatibleVersionException
+  {
+    return issueStramWebRequest(webServiceClient, appId, new StramUriSpec().path(resourcePath), new WebServicesClient.GetWebServicesHandler<JSONObject>());
   }
 
   public String getAppsRoot()
