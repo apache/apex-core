@@ -90,6 +90,13 @@ public class SliderTest
     public int numberOfIntegers;
     private int startingInteger = 1;
     public int slideByNumbers;
+    private int staticSum;
+
+    @Override
+    public void setup(Context.OperatorContext context)
+    {
+      staticSum = (numberOfIntegers * (numberOfIntegers - 1)) / 2;
+    }
 
     @Override
     public void beginWindow(long windowId)
@@ -102,10 +109,7 @@ public class SliderTest
       @Override
       public void process(Integer tuple)
       {
-        int sum = numberOfIntegers * startingInteger;
-        for (int i = 0; i < numberOfIntegers; i++) {
-          sum += i;
-        }
+        int sum = staticSum + numberOfIntegers * startingInteger;
         if (sum != tuple.intValue()) {
           throw new RuntimeException("numbers not matching " + sum + " " + tuple + " " + startingInteger + " " + numberOfIntegers);
         }
@@ -115,18 +119,18 @@ public class SliderTest
     };
   }
 
-  @Test
-  public void testSlider() throws Exception
+  private void test(int applicationWindowCount, int slideByWindowCount) throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
     dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 100);
     Input input = dag.addOperator("Input", new Input());
     Sum sum = dag.addOperator("Sum", new Sum());
-    dag.setAttribute(sum, OperatorContext.APPLICATION_WINDOW_COUNT, 5);
-    dag.setAttribute(sum, OperatorContext.SLIDE_BY_WINDOW_COUNT, 1);
+    dag.setAttribute(sum, OperatorContext.APPLICATION_WINDOW_COUNT, applicationWindowCount);
+    dag.setAttribute(sum, OperatorContext.SLIDE_BY_WINDOW_COUNT, slideByWindowCount);
     Validator validate = dag.addOperator("validator", new Validator());
-    validate.numberOfIntegers = 5;
-    validate.slideByNumbers = 1;
+    Validator.numbersValidated = 0;
+    validate.numberOfIntegers = applicationWindowCount;
+    validate.slideByNumbers = slideByWindowCount;
     dag.addStream("input-sum", input.defaultOutputPort, sum.inputPort);
     dag.addStream("sum-validator", sum.outputPort, validate.validate);
     StramLocalCluster lc = new StramLocalCluster(dag);
@@ -141,64 +145,23 @@ public class SliderTest
     }
     lc.shutdown();
     Assert.assertTrue("numbers validated more than zero ", validate.numbersValidated > 0);
+  }
 
+  @Test
+  public void testSlider() throws Exception
+  {
+    test(5, 1);
   }
 
   @Test
   public void testSliderWithPrimeNumbers() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 100);
-    Input input = dag.addOperator("Input", new Input());
-    Sum sum = dag.addOperator("Sum", new Sum());
-    dag.setAttribute(sum, OperatorContext.APPLICATION_WINDOW_COUNT, 5);
-    dag.setAttribute(sum, OperatorContext.SLIDE_BY_WINDOW_COUNT, 2);
-    Validator validate = dag.addOperator("validator", new Validator());
-    validate.numberOfIntegers = 5;
-    validate.slideByNumbers = 2;
-    Validator.numbersValidated = 0;
-    dag.addStream("input-sum", input.defaultOutputPort, sum.inputPort);
-    dag.addStream("sum-validator", sum.outputPort, validate.validate);
-    StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.runAsync();
-
-    long startTms = System.currentTimeMillis();
-    while (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
-      if (validate.numbersValidated > 5) {
-        break;
-      }
-      Thread.sleep(100);
-    }
-    lc.shutdown();
-    Assert.assertTrue("numbers validated more than zero ", validate.numbersValidated > 0);
+    test(5, 2);
   }
 
   @Test
   public void testSliderWithProperDivisor() throws Exception
   {
-    LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().put(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS, 100);
-    Input input = dag.addOperator("Input", new Input());
-    Sum sum = dag.addOperator("Sum", new Sum());
-    dag.setAttribute(sum, OperatorContext.APPLICATION_WINDOW_COUNT, 4);
-    dag.setAttribute(sum, OperatorContext.SLIDE_BY_WINDOW_COUNT, 2);
-    Validator validate = dag.addOperator("validator", new Validator());
-    validate.numberOfIntegers = 4;
-    validate.slideByNumbers = 2;
-    Validator.numbersValidated = 0;
-    dag.addStream("input-sum", input.defaultOutputPort, sum.inputPort);
-    dag.addStream("sum-validator", sum.outputPort, validate.validate);
-    StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.runAsync();
-
-    long startTms = System.currentTimeMillis();
-    while (StramTestSupport.DEFAULT_TIMEOUT_MILLIS > System.currentTimeMillis() - startTms) {
-      if (validate.numbersValidated > 5) {
-        break;
-      }
-      Thread.sleep(100);
-    }
-    lc.shutdown();
-    Assert.assertTrue("numbers validated more than zero ", validate.numbersValidated > 0);
+    test(4, 2);
   }
 }
