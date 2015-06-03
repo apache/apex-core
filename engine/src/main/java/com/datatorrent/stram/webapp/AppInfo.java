@@ -42,7 +42,6 @@ public class AppInfo {
   protected long elapsedTime;
   protected String appPath;
   protected String gatewayAddress;
-  protected long allocatedMB;
   protected boolean gatewayConnected;
   public Map<String, Object> attributes;
   public String appMasterTrackingUrl;
@@ -213,11 +212,6 @@ public class AppInfo {
 
   public String getGatewayAddress() {
     return this.gatewayAddress;
-  }
-
-  public long getAllocatedMB()
-  {
-    return allocatedMB;
   }
 
   public boolean isGatewayConnected()
