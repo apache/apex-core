@@ -454,7 +454,6 @@ public class StramAppLauncher
    * Sets the context class loader for application dependencies.
    *
    * @param appConfig
-   * @param licenseBytes
    * @return ApplicationId
    * @throws Exception
    */

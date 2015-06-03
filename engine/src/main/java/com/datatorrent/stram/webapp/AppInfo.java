@@ -42,11 +42,7 @@ public class AppInfo {
   protected long elapsedTime;
   protected String appPath;
   protected String gatewayAddress;
-  protected String licenseId;
-  protected long remainingLicensedMB;
-  protected long totalLicensedMB;
   protected long allocatedMB;
-  protected long licenseInfoLastUpdate;
   protected boolean gatewayConnected;
   public Map<String, Object> attributes;
   public String appMasterTrackingUrl;
@@ -217,26 +213,6 @@ public class AppInfo {
 
   public String getGatewayAddress() {
     return this.gatewayAddress;
-  }
-
-  public String getLicenseId()
-  {
-    return this.licenseId;
-  }
-
-  public long getLicenseInfoLastUpdate()
-  {
-    return this.licenseInfoLastUpdate;
-  }
-
-  public long getRemainingLicensedMB()
-  {
-    return remainingLicensedMB;
-  }
-
-  public long getTotalLicensedMB()
-  {
-    return totalLicensedMB;
   }
 
   public long getAllocatedMB()

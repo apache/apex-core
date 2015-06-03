@@ -66,7 +66,6 @@ public class LogicalPlanConfiguration {
   public static final String GATEWAY_ALLOW_CROSS_ORIGIN = GATEWAY_PREFIX + "allowCrossOrigin";
 
   public static final String STREAM_PREFIX = StreamingApplication.DT_PREFIX + "stream.";
-  public static final String LICENSE_PREFIX = StreamingApplication.DT_PREFIX + "license.";
   public static final String STREAM_SOURCE = "source";
   public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";

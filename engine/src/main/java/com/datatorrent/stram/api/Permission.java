@@ -40,14 +40,6 @@ public enum Permission
    */
   ACCESS_RM_PROXY(true),
   /**
-   * View licenses
-   */
-  VIEW_LICENSES,
-  /**
-   * Manage licenses
-   */
-  MANAGE_LICENSES,
-  /**
    * Launch App Packages
    */
   LAUNCH_APPS,

@@ -65,7 +65,6 @@ public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   public static final String YARN_APPLICATION_TYPE = "DataTorrent";
-  public static final String YARN_APPLICATION_TYPE_LICENSE = "DataTorrentLicense";
   public static final String LIB_JARS_SEP = ",";
 
   // Configuration
@@ -365,9 +364,6 @@ public class StramClient
     appContext.setApplicationType(this.applicationType);
     if (YARN_APPLICATION_TYPE.equals(this.applicationType)) {
       //appContext.setMaxAppAttempts(1); // no retries until Stram is HA
-    }
-    else if (YARN_APPLICATION_TYPE_LICENSE.equals(this.applicationType)) {
-      LOG.debug("Attempts capped at {} ({})", conf.get(YarnConfiguration.RM_AM_MAX_ATTEMPTS), YarnConfiguration.RM_AM_MAX_ATTEMPTS);
     }
 
     // Set up the container launch context for the application master
