@@ -8,9 +8,14 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
+import com.datatorrent.stram.Journal.Recoverable;
 
 /**
  *
@@ -28,11 +33,91 @@ public class PTContainer implements java.io.Serializable
 {
   private static final long serialVersionUID = 201312112033L;
 
+  public final static Recoverable SET_CONTAINER_STATE = new SetContainerState();
+
   public enum State {
     NEW,
     ALLOCATED,
     ACTIVE,
     KILLED
+  }
+
+  /**
+   * Resource priority is logged so that on restore, pending resource requests can be matched to the containers.
+   */
+  private static class SetContainerState implements Recoverable
+  {
+    private final PTContainer container;
+
+    private SetContainerState()
+    {
+      container = null;
+    }
+
+    private SetContainerState(PTContainer container)
+    {
+      this.container = container;
+    }
+
+    @Override
+    public void read(final Object object, final Input in) throws KryoException
+    {
+      PhysicalPlan plan = (PhysicalPlan)object;
+
+      int containerId = in.readInt();
+
+      for (PTContainer c : plan.getContainers())
+      {
+        if (c.getId() == containerId) {
+          int stateOrd = in.readInt();
+          c.state = PTContainer.State.values()[stateOrd];
+          c.containerId = in.readString();
+          c.resourceRequestPriority = in.readInt();
+          c.requiredMemoryMB = in.readInt();
+          c.allocatedMemoryMB = in.readInt();
+          c.requiredVCores = in.readInt();
+          c.allocatedVCores = in.readInt();
+          String bufferServerHost = in.readString();
+          if (bufferServerHost != null) {
+            c.bufferServerAddress = InetSocketAddress.createUnresolved(bufferServerHost, in.readInt());
+          }
+          c.host = in.readString();
+          c.nodeHttpAddress = in.readString();
+          break;
+        }
+      }
+    }
+
+    @Override
+    public void write(final Output out) throws KryoException
+    {
+      out.writeInt(container.getId());
+      // state
+      out.writeInt(container.getState().ordinal());
+      // external id
+      out.writeString(container.getExternalId());
+      // resource priority
+      out.writeInt(container.getResourceRequestPriority());
+      // memory required
+      out.writeInt(container.getRequiredMemoryMB());
+      // memory allocated
+      out.writeInt(container.getAllocatedMemoryMB());
+      // vcores required
+      out.writeInt(container.getRequiredVCores());
+      // vcores allocated
+      out.writeInt(container.getAllocatedVCores());
+      // buffer server address
+      InetSocketAddress addr = container.bufferServerAddress;
+      if (addr != null) {
+        out.writeString(addr.getHostName());
+        out.writeInt(addr.getPort());
+      } else {
+        out.writeString(null);
+      }
+      // host
+      out.writeString(container.host);
+      out.writeString(container.nodeHttpAddress);
+    }
   }
 
   private volatile PTContainer.State state = State.NEW;
@@ -58,6 +143,10 @@ public class PTContainer implements java.io.Serializable
   PTContainer(PhysicalPlan plan) {
     this.plan = plan;
     this.seq = plan.containerSeq.incrementAndGet();
+  }
+
+  public Recoverable getSetContainerState() {
+    return new SetContainerState(this);
   }
 
   public PhysicalPlan getPlan() {

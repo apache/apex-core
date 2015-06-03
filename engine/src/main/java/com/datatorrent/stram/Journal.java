@@ -1,14 +1,23 @@
 /*
- *  Copyright (c) 2012-2013 DataTorrent, Inc.
+ *  Copyright (c) 2012-2015 DataTorrent, Inc.
  *  All Rights Reserved.
  */
 package com.datatorrent.stram;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.collect.Maps;
+import javax.annotation.Nullable;
+
+import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.google.common.collect.ImmutableMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
@@ -20,203 +29,161 @@ import com.datatorrent.stram.plan.physical.PTOperator;
  *
  * @since 0.9.2
  */
-public class Journal
+public final class Journal
 {
-  public interface RecoverableOperation
-  {
-    void read(DataInput in) throws IOException;
-    void write(DataOutput out) throws IOException;
-  }
+  private final static Logger LOG = LoggerFactory.getLogger(Journal.class);
 
-  private final ConcurrentMap<Integer, RecoverableOperation> operations = Maps.newConcurrentMap();
-  private final ConcurrentMap<Class<?>, Integer> classToId = Maps.newConcurrentMap();
-  private DataOutputStream out;
-
-  public Journal()
+  private enum RecoverableOperation
   {
-  }
+    OPERATOR_STATE             (PTOperator.SET_OPERATOR_STATE),
+    CONTAINER_STATE            (PTContainer.SET_CONTAINER_STATE),
+    OPERATOR_PROPERTY          (StreamingContainerManager.SET_OPERATOR_PROPERTY),
+    PHYSICAL_OPERATOR_PROPERTY (StreamingContainerManager.SET_PHYSICAL_OPERATOR_PROPERTY);
 
-  public DataOutputStream getOutputStream()
-  {
-    return this.out;
-  }
+    private static final Map<Class<? extends Recoverable>, Integer> classToId;
 
-  public synchronized void setOutputStream(DataOutputStream out) throws IOException
-  {
-    this.out = out;
-  }
-
-  public synchronized void register(int opId, RecoverableOperation op)
-  {
-    if (operations.put(opId, op) != null) {
-      throw new IllegalStateException(String.format("Prior mapping for %s %s", opId));
+    static
+    {
+      final ImmutableMap.Builder<Class<? extends Recoverable>, Integer> builder = ImmutableMap.builder();
+      for (RecoverableOperation recoverableOperation : RecoverableOperation.values()) {
+        builder.put(recoverableOperation.operation.getClass(), recoverableOperation.ordinal());
+      }
+      classToId = builder.build();
     }
-    classToId.put(op.getClass(), opId);
+
+    private final Recoverable operation;
+
+    RecoverableOperation(Recoverable operation)
+    {
+      this.operation = operation;
+    }
+
+    private static RecoverableOperation get(int id)
+    {
+      return (id < values().length)? values()[id] : null;
+    }
+
+    private static Integer getId(Class<? extends Recoverable> operationClass)
+    {
+      return classToId.get(operationClass);
+    }
   }
 
-  public synchronized void write(RecoverableOperation op) throws IOException
+  public interface Recoverable
   {
-    Integer classId = classToId.get(op.getClass());
+    void read(Object object, Input in) throws KryoException;
+    void write(Output out) throws KryoException;
+  }
+
+  private final StreamingContainerManager scm;
+  private final AtomicReference<Output> output;
+  private final AtomicBoolean replayMode;
+
+  public Journal(StreamingContainerManager scm)
+  {
+    this.scm = scm;
+    output = new AtomicReference<Output>();
+    replayMode = new AtomicBoolean(false);
+  }
+
+  public void setOutputStream(@Nullable final OutputStream out) throws IOException
+  {
+    final Output output;
+    if (out != null) {
+      output = new Output(4096, -1) {
+        @Override
+        public void flush() throws KryoException {
+          super.flush();
+          // Kryo does not flush internal output stream during flush. We need to flush it explicitly.
+          try {
+            getOutputStream().flush();
+          } catch (IOException e) {
+            throw new KryoException(e);
+          }
+        }
+      };
+      output.setOutputStream(out);
+    } else {
+      output = null;
+    }
+
+    final Output oldOut = this.output.getAndSet(output);
+    if (oldOut != null && oldOut.getOutputStream() != out) {
+      synchronized (oldOut) {
+        oldOut.close();
+      }
+    }
+  }
+
+  final void write(Recoverable op)
+  {
+    if (replayMode.get()) {
+      throw new IllegalStateException("Request to write while journal is replaying operations");
+    }
+    Integer classId = RecoverableOperation.getId(op.getClass());
     if (classId == null) {
       throw new IllegalArgumentException("Class not registered " + op.getClass());
     }
-    out.writeInt(classId);
-    op.write(out);
-    out.flush();
-  }
-
-  public void replay(DataInputStream in) throws IOException
-  {
-    int opId;
     while (true) {
-      try {
-        opId = in.readInt();
-      } catch (java.io.EOFException ex) {
+      final Output out = output.get();
+      if (out != null) {
+        // need to atomically write id, operation and flush the output stream
+        synchronized (out) {
+          try {
+            LOG.debug("WAL write {}", RecoverableOperation.get(classId));
+            out.writeInt(classId);
+            op.write(out);
+            out.flush();
+            break;
+          }
+          catch (KryoException e) {
+            // check that no other threads sneaked between get() and synchronized block and set output stream to a new
+            // stream or null leading to the current stream being closed
+            if (output.get() == out) {
+              throw e;
+            }
+          }
+        }
+      } else {
+        LOG.warn("Journal output stream is null. Skipping write to the WAL.");
         break;
       }
-      RecoverableOperation op = operations.get(opId);
-      if (op == null) {
-        throw new IOException("No reader registered for id " + opId);
-      }
-      op.read(in);
     }
   }
 
-  private static void writeLPString(DataOutput out, String s) throws IOException
+  final void replay(final InputStream input)
   {
-    if (s != null) {
-      byte[] bytes = s.getBytes();
-      out.writeInt(bytes.length);
-      out.write(bytes);
-    } else {
-      out.writeInt(-1);
-    }
-  }
-
-  private static String readLPString(DataInput in) throws IOException
-  {
-    int len = in.readInt();
-    if (len == -1) {
-      return null;
-    }
-    byte[] bytes = new byte[len];
-    in.readFully(bytes);
-    return new String(bytes);
-  }
-
-  public static class SetOperatorState implements RecoverableOperation
-  {
-    final StreamingContainerManager scm;
-    public int operatorId;
-    public PTOperator.State state;
-
-    public SetOperatorState(StreamingContainerManager scm)
-    {
-      this.scm = scm;
-    }
-
-    public static RecoverableOperation newInstance(int operatorId, PTOperator.State state)
-    {
-      SetOperatorState op = new SetOperatorState(null);
-      op.operatorId = operatorId;
-      op.state = state;
-      return op;
-    }
-
-    @Override
-    public void read(DataInput in) throws IOException
-    {
-      operatorId = in.readInt();
-      int stateOrd = in.readInt();
-      state = PTOperator.State.values()[stateOrd];
-      scm.getPhysicalPlan().getAllOperators().get(operatorId).setState(state);
-    }
-
-    @Override
-    public void write(DataOutput out) throws IOException
-    {
-      out.writeInt(operatorId);
-      out.writeInt(state.ordinal());
-    }
-
-  }
-
-  /**
-   * Resource priority is logged so that on restore, pending resource requests can be matched to the containers.
-   */
-  public static class SetContainerState implements RecoverableOperation
-  {
-    final StreamingContainerManager scm;
-    public PTContainer container;
-
-    public SetContainerState(StreamingContainerManager scm)
-    {
-      this.scm = scm;
-    }
-
-    public static RecoverableOperation newInstance(PTContainer container)
-    {
-      SetContainerState op = new SetContainerState(null);
-      op.container = container;
-      return op;
-    }
-
-    @Override
-    public void read(DataInput in) throws IOException
-    {
-      int containerId = in.readInt();
-
-      for (PTContainer c : scm.getPhysicalPlan().getContainers())
-      {
-         if (c.getId() == containerId) {
-           int stateOrd = in.readInt();
-           c.setState(PTContainer.State.values()[stateOrd]);
-           c.setExternalId(readLPString(in));
-           c.setResourceRequestPriority(in.readInt());
-           c.setRequiredMemoryMB(in.readInt());
-           c.setAllocatedMemoryMB(in.readInt());
-           c.setRequiredVCores(in.readInt());
-           c.setAllocatedVCores(in.readInt());
-           String bufferServerHost = readLPString(in);
-           if (bufferServerHost != null) {
-             c.bufferServerAddress = InetSocketAddress.createUnresolved(bufferServerHost, in.readInt());
-           }
-           c.host = readLPString(in);
-           c.nodeHttpAddress = readLPString(in);
-           break;
-         }
+    if (replayMode.compareAndSet(false, true)) {
+      Input in = new Input(input);
+      try {
+        LOG.debug("Start replaying WAL");
+        while (!in.eof()) {
+          final int opId = in.readInt();
+          final RecoverableOperation recoverableOperation = RecoverableOperation.get(opId);
+          if (recoverableOperation == null) {
+            throw new IllegalArgumentException("No reader registered for id " + opId);
+          }
+          LOG.debug("Replaying {}", recoverableOperation);
+          switch (recoverableOperation) {
+            case OPERATOR_STATE:
+            case CONTAINER_STATE:
+              recoverableOperation.operation.read(scm.getPhysicalPlan(), in);
+              break;
+            case OPERATOR_PROPERTY:
+            case PHYSICAL_OPERATOR_PROPERTY:
+              recoverableOperation.operation.read(scm, in);
+              break;
+            default:
+              throw new IllegalArgumentException("Unsupported recoverable operation " + recoverableOperation);
+          }
+        }
+      } finally {
+        LOG.debug("Done replaying WAL");
+        replayMode.set(false);
       }
     }
-
-    @Override
-    public void write(DataOutput out) throws IOException
-    {
-      out.writeInt(container.getId());
-      // state
-      out.writeInt(container.getState().ordinal());
-      // external id
-      writeLPString(out, container.getExternalId());
-      // resource priority
-      out.writeInt(container.getResourceRequestPriority());
-      // memory required
-      out.writeInt(container.getRequiredMemoryMB());
-      // memory allocated
-      out.writeInt(container.getAllocatedMemoryMB());
-      // vcores required
-      out.writeInt(container.getRequiredVCores());
-      // vcores allocated
-      out.writeInt(container.getAllocatedVCores());
-      // buffer server address
-      InetSocketAddress addr = container.bufferServerAddress;
-      if (addr != null) {
-        writeLPString(out, addr.getHostName());
-        out.writeInt(addr.getPort());
-      } else {
-        writeLPString(out, null);
-      }
-      // host
-      writeLPString(out, container.host);
-      writeLPString(out, container.nodeHttpAddress);
+    else {
+      throw new IllegalStateException("Request to replay while journal is already replaying other operations");
     }
   }
 

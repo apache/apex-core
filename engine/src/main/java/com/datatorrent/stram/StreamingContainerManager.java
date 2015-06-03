@@ -16,6 +16,9 @@ import static java.lang.Thread.sleep;
 
 import javax.annotation.Nullable;
 
+import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -56,8 +59,7 @@ import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
-import com.datatorrent.stram.Journal.RecoverableOperation;
-import com.datatorrent.stram.Journal.SetContainerState;
+import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.*;
@@ -102,6 +104,8 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
   public final static long LATENCY_WARNING_THRESHOLD_MILLIS = 10 * 60 * 1000; // 10 minutes
+  public final static Recoverable SET_OPERATOR_PROPERTY = new SetOperatorProperty();
+  public final static Recoverable SET_PHYSICAL_OPERATOR_PROPERTY = new SetPhysicalOperatorProperty();
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
@@ -177,6 +181,95 @@ public class StreamingContainerManager implements PlanContext
     LinkedList<Integer> path = new LinkedList<Integer>();
   }
 
+  private static class SetOperatorProperty implements Recoverable
+  {
+    final private String operatorName;
+    final private String propertyName;
+    final private String propertyValue;
+
+    private SetOperatorProperty()
+    {
+      this(null, null, null);
+    }
+
+    private SetOperatorProperty(String operatorName, String propertyName, String propertyValue)
+    {
+      this.operatorName = operatorName;
+      this.propertyName = propertyName;
+      this.propertyValue = propertyValue;
+    }
+
+    @Override
+    public void read(final Object object, final Input in) throws KryoException
+    {
+      final StreamingContainerManager scm = (StreamingContainerManager)object;
+
+      final String operatorName = in.readString();
+      final String propertyName = in.readString();
+      final String propertyValue = in.readString();
+
+      final OperatorMeta logicalOperator = scm.plan.getLogicalPlan().getOperatorMeta(operatorName);
+      if (logicalOperator == null) {
+        throw new IllegalArgumentException("Unknown operator " + operatorName);
+      }
+
+      scm.setOperatorProperty(logicalOperator, propertyName, propertyValue);
+    }
+
+    @Override
+    public void write(final Output out) throws KryoException
+    {
+      out.writeString(operatorName);
+      out.writeString(propertyName);
+      out.writeString(propertyValue);
+    }
+
+  }
+
+  private static class SetPhysicalOperatorProperty implements Recoverable
+  {
+    final private int operatorId;
+    final private String propertyName;
+    final private String propertyValue;
+
+    private SetPhysicalOperatorProperty()
+    {
+      this(-1, null, null);
+    }
+
+    private SetPhysicalOperatorProperty(int operatorId, String propertyName, String propertyValue)
+    {
+      this.operatorId = operatorId;
+      this.propertyName = propertyName;
+      this.propertyValue = propertyValue;
+    }
+
+    @Override
+    public void read(final Object object, final Input in) throws KryoException
+    {
+      final StreamingContainerManager scm = (StreamingContainerManager)object;
+
+      final int operatorId = in.readInt();
+      final String propertyName = in.readString();
+      final String propertyValue = in.readString();
+
+      final PTOperator o = scm.plan.getAllOperators().get(operatorId);
+      if (o == null) {
+        throw new IllegalArgumentException("Unknown physical operator " + operatorId);
+      }
+      scm.setPhysicalOperatorProperty(o, propertyName, propertyValue);
+    }
+
+    @Override
+    public void write(final Output out) throws KryoException
+    {
+      out.writeInt(operatorId);
+      out.writeString(propertyName);
+      out.writeString(propertyValue);
+    }
+
+  }
+
   public StreamingContainerManager(LogicalPlan dag, Clock clock)
   {
     this(dag, false, clock);
@@ -191,7 +284,6 @@ public class StreamingContainerManager implements PlanContext
   {
     this.clock = clock;
     this.vars = new FinalVars(dag, clock.getTime());
-    this.journal = setupJournal();
     // setup prior to plan creation for event recording
     if (enableEventRecording) {
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
@@ -199,6 +291,7 @@ public class StreamingContainerManager implements PlanContext
     this.plan = new PhysicalPlan(dag, this);
     setupRecording(enableEventRecording);
     setupStringCodecs();
+    this.journal = new Journal(this);
     try {
       this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
       this.containerFile.append(getAppMasterContainerInfo());
@@ -212,11 +305,11 @@ public class StreamingContainerManager implements PlanContext
   {
     this.vars = checkpointedState.finals;
     this.clock = new SystemClock();
-    this.journal = setupJournal();
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     setupRecording(enableEventRecording);
     setupStringCodecs();
+    this.journal = new Journal(this);
     try {
       this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
       this.containerFile.append(getAppMasterContainerInfo());
@@ -224,6 +317,10 @@ public class StreamingContainerManager implements PlanContext
     catch (IOException ex) {
       LOG.error("Caught exception when instantiating for container info file", ex);
     }
+  }
+
+  public Journal getJournal() {
+    return journal;
   }
 
   public final ContainerInfo getAppMasterContainerInfo()
@@ -286,14 +383,6 @@ public class StreamingContainerManager implements PlanContext
       }
       latencyMA.add(latency);
     }
-  }
-
-  private Journal setupJournal()
-  {
-    Journal lJournal = new Journal();
-    lJournal.register(1, new Journal.SetOperatorState(this));
-    lJournal.register(2, new Journal.SetContainerState(this));
-    return lJournal;
   }
 
   private void setupRecording(boolean enableEventRecording)
@@ -848,7 +937,7 @@ public class StreamingContainerManager implements PlanContext
     container.setAllocatedVCores(resource.vCores);
     container.setStartedTime(-1);
     container.setFinishedTime(-1);
-    writeJournal(SetContainerState.newInstance(container));
+    writeJournal(container.getSetContainerState());
 
     StreamingContainerAgent sca = new StreamingContainerAgent(container, newStreamingContainerContext(container), this);
     containers.put(resource.containerId, sca);
@@ -2136,6 +2225,14 @@ public class StreamingContainerManager implements PlanContext
     this.containerStopRequests.put(containerId, containerId);
   }
 
+  public Recoverable getSetOperatorProperty(String operatorName, String propertyName, String propertyValue) {
+    return new SetOperatorProperty(operatorName, propertyName, propertyValue);
+  }
+
+  public Recoverable getSetPhysicalOperatorProperty(int operatorId, String propertyName, String propertyValue) {
+    return new SetPhysicalOperatorProperty(operatorId, propertyName, propertyValue);
+  }
+
   public void setOperatorProperty(String operatorName, String propertyName, String propertyValue)
   {
     OperatorMeta logicalOperator = plan.getLogicalPlan().getOperatorMeta(operatorName);
@@ -2143,23 +2240,29 @@ public class StreamingContainerManager implements PlanContext
       throw new IllegalArgumentException("Unknown operator " + operatorName);
     }
 
+    writeJournal(new SetOperatorProperty(operatorName, propertyName, propertyValue));
+
+    setOperatorProperty(logicalOperator, propertyName, propertyValue);
+  }
+
+  private void setOperatorProperty(OperatorMeta logicalOperator, String propertyName, String propertyValue)
+  {
     Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
     LogicalPlanConfiguration.setOperatorProperties(logicalOperator.getOperator(), properties);
 
     List<PTOperator> operators = plan.getOperators(logicalOperator);
     for (PTOperator o : operators) {
-      StreamingContainerAgent sca = getContainerAgent(o.getContainer().getExternalId());
       StramToNodeSetPropertyRequest request = new StramToNodeSetPropertyRequest();
       request.setOperatorId(o.getId());
       request.setPropertyKey(propertyName);
       request.setPropertyValue(propertyValue);
-      sca.addOperatorRequest(request);
+      addOperatorRequest(o, request);
       // re-apply to checkpointed state on deploy
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests.  so record it here for now.
-    recordEventAsync(new StramEvent.SetOperatorPropertyEvent(operatorName, propertyName, propertyValue));
+    recordEventAsync(new StramEvent.SetOperatorPropertyEvent(logicalOperator.getName(), propertyName, propertyValue));
   }
 
   /**
@@ -2175,10 +2278,15 @@ public class StreamingContainerManager implements PlanContext
     if (o == null) {
       return;
     }
+    writeJournal(new SetPhysicalOperatorProperty(operatorId, propertyName, propertyValue));
+    setPhysicalOperatorProperty(o, propertyName, propertyValue);
+  }
 
+  private void setPhysicalOperatorProperty(PTOperator o, String propertyName, String propertyValue)
+  {
     String operatorName = o.getName();
     StramToNodeSetPropertyRequest request = new StramToNodeSetPropertyRequest();
-    request.setOperatorId(operatorId);
+    request.setOperatorId(o.getId());
     request.setPropertyKey(propertyName);
     request.setPropertyValue(propertyValue);
     addOperatorRequest(o, request);
@@ -2186,14 +2294,17 @@ public class StreamingContainerManager implements PlanContext
 
     // should probably not record it here because it's better to get confirmation from the operators first.
     // but right now, the operators do not give confirmation for the requests. so record it here for now.
-    recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, operatorId, propertyName, propertyValue));
+    recordEventAsync(new StramEvent.SetPhysicalOperatorPropertyEvent(operatorName, o.getId(), propertyName, propertyValue));
   }
 
   @Override
   public void addOperatorRequest(PTOperator oper, StramToNodeRequest request)
   {
     StreamingContainerAgent sca = getContainerAgent(oper.getContainer().getExternalId());
-    sca.addOperatorRequest(request);
+    // yarn may not assigned resource to the container yet
+    if (sca != null) {
+      sca.addOperatorRequest(request);
+    }
   }
 
   /**
@@ -2366,33 +2477,26 @@ public class StreamingContainerManager implements PlanContext
   {
     if (recoveryHandler != null) {
       LOG.debug("Checkpointing state");
-      synchronized (journal) {
-        DataOutputStream os = journal.getOutputStream();
-        if (os != null) {
-          os.close();
-        }
-        DataOutputStream dos = recoveryHandler.rotateLog();
-        journal.setOutputStream(dos);
-      }
+      DataOutputStream out = recoveryHandler.rotateLog();
+      journal.setOutputStream(out);
       // checkpoint the state
       CheckpointState cs = new CheckpointState();
       cs.finals = this.vars;
       cs.physicalPlan = this.plan;
       recoveryHandler.save(cs);
-
     }
   }
 
   @Override
-  public void writeJournal(RecoverableOperation op)
+  public void writeJournal(Recoverable operation)
   {
     try {
-      if (journal.getOutputStream() != null) {
-        journal.write(op);
+      if (journal != null) {
+        journal.write(operation);
       }
     }
     catch (Exception e) {
-      throw new IllegalStateException("Failed to write to journal " + op, e);
+      throw new IllegalStateException("Failed to write to journal " + operation, e);
     }
   }
 

@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.RPC;
@@ -52,6 +53,8 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest.PartitioningTestOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
+
+import static org.junit.Assert.assertEquals;
 
 public class StramRecoveryTest
 {
@@ -98,12 +101,12 @@ public class StramRecoveryTest
 
     OperatorMeta o2Meta = dag.getOperatorMeta("o2");
     List<PTOperator> o2Partitions = plan.getOperators(o2Meta);
-    Assert.assertEquals(3, o2Partitions.size());
+    assertEquals(3, o2Partitions.size());
     for (PTOperator o : o2Partitions) {
       Assert.assertNotNull("partition null " + o, o.getPartitionKeys());
-      Assert.assertEquals("partition keys " + o + " " + o.getPartitionKeys(), 2, o.getPartitionKeys().size());
+      assertEquals("partition keys " + o + " " + o.getPartitionKeys(), 2, o.getPartitionKeys().size());
       PartitioningTestOperator partitionedInstance = (PartitioningTestOperator)plan.loadOperator(o);
-      Assert.assertEquals("instance per partition", o.getPartitionKeys().values().toString(), partitionedInstance.pks);
+      assertEquals("instance per partition", o.getPartitionKeys().values().toString(), partitionedInstance.pks);
       Assert.assertNotNull("partition stats null " + o, o.stats);
     }
 
@@ -149,7 +152,7 @@ public class StramRecoveryTest
     Assert.assertTrue("snapshot file " + expFile, expFile.exists());
 
     PhysicalPlan plan = scm.getPhysicalPlan();
-    Assert.assertEquals("number required containers", 1, plan.getContainers().size());
+    assertEquals("number required containers", 1, plan.getContainers().size());
 
     PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
 
@@ -158,8 +161,8 @@ public class StramRecoveryTest
     PTContainer originalContainer = o1p1.getContainer();
 
     Assert.assertNotNull(o1p1.getContainer().bufferServerAddress);
-    Assert.assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
-    Assert.assertEquals("state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
+    assertEquals(PTContainer.State.ACTIVE, o1p1.getContainer().getState());
+    assertEquals("state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
 
     // test restore initial snapshot + log
     dag = new LogicalPlan();
@@ -169,28 +172,28 @@ public class StramRecoveryTest
     plan = scm.getPhysicalPlan();
 
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
-    Assert.assertEquals("post restore state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
+    assertEquals("post restore state " + o1p1, PTOperator.State.PENDING_DEPLOY, o1p1.getState());
     o1 = (StatsListeningOperator)o1p1.getOperatorMeta().getOperator();
-    Assert.assertEquals("containerId", originalContainer.getExternalId(), o1p1.getContainer().getExternalId());
-    Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
-    Assert.assertEquals("number stats calls", 0,  o1.processStatsCnt); // stats are not logged
-    Assert.assertEquals("post restore 1", PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
-    Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
+    assertEquals("containerId", originalContainer.getExternalId(), o1p1.getContainer().getExternalId());
+    assertEquals("stats listener", 1, o1p1.statsListeners.size());
+    assertEquals("number stats calls", 0, o1.processStatsCnt); // stats are not logged
+    assertEquals("post restore 1", PTContainer.State.ALLOCATED, o1p1.getContainer().getState());
+    assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
     StreamingContainerAgent sca = scm.getContainerAgent(originalContainer.getExternalId());
     Assert.assertNotNull("allocated container restored " + originalContainer, sca);
-    Assert.assertEquals("memory usage allocated container", (int)OperatorContext.MEMORY_MB.defaultValue, sca.container.getAllocatedMemoryMB());
+    assertEquals("memory usage allocated container", (int) OperatorContext.MEMORY_MB.defaultValue, sca.container.getAllocatedMemoryMB());
 
     // YARN-1490 - simulate container terminated on AM recovery
     scm.scheduleContainerRestart(originalContainer.getExternalId());
-    Assert.assertEquals("memory usage of failed container", 0, sca.container.getAllocatedMemoryMB());
+    assertEquals("memory usage of failed container", 0, sca.container.getAllocatedMemoryMB());
 
     Checkpoint firstCheckpoint = new Checkpoint(3, 0, 0);
     mc = new MockContainer(scm, o1p1.getContainer());
     checkpoint(scm, o1p1, firstCheckpoint);
     mc.stats(o1p1.getId()).deployState(OperatorHeartbeat.DeployState.ACTIVE).currentWindowId(3).checkpointWindowId(3);
     mc.sendHeartbeat();
-    Assert.assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
+    assertEquals("state " + o1p1, PTOperator.State.ACTIVE, o1p1.getState());
 
     // logical plan modification triggers snapshot
     CreateOperatorRequest cor = new CreateOperatorRequest();
@@ -208,7 +211,7 @@ public class StramRecoveryTest
     Assert.assertNull(lpmf.get()); // unmask exception, if any
 
     Assert.assertSame("dag references", dag, scm.getLogicalPlan());
-    Assert.assertEquals("number operators after plan modification", 2, dag.getAllOperators().size());
+    assertEquals("number operators after plan modification", 2, dag.getAllOperators().size());
 
     // set operator state triggers journal write
     o1p1.setState(PTOperator.State.INACTIVE);
@@ -224,27 +227,28 @@ public class StramRecoveryTest
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
 
     Assert.assertNotSame("dag references", dag, scm.getLogicalPlan());
-    Assert.assertEquals("number operators after restore", 2, scm.getLogicalPlan().getAllOperators().size());
+    assertEquals("number operators after restore", 2, scm.getLogicalPlan().getAllOperators().size());
 
     dag = scm.getLogicalPlan();
     plan = scm.getPhysicalPlan();
 
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
-    Assert.assertEquals("post restore state " + o1p1, PTOperator.State.INACTIVE, o1p1.getState());
+    assertEquals("post restore state " + o1p1, PTOperator.State.INACTIVE, o1p1.getState());
     o1 = (StatsListeningOperator)o1p1.getOperatorMeta().getOperator();
-    Assert.assertEquals("stats listener", 1, o1p1.statsListeners.size());
-    Assert.assertEquals("number stats calls post restore", 1,  o1.processStatsCnt);
-    Assert.assertEquals("post restore 1", PTContainer.State.ACTIVE, o1p1.getContainer().getState());
-    Assert.assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
+    assertEquals("stats listener", 1, o1p1.statsListeners.size());
+    assertEquals("number stats calls post restore", 1, o1.processStatsCnt);
+    assertEquals("post restore 1", PTContainer.State.ACTIVE, o1p1.getContainer().getState());
+    assertEquals("post restore 1", originalContainer.bufferServerAddress, o1p1.getContainer().bufferServerAddress);
 
     // offline checkpoint detection
-    Assert.assertEquals("checkpoints after recovery", Lists.newArrayList(firstCheckpoint, offlineCheckpoint),  o1p1.checkpoints);
+    assertEquals("checkpoints after recovery", Lists.newArrayList(firstCheckpoint, offlineCheckpoint), o1p1.checkpoints);
   }
 
   @Test
   public void testWriteAheadLog() throws Exception
   {
     final MutableInt flushCount = new MutableInt();
+    final MutableBoolean isClosed = new MutableBoolean(false);
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
@@ -252,39 +256,49 @@ public class StramRecoveryTest
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     PhysicalPlan plan = scm.getPhysicalPlan();
-
-    PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
-    Assert.assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
-
+    Journal j = scm.getJournal();
     ByteArrayOutputStream bos = new ByteArrayOutputStream() {
       @Override
       public void flush() throws IOException {
         super.flush();
         flushCount.increment();
       }
+      @Override
+      public void close() throws IOException {
+        super.close();
+        isClosed.setValue(true);
+      }
     };
-    Journal j = new Journal();
     j.setOutputStream(new DataOutputStream(bos));
-    j.register(1, new SetOperatorState(scm));
-    j.register(2, new SetContainerState(scm));
 
-    SetOperatorState op1 = new SetOperatorState(scm);
-    op1.operatorId = o1p1.getId();
-    op1.state = PTOperator.State.ACTIVE;
-    j.write(op1);
-    Assert.assertEquals("flush count", 1, flushCount.intValue());
+    PTOperator o1p1 = plan.getOperators(dag.getMeta(o1)).get(0);
+    assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
+    String externalId = new MockContainer(scm, o1p1.getContainer()).container.getExternalId();
+    assertEquals("flush count", 1, flushCount.intValue());
 
-    Assert.assertEquals(PTOperator.State.PENDING_DEPLOY, o1p1.getState());
-    bos.close();
+    o1p1.setState(PTOperator.State.ACTIVE);
+    assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+    assertEquals("flush count", 2, flushCount.intValue());
+    assertEquals("is closed", false, isClosed.booleanValue());
+
+    // this will close the stream. There are 2 calls to flush() during the close() - one in Kryo Output and one
+    // in FilterOutputStream
+    j.setOutputStream(null);
+    assertEquals("flush count", 4, flushCount.intValue());
+    assertEquals("is closed", true, isClosed.booleanValue());
+
+    // output stream is closed, so state will be changed without recording it in the journal
+    o1p1.setState(PTOperator.State.INACTIVE);
+    assertEquals(PTOperator.State.INACTIVE, o1p1.getState());
+    assertEquals("flush count", 4, flushCount.intValue());
 
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     j.replay(new DataInputStream(bis));
-    Assert.assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
+    assertEquals(PTOperator.State.ACTIVE, o1p1.getState());
 
     InetSocketAddress addr1 = InetSocketAddress.createUnresolved("host1", 1);
     PTContainer c1 = plan.getContainers().get(0);
     c1.setState(PTContainer.State.ALLOCATED);
-    c1.setExternalId("eid1");
     c1.host = "host1";
     c1.bufferServerAddress = addr1;
     c1.setAllocatedMemoryMB(2);
@@ -292,9 +306,8 @@ public class StramRecoveryTest
     c1.setAllocatedVCores(3);
     c1.setRequiredVCores(4);
 
-    SetContainerState scs = new SetContainerState(scm);
-    scs.container = c1;
-    j.write(scs);
+    j.setOutputStream(new DataOutputStream(bos));
+    j.write(c1.getSetContainerState());
 
     c1.setExternalId(null);
     c1.setState(PTContainer.State.NEW);
@@ -305,14 +318,35 @@ public class StramRecoveryTest
     bis = new ByteArrayInputStream(bos.toByteArray());
     j.replay(new DataInputStream(bis));
 
-    Assert.assertEquals("eid1", c1.getExternalId());
-    Assert.assertEquals(PTContainer.State.ALLOCATED, c1.getState());
-    Assert.assertEquals("host1", c1.host);
-    Assert.assertEquals(addr1, c1.bufferServerAddress);
-    Assert.assertEquals(1, c1.getRequiredMemoryMB());
-    Assert.assertEquals(2, c1.getAllocatedMemoryMB());
-    Assert.assertEquals(3, c1.getAllocatedVCores());
-    Assert.assertEquals(4, c1.getRequiredVCores());
+    assertEquals(externalId, c1.getExternalId());
+    assertEquals(PTContainer.State.ALLOCATED, c1.getState());
+    assertEquals("host1", c1.host);
+    assertEquals(addr1, c1.bufferServerAddress);
+    assertEquals(1, c1.getRequiredMemoryMB());
+    assertEquals(2, c1.getAllocatedMemoryMB());
+    assertEquals(3, c1.getAllocatedVCores());
+    assertEquals(4, c1.getRequiredVCores());
+
+    j.write(scm.getSetOperatorProperty("o1", "maxTuples", "100"));
+    o1.setMaxTuples(10);
+    j.setOutputStream(null);
+    bis = new ByteArrayInputStream(bos.toByteArray());
+    j.replay(new DataInputStream(bis));
+    assertEquals(100, o1.getMaxTuples());
+
+    j.setOutputStream(new DataOutputStream(bos));
+    scm.setOperatorProperty("o1", "maxTuples", "10");
+    assertEquals(10, o1.getMaxTuples());
+    o1.setMaxTuples(100);
+    assertEquals(100, o1.getMaxTuples());
+    j.setOutputStream(null);
+
+    bis = new ByteArrayInputStream(bos.toByteArray());
+    j.replay(new DataInputStream(bis));
+    assertEquals(10, o1.getMaxTuples());
+
+    j.setOutputStream(new DataOutputStream(bos));
+    scm.setPhysicalOperatorProperty(o1p1.getId(), "maxTuples", "50");
   }
 
   @Test
@@ -348,7 +382,7 @@ public class StramRecoveryTest
     Assert.assertNull(o1p1.getContainer().getExternalId());
     // trigger journal write
     o1p1.getContainer().setExternalId("cid1");
-    scm.writeJournal(SetContainerState.newInstance(o1p1.getContainer()));
+    scm.writeJournal(o1p1.getContainer().getSetContainerState());
 
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
@@ -364,11 +398,11 @@ public class StramRecoveryTest
     scm = StreamingContainerManager.getInstance(new FSRecoveryHandler(dag.assertAppPath(), new Configuration(false)), dag, false);
     plan = scm.getPhysicalPlan();
     dag = plan.getLogicalPlan();
-    Assert.assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
-    Assert.assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
+    assertEquals("modified appId", appId2, dag.getValue(LogicalPlan.APPLICATION_ID));
+    assertEquals("modified appPath", appPath2, dag.getValue(LogicalPlan.APPLICATION_PATH));
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
-    Assert.assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());
+    assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());
 
     ids = new FSStorageAgent(appPath2 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration(false)).getWindowIds(o1p1.getId());
     Assert.assertArrayEquals("checkpoints copied", new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);

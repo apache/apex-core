@@ -30,7 +30,7 @@ import com.datatorrent.api.Partitioner.Partition;
 import com.datatorrent.api.Partitioner.PartitionKeys;
 import com.datatorrent.api.StatsListener.OperatorRequest;
 import com.datatorrent.api.annotation.Stateless;
-import com.datatorrent.stram.Journal.RecoverableOperation;
+import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -141,9 +141,9 @@ public class PhysicalPlan implements Serializable
 
     /**
      * Write the recoverable operation to the log.
-     * @param op
+     * @param operation
      */
-    public void writeJournal(RecoverableOperation op);
+    public void writeJournal(Recoverable operation);
 
     public void addOperatorRequest(PTOperator oper, StramToNodeRequest request);
   }
