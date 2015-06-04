@@ -868,6 +868,9 @@ public class DTCli
         result.append(file);
       }
     }
+    if (result.length() == 0) {
+      return null;
+    }
     return result.toString();
   }
 
@@ -1788,15 +1791,21 @@ public class DTCli
           config = StramAppLauncher.getOverriddenConfig(StramClientUtils.addDTSiteResources(new Configuration()), configFile, commandLineInfo.overrideProperties);
           if (commandLineInfo.libjars != null) {
             commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
-            config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+            if (commandLineInfo.libjars != null) {
+              config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+            }
           }
           if (commandLineInfo.files != null) {
             commandLineInfo.files = expandCommaSeparatedFiles(commandLineInfo.files);
-            config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
+            if (commandLineInfo.files != null) {
+              config.set(StramAppLauncher.FILES_CONF_KEY_NAME, commandLineInfo.files);
+            }
           }
           if (commandLineInfo.archives != null) {
             commandLineInfo.archives = expandCommaSeparatedFiles(commandLineInfo.archives);
-            config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
+            if (commandLineInfo.archives != null) {
+              config.set(StramAppLauncher.ARCHIVES_CONF_KEY_NAME, commandLineInfo.archives);
+            }
           }
           if (commandLineInfo.origAppId != null) {
             config.set(StramAppLauncher.ORIGINAL_APP_ID, commandLineInfo.origAppId);
@@ -2726,7 +2735,9 @@ public class DTCli
       Configuration config = StramClientUtils.addDTSiteResources(new Configuration());
       if (commandLineInfo.libjars != null) {
         commandLineInfo.libjars = expandCommaSeparatedFiles(commandLineInfo.libjars);
-        config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+        if (commandLineInfo.libjars != null) {
+          config.set(StramAppLauncher.LIBJARS_CONF_KEY_NAME, commandLineInfo.libjars);
+        }
       }
 
       if (commandLineInfo.args.length >= 2) {
@@ -2940,8 +2951,11 @@ public class DTCli
       System.arraycopy(args, 1, newArgs, 0, args.length - 1);
       GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(newArgs);
       String parentName = commandLineInfo.parent != null ? commandLineInfo.parent : Operator.class.getName();
-
-      String[] jarFiles = expandCommaSeparatedFiles(commandLineInfo.args[0]).split(",");
+      String files = expandCommaSeparatedFiles(commandLineInfo.args[0]);
+      if (files == null) {
+        throw new CliException("File " + commandLineInfo.args[0] + " is not found");
+      }
+      String[] jarFiles = files.split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
         ObjectMapper defaultValueMapper = ObjectMapperFactory.getOperatorValueSerializer();
@@ -2992,14 +3006,17 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String[] jarFiles = expandCommaSeparatedFiles(args[1]).split(",");
+      String files = expandCommaSeparatedFiles(args[1]);
+      if (files == null) {
+        throw new CliException("File " + args[1] + " is not found");
+      }
+      String[] jarFiles = files.split(",");
       File tmpDir = copyToLocal(jarFiles);
       try {
         OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer(jarFiles);
         Class<? extends Operator> operatorClass = operatorDiscoverer.getOperatorClass(args[2]);
         printJson(operatorDiscoverer.describeOperator(operatorClass));
-      }
-      finally {
+      } finally {
         FileUtils.deleteDirectory(tmpDir);
       }
     }
@@ -3500,10 +3517,12 @@ public class DTCli
         }
         files.append(cp.tempDirectory()).append(File.separatorChar).append(file);
       }
-      if (commandLineInfo.libjars != null) {
-        commandLineInfo.libjars = files.toString() + "," + commandLineInfo.libjars;
-      } else {
-        commandLineInfo.libjars = files.toString();
+      if (!StringUtils.isBlank(files.toString())) {
+        if (commandLineInfo.libjars != null) {
+          commandLineInfo.libjars = files.toString() + "," + commandLineInfo.libjars;
+        } else {
+          commandLineInfo.libjars = files.toString();
+        }
       }
 
       files.setLength(0);
@@ -3513,10 +3532,12 @@ public class DTCli
         }
         files.append(cp.tempDirectory()).append(File.separatorChar).append(file);
       }
-      if (commandLineInfo.files != null) {
-        commandLineInfo.files = files.toString() + "," + commandLineInfo.files;
-      } else {
-        commandLineInfo.files = files.toString();
+      if (!StringUtils.isBlank(files.toString())) {
+        if (commandLineInfo.files != null) {
+          commandLineInfo.files = files.toString() + "," + commandLineInfo.files;
+        } else {
+          commandLineInfo.files = files.toString();
+        }
       }
     }
 
