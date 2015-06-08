@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Operator;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
+import com.datatorrent.stram.webapp.asm.ClassSignatureVisitor;
 import com.datatorrent.stram.webapp.asm.CompactClassNode;
 import com.datatorrent.stram.webapp.asm.CompactMethodNode;
 import com.datatorrent.stram.webapp.asm.CompactUtil;
@@ -480,7 +481,8 @@ public class TypeGraph
     Map<String, JSONObject> results = new TreeMap<String, JSONObject>();
     List<CompactMethodNode> getters =  new LinkedList<CompactMethodNode>();
     List<CompactMethodNode> setters = new LinkedList<CompactMethodNode>();
-    getPublicSetterGetter(tgv, setters, getters);
+    Map<Type, Type> typeReplacement = new HashMap<Type, Type>();
+    getPublicSetterGetter(tgv, setters, getters, typeReplacement);
     
 
     for (CompactMethodNode setter : setters) {
@@ -506,7 +508,7 @@ public class TypeGraph
         propJ.put("type", "UNKNOWN");
       } else {
         // only one param in setter method
-        setTypes(propJ, param.get(0));
+        setTypes(propJ, param.get(0), typeReplacement);
         // propJ.put("type", param.getTypeObj().getClassName());
 
       }
@@ -535,7 +537,7 @@ public class TypeGraph
         if (rt == null) {
           propJ.put("type", "UNKNOWN");
         } else {
-          setTypes(propJ, rt);
+          setTypes(propJ, rt, typeReplacement);
           // propJ.put("type", param.getTypeObj().getClassName());
         }
 
@@ -547,7 +549,7 @@ public class TypeGraph
     return results.values();
   }
 
-  private void getPublicSetterGetter(TypeGraphVertex tgv, List<CompactMethodNode> setters, List<CompactMethodNode> getters)
+  private void getPublicSetterGetter(TypeGraphVertex tgv, List<CompactMethodNode> setters, List<CompactMethodNode> getters, Map<Type, Type> typeReplacement)
   {
     CompactClassNode exClass = null;
     // check if the class needs to be excluded
@@ -584,13 +586,40 @@ public class TypeGraph
         getters.addAll(tgv.getClassNode().getGetterMethods());
       }
     }
+    
+    
+    ClassSignatureVisitor csv = tgv.getClassNode().getCsv();
+    Type superC = csv.getSuperClass();
+    
+    addReplacement(superC, typeReplacement);
+
+    if(csv.getInterfaces()!=null){
+      for(Type it : csv.getInterfaces()){
+        addReplacement(it, typeReplacement);
+      };
+    }
     for (TypeGraphVertex ancestor : tgv.ancestors) {
-      getPublicSetterGetter(ancestor, setters, getters);
+      getPublicSetterGetter(ancestor, setters, getters, typeReplacement);
     }
   }
 
-  private void setTypes(JSONObject propJ, Type t) throws JSONException
+  private void addReplacement(Type superT, Map<Type, Type> typeReplacement)
   {
+    if(superT!=null && superT instanceof ParameterizedTypeNode){
+      Type[] actualTypes = ((ParameterizedTypeNode)superT).getActualTypeArguments();
+      List<TypeVariableNode> tvs = typeGraph.get(((ParameterizedTypeNode)superT).getTypeObj().getClassName()).getClassNode().getCsv().getTypeV();
+      int i = 0;
+      for (TypeVariableNode typeVariableNode : tvs) {
+        typeReplacement.put(typeVariableNode, actualTypes[i++]);
+      }
+    }
+  }
+
+  private void setTypes(JSONObject propJ, Type rawType, Map<Type, Type> typeReplacement) throws JSONException
+  {
+    // type could be replaced
+    Type t = resolveType(rawType, typeReplacement);
+    
     if (propJ == null) {
       return;
     } else {
@@ -611,7 +640,7 @@ public class TypeGraph
           JSONArray jArray = new JSONArray();
           for (Type ttn : ((ParameterizedTypeNode) t).getActualTypeArguments()) {
             JSONObject objJ = new JSONObject();
-            setTypes(objJ, ttn);
+            setTypes(objJ, ttn, typeReplacement);
             jArray.put(objJ);
           }
           propJ.put("typeArgs", jArray);
@@ -648,13 +677,13 @@ public class TypeGraph
         propJ.put("uiType", UI_TYPE.LIST.getName());
         
         JSONObject jObj = new JSONObject();
-        setTypes(jObj, ((ArrayTypeNode)t).getActualArrayType());
+        setTypes(jObj, ((ArrayTypeNode)t).getActualArrayType(), typeReplacement);
         propJ.put("itemType", jObj);
       }
       
       if(t instanceof TypeVariableNode){
         propJ.put("typeLiteral", ((TypeVariableNode)t).getTypeLiteral());
-        setTypes(propJ, ((TypeVariableNode)t).getRawTypeBound());
+        setTypes(propJ, ((TypeVariableNode)t).getRawTypeBound(), typeReplacement);
       }
 
 
@@ -663,6 +692,15 @@ public class TypeGraph
 
   
   
+  private Type resolveType(Type t, Map<Type, Type> typeReplacement)
+  {
+    if(typeReplacement.containsKey(t)){
+      return resolveType(typeReplacement.get(t), typeReplacement);
+    } else {
+      return t;
+    }
+  }
+
   /**
    * Type graph is big bidirectional object graph which can not be serialized by kryo.
    * This class is alternative {@link TypeGraph} kryo serializer

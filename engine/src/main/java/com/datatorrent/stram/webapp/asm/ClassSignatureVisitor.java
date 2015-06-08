@@ -1,0 +1,109 @@
+/**
+ * Copyright (c) 2015 DataTorrent, Inc.
+ * All rights reserved.
+ */
+package com.datatorrent.stram.webapp.asm;
+
+import java.util.LinkedList;
+import java.util.List;
+
+import org.objectweb.asm.signature.SignatureVisitor;
+
+/**
+ * Follow the visiting path of ASM
+ * to decompose method signature to data structure
+ *
+ * ClassSignature = ( visitFormalTypeParameter visitClassBound? visitInterfaceBound* )* ( visitSuperClass visitInterface* )
+ * MethodSignature = ( visitFormalTypeParameter visitClassBound? visitInterfaceBound* )* ( visitParameterType* visitReturnType visitExceptionType* )
+ * TypeSignature = visitBaseType | visitTypeVariable | visitArrayType | ( visitClassType visitTypeArgument* ( visitInnerClassType visitTypeArgument* )* visitEnd ) )
+ *
+ * @since 2.1
+ */
+public class ClassSignatureVisitor extends BaseSignatureVisitor
+{
+  
+  public enum END {
+    CLASSNAME, SUPERCLASS, INTERFACE
+  }
+  
+  private Type superClass;
+  
+  private List<Type> interfaces;
+  
+  private END end = END.CLASSNAME;
+
+  
+  @Override
+  public SignatureVisitor visitExceptionType()
+  {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public SignatureVisitor visitParameterType()
+  {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public SignatureVisitor visitReturnType()
+  {
+    throw new UnsupportedOperationException();
+  }
+  
+  
+  @Override
+  public SignatureVisitor visitSuperclass()
+  {
+    visitingStack.clear();
+    end = END.SUPERCLASS;
+    return this;
+  }
+  
+  
+  @Override
+  public void visitClassType(String classType)
+  {
+    super.visitClassType(classType);
+  }
+
+  @Override
+  public SignatureVisitor visitInterface()
+  {
+    // could be superclass before this
+    if (!visitingStack.isEmpty() && end == END.SUPERCLASS) {
+      superClass = visitingStack.pop();
+    } 
+    // could be another interface before this
+    if (interfaces == null) {
+      interfaces = new LinkedList<Type>();
+    }
+    if (end == END.INTERFACE) {
+      interfaces.add(0, visitingStack.pop());
+    }
+    end = END.INTERFACE;
+    return this;
+  }
+  
+  public List<Type> getInterfaces()
+  {
+    if(interfaces == null){
+      interfaces = new LinkedList<Type>();
+    }
+    if(interfaces!=null && end == END.INTERFACE && !visitingStack.isEmpty()){
+      interfaces.add(0, visitingStack.pop());
+    }
+    return interfaces;
+  }
+  
+  
+  public Type getSuperClass()
+  {
+
+    if (superClass == null && end == END.SUPERCLASS) {
+      superClass = visitingStack.pop();
+    }
+    return superClass;
+  }
+
+}

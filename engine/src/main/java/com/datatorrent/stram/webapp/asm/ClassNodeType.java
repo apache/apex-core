@@ -18,14 +18,14 @@ import org.objectweb.asm.tree.ClassNode;
 public class ClassNodeType extends ClassNode
 {
   
-  GenericTypeSignatureVisitor gtsv = new GenericTypeSignatureVisitor();
+  ClassSignatureVisitor csv = new ClassSignatureVisitor();
   
   @SuppressWarnings("unchecked")
   @Override
   public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions)
   {
     MethodNode mn = new MethodNode(access, name, desc, signature, exceptions);
-    mn.typeVariableSignatureNode = gtsv;
+    mn.typeVariableSignatureNode = csv;
     methods.add(mn);
     return mn;
   }
@@ -37,8 +37,7 @@ public class ClassNodeType extends ClassNode
     // parse the signature first so Type variable can be captured from the signature
     if(signature!=null){
       SignatureReader sr = new SignatureReader(signature);
-//      gtsv.signature = signature;
-      sr.accept(gtsv);
+      sr.accept(csv);
     }
     super.visit(version, access, name, signature, superName, interfaces);
   }

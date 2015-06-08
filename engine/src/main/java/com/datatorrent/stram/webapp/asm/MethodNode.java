@@ -14,7 +14,7 @@ import org.objectweb.asm.signature.SignatureReader;
  */
 public class MethodNode extends org.objectweb.asm.tree.MethodNode
 {
-  public GenericTypeSignatureVisitor typeVariableSignatureNode;
+  public ClassSignatureVisitor typeVariableSignatureNode;
  
   public MethodSignatureVisitor signatureNode;
 

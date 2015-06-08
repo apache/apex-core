@@ -30,6 +30,8 @@ public class CompactClassNode
   
   private List<String> enumValues;
   
+  private ClassSignatureVisitor csv;
+  
   public int getAccess()
   {
     return access;
@@ -103,6 +105,16 @@ public class CompactClassNode
   public void setSetterMethods(List<CompactMethodNode> setterMethods)
   {
     this.setterMethods = setterMethods;
+  }
+
+  public ClassSignatureVisitor getCsv()
+  {
+    return csv;
+  }
+
+  public void setCsv(ClassSignatureVisitor csv)
+  {
+    this.csv = csv;
   }
 
 }

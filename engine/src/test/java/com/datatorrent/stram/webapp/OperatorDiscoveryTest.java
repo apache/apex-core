@@ -102,8 +102,21 @@ public class OperatorDiscoveryTest
     props = desc.getJSONArray("properties");
     genericArray = getJSONProperty(props, "genericArray");
     Assert.assertEquals(debug + "type " + genericArray, String[].class.getName(), genericArray.get("type"));
-
-
+    
+    
+    // Test complicated Type Variable override in Hierarchy
+    desc = od.describeClassByASM(SubSubClass.class.getName());
+    props = desc.getJSONArray("properties");
+    JSONObject aObj = getJSONProperty(props, "a");
+    Assert.assertEquals("type " + aObj, Number.class.getName(), aObj.get("type"));
+    JSONObject bObj = getJSONProperty(props, "b");
+    Assert.assertEquals("type " + bObj, "long", bObj.get("type"));
+    JSONObject cObj = getJSONProperty(props, "c");
+    Assert.assertEquals("type " + cObj, List.class.getName(), cObj.get("type"));
+    JSONObject dObj = getJSONProperty(props, "d");
+    Assert.assertEquals("type " + dObj, List.class.getName(), dObj.get("type"));
+    JSONObject eObj = getJSONProperty(props, "e");
+    Assert.assertEquals("type " + eObj, Runnable.class.getName(), eObj.get("type"));
 
     ObjectMapper om = new ObjectMapper();
     desc = od.describeClass(Structured.class);
@@ -113,7 +126,6 @@ public class OperatorDiscoveryTest
     desc = od.describeClass(Color.class);
     asmDesc = od.describeClassByASM(Color.class.getName());
     Assert.assertEquals("\ntype info for " + Color.class + ":\n", om.readTree(desc.toString()), om.readTree(asmDesc.toString()));
-
 
   }
 
@@ -580,6 +592,75 @@ public class OperatorDiscoveryTest
 
   static class ExtendedOperator extends TestOperator<String, Map<String, Number>>
   {
+  }
+  
+  public static class BaseClass<A, B, C>
+  {
+    private A a;
+    
+    private B b;
+
+    private C c;
+    
+    public void setA(A a)
+    {
+      this.a = a;
+    }
+    public void setB(B b)
+    {
+      this.b = b;
+    }
+    
+    public A getA()
+    {
+      return a;
+    }
+    
+    public B getB()
+    {
+      return b;
+    }
+
+    public void setC(C c)
+    {
+      this.c = c;
+    }
+    
+    public C getC()
+    {
+      return c;
+    }
+  }
+
+  public static class SubClass<D, A extends Number> extends BaseClass<Number, A, D>
+  {
+    private D d;
+    
+    public void setD(D d)
+    {
+      this.d = d;
+    }
+    
+    public D getD()
+    {
+      return d;
+    }
+    
+  }
+
+  public static class SubSubClass<E extends Runnable> extends SubClass<List<String>, Long>
+  {
+    private E e;
+    
+    public void setE(E e)
+    {
+      this.e = e;
+    }
+    
+    public E getE()
+    {
+      return e;
+    }
   }
 
   public static class ArraysHolder

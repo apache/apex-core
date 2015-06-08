@@ -54,6 +54,10 @@ public class CompactUtil
       ccn.setEnumValues(ASMUtil.getEnumValues(cn));
     }
     
+    if(cn instanceof ClassNodeType){
+      ccn.setCsv(((ClassNodeType)cn).csv);
+    }
+    
     
 //    if(!CollectionUtils.isEmpty(cn.innerClasses)){
 //      ccn.setInnerClasses(Lists.transform(cn.innerClasses, new Function<InnerClassNode, CompactClassNode>(){

@@ -230,6 +230,11 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
     return this;
     //throw new UnsupportedOperationException();
   }
+  
+  public List<TypeVariableNode> getTypeV()
+  {
+    return typeV;
+  }
 
   
 }
