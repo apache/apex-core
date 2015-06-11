@@ -10,6 +10,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.util.*;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.codehaus.jettison.json.JSONObject;
@@ -25,16 +26,20 @@ import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
+import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-
+import com.datatorrent.lib.codec.JsonStreamCodec;
+import com.datatorrent.lib.util.BasicContainerOptConfigurator;
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.support.StramTestSupport.RegexMatcher;
@@ -201,6 +206,12 @@ public class LogicalPlanConfigurationTest {
     LogicalPlan dag = planConf.createFromJson(json, "testLoadFromJson");
     dag.validate();
 
+    assertEquals("DAG attribute CONTAINER_JVM_OPTIONS ", dag.getAttributes().get(DAGContext.CONTAINER_JVM_OPTIONS), "-Xmx16m");
+    Map<Class<?>, Class<? extends StringCodec<?>>> stringCodecsMap = new HashMap<Class<?>, Class<? extends StringCodec<?>>>();
+    stringCodecsMap.put(Integer.class, Integer2String.class);
+    assertEquals("DAG attribute STRING_CODECS ", stringCodecsMap, dag.getAttributes().get(DAGContext.STRING_CODECS));
+    assertEquals("DAG attribute CONTAINER_OPTS_CONFIGURATOR ", BasicContainerOptConfigurator.class, dag.getAttributes().get(DAGContext.CONTAINER_OPTS_CONFIGURATOR).getClass());
+    
     assertEquals("number of operator confs", 5, dag.getAllOperators().size());
     assertEquals("number of root operators", 1, dag.getRootOperators().size());
 
@@ -208,6 +219,15 @@ public class LogicalPlanConfigurationTest {
     assertNotNull(s1);
     assertTrue("n1n2 inline", DAG.Locality.CONTAINER_LOCAL == s1.getLocality());
 
+    OperatorMeta input = dag.getOperatorMeta("inputOperator");
+    TestStatsListener tsl = new TestStatsListener();
+    tsl.setIntProp(222);
+    List<StatsListener> sll = Lists.<StatsListener>newArrayList(tsl);
+    assertEquals("inputOperator STATS_LISTENERS attribute ", sll, input.getAttributes().get(OperatorContext.STATS_LISTENERS));
+    for(OutputPortMeta opm : input.getOutputStreams().keySet()){
+      assertTrue("output port of input Operator attribute is JsonStreamCodec ", opm.getAttributes().get(PortContext.STREAM_CODEC) instanceof JsonStreamCodec<?>);
+    }
+    
     OperatorMeta operator3 = dag.getOperatorMeta("operator3");
     assertEquals("operator3.classname", GenericTestOperator.class, operator3.getOperator().getClass());
 
@@ -707,4 +727,55 @@ public class LogicalPlanConfigurationTest {
       }
     }
   }
+  
+  public static class TestStatsListener implements StatsListener{
+    
+    private int intProp;
+    
+    public TestStatsListener()
+    {
+    }
+
+    @Override
+    public Response processStats(BatchedOperatorStats stats)
+    {
+      return null;
+    }
+
+    public int getIntProp()
+    {
+      return intProp;
+    }
+
+    public void setIntProp(int intProp)
+    {
+      this.intProp = intProp;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + intProp;
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      TestStatsListener other = (TestStatsListener) obj;
+      if (intProp != other.intProp)
+        return false;
+      return true;
+    }
+    
+  }
 }
+

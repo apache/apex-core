@@ -7,6 +7,7 @@ package com.datatorrent.stram.plan.logical;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
@@ -115,6 +116,43 @@ public class LogicalPlanConfiguration {
       return velement;
     }
 
+  }
+  
+  public class JSONObject2String implements StringCodec<Object>, Serializable
+  {
+
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -664977453308585878L;
+
+    @Override
+    public Object fromString(String jsonObj)
+    {
+      
+      ObjectMapper mapper = ObjectMapperFactory.getOperatorValueDeserializer();
+      try {
+        return mapper.readValue(jsonObj, Object.class);
+      } catch (Exception e) {
+        LOG.error("Error: Read object from the json content {} ", jsonObj, e);
+        DTThrowable.rethrow(e);
+      }
+      return null;
+    }
+
+    @Override
+    public String toString(Object pojo)
+    {
+      ObjectMapper mapper = ObjectMapperFactory.getOperatorValueDeserializer();
+      try {
+        return mapper.writeValueAsString(pojo);
+      } catch (Exception e) {
+        LOG.error("Error: Write object as json", e);
+        DTThrowable.rethrow(e);
+      }
+      return null;
+    }
+    
   }
 
   private static abstract class Conf {
@@ -839,6 +877,17 @@ public class LogicalPlanConfiguration {
         }
       }
     }
+    
+    JSONObject appAttributes = json.optJSONObject("attributes");
+    if (appAttributes != null) {
+      String attributesPrefix = StreamingApplication.DT_PREFIX + StramElement.ATTR.getValue() + ".";
+      @SuppressWarnings("unchecked")
+      Iterator<String> iter = appAttributes.keys();
+      while (iter.hasNext()) {
+        String key = iter.next();
+        prop.setProperty(attributesPrefix + key, appAttributes.getString(key));
+      }
+    }
 
     JSONArray streamArray = json.getJSONArray("streams");
     for (int i = 0; i < streamArray.length(); i++) {
@@ -1423,6 +1472,8 @@ public class LogicalPlanConfiguration {
 
   private void setAttributes(Class<?> clazz, List<? extends Conf> confs, Attribute.AttributeMap attributeMap) {
     Set<Attribute<Object>> processedAttributes = Sets.newHashSet();
+    //json object codec for complex attributes
+    JSONObject2String jsonCodec = new JSONObject2String();
     if (confs.size() > 0) {
       for (Conf conf1 : confs) {
         for (Map.Entry<Attribute<Object>, String> e : conf1.attributes.entrySet()) {
@@ -1434,9 +1485,14 @@ public class LogicalPlanConfiguration {
           else {
             if (processedAttributes.add(attribute)) {
               try {
-                attributeMap.put(attribute, attribute.codec.fromString(e.getValue()));
-              }
-              catch (Exception ex) {
+                String val = e.getValue();
+                // complex attribute in json
+                if (val.trim().charAt(0) == '{') {
+                  attributeMap.put(attribute, jsonCodec.fromString(val));
+                } else {
+                  attributeMap.put(attribute, attribute.codec.fromString(val));
+                }
+              } catch (Exception ex) {
                 LOG.error("Could not set value '{}' for attribute {}", e.getValue(), attribute, ex);
                 DTThrowable.rethrow(ex);
               }

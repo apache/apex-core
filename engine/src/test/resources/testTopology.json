@@ -4,15 +4,29 @@
       "name": "inputOperator",
       "class": "com.datatorrent.stram.engine.TestGeneratorInputOperator",
       "properties": {
-        "myConfigProperty": "myConfigPropertyValue"
+        "com.datatorrent.stram.engine.TestGeneratorInputOperator":{
+          "myConfigProperty" : "myConfigPropertyValue"
+        }
       },
       "attributes": {
-        "MEMORY_MB" : 64
+        "MEMORY_MB" : 64,
+        "STATS_LISTENERS" : {
+          "java.util.ArrayList" : [
+            {
+              "com.datatorrent.stram.plan.LogicalPlanConfigurationTest$TestStatsListener" : {
+                "intProp" : 222
+              }
+            }
+          ]
+        }
       },
       "ports" : [
         { "name": "outport",
           "attributes": {
-            "UNIFIER_LIMIT": 8
+            "UNIFIER_LIMIT": 8,
+            "STREAM_CODEC" : {
+              "com.datatorrent.lib.codec.JsonStreamCodec" : {}
+            }
           }
         }
       ]
@@ -21,7 +35,10 @@
       "name": "operator1",
       "class": "com.datatorrent.stram.engine.GenericTestOperator",
       "properties": {
-        "myStringProperty": "myStringPropertyValue"
+        "com.datatorrent.stram.engine.GenericTestOperator":{
+          "myStringProperty": "myStringPropertyValue"
+        }
+        
       }
     },
     {
@@ -39,9 +56,11 @@
       "name": "operator4",
       "class": "com.datatorrent.stram.engine.GenericTestOperator",
       "properties": {
-        "myStringProperty": "overrideOperator4",
-        "stringPropertySetterOnly": "setterOnlyOperator4",
-        "booleanProperty": true
+        "com.datatorrent.stram.engine.GenericTestOperator":{
+          "myStringProperty": "overrideOperator4",
+          "booleanProperty": true
+        },
+        "stringPropertySetterOnly": "setterOnlyOperator4"
       }
     }
   ],
@@ -81,5 +100,12 @@
         }
       ]
     }
-  ]
+  ],
+  "attributes": {
+    "CONTAINER_JVM_OPTIONS" : "-Xmx16m",
+    "CONTAINER_OPTS_CONFIGURATOR" : {
+      "com.datatorrent.lib.util.BasicContainerOptConfigurator" : {}
+    },
+    "STRING_CODECS" : "java.lang.Integer=com.datatorrent.api.StringCodec$Integer2String"
+  }
 }
