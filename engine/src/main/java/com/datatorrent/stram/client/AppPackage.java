@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.jar.*;
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
+import net.lingala.zip4j.model.ZipParameters;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +40,7 @@ public class AppPackage extends JarFile implements Closeable
   private final String appPackageDescription;
   private final String appPackageDisplayName;
   private final ArrayList<String> classPath = new ArrayList<String>();
-  private final String directory;
+  private final File directory;
 
   private final List<AppInfo> applications = new ArrayList<AppInfo>();
   private final List<String> appJars = new ArrayList<String>();
@@ -108,25 +109,18 @@ public class AppPackage extends JarFile implements Closeable
       throw new IOException("Not a valid app package.  Class-Path is missing from MANIFEST.MF");
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
-
-    ZipFile zipFile = new ZipFile(file);
-    if (zipFile.isEncrypted()) {
-      throw new ZipException("Encrypted app package not supported yet");
-    }
-    File newDirectory = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
-    newDirectory.mkdirs();
-    directory = newDirectory.getAbsolutePath();
-    zipFile.extractAll(directory);
+    directory = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
+    extractToTempDirectory(directory, file);
     if (processAppDirectory) {
-      processAppDirectory(new File(newDirectory, "app"));
+      processAppDirectory(new File(directory, "app"));
     }
-    File confDirectory = new File(newDirectory, "conf");
+    File confDirectory = new File(directory, "conf");
     if (confDirectory.exists()) {
       processConfDirectory(confDirectory);
     }
-    resourcesDirectory = new File(newDirectory, "resources");
+    resourcesDirectory = new File(directory, "resources");
 
-    File propertiesXml = new File(newDirectory, "META-INF/properties.xml");
+    File propertiesXml = new File(directory, "META-INF/properties.xml");
     if (propertiesXml.exists()) {
       processPropertiesXml(propertiesXml, null);
     }
@@ -135,7 +129,7 @@ public class AppPackage extends JarFile implements Closeable
       for (AppInfo app : applications) {
         app.requiredProperties.addAll(requiredProperties);
         app.defaultProperties.putAll(defaultProperties);
-        File appPropertiesXml = new File(newDirectory, "META-INF/properties-" + app.name + ".xml");
+        File appPropertiesXml = new File(directory, "META-INF/properties-" + app.name + ".xml");
         if (appPropertiesXml.exists()) {
           processPropertiesXml(appPropertiesXml, app);
         }
@@ -143,7 +137,27 @@ public class AppPackage extends JarFile implements Closeable
     }
   }
 
-  public String tempDirectory()
+  public static void extractToTempDirectory(File directory, File appPackageFile) throws ZipException
+  {
+    ZipFile zipFile = new ZipFile(appPackageFile);
+
+    if (zipFile.isEncrypted()) {
+      throw new ZipException("Encrypted app package not supported yet");
+    }
+
+    directory.mkdirs();
+    zipFile.extractAll(directory.getAbsolutePath());
+  }
+
+  public static void createAppPackageFile(File fileToBeCreated, File directory) throws ZipException
+  {
+    ZipFile zipFile = new ZipFile(fileToBeCreated);
+    ZipParameters params = new ZipParameters();
+    params.setIncludeRootFolder(false);
+    zipFile.addFolder(directory, params);
+  }
+
+  public File tempDirectory()
   {
     return directory;
   }
@@ -152,7 +166,7 @@ public class AppPackage extends JarFile implements Closeable
   public void close() throws IOException
   {
     super.close();
-    FileUtils.deleteDirectory(new File(directory));
+    FileUtils.deleteDirectory(directory);
   }
 
   public String getAppPackageName()
