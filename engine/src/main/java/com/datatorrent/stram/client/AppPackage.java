@@ -110,7 +110,7 @@ public class AppPackage extends JarFile implements Closeable
     }
     classPath.addAll(Arrays.asList(StringUtils.split(classPathString, " ")));
     directory = new File("/tmp/dt-appPackage-" + Long.toString(System.nanoTime()));
-    extractToTempDirectory(directory, file);
+    extractToDirectory(directory, file);
     if (processAppDirectory) {
       processAppDirectory(new File(directory, "app"));
     }
@@ -137,7 +137,7 @@ public class AppPackage extends JarFile implements Closeable
     }
   }
 
-  public static void extractToTempDirectory(File directory, File appPackageFile) throws ZipException
+  public static void extractToDirectory(File directory, File appPackageFile) throws ZipException
   {
     ZipFile zipFile = new ZipFile(appPackageFile);
 
