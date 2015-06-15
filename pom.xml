@@ -51,11 +51,8 @@
     <module>api</module>
     <module>netlet</module>
     <module>bufferserver</module>
-    <module>jarpath</module>
     <module>stram</module>
     <module>engine</module>
-    <module>flume</module>
-    <module>gateway</module>
     <module>certification</module>
     <module>dt-app-archetype</module>
     <module>dt-conf-archetype</module>
