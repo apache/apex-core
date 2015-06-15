@@ -216,9 +216,12 @@ public class OperatorDiscoveryTest
     bean.uri = new URI("file:///tmp/file");
     bean.integerProp = 44;
 
+
     ObjectMapper mapper = ObjectMapperFactory.getOperatorValueSerializer();
     String s = mapper.writeValueAsString(bean);
-    LOG.debug(new JSONObject(s).toString(2));
+    JSONObject jsonObj = new JSONObject(s);
+    Assert.assertTrue("Null property 'nested' should be cut off", !jsonObj.has("nested"));
+    LOG.debug(jsonObj.toString(2));
 
 
     TestOperator<?, ?> clone = mapper.readValue(s, TestOperator.class);
