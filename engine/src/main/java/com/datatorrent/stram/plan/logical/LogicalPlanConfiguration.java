@@ -24,7 +24,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.commons.beanutils.BeanMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -37,7 +36,6 @@ import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
-import com.datatorrent.netlet.util.DTThrowable;
 
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.client.StramClientUtils;
@@ -120,10 +118,6 @@ public class LogicalPlanConfiguration {
   
   public class JSONObject2String implements StringCodec<Object>, Serializable
   {
-
-    /**
-     * 
-     */
     private static final long serialVersionUID = -664977453308585878L;
 
     @Override
@@ -134,10 +128,8 @@ public class LogicalPlanConfiguration {
       try {
         return mapper.readValue(jsonObj, Object.class);
       } catch (Exception e) {
-        LOG.error("Error: Read object from the json content {} ", jsonObj, e);
-        DTThrowable.rethrow(e);
+        throw new RuntimeException("Error parsing json content", e);
       }
-      return null;
     }
 
     @Override
@@ -147,10 +139,8 @@ public class LogicalPlanConfiguration {
       try {
         return mapper.writeValueAsString(pojo);
       } catch (Exception e) {
-        LOG.error("Error: Write object as json", e);
-        DTThrowable.rethrow(e);
+        throw new RuntimeException("Error writing object as json", e);
       }
-      return null;
     }
     
   }
@@ -1484,17 +1474,12 @@ public class LogicalPlanConfiguration {
           }
           else {
             if (processedAttributes.add(attribute)) {
-              try {
-                String val = e.getValue();
+              String val = e.getValue();
+              if (val.trim().charAt(0) == '{') {
                 // complex attribute in json
-                if (val.trim().charAt(0) == '{') {
-                  attributeMap.put(attribute, jsonCodec.fromString(val));
-                } else {
-                  attributeMap.put(attribute, attribute.codec.fromString(val));
-                }
-              } catch (Exception ex) {
-                LOG.error("Could not set value '{}' for attribute {}", e.getValue(), attribute, ex);
-                DTThrowable.rethrow(ex);
+                attributeMap.put(attribute, jsonCodec.fromString(val));
+              } else {
+                attributeMap.put(attribute, attribute.codec.fromString(val));
               }
             }
           }
