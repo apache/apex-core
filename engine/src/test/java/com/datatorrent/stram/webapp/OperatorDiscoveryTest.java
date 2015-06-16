@@ -6,12 +6,7 @@ package com.datatorrent.stram.webapp;
 
 import java.io.File;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -27,8 +22,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -40,7 +33,7 @@ import com.google.common.collect.Lists;
 
 public class OperatorDiscoveryTest
 {
-  private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoveryTest.class);
+//  private static final Logger LOG = LoggerFactory.getLogger(OperatorDiscoveryTest.class);
   
   @Test
   public void testPropertyDiscovery() throws Exception
@@ -51,84 +44,76 @@ public class OperatorDiscoveryTest
     od.buildTypeGraph();
 
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
-
-    JSONObject desc = od.describeClass(TestOperator.class);
-    LOG.debug("\ntype info for " + TestOperator.class + ":\n" + desc.toString(2));
+    Assert.assertFalse("Base Operator is not instantiable because it is not an InputOperator and it has no input port ",
+            OperatorDiscoverer.isInstantiableOperatorClass(BaseOperator.class));
 
     JSONObject asmDesc = od.describeClassByASM(TestOperator.class.getName());
-    LOG.debug("\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2));
+    String debug = "\n(ASM)type info for " + TestOperator.class + ":\n" + asmDesc.toString(2) + "\n";
 
     JSONArray props = asmDesc.getJSONArray("properties");
-    Assert.assertNotNull("properties", props);
-    Assert.assertEquals("properties " + props, 27, props.length());
+    Assert.assertNotNull(debug + "Properties aren't null ", props);
+    Assert.assertEquals(debug + "Number of properties ", 27, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
-    Assert.assertEquals("canGet " + mapProperty, true, mapProperty.get("canGet"));
-    Assert.assertEquals("canSet " + mapProperty, true, mapProperty.get("canSet"));
-    Assert.assertEquals("type " + mapProperty, java.util.Map.class.getName(), mapProperty.get("type"));
+    Assert.assertEquals(debug + "canGet " + mapProperty, true, mapProperty.get("canGet"));
+    Assert.assertEquals(debug + "canSet " + mapProperty, true, mapProperty.get("canSet"));
+    Assert.assertEquals(debug + "type " + mapProperty, java.util.Map.class.getName(), mapProperty.get("type"));
 
     JSONArray typeArgs = mapProperty.getJSONArray("typeArgs");
-    Assert.assertNotNull("typeArgs", typeArgs);
-    Assert.assertEquals("typeArgs " + typeArgs, 2, typeArgs.length());
-    Assert.assertEquals("", String.class.getName(), typeArgs.getJSONObject(0).get("type"));
-    Assert.assertEquals("", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
-
-    JSONObject enumDesc = od.describeClass(Color.class);
-
-    JSONArray enumNames = enumDesc.getJSONArray("enum");
-    Assert.assertNotNull("enumNames", enumNames);
-    Assert.assertEquals("", Color.BLUE.name(), enumNames.get(0));
-    JSONArray enumProps = enumDesc.getJSONArray("properties");
-    Assert.assertNotNull("properties", enumProps);
-    Assert.assertEquals("props " + enumProps, 0, enumProps.length());
+    Assert.assertNotNull(debug + "typeArgs of map is not null", typeArgs);
+    Assert.assertEquals(debug + "number of typeArgs of map ", 2, typeArgs.length());
+    Assert.assertEquals(debug + "The first typeArg of map", String.class.getName(), typeArgs.getJSONObject(0).get("type"));
+    Assert.assertEquals(debug + "The second typeArg of map", Structured.class.getName(), typeArgs.getJSONObject(1).get("type"));
 
     JSONObject structuredProperty = getJSONProperty(props, "nested");
-    Assert.assertEquals("type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
+    Assert.assertEquals(debug + "type " + structuredProperty, Structured.class.getName(), structuredProperty.get("type"));
 
     JSONObject genericArray = getJSONProperty(props, "genericArray");
-    Assert.assertEquals("type " + genericArray, Object[].class.getName(), genericArray.get("type"));
+    Assert.assertEquals(debug + "type " + genericArray, Object[].class.getName(), genericArray.get("type"));
 
     JSONObject propProperty = getJSONProperty(props, "props");
-    Assert.assertEquals("uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
+    Assert.assertEquals(debug + "uitype " + propProperty, UI_TYPE.MAP.getName(), propProperty.get("uiType"));
 
     JSONObject stringArrayProperty = getJSONProperty(props, "stringArray");
-    Assert.assertEquals("type " + stringArrayProperty, String[].class.getName(), stringArrayProperty.get("type"));
+    Assert.assertEquals(debug + "type " + stringArrayProperty, String[].class.getName(), stringArrayProperty.get("type"));
 
     JSONObject nestedParameterizedTypeProperpty = getJSONProperty(props, "nestedParameterizedType");
-    Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Map.class.getName(), nestedParameterizedTypeProperpty.get("type"));
-    Assert.assertEquals("type " + nestedParameterizedTypeProperpty, Number.class.getName(),
+    Assert.assertEquals(debug + "type " + nestedParameterizedTypeProperpty, Map.class.getName(), nestedParameterizedTypeProperpty.get("type"));
+    Assert.assertEquals(debug + "type " + nestedParameterizedTypeProperpty, Number.class.getName(),
         nestedParameterizedTypeProperpty.getJSONArray("typeArgs").getJSONObject(1).getJSONArray("typeArgs").getJSONObject(0).getJSONArray("typeArgs").getJSONObject(1).get("type"));
 
     JSONObject wildcardType = getJSONProperty(props, "wildcardType");
-    Assert.assertEquals("type " + wildcardType, Map.class.getName(), wildcardType.get("type"));
-    Assert.assertEquals("type " + wildcardType, "class " + Long.class.getName(),
+    Assert.assertEquals(debug + "type " + wildcardType, Map.class.getName(), wildcardType.get("type"));
+    Assert.assertEquals(debug + "type " + wildcardType, "class " + Long.class.getName(),
         wildcardType.getJSONArray("typeArgs").getJSONObject(1).getJSONObject("typeBounds").getJSONArray("lower").get(0));
 
     JSONObject multiDimensionPrimitiveArray = getJSONProperty(props, "multiDimensionPrimitiveArray");
-    Assert.assertEquals("type " + multiDimensionPrimitiveArray, int[][].class.getName(), multiDimensionPrimitiveArray.get("type"));
+    Assert.assertEquals(debug + "type " + multiDimensionPrimitiveArray, int[][].class.getName(), multiDimensionPrimitiveArray.get("type"));
 
-    desc = od.describeClass(ExtendedOperator.class);
+
+    JSONObject enumDesc = od.describeClass(Color.class);
+    debug = "\nJson for Color enum:\n" + enumDesc.toString(2) + "\n";
+    JSONArray enumNames = enumDesc.getJSONArray("enum");
+    Assert.assertNotNull(debug + "enumNames are not null", enumNames);
+    Assert.assertEquals(debug + "First element of color", Color.BLUE.name(), enumNames.get(0));
+
+    JSONObject desc = od.describeClass(ExtendedOperator.class);
+    debug = "\ntype info for " + ExtendedOperator.class + ":\n" + desc.toString(2) + "\n";
     props = desc.getJSONArray("properties");
     genericArray = getJSONProperty(props, "genericArray");
-    Assert.assertEquals("type " + genericArray, String[].class.getName(), genericArray.get("type"));
+    Assert.assertEquals(debug + "type " + genericArray, String[].class.getName(), genericArray.get("type"));
 
-    // type is not a primitive type
-    // fetch property meta data to find out how to render it
+
+
+    ObjectMapper om = new ObjectMapper();
     desc = od.describeClass(Structured.class);
-    LOG.debug("\ntype info for " + Structured.class + ":\n" + desc.toString(2));
+    asmDesc = od.describeClassByASM(Structured.class.getName());
+    Assert.assertEquals("\ntype info for " + Structured.class + ":\n",  om.readTree(desc.toString()), om.readTree(asmDesc.toString()));
 
     desc = od.describeClass(Color.class);
-    LOG.debug("\ntype info for " + Color.class + ":\n" + desc.toString(2));
+    asmDesc = od.describeClassByASM(Color.class.getName());
+    Assert.assertEquals("\ntype info for " + Color.class + ":\n", om.readTree(desc.toString()), om.readTree(asmDesc.toString()));
 
-    desc = od.describeClass(Properties.class);
-    LOG.debug("\ntype info for " + Properties.class + ":\n" + desc.toString(2));
-
-    desc = od.describeClass(HashMap.class);
-    LOG.debug("\ntype info for " + HashMap.class + ":\n" + desc.toString(2));
-
-    LOG.debug("\n(ASM)type info for " + Color.class + ":\n" + od.describeClassByASM(Color.class.getName()).toString(2));
-
-    LOG.debug("\n(ASM)type info for " + Structured.class + ":\n" + od.describeClassByASM(Structured.class.getName()).toString(2));
 
   }
 
@@ -169,28 +154,25 @@ public class OperatorDiscoveryTest
   {
     OperatorDiscoverer od = new OperatorDiscoverer();
 
-    LOG.debug("The descendants list of java type java.util.Map: \n" + od.getDescendants("java.util.Map"));
 
-    LOG.debug("The descendants list of java type java.util.List: \n" + od.getDescendants("java.util.List"));
+    List<String> dList = od.getTypeGraph().getInitializableDescendants("java.util.Map");
+    Assert.assertTrue("The initializable descendants list of type java.util.Map: \n" + dList, dList.contains("java.util.HashMap"));
 
-    LOG.debug("The initializable descendants list of type java.util.Map: \n" + od.getTypeGraph().getInitializableDescendants("java.util.Map"));
+    dList = od.getTypeGraph().getInitializableDescendants("java.util.List");
+    Assert.assertTrue("The initializable descendants list of type java.util.List: \n" + dList, dList.contains("java.util.ArrayList"));
 
-    LOG.debug("The initializable descendants list of type java.util.List: \n" + od.getTypeGraph().getInitializableDescendants("java.util.List"));
-
-    LOG.debug("The initializable descendants list of type java.util.HashMap: \n" + od.getTypeGraph().getInitializableDescendants("java.util.HashMap"));
+    dList = od.getTypeGraph().getInitializableDescendants("java.util.HashMap");
+    Assert.assertTrue("The initializable descendants list of type java.util.HashMap: \n" + dList, dList.contains("java.util.HashMap"));
 
 
     String[] jdkQueue = new String[] {DelayQueue.class.getName(), LinkedBlockingDeque.class.getName(),
         LinkedBlockingQueue.class.getName(), PriorityBlockingQueue.class.getName(), SynchronousQueue.class.getName()};
     List<String> actualQueueClass = od.getTypeGraph().getInitializableDescendants("java.util.concurrent.BlockingQueue");
 
-//     at lease include all the classes in jdk
-    LOG.debug(actualQueueClass.toString());
 
     for (String expectedClass : jdkQueue) {
-      Assert.assertTrue("Actual queue set should contain any one of the expected class ", actualQueueClass.contains(expectedClass));
+      Assert.assertTrue("Actual queue: " + actualQueueClass.toString() + "\n Expected contained queue: " + expectedClass, actualQueueClass.contains(expectedClass));
     }
-    LOG.debug("The initializable descendants of type java.util.concurrent.BlockingQueue: \n" + od.getTypeGraph().getInitializableDescendants("java.util.concurrent.BlockingQueue"));
 
   }
 
@@ -221,7 +203,6 @@ public class OperatorDiscoveryTest
     String s = mapper.writeValueAsString(bean);
     JSONObject jsonObj = new JSONObject(s);
     Assert.assertTrue("Null property 'nested' should be cut off", !jsonObj.has("nested"));
-    LOG.debug(jsonObj.toString(2));
 
 
     TestOperator<?, ?> clone = mapper.readValue(s, TestOperator.class);
@@ -629,20 +610,19 @@ public class OperatorDiscoveryTest
     OperatorDiscoverer od = new OperatorDiscoverer();
     Assert.assertNotNull(od.getOperatorClass(BaseOperator.class.getName()));
     JSONObject desc = od.describeClass(ArraysHolder.class);
-    LOG.debug("\ntype info for " + ArraysHolder.class + ":\n" + desc.toString(2));
+    String debugInfo = "\ntype info for " + ArraysHolder.class + ":\n" + desc.toString(2) + "\n";
 
     JSONArray props = desc.getJSONArray("properties");
     ArraysHolder ah = new ArraysHolder();
 
     JSONObject beanArray = getJSONProperty(props, "beanArray");
-    Assert.assertEquals("type " + ah.beanArray.getClass(), ah.beanArray.getClass().getName(), beanArray.get("type"));
+    Assert.assertEquals(debugInfo + "type " + ah.beanArray.getClass(), ah.beanArray.getClass().getName(), beanArray.get("type"));
 
     JSONObject intArray = getJSONProperty(props, "intArray");
-    Assert.assertEquals("type " + ah.intArray.getClass(), ah.intArray.getClass().getName(), intArray.get("type"));
+    Assert.assertEquals(debugInfo + "type " + ah.intArray.getClass(), ah.intArray.getClass().getName(), intArray.get("type"));
 
     ObjectMapper mapper = ObjectMapperFactory.getOperatorValueSerializer();
     String s = mapper.writeValueAsString(ah);
-    System.out.println(new JSONObject(s).toString(2));
 
     ArraysHolder clone = mapper.readValue(s, ArraysHolder.class);
     Assert.assertNotNull(clone.intArray);
@@ -668,7 +648,7 @@ public class OperatorDiscoveryTest
 
     ObjectMapper mapper = ObjectMapperFactory.getOperatorValueSerializer();
     String s = mapper.writeValueAsString(bean);
-    LOG.debug(new JSONObject(s).toString(2));
+//    LOG.debug(new JSONObject(s).toString(2));
     // 
     Assert.assertTrue("Shouldn't contain field 'realName' !", !s.contains("realName"));
     Assert.assertTrue("Should contain property 'alias' !", s.contains("alias"));

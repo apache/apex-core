@@ -8,7 +8,6 @@ import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.api.Operator.Unifier;
 import com.datatorrent.api.annotation.*;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.google.common.base.Predicate;
@@ -275,9 +274,9 @@ public class OperatorDiscoverer
     if (Modifier.isAbstract(modifiers) || Modifier.isInterface(modifiers) || !Operator.class.isAssignableFrom(clazz)){
       return false;
     }
-    // return true if it is an InputOperator or if it is not an Unifier or if it is an Unifier with more than one InputPort
-    return InputOperator.class.isAssignableFrom(clazz) || !Unifier.class.isAssignableFrom(clazz) || 
-        Iterables.<Field>any(Arrays.asList(clazz.getFields()), new Predicate<Field>() {
+    // return true if it is an InputOperator or if it is an Operator with more than one InputPort
+    //TODO Use ASM later
+    return InputOperator.class.isAssignableFrom(clazz) || Iterables.any(Arrays.asList(clazz.getFields()), new Predicate<Field>() {
       @Override
       public boolean apply(Field f)
       {
