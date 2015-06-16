@@ -8,8 +8,8 @@
   <packaging>jar</packaging>
 
   <!-- change these to the appropriate values -->
-  <name>My DataTorrent Application</name>
-  <description>My DataTorrent Application Description</description>
+  <name>My Apex Application</name>
+  <description>My Apex Application Description</description>
 
   <properties>
     <!-- change this if you desire to use a different version of DataTorrent -->
@@ -107,7 +107,7 @@
                <goal>single</goal>
              </goals>
              <configuration>
-               <finalName>DTApp-${project.artifactId}-${project.version}</finalName>
+               <finalName>${project.artifactId}-${project.version}-apexapp</finalName>
                <appendAssemblyId>false</appendAssemblyId>
                <descriptors>
                  <descriptor>src/assemble/appPackage.xml</descriptor>
@@ -129,6 +129,35 @@
            </execution>
          </executions>
        </plugin>
+
+       <plugin>
+         <artifactId>maven-antrun-plugin</artifactId>
+         <version>1.7</version>
+         <executions>
+           <execution>
+             <phase>package</phase>
+             <configuration>
+               <target>
+                 <move file="${project.build.directory}/${project.artifactId}-${project.version}-apexapp.jar"
+                       tofile="${project.build.directory}/${project.artifactId}-${project.version}.apa" />
+               </target>
+             </configuration>
+             <goals>
+               <goal>run</goal>
+             </goals>
+           </execution>
+         </executions>
+       </plugin>
+
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-install-plugin</artifactId>
+         <version>2.5.2</version>
+         <configuration>
+           <skip>true</skip>
+         </configuration>
+       </plugin>
+
     </plugins>
   </build>
 

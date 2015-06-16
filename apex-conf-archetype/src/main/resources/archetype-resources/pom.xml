@@ -8,11 +8,11 @@
   <packaging>jar</packaging>
 
   <!-- change these to the appropriate values -->
-  <name>My DataTorrent Application Configuration</name>
-  <description>My DataTorrent Application Configuration Description</description>
+  <name>My Apex Application Configuration</name>
+  <description>My Apex Application Configuration Description</description>
 
   <properties>
-    <datatorrent.apppackage.name>myapp</datatorrent.apppackage.name>
+    <datatorrent.apppackage.name>myapexapp</datatorrent.apppackage.name>
     <datatorrent.apppackage.minversion>1.0.0</datatorrent.apppackage.minversion>
     <datatorrent.apppackage.maxversion>1.9999.9999</datatorrent.apppackage.maxversion>
     <datatorrent.appconf.classpath>classpath/*</datatorrent.appconf.classpath>
@@ -109,7 +109,7 @@
                <goal>single</goal>
              </goals>
              <configuration>
-               <finalName>DTConfig-${project.artifactId}</finalName>
+               <finalName>${project.artifactId}-apexconf</finalName>
                <appendAssemblyId>false</appendAssemblyId>
                <descriptors>
                  <descriptor>src/assemble/confPackage.xml</descriptor>
@@ -133,6 +133,35 @@
            </execution>
          </executions>
        </plugin>
+
+       <plugin>
+         <artifactId>maven-antrun-plugin</artifactId>
+         <version>1.7</version>
+         <executions>
+           <execution>
+             <phase>package</phase>
+             <configuration>
+               <target>
+                 <move file="${project.build.directory}/${project.artifactId}-apexconf.jar"
+                       tofile="${project.build.directory}/${project.artifactId}.apc" />
+               </target>
+             </configuration>
+             <goals>
+               <goal>run</goal>
+             </goals>
+           </execution>
+         </executions>
+       </plugin>
+
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-install-plugin</artifactId>
+         <version>2.5.2</version>
+         <configuration>
+           <skip>true</skip>
+         </configuration>
+       </plugin>
+
     </plugins>
   </build>
 

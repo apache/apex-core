@@ -50,8 +50,8 @@
     <module>api</module>
     <module>bufferserver</module>
     <module>stram</module>
-    <module>dt-app-archetype</module>
-    <module>dt-conf-archetype</module>
+    <module>apex-app-archetype</module>
+    <module>apex-conf-archetype</module>
   </modules>
 
   <build>

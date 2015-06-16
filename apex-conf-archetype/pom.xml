@@ -8,10 +8,10 @@
     <version>2.2.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>dt-conf-archetype</artifactId>
+  <artifactId>apex-conf-archetype</artifactId>
   <packaging>maven-archetype</packaging>
 
-  <name>DataTorrent configuration Maven archetype</name>
+  <name>Apex App Configuration Maven archetype</name>
 
   <properties>
     <maven.deploy.skip>false</maven.deploy.skip>
