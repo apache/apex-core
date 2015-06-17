@@ -371,7 +371,7 @@ public class OperatorDiscoverer
       // Get properties from ASM
       JSONArray properties = describeClassByASM(clazz.getName()).getJSONArray("properties");
 
-      properties = enrichProperties(clazz.getName(), properties);
+      properties = enrichProperties(clazz, properties);
 
       TypeDiscoverer td = new TypeDiscoverer();
       JSONArray portTypeInfo = td.getPortTypes(clazz);
@@ -500,44 +500,41 @@ public class OperatorDiscoverer
     }
   }
 
-  private JSONArray enrichProperties(String className, JSONArray properties) throws JSONException
+  private JSONArray enrichProperties(Class<?> operatorClass, JSONArray properties) throws JSONException
   {
     JSONArray result = new JSONArray();
     for (int i = 0; i < properties.length(); i++) {
       JSONObject propJ = properties.getJSONObject(i);
-      enrichProperty(className, propJ);
-      if(!propJ.has("visible") || propJ.getBoolean("visible")){
+      String propName = WordUtils.capitalize(propJ.getString("name"));
+      String getPrefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
+      String setPrefix = "set";
+      OperatorClassInfo oci = getOperatorClassWithGetterSetter(operatorClass, setPrefix + propName, getPrefix + propName);
+      if(oci == null) {
         result.put(propJ);
+        continue;
       }
+      if (oci.invisibleGetSetMethods.contains(getPrefix + propName) || oci.invisibleGetSetMethods.contains(setPrefix + propName)) {
+        continue;
+      }
+      String desc = oci.setMethods.get(setPrefix + propName);
+      desc = desc == null ? oci.getMethods.get(getPrefix + propName) : desc;
+      if (desc != null) {
+        propJ.put("description", desc);
+      }
+      result.put(propJ);
     }
     return result;
   }
 
-  private void enrichProperty(String className, JSONObject propJ) throws JSONException
-  {
-    OperatorClassInfo oci = classInfo.get(className);
-    if (oci == null) {
-      return;
+  private OperatorClassInfo getOperatorClassWithGetterSetter(Class<?> operatorClass, String setterName, String getterName) {
+    if(operatorClass != null && !Operator.class.isAssignableFrom(operatorClass)){
+      return null;
     }
-    String propName = WordUtils.capitalize(propJ.getString("name"));
-    String getPrefix = (propJ.getString("type").equals("boolean") || propJ.getString("type").equals("java.lang.Boolean")) ? "is" : "get";
-    String setPrefix = "set";
-
-    if (oci.invisibleGetSetMethods.contains(getPrefix + propName) || oci.invisibleGetSetMethods.contains(setPrefix + propName)) {
-      propJ.put("visible", false);
-    }
-    String desc = oci.getMethods.get(getPrefix + propName);
-    desc = desc == null ? oci.setMethods.get(setPrefix + propName) : desc;
-    if (desc != null) {
-      propJ.put("description", desc);
-      return;
-    }
-
-    List<String> parents = typeGraph.getParents(className);
-    if (!CollectionUtils.isEmpty(parents)) {
-      for (String parent : parents) {
-        enrichProperty(parent, propJ);
-      }
+    OperatorClassInfo oci = classInfo.get(operatorClass.getName());
+    if(oci != null && (oci.getMethods.containsKey(getterName) || oci.setMethods.containsKey(setterName))){
+      return oci;
+    } else {
+      return getOperatorClassWithGetterSetter(operatorClass.getSuperclass(), setterName, getterName);
     }
   }
 
