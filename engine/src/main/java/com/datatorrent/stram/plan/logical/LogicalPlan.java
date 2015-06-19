@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.common.util.BaseOperator;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;

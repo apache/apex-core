@@ -5,7 +5,7 @@
 package com.datatorrent.stram.engine;
 
 import com.datatorrent.stram.tuple.Tuple;
-import com.datatorrent.api.BaseOperator;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.api.Context;
 import com.datatorrent.api.DefaultInputPort;
 import java.io.IOException;

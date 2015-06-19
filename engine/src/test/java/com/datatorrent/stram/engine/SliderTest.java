@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.common.util.BaseOperator;
 import org.junit.Assert;
 import org.junit.Test;
 

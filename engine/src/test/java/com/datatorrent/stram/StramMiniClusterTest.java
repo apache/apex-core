@@ -3,6 +3,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.common.util.BaseOperator;
 import java.io.*;
 import java.net.URL;
 import java.util.List;

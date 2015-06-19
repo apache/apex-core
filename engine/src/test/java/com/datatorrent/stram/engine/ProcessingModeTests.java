@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import com.datatorrent.common.util.BaseOperator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;

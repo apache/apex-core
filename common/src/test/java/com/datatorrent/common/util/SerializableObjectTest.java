@@ -3,6 +3,7 @@
  */
 package com.datatorrent.api;
 
+import com.datatorrent.common.util.BaseOperator;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;

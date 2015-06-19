@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan;
 
+import com.datatorrent.common.util.BaseOperator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;

@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
-import com.datatorrent.api.BaseOperator;
+import com.datatorrent.common.util.BaseOperator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

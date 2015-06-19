@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.api;
+package com.datatorrent.common.util;
 
 import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Operator;
 
 import com.datatorrent.common.util.SerializableObject;
 
@@ -25,7 +26,7 @@ import com.datatorrent.common.util.SerializableObject;
  *
  * @since 0.3.2
  */
-public class BaseOperator extends SerializableObject implements Operator
+public class BaseOperator implements Operator
 {
   private String name;
 

@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.stream;
 
+import com.datatorrent.common.util.BaseOperator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
