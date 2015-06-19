@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.lib.util;
+package com.datatorrent.common.util;
 
 import java.io.IOException;
 import java.util.HashMap;

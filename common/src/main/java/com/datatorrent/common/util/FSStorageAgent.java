@@ -5,7 +5,7 @@
  *
  * @since 0.3.2
  */
-package com.datatorrent.stram;
+package com.datatorrent.common.util;
 
 import java.io.*;
 

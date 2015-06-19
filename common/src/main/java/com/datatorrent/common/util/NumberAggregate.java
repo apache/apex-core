@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datatorrent.lib.util;
+package com.datatorrent.common.util;
 
 /**
  * Utility class that gives aggregate information (i.e. min, max, avg, sum) with a set of numbers.

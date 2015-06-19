@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.datatorrent.lib.util;
+package com.datatorrent.common.util;
 
 import java.util.List;
 import java.util.Map;
