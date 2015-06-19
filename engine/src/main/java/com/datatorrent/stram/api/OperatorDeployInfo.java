@@ -5,10 +5,7 @@
 package com.datatorrent.stram.api;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -16,7 +13,6 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Context.OperatorContext;
-import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.StreamCodec;
 
@@ -57,7 +53,13 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
   @Override
   public void setCounters(Object counters)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void sendCustomMetrics(Collection<String> metricNames)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   public enum OperatorType
@@ -165,7 +167,13 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     @Override
     public void setCounters(Object counters)
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void sendCustomMetrics(Collection<String> metricNames)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
@@ -229,7 +237,13 @@ public class OperatorDeployInfo implements Serializable, OperatorContext
     @Override
     public void setCounters(Object counters)
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void sendCustomMetrics(Collection<String> metricNames)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")

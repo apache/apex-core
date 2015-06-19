@@ -240,8 +240,6 @@ public class PTOperator implements java.io.Serializable
 
   public final HashMap<InputPortMeta, PTOperator> upstreamMerge = new HashMap<InputPortMeta, PTOperator>();
 
-  //check if there is need for this
-  public transient Object lastSeenCounters;
 
   /**
    *

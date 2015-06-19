@@ -1415,6 +1415,7 @@ public class LogicalPlanConfiguration {
         outPortConfs.addAll(portConfs);
         setAttributes(PortContext.class, outPortConfs, om.getAttributes());
       }
+      ow.populateAggregatorMeta();
     }
   }
 

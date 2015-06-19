@@ -17,6 +17,7 @@ package com.datatorrent.api;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * <p>Stats interface.</p>
@@ -39,7 +40,12 @@ public interface Stats extends Serializable
     public ArrayList<PortStats> inputPorts;
     public ArrayList<PortStats> outputPorts;
     public long cpuTimeUsed;
+    /**
+     * @deprecated use {@link #customMetrics}
+     */
+    @Deprecated
     public Object counters;
+    public Map<String, Object> customMetrics;
 
     /**
      * If there is a recording on the operator, this contains the recording id, otherwise null

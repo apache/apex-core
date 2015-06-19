@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -106,6 +107,8 @@ public class StreamingContainerManager implements PlanContext
   public final static long LATENCY_WARNING_THRESHOLD_MILLIS = 10 * 60 * 1000; // 10 minutes
   public final static Recoverable SET_OPERATOR_PROPERTY = new SetOperatorProperty();
   public final static Recoverable SET_PHYSICAL_OPERATOR_PROPERTY = new SetPhysicalOperatorProperty();
+  public final static int METRIC_QUEUE_SIZE = 1000;
+
   private final FinalVars vars;
   private final PhysicalPlan plan;
   private final Clock clock;
@@ -145,6 +148,14 @@ public class StreamingContainerManager implements PlanContext
   private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
   private long lastLatencyWarningTime;
 
+  //logic operator name to a queue of logical customMetrics. this gets cleared periodically
+  private final Map<String, Queue<Pair<Long, Map<String, Object>>>> logicalMetrics = Maps.newConcurrentMap();
+  //logical operator name to latest logical customMetrics.
+  private final Map<String, Map<String, Object>> latestLogicalMetrics = Maps.newHashMap();
+
+  //logical operator name to latest counters. exists for backward compatibility.
+  private final Map<String, Object> latestLogicalCounters = Maps.newHashMap();
+
   private final LinkedHashMap<String, ContainerInfo> completedContainers = new LinkedHashMap<String, ContainerInfo>()
   {
     private static final long serialVersionUID = 201405281500L;
@@ -173,6 +184,8 @@ public class StreamingContainerManager implements PlanContext
   {
     long emitTimestamp = -1;
     HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>(); // input port name to end window dequeue time
+    Object counters;
+    Map<String, Object> customMetrics;
   }
 
   public static class CriticalPathInfo
@@ -554,8 +567,7 @@ public class StreamingContainerManager implements PlanContext
         while (endWindowStatsOperatorMap.size() > this.vars.maxWindowsBehindForStats) {
           LOG.debug("Removing incomplete end window stats for window id {}. Collected operator set: {}. Complete set: {}",
             endWindowStatsOperatorMap.firstKey(),
-            endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(),
-            allCurrentOperators);
+            endWindowStatsOperatorMap.get(endWindowStatsOperatorMap.firstKey()).keySet(), allCurrentOperators);
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
@@ -565,6 +577,8 @@ public class StreamingContainerManager implements PlanContext
       while (windowId != null) {
         Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(windowId);
         Set<Integer> endWindowStatsOperators = endWindowStatsMap.keySet();
+
+        aggregateMetrics(windowId, endWindowStatsMap);
 
         if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
@@ -606,6 +620,76 @@ public class StreamingContainerManager implements PlanContext
         windowId = endWindowStatsOperatorMap.higherKey(windowId);
       }
     }
+  }
+
+  private void aggregateMetrics(long windowId, Map<Integer, EndWindowStats> endWindowStatsMap)
+  {
+    Collection<OperatorMeta> logicalOperators = getLogicalPlan().getAllOperators();
+    //for backward compatibility
+    for (OperatorMeta operatorMeta : logicalOperators) {
+      Context.CountersAggregator aggregator = operatorMeta.getValue(OperatorContext.COUNTERS_AGGREGATOR);
+      if (aggregator == null) {
+        continue;
+      }
+      Collection<PTOperator> physicalOperators = plan.getAllOperators(operatorMeta);
+      List<Object> counters = Lists.newArrayList();
+      for (PTOperator operator : physicalOperators) {
+        EndWindowStats stats = endWindowStatsMap.get(operator.getId());
+        if (stats != null && stats.counters != null) {
+          counters.add(stats.counters);
+        }
+      }
+      if (counters.size() > 0) {
+        Object aggregate = aggregator.aggregate(counters);
+        latestLogicalCounters.put(operatorMeta.getName(), aggregate);
+      }
+    }
+
+    for (OperatorMeta operatorMeta : logicalOperators) {
+      CustomMetric.Aggregator aggregator = operatorMeta.getCustomMetricAggregatorMeta() != null ?
+        operatorMeta.getCustomMetricAggregatorMeta().getAggregator() : null;
+      if (aggregator == null) {
+        continue;
+      }
+      Collection<PTOperator> physicalOperators = plan.getAllOperators(operatorMeta);
+      List<CustomMetric.PhysicalMetricsContext> metricPool = Lists.newArrayList();
+
+      for (PTOperator operator : physicalOperators) {
+        EndWindowStats stats = endWindowStatsMap.get(operator.getId());
+        if (stats != null && stats.customMetrics != null) {
+          PhysicalMetricsContextImpl physicalMetrics = new PhysicalMetricsContextImpl(operator.getId(), stats.customMetrics);
+          metricPool.add(physicalMetrics);
+        }
+      }
+      Map<String, Object> lm = aggregator.aggregate(windowId, metricPool);
+
+      if (lm != null && lm.size() > 0) {
+        Queue<Pair<Long, Map<String, Object>>> windowMetrics = logicalMetrics.get(operatorMeta.getName());
+        if (windowMetrics == null) {
+          windowMetrics = new LinkedBlockingQueue<Pair<Long, Map<String, Object>>>(METRIC_QUEUE_SIZE)
+          {
+            @Override
+            public boolean add(Pair<Long, Map<String, Object>> longMapPair)
+            {
+              if (remainingCapacity() <= 1) {
+                remove();
+              }
+              return super.add(longMapPair);
+            }
+          };
+          logicalMetrics.put(operatorMeta.getName(), windowMetrics);
+        }
+        LOG.debug("Adding to logical customMetrics for {}", operatorMeta.getName());
+        windowMetrics.add(new Pair<Long, Map<String, Object>>(windowId, lm));
+        latestLogicalMetrics.put(operatorMeta.getName(), lm);
+      }
+    }
+  }
+
+
+  public Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName)
+  {
+    return logicalMetrics.get(operatorName);
   }
 
   private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited, Set<PTOperator> leafOperators)
@@ -724,13 +808,6 @@ public class StreamingContainerManager implements PlanContext
       }
       o.stats.lastWindowedStats = stats;
       if (o.stats.lastWindowedStats != null) {
-        for (int i = o.stats.lastWindowedStats.size() - 1; i >= 0; i--) {
-          Object counters = o.stats.lastWindowedStats.get(i).counters;
-          if (counters != null) {
-            o.lastSeenCounters = counters;
-            break;
-          }
-        }
         // call listeners only with non empty window list
         if (o.statsListeners != null) {
           plan.onStatusUpdate(o);
@@ -1233,7 +1310,7 @@ public class StreamingContainerManager implements PlanContext
         }
         for (ContainerStats.OperatorStats stats : statsList) {
 
-          /* report checkpointedWindowId status of the operator */
+          /* report checkpoint-ed WindowId status of the operator */
           if (stats.checkpoint instanceof Checkpoint) {
             if (oper.getRecentCheckpoint() == null || oper.getRecentCheckpoint().windowId < stats.checkpoint.getWindowId()) {
               addCheckpoint(oper, (Checkpoint) stats.checkpoint);
@@ -1342,6 +1419,15 @@ public class StreamingContainerManager implements PlanContext
           }
           totalCpuTimeUsed += stats.cpuTimeUsed;
           statCount++;
+
+          if (oper.getOperatorMeta().getValue(OperatorContext.COUNTERS_AGGREGATOR) != null) {
+            endWindowStats.counters = stats.counters;
+          }
+          if (oper.getOperatorMeta().getCustomMetricAggregatorMeta() != null &&
+            oper.getOperatorMeta().getCustomMetricAggregatorMeta().getAggregator() != null) {
+            endWindowStats.customMetrics = stats.customMetrics;
+          }
+
           if (stats.windowId > currentEndWindowStatsWindowId) {
             Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
             if (endWindowStatsMap == null) {
@@ -1962,7 +2048,11 @@ public class StreamingContainerManager implements PlanContext
       pinfo.recordingId = ps.recordingId;
       oi.addPort(pinfo);
     }
-    oi.counters = operator.lastSeenCounters;
+    oi.counters = os.getLastWindowedStats().size() > 0 ?
+      os.getLastWindowedStats().get(os.getLastWindowedStats().size() - 1).counters : null;
+
+    oi.customMetrics = os.getLastWindowedStats().size() > 0 ?
+      os.getLastWindowedStats().get(os.getLastWindowedStats().size() - 1).customMetrics : null;
     return oi;
   }
 
@@ -2027,9 +2117,8 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
-    if (plan.getCountersAggregatorFor(operator) != null) {
-      loi.counters = plan.aggregatePhysicalCounters(operator);
-    }
+    loi.counters = latestLogicalCounters.get(operator.getName());
+    loi.customMetrics = latestLogicalMetrics.get(operator.getName());
     return loi;
   }
 
@@ -2056,9 +2145,6 @@ public class StreamingContainerManager implements PlanContext
           oai.lastHeartbeat.addNumber(os.lastHeartbeat.getGeneratedTms());
         }
       }
-    }
-    if (plan.getCountersAggregatorFor(operator) != null) {
-      oai.counters = plan.aggregatePhysicalCounters(operator);
     }
     return oai;
   }
@@ -2714,6 +2800,21 @@ public class StreamingContainerManager implements PlanContext
       }
       return null;
     }
+  }
+
+  @VisibleForTesting
+  protected Collection<Pair<Long, Map<String, Object>>> getLogicalMetrics(String operatorName)
+  {
+    if (logicalMetrics.get(operatorName) != null) {
+      return Collections.unmodifiableCollection(logicalMetrics.get(operatorName));
+    }
+    return null;
+  }
+
+  @VisibleForTesting
+  protected Object getLogicalCounter(String operatorName)
+  {
+    return latestLogicalCounters.get(operatorName);
   }
 
 }

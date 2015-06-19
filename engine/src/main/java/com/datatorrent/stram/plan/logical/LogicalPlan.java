@@ -4,6 +4,10 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.common.metric.MetricsAggregator;
+import com.datatorrent.common.metric.SingleMetricAggregator;
+import com.datatorrent.common.metric.sum.DoubleSumAggregator;
+import com.datatorrent.common.metric.sum.LongSumAggregator;
 import com.datatorrent.common.util.BaseOperator;
 import java.io.*;
 import java.lang.reflect.*;
@@ -141,7 +145,13 @@ public class LogicalPlan implements Serializable, DAG
   @Override
   public void setCounters(Object counters)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void sendCustomMetrics(Collection<String> metricNames)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   public final class InputPortMeta implements DAG.InputPortMeta, Serializable
@@ -202,7 +212,13 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public void setCounters(Object counters)
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void sendCustomMetrics(Collection<String> metricNames)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
     }
 
   }
@@ -314,7 +330,13 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public void setCounters(Object counters)
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void sendCustomMetrics(Collection<String> metricNames)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
     }
 
   }
@@ -474,6 +496,8 @@ public class LogicalPlan implements Serializable, DAG
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
     private transient Operator operator;
+    private CustomMetricAggregatorMeta customMetricAggregatorMeta;
+
     /*
      * Used for  OIO validation,
      *  value null => node not visited yet
@@ -545,7 +569,46 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public void setCounters(Object counters)
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void sendCustomMetrics(Collection<String> metricNames)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public CustomMetricAggregatorMeta getCustomMetricAggregatorMeta()
+    {
+      return customMetricAggregatorMeta;
+    }
+
+    protected void populateAggregatorMeta()
+    {
+      CustomMetric.Aggregator aggregator = getValue(OperatorContext.CUSTOM_METRIC_AGGREGATOR);
+      if (aggregator == null) {
+        MetricsAggregator defAggregator = null;
+        for (Field field : operator.getClass().getDeclaredFields()) {
+          if (field.isAnnotationPresent(CustomMetric.class)) {
+            if (field.getType() == Integer.class || field.getType() == Long.class) {
+              if (defAggregator == null) {
+                defAggregator = new MetricsAggregator();
+              }
+              defAggregator.addAggregators(field.getName(), new SingleMetricAggregator[]{new LongSumAggregator()});
+            }
+            else if (field.getType() == Float.class || field.getType() == Double.class) {
+              if (defAggregator == null) {
+                defAggregator = new MetricsAggregator();
+              }
+              defAggregator.addAggregators(field.getName(), new SingleMetricAggregator[]{new DoubleSumAggregator()});
+            }
+          }
+        }
+        if (defAggregator != null) {
+          aggregator = defAggregator;
+        }
+      }
+      this.customMetricAggregatorMeta = new CustomMetricAggregatorMeta(aggregator);
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -1319,5 +1382,22 @@ public class LogicalPlan implements Serializable, DAG
     int result = streams != null ? streams.hashCode() : 0;
     result = 31 * result + (attributes != null ? attributes.hashCode() : 0);
     return result;
+  }
+
+  public final class CustomMetricAggregatorMeta implements Serializable
+  {
+    private final CustomMetric.Aggregator aggregator;
+
+    protected CustomMetricAggregatorMeta(CustomMetric.Aggregator aggregator)
+    {
+      this.aggregator = aggregator;
+    }
+
+    public CustomMetric.Aggregator getAggregator()
+    {
+      return this.aggregator;
+    }
+
+    private static final long serialVersionUID = 201604271719L;
   }
 }

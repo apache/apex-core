@@ -8,8 +8,6 @@ import java.util.*;
 import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 
-import com.datatorrent.api.annotation.RecordField;
-
 /**
  * <p>LogicalOperatorInfo class.</p>
  *
@@ -38,4 +36,5 @@ public class LogicalOperatorInfo
   public Set<Integer> unifiers;
   public Set<String> hosts;
   public Object counters;
+  public Object customMetrics;
 }

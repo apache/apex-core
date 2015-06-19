@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
@@ -16,6 +17,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.math.IntMath;
 
 import com.datatorrent.api.*;
@@ -78,6 +81,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
   protected int controlTupleCount;
   public final OperatorContext context;
   public final BlockingQueue<StatsListener.OperatorResponse> commandResponse;
+  private final List<Field> metricFields;
 
   public Node(OPERATOR operator, OperatorContext context)
   {
@@ -92,6 +96,14 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>();
     tmb = ManagementFactory.getThreadMXBean();
     commandResponse = new LinkedBlockingQueue<StatsListener.OperatorResponse>();
+
+    metricFields = Lists.newArrayList();
+    for (Field field : operator.getClass().getDeclaredFields()) {
+      if (field.isAnnotationPresent(CustomMetric.class)) {
+        metricFields.add(field);
+        field.setAccessible(true);
+      }
+    }
   }
 
   public Operator getOperator()
@@ -311,6 +323,27 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     }
   }
 
+  protected Map<String, Object> collectMetrics()
+  {
+    if (context.areMetricsListed() && (context.metricsToSend == null || context.metricsToSend.isEmpty())) {
+      return null;
+    }
+    Map<String, Object> metricValues = Maps.newHashMap();
+    try {
+      for (Field field : metricFields) {
+        if (context.metricsToSend != null && !context.metricsToSend.contains(field.getName())) {
+          continue;
+        }
+        metricValues.put(field.getName(), field.get(operator));
+      }
+      context.clearMetrics();
+      return metricValues;
+    }
+    catch (IllegalAccessException iae) {
+      throw new RuntimeException(iae);
+    }
+  }
+
   protected void reportStats(ContainerStats.OperatorStats stats, long windowId)
   {
     stats.outputPorts = new ArrayList<ContainerStats.OperatorStats.PortStats>();
@@ -367,7 +400,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
         catch (IOException ie) {
           try {
             logger.warn("Rolling back checkpoint {} for Operator {} due to the exception {}",
-              new Object[]{Codec.getStringWindowId(windowId), operator, ie});
+              Codec.getStringWindowId(windowId), operator, ie);
             ba.delete(id, windowId);
           }
           catch (IOException ex) {

@@ -4,6 +4,8 @@
  */
 package com.datatorrent.stram.api;
 
+import java.util.Collection;
+
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
@@ -24,7 +26,10 @@ public class BaseContext extends AbstractWritableAdapter implements Context
    */
   public final AttributeMap attributes;
   public final Context parentContext; // may be we do not need to serialize parentContext!
+  @Deprecated
   public Object counters;
+  public Collection<String> metricsToSend;
+  private boolean metricsListed;
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
@@ -52,6 +57,24 @@ public class BaseContext extends AbstractWritableAdapter implements Context
   public void setCounters(Object counters)
   {
     this.counters = counters;
+  }
+
+  @Override
+  public void sendCustomMetrics(Collection<String> metricNames)
+  {
+    metricsListed = true;
+    metricsToSend = metricNames;
+  }
+
+  public boolean areMetricsListed()
+  {
+    return metricsListed;
+  }
+
+  public void clearMetrics()
+  {
+    metricsToSend = null;
+    metricsListed = false;
   }
 
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")

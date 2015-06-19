@@ -4,10 +4,7 @@
  */
 package com.datatorrent.stram.webapp;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -70,6 +67,8 @@ public class OperatorInfo
   public String recordingId;
   @RecordField(type = "stats")
   public Object counters;
+  @RecordField(type = "stats")
+  public Map<String, Object> customMetrics;
 
   /**
    *

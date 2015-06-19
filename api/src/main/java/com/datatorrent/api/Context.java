@@ -56,13 +56,28 @@ public interface Context
    * current window, reset at window boundary.
    *
    * @param counters
+   * @deprecated use {@link CustomMetric}
    */
+  @Deprecated
   void setCounters(Object counters);
 
+  /**
+   * This can be used to report only a subset of custom metrics in the context of the current application window. It
+   * will reset at the application window boundary.
+   *
+   * @param metricNames the name of all the metrics that will be reported to application master.
+   */
+  void sendCustomMetrics(Collection<String> metricNames);
+
+  /**
+   * Aggregates counters of physical instances.
+   *
+   * @deprecated use {@link CustomMetric.Aggregator}
+   */
+  @Deprecated
   interface CountersAggregator
   {
     Object aggregate(Collection<?> countersList);
-
   }
 
   /**
@@ -251,8 +266,16 @@ public interface Context
 
     /**
      * Aggregates physical counters to a logical counter.
+     * @deprecated  use {@link #CUSTOM_METRIC_AGGREGATOR}
      */
+    @Deprecated
     Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
+
+    /**
+     * Aggregates custom metrics of physical instances.
+     */
+    Attribute<CustomMetric.Aggregator> CUSTOM_METRIC_AGGREGATOR = new Attribute<CustomMetric.Aggregator>(new
+      Object2String<CustomMetric.Aggregator>());
 
     /**
      * Return the operator runtime id.

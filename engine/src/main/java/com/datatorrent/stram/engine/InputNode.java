@@ -132,6 +132,9 @@ public class InputNode extends Node<InputOperator>
 
               ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
               reportStats(stats, currentWindowId);
+              if(!insideWindow){
+                stats.customMetrics = collectMetrics();
+              }
               handleRequests(currentWindowId);
               break;
 
@@ -213,6 +216,7 @@ public class InputNode extends Node<InputOperator>
 
       ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       reportStats(stats, currentWindowId);
+      stats.customMetrics = collectMetrics();
       handleRequests(currentWindowId);
     }
   }

@@ -152,8 +152,12 @@ public class GenericNode extends Node<Operator>
 
     ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
     reportStats(stats, currentWindowId);
+    if (!insideWindow) {
+      stats.customMetrics = collectMetrics();
+    }
     handleRequests(currentWindowId);
   }
+
 
   class TupleTracker
   {
@@ -274,7 +278,7 @@ public class GenericNode extends Node<Operator>
                     }
                   }
                   else {
-                    logger.error("Catastrophic Error: Out of sequence tuple {} on port {} while expecting {}", new Object[]{Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId)});
+                    logger.error("Catastrophic Error: Out of sequence tuple {} on port {} while expecting {}", Codec.getStringWindowId(t.getWindowId()), port, Codec.getStringWindowId(currentWindowId));
                     System.exit(2);
                   }
                 }
@@ -553,6 +557,7 @@ public class GenericNode extends Node<Operator>
       ContainerStats.OperatorStats stats = new ContainerStats.OperatorStats();
       fixEndWindowDequeueTimesBeforeDeactivate();
       reportStats(stats, currentWindowId);
+      stats.customMetrics = collectMetrics();
       handleRequests(currentWindowId);
     }
 

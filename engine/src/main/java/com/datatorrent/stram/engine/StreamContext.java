@@ -68,7 +68,13 @@ public class StreamContext extends DefaultAttributeMap implements Context
   @Override
   public void setCounters(Object counters)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void sendCustomMetrics(Collection<String> metricNames)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   public static enum State

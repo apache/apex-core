@@ -84,12 +84,6 @@ public class OperatorContext extends BaseContext implements Context.OperatorCont
     return id;
   }
 
-  @Override
-  public void setCounters(Object stats)
-  {
-    this.counters = stats;
-  }
-
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
