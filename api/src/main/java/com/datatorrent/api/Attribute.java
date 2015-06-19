@@ -30,7 +30,7 @@ import com.datatorrent.api.StringCodec.Integer2String;
 import com.datatorrent.api.StringCodec.Long2String;
 import com.datatorrent.api.StringCodec.String2String;
 
-import com.datatorrent.common.util.DTThrowable;
+import com.datatorrent.netlet.util.DTThrowable;
 
 /**
  * Attribute represents the attribute which can be set on various components in the system.

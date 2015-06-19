@@ -15,7 +15,7 @@
  */
 package com.datatorrent.api;
 
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 
 /**
  * Serializing and Deserializing the data tuples and controlling the partitioning

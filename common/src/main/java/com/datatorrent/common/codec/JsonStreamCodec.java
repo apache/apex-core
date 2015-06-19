@@ -2,17 +2,19 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.common.codec;
 
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.util.ObjectMapperString;
 import java.io.*;
-import com.malhartech.common.util.Slice;
+
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
-import org.codehaus.jackson.map.ser.impl.RawSerializer;
+import org.codehaus.jackson.map.ser.std.RawSerializer;
+
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.common.util.ObjectMapperString;
+import com.datatorrent.netlet.util.Slice;
 
 /**
  *

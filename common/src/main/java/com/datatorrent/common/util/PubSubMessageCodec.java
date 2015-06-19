@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 import org.codehaus.jackson.map.ObjectMapper;
 
-import com.datatorrent.lib.util.PubSubMessage.PubSubMessageType;
+import com.datatorrent.common.util.PubSubMessage.PubSubMessageType;
 
 /**
  * <p>PubSubMessageCodec class.</p>

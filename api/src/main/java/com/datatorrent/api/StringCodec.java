@@ -23,7 +23,7 @@ import java.util.Collections;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 
-import com.datatorrent.common.util.DTThrowable;
+import com.datatorrent.netlet.util.DTThrowable;
 import java.util.*;
 
 /**
