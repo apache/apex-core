@@ -47,13 +47,9 @@
 
   <modules>
     <module>common</module>
-    <module>plugins</module>
     <module>api</module>
-    <module>netlet</module>
     <module>bufferserver</module>
     <module>stram</module>
-    <module>engine</module>
-    <module>certification</module>
     <module>dt-app-archetype</module>
     <module>dt-conf-archetype</module>
   </modules>
