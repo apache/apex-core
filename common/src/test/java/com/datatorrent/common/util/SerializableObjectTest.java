@@ -1,26 +1,30 @@
 /*
  *  Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  */
-package com.datatorrent.api;
+package com.datatorrent.common.util;
 
-import com.datatorrent.common.util.BaseOperator;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
+
 import org.junit.Test;
 import static org.junit.Assert.*;
+
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
 
 /**
  *
  * @author Chetan Narsude <chetan@datatorrent.com>
  */
-public class BaseOperatorTest
+public class SerializableObjectTest
 {
-  public static final String filename = "target/" + BaseOperatorTest.class.getName() + ".bin";
+  public static final String filename = "target/" + SerializableObjectTest.class.getName() + ".bin";
 
-  public static class SerializableOperator<T> extends BaseOperator implements Serializable
+  public static class SerializableOperator<T> extends SerializableObject
   {
     public final transient InputPort<T> input = new DefaultInputPort<T>()
     {
@@ -75,10 +79,7 @@ public class BaseOperatorTest
         return false;
       }
 
-      if (this.i != other.i) {
-        return false;
-      }
-      return true;
+      return this.i == other.i;
     }
 
     @Override

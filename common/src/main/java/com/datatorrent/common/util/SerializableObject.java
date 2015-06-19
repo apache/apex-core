@@ -24,6 +24,14 @@ import java.lang.reflect.Modifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Helper base class to ensure that Java Serializer is able to work with the transient final
+ * fields in the class which extends this class. By definition the transient fields are not serialized.
+ * But when such a field is declared final in the class, there is no way to initialize it either. So
+ * this class provides boilerplate code to play with the very uncommon serialization API and provides a
+ * way to easily and correctly serialize and deserialize such objects. The only condition is that the
+ * class of such object should provide either a copy constructor or a default constructor. *
+ */
 public class SerializableObject implements Serializable
 {
   /**
