@@ -117,90 +117,6 @@
           <!--downloadJavadocs>true</downloadJavadocs-->
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>pl.project13.maven</groupId>
-        <artifactId>git-commit-id-plugin</artifactId>
-        <version>2.1.4</version>
-        <executions>
-          <execution>
-            <id>create-git-version-info</id>
-            <phase>${create-git-version-info-phase}</phase>
-            <goals>
-              <goal>revision</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <verbose>true</verbose>
-          <prefix>git</prefix>
-          <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>target/classes/dt-git.properties</generateGitPropertiesFilename>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>2.6</version>
-        <executions>
-          <execution>
-            <id>copy-resources</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>target/generated-sources/main/x-java</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/codec</directory>
-                  <targetPath>com/datatorrent/lib/codec</targetPath>
-                  <includes>
-                    <include>JsonStreamCodec.java</include>
-                  </includes>
-                </resource>
-                <resource>
-                  <directory>../malhar/library/src/main/java/com.datatorrent.common.util</directory>
-                  <targetPath>com.datatorrent.common.util</targetPath>
-                  <includes>
-                    <include>JacksonObjectMapperProvider.java</include>
-                    <include>ObjectMapperString.java</include>
-                    <include>PubSubMessage.java</include>
-                    <include>PubSubMessageCodec.java</include>
-                    <include>PubSubWebSocketClient.java</include>
-                    <include>NumberAggregate.java</include>
-                    <include>FSStorageAgent.java</include>
-                    <include>BasicContainerOptConfigurator.java</include>
-                  </includes>
-                </resource>
-                <resource>
-                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/partitioner</directory>
-                  <targetPath>com/datatorrent/lib/partitioner</targetPath>
-                  <includes>
-                    <include>StatelessPartitioner.java</include>
-                  </includes>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.9.1</version>
-        <executions>
-          <execution>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>target/generated-sources/main/x-java</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
   </build>
 
@@ -311,11 +227,6 @@
       <groupId>org.apache.ant</groupId>
       <artifactId>ant</artifactId>
       <version>1.9.2</version>
-    </dependency>
-    <dependency>
-      <groupId>com.ning</groupId>
-      <artifactId>async-http-client</artifactId>
-      <version>1.7.20</version>
     </dependency>
     <dependency>
       <groupId>net.engio</groupId>
