@@ -164,11 +164,6 @@ public class AppInfo {
     this.stats = context.getStats();
     this.gatewayAddress = context.getGatewayAddress();
     this.version = VersionInfo.getBuildVersion();
-    this.licenseId = context.getLicenseId();
-    this.remainingLicensedMB = context.getRemainingLicensedMB();
-    this.totalLicensedMB = context.getTotalLicensedMB();
-    this.allocatedMB = context.getAllocatedMB();
-    this.licenseInfoLastUpdate = context.getLicenseInfoLastUpdate();
     this.attributes = new TreeMap<String, Object>();
     for (Map.Entry<Attribute<Object>, Object> entry : AttributeMap.AttributeInitializer.getAllAttributes(context, DAGContext.class).entrySet()) {
       this.attributes.put(entry.getKey().getSimpleName(), entry.getValue());
