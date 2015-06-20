@@ -19,9 +19,9 @@ import com.datatorrent.bufferserver.packet.Tuple;
 import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.bufferserver.util.BitVector;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.common.util.SerializedData;
-import com.datatorrent.common.util.VarInt;
-import com.datatorrent.common.util.VarInt.MutableInt;
+import com.datatorrent.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.util.VarInt;
+import com.datatorrent.netlet.util.VarInt.MutableInt;
 
 /**
  * Maintains list of data and manages addition and deletion of the data<p>
@@ -509,12 +509,12 @@ public class DataList
     {
       if (current.offset < writingOffset) {
         VarInt.read(current);
-        if (current.offset + current.size > writingOffset) {
-          current.size = 0;
+        if (current.offset + current.length > writingOffset) {
+          current.length = 0;
         }
       }
       else {
-        current.size = 0;
+        current.length = 0;
       }
     }
 
@@ -525,9 +525,9 @@ public class DataList
       done:
       while (dli.hasNext()) {
         SerializedData sd = dli.next();
-        switch (sd.bytes[sd.dataOffset]) {
+        switch (sd.buffer[sd.dataOffset]) {
           case MessageType.RESET_WINDOW_VALUE:
-            ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
             bs = (long)rwt.getBaseSeconds() << 32;
             if (bs > windowId) {
               writingOffset = sd.offset;
@@ -536,7 +536,7 @@ public class DataList
             break;
 
           case MessageType.BEGIN_WINDOW_VALUE:
-            BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
             if ((bs | bwt.getWindowId()) >= windowId) {
               writingOffset = sd.offset;
               break done;
@@ -575,25 +575,25 @@ public class DataList
       done:
       while (dli.hasNext()) {
         SerializedData sd = dli.next();
-        switch (sd.bytes[sd.dataOffset]) {
+        switch (sd.buffer[sd.dataOffset]) {
           case MessageType.RESET_WINDOW_VALUE:
-            ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
             bs = (long)rwt.getBaseSeconds() << 32;
             lastReset = sd;
             break;
 
           case MessageType.BEGIN_WINDOW_VALUE:
-            BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+            BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.buffer, sd.dataOffset, sd.length - sd.dataOffset + sd.offset);
             if ((bs | bwt.getWindowId()) > longWindowId) {
               found = true;
               if (lastReset != null) {
                 /*
                  * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
                  */
-                if (sd.offset >= lastReset.size) {
-                  sd.offset -= lastReset.size;
-                  if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
-                    System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
+                if (sd.offset >= lastReset.length) {
+                  sd.offset -= lastReset.length;
+                  if (!(sd.buffer == lastReset.buffer && sd.offset == lastReset.offset)) {
+                    System.arraycopy(lastReset.buffer, lastReset.offset, sd.buffer, sd.offset, lastReset.length);
                   }
                 }
 
@@ -615,8 +615,8 @@ public class DataList
       if (!found) {
         //logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
         if (lastReset != null && lastReset.offset != 0) {
-          this.readingOffset = this.writingOffset - lastReset.size;
-          System.arraycopy(lastReset.bytes, lastReset.offset, this.data, this.readingOffset, lastReset.size);
+          this.readingOffset = this.writingOffset - lastReset.length;
+          System.arraycopy(lastReset.buffer, lastReset.offset, this.data, this.readingOffset, lastReset.length);
           this.starting_window = this.ending_window = bs;
           //logger.debug("=20140220= reassign the windowids {}", this);
         }
@@ -636,10 +636,10 @@ public class DataList
         }
 
         if (i <= sd.offset) {
-          sd.size = sd.offset;
+          sd.length = sd.offset;
           sd.offset = 0;
-          sd.dataOffset = VarInt.write(sd.size - i, sd.bytes, sd.offset, i);
-          sd.bytes[sd.dataOffset] = MessageType.NO_MESSAGE_VALUE;
+          sd.dataOffset = VarInt.write(sd.length - i, sd.buffer, sd.offset, i);
+          sd.buffer[sd.dataOffset] = MessageType.NO_MESSAGE_VALUE;
         }
         else {
           logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
@@ -825,7 +825,7 @@ public class DataList
           current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
           current.dataOffset = nextOffset.integer;
           //if (buffer[current.dataOffset] == MessageType.BEGIN_WINDOW_VALUE || buffer[current.dataOffset] == MessageType.END_WINDOW_VALUE) {
-          //  Tuple t = Tuple.getTuple(current.bytes, current.dataOffset, current.size - current.dataOffset + current.offset);
+          //  Tuple t = Tuple.getTuple(current.buffer, current.dataOffset, current.length - current.dataOffset + current.offset);
           //  logger.debug("next t = {}", t);
           //}
           return true;
@@ -853,12 +853,12 @@ public class DataList
 
     /**
      *
-     * @return {@link com.datatorrent.common.util.SerializedData}
+     * @return {@link com.datatorrent.bufferserver.util.SerializedData}
      */
     @Override
     public SerializedData next()
     {
-      readOffset = current.offset + current.size;
+      readOffset = current.offset + current.length;
       size = 0;
       return current;
     }
@@ -871,7 +871,7 @@ public class DataList
     @Override
     public void remove()
     {
-      current.bytes[current.dataOffset] = MessageType.NO_MESSAGE_VALUE;
+      current.buffer[current.dataOffset] = MessageType.NO_MESSAGE_VALUE;
     }
 
     void rewind(int processingOffset)

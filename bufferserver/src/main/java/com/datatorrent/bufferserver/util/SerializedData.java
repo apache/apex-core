@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 DataTorrent, Inc.
  *  All Rights Reserved.
  */
-package com.datatorrent.common.util;
+package com.datatorrent.bufferserver.util;
 
 import com.datatorrent.netlet.util.Slice;
 

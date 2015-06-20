@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 
-import com.datatorrent.common.util.SerializedData;
-import com.datatorrent.common.util.VarInt;
 
 /**
  *
@@ -28,13 +26,13 @@ public class CodecTest
 
     SerializedData sd = new SerializedData(buffer, 0, 0);
     VarInt.read(sd);
-    assertEquals(sd.size - sd.dataOffset, value);
+    assertEquals(sd.length - sd.dataOffset, value);
 
     VarInt.write(value, buffer, 0, 5);
-    sd.size = 0;
+    sd.length = 0;
     sd.dataOffset = 0;
     VarInt.read(sd);
-    assertEquals(sd.size - sd.dataOffset, value);
+    assertEquals(sd.length - sd.dataOffset, value);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(CodecTest.class);

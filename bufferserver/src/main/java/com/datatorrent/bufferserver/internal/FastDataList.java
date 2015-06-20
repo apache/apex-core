@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.bufferserver.packet.Tuple;
-import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.bufferserver.util.SerializedData;
 
 /**
  * <p>FastDataList class.</p>

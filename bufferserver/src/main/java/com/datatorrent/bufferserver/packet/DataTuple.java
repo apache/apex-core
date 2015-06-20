@@ -4,7 +4,7 @@
  */
 package com.datatorrent.bufferserver.packet;
 
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 
 /**
  * <p>DataTuple class.</p>

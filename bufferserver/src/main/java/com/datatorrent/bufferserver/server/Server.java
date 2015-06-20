@@ -26,7 +26,7 @@ import com.datatorrent.bufferserver.internal.LogicalNode;
 import com.datatorrent.bufferserver.packet.*;
 import com.datatorrent.bufferserver.storage.Storage;
 import com.datatorrent.common.util.NameableThreadFactory;
-import com.datatorrent.common.util.VarInt;
+import com.datatorrent.netlet.util.VarInt;
 import com.datatorrent.netlet.AbstractLengthPrependerClient;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.netlet.EventLoop;

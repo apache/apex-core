@@ -18,7 +18,7 @@ import com.datatorrent.bufferserver.policy.GiveAll;
 import com.datatorrent.bufferserver.policy.Policy;
 import com.datatorrent.bufferserver.util.BitVector;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.bufferserver.util.SerializedData;
 import com.datatorrent.netlet.AbstractLengthPrependerClient;
 import com.datatorrent.netlet.EventLoop;
 
@@ -161,9 +161,9 @@ public class LogicalNode implements DataListener
         outer:
         while (ready && iterator.hasNext()) {
           SerializedData data = iterator.next();
-          switch (data.bytes[data.dataOffset]) {
+          switch (data.buffer[data.dataOffset]) {
             case MessageType.RESET_WINDOW_VALUE:
-              Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+              Tuple tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
               baseSeconds = (long)tuple.getBaseSeconds() << 32;
               intervalMillis = tuple.getWindowWidth();
               if (intervalMillis <= 0) {
@@ -173,7 +173,7 @@ public class LogicalNode implements DataListener
               break;
 
             case MessageType.BEGIN_WINDOW_VALUE:
-              tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+              tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
               logger.debug("{}->{} condition {} =? {}",
                            new Object[] {
                 upstream,
@@ -221,7 +221,7 @@ public class LogicalNode implements DataListener
           if (partitions.isEmpty()) {
             while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
-              switch (data.bytes[data.dataOffset]) {
+              switch (data.buffer[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
                   ready = policy.distribute(physicalNodes, data);
                   break;
@@ -231,11 +231,11 @@ public class LogicalNode implements DataListener
                   break;
 
                 case MessageType.RESET_WINDOW_VALUE:
-                  Tuple resetWindow = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  Tuple resetWindow = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
                   baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
 
                 default:
-                  //logger.debug("sending data of type {}", MessageType.valueOf(data.bytes[data.dataOffset]));
+                  //logger.debug("sending data of type {}", MessageType.valueOf(data.buffer[data.dataOffset]));
                   ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
               }
@@ -244,9 +244,9 @@ public class LogicalNode implements DataListener
           else {
             while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
-              switch (data.bytes[data.dataOffset]) {
+              switch (data.buffer[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
-                  Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  Tuple tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
                   int value = tuple.getPartition();
                   for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
@@ -261,7 +261,7 @@ public class LogicalNode implements DataListener
                   break;
 
                 case MessageType.RESET_WINDOW_VALUE:
-                  tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
                   baseSeconds = (long)tuple.getBaseSeconds() << 32;
 
                 default:

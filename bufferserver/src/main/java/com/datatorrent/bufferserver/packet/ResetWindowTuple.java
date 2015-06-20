@@ -5,8 +5,8 @@
 package com.datatorrent.bufferserver.packet;
 
 
-import com.datatorrent.common.util.Slice;
-import com.datatorrent.common.util.VarInt;
+import com.datatorrent.netlet.util.Slice;
+import com.datatorrent.netlet.util.VarInt;
 
 /**
  * <p>ResetWindowTuple class.</p>

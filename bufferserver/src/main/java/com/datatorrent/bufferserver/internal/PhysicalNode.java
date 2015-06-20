@@ -8,7 +8,7 @@ package com.datatorrent.bufferserver.internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.util.SerializedData;
+import com.datatorrent.bufferserver.util.SerializedData;
 import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
@@ -63,12 +63,12 @@ public class PhysicalNode
   public boolean send(SerializedData d)
   {
     if (d.offset == d.dataOffset) {
-      if (client.write(d.bytes, d.offset, d.size)) {
+      if (client.write(d.buffer, d.offset, d.length)) {
         return true;
       }
     }
     else {
-      if (client.send(d.bytes, d.offset, d.size)) {
+      if (client.send(d.buffer, d.offset, d.length)) {
         return true;
       }
     }
