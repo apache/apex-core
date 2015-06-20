@@ -108,60 +108,6 @@
         </executions>
       </plugin>
 
-      <!-- Extend packaged default_license term for 120 days since build -->
-      <plugin>
-        <artifactId>exec-maven-plugin</artifactId>
-        <groupId>org.codehaus.mojo</groupId>
-        <executions>
-          <execution>
-            <id>update-default-license-term</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-          </execution>
-        </executions>
-
-        <configuration>
-          <workingDirectory>${basedir}</workingDirectory>
-          <executable>java</executable>
-          <arguments>
-            <argument>-classpath</argument>
-            <!-- automatically creates the classpath using all project dependencies,
-                 also adding the project build directory -->
-            <classpath/>
-            <argument>com.datatorrent.stram.license.LicenseAuthority</argument>
-            <argument>-propertiesFile</argument>
-            <argument>${basedir}/src/main/license/defaultlicenseproperties</argument>
-            <argument>-outputFile</argument>
-            <argument>${project.build.directory}/classes/com/datatorrent/stram/license/default_license</argument>
-          </arguments>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>app-package-assembly</id>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-            <configuration>
-              <finalName>License-${project.version}</finalName>
-              <appendAssemblyId>false</appendAssemblyId>
-              <descriptors>
-                <descriptor>src/assemble/licensePackage.xml</descriptor>
-              </descriptors>
-              <archiverConfig>
-                <defaultDirectoryMode>0755</defaultDirectoryMode>
-              </archiverConfig>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-eclipse-plugin</artifactId>

@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.bind.annotation.XmlElement;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.conf.Configuration;
@@ -58,9 +57,6 @@ import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.StreamingContainer;
-import com.datatorrent.stram.license.License;
-import com.datatorrent.stram.license.LicenseAuthority;
-import com.datatorrent.stram.license.LicensingAgentClient;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.OperatorStatus.PortStatus;
 import com.datatorrent.stram.plan.physical.PTContainer;
@@ -70,7 +66,6 @@ import com.datatorrent.stram.security.StramDelegationTokenManager;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
-import com.google.common.collect.Sets;
 
 import static java.lang.Thread.sleep;
 
@@ -112,8 +107,6 @@ public class StreamingAppMasterService extends CompositeService
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
   private StramDelegationTokenManager delegationTokenManager = null;
-  private LicensingAgentClient licenseClient;
-  private License.LicenseType licenseType;
 
   public StreamingAppMasterService(ApplicationAttemptId appAttemptID)
   {
@@ -339,51 +332,6 @@ public class StreamingAppMasterService extends CompositeService
     }
 
     @Override
-    public String getLicenseId()
-    {
-      if (StreamingAppMasterService.this.licenseClient != null) {
-        return StreamingAppMasterService.this.licenseClient.getLicenseId();
-      }
-      return "";
-    }
-
-    @Override
-    public long getRemainingLicensedMB()
-    {
-      if (StreamingAppMasterService.this.licenseClient != null) {
-        return StreamingAppMasterService.this.licenseClient.getRemainingLicensedMB();
-      }
-      return 0;
-    }
-
-    @Override
-    public long getTotalLicensedMB()
-    {
-      if (StreamingAppMasterService.this.licenseClient != null) {
-        return StreamingAppMasterService.this.licenseClient.getTotalLicensedMB();
-      }
-      return 0;
-    }
-
-    @Override
-    public long getAllocatedMB()
-    {
-      if (StreamingAppMasterService.this.licenseClient != null) {
-        return StreamingAppMasterService.this.licenseClient.getAllocatedMB();
-      }
-      return 0;
-    }
-
-    @Override
-    public long getLicenseInfoLastUpdate()
-    {
-      if (StreamingAppMasterService.this.licenseClient != null) {
-        return StreamingAppMasterService.this.licenseClient.getLicenseInfoLastUpdate();
-      }
-      return 0;
-    }
-
-    @Override
     public boolean isGatewayConnected()
     {
       if (StreamingAppMasterService.this.dnmgr != null) {
@@ -488,16 +436,6 @@ public class StreamingAppMasterService extends CompositeService
     int rpcListenerCount = dag.getValue(DAGContext.HEARTBEAT_LISTENER_THREAD_COUNT);
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
-
-    // get license and prepare for license agent interaction
-    String licenseBase64 = dag.getValue(LogicalPlan.LICENSE);
-    if (licenseBase64 != null) {
-      byte[] licenseBytes = Base64.decodeBase64(licenseBase64);
-      License license = LicenseAuthority.getLicense(licenseBytes);
-      this.licenseType = license.getLicenseType();
-      this.licenseClient = new LicensingAgentClient(appAttemptID.getApplicationId(), license);
-      addService(this.licenseClient);
-    }
 
     // initialize all services added above
     super.serviceInit(conf);
@@ -653,7 +591,6 @@ public class StreamingAppMasterService extends CompositeService
     // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
     checkContainerStatus();
     FinalApplicationStatus finalStatus = FinalApplicationStatus.SUCCEEDED;
-    int availableLicensedMemory = (licenseClient != null) ? 0 : Integer.MAX_VALUE;
 
     while (!appDone) {
       loopCounter++;
@@ -685,41 +622,21 @@ public class StreamingAppMasterService extends CompositeService
 
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
-        boolean requestResources = true;
-        if (licenseClient != null) {
-          // ensure enough memory is left to request new container
-          licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
-          availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
-          Iterator<StreamingContainerAgent.ContainerStartRequest> it = dnmgr.containerStartRequests.iterator();
-          int requiredMemory = 0;
-          while (it.hasNext()) {
-            requiredMemory += it.next().container.getRequiredMemoryMB();
+        StreamingContainerAgent.ContainerStartRequest csr;
+        while ((csr = dnmgr.containerStartRequests.poll()) != null) {
+          if (csr.container.getRequiredMemoryMB() > maxMem) {
+            LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
+            csr.container.setRequiredMemoryMB(maxMem);
           }
-          if (requiredMemory > availableLicensedMemory) {
-            LOG.warn("Insufficient licensed memory to request resources: required {}m available {}m", requiredMemory, availableLicensedMemory);
-            if (licenseType == License.LicenseType.EVALUATION) {
-              requestResources = false;
-            }
+          if (csr.container.getRequiredVCores() > maxVcores) {
+            LOG.warn("Container vcores {} above max threshold of cluster. Using max value {}.", csr.container.getRequiredVCores(), maxVcores);
+            csr.container.setRequiredVCores(maxVcores);
           }
-        }
-
-        if (requestResources) {
-          StreamingContainerAgent.ContainerStartRequest csr;
-          while ((csr = dnmgr.containerStartRequests.poll()) != null) {
-            if (csr.container.getRequiredMemoryMB() > maxMem) {
-              LOG.warn("Container memory {}m above max threshold of cluster. Using max value {}m.", csr.container.getRequiredMemoryMB(), maxMem);
-              csr.container.setRequiredMemoryMB(maxMem);
-            }
-            if (csr.container.getRequiredVCores() > maxVcores) {
-              LOG.warn("Container vcores {} above max threshold of cluster. Using max value {}.", csr.container.getRequiredVCores(), maxVcores);
-              csr.container.setRequiredVCores(maxVcores);
-            }
-            csr.container.setResourceRequestPriority(nextRequestPriority++);
-            ContainerRequest cr = resourceRequestor.createContainerRequest(csr, true);
-            MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter,cr);
-            requestedResources.put(csr, pair);
-            containerRequests.add(cr);
-          }
+          csr.container.setResourceRequestPriority(nextRequestPriority++);
+          ContainerRequest cr = resourceRequestor.createContainerRequest(csr, true);
+          MutablePair<Integer, ContainerRequest> pair = new MutablePair<Integer, ContainerRequest>(loopCounter, cr);
+          requestedResources.put(csr, pair);
+          containerRequests.add(cr);
         }
       }
 
@@ -755,14 +672,8 @@ public class StreamingAppMasterService extends CompositeService
 
       // CDH reporting incorrect resources, see SPOI-1846, YARN-1959. Workaround for now.
       // Fixed in CDH 5.3. To make it work with earlier versions, we still need workaround
-      int availableMemory = Math.min(amResp.getAvailableResources().getMemory(), availableLicensedMemory);
+      int availableMemory = amResp.getAvailableResources().getMemory();
       LOG.debug(" available resources in cluster {}", availableMemory);
-      availableMemory = (availableMemory == 0 ? availableLicensedMemory : availableMemory);
-
-      //SPOI-2942: locking physical plan only when license type is evaluation
-      if (this.licenseType == License.LicenseType.EVALUATION) {
-        dnmgr.getPhysicalPlan().setAvailableResources(availableMemory);
-      }
 
       // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
@@ -878,14 +789,6 @@ public class StreamingAppMasterService extends CompositeService
         StramEvent ev = new StramEvent.StopContainerEvent(containerIdStr, containerStatus.getExitStatus());
         ev.setReason(containerStatus.getDiagnostics());
         dnmgr.recordEventAsync(ev);
-      }
-
-      if (licenseClient != null) {
-        if (!(amResp.getCompletedContainersStatuses().isEmpty() && amResp.getAllocatedContainers().isEmpty())) {
-          // update license agent on allocated container changes
-          licenseClient.reportAllocatedMemory((int) stats.getTotalMemoryAllocated());
-        }
-        availableLicensedMemory = licenseClient.getRemainingEnforcementMB();
       }
 
       if (dnmgr.forcedShutdown) {

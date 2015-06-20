@@ -52,16 +52,6 @@ public interface StramAppContext extends Context
 
   String getGatewayAddress();
 
-  String getLicenseId();
-
-  long getRemainingLicensedMB();
-
-  long getTotalLicensedMB();
-
-  long getAllocatedMB();
-
-  long getLicenseInfoLastUpdate();
-
   @SuppressWarnings("FieldNameHidesFieldInSuperclass")
   long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);
 

@@ -122,14 +122,6 @@ public class StramClient
   private static final Class<?>[] DATATORRENT_SECURITY_CLASSES =
   (Class<?>[]) ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
 
-  private static final Class<?>[] DATATORRENT_LICENSE_CLASSES = new Class<?>[]{
-      com.datatorrent.api.DAG.class,
-      javax.validation.ConstraintViolationException.class,
-      com.esotericsoftware.minlog.Log.class,
-      com.esotericsoftware.kryo.Kryo.class,
-      org.mozilla.javascript.Scriptable.class
-    };
-
   public StramClient(Configuration conf, LogicalPlan dag) throws Exception
   {
     this.conf = conf;
@@ -308,9 +300,6 @@ public class StramClient
       else {
         defaultClasses = DATATORRENT_CLASSES;
       }
-    }
-    else if(applicationType.equals(YARN_APPLICATION_TYPE_LICENSE)) {
-      defaultClasses = DATATORRENT_LICENSE_CLASSES;
     }
     else {
       throw new IllegalStateException(applicationType + " is not a valid application type.");
@@ -570,7 +559,6 @@ public class StramClient
         vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
       }
       vargs.add(StreamingAppMaster.class.getName());
-
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
       vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
 

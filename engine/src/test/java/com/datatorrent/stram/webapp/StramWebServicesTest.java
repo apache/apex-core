@@ -163,35 +163,6 @@ public class StramWebServicesTest extends JerseyTest
     }
 
     @Override
-    public String getLicenseId()
-    {
-      return null;
-    }
-
-    @Override
-    public long getRemainingLicensedMB()
-    {
-      return 0;
-    }
-
-    @Override
-    public long getTotalLicensedMB() {
-      return 0;
-    }
-
-    @Override
-    public long getAllocatedMB()
-    {
-      return 0;
-    }
-
-    @Override
-    public long getLicenseInfoLastUpdate()
-    {
-      return 0;
-    }
-
-    @Override
     public boolean isGatewayConnected()
     {
       return false;

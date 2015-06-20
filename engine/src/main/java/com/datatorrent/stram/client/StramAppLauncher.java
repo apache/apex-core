@@ -10,7 +10,6 @@ import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
@@ -459,13 +458,12 @@ public class StramAppLauncher
    * @return ApplicationId
    * @throws Exception
    */
-  public ApplicationId launchApp(AppFactory appConfig, byte[] licenseBytes) throws Exception
+  public ApplicationId launchApp(AppFactory appConfig) throws Exception
   {
     loadDependencies();
     Configuration conf = propertiesBuilder.conf;
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = appConfig.createApp(propertiesBuilder);
-    dag.setAttribute(LogicalPlan.LICENSE, Base64.encodeBase64URLSafeString(licenseBytes)); // TODO: obfuscate license passing
     StramClient client = new StramClient(conf, dag);
     try {
       client.start();
