@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram.client;
 
-import com.datatorrent.lib.util.ObjectMapperString;
+import com.datatorrent.common.util.ObjectMapperString;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import java.io.BufferedReader;
 import java.io.IOException;

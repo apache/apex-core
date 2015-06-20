@@ -212,8 +212,8 @@
                   </includes>
                 </resource>
                 <resource>
-                  <directory>../malhar/library/src/main/java/com/datatorrent/lib/util</directory>
-                  <targetPath>com/datatorrent/lib/util</targetPath>
+                  <directory>../malhar/library/src/main/java/com.datatorrent.common.util</directory>
+                  <targetPath>com.datatorrent.common.util</targetPath>
                   <includes>
                     <include>JacksonObjectMapperProvider.java</include>
                     <include>ObjectMapperString.java</include>

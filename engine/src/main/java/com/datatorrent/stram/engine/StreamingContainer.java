@@ -44,7 +44,7 @@ import com.datatorrent.bufferserver.server.Server;
 import com.datatorrent.bufferserver.storage.DiskStorage;
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.ScheduledThreadPoolExecutor;
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.netlet.DefaultEventLoop;
 import com.datatorrent.stram.ComponentContextPair;
 import com.datatorrent.stram.RecoverableRpcProxy;

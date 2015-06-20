@@ -45,7 +45,7 @@ import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.datatorrent.common.util.FSStorageAgent;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;

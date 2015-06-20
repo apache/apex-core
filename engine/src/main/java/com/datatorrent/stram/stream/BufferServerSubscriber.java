@@ -16,7 +16,7 @@ import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.bufferserver.client.Subscriber;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.netlet.EventLoop;
 import com.datatorrent.netlet.util.CircularBuffer;
 import com.datatorrent.stram.codec.StatefulStreamCodec;

@@ -16,7 +16,7 @@ import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 
 /**
  * Default implementation of the StreamCodec.

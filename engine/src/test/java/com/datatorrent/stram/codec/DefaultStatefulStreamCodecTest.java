@@ -15,7 +15,7 @@ import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec.ClassIdPair;
 import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 

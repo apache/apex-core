@@ -43,8 +43,8 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
 
-import com.datatorrent.lib.util.BasicContainerOptConfigurator;
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.datatorrent.common.util.BasicContainerOptConfigurator;
+import com.datatorrent.common.util.FSStorageAgent;
 
 import com.datatorrent.api.Context.OperatorContext;
 
@@ -93,7 +93,7 @@ public class StramClient
   // platform dependencies that are not part of Hadoop and need to be deployed,
   // entry below will cause containing jar file from client to be copied to cluster
   private static final Class<?>[] DATATORRENT_CLASSES = new Class<?>[]{
-      com.datatorrent.common.util.Slice.class,
+      com.datatorrent.netlet.util.Slice.class,
       com.datatorrent.netlet.EventLoop.class,
       com.datatorrent.bufferserver.server.Server.class,
       com.datatorrent.stram.StreamingAppMaster.class,
@@ -123,7 +123,6 @@ public class StramClient
   (Class<?>[]) ArrayUtils.addAll(DATATORRENT_CLASSES, DATATORRENT_SECURITY_SPECIFIC_CLASSES);
 
   private static final Class<?>[] DATATORRENT_LICENSE_CLASSES = new Class<?>[]{
-      com.datatorrent.stram.LicensingAppMaster.class,
       com.datatorrent.api.DAG.class,
       javax.validation.ConstraintViolationException.class,
       com.esotericsoftware.minlog.Log.class,
@@ -570,12 +569,7 @@ public class StramClient
       if (loggersLevel != null) {
         vargs.add(String.format("-D%s=%s", DTLoggerFactory.DT_LOGGERS_LEVEL, loggersLevel));
       }
-      if (YARN_APPLICATION_TYPE_LICENSE.equals(applicationType)) {
-        vargs.add(LicensingAppMaster.class.getName());
-      }
-      else {
-        vargs.add(StreamingAppMaster.class.getName());
-      }
+      vargs.add(StreamingAppMaster.class.getName());
 
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
       vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");

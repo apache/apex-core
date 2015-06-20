@@ -9,7 +9,7 @@ import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.api.Operator.InputPort;
 import com.datatorrent.api.Operator.OutputPort;
-import com.datatorrent.lib.util.ObjectMapperString;
+import com.datatorrent.common.util.ObjectMapperString;
 import com.datatorrent.stram.plan.logical.*;
 import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;

@@ -272,7 +272,7 @@ public class StramWebServices
         parent = "com.datatorrent.lib.chart.ChartOperator";
       }
       else if (parent.equals("filter")) {
-        parent = "com.datatorrent.lib.util.SimpleFilterOperator";
+        parent = "com.datatorrent.common.util.SimpleFilterOperator";
       }
     }
 

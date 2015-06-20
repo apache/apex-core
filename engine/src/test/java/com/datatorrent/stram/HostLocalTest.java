@@ -24,7 +24,7 @@ import com.google.common.collect.Sets;
 import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.api.DAG.Locality;
 
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
+import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;

@@ -13,12 +13,12 @@ import java.util.concurrent.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.lib.codec.JsonStreamCodec;
+import com.datatorrent.common.codec.JsonStreamCodec;
 
 import com.datatorrent.api.StreamCodec;
 import com.datatorrent.api.annotation.RecordField;
 
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.util.FSPartFileCollection;
 import com.datatorrent.stram.webapp.ContainerInfo;
 import com.datatorrent.stram.webapp.OperatorInfo;

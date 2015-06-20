@@ -29,8 +29,8 @@ import com.datatorrent.api.Stats.OperatorStats.PortStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.annotation.Stateless;
 
-import com.datatorrent.lib.partitioner.StatelessPartitioner;
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.datatorrent.common.partitioner.StatelessPartitioner;
+import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.Checkpoint;

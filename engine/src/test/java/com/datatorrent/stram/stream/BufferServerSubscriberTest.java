@@ -17,7 +17,7 @@ import com.datatorrent.api.Sink;
 import com.datatorrent.api.StreamCodec;
 
 import com.datatorrent.bufferserver.packet.PayloadTuple;
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.engine.SweepableReservoir;
 
 /**

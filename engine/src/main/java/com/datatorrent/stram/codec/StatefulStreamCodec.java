@@ -5,7 +5,7 @@
 package com.datatorrent.stram.codec;
 
 import com.datatorrent.api.StreamCodec;
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.Slice;
 
 /**
  * <p>StatefulStreamCodec interface.</p>

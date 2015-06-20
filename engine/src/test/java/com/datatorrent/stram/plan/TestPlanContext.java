@@ -15,7 +15,7 @@ import com.google.common.collect.Sets;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
-import com.datatorrent.lib.util.FSStorageAgent;
+import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.RecoverableOperation;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.StramToNodeRequest;

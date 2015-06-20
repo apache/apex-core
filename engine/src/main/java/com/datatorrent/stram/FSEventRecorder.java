@@ -16,12 +16,12 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.commons.beanutils.BeanUtils;
 
-import com.datatorrent.lib.codec.JsonStreamCodec;
+import com.datatorrent.common.codec.JsonStreamCodec;
 
 import com.datatorrent.api.StreamCodec;
 
-import com.datatorrent.common.util.DTThrowable;
-import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.util.DTThrowable;
+import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.client.EventsAgent;
 import com.datatorrent.stram.util.FSPartFileCollection;

@@ -4,7 +4,7 @@
  */
 package com.datatorrent.stram.util;
 
-import com.datatorrent.lib.util.JacksonObjectMapperProvider;
+import com.datatorrent.common.util.JacksonObjectMapperProvider;
 import com.datatorrent.stram.codec.LogicalPlanSerializer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 

@@ -4,7 +4,7 @@
 
 package com.datatorrent.stram.webapp;
 
-import com.datatorrent.lib.util.NumberAggregate.*;
+import com.datatorrent.common.util.NumberAggregate.*;
 
 /**
  * <p>OperatorAggregationInfo class.</p>
