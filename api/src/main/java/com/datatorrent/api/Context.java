@@ -272,10 +272,18 @@ public interface Context
     Attribute<CountersAggregator> COUNTERS_AGGREGATOR = new Attribute<CountersAggregator>(new Object2String<CountersAggregator>());
 
     /**
-     * Aggregates custom metrics of physical instances.
+     * Aggregates custom metrics of physical instances of an operator. This handler is called with the metrics data of a
+     * particular window from all the physical instances so that it can be aggregated into a logical view.
      */
     Attribute<CustomMetric.Aggregator> CUSTOM_METRIC_AGGREGATOR = new Attribute<CustomMetric.Aggregator>(new
       Object2String<CustomMetric.Aggregator>());
+
+    /**
+     * Provides dimension aggregations and time buckets information for logical custom metric. The information provided
+     * by this construct is conveyed to tracker application and influences the aggregations done on it by the tracker.
+     */
+    Attribute<CustomMetric.DimensionsScheme> CUSTOM_METRIC_DIMENSIONS_SCHEME = new Attribute<CustomMetric.DimensionsScheme>(new
+      Object2String<CustomMetric.DimensionsScheme>());
 
     /**
      * Return the operator runtime id.

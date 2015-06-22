@@ -631,7 +631,8 @@ public class LogicalPlan implements Serializable, DAG
           aggregator = defAggregator;
         }
       }
-      this.customMetricAggregatorMeta = new CustomMetricAggregatorMeta(aggregator);
+      this.customMetricAggregatorMeta = new CustomMetricAggregatorMeta(aggregator,
+        getValue(OperatorContext.CUSTOM_METRIC_DIMENSIONS_SCHEME));
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -1412,15 +1413,34 @@ public class LogicalPlan implements Serializable, DAG
   public final class CustomMetricAggregatorMeta implements Serializable
   {
     private final CustomMetric.Aggregator aggregator;
+    private final CustomMetric.DimensionsScheme dimensionsScheme;
 
-    protected CustomMetricAggregatorMeta(CustomMetric.Aggregator aggregator)
+    protected CustomMetricAggregatorMeta(CustomMetric.Aggregator aggregator,
+                                         CustomMetric.DimensionsScheme dimensionsScheme)
     {
       this.aggregator = aggregator;
+      this.dimensionsScheme = dimensionsScheme;
     }
 
     public CustomMetric.Aggregator getAggregator()
     {
       return this.aggregator;
+    }
+
+    public String[] getDimensionAggregatorsFor(String logicalMetricName)
+    {
+      if (dimensionsScheme == null) {
+        return null;
+      }
+      return dimensionsScheme.getDimensionAggregationsFor(logicalMetricName);
+    }
+
+    public String[] getTimeBuckets()
+    {
+      if (dimensionsScheme == null) {
+        return null;
+      }
+      return dimensionsScheme.getTimeBuckets();
     }
 
     private static final long serialVersionUID = 201604271719L;
