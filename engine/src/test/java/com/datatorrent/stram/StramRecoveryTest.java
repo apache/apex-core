@@ -36,8 +36,6 @@ import com.datatorrent.api.StatsListener;
 import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.common.util.FSStorageAgent;
-import com.datatorrent.stram.Journal.SetContainerState;
-import com.datatorrent.stram.Journal.SetOperatorState;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
