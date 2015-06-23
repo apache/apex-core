@@ -15,6 +15,7 @@
  */
 package com.datatorrent.common.util;
 
+import java.io.IOException;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.ContextResolver;
@@ -24,6 +25,8 @@ import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.*;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.std.RawSerializer;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 
 /**
  * <p>JacksonObjectMapperProvider class.</p>
@@ -46,6 +49,8 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     objectMapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
+    module.addSerializer(JSONObject.class, new RawSerializer<Object>(Object.class));
+    module.addSerializer(JSONArray.class, new RawSerializer<Object>(Object.class));
     objectMapper.registerModule(module);
   }
 
@@ -62,6 +67,20 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
   public <T> void addSerializer(Class<T> clazz, JsonSerializer<T> serializer)
   {
     module.addSerializer(clazz, serializer);
+  }
+
+  public JSONObject toJSONObject(Object o)
+  {
+    try {
+      return new JSONObject(this.getContext(null).writeValueAsString(o));
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public <T> T fromJSONObject(JSONObject json, Class<T> clazz) throws IOException
+  {
+    return this.getContext(null).readValue(json.toString(), clazz);
   }
 
 }
