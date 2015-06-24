@@ -15,6 +15,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.common.collect.Maps;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.conf.Configuration;
@@ -34,6 +39,7 @@ import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.async.NMClientAsync;
 import org.apache.hadoop.yarn.client.api.async.impl.NMClientAsyncImpl;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.util.Clock;
@@ -42,10 +48,6 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.WebApp;
 import org.apache.hadoop.yarn.webapp.WebApps;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Maps;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context.DAGContext;
@@ -63,6 +65,7 @@ import com.datatorrent.stram.plan.physical.PTContainer;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
 import com.datatorrent.stram.security.StramDelegationTokenManager;
+import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.security.StramWSFilterInitializer;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.StramWebApp;
@@ -521,14 +524,18 @@ public class StreamingAppMasterService extends CompositeService
   private void execute() throws YarnException, IOException
   {
     LOG.info("Starting ApplicationMaster");
-
-    Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
+    final Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
     LOG.info("number of tokens: {}", credentials.getAllTokens().size());
     Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
     while (iter.hasNext()) {
       Token<?> token = iter.next();
-      LOG.debug("token: " + token);
+      LOG.debug("token: {}", token);
     }
+    final Configuration conf = getConfig();
+    long tokenLifeTime = (long)(dag.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * Math.min(dag.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME), dag.getValue(LogicalPlan.RM_TOKEN_LIFE_TIME)));
+    long expiryTime = System.currentTimeMillis() + tokenLifeTime;
+    LOG.debug(" expiry token time {}", tokenLifeTime);
+    String hdfsKeyTabFile = dag.getValue(LogicalPlan.KEY_TAB_FILE);
 
     // Register self with ResourceManager
     RegisterApplicationMasterResponse response = amRmClient.registerApplicationMaster(appMasterHostname, 0, appMasterTrackingUrl);
@@ -563,17 +570,17 @@ public class StreamingAppMasterService extends CompositeService
       // YARN-435
       // we need getClusterNodes to populate the initial node list,
       // subsequent updates come through the heartbeat response
-      clientRMService.init(getConfig());
+      clientRMService.init(conf);
       clientRMService.start();
 
       ApplicationReport ar = StramClientUtils.getStartedAppInstanceByName(clientRMService,
-              dag.getAttributes().get(DAG.APPLICATION_NAME),
-              UserGroupInformation.getLoginUser().getUserName(),
-              dag.getAttributes().get(DAG.APPLICATION_ID));
+        dag.getAttributes().get(DAG.APPLICATION_NAME),
+        UserGroupInformation.getLoginUser().getUserName(),
+        dag.getAttributes().get(DAG.APPLICATION_ID));
       if (ar != null) {
         appDone = true;
         dnmgr.shutdownDiagnosticsMessage = String.format("Application master failed due to application %s with duplicate application name \"%s\" by the same user \"%s\" is already started.",
-                ar.getApplicationId().toString(), ar.getName(), ar.getUser());
+          ar.getApplicationId().toString(), ar.getName(), ar.getUser());
         LOG.info("Forced shutdown due to {}", dnmgr.shutdownDiagnosticsMessage);
         finishApplication(FinalApplicationStatus.FAILED, numTotalContainers);
         return;
@@ -591,9 +598,17 @@ public class StreamingAppMasterService extends CompositeService
     // as of 2.2, containers won't survive AM restart, but this will change in the future - YARN-1490
     checkContainerStatus();
     FinalApplicationStatus finalStatus = FinalApplicationStatus.SUCCEEDED;
+    final InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
+      YarnConfiguration.DEFAULT_RM_ADDRESS,
+      YarnConfiguration.DEFAULT_RM_PORT);
 
     while (!appDone) {
       loopCounter++;
+
+      if (UserGroupInformation.isSecurityEnabled() && System.currentTimeMillis() >= expiryTime && hdfsKeyTabFile != null) {
+        String applicationId = appAttemptID.getApplicationId().toString();
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, "." + File.separator + "tmp", applicationId, conf, hdfsKeyTabFile, credentials, rmAddress, true);
+      }
 
       Runnable r;
       while ((r = this.pendingTasks.poll()) != null) {
@@ -982,3 +997,4 @@ public class StreamingAppMasterService extends CompositeService
   }
 
 }
+

@@ -10,6 +10,14 @@ import java.net.*;
 import java.util.*;
 import java.util.jar.JarEntry;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
@@ -19,12 +27,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tools.ant.DirectoryScanner;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.annotation.ApplicationAnnotation;
@@ -38,6 +40,7 @@ import com.datatorrent.stram.client.ClassPathResolvers.ManifestResolver;
 import com.datatorrent.stram.client.ClassPathResolvers.Resolver;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.security.StramUserLogin;
 
 /**
  * Launch a streaming application packaged as jar file
@@ -93,7 +96,7 @@ public class StramAppLauncher
         return conf.createFromProperties(LogicalPlanConfiguration.readProperties(propertyFile.getAbsolutePath()), getName());
       }
       catch (IOException e) {
-        throw new IllegalArgumentException("Failed to load: " + this + "\n"  + e.getMessage(), e);
+        throw new IllegalArgumentException("Failed to load: " + this + "\n" + e.getMessage(), e);
       }
     }
 
@@ -236,7 +239,7 @@ public class StramAppLauncher
 
       deployJars = Sets.newLinkedHashSet();
       // add all jar files from same directory
-      Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[] {"jar"}, false);
+      Collection<File> jarFiles = FileUtils.listFiles(jarFile.getParentFile(), new String[]{"jar"}, false);
       for (File lJarFile : jarFiles) {
         jfc.urls.add(lJarFile.toURI().toURL());
         deployJars.add(lJarFile);
@@ -272,11 +275,11 @@ public class StramAppLauncher
 
       URLConnection urlConnection = mainJarUrl.openConnection();
       if (urlConnection instanceof JarURLConnection) {
-      // JDK6 keeps jar file shared and open as long as the process is running.
+        // JDK6 keeps jar file shared and open as long as the process is running.
         // we want the jar file to be opened on every launch to pick up latest changes
         // http://abondar-howto.blogspot.com/2010/06/howto-unload-jar-files-loaded-by.html
         // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4167874
-        ((JarURLConnection)urlConnection).getJarFile().close();
+        ((JarURLConnection) urlConnection).getJarFile().close();
       }
       clUrls = jfc.urls;
     }
@@ -322,7 +325,7 @@ public class StramAppLauncher
       if (scheme == null) {
         // expand wildcards
         DirectoryScanner scanner = new DirectoryScanner();
-        scanner.setIncludes(new String[] {libjar});
+        scanner.setIncludes(new String[]{libjar});
         scanner.scan();
         String[] files = scanner.getIncludedFiles();
         for (String file : files) {
@@ -463,6 +466,35 @@ public class StramAppLauncher
     Configuration conf = propertiesBuilder.conf;
     conf.setEnum(StreamingApplication.ENVIRONMENT, StreamingApplication.Environment.CLUSTER);
     LogicalPlan dag = appConfig.createApp(propertiesBuilder);
+    String hdfsTokenMaxLifeTime = conf.get(StramClientUtils.HDFS_TOKEN_MAX_LIFE_TIME);
+    if (hdfsTokenMaxLifeTime != null && hdfsTokenMaxLifeTime.trim().length() > 0) {
+      dag.setAttribute(LogicalPlan.HDFS_TOKEN_LIFE_TIME, Long.parseLong(hdfsTokenMaxLifeTime));
+    }
+    String rmTokenMaxLifeTime = conf.get(StramClientUtils.RM_TOKEN_MAX_LIFE_TIME);
+    if (rmTokenMaxLifeTime != null && rmTokenMaxLifeTime.trim().length() > 0) {
+      dag.setAttribute(LogicalPlan.RM_TOKEN_LIFE_TIME, Long.parseLong(rmTokenMaxLifeTime));
+    }
+    if (conf.get(StramClientUtils.KEY_TAB_FILE) != null) {
+      dag.setAttribute(LogicalPlan.KEY_TAB_FILE, conf.get(StramClientUtils.KEY_TAB_FILE));
+    }
+    else if (conf.get(StramUserLogin.DT_AUTH_KEYTAB) != null) {
+      Path localKeyTabPath = new Path(conf.get(StramUserLogin.DT_AUTH_KEYTAB));
+      FileSystem fs = StramClientUtils.newFileSystemInstance(conf);
+      try {
+        Path destPath = new Path(StramClientUtils.getDTDFSRootDir(fs, conf), localKeyTabPath.getName());
+        if (!fs.exists(destPath)) {
+          fs.copyFromLocalFile(false, false, localKeyTabPath, destPath);
+        }
+        dag.setAttribute(LogicalPlan.KEY_TAB_FILE, destPath.toString());
+      }
+      finally {
+        fs.close();
+      }
+    }
+    String tokenRefreshFactor = conf.get(StramClientUtils.TOKEN_ANTICIPATORY_REFRESH_FACTOR);
+    if (tokenRefreshFactor != null && tokenRefreshFactor.trim().length() > 0) {
+      dag.setAttribute(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR, Double.parseDouble(tokenRefreshFactor));
+    }
     StramClient client = new StramClient(conf, dag);
     try {
       client.start();

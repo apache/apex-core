@@ -4,11 +4,6 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import com.datatorrent.common.metric.MetricsAggregator;
-import com.datatorrent.common.metric.SingleMetricAggregator;
-import com.datatorrent.common.metric.sum.DoubleSumAggregator;
-import com.datatorrent.common.metric.sum.LongSumAggregator;
-import com.datatorrent.common.util.BaseOperator;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -17,12 +12,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.validation.*;
 import javax.validation.constraints.NotNull;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Sets;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
@@ -33,6 +30,11 @@ import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OperatorAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
+import com.datatorrent.common.metric.MetricsAggregator;
+import com.datatorrent.common.metric.SingleMetricAggregator;
+import com.datatorrent.common.metric.sum.DoubleSumAggregator;
+import com.datatorrent.common.metric.sum.LongSumAggregator;
+import com.datatorrent.common.util.BaseOperator;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.Slider;
@@ -82,6 +84,12 @@ public class LogicalPlan implements Serializable, DAG
    * Then it can be moved back to DAGContext.
    */
   public static Attribute<Boolean> FAST_PUBLISHER_SUBSCRIBER = new Attribute<Boolean>(false);
+  public static Attribute<Long> HDFS_TOKEN_LIFE_TIME = new Attribute<Long>(604800000l);
+  public static Attribute<Long> RM_TOKEN_LIFE_TIME = new Attribute<Long>(YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_DEFAULT);
+  public static Attribute<String> KEY_TAB_FILE = new Attribute<String>((String) null, new StringCodec.String2String());
+  public static Attribute<Double> TOKEN_REFRESH_ANTICIPATORY_FACTOR = new Attribute<Double>(0.7);
+  public static Attribute<String> LICENSE = new Attribute<String>((String) null, new StringCodec.String2String());
+  public static Attribute<String> LICENSE_ROOT = new Attribute<String>((String) null, new StringCodec.String2String());
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.
    * The launcher will combine the list with built-in dependencies and those specified

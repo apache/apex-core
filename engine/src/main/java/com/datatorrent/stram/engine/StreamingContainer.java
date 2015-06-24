@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.engine;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.State;
 import java.lang.management.GarbageCollectorMXBean;
@@ -12,15 +13,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
-import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +27,10 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
 
@@ -60,7 +62,11 @@ import com.datatorrent.stram.debug.StdOutErrLog;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators.PortContextPair;
 import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.stream.*;
+
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 /**
  * Object which controls the container process launched by {@link com.datatorrent.stram.StreamingAppMaster}.
@@ -567,8 +573,21 @@ public class StreamingContainer extends YarnContainerMain
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
+    final YarnConfiguration conf = new YarnConfiguration();
+    long tokenLifeTime = (long)(containerContext.getValue(LogicalPlan.TOKEN_REFRESH_ANTICIPATORY_FACTOR) * containerContext.getValue(LogicalPlan.HDFS_TOKEN_LIFE_TIME));
+    long expiryTime = System.currentTimeMillis();
+    final Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
+    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
+    while (iter.hasNext()) {
+      Token<?> token = iter.next();
+      logger.debug("token: {}", token);
+    }
+    String hdfsKeyTabFile = containerContext.getValue(LogicalPlan.KEY_TAB_FILE);
     while (!exitHeartbeatLoop) {
 
+      if (UserGroupInformation.isSecurityEnabled() && System.currentTimeMillis() >= expiryTime && hdfsKeyTabFile != null) {
+        expiryTime = StramUserLogin.refreshTokens(tokenLifeTime, "." + File.separator + "tmp", containerId, conf, hdfsKeyTabFile, credentials, null, false);
+      }
       synchronized (this.heartbeatTrigger) {
         try {
           this.heartbeatTrigger.wait(heartbeatIntervalMillis);
@@ -606,11 +625,11 @@ public class StreamingContainer extends YarnContainerMain
           hb.setNodeId(e.getKey());
           hb.setGeneratedTms(currentTime);
           hb.setIntervalMs(heartbeatIntervalMillis);
-          if(e.getValue().commandResponse.size() > 0){
+          if (e.getValue().commandResponse.size() > 0) {
             BlockingQueue<StatsListener.OperatorResponse> commandResponse = e.getValue().commandResponse;
             ArrayList<StatsListener.OperatorResponse> response = new ArrayList<StatsListener.OperatorResponse>();
-            for (int i = 0; i< commandResponse.size(); i++){
-                 response.add(commandResponse.poll());
+            for (int i = 0; i < commandResponse.size(); i++) {
+              response.add(commandResponse.poll());
             }
             hb.requestResponse = response;
           }

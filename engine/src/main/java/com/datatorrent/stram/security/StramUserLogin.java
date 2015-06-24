@@ -4,15 +4,28 @@
  */
 package com.datatorrent.stram.security;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.security.PrivilegedExceptionAction;
+import java.util.Iterator;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.security.UserGroupInformation;
-
 import com.datatorrent.api.StreamingApplication;
+
+import com.datatorrent.stram.util.FSUtil;
 
 /**
  * <p>StramUserLogin class.</p>
@@ -23,13 +36,14 @@ import com.datatorrent.api.StreamingApplication;
 public class StramUserLogin
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramUserLogin.class);
-  private static final String DT_AUTH_PREFIX = StreamingApplication.DT_PREFIX + "authentication.";
-  private static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX +  "principal";
-  private static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
+  public static final String DT_AUTH_PREFIX = StreamingApplication.DT_PREFIX + "authentication.";
+  private static final String DT_AUTH_PRINCIPAL = DT_AUTH_PREFIX + "principal";
+  public static final String DT_AUTH_KEYTAB = DT_AUTH_PREFIX + "keytab";
   private static String principal;
   private static String keytab;
 
-  public static void attemptAuthentication(Configuration conf) throws IOException {
+  public static void attemptAuthentication(Configuration conf) throws IOException
+  {
     if (UserGroupInformation.isSecurityEnabled()) {
       String userPrincipal = conf.get(DT_AUTH_PRINCIPAL);
       String userKeytab = conf.get(DT_AUTH_KEYTAB);
@@ -37,9 +51,10 @@ public class StramUserLogin
     }
   }
 
-  public static void authenticate(String principal, String keytab) throws IOException {
+  public static void authenticate(String principal, String keytab) throws IOException
+  {
     if ((principal != null) && !principal.isEmpty()
-            && (keytab != null) && !keytab.isEmpty()) {
+      && (keytab != null) && !keytab.isEmpty()) {
       try {
         UserGroupInformation.loginUserFromKeytab(principal, keytab);
         LOG.info("Login user {}", UserGroupInformation.getCurrentUser().getUserName());
@@ -51,6 +66,76 @@ public class StramUserLogin
         throw ie;
       }
     }
+  }
+
+  public static long refreshTokens(long tokenLifeTime, String destinationDir, String destinationFile, final Configuration conf, String hdfsKeyTabFile, final Credentials credentials, final InetSocketAddress rmAddress, final boolean renewRMToken) throws IOException
+  {
+    long expiryTime = System.currentTimeMillis() + tokenLifeTime;
+    //renew tokens
+    final String tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL);
+    if (tokenRenewer == null || tokenRenewer.length() == 0) {
+      throw new IOException(
+        "Can't get Master Kerberos principal for the RM to use as renewer");
+    }
+    FileSystem fs = FileSystem.newInstance(conf);
+    File keyTabFile;
+    try {
+      keyTabFile = FSUtil.copyToLocalFileSystem(fs, destinationDir, destinationFile, hdfsKeyTabFile, conf);
+    }
+    finally {
+      fs.close();
+    }
+    UserGroupInformation ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(UserGroupInformation.getCurrentUser().getUserName(), keyTabFile.getAbsolutePath());
+    try {
+      ugi.doAs(new PrivilegedExceptionAction<Object>()
+      {
+        @Override
+        public Object run() throws Exception
+        {
+          FileSystem fs1 = FileSystem.newInstance(conf);
+          YarnClient yarnClient = null;
+          if (renewRMToken) {
+            yarnClient = YarnClient.createYarnClient();
+            yarnClient.init(conf);
+            yarnClient.start();
+          }
+          Credentials creds = new Credentials();
+          try {
+            fs1.addDelegationTokens(tokenRenewer, creds);
+            if (renewRMToken) {
+              org.apache.hadoop.yarn.api.records.Token rmDelToken = yarnClient.getRMDelegationToken(new Text(tokenRenewer));
+              Token<RMDelegationTokenIdentifier> rmToken = ConverterUtils.convertFromYarn(rmDelToken, rmAddress);
+              creds.addToken(rmToken.getService(), rmToken);
+            }
+          }
+          finally {
+            fs1.close();
+            if (renewRMToken) {
+              yarnClient.stop();
+            }
+          }
+          credentials.addAll(creds);
+          return null;
+        }
+      });
+      UserGroupInformation.getCurrentUser().addCredentials(credentials);
+    }
+    catch (InterruptedException e) {
+      LOG.error("Error while renewing tokens ", e);
+      expiryTime = System.currentTimeMillis();
+    }
+    catch (IOException e) {
+      LOG.error("Error while renewing tokens ", e);
+      expiryTime = System.currentTimeMillis();
+    }
+    LOG.debug("number of tokens: {}", credentials.getAllTokens().size());
+    Iterator<Token<?>> iter = credentials.getAllTokens().iterator();
+    while (iter.hasNext()) {
+      Token<?> token = iter.next();
+      LOG.debug("updated token: {}", token);
+    }
+    keyTabFile.delete();
+    return expiryTime;
   }
 
   public static String getPrincipal()

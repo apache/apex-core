@@ -43,6 +43,7 @@ import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.StramClient;
 import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
+import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigValidator;
 
 /**
@@ -65,6 +66,10 @@ public class StramClientUtils
   public static final String SUBDIR_PROFILES = "profiles";
   public static final String SUBDIR_CONF = "conf";
   public static final int RESOURCEMANAGER_CONNECT_MAX_WAIT_MS_OVERRIDE = 10 * 1000;
+  public static final String HDFS_TOKEN_MAX_LIFE_TIME = "dfs.namenode.delegation.token.max-lifetime";
+  public static final String RM_TOKEN_MAX_LIFE_TIME = YarnConfiguration.DELEGATION_TOKEN_MAX_LIFETIME_KEY;
+  public static final String KEY_TAB_FILE = StramUserLogin.DT_AUTH_PREFIX + "store.keytab";
+  public static final String TOKEN_ANTICIPATORY_REFRESH_FACTOR = StramUserLogin.DT_AUTH_PREFIX + "token.refresh.factor";
 
   /**
    * TBD<p>
@@ -227,7 +232,8 @@ public class StramClientUtils
     String envHome = System.getenv("HOME");
     if (StringUtils.isEmpty(envHome)) {
       return new File(FileUtils.getUserDirectory(), ".dt");
-    } else {
+    }
+    else {
       return new File(envHome, ".dt");
     }
   }
@@ -303,10 +309,12 @@ public class StramClientUtils
       }
       // load user config file
       addDTSiteResources(conf, new File(StramClientUtils.getUserDTDirectory(), StramClientUtils.DT_SITE_XML_FILE));
-    } catch (IOException ex) {
+    }
+    catch (IOException ex) {
       // ignore
       LOG.debug("Caught exception when loading configuration: {}: moving on...", ex.getMessage());
-    } finally {
+    }
+    finally {
       // Cannot delete the file here because addDTSiteResource which eventually calls Configuration.reloadConfiguration
       // does not actually reload the configuration.  The file is actually read later and it needs to exist.
       //
@@ -606,7 +614,8 @@ public class StramClientUtils
           target.put(entry.getKey(), newValue.toString());
         }
       }
-    } finally {
+    }
+    finally {
       org.mozilla.javascript.Context.exit();
     }
   }
@@ -616,7 +625,7 @@ public class StramClientUtils
     if (StringUtils.isNotBlank(userName) && !userName.equals(UserGroupInformation.getLoginUser().getShortUserName())) {
       LOG.info("Executing command as {}", userName);
       UserGroupInformation ugi
-              = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
+        = UserGroupInformation.createProxyUser(userName, UserGroupInformation.getLoginUser());
       return ugi.doAs(action);
     }
     else {
@@ -628,16 +637,16 @@ public class StramClientUtils
   public static ApplicationReport getStartedAppInstanceByName(YarnClient clientRMService, String appName, String user, String excludeAppId) throws YarnException, IOException
   {
     List<ApplicationReport> applications = clientRMService.getApplications(Sets.newHashSet(StramClient.YARN_APPLICATION_TYPE),
-            EnumSet.of(YarnApplicationState.RUNNING,
-                    YarnApplicationState.ACCEPTED,
-                    YarnApplicationState.NEW,
-                    YarnApplicationState.NEW_SAVING,
-                    YarnApplicationState.SUBMITTED));
+      EnumSet.of(YarnApplicationState.RUNNING,
+        YarnApplicationState.ACCEPTED,
+        YarnApplicationState.NEW,
+        YarnApplicationState.NEW_SAVING,
+        YarnApplicationState.SUBMITTED));
     // see whether there is an app with the app name and user name running
     for (ApplicationReport app : applications) {
       if (!app.getApplicationId().toString().equals(excludeAppId)
-              && app.getName().equals(appName)
-              && app.getUser().equals(user)) {
+        && app.getName().equals(appName)
+        && app.getUser().equals(user)) {
         return app;
       }
     }
