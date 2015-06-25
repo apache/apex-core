@@ -40,6 +40,7 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
 import com.datatorrent.stram.webapp.AppInfo;
+import org.apache.commons.io.IOUtils;
 
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -114,12 +115,33 @@ abstract public class StramTestSupport
    * @return      The File object that can be used in the AppPackage constructor.
    * @throws net.lingala.zip4j.exception.ZipException
    */
-  public static File createAppPackageFile(File file) throws net.lingala.zip4j.exception.ZipException {
-    ZipFile zipFile = new ZipFile(file);
-    ZipParameters zipParameters = new ZipParameters();
-    zipParameters.setIncludeRootFolder(false);
-    zipFile.createZipFileFromFolder("src/test/resources/testAppPackage/testAppPackageSrc", zipParameters, false, Long.MAX_VALUE);
-    return file;
+  public static File createAppPackageFile()
+  {
+    String appPackageDir = "src/test/resources/testAppPackage/mydtapp";
+    String command = "mvn clean package -DskipTests";
+    try {
+      Process p = Runtime.getRuntime().exec(command, null, new File(appPackageDir));
+      IOUtils.copy(p.getInputStream(), System.out);
+      IOUtils.copy(p.getErrorStream(), System.err);
+      Assert.assertEquals(0, p.waitFor());
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
+    return new File(appPackageDir, "target/mydtapp-1.0-SNAPSHOT.apa");
+  }
+
+  public static void removeAppPackageFile()
+  {
+    String appPackageDir = "src/test/resources/testAppPackage/mydtapp";
+    String command = "mvn clean";
+    try {
+      Process p = Runtime.getRuntime().exec(command, null, new File(appPackageDir));
+      IOUtils.copy(p.getInputStream(), System.out);
+      IOUtils.copy(p.getErrorStream(), System.err);
+      Assert.assertEquals(0, p.waitFor());
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   /**

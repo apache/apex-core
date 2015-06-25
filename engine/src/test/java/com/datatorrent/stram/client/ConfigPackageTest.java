@@ -84,7 +84,7 @@ public class ConfigPackageTest
   @Test
   public void testConfigPackage() throws Exception
   {
-    Assert.assertEquals("pi-demo", json.getString("appPackageName"));
+    Assert.assertEquals("mydtapp", json.getString("appPackageName"));
     Assert.assertEquals("1.0", json.getString("appPackageMinVersion"));
     Assert.assertEquals("1.9999", json.getString("appPackageMaxVersion"));
     Assert.assertEquals("classpath/*", json.getJSONArray("classPath").getString(0));

@@ -7,20 +7,18 @@ package com.datatorrent.stram.client;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.util.JSONSerializationProvider;
 import net.lingala.zip4j.exception.ZipException;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Assert;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 /**
  *
@@ -28,74 +26,52 @@ import java.util.Set;
  */
 public class AppPackageTest
 {
+  private static AppPackage ap;
+  private static JSONSerializationProvider jomp;
+  private static JSONObject json;
 
-  // file basename for the created jar
-  private static final String jarPath = "testAppPackage.jar";
+  String appPackageDir = "src/test/resources/testAppPackage/mydtapp";
 
-  // The jar file to use for the AppPackage constructor
-  private File file;
-
-  private AppPackage ap;
-  private JSONSerializationProvider jomp;
-  private JSONObject json;
-
-  public class TestMeta extends TestWatcher
+  @BeforeClass
+  public static void starting()
   {
+    try {
+      File file = StramTestSupport.createAppPackageFile();
+      // Set up test instance
+      ap = new AppPackage(file, true);
+      jomp = new JSONSerializationProvider();
+      json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
 
-    TemporaryFolder testFolder = new TemporaryFolder();
-
-    @Override
-    protected void starting(Description description) {
-      try {
-
-        // Set up jar file to use with constructor
-        testFolder.create();
-        file = StramTestSupport.createAppPackageFile(new File(testFolder.getRoot(), jarPath));
-
-        // Set up test instance
-        ap = new AppPackage(file, true);
-        jomp = new JSONSerializationProvider();
-        json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
-
-      } catch (ZipException e) {
-        throw new RuntimeException(e);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      } catch (JSONException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    @Override
-    protected void finished(Description description) {
-      super.finished(description);
-      try {
-        FileUtils.forceDelete(file);
-        testFolder.delete();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+    } catch (ZipException e) {
+      throw new RuntimeException(e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (JSONException e) {
+      throw new RuntimeException(e);
     }
   }
 
-  @Rule
-  public TestMeta testMeta = new TestMeta();
+  @AfterClass
+  public static void finished()
+  {
+    StramTestSupport.removeAppPackageFile();
+  }
 
   @Test
   public void testAppPackage() throws Exception
   {
-    Assert.assertEquals("pi-demo", json.getString("appPackageName"));
-    Assert.assertEquals("1.0", json.getString("appPackageVersion"));
-    Assert.assertEquals("1.0.0", json.getString("dtEngineVersion"));
+    Assert.assertEquals("mydtapp", json.getString("appPackageName"));
+    Assert.assertEquals("1.0-SNAPSHOT", json.getString("appPackageVersion"));
+    Assert.assertEquals("2.2.0-SNAPSHOT", json.getString("dtEngineVersion"));
     Assert.assertEquals("lib/*.jar", json.getJSONArray("classPath").getString(0));
 
     JSONObject application = json.getJSONArray("applications").getJSONObject(0);
-    Assert.assertEquals("PiCalculator", application.getString("name"));
-    Assert.assertEquals("pi-demo-1.0-SNAPSHOT.jar", application.getString("file"));
+    Assert.assertEquals("MyFirstApplication", application.getString("name"));
+    Assert.assertEquals("mydtapp-1.0-SNAPSHOT.jar", application.getString("file"));
 
     JSONObject dag = application.getJSONObject("dag");
     Assert.assertTrue("There is at least one stream", dag.getJSONArray("streams").length() >= 1);
-    Assert.assertTrue("There is at least one operator", dag.getJSONArray("operators").length() >= 1);
+    Assert.assertEquals("There are two operator", 2, dag.getJSONArray("operators").length());
   }
 
   @Test
@@ -113,7 +89,7 @@ public class AppPackageTest
   {
     List<AppPackage.AppInfo> applications = ap.getApplications();
     for (AppPackage.AppInfo app : applications) {
-      if (app.name.equals("PiCalculator")) {
+      if (app.name.equals("MyFirstApplication")) {
         String[] rp = app.requiredProperties.toArray(new String[]{});
         Assert.assertEquals("dt.test.required.2", rp[0]);
         Assert.assertEquals("dt.test.required.3", rp[1]);
@@ -121,6 +97,6 @@ public class AppPackageTest
         return;
       }
     }
-    Assert.fail("Should consist of an app called PiCalculator");
+    Assert.fail("Should consist of an app called MyFirstApplication");
   }
 }

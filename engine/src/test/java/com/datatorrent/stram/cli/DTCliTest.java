@@ -9,14 +9,16 @@ import com.datatorrent.stram.client.ConfigPackage;
 import com.datatorrent.stram.client.DTConfiguration;
 import com.datatorrent.stram.support.StramTestSupport;
 import com.datatorrent.stram.support.StramTestSupport.TestHomeDirectory;
-import com.datatorrent.stram.util.JSONSerializationProvider;
+import static com.datatorrent.stram.support.StramTestSupport.setEnv;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.commons.io.FileUtils;
-import org.codehaus.jettison.json.JSONObject;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.Description;
 
 /**
  *
@@ -31,60 +33,52 @@ public class DTCliTest
   private static final String configJarPath = "testConfigPackage.jar";
 
   // The jar file to use for the AppPackage constructor
-  private File appFile;
-  private File configFile;
+  private static File appFile;
+  private static File configFile;
 
 
-  private AppPackage ap;
-  private ConfigPackage cp;
-  private JSONSerializationProvider jomp;
-  private JSONObject json;
-  DTCli cli = new DTCli();
+  private static AppPackage ap;
+  private static ConfigPackage cp;
+  static TemporaryFolder testFolder = new TemporaryFolder();
+  static DTCli cli = new DTCli();
 
-  public class TestMeta extends TestHomeDirectory
+  static Map<String, String> env = new HashMap<String, String>();
+  static String userHome;
+
+  @BeforeClass
+  public static void starting()
   {
+    try {
+      userHome = System.getProperty("user.home");
+      env.put("HOME", System.getProperty("user.dir") + "/src/test/resources/testAppPackage");
+      setEnv(env);
 
-    TemporaryFolder testFolder = new TemporaryFolder();
-
-    @Override
-    protected void starting(Description description)
-    {
-      super.starting(description);
-      try {
-        cli.init();
-        // Set up jar file to use with constructor
-        testFolder.create();
-        appFile = StramTestSupport.createAppPackageFile(new File(testFolder.getRoot(), appJarPath));
-        configFile = StramTestSupport.createConfigPackageFile(new File(testFolder.getRoot(), configJarPath));
-
-        // Set up test instance
-        ap = new AppPackage(appFile, true);
-        cp = new ConfigPackage(configFile);
-        jomp = new JSONSerializationProvider();
-        json = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
-
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      } 
-    }
-
-    @Override
-    protected void finished(Description description)
-    {
-      super.finished(description);
-
-      try {
-        FileUtils.forceDelete(appFile);
-        FileUtils.forceDelete(configFile);
-        testFolder.delete();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      cli.init();
+      // Set up jar file to use with constructor
+      testFolder.create();
+      appFile = StramTestSupport.createAppPackageFile();
+      configFile = StramTestSupport.createConfigPackageFile(new File(testFolder.getRoot(), configJarPath));
+      ap = new AppPackage(appFile, true);
+      cp = new ConfigPackage(configFile);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
-  @Rule
-  public TestMeta testMeta = new TestMeta();
+  @AfterClass
+  public static void finished()
+  {
+    try {
+      env.put("HOME", System.getProperty("user.dir") + userHome);
+      setEnv(env);
+
+      StramTestSupport.removeAppPackageFile();
+      FileUtils.forceDelete(configFile);
+      testFolder.delete();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Test
   public void testLaunchAppPackagePropertyPrecedence() throws Exception
@@ -100,7 +94,7 @@ public class DTCliTest
     Assert.assertEquals("user-home-config", props.get("dt.test.4"));
     Assert.assertEquals("package-default", props.get("dt.test.5"));
 
-    props = cli.getLaunchAppPackageProperties(ap, null, commandLineInfo, "PiCalculator");
+    props = cli.getLaunchAppPackageProperties(ap, null, commandLineInfo, "MyFirstApplication");
     Assert.assertEquals("launch-define", props.get("dt.test.1"));
     Assert.assertEquals("local-fs-config", props.get("dt.test.2"));
     Assert.assertEquals("app-package-config", props.get("dt.test.3"));
@@ -112,7 +106,7 @@ public class DTCliTest
   @Test
   public void testLaunchAppPackageParametersWithConfigPackage() throws Exception
   {
-    DTCli.LaunchCommandLineInfo commandLineInfo = DTCli.getLaunchCommandLineInfo(new String[]{"-exactMatch", "-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "PiCalculator"});
+    DTCli.LaunchCommandLineInfo commandLineInfo = DTCli.getLaunchCommandLineInfo(new String[]{"-exactMatch", "-conf", configFile.getAbsolutePath(), appFile.getAbsolutePath(), "MyFirstApplication"});
     String[] args = cli.getLaunchAppPackageArgs(ap, cp, commandLineInfo, null);
     commandLineInfo = DTCli.getLaunchCommandLineInfo(args);
     StringBuilder sb = new StringBuilder();
@@ -156,7 +150,7 @@ public class DTCliTest
     Assert.assertEquals("user-home-config", props.get("dt.test.4"));
     Assert.assertEquals("package-default", props.get("dt.test.5"));
 
-    props = cli.getLaunchAppPackageProperties(ap, cp, commandLineInfo, "PiCalculator");
+    props = cli.getLaunchAppPackageProperties(ap, cp, commandLineInfo, "MyFirstApplication");
     Assert.assertEquals("launch-define", props.get("dt.test.1"));
     Assert.assertEquals("config-package-appname", props.get("dt.test.2"));
     Assert.assertEquals("app-package-config", props.get("dt.test.3"));

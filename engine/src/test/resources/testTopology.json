@@ -25,7 +25,7 @@
           "attributes": {
             "UNIFIER_LIMIT": 8,
             "STREAM_CODEC" : {
-              "com.datatorrent.lib.codec.JsonStreamCodec" : {}
+              "com.datatorrent.common.codec.JsonStreamCodec" : {}
             }
           }
         }
@@ -104,7 +104,7 @@
   "attributes": {
     "CONTAINER_JVM_OPTIONS" : "-Xmx16m",
     "CONTAINER_OPTS_CONFIGURATOR" : {
-      "com.datatorrent.lib.util.BasicContainerOptConfigurator" : {}
+      "com.datatorrent.common.util.BasicContainerOptConfigurator" : {}
     },
     "STRING_CODECS" : "java.lang.Integer=com.datatorrent.api.StringCodec$Integer2String"
   }
