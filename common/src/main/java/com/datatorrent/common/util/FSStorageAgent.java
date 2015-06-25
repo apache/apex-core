@@ -8,16 +8,19 @@
 package com.datatorrent.common.util;
 
 import java.io.*;
+import java.net.URI;
+import java.util.EnumSet;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.FileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.collect.Lists;
 
 import com.datatorrent.api.StorageAgent;
 import com.datatorrent.api.annotation.Stateless;
@@ -34,7 +37,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
   public static final String TMP_FILE = "._COPYING_";
   protected static final String STATELESS_CHECKPOINT_WINDOW_ID = Long.toHexString(Stateless.WINDOW_ID);
   public final String path;
-  protected final transient FileSystem fs;
+  protected final transient FileContext fileContext;
   protected static final transient Kryo kryo;
 
   static {
@@ -45,7 +48,7 @@ public class FSStorageAgent implements StorageAgent, Serializable
   private FSStorageAgent()
   {
     path = null;
-    fs = null;
+    fileContext = null;
   }
 
   public FSStorageAgent(String path, Configuration conf)
@@ -54,17 +57,13 @@ public class FSStorageAgent implements StorageAgent, Serializable
     try {
       logger.debug("Initialize storage agent with {}.", path);
       Path lPath = new Path(path);
-      fs = FileSystem.newInstance(lPath.toUri(), conf == null ? new Configuration() : conf);
-      try {
-        if (fs.mkdirs(lPath)) {
-          fs.setWorkingDirectory(lPath);
-        }
+      URI pathUri = lPath.toUri();
+
+      if (pathUri.getScheme() != null) {
+        fileContext = FileContext.getFileContext(pathUri, conf == null ? new Configuration() : conf);
       }
-      catch (IOException e) {
-        // some file system (MapR) throw exception if folder exists
-        if (!fs.exists(lPath)) {
-          throw e;
-        }
+      else {
+        fileContext = FileContext.getFileContext(conf == null ? new Configuration() : conf);
       }
     }
     catch (IOException ex) {
@@ -72,28 +71,18 @@ public class FSStorageAgent implements StorageAgent, Serializable
     }
   }
 
-  @Override
-  @SuppressWarnings("FinalizeDeclaration")
-  protected void finalize() throws Throwable
-  {
-    if (fs != null) {
-      logger.debug("Finalize storage agent with {}.", path);
-      fs.close();
-    }
-    super.finalize();
-  }
-
   @SuppressWarnings("ThrowFromFinallyBlock")
   @Override
   public void save(Object object, int operatorId, long windowId) throws IOException
   {
     String operatorIdStr = String.valueOf(operatorId);
-    Path lPath = new Path(operatorIdStr, TMP_FILE);
+    Path lPath = new Path(path + Path.SEPARATOR + operatorIdStr + Path.SEPARATOR + TMP_FILE);
     String window = Long.toHexString(windowId);
     boolean stateSaved = false;
     FSDataOutputStream stream = null;
     try {
-      stream = fs.create(lPath);
+      stream = fileContext.create(lPath, EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE),
+        Options.CreateOpts.CreateParent.createParent());
       store(stream, object);
       stateSaved = true;
     }
@@ -108,14 +97,15 @@ public class FSStorageAgent implements StorageAgent, Serializable
           stream.close();
         }
       }
-      catch (IOException ie){
-         stateSaved = false;
-         throw new RuntimeException(ie);
+      catch (IOException ie) {
+        stateSaved = false;
+        throw new RuntimeException(ie);
       }
       finally {
         if (stateSaved) {
           logger.debug("Saving {}: {}", operatorId, window);
-          fs.rename(lPath, new Path(operatorIdStr, window));
+          fileContext.rename(lPath, new Path(path + Path.SEPARATOR + operatorIdStr + Path.SEPARATOR + window),
+            Options.Rename.OVERWRITE);
         }
       }
     }
@@ -124,10 +114,10 @@ public class FSStorageAgent implements StorageAgent, Serializable
   @Override
   public Object load(int operatorId, long windowId) throws IOException
   {
-    Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
+    Path lPath = new Path(path + Path.SEPARATOR + String.valueOf(operatorId) + Path.SEPARATOR + Long.toHexString(windowId));
     logger.debug("Loading: {}", lPath);
 
-    FSDataInputStream stream = fs.open(lPath);
+    FSDataInputStream stream = fileContext.open(lPath);
     try {
       return retrieve(stream);
     }
@@ -139,37 +129,36 @@ public class FSStorageAgent implements StorageAgent, Serializable
   @Override
   public void delete(int operatorId, long windowId) throws IOException
   {
-    Path lPath = new Path(String.valueOf(operatorId), Long.toHexString(windowId));
+    Path lPath = new Path(path + Path.SEPARATOR + String.valueOf(operatorId) + Path.SEPARATOR + Long.toHexString(windowId));
     logger.debug("Deleting: {}", lPath);
 
-    fs.delete(lPath, false);
+    fileContext.delete(lPath, false);
   }
 
   @Override
   public long[] getWindowIds(int operatorId) throws IOException
   {
-    Path lPath = new Path(String.valueOf(operatorId));
+    Path lPath = new Path(path + Path.SEPARATOR + String.valueOf(operatorId));
 
-    FileStatus[] files = fs.listStatus(lPath);
-    if (files == null || files.length == 0) {
+    RemoteIterator<FileStatus> fileStatusRemoteIterator = fileContext.listStatus(lPath);
+    if (!fileStatusRemoteIterator.hasNext()) {
       throw new IOException("Storage Agent has not saved anything yet!");
     }
-
-    long windowIds[] = new long[files.length];
-    for (int i = files.length; i-- > 0; ) {
-      String name = files[i].getPath().getName();
+    List<Long> lwindows = Lists.newArrayList();
+    do {
+      FileStatus fileStatus = fileStatusRemoteIterator.next();
+      String name = fileStatus.getPath().getName();
       if (name.equals(TMP_FILE)) {
         continue;
       }
-      windowIds[i] = STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Stateless.WINDOW_ID : Long.parseLong(name, 16);
+      lwindows.add(STATELESS_CHECKPOINT_WINDOW_ID.equals(name) ? Stateless.WINDOW_ID : Long.parseLong(name, 16));
+    }
+    while (fileStatusRemoteIterator.hasNext());
+    long[] windowIds = new long[lwindows.size()];
+    for (int i = 0; i < windowIds.length; i++) {
+      windowIds[i] = lwindows.get(i);
     }
     return windowIds;
-  }
-
-  @Override
-  public String toString()
-  {
-    return fs.toString();
   }
 
   public static void store(OutputStream stream, Object operator)

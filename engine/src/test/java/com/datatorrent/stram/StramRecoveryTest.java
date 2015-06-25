@@ -374,7 +374,7 @@ public class StramRecoveryTest
 
     Assert.assertNotNull("operator", dag.getOperatorMeta("o1"));
     PTOperator o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
-    long[] ids = new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration(false)).getWindowIds(o1p1.getId());
+    long[] ids = new FSStorageAgent(appPath1 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration()).getWindowIds(o1p1.getId());
     Assert.assertArrayEquals(new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
 
     Assert.assertNull(o1p1.getContainer().getExternalId());
@@ -385,7 +385,7 @@ public class StramRecoveryTest
     dag = new LogicalPlan();
     dag.setAttribute(LogicalPlan.APPLICATION_PATH, appPath2);
     dag.setAttribute(LogicalPlan.APPLICATION_ID, appId2);
-    StramClient sc = new StramClient(new Configuration(false), dag);
+    StramClient sc = new StramClient(new Configuration(), dag);
     try {
       sc.start();
       sc.copyInitialState(new Path(appPath1));
@@ -402,7 +402,7 @@ public class StramRecoveryTest
     o1p1 = plan.getOperators(dag.getOperatorMeta("o1")).get(0);
     assertEquals("journal copied", "cid1", o1p1.getContainer().getExternalId());
 
-    ids = new FSStorageAgent(appPath2 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration(false)).getWindowIds(o1p1.getId());
+    ids = new FSStorageAgent(appPath2 + "/" + LogicalPlan.SUBDIR_CHECKPOINTS, new Configuration()).getWindowIds(o1p1.getId());
     Assert.assertArrayEquals("checkpoints copied", new long[] {o1p1.getRecoveryCheckpoint().getWindowId()}, ids);
 
   }
