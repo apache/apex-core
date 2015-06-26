@@ -194,6 +194,11 @@ public class TypeDiscoveryTest
     Assert.assertNotNull("partitioner", partitionerAttr);
     Assert.assertEquals("partitioner type", "com.datatorrent.api.Partitioner", partitionerAttr.getString("type"));
     Assert.assertNotNull("type args", partitionerAttr.getJSONArray("typeArgs"));
+
+    JSONObject processingModeAttr = attributesMap.get("PROCESSING_MODE");
+    Assert.assertNotNull("processingModeAttr", processingModeAttr);
+    Assert.assertEquals("processing mode type", "com.datatorrent.api.Operator$ProcessingMode", processingModeAttr.getString("type"));
+    Assert.assertEquals("ui type", "Enum", processingModeAttr.getString("uiType"));
   }
 
   @Test
