@@ -1,6 +1,17 @@
 /**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
- * All rights reserved.
+ * Copyright (C) 2015 DataTorrent, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.datatorrent.stram.plan.logical;
 
@@ -1153,7 +1164,7 @@ public class LogicalPlanConfiguration {
    */
   public void prepareDAG(LogicalPlan dag, StreamingApplication app, String name)
   {
-    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used -- david, pramod, chetan
+    // EVENTUALLY to be replaced by variable enabled configuration in the demo where the attt below is used 
     String connectAddress = conf.get(StreamingApplication.DT_PREFIX + Context.DAGContext.GATEWAY_CONNECT_ADDRESS.getName());
     dag.setAttribute(Context.DAGContext.GATEWAY_CONNECT_ADDRESS, connectAddress == null? conf.get(GATEWAY_LISTEN_ADDRESS): connectAddress);
     if (app != null) {

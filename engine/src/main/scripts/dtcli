@@ -3,9 +3,6 @@
 # DataTorrent command line utility.
 # For more info see docs on http://www.datatorrent.com/
 #
-# Authors: Sasha Parfenov (sasha@datatorrent.com)
-#          David Yan (david@datatorrent.com)
-#   
 # Copyright: (c) 2014 DataTorrent, Inc. All rights reserved.
 
 # Support functions
