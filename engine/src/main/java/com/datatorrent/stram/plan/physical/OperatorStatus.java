@@ -71,6 +71,7 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   private final int throughputCalculationInterval;
   private final int throughputCalculationMaxSamples;
 
+
   public OperatorStatus(int operatorId, LogicalPlan.OperatorMeta om)
   {
     this.operatorId = operatorId;
@@ -82,7 +83,8 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
 
     cpuNanosPMSMA = new TimedMovingAverageLong(throughputCalculationMaxSamples, throughputCalculationInterval);
     latencyMA = new MovingAverageLong(throughputCalculationInterval / heartbeatInterval);
-    this.windowProcessingTimeoutMillis = dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS) * om.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT);
+    this.windowProcessingTimeoutMillis = dag.getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS)
+      * om.getValue(OperatorContext.TIMEOUT_WINDOW_COUNT);
   }
 
   public boolean isIdle()
@@ -164,5 +166,4 @@ public class OperatorStatus implements BatchedOperatorStats, java.io.Serializabl
   {
     return new SerializationProxy(this);
   }
-
 }

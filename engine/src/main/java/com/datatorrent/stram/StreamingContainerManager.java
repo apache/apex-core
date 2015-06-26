@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.common.experimental.AppData;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -12,7 +13,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import static java.lang.Thread.sleep;
 
 import javax.annotation.Nullable;
 
@@ -29,11 +29,6 @@ import com.google.common.collect.Sets;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -41,6 +36,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -50,6 +47,11 @@ import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
 
 import com.datatorrent.common.util.FSStorageAgent;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -60,6 +62,7 @@ import com.datatorrent.api.annotation.Stateless;
 
 import com.datatorrent.bufferserver.util.Codec;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
@@ -104,6 +107,11 @@ public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   public final static String GATEWAY_LOGIN_URL_PATH = "/ws/v2/login";
+  public final static String BUILTIN_APPDATA_URL = "builtin";
+  public final static String APP_META_FILENAME = "meta.json";
+  public final static String APP_META_KEY_ATTRIBUTES = "attributes";
+  public final static String APP_META_KEY_CUSTOM_METRICS = "customMetrics";
+
   public final static long LATENCY_WARNING_THRESHOLD_MILLIS = 10 * 60 * 1000; // 10 minutes
   public final static Recoverable SET_OPERATOR_PROPERTY = new SetOperatorProperty();
   public final static Recoverable SET_PHYSICAL_OPERATOR_PROPERTY = new SetPhysicalOperatorProperty();
@@ -145,6 +153,7 @@ public class StreamingContainerManager implements PlanContext
   private final ConcurrentHashMap<String, MovingAverageLong> rpcLatencies = new ConcurrentHashMap<String, MovingAverageLong>();
   private final AtomicLong nodeToStramRequestIds = new AtomicLong(1);
   private long allocatedMemoryBytes = 0;
+  private List<AppDataSource> appDataSources = null;
   private final Cache<Long, Object> commandResponse = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
   private long lastLatencyWarningTime;
 
@@ -302,14 +311,20 @@ public class StreamingContainerManager implements PlanContext
       this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
     }
     this.plan = new PhysicalPlan(dag, this);
+    setupWsClient();
     setupRecording(enableEventRecording);
     setupStringCodecs();
     this.journal = new Journal(this);
     try {
-      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
-      this.containerFile.append(getAppMasterContainerInfo());
+      saveMetaInfo();
+    } catch (IOException ex) {
+      LOG.error("Error saving meta info to DFS", ex);
     }
-    catch (IOException ex) {
+
+    try {
+      this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short)0644));
+      this.containerFile.append(getAppMasterContainerInfo());
+    } catch (IOException ex) {
       LOG.warn("Caught exception when instantiating for container info file. Ignoring", ex);
     }
   }
@@ -320,14 +335,19 @@ public class StreamingContainerManager implements PlanContext
     this.clock = new SystemClock();
     this.plan = checkpointedState.physicalPlan;
     this.eventBus = new MBassador<StramEvent>(BusConfiguration.Default(1, 1, 1));
+    setupWsClient();
     setupRecording(enableEventRecording);
     setupStringCodecs();
     this.journal = new Journal(this);
     try {
+      saveMetaInfo();
+    } catch (IOException ex) {
+      LOG.error("Error saving meta info to DFS", ex);
+    }
+    try {
       this.containerFile = new FSJsonLineFile(new Path(this.vars.appPath + "/containers"), new FsPermission((short) 0644));
       this.containerFile.append(getAppMasterContainerInfo());
-    }
-    catch (IOException ex) {
+    } catch (IOException ex) {
       LOG.error("Caught exception when instantiating for container info file", ex);
     }
   }
@@ -406,7 +426,6 @@ public class StreamingContainerManager implements PlanContext
       statsRecorder.setup();
     }
     if (enableEventRecording) {
-      setupWsClient();
       eventRecorder = new FSEventRecorder(plan.getLogicalPlan().getValue(LogicalPlan.APPLICATION_ID));
       eventRecorder.setBasePath(this.vars.appPath + "/" + LogicalPlan.SUBDIR_EVENTS);
       eventRecorder.setWebSocketClient(wsClient);
@@ -483,6 +502,124 @@ public class StreamingContainerManager implements PlanContext
   {
     return wsClient != null && wsClient.isConnectionOpen();
   }
+
+  public SharedPubSubWebSocketClient getWsClient()
+  {
+    return wsClient;
+  }
+
+  private String convertAppDataUrl(String url)
+  {
+    if (BUILTIN_APPDATA_URL.equals(url)) {
+      return url;
+    }
+    /*else if (url != null) {      String messageProxyUrl = this.plan.getLogicalPlan().getAttributes().get(Context.DAGContext.APPLICATION_DATA_MESSAGE_PROXY_URL);
+      if (messageProxyUrl != null) {
+        StringBuilder convertedUrl = new StringBuilder(messageProxyUrl);
+        convertedUrl.append("?url=");
+        try {
+          convertedUrl.append(URLEncoder.encode(url, "UTF-8"));
+          return convertedUrl.toString();
+        } catch (UnsupportedEncodingException ex) {
+          LOG.warn("URL {} cannot be encoded", url);
+        }
+      }
+    }
+     */
+    LOG.warn("App Data URL {} cannot be converted for the client.", url);
+    return url;
+  }
+
+  private final Object appDataSourcesLock = new Object();
+
+  public List<AppDataSource> getAppDataSources()
+  {
+    synchronized (appDataSourcesLock) {
+      if (appDataSources == null) {
+        appDataSources = new ArrayList<AppDataSource>();
+        operators:
+        for (LogicalPlan.OperatorMeta operatorMeta : plan.getLogicalPlan().getAllOperators()) {
+          Map<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> inputStreams = operatorMeta.getInputStreams();
+          Map<LogicalPlan.OutputPortMeta, LogicalPlan.StreamMeta> outputStreams = operatorMeta.getOutputStreams();
+
+          String queryOperatorName = null;
+          String queryUrl = null;
+          String queryTopic = null;
+
+          LOG.warn("DEBUG: looking at operator {} {}", operatorMeta.getName(), Thread.currentThread().getId());
+          for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> entry : inputStreams.entrySet()) {
+            LogicalPlan.InputPortMeta portMeta = entry.getKey();
+            if (portMeta.isAppDataQueryPort()) {
+              if (queryUrl == null) {
+                OperatorMeta queryOperatorMeta = entry.getValue().getSource().getOperatorMeta();
+                if (queryOperatorMeta.getOperator() instanceof AppData.ConnectionInfoProvider) {
+                  AppData.ConnectionInfoProvider queryOperator = (AppData.ConnectionInfoProvider) queryOperatorMeta.getOperator();
+                  queryOperatorName = queryOperatorMeta.getName();
+                  queryUrl = queryOperator.getAppDataURL();
+                  queryTopic = queryOperator.getTopic();
+                }
+              } else {
+                LOG.warn("Multiple query ports found in operator {}. Ignoring the App Data Source.", operatorMeta.getName());
+                continue operators;
+              }
+            }
+          }
+
+          for (Map.Entry<LogicalPlan.OutputPortMeta, LogicalPlan.StreamMeta> entry : outputStreams.entrySet()) {
+            LogicalPlan.OutputPortMeta portMeta = entry.getKey();
+            LOG.warn("DEBUG: looking at port {} {}", portMeta.getPortName(), Thread.currentThread().getId());
+
+            if (portMeta.isAppDataResultPort()) {
+              AppDataSource appDataSource = new AppDataSource();
+              appDataSource.setType(AppDataSource.Type.DAG);
+              appDataSource.setOperatorName(operatorMeta.getName());
+              appDataSource.setPortName(portMeta.getPortName());
+
+              if (queryOperatorName == null) {
+                LOG.warn("There is no query operator for the App Data Source {}.{}. Ignoring the App Data Source.", operatorMeta.getName(), portMeta.getPortName());
+                continue;
+              }
+              appDataSource.setQueryOperatorName(queryOperatorName);
+              appDataSource.setQueryTopic(queryTopic);
+              appDataSource.setQueryUrl(convertAppDataUrl(queryUrl));
+              List<LogicalPlan.InputPortMeta> sinks = entry.getValue().getSinks();
+              if (sinks.isEmpty()) {
+                LOG.warn("There is no result operator for the App Data Source {}.{}. Ignoring the App Data Source.", operatorMeta.getName(), portMeta.getPortName());
+                continue;
+              }
+              if (sinks.size() > 1) {
+                LOG.warn("There are multiple result operators for the App Data Source {}.{}. Ignoring the App Data Source.", operatorMeta.getName(), portMeta.getPortName());
+                continue;
+              }
+              OperatorMeta resultOperatorMeta = sinks.get(0).getOperatorWrapper();
+              if (resultOperatorMeta.getOperator() instanceof AppData.ConnectionInfoProvider) {
+                AppData.ConnectionInfoProvider resultOperator = (AppData.ConnectionInfoProvider) resultOperatorMeta.getOperator();
+                appDataSource.setResultOperatorName(resultOperatorMeta.getName());
+                appDataSource.setResultTopic(resultOperator.getTopic());
+                appDataSource.setResultUrl(convertAppDataUrl(resultOperator.getAppDataURL()));
+                AppData.AppendQueryIdToTopic queryIdAppended = resultOperator.getClass().getAnnotation(AppData.AppendQueryIdToTopic.class);
+                if (queryIdAppended != null && queryIdAppended.value()) {
+                  appDataSource.setResultAppendQIDTopic(true);
+                }
+              } else {
+                LOG.warn("Result operator for the App Data Source {}.{} does not implement the right interface. Ignoring the App Data Source.", operatorMeta.getName(), portMeta.getPortName());
+                continue;
+              }
+              LOG.warn("DEBUG: Adding appDataSource {} {}", appDataSource.getName(), Thread.currentThread().getId());
+              appDataSources.add(appDataSource);
+            }
+          }
+        }
+      }
+    }
+    return appDataSources;
+  }
+
+  public Map<String, Map<String, Object>> getCustomMetrics()
+  {
+    return latestLogicalMetrics;
+  }
+
 
   /**
    * Check periodically that deployed containers phone home.
@@ -571,7 +708,7 @@ public class StreamingContainerManager implements PlanContext
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
-
+      //logicalMetrics.clear();
       int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
@@ -681,11 +818,52 @@ public class StreamingContainerManager implements PlanContext
         }
         LOG.debug("Adding to logical customMetrics for {}", operatorMeta.getName());
         windowMetrics.add(new Pair<Long, Map<String, Object>>(windowId, lm));
+        if (!latestLogicalMetrics.containsKey(operatorMeta.getName())) {
+          try {
+            saveMetaInfo();
+          } catch (IOException ex) {
+            LOG.error("Cannot save application meta info to DFS. App data sources will not be available.", ex);
+          }
+        }
         latestLogicalMetrics.put(operatorMeta.getName(), lm);
       }
     }
   }
 
+  /**
+   * This method is for saving meta information about this application in HDFS -- the meta information that generally
+   * does not change across multiple attempts
+   */
+  private void saveMetaInfo() throws IOException
+  {
+    Path path = new Path(this.vars.appPath, APP_META_FILENAME + "." + System.nanoTime());
+    FileSystem fs = FileSystem.newInstance(path.toUri(), new Configuration());
+    try {
+      FSDataOutputStream os = fs.create(path);
+      try {
+        JSONObject top = new JSONObject();
+        JSONObject attributes = new JSONObject();
+        for (Map.Entry<Attribute<?>, Object> entry : this.plan.getLogicalPlan().getAttributes().entrySet()) {
+          attributes.put(entry.getKey().getSimpleName(), entry.getValue());
+        }
+        JSONObject customMetrics = new JSONObject();
+        for (Map.Entry<String, Map<String, Object>> entry : latestLogicalMetrics.entrySet()) {
+          customMetrics.put(entry.getKey(), new JSONArray(entry.getValue().keySet()));
+        }
+        top.put(APP_META_KEY_ATTRIBUTES, attributes);
+        top.put(APP_META_KEY_CUSTOM_METRICS, customMetrics);
+        os.write(top.toString().getBytes());
+      } catch (JSONException ex) {
+        throw new RuntimeException(ex);
+      } finally {
+        os.close();
+      }
+      Path origPath = new Path(this.vars.appPath, APP_META_FILENAME);
+      fs.rename(path, origPath);
+    } finally {
+      fs.close();
+    }
+  }
 
   public Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName)
   {
@@ -762,7 +940,6 @@ public class StreamingContainerManager implements PlanContext
       }
     }
   }
-
   /*
    * returns cumulative latency
    */
@@ -1718,6 +1895,12 @@ public class StreamingContainerManager implements PlanContext
     }
 
     ctx.visited.add(operator);
+  }
+
+  public long windowIdToMillis(long windowId)
+  {
+    int widthMillis = plan.getLogicalPlan().getValue(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS);
+    return WindowGenerator.getWindowMillis(windowId, this.vars.windowStartMillis, widthMillis);
   }
 
   /**
@@ -2791,7 +2974,7 @@ public class StreamingContainerManager implements PlanContext
       Object obj;
       long expiryTime = System.currentTimeMillis() + waitTime;
       while ((obj = commandResponse.getIfPresent(requestId)) == null && expiryTime > System.currentTimeMillis()) {
-        sleep(100);
+        Thread.sleep(100);
         LOG.debug("Polling for a response to request with Id {}", requestId);
       }
       if(obj != null) {

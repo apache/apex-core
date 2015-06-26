@@ -317,6 +317,11 @@ public interface Context
      */
     Attribute<String> APPLICATION_DATA_LINK = new Attribute<String>(new String2String());
     /**
+     * Transport to push the stats and the custom metrics, "builtin:{topic}" if STRAM should push the data directly
+     * using websocket with the given topic
+     */
+    Attribute<String> METRICS_TRANSPORT = new Attribute<String>(new String2String());
+    /**
      * Application instance identifier. An application with the same name can run in multiple instances, each with a
      * unique identifier. The identifier is set by the client that submits the application and can be used in operators
      * along with the operator ID to segregate output etc.
@@ -326,6 +331,11 @@ public interface Context
      * the integer offset will reset on RM restart.
      */
     Attribute<String> APPLICATION_ID = new Attribute<String>(new String2String());
+    /**
+     * Application package source. If the application is launched using an app package, this attribute contains the
+     * information of the app package. It is in the format of {user}|{appPackageName}|{appPackageVersion}
+     */
+    Attribute<String> APP_PACKAGE_SOURCE = new Attribute<String>(new String2String());
     /**
      * Dump extra debug information in launcher, master and containers.
      */

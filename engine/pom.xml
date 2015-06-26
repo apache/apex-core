@@ -296,11 +296,23 @@
       <artifactId>commons-codec</artifactId>
       <version>1.10</version>
     </dependency>
-    	<dependency>
-    	<groupId>asm</groupId>
-    	<artifactId>asm-tree</artifactId>
-    <version>3.2</version>
-	</dependency>
+    <dependency>
+      <groupId>asm</groupId>
+      <artifactId>asm-tree</artifactId>
+      <version>3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>${jetty.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-websocket</artifactId>
+      <version>${jetty.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>

@@ -43,21 +43,16 @@ import org.xml.sax.InputSource;
 import static org.junit.Assert.*;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
-
-import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 
 import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StreamingContainerManager;
-import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.requests.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.requests.SetOperatorPropertyRequest;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.TestAppContext;
 import com.datatorrent.stram.webapp.StramWebApp.JAXBContextResolver;
 import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
 
@@ -72,105 +67,6 @@ public class StramWebServicesTest extends JerseyTest
 {
   private static Configuration conf = new Configuration();
   private static TestAppContext appContext;
-
-  static class TestAppContext extends BaseContext implements StramAppContext
-  {
-    final ApplicationAttemptId appAttemptID;
-    final ApplicationId appID;
-    final String appPath = "/testPath";
-    final String userId = "testUser";
-    final long startTime = System.currentTimeMillis();
-    final String gatewayAddress = "localhost:9090";
-
-    TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
-    {
-      super(new DefaultAttributeMap(), null); // this needs to be done in a proper way - may cause application errors.
-      this.appID = ApplicationId.newInstance(0, appid);
-      this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
-    }
-
-    TestAppContext()
-    {
-      this(0, 1, 1, 1);
-    }
-
-    @Override
-    public ApplicationAttemptId getApplicationAttemptId()
-    {
-      return appAttemptID;
-    }
-
-    @Override
-    public ApplicationId getApplicationID()
-    {
-      return appID;
-    }
-
-    @Override
-    public String getApplicationPath()
-    {
-      return appPath;
-    }
-
-    @Override
-    public String getAppMasterTrackingUrl()
-    {
-      return "unknown";
-    }
-
-    @Override
-    public CharSequence getUser()
-    {
-      return userId;
-    }
-
-    @Override
-    public Clock getClock()
-    {
-      return null;
-    }
-
-    @Override
-    public String getApplicationName()
-    {
-      return "TestApp";
-    }
-
-    @Override
-    public String getApplicationDocLink()
-    {
-      return "TestAppDocLink";
-    }
-
-    @Override
-    public long getStartTime()
-    {
-      return startTime;
-    }
-
-    @Override
-    public AppInfo.AppStats getStats()
-    {
-      return new AppInfo.AppStats()
-      {
-      };
-    }
-
-    @Override
-    public String getGatewayAddress()
-    {
-      return gatewayAddress;
-    }
-
-    @Override
-    public boolean isGatewayConnected()
-    {
-      return false;
-    }
-
-    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
-    private static final long serialVersionUID = 201309121323L;
-  }
 
   public static class SomeStats
   {

@@ -11,13 +11,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
-
-import org.mozilla.javascript.Scriptable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -38,11 +31,16 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.log4j.DTLoggerFactory;
+import org.mozilla.javascript.Scriptable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 
 import com.datatorrent.api.StreamingApplication;
 
 import com.datatorrent.stram.StramClient;
-import com.datatorrent.stram.plan.logical.LogicalPlanConfiguration;
 import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.ConfigValidator;
 
@@ -389,11 +387,6 @@ public class StramClientUtils
       if (entry.getKey().startsWith("stram.")) {
         String newKey = StreamingApplication.DT_PREFIX + entry.getKey().substring(6);
         LOG.warn("Configuration property {} is deprecated. Please use {} instead.", entry.getKey(), newKey);
-        newEntries.put(newKey, entry.getValue());
-        iterator.remove();
-      }
-      else if (entry.getKey().equals(StreamingApplication.DT_PREFIX + "gateway.address")) {
-        String newKey = LogicalPlanConfiguration.GATEWAY_LISTEN_ADDRESS;
         newEntries.put(newKey, entry.getValue());
         iterator.remove();
       }

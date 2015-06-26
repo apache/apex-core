@@ -38,11 +38,16 @@ public class SharedPubSubWebSocketClient extends PubSubWebSocketClient
 
   }
 
-  public SharedPubSubWebSocketClient(String uri, long timeoutMillis) throws URISyntaxException
+  public SharedPubSubWebSocketClient(URI uri, long timeoutMillis) 
   {
-    this.setUri(new URI(uri));
+    this.setUri(uri);
     lastConnectTryTime = System.currentTimeMillis();
     this.timeoutMillis = timeoutMillis;
+  }
+
+  public SharedPubSubWebSocketClient(String uri, long timeoutMillis) throws URISyntaxException
+  {
+    this(new URI(uri), timeoutMillis);
   }
 
   public void setup() throws IOException, ExecutionException, InterruptedException, TimeoutException

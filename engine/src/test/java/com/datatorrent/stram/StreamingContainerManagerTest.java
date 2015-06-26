@@ -33,6 +33,7 @@ import com.datatorrent.common.partitioner.StatelessPartitioner;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.AppDataSource;
 import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.OperatorDeployInfo;
@@ -42,9 +43,13 @@ import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHe
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.OperatorHeartbeat;
+import com.datatorrent.stram.appdata.AppDataPushAgent;
 import com.datatorrent.stram.codec.DefaultStatefulStreamCodec;
 import com.datatorrent.stram.engine.DefaultUnifier;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestAppDataQueryOperator;
+import com.datatorrent.stram.engine.TestAppDataResultOperator;
+import com.datatorrent.stram.engine.TestAppDataSourceOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -55,9 +60,14 @@ import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.plan.physical.PhysicalPlan;
 import com.datatorrent.stram.plan.physical.PhysicalPlanTest;
 import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.EmbeddedWebSocketServer;
 import com.datatorrent.stram.support.StramTestSupport.MemoryStorageAgent;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
 import com.datatorrent.stram.tuple.Tuple;
+import org.apache.commons.lang.StringUtils;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.eclipse.jetty.websocket.WebSocket;
 
 public class StreamingContainerManagerTest {
   @Rule public TestMeta testMeta = new TestMeta();
@@ -710,4 +720,138 @@ public class StreamingContainerManagerTest {
     lc.shutdown();
   }
 
+  private LogicalPlan getTestAppDataSourceLogicalPlan(Class<? extends TestAppDataQueryOperator> qClass,
+          Class<? extends TestAppDataSourceOperator> dsClass, Class<? extends TestAppDataResultOperator> rClass)
+  {
+    LogicalPlan dag = new LogicalPlan();
+
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+    TestAppDataQueryOperator q = dag.addOperator("q", qClass);
+    TestAppDataResultOperator r = dag.addOperator("r", rClass);
+    TestAppDataSourceOperator ds = dag.addOperator("ds", dsClass);
+
+    q.setAppDataUrl("ws://123.123.123.123:9090/pubsub");
+    q.setTopic("xyz.query");
+    r.setAppDataUrl("ws://123.123.123.124:9090/pubsub");
+    r.setTopic("xyz.result");
+
+    dag.addStream("o1-to-ds", o1.outport, ds.inport1);
+    dag.addStream("q-to-ds", q.outport, ds.query);
+    dag.addStream("ds-to-r", ds.result, r.inport);
+
+    return dag;
+  }
+
+  private void testAppDataSources(LogicalPlan dag, boolean appendQIDToTopic) throws Exception
+  {
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.runAsync();
+    StreamingContainerManager dnmgr = lc.dnmgr;
+    List<AppDataSource> appDataSources = dnmgr.getAppDataSources();
+    Assert.assertEquals("There should be exactly one data source", 1, appDataSources.size());
+    AppDataSource ads = appDataSources.get(0);
+    Assert.assertEquals("Data Source name verification", "ds.result", ads.getName());
+    AppDataSource.QueryInfo query = ads.getQuery();
+    Assert.assertEquals("Query operator name verification", "q", query.operatorName);
+    Assert.assertEquals("Query topic verification", "xyz.query", query.topic);
+    Assert.assertEquals("Query URL verification", "ws://123.123.123.123:9090/pubsub", query.url);
+    AppDataSource.ResultInfo result = ads.getResult();
+    Assert.assertEquals("Result operator name verification", "r", result.operatorName);
+    Assert.assertEquals("Result topic verification", "xyz.result", result.topic);
+    Assert.assertEquals("Result URL verification", "ws://123.123.123.124:9090/pubsub", result.url);
+    Assert.assertEquals("Result QID append verification", appendQIDToTopic, result.appendQIDToTopic);
+    lc.shutdown();
+  }
+
+  @Test
+  public void testGetAppDataSources1() throws Exception
+  {
+    LogicalPlan dag = getTestAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator1.class);
+    testAppDataSources(dag, true);
+  }
+
+  @Test
+  public void testGetAppDataSources2() throws Exception
+  {
+    LogicalPlan dag = getTestAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator2.class);
+    testAppDataSources(dag, false);
+  }
+
+  @Test
+  public void testGetAppDataSources3() throws Exception
+  {
+    LogicalPlan dag = getTestAppDataSourceLogicalPlan(TestAppDataQueryOperator.class, TestAppDataSourceOperator.class, TestAppDataResultOperator.ResultOperator3.class);
+    testAppDataSources(dag, false);
+  }
+
+  @Test
+  public void testAppDataPush() throws Exception
+  {
+    int port = 12345;
+    final String topic = "xyz";
+    final List<JSONObject> messages = new ArrayList<JSONObject>();
+    EmbeddedWebSocketServer server = new EmbeddedWebSocketServer(port);
+    server.setWebSocket(new WebSocket.OnTextMessage()
+    {
+
+      @Override
+      public void onMessage(String data)
+      {
+        try {
+          messages.add(new JSONObject(data));
+        } catch (JSONException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+
+      @Override
+      public void onOpen(WebSocket.Connection connection)
+      {
+      }
+
+      @Override
+      public void onClose(int closeCode, String message)
+      {
+      }
+    });
+    try {
+      server.start();
+      LogicalPlan dag = new LogicalPlan();
+      TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
+      GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+      dag.addStream("o1.outport", o1.outport, o2.inport1);
+      dag.setAttribute(LogicalPlan.METRICS_TRANSPORT, "builtin:" + topic);
+      dag.setAttribute(LogicalPlan.GATEWAY_CONNECT_ADDRESS, "localhost:" + port);
+      StramLocalCluster lc = new StramLocalCluster(dag);
+      //lc.runAsync();
+      StreamingContainerManager dnmgr = lc.dnmgr;
+      StramAppContext appContext = new StramTestSupport.TestAppContext();
+
+      AppDataPushAgent pushAgent = new AppDataPushAgent(dnmgr, appContext);
+      pushAgent.init();
+      pushAgent.pushData();
+      Thread.sleep(1000);
+      Assert.assertTrue(messages.size() > 0);
+      JSONObject message = messages.get(0);
+      System.out.println("Got this message: " + message.toString(2));
+      Assert.assertEquals(topic, message.getString("topic"));
+      Assert.assertEquals("publish", message.getString("type"));
+      JSONObject data = message.getJSONObject("data");
+      Assert.assertTrue(StringUtils.isNotBlank(data.getString("appId")));
+      Assert.assertTrue(StringUtils.isNotBlank(data.getString("appUser")));
+      Assert.assertTrue(StringUtils.isNotBlank(data.getString("appName")));
+
+      JSONObject logicalOperators = data.getJSONObject("logicalOperators");
+      for (String opName : new String[]{"o1", "o2"}) {
+        JSONObject opObj = logicalOperators.getJSONObject(opName);
+        Assert.assertTrue(opObj.has("totalTuplesProcessed"));
+        Assert.assertTrue(opObj.has("totalTuplesEmitted"));
+        Assert.assertTrue(opObj.has("tuplesProcessedPSMA"));
+        Assert.assertTrue(opObj.has("tuplesEmittedPSMA"));
+        Assert.assertTrue(opObj.has("latencyMA"));
+      }
+    } finally {
+      server.stop();
+    }
+  }
 }

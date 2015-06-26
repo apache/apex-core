@@ -304,6 +304,7 @@ public class StramAgent extends FSAgent
   public String getAppPath(String appId)
   {
     StramWebServicesInfo info = getWebServicesInfo(appId);
+    // TODO: when we upgrade hadoop dependency to 2.4, we need to save app path as a tag
     return info == null ? getAppsRoot() + "/" + appId : info.appPath;
   }
 

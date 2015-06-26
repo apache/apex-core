@@ -1,9 +1,10 @@
 /*
- *  Copyright (c) 2012-2013 DataTorrent, Inc.
- *  All Rights Reserved.
- */
+*  Copyright (c) 2012-2013 DataTorrent, Inc.
+*  All Rights Reserved.
+*/
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.api.AppDataSource;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -57,6 +58,7 @@ import com.datatorrent.api.StringCodec;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.appdata.AppDataPushAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.StreamingContainer;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -106,10 +108,12 @@ public class StreamingAppMasterService extends CompositeService
   // child container callback
   private StreamingContainerParent heartbeatListener;
   private StreamingContainerManager dnmgr;
+  private StramAppContext appContext;
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
   private StramDelegationTokenManager delegationTokenManager = null;
+  private AppDataPushAgent appDataPushAgent;
 
   public StreamingAppMasterService(ApplicationAttemptId appAttemptID)
   {
@@ -122,18 +126,22 @@ public class StreamingAppMasterService extends CompositeService
    */
   protected class ClusterAppStats extends AppInfo.AppStats
   {
+
+    @AppDataPushAgent.Metric
     @Override
     public int getAllocatedContainers()
     {
       return allocatedContainers.size();
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public int getPlannedContainers()
     {
       return dnmgr.getPhysicalPlan().getContainers().size();
     }
 
+    @AppDataPushAgent.Metric
     @Override
     @XmlElement
     public int getFailedContainers()
@@ -141,6 +149,7 @@ public class StreamingAppMasterService extends CompositeService
       return numFailedContainers.get();
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public int getNumOperators()
     {
@@ -166,6 +175,7 @@ public class StreamingAppMasterService extends CompositeService
       return StreamingContainerManager.toWsWindowId(dnmgr.getCommittedWindowId());
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTuplesProcessedPSMA()
     {
@@ -176,6 +186,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTotalTuplesProcessed()
     {
@@ -186,6 +197,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTuplesEmittedPSMA()
     {
@@ -196,6 +208,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTotalTuplesEmitted()
     {
@@ -206,6 +219,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTotalMemoryAllocated()
     {
@@ -216,6 +230,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTotalBufferServerReadBytesPSMA()
     {
@@ -228,6 +243,7 @@ public class StreamingAppMasterService extends CompositeService
       return result;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getTotalBufferServerWriteBytesPSMA()
     {
@@ -247,6 +263,7 @@ public class StreamingAppMasterService extends CompositeService
       return (criticalPathInfo == null) ? null : criticalPathInfo.path;
     }
 
+    @AppDataPushAgent.Metric
     @Override
     public long getLatency()
     {
@@ -343,6 +360,24 @@ public class StreamingAppMasterService extends CompositeService
       return false;
     }
 
+    @Override
+    public List<AppDataSource> getAppDataSources()
+    {
+      if (StreamingAppMasterService.this.dnmgr != null) {
+        return StreamingAppMasterService.this.dnmgr.getAppDataSources();
+      }
+      return null;
+    }
+
+    @Override
+    public Map<String, Object> getCustomMetrics()
+    {
+      if (StreamingAppMasterService.this.dnmgr != null) {
+        return (Map)StreamingAppMasterService.this.dnmgr.getCustomMetrics();
+      }
+      return null;
+    }
+
     @SuppressWarnings("FieldNameHidesFieldInSuperclass")
     private static final long serialVersionUID = 201309112304L;
   }
@@ -420,6 +455,7 @@ public class StreamingAppMasterService extends CompositeService
     FSRecoveryHandler recoveryHandler = new FSRecoveryHandler(dag.assertAppPath(), conf);
     this.dnmgr = StreamingContainerManager.getInstance(recoveryHandler, dag, true);
     dag = this.dnmgr.getLogicalPlan();
+    this.appContext = new ClusterAppContextImpl(dag.getAttributes());
 
     Map<Class<?>, Class<? extends StringCodec<?>>> codecs = dag.getAttributes().get(DAG.STRING_CODECS);
     StringCodecs.loadConverters(codecs);
@@ -440,6 +476,11 @@ public class StreamingAppMasterService extends CompositeService
     this.heartbeatListener = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager, rpcListenerCount);
     addService(heartbeatListener);
 
+    String appDataPushTransport = dag.getValue(LogicalPlan.METRICS_TRANSPORT);
+    if (appDataPushTransport != null) {
+      this.appDataPushAgent = new AppDataPushAgent(dnmgr, appContext);
+      addService(this.appDataPushAgent);
+    }
     // initialize all services added above
     super.serviceInit(conf);
   }
@@ -459,7 +500,6 @@ public class StreamingAppMasterService extends CompositeService
     recoveryHandler.writeConnectUri(connectUri.toString());
 
     // start web service
-    StramAppContext appContext = new ClusterAppContextImpl(dag.getAttributes());
     try {
       org.mortbay.log.Log.setLog(null);
     }

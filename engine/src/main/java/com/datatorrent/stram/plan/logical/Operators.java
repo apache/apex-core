@@ -4,9 +4,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
-import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
-
+import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.Operator;
 import com.datatorrent.api.Operator.InputPort;
@@ -14,8 +12,10 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Operator.Port;
 import com.datatorrent.api.annotation.InputPortFieldAnnotation;
 import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
-
 import com.datatorrent.stram.ComponentContextPair;
+import java.lang.reflect.Field;
+
+import java.util.LinkedHashMap;
 
 /**
  * Utilities for dealing with {@link Operator} instances.
@@ -26,9 +26,9 @@ public abstract class Operators
 {
   public interface OperatorDescriptor
   {
-    public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation a);
+    public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation portAnnotation, AppData.QueryPort adqAnnotation);
 
-    public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation a);
+    public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation portAnnotation, AppData.ResultPort adrAnnotation);
   }
 
   public static class PortContextPair<PORT extends Port> extends ComponentContextPair<PORT, PortContext>
@@ -50,13 +50,13 @@ public abstract class Operators
     final public LinkedHashMap<String, PortContextPair<OutputPort<?>>> outputPorts = new LinkedHashMap<String, PortContextPair<OutputPort<?>>>();
 
     @Override
-    public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation a)
+    public void addInputPort(Operator.InputPort<?> port, Field field, InputPortFieldAnnotation portAnnotation, AppData.QueryPort adqAnnotation)
     {
       inputPorts.put(field.getName(), new PortContextPair<InputPort<?>>(port));
     }
 
     @Override
-    public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation a)
+    public void addOutputPort(Operator.OutputPort<?> port, Field field, OutputPortFieldAnnotation portAnnotation, AppData.ResultPort adrAnnotation)
     {
       outputPorts.put(field.getName(), new PortContextPair<OutputPort<?>>(port));
     }
@@ -71,12 +71,14 @@ public abstract class Operators
         field.setAccessible(true);
         InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
         OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
+        AppData.QueryPort adqAnnotation = field.getAnnotation(AppData.QueryPort.class);
+        AppData.ResultPort adrAnnotation = field.getAnnotation(AppData.ResultPort.class);
 
         try {
           Object portObject = field.get(operator);
 
           if (portObject instanceof InputPort) {
-            descriptor.addInputPort((Operator.InputPort<?>) portObject, field, inputAnnotation);
+            descriptor.addInputPort((Operator.InputPort<?>)portObject, field, inputAnnotation, adqAnnotation);
           } else {
             if (inputAnnotation != null) {
               throw new IllegalArgumentException("port is not of type " + InputPort.class.getName() + ": " + field);
@@ -84,7 +86,7 @@ public abstract class Operators
           }
 
           if (portObject instanceof OutputPort) {
-            descriptor.addOutputPort((Operator.OutputPort<?>) portObject, field, outputAnnotation);
+            descriptor.addOutputPort((Operator.OutputPort<?>)portObject, field, outputAnnotation, adrAnnotation);
           } else {
             if (outputAnnotation != null) {
               throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName() + ": " + field);

@@ -79,6 +79,7 @@ import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.OperatorDiscoverer;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.stram.webapp.TypeDiscoverer;
+import net.lingala.zip4j.exception.ZipException;
 
 /**
  * Provides command line interface for a streaming application on hadoop (yarn)
@@ -366,6 +367,41 @@ public class DTCli
       super(name);
     }
 
+  }
+
+  protected PrintStream suppressOutput()
+  {
+    PrintStream originalStream = System.out;
+    if (raw) {
+      PrintStream dummyStream = new PrintStream(new OutputStream()
+      {
+        @Override
+        public void write(int b)
+        {
+          // no-op
+        }
+
+      });
+      System.setOut(dummyStream);
+    }
+    return originalStream;
+  }
+
+  protected void restoreOutput(PrintStream originalStream)
+  {
+    if (raw) {
+      System.setOut(originalStream);
+    }
+  }
+
+  AppPackage newAppPackageInstance(File f) throws IOException, ZipException
+  {
+    PrintStream outputStream = suppressOutput();
+    try {
+      return new AppPackage(f, true);
+    } finally {
+      restoreOutput(outputStream);
+    }
   }
 
   @SuppressWarnings("unused")
@@ -1836,7 +1872,7 @@ public class DTCli
           // see if it's an app package
           AppPackage ap = null;
           try {
-            ap = new AppPackage(new File(fileName), true);
+            ap = newAppPackageInstance(new File(fileName));
           } catch (Exception ex) {
             // It's not an app package
             if (requiredAppPackageName != null) {
@@ -1987,7 +2023,7 @@ public class DTCli
             }
 
             // This is for suppressing System.out printouts from applications so that the user of CLI will not be confused by those printouts
-            PrintStream originalStream = System.out;
+            PrintStream originalStream = suppressOutput();
             ApplicationId appId = null;
             try {
               if (raw) {
@@ -2005,9 +2041,7 @@ public class DTCli
               appId = submitApp.launchApp(appFactory);
               currentApp = yarnClient.getApplicationReport(appId);
             } finally {
-              if (raw) {
-                System.setOut(originalStream);
-              }
+              restoreOutput(originalStream);
             }
             if (appId != null) {
               printJson("{\"appId\": \"" + appId + "\"}");
@@ -2845,36 +2879,39 @@ public class DTCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       String jarfile = expandFileName(args[1], true);
-      AppPackage ap = new AppPackage(new File(jarfile), true);
+      AppPackage ap = null;
+      try {
+        ap = newAppPackageInstance(new File(jarfile));
 
-      List<AppInfo> applications = ap.getApplications();
+        List<AppInfo> applications = ap.getApplications();
 
-      if (args.length >= 3) {
-        for (AppInfo appInfo : applications) {
-          if (args[2].equals(appInfo.name)) {
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("applicationName", appInfo.name);
-            if (appInfo.dag != null) {
-              map.put("logicalPlan", LogicalPlanSerializer.convertToMap(appInfo.dag));
+        if (args.length >= 3) {
+          for (AppInfo appInfo : applications) {
+            if (args[2].equals(appInfo.name)) {
+              Map<String, Object> map = new HashMap<String, Object>();
+              map.put("applicationName", appInfo.name);
+              if (appInfo.dag != null) {
+                map.put("logicalPlan", LogicalPlanSerializer.convertToMap(appInfo.dag));
+              }
+              if (appInfo.error != null) {
+                map.put("error", appInfo.error);
+              }
+              printJson(map);
             }
-            if (appInfo.error != null) {
-              map.put("error", appInfo.error);
-            }
-            printJson(map);
           }
+        } else {
+          List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
+          for (AppInfo appInfo : applications) {
+            Map<String, Object> m = new HashMap<String, Object>();
+            m.put("name", appInfo.name);
+            m.put("type", appInfo.type);
+            appList.add(m);
+          }
+          printJson(appList, "applications");
         }
+      } finally {
+        IOUtils.closeQuietly(ap);
       }
-      else {
-        List<Map<String, Object>> appList = new ArrayList<Map<String, Object>>();
-        for (AppInfo appInfo : applications) {
-          Map<String, Object> m = new HashMap<String, Object>();
-          m.put("name", appInfo.name);
-          m.put("type", appInfo.type);
-          appList.add(m);
-        }
-        printJson(appList, "applications");
-      }
-      ap.close();
     }
 
   }
@@ -3369,8 +3406,9 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = null;
       try {
+        ap = newAppPackageInstance(new File(expandFileName(args[1], true)));
         JSONSerializationProvider jomp = new JSONSerializationProvider();
         JSONObject apInfo = new JSONObject(jomp.getContext(null).writeValueAsString(ap));
         apInfo.remove("name");
@@ -3684,8 +3722,9 @@ public class DTCli
       String[] tmpArgs = new String[args.length - 1];
       System.arraycopy(args, 1, tmpArgs, 0, args.length - 1);
       GetOperatorClassesCommandLineInfo commandLineInfo = getGetOperatorClassesCommandLineInfo(tmpArgs);
-      AppPackage ap = new AppPackage(new File(expandFileName(commandLineInfo.args[0], true)), true);
+      AppPackage ap = null;
       try {
+        ap = newAppPackageInstance(new File(expandFileName(commandLineInfo.args[0], true)));
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
         for (String jar : ap.getAppJars()) {
@@ -3719,8 +3758,9 @@ public class DTCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      AppPackage ap = new AppPackage(new File(expandFileName(args[1], true)), true);
+      AppPackage ap = null;
       try {
+        ap = newAppPackageInstance(new File(expandFileName(args[1], true)));
         List<String> newArgs = new ArrayList<String>();
         List<String> jars = new ArrayList<String>();
         for (String jar : ap.getAppJars()) {

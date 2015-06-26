@@ -11,7 +11,9 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
 
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.model.ZipParameters;
@@ -23,19 +25,32 @@ import org.junit.rules.TestWatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.Attribute;
 import com.datatorrent.api.StorageAgent;
 
 import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.stram.StramAppContext;
 import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramLocalCluster.LocalStreamingContainer;
+import com.datatorrent.stram.api.AppDataSource;
+import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.engine.OperatorContext;
 import com.datatorrent.stram.engine.WindowGenerator;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.tuple.EndWindowTuple;
 import com.datatorrent.stram.tuple.Tuple;
+import com.datatorrent.stram.webapp.AppInfo;
 
-import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertTrue;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.util.Clock;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketServlet;
 
 /**
  * Bunch of utilities shared between tests.
@@ -64,7 +79,7 @@ abstract public class StramTestSupport
 
   public static void checkStringMatch(String print, String expected, String got)
   {
-    assertTrue(
+    Assert.assertTrue(
             print + " doesn't match, got: " + got + " expected: " + expected,
             got.matches(expected));
   }
@@ -138,7 +153,7 @@ abstract public class StramTestSupport
       if (c.isComplete()) {
         return true;
       }
-      sleep(50);
+      Thread.sleep(50);
     }
     return c.isComplete();
   }
@@ -211,6 +226,7 @@ abstract public class StramTestSupport
       String className = description.getClassName();
       //className = className.substring(className.lastIndexOf('.') + 1);
       this.dir = "target/" + className + "/" + methodName;
+      new File(this.dir).mkdirs();
     }
 
     @Override
@@ -370,6 +386,198 @@ abstract public class StramTestSupport
     }
 
     private static final long serialVersionUID = 201404091747L;
+  }
+
+  public static class TestAppContext extends BaseContext implements StramAppContext
+  {
+
+    final ApplicationAttemptId appAttemptID;
+    final ApplicationId appID;
+    final String appPath = "/testPath";
+    final String userId = "testUser";
+    final long startTime = System.currentTimeMillis();
+    final String gatewayAddress = "localhost:9090";
+
+    public TestAppContext(int appid, int numJobs, int numTasks, int numAttempts)
+    {
+      super(new Attribute.AttributeMap.DefaultAttributeMap(), null); // this needs to be done in a proper way - may cause application errors.
+      this.appID = ApplicationId.newInstance(0, appid);
+      this.appAttemptID = ApplicationAttemptId.newInstance(this.appID, numAttempts);
+    }
+
+    public TestAppContext()
+    {
+      this(0, 1, 1, 1);
+    }
+
+    @Override
+    public ApplicationAttemptId getApplicationAttemptId()
+    {
+      return appAttemptID;
+    }
+
+    @Override
+    public ApplicationId getApplicationID()
+    {
+      return appID;
+    }
+
+    @Override
+    public String getApplicationPath()
+    {
+      return appPath;
+    }
+
+    @Override
+    public String getAppMasterTrackingUrl()
+    {
+      return "unknown";
+    }
+
+    @Override
+    public CharSequence getUser()
+    {
+      return userId;
+    }
+
+    @Override
+    public Clock getClock()
+    {
+      return null;
+    }
+
+    @Override
+    public String getApplicationName()
+    {
+      return "TestApp";
+    }
+
+    @Override
+    public String getApplicationDocLink()
+    {
+      return "TestAppDocLink";
+    }
+
+    @Override
+    public long getStartTime()
+    {
+      return startTime;
+    }
+
+    @Override
+    public AppInfo.AppStats getStats()
+    {
+      return new AppInfo.AppStats()
+      {
+      };
+    }
+
+    @Override
+    public String getGatewayAddress()
+    {
+      return gatewayAddress;
+    }
+
+    @Override
+    public String getLicenseId()
+    {
+      return null;
+    }
+
+    @Override
+    public long getRemainingLicensedMB()
+    {
+      return 0;
+    }
+
+    @Override
+    public long getTotalLicensedMB()
+    {
+      return 0;
+    }
+
+    @Override
+    public long getAllocatedMB()
+    {
+      return 0;
+    }
+
+    @Override
+    public long getLicenseInfoLastUpdate()
+    {
+      return 0;
+    }
+
+    @Override
+    public boolean isGatewayConnected()
+    {
+      return false;
+    }
+
+    @Override
+    public List<AppDataSource> getAppDataSources()
+    {
+      return null;
+    }
+
+    @Override
+    public Map<String, Object> getCustomMetrics()
+    {
+      return null;
+    }
+
+    @SuppressWarnings("FieldNameHidesFieldInSuperclass")
+    private static final long serialVersionUID = 201309121323L;
+  }
+
+  public static class EmbeddedWebSocketServer
+  {
+
+    private final Logger LOG = LoggerFactory.getLogger(EmbeddedWebSocketServer.class);
+
+    private final int port;
+    private Server server;
+    private WebSocket websocket;
+
+    public EmbeddedWebSocketServer(int port)
+    {
+      this.port = port;
+    }
+
+    public void setWebSocket(WebSocket websocket)
+    {
+      this.websocket = websocket;
+    }
+
+    public void start() throws Exception
+    {
+      server = new Server();
+      Connector connector = new SelectChannelConnector();
+      connector.setPort(port);
+      server.addConnector(connector);
+
+        // Setup the basic application "context" for this application at "/"
+      // This is also known as the handler tree (in jetty speak)
+      ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
+      contextHandler.setContextPath("/");
+      server.setHandler(contextHandler);
+      WebSocketServlet webSocketServlet = new WebSocketServlet()
+      {
+        @Override
+        public WebSocket doWebSocketConnect(HttpServletRequest request, String protocol)
+        {
+          return websocket;
+        }
+      };
+
+      contextHandler.addServlet(new ServletHolder(webSocketServlet), "/pubsub");
+      server.start();
+    }
+
+    public void stop() throws Exception
+    {
+      server.stop();
+    }
   }
 
 }

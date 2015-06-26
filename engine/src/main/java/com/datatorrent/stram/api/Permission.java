@@ -44,6 +44,18 @@ public enum Permission
    */
   LAUNCH_APPS,
   /**
+   * Upload Dashboards
+   */
+  UPLOAD_DASHBOARDS,
+  /**
+   * View other users' dashboards
+   */
+  VIEW_OTHER_USERS_DASHBOARDS(true),
+  /**
+   * Manage other users' dashboards
+   */
+  MANAGE_OTHER_USERS_DASHBOARDS(true),
+  /**
    * Upload App Packages
    */
   UPLOAD_APP_PACKAGES,
@@ -82,7 +94,15 @@ public enum Permission
   /**
    * Manage system alerts
    */
-  MANAGE_SYSTEM_ALERTS;
+  MANAGE_SYSTEM_ALERTS,
+  /**
+   * View system applications
+   */
+  VIEW_SYSTEM_APPS(true),
+  /**
+   * Manage system applications
+   */
+  MANAGE_SYSTEM_APPS(true);
 
   private boolean admin = false;
 

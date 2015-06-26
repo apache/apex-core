@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram.plan.logical;
 
+import com.datatorrent.common.experimental.AppData;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -169,6 +170,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta operatorMeta;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
+    private AppData.QueryPort adqAnnotation;
     private final Attribute.AttributeMap attributes = new DefaultAttributeMap();
 
     public OperatorMeta getOperatorWrapper()
@@ -190,12 +192,18 @@ public class LogicalPlan implements Serializable, DAG
       throw new AssertionError("Cannot find the port object for " + this);
     }
 
+    public boolean isAppDataQueryPort()
+    {
+      return adqAnnotation != null;
+    }
+
     @Override
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
               append("operator", this.operatorMeta).
               append("portAnnotation", this.portAnnotation).
+              append("adqAnnotation", this.adqAnnotation).
               append("field", this.fieldName).
               toString();
     }
@@ -240,6 +248,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta sliderMeta;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
+    private AppData.ResultPort adrAnnotation;
     private final DefaultAttributeMap attributes;
 
     public OutputPortMeta()
@@ -325,12 +334,18 @@ public class LogicalPlan implements Serializable, DAG
       return attr;
     }
 
+    public boolean isAppDataResultPort()
+    {
+      return adrAnnotation != null;
+    }
+
     @Override
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
               append("operator", this.operatorMeta).
               append("portAnnotation", this.portAnnotation).
+              append("adrAnnotation", this.adrAnnotation).
               append("field", this.fieldName).
               toString();
     }
@@ -626,7 +641,7 @@ public class LogicalPlan implements Serializable, DAG
       private final Map<String, Object> portNameMap = new HashMap<String, Object>();
 
       @Override
-      public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation a)
+      public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation portAnnotation, AppData.QueryPort adqAnnotation)
       {
         if (!OperatorMeta.this.inputStreams.isEmpty()) {
           for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> e : OperatorMeta.this.inputStreams.entrySet()) {
@@ -642,13 +657,14 @@ public class LogicalPlan implements Serializable, DAG
         InputPortMeta metaPort = new InputPortMeta();
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
-        metaPort.portAnnotation = a;
+        metaPort.portAnnotation = portAnnotation;
+        metaPort.adqAnnotation = adqAnnotation;
         inPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }
 
       @Override
-      public void addOutputPort(OutputPort<?> portObject, Field field, OutputPortFieldAnnotation a)
+      public void addOutputPort(OutputPort<?> portObject, Field field, OutputPortFieldAnnotation portAnnotation, AppData.ResultPort adrAnnotation)
       {
         if (!OperatorMeta.this.outputStreams.isEmpty()) {
           for (Map.Entry<LogicalPlan.OutputPortMeta, LogicalPlan.StreamMeta> e : OperatorMeta.this.outputStreams.entrySet()) {
@@ -664,7 +680,8 @@ public class LogicalPlan implements Serializable, DAG
         OutputPortMeta metaPort = new OutputPortMeta();
         metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
-        metaPort.portAnnotation = a;
+        metaPort.portAnnotation = portAnnotation;
+        metaPort.adrAnnotation = adrAnnotation;
         outPortMap.put(portObject, metaPort);
         checkDuplicateName(metaPort.getPortName(), metaPort);
       }

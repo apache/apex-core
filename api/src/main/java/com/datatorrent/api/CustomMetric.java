@@ -62,4 +62,44 @@ public @interface CustomMetric
      */
     Map<String, Object> aggregate(long windowId, Collection<PhysicalMetricsContext> physicalMetrics);
   }
+
+  /**
+   * Provides information of dimension aggregations and time-buckets which are sent to Application data tracker.<br/>
+   * Application data tracker by default does certain aggregations for 1m, 1h,& 1d time buckets unless it overridden by
+   * the app developer by providing a dimension scheme as operator attribute.
+   */
+  public static interface DimensionsScheme
+  {
+    /**
+     * Time buckets for eg. {1m, 1h}. Application data tracker by default does 1m, 1h & 1d aggregations but this
+     * will override it to just perform 1m and 1h aggregations. <br/>
+     * <p/>
+     * Time bucket format is a number followed by one of the below characters:
+     * <ul>
+     * <li>s - second</li>
+     * <li>m - minute</li>
+     * <li>h - hour</li>
+     * <li>d - day</li>
+     * <li>w - week</li>
+     * <li>M - month</li>
+     * <li>q - quarter</li>
+     * <li>y - year</li
+     * </ul>
+     *
+     * @return time buckets.
+     */
+    String[] getTimeBuckets();
+
+    /**
+     * Application data tracker by default performs SUM, MIN, MAX, AVG, COUNT, FIRST, LAST on all number metrics.
+     * An app developer can influence this behavior by creating a dimension scheme that has a mapping of logical metric name
+     * to aggregations. Stram will invoke this method for each logical metric and check if the aggregations are overwritten
+     * and will inform that to app data tracker.
+     *
+     * @param logicalMetricName  logical metric name.
+     * @return aggregations eg. SUM, MIN, MAX, etc. that will be performed by app data tracker on a logical metric.
+     */
+    String[] getDimensionAggregationsFor(String logicalMetricName);
+  }
+
 }

@@ -4,6 +4,7 @@
  */
 package com.datatorrent.stram;
 
+import com.datatorrent.stram.api.AppDataSource;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
@@ -13,6 +14,8 @@ import com.datatorrent.api.Attribute.AttributeMap.AttributeInitializer;
 import com.datatorrent.api.Context;
 
 import com.datatorrent.stram.webapp.AppInfo;
+import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -56,4 +59,8 @@ public interface StramAppContext extends Context
   long serialVersionUID = AttributeInitializer.initialize(StramAppContext.class);
 
   boolean isGatewayConnected();
+
+  List<AppDataSource> getAppDataSources();
+
+  Map<String, Object> getCustomMetrics();
 }

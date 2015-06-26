@@ -248,7 +248,10 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   }
 
   /**
-   * @return  the milliseconds for next window.
+   * @param windowId
+   * @param firstWindowMillis
+   * @param windowWidthMillis
+   * @return the milliseconds for next window.
    */
   public static long getNextWindowMillis(long windowId, long firstWindowMillis, long windowWidthMillis)
   {
@@ -256,7 +259,10 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   }
 
   /**
-   ** @return the milliseconds for given window.
+   * @param windowId
+   * @param firstWindowMillis
+   * @param windowWidthMillis
+   * @return the milliseconds for given window.
    */
   public static long getWindowMillis(long windowId, long firstWindowMillis, long windowWidthMillis)
   {

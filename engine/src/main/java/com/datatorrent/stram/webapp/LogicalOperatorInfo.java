@@ -4,6 +4,7 @@
 
 package com.datatorrent.stram.webapp;
 
+import com.datatorrent.stram.appdata.AppDataPushAgent;
 import java.util.*;
 import javax.xml.bind.annotation.*;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -20,14 +21,21 @@ public class LogicalOperatorInfo
 {
   public String name;
   public String className;
+  @AppDataPushAgent.Metric
   public long totalTuplesProcessed = 0;
+  @AppDataPushAgent.Metric
   public long totalTuplesEmitted = 0;
+  @AppDataPushAgent.Metric
   public long tuplesProcessedPSMA;
+  @AppDataPushAgent.Metric
   public long tuplesEmittedPSMA;
+  @AppDataPushAgent.Metric
   public double cpuPercentageMA;
+  @AppDataPushAgent.Metric
   public long latencyMA;
   public Map<String, MutableInt> status;
   public long lastHeartbeat;
+  @AppDataPushAgent.Metric
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;

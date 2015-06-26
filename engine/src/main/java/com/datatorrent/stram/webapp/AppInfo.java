@@ -5,10 +5,12 @@
 
 package com.datatorrent.stram.webapp;
 
+import com.datatorrent.stram.api.AppDataSource;
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Context.DAGContext;
 import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.appdata.AppDataPushAgent;
 import com.datatorrent.stram.util.VersionInfo;
 import java.util.*;
 import javax.xml.bind.annotation.*;
@@ -43,6 +45,8 @@ public class AppInfo {
   protected String appPath;
   protected String gatewayAddress;
   protected boolean gatewayConnected;
+  protected List<AppDataSource> appDataSources;
+  protected Map<String, Object> customMetrics;
   public Map<String, Object> attributes;
   public String appMasterTrackingUrl;
   public String version;
@@ -59,26 +63,31 @@ public class AppInfo {
   @XmlAccessorType(XmlAccessType.FIELD)
   public static class AppStats {
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public int getAllocatedContainers() {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public int getPlannedContainers() {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public int getFailedContainers() {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public int getNumOperators() {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getLatency() {
       return 0;
     }
@@ -101,42 +110,49 @@ public class AppInfo {
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTuplesProcessedPSMA()
     {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTotalTuplesProcessed()
     {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTuplesEmittedPSMA()
     {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTotalTuplesEmitted()
     {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTotalMemoryAllocated()
     {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTotalBufferServerReadBytesPSMA()
     {
       return 0;
     }
 
     @javax.xml.bind.annotation.XmlElement
+    @AppDataPushAgent.Metric
     public long getTotalBufferServerWriteBytesPSMA()
     {
       return 0;
@@ -164,6 +180,8 @@ public class AppInfo {
       this.attributes.put(entry.getKey().getSimpleName(), entry.getValue());
     }
     this.gatewayConnected = context.isGatewayConnected();
+    this.appDataSources = context.getAppDataSources();
+    this.customMetrics = context.getCustomMetrics();
   }
 
   /**
@@ -217,6 +235,16 @@ public class AppInfo {
   public boolean isGatewayConnected()
   {
     return gatewayConnected;
+  }
+
+  public List<AppDataSource> getAppDataSources()
+  {
+    return appDataSources;
+  }
+
+  public Map<String, Object> getCustomMetrics()
+  {
+    return customMetrics;
   }
 
 }
