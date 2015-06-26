@@ -11,6 +11,19 @@
   <name>My Apex Application Configuration</name>
   <description>My Apex Application Configuration Description</description>
 
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+  
+  <scm>
+    <connection>scm:git:git@github.com:DataTorrent/Apex.git</connection>
+    <developerConnection>scm:git:git@github.com:DataTorrent/Apex.git</developerConnection>
+    <url>git@github.com:DataTorrent/Apex.git</url>
+  </scm>
+
   <properties>
     <datatorrent.apppackage.name>myapexapp</datatorrent.apppackage.name>
     <datatorrent.apppackage.minversion>1.0.0</datatorrent.apppackage.minversion>

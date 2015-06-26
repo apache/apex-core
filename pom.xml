@@ -17,7 +17,7 @@
 
   <licenses>
     <license>
-      <name>Copyright &copy; 2014 DataTorrent, Inc.</name>
+      <name>Copyright &copy; 2015 DataTorrent, Inc.</name>
       <url>http://www.datatorrent.com/</url>
     </license>
   </licenses>
@@ -34,6 +34,7 @@
     <!-- do not change jetty version as later versions have problems with DefaultServlet -->
     <jetty.version>8.1.10.v20130312</jetty.version>
     <maven.deploy.repo.classifier></maven.deploy.repo.classifier>
+    <license.skip>true</license.skip>
   </properties>
 
   <dependencies>
@@ -56,6 +57,32 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>2.11</version>
+        <configuration>
+          <header>license.txt</header>
+          <properties>
+            <owner>DataTorrent, Inc.</owner>
+            <email>apex-dev@googlegroups.com</email>
+          </properties>
+          <excludes>
+            <exclude>license.txt</exclude>
+            <exclude>**/*.xml</exclude>
+            <exclude>**/*.md</exclude>
+            <exclude>src/test/resources/**</exclude>
+            <exclude>src/main/resources/**</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
@@ -154,7 +181,7 @@
             </archive>
             <excludes>
               <exclude>log4j.properties</exclude>
-            </excludes>  
+            </excludes>
           </configuration>
         </plugin>
         <plugin>
