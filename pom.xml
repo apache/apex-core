@@ -50,7 +50,7 @@
     <module>common</module>
     <module>api</module>
     <module>bufferserver</module>
-    <module>stram</module>
+    <module>engine</module>
     <module>apex-app-archetype</module>
     <module>apex-conf-archetype</module>
   </modules>
