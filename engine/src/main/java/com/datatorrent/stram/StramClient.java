@@ -18,6 +18,7 @@ package com.datatorrent.stram;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -56,11 +57,10 @@ import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.DTLoggerFactory;
 
-import com.datatorrent.common.util.BasicContainerOptConfigurator;
-import com.datatorrent.common.util.FSStorageAgent;
-
 import com.datatorrent.api.Context.OperatorContext;
 
+import com.datatorrent.common.util.BasicContainerOptConfigurator;
+import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.client.StramClientUtils.ClientRMHelper;
 import com.datatorrent.stram.engine.StreamingContainer;
@@ -301,42 +301,46 @@ public class StramClient
   }
 
   // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
-  private Text getRMTokenService() {
-    if (conf.getBoolean(RM_HA_ENABLED, DEFAULT_RM_HA_ENABLED)) {
-      LOG.info("Yarn Resource Manager HA is enabled");
-      // Build a list of service addresses to form the service name
-      ArrayList<String> services = new ArrayList<String>();
-      for (String rmId : conf.getStringCollection(RM_HA_IDS)) {
-        LOG.info("Yarn Resource Manager id: {}", rmId);
-        // Set RM_ID to get the corresponding RM_ADDRESS
-        services.add(SecurityUtil.buildTokenService(NetUtils.createSocketAddr(
-                conf.get(RM_HOSTNAME_PREFIX + rmId),
-                YarnConfiguration.DEFAULT_RM_PORT,
-                RM_HOSTNAME_PREFIX + rmId)).toString());
-      }
-      return new Text(Joiner.on(',').join(services));
+  private Token<RMDelegationTokenIdentifier> getRMHAToken(org.apache.hadoop.yarn.api.records.Token rmDelegationToken) {
+    // Build a list of service addresses to form the service name
+    ArrayList<String> services = new ArrayList<String>();
+    for (String rmId : conf.getStringCollection(RM_HA_IDS)) {
+      LOG.info("Yarn Resource Manager id: {}", rmId);
+      // Set RM_ID to get the corresponding RM_ADDRESS
+      services.add(SecurityUtil.buildTokenService(NetUtils.createSocketAddr(
+              conf.get(RM_HOSTNAME_PREFIX + rmId),
+              YarnConfiguration.DEFAULT_RM_PORT,
+              RM_HOSTNAME_PREFIX + rmId)).toString());
     }
+    Text rmTokenService = new Text(Joiner.on(',').join(services));
 
-    // Non-HA case - no need to set RM_ID
-    LOG.info("Yarn Resource Manager HA is not enabled");
-    return SecurityUtil.buildTokenService(conf.getSocketAddr(YarnConfiguration.RM_ADDRESS, YarnConfiguration.DEFAULT_RM_ADDRESS, YarnConfiguration.DEFAULT_RM_PORT));
+    return new Token<RMDelegationTokenIdentifier>(
+            rmDelegationToken.getIdentifier().array(),
+            rmDelegationToken.getPassword().array(),
+            new Text(rmDelegationToken.getKind()),
+            rmTokenService);
   }
 
-  // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
   private void addRMDelegationToken(final String renewer, final Credentials credentials) throws IOException, YarnException {
     // Get the ResourceManager delegation rmToken
     final org.apache.hadoop.yarn.api.records.Token rmDelegationToken = yarnClient.getRMDelegationToken(new Text(renewer));
 
-    final Token<RMDelegationTokenIdentifier> token = new Token<RMDelegationTokenIdentifier>(
-            rmDelegationToken.getIdentifier().array(),
-            rmDelegationToken.getPassword().array(),
-            new Text(rmDelegationToken.getKind()),
-            getRMTokenService()
-    );
+    Token<RMDelegationTokenIdentifier> token;
+    if (conf.getBoolean(RM_HA_ENABLED, DEFAULT_RM_HA_ENABLED)) {
+      LOG.info("Yarn Resource Manager HA is enabled");
+      token = getRMHAToken(rmDelegationToken);
+    } else {
+      LOG.info("Yarn Resource Manager HA is not enabled");
+      InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_PORT);
+
+      token = ConverterUtils.convertFromYarn(rmDelegationToken, rmAddress);
+    }
+
     LOG.info("RM dt {}", token);
 
     credentials.addToken(token.getService(), token);
-
   }
 
   /**
