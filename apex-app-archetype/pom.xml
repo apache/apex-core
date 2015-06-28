@@ -11,7 +11,7 @@
   <artifactId>apex-app-archetype</artifactId>
   <packaging>maven-archetype</packaging>
 
-  <name>Apex application Maven archetype</name>
+  <name>Apex Application Maven archetype</name>
 
   <properties>
     <maven.deploy.skip>false</maven.deploy.skip>
