@@ -96,7 +96,12 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     //LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
     //
     // should we put the DAGContext info here?
-    //
+
+    Map<String, Object> dagAttrs = new HashMap<String, Object>();
+    for (Map.Entry<Attribute<Object>, Object> e : Attribute.AttributeMap.AttributeInitializer.getAllAttributes(dag, Context.DAGContext.class).entrySet()){
+      dagAttrs.put(e.getKey().getSimpleName(), e.getValue());
+    }
+    result.put("attributes", dagAttrs);
 
     Collection<OperatorMeta> allOperators = dag.getAllOperators();
     ObjectMapper propertyObjectMapper = new ObjectMapper();
