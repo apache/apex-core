@@ -42,6 +42,28 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>2.1.13</version>
+        <executions>
+          <execution>
+            <id>create-git-version-info</id>
+            <phase>${generate-revision-info-phase}</phase>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <runOnlyOnce>true</runOnlyOnce>
+          <verbose>false</verbose>
+          <prefix>git</prefix>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <generateGitPropertiesFilename>target/classes/dt-git.properties</generateGitPropertiesFilename>
+          <failOnNoGitDirectory>false</failOnNoGitDirectory>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
         <executions>
           <execution>
@@ -307,7 +329,7 @@
         </file>
       </activation>
       <properties>
-        <git-commit-id.skip>false</git-commit-id.skip>
+        <generate-revision-info-phase>generate-resources</generate-revision-info-phase>
       </properties>
     </profile>
 

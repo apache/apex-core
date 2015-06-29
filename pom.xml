@@ -222,7 +222,7 @@
         <maven.compiler.optimize>true</maven.compiler.optimize>
         <maven.deploy.skip>true</maven.deploy.skip>
         <!-- always generate on release build -->
-        <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
+        <generate-revision-info-phase>generate-resources</generate-revision-info-phase>
         <distMgmtDevUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtDevUrl>
         <distMgmtUrl>dav:http://www.datatorrent.com:8081/nexus/content/repositories</distMgmtUrl>
         <package.prefix>/opt/datatorrent</package.prefix>
