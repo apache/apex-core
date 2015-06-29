@@ -47,6 +47,7 @@ import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 import com.datatorrent.netlet.util.Slice;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.engine.TestNonOptionalOutportInputOperator;
 import com.datatorrent.stram.engine.TestOutputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -167,19 +168,21 @@ public class LogicalPlanTest {
   public void testDeleteOperator()
   {
     LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    dag.addStream("s0", input.outport, o1.inport1);
     StreamMeta s1 = dag.addStream("s1", o1.outport1, o2.inport1);
     dag.validate();
-    Assert.assertEquals("", 2, dag.getAllOperators().size());
+    Assert.assertEquals("", 3, dag.getAllOperators().size());
 
     dag.removeOperator(o2);
     s1.remove();
     dag.validate();
-    Assert.assertEquals("", 1, dag.getAllOperators().size());
+    Assert.assertEquals("", 2, dag.getAllOperators().size());
   }
 
-  public static class ValidationTestOperator extends BaseOperator {
+  public static class ValidationTestOperator extends BaseOperator implements InputOperator {
     @NotNull
     @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
     private String stringField1;
@@ -251,6 +254,12 @@ public class LogicalPlanTest {
     public void setMapProperty(Map<String, String> mapProperty)
     {
       this.mapProperty = mapProperty;
+    }
+
+    @Override
+    public void emitTuples() {
+      // Emit no tuples
+
     }
 
   }
@@ -343,6 +352,21 @@ public class LogicalPlanTest {
     };
   }
 
+  class NoInputPortOperator extends BaseOperator {
+  }
+
+  @Test
+  public void testValidationForNonInputRootOperator() {
+    LogicalPlan dag = new LogicalPlan();
+    NoInputPortOperator x = dag.addOperator("x", new NoInputPortOperator());
+    try {
+      dag.validate();
+      Assert.fail("should fail because root operator is not input operator");
+    } catch (ValidationException e) {
+      // expected
+    }
+  }
+
   @OperatorAnnotation(partitionable = false)
   public static class TestOperatorAnnotationOperator2 extends BaseOperator implements Partitioner<TestOperatorAnnotationOperator2> {
 
@@ -361,7 +385,10 @@ public class LogicalPlanTest {
   @Test
   public void testOperatorAnnotation() {
     LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
     TestOperatorAnnotationOperator operator = dag.addOperator("operator1", TestOperatorAnnotationOperator.class);
+    dag.addStream("Connection", input.outport, operator.input1);
+
 
     dag.setAttribute(operator, OperatorContext.PARTITIONER, new StatelessPartitioner<TestOperatorAnnotationOperator>(2));
 
@@ -400,17 +427,19 @@ public class LogicalPlanTest {
   public void testPortConnectionValidation() {
 
     LogicalPlan dag = new LogicalPlan();
-    TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
+
+    TestNonOptionalOutportInputOperator input = dag.addOperator("input1", TestNonOptionalOutportInputOperator.class);
 
     try {
       dag.validate();
-      Assert.fail("should raise port not connected for input1.outputPort");
+      Assert.fail("should raise port not connected for input1.outputPort1");
+
     } catch (ValidationException e) {
-      Assert.assertEquals("", "Output port connection required: input1.outport", e.getMessage());
+      Assert.assertEquals("", "Output port connection required: input1.outport1", e.getMessage());
     }
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
-    dag.addStream("stream1", input.outport, o1.inport1);
+    dag.addStream("stream1", input.outport1, o1.inport1);
     dag.validate();
 
     // required input
@@ -514,24 +543,41 @@ public class LogicalPlanTest {
     dag.validate();
   }
 
-  private class TestAnnotationsOperator extends BaseOperator {
+  private class TestAnnotationsOperator extends BaseOperator implements InputOperator {
     //final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
     @OutputPortFieldAnnotation( optional=false)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+
+    @Override
+    public void emitTuples() {
+      // Emit Nothing
+
+    }
   }
 
-  private class TestAnnotationsOperator2 extends BaseOperator {
+  private class TestAnnotationsOperator2 extends BaseOperator implements InputOperator{
     // multiple ports w/o annotation, one of them must be connected
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
+
+    @Override
+    public void emitTuples() {
+      // Emit Nothing
+
+    }
   }
 
-  private class TestAnnotationsOperator3 extends BaseOperator {
+  private class TestAnnotationsOperator3 extends BaseOperator implements InputOperator{
     // multiple ports w/o annotation, one of them must be connected
     @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
     @OutputPortFieldAnnotation( optional=true)
     final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
+    @Override
+    public void emitTuples() {
+      // Emit Nothing
+
+    }
   }
 
   @Test
@@ -750,17 +796,23 @@ public class LogicalPlanTest {
   public void testCheckpointableWithinAppWindowAnnotation()
   {
     LogicalPlan dag = new LogicalPlan();
+    TestGeneratorInputOperator input1 = dag.addOperator("input1", TestGeneratorInputOperator.class);
     GenericTestOperator x = dag.addOperator("x", new GenericTestOperator());
+    dag.addStream("Stream1", input1.outport, x.inport1);
     dag.setAttribute(x, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
     dag.setAttribute(x, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
     dag.validate();
 
+    TestGeneratorInputOperator input2 = dag.addOperator("input2", TestGeneratorInputOperator.class);
     CheckpointableWithinAppWindowOperator y = dag.addOperator("y", new CheckpointableWithinAppWindowOperator());
+    dag.addStream("Stream2", input2.outport, y.inport1);
     dag.setAttribute(y, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
     dag.setAttribute(y, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
     dag.validate();
 
+    TestGeneratorInputOperator input3 = dag.addOperator("input3", TestGeneratorInputOperator.class);
     NotCheckpointableWithinAppWindowOperator z = dag.addOperator("z", new NotCheckpointableWithinAppWindowOperator());
+    dag.addStream("Stream3", input3.outport, z.inport1);
     dag.setAttribute(z, OperatorContext.CHECKPOINT_WINDOW_COUNT, 15);
     dag.setAttribute(z, OperatorContext.APPLICATION_WINDOW_COUNT, 30);
     try {

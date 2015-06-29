@@ -15,7 +15,7 @@
 
   <property>
     <name>dt.operator.operator1.classname</name>
-    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.TestGeneratorInputOperator</value>
     <description>The root operator</description>
   </property>
 
@@ -38,7 +38,7 @@
 
   <property>
     <name>dt.stream.n1n2.source</name>
-    <value>operator1.outport1</value>
+    <value>operator1.outport</value>
     <description></description>
   </property>
 
@@ -106,7 +106,7 @@
 
   <property>
     <name>dt.operator.operator6.classname</name>
-    <value>com.datatorrent.stram.engine.GenericTestOperator</value>
+    <value>com.datatorrent.stram.engine.TestGeneratorInputOperator</value>
     <description>Another operator, which gets input from root</description>
   </property>
 
