@@ -326,6 +326,8 @@ public class StramClient
     final org.apache.hadoop.yarn.api.records.Token rmDelegationToken = yarnClient.getRMDelegationToken(new Text(renewer));
 
     Token<RMDelegationTokenIdentifier> token;
+    // TODO: Use the utility method getRMDelegationTokenService in ClientRMProxy to remove the separate handling of
+    // TODO: HA and non-HA cases when hadoop dependency is changed to hadoop 2.4 or above
     if (conf.getBoolean(RM_HA_ENABLED, DEFAULT_RM_HA_ENABLED)) {
       LOG.info("Yarn Resource Manager HA is enabled");
       token = getRMHAToken(rmDelegationToken);
