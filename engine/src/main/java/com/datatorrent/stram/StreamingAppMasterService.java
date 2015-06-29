@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
-*  Copyright (c) 2012-2013 DataTorrent, Inc.
-*  All Rights Reserved.
-*/
 package com.datatorrent.stram;
 
 import com.datatorrent.stram.api.AppDataSource;

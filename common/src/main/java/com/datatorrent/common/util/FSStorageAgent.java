@@ -13,12 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Copyright (c) 2012-2013 DataTorrent, Inc.
- * All rights reserved.
- *
- * @since 0.3.2
- */
 package com.datatorrent.common.util;
 
 import java.io.*;
@@ -44,7 +38,7 @@ import com.datatorrent.netlet.util.DTThrowable;
 /**
  * FSStorageAgent
  *
- * @since 2.0.0
+ * @since 0.3.2
  */
 public class FSStorageAgent implements StorageAgent, Serializable
 {
