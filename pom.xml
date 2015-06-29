@@ -85,11 +85,11 @@
       </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
+        <version>3.3</version>
         <configuration>
           <encoding>UTF-8</encoding>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.7</source>
+          <target>1.7</target>
           <debug>true</debug>
           <optimize>true</optimize>
           <showDeprecation>true</showDeprecation>
@@ -112,7 +112,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[1.6.0,)</version>
+                  <version>[1.7.0,)</version>
                 </requireJavaVersion>
                 <requireMavenVersion>
                   <version>[3.0.2,)</version>
@@ -143,7 +143,7 @@
         <configuration>
           <signature>
             <groupId>org.codehaus.mojo.signature</groupId>
-            <artifactId>java16</artifactId>
+            <artifactId>java17</artifactId>
             <version>1.0</version>
           </signature>
           <ignores>
