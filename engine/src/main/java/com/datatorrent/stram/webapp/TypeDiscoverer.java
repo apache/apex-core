@@ -358,18 +358,8 @@ public class TypeDiscoverer
       Attribute<?> attr = (Attribute<?>) attrField.get(context);
       Type pType = attrType.getActualTypeArguments()[0];
 
-      Class<?> attrClazz;
-      if (pType instanceof ParameterizedType) {
-        ParameterizedType nPType = (ParameterizedType) pType;
-        attrClazz = (Class<?>) nPType.getRawType();
-
-        TypeDiscoverer typeDiscoverer = new TypeDiscoverer();
-        typeDiscoverer.setTypeArguments(attrClazz, pType, attrJson);
-      }
-      else {
-        attrClazz = (Class<?>) pType;
-      }
-      attrJson.put("type", attrClazz.getCanonicalName());
+      TypeDiscoverer discoverer = new TypeDiscoverer();
+      discoverer.resolveTypeParameters(pType, attrJson);
 
       if (attr.defaultValue != null) {
         attrJson.put("default", attr.defaultValue);
