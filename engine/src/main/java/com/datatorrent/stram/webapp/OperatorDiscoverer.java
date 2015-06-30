@@ -17,10 +17,11 @@ package com.datatorrent.stram.webapp;
 
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.Operator.InputPort;
-import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.annotation.*;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
+import com.datatorrent.stram.webapp.asm.CompactAnnotationNode;
+import com.datatorrent.stram.webapp.asm.CompactFieldNode;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -33,6 +34,7 @@ import java.io.InputStream;
 import java.lang.reflect.*;
 import java.net.*;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
@@ -40,10 +42,10 @@ import java.util.regex.Pattern;
 
 import javax.xml.parsers.*;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.codehaus.jettison.json.*;
+import org.objectweb.asm.tree.AnnotationNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
@@ -233,19 +235,22 @@ public class OperatorDiscoverer
 
   public void buildTypeGraph()
   {
-    for (String path : pathsToScan) {
-      File f = null;
-      try {
-        f = new File(path);
-        if (!f.exists() || f.isDirectory() || (!f.getName().endsWith("jar") && !f.getName().endsWith("class"))) {
-          continue;
-        }
-        if (f.getName().endsWith("class")) {
-          typeGraph.addNode(f);
-        } else {
-
-          JarFile jar = new JarFile(path);
-          try {
+    Map<String, JarFile> openJarFiles = new HashMap<String, JarFile>();
+    Map<String, File> openClassFiles = new HashMap<String, File>();
+    try { 
+      for (String path : pathsToScan) {
+        File f = null;
+        try {
+          f = new File(path);
+          if (!f.exists() || f.isDirectory() || (!f.getName().endsWith("jar") && !f.getName().endsWith("class"))) {
+            continue;
+          }
+          if (f.getName().endsWith("class")) {
+            typeGraph.addNode(f);
+            openClassFiles.put(path, f);
+          } else {
+            JarFile jar = new JarFile(path);
+            openJarFiles.put(path, jar);
             java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
             while (entriesEnum.hasMoreElements()) {
               java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
@@ -260,16 +265,23 @@ public class OperatorDiscoverer
                 typeGraph.addNode(jarEntry, jar);
               }
             }
-
-          } finally {
-            jar.close();
           }
+        } catch (IOException ex) {
+          LOG.warn("Cannot process file {}", f, ex);
         }
-      } catch (IOException ex) {
-        LOG.warn("Cannot process file {}", f, ex);
+      }
+
+      typeGraph.updatePortTypeInfoInTypeGraph(openJarFiles, openClassFiles);
+    }
+   finally {
+      for (Entry<String, JarFile> entry : openJarFiles.entrySet()) {
+        try {
+          entry.getValue().close();
+        } catch (IOException e) {
+          DTThrowable.wrapIfChecked(e);
+        }
       }
     }
-
   }
 
   private void processJavadocXml(InputStream is) throws ParserConfigurationException, SAXException, IOException
@@ -379,77 +391,37 @@ public class OperatorDiscoverer
       JSONArray inputPorts = new JSONArray();
       JSONArray outputPorts = new JSONArray();
       // Get properties from ASM
-      JSONArray properties = describeClassByASM(clazz.getName()).getJSONArray("properties");
+
+      JSONObject operatorDescriptor =  describeClassByASM(clazz.getName());
+      JSONArray properties = operatorDescriptor.getJSONArray("properties");
 
       properties = enrichProperties(clazz, properties);
 
-      TypeDiscoverer td = new TypeDiscoverer();
-      JSONArray portTypeInfo = td.getPortTypes(clazz);
+      JSONArray portTypeInfo = operatorDescriptor.getJSONArray("portTypeInfo");
 
-      Field[] fields = clazz.getFields();
-      Arrays.sort(fields, new Comparator<Field>()
-          {
-            @Override
-            public int compare(Field a, Field b)
-            {
-              return a.getName().compareTo(b.getName());
-            }
+      List<CompactFieldNode> inputPortfields = typeGraph.getAllInputPorts(clazz.getName());
+      List<CompactFieldNode> outputPortfields = typeGraph.getAllOutputPorts(clazz.getName());
 
-      });
+
       try {
-        for (Field field : fields) {
-          if (InputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject inputPort = new JSONObject();
-            inputPort.put("name", field.getName());
-
-            for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-              OperatorClassInfo oci = classInfo.get(c.getName());
-              if (oci != null) {
-                String fieldDesc = oci.fields.get(field.getName());
-                if (fieldDesc != null) {
-                  inputPort.put("description", fieldDesc);
-                  break;
-                }
-              }
-            }
-
-            InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
-            if (inputAnnotation != null) {
-              inputPort.put("optional", inputAnnotation.optional());
-            }
-            else {
-              inputPort.put("optional", false); // input port that is not annotated is default to be not optional
-            }
-
-            inputPorts.put(inputPort);
+        for (CompactFieldNode field : inputPortfields) {
+          JSONObject inputPort = setFieldAttributes(clazz, field);
+          if (!inputPort.has("optional")) {
+            inputPort.put("optional", false); // input port that is not annotated is default to be not optional
           }
-          else if (OutputPort.class.isAssignableFrom(field.getType())) {
-            JSONObject outputPort = new JSONObject();
-            outputPort.put("name", field.getName());
+          inputPorts.put(inputPort);
+        }
 
-            for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-              OperatorClassInfo oci = classInfo.get(c.getName());
-              if (oci != null) {
-                String fieldDesc = oci.fields.get(field.getName());
-                if (fieldDesc != null) {
-                  outputPort.put("description", fieldDesc);
-                  break;
-                }
-              }
-            }
+        for (CompactFieldNode field : outputPortfields) {
+          JSONObject outputPort = setFieldAttributes(clazz, field);
 
-            OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
-            if (outputAnnotation != null) {
-              outputPort.put("optional", outputAnnotation.optional());
-              outputPort.put("error", outputAnnotation.error());
-            }
-            else {
-              outputPort.put("optional", true); // output port that is not annotated is default to be optional
-              outputPort.put("error", false);
-            }
-
-            outputPorts.put(outputPort);
+          if (!outputPort.has("optional")) {
+            outputPort.put("optional", true); // output port that is not annotated is default to be optional
           }
+          if (!outputPort.has("error")) {
+            outputPort.put("error", false);
+          }
+          outputPorts.put(outputPort);
         }
 
         response.put("name", clazz.getName());
@@ -510,6 +482,36 @@ public class OperatorDiscoverer
     }
   }
 
+  private JSONObject setFieldAttributes(Class<? extends Operator> clazz,
+      CompactFieldNode field) throws JSONException {
+    JSONObject port = new JSONObject();
+    port.put("name", field.getName());
+
+    for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+      OperatorClassInfo oci = classInfo.get(c.getName());
+      if (oci != null) {
+        String fieldDesc = oci.fields.get(field.getName());
+        if (fieldDesc != null) {
+          port.put("description", fieldDesc);
+          break;
+        }
+      }
+    }
+
+    List<CompactAnnotationNode> annotations = field.getVisibleAnnotations();
+    CompactAnnotationNode firstAnnotation;
+    if (annotations != null
+        && !annotations.isEmpty()
+        && (firstAnnotation = field
+        .getVisibleAnnotations().get(0)) != null) {
+      for(Map.Entry<String, Object> entry :firstAnnotation.getAnnotations().entrySet() ) {
+        port.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    return port;
+  }
+
   private JSONArray enrichProperties(Class<?> operatorClass, JSONArray properties) throws JSONException
   {
     JSONArray result = new JSONArray();
@@ -558,6 +560,7 @@ public class OperatorDiscoverer
   {
     return typeGraph.describeClass(clazzName);
   }
+
 
 
   public JSONObject describeClass(Class<?> clazz) throws Exception

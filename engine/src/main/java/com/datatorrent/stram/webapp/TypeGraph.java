@@ -19,7 +19,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,9 +52,11 @@ import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
 import com.datatorrent.api.Operator;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
 import com.datatorrent.stram.webapp.asm.ClassSignatureVisitor;
 import com.datatorrent.stram.webapp.asm.CompactClassNode;
+import com.datatorrent.stram.webapp.asm.CompactFieldNode;
 import com.datatorrent.stram.webapp.asm.CompactMethodNode;
 import com.datatorrent.stram.webapp.asm.CompactUtil;
 import com.datatorrent.stram.webapp.asm.MethodSignatureVisitor;
@@ -97,6 +101,21 @@ public class TypeGraph
     }
   }
 
+  private static boolean isAncestor(TypeGraphVertex typeTgv, TypeGraphVertex tgv)
+  {
+    if (tgv == typeTgv) {
+      return true;
+    }
+    if ((tgv.ancestors == null || tgv.ancestors.size() == 0)) {
+      return false;
+    }
+    for (TypeGraphVertex vertex : tgv.ancestors) {
+      if (isAncestor(typeTgv, vertex))
+        return true;
+    }
+    return false;
+  }
+  
   enum UI_TYPE {
 
     LIST(Collection.class.getName(), "List"),
@@ -132,20 +151,7 @@ public class TypeGraph
       return null;
     }
 
-    private static boolean isAncestor(TypeGraphVertex typeTgv, TypeGraphVertex tgv)
-    {
-      if (tgv == typeTgv) {
-        return true;
-      }
-      if ((tgv.ancestors == null || tgv.ancestors.size() == 0)) {
-        return false;
-      }
-      for (TypeGraphVertex vertex : tgv.ancestors) {
-        if (isAncestor(typeTgv, vertex))
-          return true;
-      }
-      return false;
-    }
+    
 
     public String getName()
     {
@@ -166,14 +172,13 @@ public class TypeGraph
       reader.accept(classN, ClassReader.SKIP_CODE);
       CompactClassNode ccn = CompactUtil.compactClassNode(classN);
       String typeName = classN.name.replace('/', '.');
-
-//      LOG.debug("Add type {} to the graph", typeName);
       
       TypeGraphVertex tgv = null;
       TypeGraphVertex ptgv = null;
       if (typeGraph.containsKey(typeName)) {
         tgv = typeGraph.get(typeName);
         tgv.setClassNode(ccn);
+        tgv.setJarName(resName); // If tgv was already populated for superclass/interface, jar name needs to be updated 
       } else {
         tgv = new TypeGraphVertex(typeName, resName, ccn);
         typeGraph.put(typeName, tgv);
@@ -218,6 +223,72 @@ public class TypeGraph
   public void addNode(JarEntry jarEntry, JarFile jar) throws IOException
   {
     addNode(jar.getInputStream(jarEntry), jar.getName());
+  }
+
+  public void updatePortTypeInfoInTypeGraph(Map<String, JarFile> openJarFiles,
+      Map<String, File> openClassFiles) {
+    TypeGraphVertex tgv = typeGraph.get(Operator.class.getName());
+    updatePortTypeInfoInTypeGraph(openJarFiles, openClassFiles, tgv);
+  }
+
+  public void updatePortTypeInfoInTypeGraph(Map<String, JarFile> openJarFiles,
+      Map<String, File> openClassFiles, TypeGraphVertex tgv) {
+    if (tgv == null)
+      return;
+
+    for (TypeGraphVertex operator : tgv.descendants) {
+      try {
+        String path = operator.getJarName();
+        JarFile jar = openJarFiles.get(path);
+        if (jar != null) {
+          String jarEntryName = operator.getClassNode().getName()
+              .replace('.', '/')
+              + ".class";
+          JarEntry jarEntry = jar.getJarEntry(jarEntryName);
+          if (jarEntry != null) {
+            updatePortInfo(operator, jar.getInputStream(jarEntry));
+          }
+        } else {
+          File f = openClassFiles.get(path);
+          if (f != null && f.exists() && f.getName().endsWith("class")) {
+            updatePortInfo(operator, new FileInputStream(f));
+          }
+        }
+        updatePortTypeInfoInTypeGraph(openJarFiles, openClassFiles, operator);
+      } catch (Exception e) {
+        DTThrowable.wrapIfChecked(e);
+      }
+    }
+  }
+
+  private void updatePortInfo(TypeGraphVertex tgv, InputStream input)
+      throws IOException {
+    try {
+      ClassReader reader;
+      reader = new ClassReader(input);
+      ClassNodeType classN = new ClassNodeType();
+      classN.setClassSignatureVisitor(tgv.getClassNode().getCsv());
+      classN.setVisitFields(true);
+      reader.accept(classN, ClassReader.SKIP_CODE);
+      CompactClassNode ccn = tgv.getClassNode();
+      CompactUtil.updateCompactClassPortInfo(classN, ccn);
+      List<CompactFieldNode> prunedFields = new LinkedList<CompactFieldNode>();
+      TypeGraphVertex portVertex = typeGraph.get(Operator.Port.class.getName());
+      for (CompactFieldNode field : ccn.getPorts()) {
+        TypeGraphVertex fieldVertex = typeGraph.get(field.getDescription());
+        if(fieldVertex != null) {
+          if (isAncestor(portVertex, fieldVertex)) {
+            prunedFields.add(field);
+          }
+        }
+      }
+      ccn.setPorts(prunedFields);
+
+    } finally {
+      if (input != null) {
+        input.close();
+      }
+    }
   }
 
   private void updateInitializableDescendants(TypeGraphVertex tgv)
@@ -318,7 +389,7 @@ public class TypeGraph
     private final transient Set<TypeGraphVertex> descendants = new HashSet<TypeGraphVertex>();
 
     // keep the jar file name for late fetching the detail information
-    private final String jarName;
+    private String jarName;
     
     @SuppressWarnings("unused")
     private TypeGraphVertex(){
@@ -413,6 +484,10 @@ public class TypeGraph
       return jarName;
     }
 
+    public void setJarName(String jarName)
+    {
+      this.jarName =  jarName;
+    }
 
     public CompactClassNode getClassNode()
     {
@@ -455,7 +530,6 @@ public class TypeGraph
         }
         result.add(node.typeName);
       }
-      
     }
     return result;
   }
@@ -479,23 +553,147 @@ public class TypeGraph
     if (uType != null) {
       desc.put("uiType", uType.getName());
     }
-    desc.put("properties", getClassProperties(clazzName));
+    
+    addClassPropertiesAndPorts(clazzName,  desc);
+
     return desc;
   }
 
-  private Collection<JSONObject> getClassProperties(String clazzName) throws JSONException
-  {
+  private Collection<JSONObject> getPortTypeInfo(String clazzName,
+      Map<Type, Type> typeReplacement, List<CompactFieldNode> ports) throws JSONException {
     TypeGraphVertex tgv = typeGraph.get(clazzName);
     if (tgv == null) {
       return null;
     }
+    
+    Collection<JSONObject> portInfo = new ArrayList<JSONObject>();
+    
+    for (CompactFieldNode port : ports) {
+        Type fieldType = port.getFieldSignatureNode().getFieldType();
+        Type t = fieldType;
+        if (fieldType instanceof ParameterizedTypeNode) {
+          // TODO: Right now getPortInfo assumes a single parameterized type
+          t = ((ParameterizedTypeNode) fieldType).getActualTypeArguments()[0];
+        } else {
+          // TODO: Check behavior for Ports not using Default Input/output ports
+          TypeGraphVertex portVertex = typeGraph.get(port.getDescription());
+          t = findTypeArgument(portVertex, typeReplacement);
+          LOG.debug("Field is of type {}", fieldType.getClass());
+        }
+
+        JSONObject meta = new JSONObject();
+        try {
+          meta.put("name", port.getName()); 
+          setTypes(meta, t, typeReplacement);
+          portInfo.add(meta);
+        } catch (Exception e) {
+          DTThrowable.wrapIfChecked(e);
+        }
+    }
+
+    return portInfo;
+  }
+
+  public static Type getParameterizedTypeArgument(Type type) {
+    if (type instanceof ParameterizedTypeNode) {
+      return ((ParameterizedTypeNode) type).getActualTypeArguments()[0];
+    }
+    return null;
+  }
+
+  private Type findTypeArgument(TypeGraphVertex tgv,
+      Map<Type, Type> typeReplacement) {
+    if (tgv == null)
+      return null;
+    ClassSignatureVisitor csv = tgv.getClassNode().getCsv();
+    Type superC = csv.getSuperClass();
+
+    addReplacement(superC, typeReplacement);
+    Type t = getParameterizedTypeArgument(superC);
+    if (t != null) {
+      return t;
+    }
+
+    if (csv.getInterfaces() != null) {
+      for (Type it : csv.getInterfaces()) {
+        addReplacement(it, typeReplacement);
+        t = getParameterizedTypeArgument(it);
+        if (t != null) {
+          return t;
+        }
+      }
+    }
+
+    for (TypeGraphVertex ancestor : tgv.ancestors) {
+      return findTypeArgument(ancestor, typeReplacement);
+    }
+
+    return null;
+  }
+
+  public List<CompactFieldNode> getAllInputPorts(String clazzName) {
+    TypeGraphVertex tgv = typeGraph.get(clazzName);
+    List<CompactFieldNode> ports = new ArrayList<CompactFieldNode>();
+    TypeGraphVertex portVertex = typeGraph.get(Operator.InputPort.class
+        .getName());
+    getAllPortsWithAncestor(portVertex, tgv, ports);
+    Collections.sort(ports, new Comparator<CompactFieldNode>() {
+      @Override
+      public int compare(CompactFieldNode a, CompactFieldNode b) {
+        return a.getName().compareTo(b.getName());
+      }
+    });
+    return ports;
+  }
+
+  public List<CompactFieldNode> getAllOutputPorts(String clazzName) {
+    TypeGraphVertex tgv = typeGraph.get(clazzName);
+    List<CompactFieldNode> ports = new ArrayList<CompactFieldNode>();
+    TypeGraphVertex portVertex = typeGraph.get(Operator.OutputPort.class
+        .getName());
+    getAllPortsWithAncestor(portVertex, tgv, ports);
+    Collections.sort(ports, new Comparator<CompactFieldNode>() {
+      @Override
+      public int compare(CompactFieldNode a, CompactFieldNode b) {
+        return a.getName().compareTo(b.getName());
+      }
+    });
+    return ports;
+  }
+  
+  private void getAllPortsWithAncestor(TypeGraphVertex portVertex,
+      TypeGraphVertex tgv, List<CompactFieldNode> ports)
+  {
+    List<CompactFieldNode> fields = tgv.getClassNode().getPorts();
+    if (fields != null) {
+      for (CompactFieldNode field : fields) {
+        TypeGraphVertex fieldVertex = typeGraph.get(field.getDescription());
+
+        if (isAncestor(portVertex, fieldVertex)) {
+          ports.add(field);
+        }
+      }
+    }
+    for (TypeGraphVertex ancestor : tgv.ancestors) {
+      getAllPortsWithAncestor(portVertex, ancestor, ports);
+    }
+  }
+
+  private void addClassPropertiesAndPorts(String clazzName, JSONObject desc) throws JSONException {
+    TypeGraphVertex tgv = typeGraph.get(clazzName);
+    if (tgv == null) {
+      return;
+    }
+
     Map<String, JSONObject> results = new TreeMap<String, JSONObject>();
     List<CompactMethodNode> getters =  new LinkedList<CompactMethodNode>();
     List<CompactMethodNode> setters = new LinkedList<CompactMethodNode>();
     Map<Type, Type> typeReplacement = new HashMap<Type, Type>();
-    getPublicSetterGetter(tgv, setters, getters, typeReplacement);
+    List<CompactFieldNode> ports =  new LinkedList<CompactFieldNode>();
     
-
+    getPublicSetterGetterAndPorts(tgv, setters, getters, typeReplacement, ports);
+    desc.put("portTypeInfo", getPortTypeInfo(clazzName, typeReplacement, ports));
+    
     for (CompactMethodNode setter : setters) {
       String prop = WordUtils.uncapitalize(setter.getName().substring(3));
       JSONObject propJ = results.get(prop);
@@ -557,10 +755,10 @@ public class TypeGraph
       propJ.put("canGet", true);
     }
 
-    return results.values();
+    desc.put("properties", results.values());
   }
 
-  private void getPublicSetterGetter(TypeGraphVertex tgv, List<CompactMethodNode> setters, List<CompactMethodNode> getters, Map<Type, Type> typeReplacement)
+  private void getPublicSetterGetterAndPorts(TypeGraphVertex tgv, List<CompactMethodNode> setters, List<CompactMethodNode> getters, Map<Type, Type> typeReplacement, List<CompactFieldNode> ports)
   {
     CompactClassNode exClass = null;
     // check if the class needs to be excluded
@@ -598,6 +796,16 @@ public class TypeGraph
       }
     }
     
+    TypeGraphVertex portVertex = typeGraph.get(Operator.Port.class.getName());
+    List<CompactFieldNode> fields = tgv.getClassNode().getPorts();
+    if(fields != null) {
+      for (CompactFieldNode field : fields) {
+        TypeGraphVertex fieldVertex = typeGraph.get(field.getDescription());
+        if (isAncestor(portVertex, fieldVertex)) {
+          ports.add(field);
+        }
+      }
+    }
     
     ClassSignatureVisitor csv = tgv.getClassNode().getCsv();
     Type superC = csv.getSuperClass();
@@ -610,7 +818,7 @@ public class TypeGraph
       };
     }
     for (TypeGraphVertex ancestor : tgv.ancestors) {
-      getPublicSetterGetter(ancestor, setters, getters, typeReplacement);
+      getPublicSetterGetterAndPorts(ancestor, setters, getters, typeReplacement, ports);
     }
   }
 

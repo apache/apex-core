@@ -18,6 +18,7 @@ package com.datatorrent.stram.webapp.asm;
 import java.util.List;
 
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.FieldNode;
 
 /**
  * Store class information only needed by app builder
@@ -31,6 +32,8 @@ public class CompactClassNode
   
   private String name;
   
+  private List<CompactFieldNode> ports;
+
   private List<CompactMethodNode> getterMethods;
   
   private List<CompactMethodNode> setterMethods;
@@ -128,4 +131,11 @@ public class CompactClassNode
     this.csv = csv;
   }
 
+  public List<CompactFieldNode> getPorts() {
+    return ports;
+  }
+
+  public void setPorts(List<CompactFieldNode> ports) {
+    this.ports = ports;
+  }
 }

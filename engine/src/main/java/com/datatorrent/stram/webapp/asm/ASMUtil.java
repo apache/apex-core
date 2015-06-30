@@ -58,6 +58,21 @@ public class ASMUtil
     return result;
   }
   
+  public static List<FieldNode> getPorts(ClassNode asmNode)
+  {
+    List<FieldNode> result = new LinkedList<FieldNode>();
+    List<FieldNode> fields = asmNode.fields;
+    for(FieldNode fn : fields)
+    {
+      // 'L' represents <class>, ignore primitive types
+      if(fn.desc.charAt(0) == 'L')
+      {
+        result.add(fn);
+      }
+    }
+
+    return result;
+  }
   
 
   /**
@@ -130,9 +145,18 @@ public class ASMUtil
 
 
 
-  private static boolean isPublic(int opCode)
+  public static boolean isPublic(int opCode)
   {
     return (opCode & Opcodes.ACC_PUBLIC) == Opcodes.ACC_PUBLIC;
   }
+
+  public static boolean isTransient(int opCode)
+  {
+    return (opCode & Opcodes.ACC_TRANSIENT) == Opcodes.ACC_TRANSIENT;
+  }
   
+  public static boolean isFinal(int opCode)
+  {
+    return (opCode & Opcodes.ACC_FINAL) == Opcodes.ACC_FINAL;
+  }
 }
