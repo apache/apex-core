@@ -165,7 +165,7 @@
     <!-- add your dependencies here -->
     <dependency>
       <groupId>com.datatorrent</groupId>
-      <artifactId>dt-engine</artifactId>
+      <artifactId>dt-common</artifactId>
       <version>${datatorrent.version}</version>
       <scope>provided</scope>
     </dependency>
