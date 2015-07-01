@@ -63,7 +63,7 @@ public class OperatorDiscoveryTest
 
     JSONArray props = asmDesc.getJSONArray("properties");
     Assert.assertNotNull(debug + "Properties aren't null ", props);
-    Assert.assertEquals(debug + "Number of properties ", 27, props.length());
+    Assert.assertEquals(debug + "Number of properties ", 28, props.length());
 
     JSONObject mapProperty = getJSONProperty(props, "map");
     Assert.assertEquals(debug + "canGet " + mapProperty, true, mapProperty.get("canGet"));
@@ -121,7 +121,8 @@ public class OperatorDiscoveryTest
     JSONObject aObj = getJSONProperty(props, "a");
     Assert.assertEquals("type " + aObj, Number.class.getName(), aObj.get("type"));
     JSONObject bObj = getJSONProperty(props, "b");
-    Assert.assertEquals("type " + bObj, "long", bObj.get("type"));
+    Assert.assertEquals("type " + bObj, "java.lang.Long", bObj.get("type"));
+    Assert.assertEquals("type " + bObj, "long", bObj.get("uiType"));
     JSONObject cObj = getJSONProperty(props, "c");
     Assert.assertEquals("type " + cObj, List.class.getName(), cObj.get("type"));
     JSONObject dObj = getJSONProperty(props, "d");
@@ -137,6 +138,15 @@ public class OperatorDiscoveryTest
     desc = od.describeClass(Color.class);
     asmDesc = od.describeClassByASM(Color.class.getName());
     Assert.assertEquals("\ntype info for " + Color.class + ":\n", om.readTree(desc.toString()), om.readTree(asmDesc.toString()));
+
+    // test uitype for wrapper type
+    asmDesc = od.describeClassByASM(Integer.class.getName());
+    Assert.assertEquals("type info for" + Integer.class + ":\n" + asmDesc.toString(2), "int", asmDesc.getString("uiType"));
+
+    // test uitype for FromStringSerializer supported type
+    asmDesc = od.describeClassByASM(URI.class.getName());
+    Assert.assertEquals("type info for" + URI.class + ":\n" + asmDesc.toString(2), "java.lang.String", asmDesc.getString("uiType"));
+
 
   }
 
@@ -196,6 +206,12 @@ public class OperatorDiscoveryTest
     for (String expectedClass : jdkQueue) {
       Assert.assertTrue("Actual queue: " + actualQueueClass.toString() + "\n Expected contained queue: " + expectedClass, actualQueueClass.contains(expectedClass));
     }
+
+    List<String> expectedNumberClasses = Lists.newArrayList(Byte.class.getName(), Short.class.getName(), Long.class.getName(), Integer.class.getName(), Double.class.getName(), Float.class.getName());
+
+    List<String> actualNumberClasses = od.getTypeGraph().getInitializableDescendants(Number.class.getName());
+
+    Assert.assertTrue("Actual Number types: " + actualNumberClasses.toString() + "\n Expected contained types: " + expectedNumberClasses, actualNumberClasses.containsAll(expectedNumberClasses));
 
   }
 
@@ -349,11 +365,20 @@ public class OperatorDiscoveryTest
     private URI uri;
     private String realName = "abc";
     private String getterOnly = "getterOnly";
-    
+
     // this property can not be deserialized by jackson but it will be ignored if it has no setter method
     private Map<Class, String> mProp;
-    
-    
+
+    private Class aClass = Object.class;
+
+    public Class getaClass() {
+      return aClass;
+    }
+
+    public void setaClass(Class aClass) {
+      this.aClass = aClass;
+    }
+
     public Map<Class, String> getmProp()
     {
       return mProp;
