@@ -272,6 +272,7 @@ public class LogicalPlanConfigurationTest {
 
     Properties props = new Properties();
     props.put(StreamingApplication.DT_PREFIX + DAG.MASTER_MEMORY_MB.getName(), "123");
+    props.put(StreamingApplication.DT_PREFIX + DAG.CONTAINER_JVM_OPTIONS.getName(), "-Dlog4j.properties=custom_log4j.properties");
     props.put(StreamingApplication.DT_PREFIX + DAG.APPLICATION_PATH.getName(), "/defaultdir");
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.APPLICATION_PATH.getName(), "/otherdir");
     props.put(StreamingApplication.DT_PREFIX + "application." + appName + "." + DAG.STREAMING_WINDOW_SIZE_MILLIS.getName(), "1000");
@@ -283,11 +284,12 @@ public class LogicalPlanConfigurationTest {
 
     dagBuilder.populateDAG(dag);
 
-    dagBuilder.setApplicationConfiguration(dag, appName,null);
+    dagBuilder.setApplicationConfiguration(dag, appName, null);
 
     Assert.assertEquals("", "/otherdir", dag.getValue(DAG.APPLICATION_PATH));
     Assert.assertEquals("", Integer.valueOf(123), dag.getValue(DAG.MASTER_MEMORY_MB));
     Assert.assertEquals("", Integer.valueOf(1000), dag.getValue(DAG.STREAMING_WINDOW_SIZE_MILLIS));
+    Assert.assertEquals("", "-Dlog4j.properties=custom_log4j.properties", dag.getValue(DAG.CONTAINER_JVM_OPTIONS));
 
   }
   @Test

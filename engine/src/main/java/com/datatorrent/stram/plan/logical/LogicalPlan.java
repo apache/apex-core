@@ -1000,6 +1000,11 @@ public class LogicalPlan implements Serializable, DAG
     return this.getValue(MASTER_MEMORY_MB);
   }
 
+  public String getMasterJVMOptions()
+  {
+    return this.getValue(CONTAINER_JVM_OPTIONS);
+  }
+
   public String assertAppPath()
   {
     String path = getAttributes().get(LogicalPlan.APPLICATION_PATH);
