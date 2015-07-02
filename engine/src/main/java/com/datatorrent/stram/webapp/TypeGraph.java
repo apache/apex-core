@@ -19,19 +19,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
@@ -66,7 +55,6 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.common.primitives.Primitives;
 
 /**
  * A graph data structure holds all type information and their relationship needed in app builder
@@ -83,34 +71,49 @@ public class TypeGraph
     Enum.class.getName().replace('.', '/'), 
     Operator.class.getName().replace('.', '/'),
     Component.class.getName().replace('.', '/')};
-  
-  
-  public static final HashMap<String, String> classReplacement;
-  
-  static {
-    classReplacement = new HashMap<String, String>();
-    for (@SuppressWarnings("rawtypes") FromStringDeserializer fsd : FromStringDeserializer.all()) {
-      classReplacement.put(fsd.getValueClass().getName(), "java.lang.String");
-    }
-    for (@SuppressWarnings("rawtypes") Class wrapperClass : Primitives.allWrapperTypes()) {
-      classReplacement.put(wrapperClass.getName(), Primitives.unwrap(wrapperClass).getName());
-    }
-  }
+
 
   enum UI_TYPE {
 
-    LIST(Collection.class.getName(), "List"),
+    LIST("List", Collection.class.getName()),
 
-    ENUM(Enum.class.getName(), "Enum"),
+    ENUM("Enum", Enum.class.getName()),
 
-    MAP(Map.class.getName(), "Map");
+    MAP("Map", Map.class.getName()),
 
-    private final String assignableTo;
+    /*
+    Refer to https://fasterxml.github.io/jackson-databind/javadoc/2.4/com/fasterxml/jackson/databind/deser/std/FromStringDeserializer.html
+     */
+
+    STRING("java.lang.String", GetStringTypes()),
+
+    INT("int", Integer.class.getName()),
+    BYTE("byte", Byte.class.getName()),
+    SHORT("short", Short.class.getName()),
+    LONG("long", Long.class.getName()),
+    DOUBLE("double", Double.class.getName()),
+    FLOAT("float", Float.class.getName());
+
+    private static String[] GetStringTypes()
+    {
+
+      ArrayList<String> l = new ArrayList<String>();
+      l.add(Class.class.getName());
+      Iterator<FromStringDeserializer<?>> iter = FromStringDeserializer.all().iterator();
+      while (iter.hasNext()) {
+        FromStringDeserializer fsd =  iter.next();
+        l.add(fsd.getValueClass().getName());
+      }
+      String[] a = new String[l.size()];
+      return l.toArray(a);
+    }
+
+    private final String[] allAssignableTypes;
     private final String name;
 
-    private UI_TYPE(String assignableTo, String name)
+    UI_TYPE(String name, String... allAssignableTypes)
     {
-      this.assignableTo = assignableTo;
+      this.allAssignableTypes = allAssignableTypes;
       this.name = name;
     }
 
@@ -121,12 +124,27 @@ public class TypeGraph
         return null;
       }
       for (UI_TYPE type : UI_TYPE.values()) {
-        TypeGraphVertex typeTgv = typeGraph.get(type.assignableTo);
-        if (typeTgv == null) {
-          continue;
+        for (String assignable : type.allAssignableTypes) {
+          TypeGraphVertex typeTgv = typeGraph.get(assignable);
+          if (typeTgv == null) {
+            continue;
+          }
+          if (isAncestor(typeTgv, tgv)) {
+            return type;
+          }
         }
-        if (isAncestor(typeTgv, tgv)) {
-          return type;
+      }
+      return null;
+    }
+
+    public static UI_TYPE getEnumFor(TypeGraphVertex tgv)
+    {
+      List<String> allTypes = TypeGraph.getAllAncestors(tgv, true);
+      for (UI_TYPE type : UI_TYPE.values()) {
+        for (String assignable : type.allAssignableTypes){
+          if(allTypes.contains(assignable)){
+            return type;
+          }
         }
       }
       return null;
@@ -152,6 +170,23 @@ public class TypeGraph
       return name;
     }
   }
+
+  public static List<String> getAllAncestors(TypeGraphVertex tgv, boolean include) {
+    List<String> result = new LinkedList<String>();
+    if(include) {
+      result.add(tgv.typeName);
+    }
+    getAllAncestors(tgv, result);
+    return result;
+  }
+
+  private static void getAllAncestors(TypeGraphVertex tgv, List<String> result) {
+    for(TypeGraphVertex an : tgv.ancestors){
+      result.add(an.typeName);
+      getAllAncestors(an, result);
+    }
+  }
+
 
   private static final Logger LOG = LoggerFactory.getLogger(TypeGraph.class);
 
@@ -347,7 +382,7 @@ public class TypeGraph
 
     private boolean isInitializable()
     {
-      return isPublicConcrete() && classNode.getInitializableConstructor() != null;
+      return (isPublicConcrete() && classNode.getInitializableConstructor() != null) || UI_TYPE.getEnumFor(this) != null;
     }
 
     private boolean isPublicConcrete()
@@ -639,9 +674,6 @@ public class TypeGraph
       } else if (t instanceof TypeNode) {
         TypeNode tn = (TypeNode) t;
         String typeS = tn.getTypeObj().getClassName();
-        if (classReplacement.get(typeS) != null) {
-          typeS = classReplacement.get(typeS);
-        }
         propJ.put("type", typeS);
         UI_TYPE uiType = UI_TYPE.getEnumFor(typeS, typeGraph);
         if (uiType != null) {
