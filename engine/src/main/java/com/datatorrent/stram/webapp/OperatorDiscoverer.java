@@ -464,8 +464,10 @@ public class OperatorDiscoverer
           if (oci.comment != null) {
             String[] descriptions;
             // first look for a <p> tag
+            String keptPrefix = "<p>";
             descriptions = oci.comment.split("<p>", 2);
             if (descriptions.length == 0) {
+              keptPrefix = "";
               // if no <p> tag, then look for a blank line
               descriptions = oci.comment.split("\n\n", 2);
             }
@@ -473,7 +475,7 @@ public class OperatorDiscoverer
               response.put("shortDesc", descriptions[0]);
             }
             if (descriptions.length > 1) {
-              response.put("longDesc", descriptions[1]);
+              response.put("longDesc", keptPrefix + descriptions[1]);
             }
           }
           response.put("category", oci.tags.get("@category"));
