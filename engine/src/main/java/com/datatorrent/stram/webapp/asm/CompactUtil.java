@@ -15,9 +15,15 @@
  */
 package com.datatorrent.stram.webapp.asm;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+
+import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
@@ -50,8 +56,8 @@ public class CompactUtil
       cmns.add(compactMethodNode(mn));
     }
     ccn.setSetterMethods(cmns);
-   
-        
+
+    ccn.setPorts(new LinkedList<CompactFieldNode>());
     ccn.setName(cn.name);
     
     List<CompactClassNode> ccns = new LinkedList<CompactClassNode>();
@@ -85,6 +91,17 @@ public class CompactUtil
     return ccn;
   }
 
+  public static void updateCompactClassPortInfo(ClassNode cn, CompactClassNode ccn)
+  {
+    List<FieldNode> fields =  ASMUtil.getPorts(cn);
+    List<CompactFieldNode> ports = new LinkedList<CompactFieldNode>();
+    for(FieldNode fn : fields)
+    {
+      ports.add(compactFieldNode(fn));
+    }
+    ccn.setPorts(ports);
+  }
+
   private static CompactMethodNode compactMethodNode(MethodNode mn)
   {
     if (mn == null) {
@@ -97,4 +114,52 @@ public class CompactUtil
     return cmn;
   }
 
+  private static CompactFieldNode compactFieldNode(FieldNode fn) {
+    if (fn == null) {
+      return null;
+    }
+    CompactFieldNode cfn = new CompactFieldNode();
+    cfn.setName(fn.name);
+
+    String className = org.objectweb.asm.Type.getObjectType(fn.desc).getClassName();
+    if(className.charAt(0) == 'L')
+    {
+      className = className.substring(1);
+    }
+    if(className.endsWith(";"))
+    {
+      className = className.substring(0, className.length() - 1);
+    }
+    cfn.setDescription(className);
+    cfn.setSignature(fn.signature);
+
+    if (fn.visibleAnnotations != null) {
+      setAnnotationNode(fn, cfn);
+    }
+    if(fn instanceof com.datatorrent.stram.webapp.asm.FieldNode)
+      cfn.setFieldSignatureNode((((com.datatorrent.stram.webapp.asm.FieldNode)fn).signatureNode));
+    return cfn;
+  }
+
+  private static void setAnnotationNode(FieldNode fn, CompactFieldNode cfn) {
+    List<CompactAnnotationNode> annotations = new LinkedList<CompactAnnotationNode>();
+    for (Object visibleAnnotation : fn.visibleAnnotations) {
+      CompactAnnotationNode node = new CompactAnnotationNode();
+      Map<String, Object> annotationMap = new HashMap<String, Object>();
+      if (visibleAnnotation instanceof AnnotationNode) {
+        AnnotationNode annotation = (AnnotationNode) visibleAnnotation;
+        if (annotation.desc.contains("InputPortFieldAnnotation")
+            || annotation.desc.contains("OutputPortFieldAnnotation")) {
+          List<Object> annotationValues = annotation.values;
+          int index = 0;
+          while (index < annotationValues.size()) {
+            annotationMap.put((String) annotationValues.get(index++), annotationValues.get(index++));
+          }
+          node.setAnnotations(annotationMap);
+          annotations.add(node);
+        }
+      }
+      cfn.setVisibleAnnotations(annotations);
+    }
+  }
 }

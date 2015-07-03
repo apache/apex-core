@@ -213,8 +213,7 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
   @Override
   public SignatureVisitor visitSuperclass()
   {
-    
-    throw new UnsupportedOperationException();
+    return this;
   }
   
   @Override
