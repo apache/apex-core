@@ -37,8 +37,9 @@ public class TestGeneratorInputOperator implements InputOperator
   private int remainingSleepTime;
   private int emitInterval = 1000;
   private final int spinMillis = 50;
+  private String myStringProperty;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
-  @OutputPortFieldAnnotation(optional = false)
+  @OutputPortFieldAnnotation(optional = true)
   public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
 
   public int getMaxTuples()
@@ -128,6 +129,15 @@ public class TestGeneratorInputOperator implements InputOperator
   public void teardown()
   {
   }
+
+  public String getMyStringProperty() {
+	  return myStringProperty;
+	}
+
+	public void setMyStringProperty(String myStringProperty) {
+	  this.myStringProperty = myStringProperty;
+	}
+
 
   public static class InvalidInputOperator extends TestGeneratorInputOperator implements InputOperator
   {

@@ -32,6 +32,7 @@ import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerManager;
 import com.datatorrent.stram.engine.GenericTestOperator;
 import com.datatorrent.stram.engine.OperatorContext;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.TestPlanContext;
 import com.datatorrent.stram.plan.logical.requests.CreateOperatorRequest;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
@@ -302,7 +303,7 @@ public class LogicalPlanModificationTest
 
 
     CreateOperatorRequest cor = new CreateOperatorRequest();
-    cor.setOperatorFQCN(GenericTestOperator.class.getName());
+    cor.setOperatorFQCN(TestGeneratorInputOperator.class.getName());
     cor.setOperatorName("o1");
 
     FutureTask<?> lpmf = dnm.logicalPlanModification(Collections.<LogicalPlanRequest>singletonList(cor));
@@ -326,7 +327,7 @@ public class LogicalPlanModificationTest
 
     PTOperator oper = c.getOperators().get(0);
     Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getName());
-    Assert.assertEquals("operator class", GenericTestOperator.class, oper.getOperatorMeta().getOperator().getClass());
+    Assert.assertEquals("operator class", TestGeneratorInputOperator.class, oper.getOperatorMeta().getOperator().getClass());
 
   }
 

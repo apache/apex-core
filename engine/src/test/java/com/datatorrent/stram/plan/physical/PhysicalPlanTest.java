@@ -199,12 +199,14 @@ public class PhysicalPlanTest
     LogicalPlan dag = new LogicalPlan();
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
 
+    TestGeneratorInputOperator node0 = dag.addOperator("node0", TestGeneratorInputOperator.class);
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PartitioningTestOperator partitioned = dag.addOperator("partitioned", PartitioningTestOperator.class);
     partitioned.setPartitionCount(partitioned.partitionKeys.length);
     GenericTestOperator singleton1 = dag.addOperator("singleton1", GenericTestOperator.class);
     GenericTestOperator singleton2 = dag.addOperator("singleton2", GenericTestOperator.class);
 
+    dag.addStream("n0.inport1", node0.outport, node1.inport1);
     dag.addStream("n1.outport1", node1.outport1, partitioned.inport1, partitioned.inportWithCodec);
     dag.addStream("mergeStream", partitioned.outport1, singleton1.inport1, singleton2.inport1);
 

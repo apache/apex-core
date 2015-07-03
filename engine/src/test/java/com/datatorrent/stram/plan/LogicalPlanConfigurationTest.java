@@ -47,6 +47,7 @@ import com.datatorrent.common.util.BasicContainerOptConfigurator;
 import com.datatorrent.stram.PartitioningTest.PartitionLoadWatch;
 import com.datatorrent.stram.client.StramClientUtils;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.LogicalPlanTest.ValidationTestOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
@@ -91,8 +92,8 @@ public class LogicalPlanConfigurationTest {
     assertEquals("operatorId set", "operator1", operator1.getName());
 
     // verify operator instantiation
-    assertEquals(operator1.getOperator().getClass(), GenericTestOperator.class);
-    GenericTestOperator GenericTestNode = (GenericTestOperator)operator1.getOperator();
+    assertEquals(operator1.getOperator().getClass(), TestGeneratorInputOperator.class);
+    TestGeneratorInputOperator GenericTestNode = (TestGeneratorInputOperator)operator1.getOperator();
     assertEquals("myStringPropertyValue", GenericTestNode.getMyStringProperty());
 
     // check links
@@ -102,7 +103,7 @@ public class LogicalPlanConfigurationTest {
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
-    assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getMeta(((GenericTestOperator)operator1.getOperator()).outport1)));
+    assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getMeta(((TestGeneratorInputOperator)operator1.getOperator()).outport)));
     assertEquals("n1n2 source", operator1, n1n2.getSource().getOperatorMeta());
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());

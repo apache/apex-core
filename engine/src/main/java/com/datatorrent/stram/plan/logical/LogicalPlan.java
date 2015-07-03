@@ -1159,6 +1159,14 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
 
+    // Validate root operators are input operators 
+    for (OperatorMeta om : this.rootOperators) {
+      if (!(om.getOperator() instanceof InputOperator)) {
+        throw new ValidationException(String.format("Root operator: %s is not a Input operator",
+            om.getName()));
+      }
+    }
+
     // processing mode
     Set<OperatorMeta> visited = Sets.newHashSet();
     for (OperatorMeta om : this.rootOperators) {

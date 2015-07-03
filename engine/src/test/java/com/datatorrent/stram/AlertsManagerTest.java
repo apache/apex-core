@@ -29,6 +29,7 @@ import com.datatorrent.api.Context.OperatorContext;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
 import com.datatorrent.stram.engine.GenericTestOperator;
+import com.datatorrent.stram.engine.TestGeneratorInputOperator;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.physical.PTOperator;
 import com.datatorrent.stram.support.StramTestSupport.TestMeta;
@@ -48,7 +49,10 @@ public class AlertsManagerTest
     dag.setAttribute(com.datatorrent.api.Context.DAGContext.APPLICATION_PATH, testMeta.dir);
     dag.setAttribute(OperatorContext.STORAGE_AGENT, new FSStorageAgent(testMeta.dir, null));
 
-    dag.addOperator("o", GenericTestOperator.class);
+    TestGeneratorInputOperator in = dag.addOperator("in", TestGeneratorInputOperator.class);
+    GenericTestOperator o = dag.addOperator("o", GenericTestOperator.class);
+    dag.addStream("stream", in.outport, o.inport1);
+
     final StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertNotNull(dnm.assignContainer(new ContainerResource(0, "container1", "localhost", 0, 0, null), InetSocketAddress.createUnresolved("localhost", 0)));
 
@@ -102,8 +106,8 @@ public class AlertsManagerTest
     Assert.assertNotNull(alertsManager.getAlert("alertName"));
 
     // make sure we have the operators
-    Assert.assertEquals("there should be 4 operators", 4, dag.getAllOperators().size());
-    Assert.assertEquals("there should be 3 streams", 3, dag.getAllStreams().size());
+    Assert.assertEquals("there should be 5 operators", 5, dag.getAllOperators().size());
+    Assert.assertEquals("there should be 4 streams", 4, dag.getAllStreams().size());
 
     // delete the alert
     alertsManager.deleteAlert("alertName");
@@ -111,8 +115,8 @@ public class AlertsManagerTest
     Assert.assertEquals("there should be no more alerts after delete", 0, alerts.getJSONArray("alerts").length());
 
     // make sure the operators are removed
-    Assert.assertEquals("there should be 1 operator", 1, dag.getAllOperators().size());
-    Assert.assertEquals("there should be 0 stream", 0, dag.getAllStreams().size());
+    Assert.assertEquals("there should be 2 operator", 2, dag.getAllOperators().size());
+    Assert.assertEquals("there should be 1 stream", 1, dag.getAllStreams().size());
 
     t.interrupt();
     try {
