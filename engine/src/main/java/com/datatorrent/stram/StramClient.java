@@ -597,10 +597,10 @@ public class StramClient
       }
       // Set Xmx based on am memory size
       // default heap size 75% of total memory
-      vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
       if (dag.getMasterJVMOptions() != null) {
         vargs.add(dag.getMasterJVMOptions());
       }
+      vargs.add("-Xmx" + (amMemory * 3 / 4) + "m");
       vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
       vargs.add("-XX:HeapDumpPath=/tmp/dt-heap-" + appId.getId() + ".bin");
       vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
