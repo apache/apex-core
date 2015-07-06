@@ -58,6 +58,16 @@ Type help to list available commands.
 Pre-built distributions (see [README](https://www.datatorrent.com/docs/README.html)) are available from
 https://www.datatorrent.com/download/
 
+##Issue tracking
+
+[Apex JIRA](https://malhar.atlassian.net/projects/APEX) issue tracking system is used for this project.
+You can submit new issues and track the progress of existing issues at https://malhar.atlassian.net/projects/APEX.
+
+When working with JIRA to submit pull requests, please use [smart commits](https://confluence.atlassian.com/display/AOD/Processing+JIRA+issues+with+commit+messages) feature by specifying APEX-XXXX in the commit messages.
+It helps us link commits with issues being tracked for easy reference.  And example commit might look like this:
+
+    git commit -am "APEX-1234 #comment Task completed ahead of schedule #resolve"
+
 ##License
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
