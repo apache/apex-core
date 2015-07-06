@@ -28,7 +28,6 @@ import org.junit.Test;
 
 import com.google.common.collect.Maps;
 import com.datatorrent.common.util.BaseOperator;
-import com.datatorrent.stram.webapp.OperatorDiscoveryTest.TestOperator;
 import com.datatorrent.api.DefaultInputPort;
 import com.datatorrent.api.DefaultOutputPort;
 import com.datatorrent.api.Operator;

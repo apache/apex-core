@@ -32,7 +32,6 @@ import com.google.common.collect.Maps;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.Context;
-import com.datatorrent.api.Operator;
 
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.engine.PortContext;

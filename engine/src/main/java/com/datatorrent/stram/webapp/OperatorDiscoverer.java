@@ -17,7 +17,6 @@ package com.datatorrent.stram.webapp;
 
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
-import com.datatorrent.api.annotation.*;
 import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.webapp.TypeDiscoverer.UI_TYPE;
 import com.datatorrent.stram.webapp.asm.CompactAnnotationNode;
