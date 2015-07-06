@@ -23,8 +23,6 @@ You acknowledge that your submissions to this repository are made pursuant the t
   * Create a GitHub pull request from your repository, providing as many details about your changes as possible
   * After review and acceptance one of the committers will merge the pull request.
 
-The submitted code must follow certain prescribed conventions and it is also recommended that it follow the prescribed style. The conventions and style are described in the [Coding Conventions and Style](docs/CodingConventionsAndStyle.md) document.
-
 When adding **new files**, please include the following Apache v2.0 license header at the top of the file, with the fields enclosed by brackets "[]" replaced with your own identifying information **(don't include the brackets!)**:
 ```java
 /**
