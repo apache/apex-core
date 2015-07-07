@@ -162,6 +162,8 @@ public class LogicalNode implements DataListener
     logger.debug("Set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
     int intervalMillis;
 
+    int skippedPayloadTuples = 0;
+
     if (isReady()) {
       logger.debug("catching up {}->{}", upstream, group);
       try {
@@ -172,6 +174,11 @@ public class LogicalNode implements DataListener
         while (ready && iterator.hasNext()) {
           SerializedData data = iterator.next();
           switch (data.buffer[data.dataOffset]) {
+
+            case MessageType.PAYLOAD_VALUE:
+              ++skippedPayloadTuples;
+              break;
+
             case MessageType.RESET_WINDOW_VALUE:
               Tuple tuple = Tuple.getTuple(data.buffer, data.dataOffset, data.length - data.dataOffset + data.offset);
               baseSeconds = (long)tuple.getBaseSeconds() << 32;
@@ -192,7 +199,7 @@ public class LogicalNode implements DataListener
                 Codec.getStringWindowId(skipWindowId)
               });
               if ((baseSeconds | tuple.getWindowId()) > skipWindowId) {
-                logger.debug("caught up {}->{}", upstream, group);
+                logger.debug("caught up {}->{} skipping {} payload tuples", upstream, group, skippedPayloadTuples);
                 ready = GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
                 break outer;
