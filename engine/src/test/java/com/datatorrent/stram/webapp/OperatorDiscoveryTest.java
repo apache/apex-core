@@ -54,6 +54,9 @@ public class OperatorDiscoveryTest
   {
     private int A;
     private T B;
+    private ArrayList<?> testWildCard;
+    private Map<?, ? extends Number> testWildCardMapProperty;
+
     @InputPortFieldAnnotation(optional = true)
     public transient final DefaultInputPort<T> input = new DefaultInputPort<T>() {
       @Override
@@ -68,7 +71,13 @@ public class OperatorDiscoveryTest
       }
     };
 
-    @OutputPortFieldAnnotation(optional = false, error= true)
+    public transient final DefaultInputPort<Map<?, ? extends String>> input2 = new DefaultInputPort<Map<?, ? extends String>>() {
+      public void process(Map<?, ? extends String> tuple) {
+        // Do nothing
+      }
+    };
+
+    @OutputPortFieldAnnotation(optional = false, error = true)
     public transient final DefaultOutputPort<String> output = new DefaultOutputPort<String>();
 
     public transient final DefaultOutputPort<Double> output1 = new DefaultOutputPort<Double>();
@@ -92,6 +101,23 @@ public class OperatorDiscoveryTest
 
     public void setB(T b) {
       B = b;
+    }
+
+    public ArrayList<?> getTestWildCard() {
+      return testWildCard;
+    }
+
+    public void setTestWildCard(ArrayList<?> testWildCard) {
+      this.testWildCard = testWildCard;
+    }
+
+    public Map<?, ? extends Number> getTestWildCardMapProperty() {
+      return testWildCardMapProperty;
+    }
+
+    public void setTestWildCardMapProperty(
+        Map<?, ? extends Number> testWildCardMapProperty) {
+      this.testWildCardMapProperty = testWildCardMapProperty;
     }
   }
 
@@ -121,13 +147,13 @@ public class OperatorDiscoveryTest
     JSONArray outputPorts = oper.getJSONArray("outputPorts");
 
     Assert.assertNotNull(debug + "Properties aren't null ", props);
-    Assert.assertEquals(debug + "Number of properties ", 3, props.length());
+    Assert.assertEquals(debug + "Number of properties ", 5, props.length());
 
     Assert.assertNotNull(debug + "Port types aren't null ", portTypes);
-    Assert.assertEquals(debug + "Number of port types ", 4, portTypes.length());
+    Assert.assertEquals(debug + "Number of port types ", 5, portTypes.length());
 
     Assert.assertNotNull(debug + "inputPorts aren't null ", inputPorts);
-    Assert.assertEquals(debug + "Number of inputPorts ", 2, inputPorts.length());
+    Assert.assertEquals(debug + "Number of inputPorts ", 3, inputPorts.length());
 
     Assert.assertNotNull(debug + "outputPorts aren't null ", outputPorts);
     Assert.assertEquals(debug + "Number of outputPorts ", 2, outputPorts.length());
@@ -138,7 +164,27 @@ public class OperatorDiscoveryTest
     Assert.assertEquals(portType.get("typeLiteral"), "T");
     Assert.assertEquals(portType.get("type"), "java.lang.Long");
 
-    portType = (JSONObject)portTypes.get(2);
+    portType = (JSONObject) portTypes.get(2);
+    Assert.assertEquals(portType.get("name"), "input2");
+    Assert.assertEquals(portType.get("type"), "java.util.Map");
+    JSONArray typeArgs = portType.getJSONArray("typeArgs");
+    Assert.assertEquals(debug + " type " + portType,
+        "class " + Object.class.getName(), typeArgs.getJSONObject(0)
+            .getJSONObject("typeBounds").getJSONArray("upper").get(0));
+    Assert.assertEquals(debug + " type " + portType,
+        "class " + String.class.getName(), typeArgs.getJSONObject(1)
+            .getJSONObject("typeBounds").getJSONArray("upper").get(0));
+
+    JSONObject wildcardType = getJSONProperty(props, "testWildCardMapProperty");
+    Assert.assertEquals(debug + "type " + wildcardType, Map.class.getName(), wildcardType.get("type"));
+    Assert.assertEquals(debug + "type " + wildcardType,
+        "class " + Object.class.getName(), wildcardType.getJSONArray("typeArgs").getJSONObject(0)
+            .getJSONObject("typeBounds").getJSONArray("upper").get(0));
+    Assert.assertEquals(debug + "type " + wildcardType, "class " + Number.class.getName(),
+        wildcardType.getJSONArray("typeArgs").getJSONObject(1)
+            .getJSONObject("typeBounds").getJSONArray("upper").get(0));
+
+    portType = (JSONObject)portTypes.get(3);
     Assert.assertEquals(portType.get("name"), "output");
     Assert.assertEquals(portType.get("type"), "java.lang.String");
 
@@ -212,6 +258,8 @@ public class OperatorDiscoveryTest
 
     JSONObject wildcardType = getJSONProperty(props, "wildcardType");
     Assert.assertEquals(debug + "type " + wildcardType, Map.class.getName(), wildcardType.get("type"));
+    Assert.assertEquals(debug + "type " + wildcardType, "class " + Object.class.getName(),
+        wildcardType.getJSONArray("typeArgs").getJSONObject(0).getJSONObject("typeBounds").getJSONArray("upper").get(0));
     Assert.assertEquals(debug + "type " + wildcardType, "class " + Long.class.getName(),
         wildcardType.getJSONArray("typeArgs").getJSONObject(1).getJSONObject("typeBounds").getJSONArray("lower").get(0));
 
@@ -474,7 +522,7 @@ public class OperatorDiscoveryTest
     private Structured[] structuredArray;
     private T[] genericArray;
     private Map<String, List<Map<String, Number>>> nestedParameterizedType = new HashMap<String, List<Map<String, Number>>>();
-    private Map<? extends Object, ? super Long> wildcardType = new HashMap<Object, Number>();
+    private Map<?, ? super Long> wildcardType = new HashMap<Object, Number>();
     private List<int[]> listofIntArray = new LinkedList<int[]>();
     private List<T> parameterizedTypeVariable = new LinkedList<T>();
     private Z genericType;

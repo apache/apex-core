@@ -146,8 +146,10 @@ public abstract class BaseSignatureVisitor implements SignatureVisitor
   @Override
   public void visitTypeArgument()
   { 
-
-    
+    // For unbounded wild card entries, add wild card entry upper bound: extends Object
+    visitTypeArgument(SignatureVisitor.EXTENDS);
+    visitClassType(Object.class.getName());
+    visitEnd();
   }
 
   @Override
