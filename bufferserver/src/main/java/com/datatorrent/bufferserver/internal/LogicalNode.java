@@ -201,8 +201,12 @@ public class LogicalNode implements DataListener
 
             case MessageType.CHECKPOINT_VALUE:
             case MessageType.CODEC_STATE_VALUE:
+            case MessageType.END_STREAM_VALUE:
               ready = GiveAll.getInstance().distribute(physicalNodes, data);
+              logger.debug("Message {} was distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]), physicalNodes);
               break;
+            default:
+              logger.debug("Message {} was not distributed to {}", MessageType.valueOf(data.buffer[data.dataOffset]), physicalNodes);
           }
         }
       }
