@@ -11,11 +11,11 @@
     <value>1024</value>
   </property>
   <property>
-    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedstart</name>
+    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedStart</name>
     <value>1</value>
   </property>
   <property>
-    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedend</name>
+    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedEnd</name>
     <value>10</value>
   </property>
   <property>
