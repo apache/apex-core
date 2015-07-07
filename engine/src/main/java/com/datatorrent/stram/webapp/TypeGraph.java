@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.Component;
+import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Operator;
 import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.webapp.asm.ClassNodeType;
@@ -89,6 +90,22 @@ public class TypeGraph
       b.add(fsd.getValueClass().getName());
     }
     JACKSON_INSTANTIABLE_CLASSES = b.build();
+  }
+
+  public boolean isAncestor(String parentClassName, String subClassName)
+  {
+    TypeGraphVertex parentVertex = typeGraph.get(parentClassName);
+    TypeGraphVertex classVertex = typeGraph.get(subClassName);
+
+    if(parentVertex == null || classVertex == null)
+      return false;
+
+    return TypeGraph.isAncestor(parentVertex, classVertex);
+  }
+
+  public TypeGraphVertex getTypeGraphVertex(String className)
+  {
+    return typeGraph.get(className);
   }
 
   private static boolean isAncestor(TypeGraphVertex typeTgv, TypeGraphVertex tgv)
@@ -368,6 +385,22 @@ public class TypeGraph
     return typeGraph.size();
   }
 
+  public Set<String> getAllDTInstantiableOperators()
+  {
+    TypeGraphVertex tgv = typeGraph.get(Operator.class.getName());
+    if (tgv == null) {
+      return null;
+    }
+    Set<String> result = new TreeSet<String>();
+    for (TypeGraphVertex node : tgv.allInstantiableDescendants) {
+      if ((isAncestor(InputOperator.class.getName(), node.typeName) || !getAllInputPorts(node).isEmpty())) {
+        result.add(node.typeName);
+      }
+    }
+
+    return result;
+  }
+
   public Set<String> getDescendants(String fullClassName)
   {
     Set<String> result = new HashSet<String>();
@@ -456,6 +489,10 @@ public class TypeGraph
       this.classNode = classNode;
     }
 
+    public Set<TypeGraphVertex> getAncestors()
+    {
+      return ancestors;
+    }
     public int numberOfInstantiableDescendants()
     {
       return allInstantiableDescendants.size() + (isInstantiable() ? 1 : 0);
@@ -467,7 +504,7 @@ public class TypeGraph
       this.jarName = jarName;
     }
 
-    private boolean isInstantiable()
+    public boolean isInstantiable()
     {
       return JACKSON_INSTANTIABLE_CLASSES.contains(this.typeName) || (isPublicConcrete() && classNode.getDefaultConstructor() != null);
     }
@@ -682,9 +719,17 @@ public class TypeGraph
     return null;
   }
 
-  public List<CompactFieldNode> getAllInputPorts(String clazzName) {
+  public List<CompactFieldNode> getAllInputPorts(String clazzName)
+  {
     TypeGraphVertex tgv = typeGraph.get(clazzName);
+    return getAllInputPorts(tgv);
+  }
+
+  public List<CompactFieldNode> getAllInputPorts(TypeGraphVertex tgv)
+  {
     List<CompactFieldNode> ports = new ArrayList<CompactFieldNode>();
+    if (tgv == null)
+      return ports;
     TypeGraphVertex portVertex = typeGraph.get(Operator.InputPort.class
         .getName());
     getAllPortsWithAncestor(portVertex, tgv, ports);
@@ -694,26 +739,28 @@ public class TypeGraph
         return a.getName().compareTo(b.getName());
       }
     });
+
     return ports;
   }
 
-  public List<CompactFieldNode> getAllOutputPorts(String clazzName) {
+  public List<CompactFieldNode> getAllOutputPorts(String clazzName)
+  {
     TypeGraphVertex tgv = typeGraph.get(clazzName);
     List<CompactFieldNode> ports = new ArrayList<CompactFieldNode>();
-    TypeGraphVertex portVertex = typeGraph.get(Operator.OutputPort.class
-        .getName());
+    TypeGraphVertex portVertex = typeGraph.get(Operator.OutputPort.class.getName());
     getAllPortsWithAncestor(portVertex, tgv, ports);
-    Collections.sort(ports, new Comparator<CompactFieldNode>() {
+    Collections.sort(ports, new Comparator<CompactFieldNode>()
+    {
       @Override
-      public int compare(CompactFieldNode a, CompactFieldNode b) {
+      public int compare(CompactFieldNode a, CompactFieldNode b)
+      {
         return a.getName().compareTo(b.getName());
       }
     });
     return ports;
   }
-  
-  private void getAllPortsWithAncestor(TypeGraphVertex portVertex,
-      TypeGraphVertex tgv, List<CompactFieldNode> ports)
+
+  private void getAllPortsWithAncestor(TypeGraphVertex portVertex, TypeGraphVertex tgv, List<CompactFieldNode> ports)
   {
     List<CompactFieldNode> fields = tgv.getClassNode().getPorts();
     if (fields != null) {
@@ -730,21 +777,22 @@ public class TypeGraph
     }
   }
 
-  private void addClassPropertiesAndPorts(String clazzName, JSONObject desc) throws JSONException {
+  private void addClassPropertiesAndPorts(String clazzName, JSONObject desc) throws JSONException
+  {
     TypeGraphVertex tgv = typeGraph.get(clazzName);
     if (tgv == null) {
       return;
     }
 
     Map<String, JSONObject> results = new TreeMap<String, JSONObject>();
-    List<CompactMethodNode> getters =  new LinkedList<CompactMethodNode>();
+    List<CompactMethodNode> getters = new LinkedList<CompactMethodNode>();
     List<CompactMethodNode> setters = new LinkedList<CompactMethodNode>();
     Map<Type, Type> typeReplacement = new HashMap<Type, Type>();
-    List<CompactFieldNode> ports =  new LinkedList<CompactFieldNode>();
-    
+    List<CompactFieldNode> ports = new LinkedList<CompactFieldNode>();
+
     getPublicSetterGetterAndPorts(tgv, setters, getters, typeReplacement, ports);
     desc.put("portTypeInfo", getPortTypeInfo(clazzName, typeReplacement, ports));
-    
+
     for (CompactMethodNode setter : setters) {
       String prop = WordUtils.uncapitalize(setter.getName().substring(3));
       JSONObject propJ = results.get(prop);
@@ -756,13 +804,12 @@ public class TypeGraph
       propJ.put("canSet", true);
       propJ.put("canGet", false);
 
-
       MethodSignatureVisitor msv = null;
       msv = setter.getMethodSignatureNode();
-      if(msv==null){
+      if (msv == null) {
         continue;
       }
-      
+
       List<Type> param = msv.getParameters();
       if (CollectionUtils.isEmpty(param)) {
         propJ.put("type", "UNKNOWN");
@@ -788,10 +835,9 @@ public class TypeGraph
 
         MethodSignatureVisitor msv = null;
         msv = getter.getMethodSignatureNode();
-        if(msv==null){
+        if (msv == null) {
           continue;
         }
-        
 
         Type rt = msv.getReturnType();
         if (rt == null) {
