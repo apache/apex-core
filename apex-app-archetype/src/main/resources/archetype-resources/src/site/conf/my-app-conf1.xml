@@ -5,11 +5,7 @@
     <value>1024</value>
   </property>
   <property>
-    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedStart</name>
-    <value>10</value>
-  </property>
-  <property>
-    <name>dt.application.MyFirstApplication.operator.seedGen.prop.seedEnd</name>
-    <value>30</value>
+    <name>dt.application.MyFirstApplication.operator.randomGenerator.prop.numTuples</name>
+    <value>1000</value>
   </property>
 </configuration>
