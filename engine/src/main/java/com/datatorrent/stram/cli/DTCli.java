@@ -1471,14 +1471,18 @@ public class DTCli
 
   private void handleException(Exception e)
   {
+    StringBuilder sb = new StringBuilder();
     String msg = e.getMessage();
+    if (null != msg) {
+      sb.append(msg);
+    }
     Throwable cause = e.getCause();
     if (cause != null && cause.getMessage() != null) {
-      msg += ": " + cause.getMessage();
+      sb.append(": ");
+      sb.append(cause.getMessage());
     }
-    if (msg != null) {
-      System.err.println(msg);
-    }
+    sb.append(Arrays.toString(e.getStackTrace()));
+    System.err.println(sb.toString());
     LOG.error("Exception caught: ", e);
     lastCommandError = true;
   }
