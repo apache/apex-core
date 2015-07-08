@@ -13,7 +13,6 @@ import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.DAG.Locality;
 import com.datatorrent.lib.io.ConsoleOutputOperator;
-import com.datatorrent.lib.testbench.SeedEventGenerator;
 
 @ApplicationAnnotation(name="MyFirstApplication")
 public class Application implements StreamingApplication
@@ -25,12 +24,11 @@ public class Application implements StreamingApplication
     // Sample DAG with 2 operators
     // Replace this code with the DAG you want to build
 
-    SeedEventGenerator seedGen = dag.addOperator("seedGen", SeedEventGenerator.class);
-    seedGen.addKeyData("x", 0, 10);
-    seedGen.addKeyData("y", 0, 100);
+    RandomNumberGenerator randomGenerator = dag.addOperator("randomGenerator", RandomNumberGenerator.class);
+    randomGenerator.setNumTuples(500);
 
     ConsoleOutputOperator cons = dag.addOperator("console", new ConsoleOutputOperator());
 
-    dag.addStream("seeddata", seedGen.val_list, cons.input).setLocality(Locality.CONTAINER_LOCAL);
+    dag.addStream("randomData", randomGenerator.out, cons.input).setLocality(Locality.CONTAINER_LOCAL);
   }
 }
