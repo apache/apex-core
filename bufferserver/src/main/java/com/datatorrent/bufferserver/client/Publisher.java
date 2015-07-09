@@ -20,14 +20,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.packet.PublishRequestTuple;
-import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  * <p>Abstract Publisher class.</p>
  *
  * @since 0.3.2
  */
-public abstract class Publisher extends AbstractLengthPrependerClient
+public abstract class Publisher extends AuthClient
 {
   private final String id;
 
@@ -48,6 +47,7 @@ public abstract class Publisher extends AbstractLengthPrependerClient
    */
   public void activate(String version, long windowId)
   {
+    sendAuthenticate();
     write(PublishRequestTuple.getSerializedRequest(version, id, windowId));
   }
 

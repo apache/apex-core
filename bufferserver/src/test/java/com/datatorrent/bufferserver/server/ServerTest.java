@@ -15,6 +15,17 @@
  */
 package com.datatorrent.bufferserver.server;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.security.SecureRandom;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
 import com.datatorrent.bufferserver.packet.BeginWindowTuple;
 import com.datatorrent.bufferserver.packet.EndWindowTuple;
 import com.datatorrent.bufferserver.packet.PayloadTuple;
@@ -24,16 +35,8 @@ import com.datatorrent.bufferserver.support.Publisher;
 import com.datatorrent.bufferserver.support.Subscriber;
 import com.datatorrent.netlet.DefaultEventLoop;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.Assert;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
 /**
  *
@@ -48,6 +51,8 @@ public class ServerTest
   static int spinCount = 300;
   static DefaultEventLoop eventloopServer;
   static DefaultEventLoop eventloopClient;
+
+  static byte[] authToken;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
@@ -65,6 +70,10 @@ public class ServerTest
     instance = new Server(0, 4096,8);
     address = instance.run(eventloopServer);
     assert (address instanceof InetSocketAddress);
+
+    SecureRandom random = new SecureRandom();
+    authToken = new byte[20];
+    random.nextBytes(authToken);
   }
 
   @AfterClass
@@ -442,6 +451,77 @@ public class ServerTest
     assertEquals(bss.tupleCount.get(), 150);
 
     eventloopClient.disconnect(bss);
+  }
+
+  @Test(dependsOnMethods = {"testEarlySubscriberForLaterWindow"})
+  public void testAuth() throws InterruptedException
+  {
+    instance.setAuthToken(authToken);
+
+    bsp = new Publisher("MyPublisher");
+    bsp.setToken(authToken);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
+
+    bss = new Subscriber("MySubscriber");
+    bss.setToken(authToken);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
+
+    bsp.activate(null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
+
+    long resetInfo = 0x7afebabe000000faL;
+
+    bsp.publishMessage(ResetWindowTuple.getSerializedTuple((int) (resetInfo >> 32), 500));
+
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (!bss.resetPayloads.isEmpty()) {
+        break;
+      }
+    }
+    Thread.sleep(10);
+
+    eventloopClient.disconnect(bss);
+    eventloopClient.disconnect(bsp);
+
+    assertEquals(bss.tupleCount.get(), 1);
+    Assert.assertFalse(bss.resetPayloads.isEmpty());
+  }
+
+  @Test(dependsOnMethods = {"testAuth"})
+  public void testAuthFailure() throws InterruptedException
+  {
+    byte[] authToken = ServerTest.authToken.clone();
+    authToken[0] = (byte)(authToken[0] + 1);
+
+    bsp = new Publisher("MyPublisher");
+    bsp.setToken(authToken);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
+
+    bss = new Subscriber("MySubscriber");
+    bss.setToken(authToken);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
+
+    bsp.activate(null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L, 0);
+
+    long resetInfo = 0x7afebabe000000faL;
+
+    bsp.publishMessage(ResetWindowTuple.getSerializedTuple((int) (resetInfo >> 32), 500));
+
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (!bss.resetPayloads.isEmpty()) {
+        break;
+      }
+    }
+    Thread.sleep(10);
+
+    eventloopClient.disconnect(bss);
+    eventloopClient.disconnect(bsp);
+
+    assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertTrue(bss.resetPayloads.isEmpty());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);

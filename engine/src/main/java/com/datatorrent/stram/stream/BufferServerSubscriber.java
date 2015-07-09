@@ -84,6 +84,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   @Override
   public void activate(StreamContext context)
   {
+    setToken(context.get(StreamContext.BUFFER_SERVER_TOKEN));
     InetSocketAddress address = context.getBufferServerAddress();
     eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
@@ -140,6 +141,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   public void deactivate()
   {
     eventloop.disconnect(this);
+    setToken(null);
   }
 
   @Override

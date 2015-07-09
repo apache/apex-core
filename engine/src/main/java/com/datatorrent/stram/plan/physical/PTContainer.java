@@ -94,6 +94,12 @@ public class PTContainer implements java.io.Serializable
           }
           c.host = in.readString();
           c.nodeHttpAddress = in.readString();
+          int tokenLength = in.readInt();
+          if (tokenLength != -1) {
+            c.bufferServerToken = in.readBytes(tokenLength);
+          } else {
+            c.bufferServerToken = null;
+          }
           break;
         }
       }
@@ -128,6 +134,10 @@ public class PTContainer implements java.io.Serializable
       // host
       out.writeString(container.host);
       out.writeString(container.nodeHttpAddress);
+      out.writeInt((container.bufferServerToken == null) ? -1 : container.bufferServerToken.length);
+      if (container.bufferServerToken != null) {
+        out.write(container.bufferServerToken);
+      }
     }
   }
 
@@ -150,6 +160,8 @@ public class PTContainer implements java.io.Serializable
   int restartAttempts;
   private long startedTime = -1;
   private long finishedTime = -1;
+
+  private byte[] bufferServerToken;
 
   PTContainer(PhysicalPlan plan) {
     this.plan = plan;
@@ -250,6 +262,16 @@ public class PTContainer implements java.io.Serializable
   public void setFinishedTime(long finishedTime)
   {
     this.finishedTime = finishedTime;
+  }
+
+  public byte[] getBufferServerToken()
+  {
+    return bufferServerToken;
+  }
+
+  public void setBufferServerToken(byte[] bufferServerToken)
+  {
+    this.bufferServerToken = bufferServerToken;
   }
 
   public String toIdStateString() {

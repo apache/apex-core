@@ -15,7 +15,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.stram.api.AppDataSource;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -67,6 +66,7 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.StringCodec;
 
 import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.api.AppDataSource;
 import com.datatorrent.stram.api.BaseContext;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.appdata.AppDataPushAgent;
@@ -500,7 +500,7 @@ public class StreamingAppMasterService extends CompositeService
   protected void serviceStart() throws Exception
   {
     super.serviceStart();
-    if (delegationTokenManager != null) {
+    if (UserGroupInformation.isSecurityEnabled()) {
       delegationTokenManager.startThreads();
     }
 
@@ -539,7 +539,7 @@ public class StreamingAppMasterService extends CompositeService
   protected void serviceStop() throws Exception
   {
     super.serviceStop();
-    if (delegationTokenManager != null) {
+    if (UserGroupInformation.isSecurityEnabled()) {
       delegationTokenManager.stopThreads();
     }
     if (nmClient != null) {

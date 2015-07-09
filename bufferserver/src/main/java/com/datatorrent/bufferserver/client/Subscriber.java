@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
-import com.datatorrent.netlet.AbstractLengthPrependerClient;
 
 /**
  *
@@ -34,7 +33,7 @@ import com.datatorrent.netlet.AbstractLengthPrependerClient;
  *
  * @since 0.3.2
  */
-public abstract class Subscriber extends AbstractLengthPrependerClient
+public abstract class Subscriber extends AuthClient
 {
   private final String id;
 
@@ -46,6 +45,7 @@ public abstract class Subscriber extends AbstractLengthPrependerClient
 
   public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId, int bufferSize)
   {
+    sendAuthenticate();
     write(SubscribeRequestTuple.getSerializedRequest(
             version,
             id,

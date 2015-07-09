@@ -31,7 +31,7 @@ import com.datatorrent.netlet.util.Slice;
 *
  * @since 0.3.2
  */
-public abstract class Controller extends AbstractLengthPrependerClient
+public abstract class Controller extends AuthClient
 {
   String id;
 
@@ -43,12 +43,14 @@ public abstract class Controller extends AbstractLengthPrependerClient
 
   public void purge(String version, String sourceId, long windowId)
   {
+    sendAuthenticate();
     write(PurgeRequestTuple.getSerializedRequest(version, sourceId, windowId));
     logger.debug("Sent purge request sourceId = {}, windowId = {}", sourceId, Codec.getStringWindowId(windowId));
   }
 
   public void reset(String version, String sourceId, long windowId)
   {
+    sendAuthenticate();
     write(ResetRequestTuple.getSerializedRequest(version, sourceId, windowId));
     logger.debug("Sent reset request sourceId = {}, windowId = {}", sourceId, Codec.getStringWindowId(windowId));
   }
