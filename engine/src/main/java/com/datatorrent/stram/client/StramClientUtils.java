@@ -29,7 +29,12 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.api.ApplicationClientProtocol;
 import org.apache.hadoop.yarn.api.ApplicationMasterProtocol;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -41,11 +46,14 @@ import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
+import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.DTLoggerFactory;
 import org.mozilla.javascript.Scriptable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 
@@ -150,11 +158,21 @@ public class StramClientUtils
   public static class ClientRMHelper
   {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
-    public final YarnClient clientRM;
 
-    public ClientRMHelper(YarnClient yarnClient) throws IOException
+    // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
+    private static final String RM_HA_PREFIX = YarnConfiguration.RM_PREFIX + "ha.";
+    private static final String RM_HA_IDS = RM_HA_PREFIX + "rm-ids";
+    private static final String RM_HA_ENABLED = RM_HA_PREFIX + "enabled";
+    private static final boolean DEFAULT_RM_HA_ENABLED = false;
+    private static final String RM_HOSTNAME_PREFIX = YarnConfiguration.RM_PREFIX + "hostname.";
+
+    private final YarnClient clientRM;
+    private final Configuration conf;
+
+    public ClientRMHelper(YarnClient yarnClient, Configuration conf) throws IOException
     {
       this.clientRM = yarnClient;
+      this.conf = conf;
     }
 
     public static interface AppStatusCallback
@@ -220,6 +238,51 @@ public class StramClientUtils
           return false;
         }
       }
+    }
+
+    // TODO: HADOOP UPGRADE - replace with YarnConfiguration constants
+    private Token<RMDelegationTokenIdentifier> getRMHAToken(org.apache.hadoop.yarn.api.records.Token rmDelegationToken) {
+      // Build a list of service addresses to form the service name
+      ArrayList<String> services = new ArrayList<String>();
+      for (String rmId : conf.getStringCollection(RM_HA_IDS)) {
+        LOG.info("Yarn Resource Manager id: {}", rmId);
+        // Set RM_ID to get the corresponding RM_ADDRESS
+        services.add(SecurityUtil.buildTokenService(NetUtils.createSocketAddr(
+                conf.get(RM_HOSTNAME_PREFIX + rmId),
+                YarnConfiguration.DEFAULT_RM_PORT,
+                RM_HOSTNAME_PREFIX + rmId)).toString());
+      }
+      Text rmTokenService = new Text(Joiner.on(',').join(services));
+
+      return new Token<RMDelegationTokenIdentifier>(
+              rmDelegationToken.getIdentifier().array(),
+              rmDelegationToken.getPassword().array(),
+              new Text(rmDelegationToken.getKind()),
+              rmTokenService);
+    }
+
+    public void addRMDelegationToken(final String renewer, final Credentials credentials) throws IOException, YarnException {
+      // Get the ResourceManager delegation rmToken
+      final org.apache.hadoop.yarn.api.records.Token rmDelegationToken = clientRM.getRMDelegationToken(new Text(renewer));
+
+      Token<RMDelegationTokenIdentifier> token;
+      // TODO: Use the utility method getRMDelegationTokenService in ClientRMProxy to remove the separate handling of
+      // TODO: HA and non-HA cases when hadoop dependency is changed to hadoop 2.4 or above
+      if (conf.getBoolean(RM_HA_ENABLED, DEFAULT_RM_HA_ENABLED)) {
+        LOG.info("Yarn Resource Manager HA is enabled");
+        token = getRMHAToken(rmDelegationToken);
+      } else {
+        LOG.info("Yarn Resource Manager HA is not enabled");
+        InetSocketAddress rmAddress = conf.getSocketAddr(YarnConfiguration.RM_ADDRESS,
+                YarnConfiguration.DEFAULT_RM_ADDRESS,
+                YarnConfiguration.DEFAULT_RM_PORT);
+
+        token = ConverterUtils.convertFromYarn(rmDelegationToken, rmAddress);
+      }
+
+      LOG.info("RM dt {}", token);
+
+      credentials.addToken(token.getService(), token);
     }
 
   }
