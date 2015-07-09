@@ -2496,10 +2496,10 @@ public class DTCli
       };
 
       try {
-        ClientRMHelper clientRMHelper = new ClientRMHelper(yarnClient);
+        ClientRMHelper clientRMHelper = new ClientRMHelper(yarnClient, conf);
         boolean result = clientRMHelper.waitForCompletion(currentApp.getApplicationId(), cb, timeout * 1000);
         if (!result) {
-          System.err.println("Application terminated unsucessful.");
+          System.err.println("Application terminated unsuccessfully.");
         }
       }
       catch (YarnException e) {
