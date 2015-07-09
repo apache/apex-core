@@ -19,12 +19,13 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Sets;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import com.datatorrent.api.Context.PortContext;
 import com.datatorrent.api.DAG.Locality;
@@ -189,6 +190,7 @@ public class StreamingContainerAgent {
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = oper.getContainer().bufferServerAddress.getHostName();
           portInfo.bufferServerPort = oper.getContainer().bufferServerAddress.getPort();
+          portInfo.bufferServerToken = oper.getContainer().getBufferServerToken();
           // Build the stream codec configuration of all sinks connected to this port
           for (PTOperator.PTInput input : out.sinks) {
             // Create mappings for all non-inline operators
@@ -254,12 +256,14 @@ public class StreamingContainerAgent {
 
         } else {
           // buffer server input
-          InetSocketAddress addr = sourceOutput.source.getContainer().bufferServerAddress;
+          PTContainer container = sourceOutput.source.getContainer();
+          InetSocketAddress addr = container.bufferServerAddress;
           if (addr == null) {
             throw new AssertionError("upstream address not assigned: " + sourceOutput);
           }
           inputInfo.bufferServerHost = addr.getHostName();
           inputInfo.bufferServerPort = addr.getPort();
+          inputInfo.bufferServerToken = container.getBufferServerToken();
         }
 
         // On the input side there is a unlikely scenario of partitions even for inline stream that is being

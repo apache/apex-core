@@ -21,7 +21,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import static java.lang.Thread.sleep;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
@@ -38,8 +37,12 @@ import com.datatorrent.stram.engine.Stream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.tuple.Tuple;
 
+import static java.lang.Thread.sleep;
+
 /**
  * <p>FastPublisher class.</p>
+ *
+ * TODO:- Implement token security
  *
  * @since 0.3.2
  */

@@ -15,7 +15,6 @@
  */
 package com.datatorrent.stram;
 
-import com.datatorrent.common.experimental.AppData;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
@@ -40,6 +39,13 @@ import com.google.common.collect.Sets;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.config.BusConfiguration;
+
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -51,18 +57,12 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
-
-import com.datatorrent.common.util.FSStorageAgent;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -71,9 +71,11 @@ import com.datatorrent.api.Operator.OutputPort;
 import com.datatorrent.api.Stats.OperatorStats;
 import com.datatorrent.api.annotation.Stateless;
 
+import com.datatorrent.bufferserver.auth.AuthManager;
 import com.datatorrent.bufferserver.util.Codec;
-import com.datatorrent.common.util.Pair;
+import com.datatorrent.common.experimental.AppData;
 import com.datatorrent.common.util.FSStorageAgent;
+import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
@@ -1197,6 +1199,10 @@ public class StreamingContainerManager implements PlanContext
     container.setExternalId(resource.containerId);
     container.host = resource.host;
     container.bufferServerAddress = bufferServerAddr;
+    if (UserGroupInformation.isSecurityEnabled()) {
+      byte[] token = AuthManager.generateToken();
+      container.setBufferServerToken(token);
+    }
     container.nodeHttpAddress = resource.nodeHttpAddress;
     container.setAllocatedMemoryMB(resource.memoryMB);
     container.setAllocatedVCores(resource.vCores);
@@ -1225,6 +1231,7 @@ public class StreamingContainerManager implements PlanContext
       StreamingContainerContext scc = new StreamingContainerContext(plan.getLogicalPlan().getAttributes().clone(), null);
       scc.attributes.put(ContainerContext.IDENTIFIER, container.getExternalId());
       scc.attributes.put(ContainerContext.BUFFER_SERVER_MB, bufferServerMemory);
+      scc.attributes.put(ContainerContext.BUFFER_SERVER_TOKEN, container.getBufferServerToken());
       scc.startWindowMillis = this.vars.windowStartMillis;
       return scc;
     }
@@ -1945,6 +1952,7 @@ public class StreamingContainerManager implements PlanContext
   private BufferServerController getBufferServerClient(PTOperator operator)
   {
     BufferServerController bsc = new BufferServerController(operator.getLogicalId());
+    bsc.setToken(operator.getContainer().getBufferServerToken());
     InetSocketAddress address = operator.getContainer().bufferServerAddress;
     StreamingContainer.eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
     return bsc;

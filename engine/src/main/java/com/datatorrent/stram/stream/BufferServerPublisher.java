@@ -17,7 +17,6 @@ package com.datatorrent.stram.stream;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicLong;
-import static java.lang.Thread.sleep;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +32,8 @@ import com.datatorrent.stram.codec.StatefulStreamCodec.DataStatePair;
 import com.datatorrent.stram.engine.ByteCounterStream;
 import com.datatorrent.stram.engine.StreamContext;
 import com.datatorrent.stram.tuple.Tuple;
+
+import static java.lang.Thread.sleep;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>
@@ -139,6 +140,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   @SuppressWarnings("unchecked")
   public void activate(StreamContext context)
   {
+    setToken(context.get(StreamContext.BUFFER_SERVER_TOKEN));
     InetSocketAddress address = context.getBufferServerAddress();
     eventloop = context.get(StreamContext.EVENT_LOOP);
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
@@ -150,6 +152,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   @Override
   public void deactivate()
   {
+    setToken(null);
     eventloop.disconnect(this);
   }
 
