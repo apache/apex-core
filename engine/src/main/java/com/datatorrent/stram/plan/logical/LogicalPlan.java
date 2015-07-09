@@ -624,13 +624,15 @@ public class LogicalPlan implements Serializable, DAG
         MetricsAggregator defAggregator = null;
         for (Field field : operator.getClass().getDeclaredFields()) {
           if (field.isAnnotationPresent(CustomMetric.class)) {
-            if (field.getType() == Integer.class || field.getType() == Long.class) {
+            if (field.getType() == int.class || field.getType() == Integer.class ||
+              field.getType() == long.class || field.getType() == Long.class) {
               if (defAggregator == null) {
                 defAggregator = new MetricsAggregator();
               }
               defAggregator.addAggregators(field.getName(), new SingleMetricAggregator[]{new LongSumAggregator()});
             }
-            else if (field.getType() == Float.class || field.getType() == Double.class) {
+            else if (field.getType() == float.class || field.getType() == Float.class ||
+              field.getType() == double.class || field.getType() == Double.class) {
               if (defAggregator == null) {
                 defAggregator = new MetricsAggregator();
               }

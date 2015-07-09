@@ -284,6 +284,28 @@ public class CustomMetricTest
     lc.shutdown();
   }
 
+  @Test
+  public void testInjectionOfDefaultMetricsAggregator() throws Exception
+  {
+    FileUtils.deleteDirectory(new File(testMeta.dir)); // clean any state from previous run
+
+    LogicalPlanConfiguration lpc = new LogicalPlanConfiguration(new Configuration());
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.APPLICATION_PATH, testMeta.dir);
+    TestGeneratorInputOperator inputOperator = dag.addOperator("input", TestGeneratorInputOperator.class);
+
+    OperatorWithMetrics o1 = dag.addOperator("o1", OperatorWithMetrics.class);
+
+    dag.setAttribute(Context.OperatorContext.STORAGE_AGENT, new StramTestSupport.MemoryStorageAgent());
+
+    dag.addStream("TestTuples", inputOperator.outport, o1.inport1);
+
+    lpc.prepareDAG(dag, null, "CustomMetricsTest");
+
+    LogicalPlan.OperatorMeta o1meta = dag.getOperatorMeta("o1");
+    Assert.assertNotNull("default aggregator injected", o1meta.getCustomMetricAggregatorMeta().getAggregator());
+  }
+
   private static class MockAggregator implements CustomMetric.Aggregator, Serializable
   {
     long cachedSum = -1;
