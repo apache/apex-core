@@ -17,6 +17,20 @@
     <maven.deploy.skip>false</maven.deploy.skip>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>ossrh</id>
+      <name>Sonatype Snapshot Repository</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <snapshots>
+        <updatePolicy>daily</updatePolicy>
+      </snapshots>
+      <releases>
+        <updatePolicy>daily</updatePolicy>
+      </releases>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -64,7 +78,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>netlet</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
 </project>
